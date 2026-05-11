@@ -1,751 +1,1993 @@
-# IAccess — Website Design Brief
+# IAccess — Website Design Brief v2.0
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
-**Purpose:** Complete design & content instructions for building the IAccess website from scratch
+**Purpose:** Complete design + real content instructions for building the IAccess website
+
+> **Pricing basis:** USD hardware prices (Amazon/distributors) × 1.40 Colombia import markup × 4,300 COP/USD.  
+> **Labor basis:** $10–40 USD/hour per user spec. General helper $10–12/hr; skilled installer $15–22/hr; senior technician $22–30/hr; lead integrator/programmer $30–40/hr. All COP conversions at 4,300 COP/USD.
 
 ---
 
-## 1. EXECUTIVE SUMMARY
+## SECTION 1 — BRAND & POSITIONING
 
-IAccess converts residential buildings with doormen (porteros) into fully automated, AI-powered access systems. Core tech: Hikvision cameras + DVR/NVR, YOLO-based face recognition across floors, entry via QR code / facial recognition / fingerprint. Targets two audiences simultaneously:
+### Company Snapshot
+IAccess replaces traditional doormen with an AI-powered access system built on Hikvision hardware and YOLO computer vision. Entry: face recognition, QR code, fingerprint, NFC card. Monitoring: continuous cross-floor person tracking. Elevator control: residents reach only their floor; Airbnb guests reach only their unit's floor. Emergency exits: magnets decouple automatically on fire alarm signal.
 
-1. **Traditional residential** buildings (class M–H in Bogotá) looking to cut portero costs
-2. **Airbnb-heavy buildings** — a market segment NO competitor explicitly serves at the building level
+### The Core Economic Argument (use this throughout the entire site)
 
-**The single biggest competitive gap**: Every competitor worldwide hides pricing, shows cameras on their homepage, and ignores Airbnb. IAccess leads with lifestyle, shows a ballpark quote in 60 seconds, and is the first to explicitly say "perfect for Airbnb buildings."
+A building with round-the-clock portería in Bogotá pays per portero:
 
----
-
-## 2. COMPETITIVE LANDSCAPE SUMMARY (Research Basis)
-
-### What every competitor does wrong:
-| Problem | How common |
+| Cost component | Monthly COP |
 |---|---|
-| Leads with surveillance cameras on homepage hero | ~70% of sites |
-| No pricing whatsoever — must contact for quote | 100% of sites |
-| Ignores short-term rental / Airbnb use case | 100% of building-level systems |
-| Dense technical jargon in hero section | ~60% |
-| Generic "smart building" positioning | ~80% |
-| No instant value communication | ~75% |
+| Salary (portero) | $1,423,500 |
+| Auxilio de transporte | $202,050 |
+| Salud empleador (8.5%) | $138,000 |
+| Pensión empleador (12%) | $195,000 |
+| ARL (0.52%) | $8,500 |
+| Caja, SENA, ICBF (9%) | $144,000 |
+| Prima + vacaciones + cesantías + intereses (amortized) | $351,000 |
+| **True cost per portero** | **~$2,462,050 COP** |
 
-### What the best companies do right:
-- **Carson Living (NYC):** "One app. All access." — leads with resident convenience, not hardware
-- **Virtual Doorman (NYC):** Explicit cost comparison vs. traditional doorman — very effective
-- **Openr (Netherlands):** Infrastructure simplicity; wireless/cloud-first — no rewiring anxiety
-- **Kastle (USA/Australia):** Security as a "marketable amenity" — positions as value-add, not cost
-- **Swiftlane (USA):** Facial recognition front and center as the differentiator
+Most residential buildings need:
+- **Día (6am–6pm) + Noche (6pm–6am) = 2 porteros = ~$4,924,100 COP/month**
+- Plus vacation/sick-day replacements, typically +15% = **~$5,660,000 COP/month**
 
-### IAccess positioning sweet spot:
-**"The portería virtual that replaces your portero AND manages your Airbnb guests — one system, one app, zero staff costs."**
+IAccess monthly service for equivalent building: **$850,000–$1,600,000 COP/month**  
+**Typical savings: $3.5M–$4.5M COP/month. Payback: 12–24 months.**
 
----
+### Taglines (A/B test all three)
+1. *"Tu edificio nunca duerme. Tu portero, sí."*
+2. *"El portero más confiable del mundo no necesita salario ni prestaciones."*
+3. *"Cara, QR o huella. Tu edificio inteligente desde $17 millones."*
 
-## 3. BRAND IDENTITY
-
-### Name & Tagline
-- **Name:** IAccess
-- **Primary tagline (Spanish):** *Tu edificio siempre abierto. Sin portero.*
-- **English:** *Always open. No doorman needed.*
-- **Airbnb tagline:** *Your building, automated. Your guests, welcomed.*
-
-### Tone of Voice
-- **Confident, not arrogant.** We know this works. 
-- **Human, not robotic.** We replace the portero; we don't replace the hospitality.
-- **Transparent.** Show prices. Show the tech. No smoke, no mirrors.
-- **Local.** Bogotá-first language and references (portero, copropiedad, propiedad horizontal).
-
-### Color Palette
+### Brand Colors
 ```
-Primary:      #0A0E1A  (Deep navy black — premium, tech)
-Accent 1:     #00E5A0  (Electric mint — access granted, positive action)
-Accent 2:     #1E7FFF  (Electric blue — technology, trust)
-Surface:      #F8F9FC  (Off-white — clean, modern)
-Text:         #1A1A2E  (Near black — readable)
-Warning/Lock: #FF4D4D  (Red — access denied state in demos)
+Deep navy:    #0A0E1A   (primary — premium, night)
+Electric mint:#00E5A0   (access granted, CTAs, positive)
+Electric blue:#1E7FFF   (tech, trust, links)
+Off-white:    #F8F9FC   (light sections)
+Near-black:   #1A1A2E   (body text)
+Alert red:    #FF4D4D   (access denied states, warnings)
+Slate:        #6B7280   (secondary text, captions)
 ```
 
 ### Typography
-```
-Headings:     Space Grotesk (modern, geometric, tech-forward) or Syne
-Body:         Inter (clean, highly legible)
-Monospace:    JetBrains Mono (used in code/tech displays only)
-```
-
-### Logo Concept
-- Stylized "i" with a door/aperture shape as the dot
-- Or: door frame that forms the letter "I" with a biometric scan line through it
-- Clean, single-color — works on dark and light backgrounds
-- Secondary mark: just the aperture/door symbol for app icon
+- **Headings:** Space Grotesk Bold / ExtraBold
+- **Body:** Inter Regular / Medium
+- **Numbers/specs:** JetBrains Mono (for price displays, technical specs)
 
 ---
 
-## 4. SITE ARCHITECTURE
+## SECTION 2 — SITE ARCHITECTURE
 
 ```
-/ (Homepage)
-├── /servicios
-│   ├── /servicios/control-de-acceso
-│   ├── /servicios/reconocimiento-facial
-│   ├── /servicios/control-ascensores
-│   ├── /servicios/modo-airbnb
-│   └── /servicios/monitoreo
-├── /como-funciona
-├── /cotizacion          ← INSTANT QUOTE TOOL (most important page)
-├── /casos-de-uso
-│   ├── /casos/edificio-residencial
-│   ├── /casos/edificio-airbnb
-│   └── /casos/edificio-mixto
-├── /tecnologia          ← Hikvision + YOLO explainer
-├── /blog                ← SEO content
-├── /contacto
-└── /en (English version — same structure)
+/ ...................... Homepage
+/servicios ............. Services overview
+  /servicios/control-de-acceso
+  /servicios/reconocimiento-facial
+  /servicios/qr-y-visitantes
+  /servicios/control-ascensores
+  /servicios/modo-airbnb
+  /servicios/puertas-automaticas
+  /servicios/acceso-vehicular
+  /servicios/monitoreo-24-7
+/cotizacion ............ Instant quote calculator (MOST IMPORTANT)
+/precios ............... Transparent package pricing
+/como-funciona ......... Step-by-step process
+/tecnologia ............ Hikvision + YOLO deep dive
+/casos-de-uso .......... 3 case studies
+  /casos/edificio-residencial
+  /casos/edificio-airbnb
+  /casos/edificio-mixto
+/blog .................. SEO content
+/contacto .............. Contact + demo booking
+/en .................... English mirror (same structure)
 ```
 
 ---
 
-## 5. HOMEPAGE — DETAILED SECTION BREAKDOWN
+## SECTION 3 — HOMEPAGE (full content, section by section)
 
-### Section 1: Navigation Bar
+### NAV BAR
 ```
-[IAccess logo]    Servicios  Cómo funciona  Casos de uso  Tecnología  Blog    [Cotización rápida →] [ES/EN]
+[IAccess ●] | Servicios ▾  Precios  Cómo funciona  Blog  [+57 315 XXX XXXX]  [Cotizar →]
 ```
-- Sticky on scroll
-- Background: transparent → solid dark on scroll
-- CTA button: mint green `#00E5A0`, rounded pill shape
-- Mobile: hamburger menu with full-screen overlay
+- Sticky. Dark navy background (`#0A0E1A`) on scroll.
+- `[Cotizar →]` = mint pill button, always visible
+- Mobile: hamburger → full-screen overlay with same links + large phone number
 
 ---
 
-### Section 2: HERO — Above the fold
-**This is the most important section. No cameras. No security jargon. Lead with freedom and savings.**
+### HERO — Full viewport
 
-**Visual:**
-- Full-width video background (loop): A modern Bogotá residential building lobby. A person walks in, a green scan ring appears on their face, glass door opens instantly. No guards. 5am light. Shot looks cinematic, not surveillance.
-- Overlay: dark gradient from left (text legible) to transparent right (video visible)
+**Background video** (autoplay, muted, loop, 8–12 sec):  
+Shot inside a modern Bogotá residential lobby. 5:45am light. A woman in business clothes approaches — a thin mint-green scan ring briefly overlays her face on screen — the frameless glass door opens silently. She walks in. No guard. No desk. Just clean lobby, plants, clean concrete. Cinematic grade.
 
-**Copy:**
+**Desktop layout:** Text left (60%), video right bleeds to edge. Dark gradient over video on left half.  
+**Mobile:** Video behind text, dark overlay at 70% opacity.
+
 ```
-HEADLINE (large, white, Space Grotesk Bold):
-Tu edificio nunca duerme.
-Tu portero, sí.
+EYEBROW (small caps, mint green):
+BOGOTÁ · PORTERÍA VIRTUAL INTELIGENTE
 
-SUBHEADLINE (medium, light gray):
-Reemplaza tu portería con reconocimiento facial, QR y huella — 
-sin remodelaciones, sin contratos laborales, sin interrupciones.
+HEADLINE (Space Grotesk ExtraBold, 72px desktop / 42px mobile, white):
+Tu edificio nunca
+duerme. Tu portero, sí.
 
-TWO CTAs:
-[Cotización en 60 segundos →]  ← primary, mint green button
-[Ver cómo funciona]  ← secondary, ghost/outline button
+SUBHEADLINE (Inter Regular, 22px, #B0B8C8):
+Reemplaza tu portería con reconocimiento facial, QR y huella dactilar.
+Sin remodelaciones mayores. Sin contratos laborales. Sin interrupciones.
+Desde $17,000,000 COP instalado.
+
+CTA ROW:
+[Cotización en 60 segundos  →]    [Ver demostración  ▶]
+(mint filled, 18px)                 (ghost outline, 18px)
 ```
 
-**Social proof strip below hero:**
-Small row with 3 stats:
-- `🏢 +47 edificios en Bogotá` (update as you grow; start with pilot numbers)
-- `⚡ Instalación en 2–5 días`
-- `💰 Ahorro promedio: $4.2M COP/mes`
+**Trust strip** (horizontal row, subtle, below CTAs):
+```
+  🏢 Edificios en Bogotá: 12 pilotos activos
+  ⚡ Instalación: 2–5 días hábiles  
+  💰 Ahorro promedio: $4,200,000 COP/mes
+  🔒 Tecnología Hikvision · YOLO AI
+```
 
 ---
 
-### Section 3: THE PROBLEM (Emotional connection)
-**Design:** Split screen, slightly dark background. Left = "Before" pain. Right = "After" freedom.
+### THE PROBLEM SECTION
 
-**Left side (Before — in red/orange tones):**
+**Design:** Two-column split, full width. Left = dark red-tinted background. Right = dark navy with mint accents.
+
+**Left — "Hoy" (before):**
 ```
-ANTES
+HOY CON PORTERO
 
-😩  Tu portero llega tarde (o no llega)
-😩  Guests de Airbnb esperando 30 minutos en la calle
-😩  Contratos laborales, prestaciones, reemplazos
-😩  Visitantes entran sin registrarse
-😩  Paquetes perdidos. Entregas perdidas.
-😩  $5–8M COP/mes en nómina de portería
+😤  El portero nocturno no llega. Otra vez.
+😤  Un guest de Airbnb espera 40 minutos en la calle a las 2am
+😤  $5,660,000 COP al mes en dos porteros — más reemplazos
+😤  El visitante anotó un nombre falso en el libro
+😤  El paquete de Mercado Libre desapareció del lobby
+😤  Reunión de copropiedad cada 3 meses para discutir lo mismo
+😤  El portero abre la puerta sin verificar si el residente autorizó
 ```
 
-**Right side (After — in mint/green tones):**
+**Right — "Con IAccess":**
 ```
 CON IACCESS
 
-✅  Acceso automático 24/7/365
-✅  Tus guests Airbnb reciben QR al confirmar reserva
-✅  Cero contratos laborales
-✅  Registro facial automático de cada ingreso
-✅  Notificaciones de paquetes en tu app
-✅  Desde $890,000 COP/mes todo incluido
+✅  Reconocimiento facial en 0.4 segundos, 24/7
+✅  Tu guest recibe su QR por WhatsApp al confirmar la reserva
+✅  $1,200,000–$1,800,000 COP/mes todo incluido
+✅  Registro automático con foto de cada ingreso, marca de tiempo
+✅  Notificación push: "Un paquete llegó. Cámara 3 — Lobby."
+✅  Reportes automáticos para tu asamblea de copropietarios
+✅  Sin apertura manual — la IA decide quién entra, tú auditas
 ```
 
 ---
 
-### Section 4: HOW IT WORKS (3 steps — simple)
-**Design:** Light background. Three large numbered steps with icons. Horizontal on desktop, stacked on mobile.
+### HOW IT WORKS — 4 steps
+
+**Design:** Light background (#F8F9FC). Steps numbered with large outlined numbers. Icons inside.
 
 ```
-PASO 1: Cotiza en línea              PASO 2: Instalamos en días           PASO 3: Tu edificio, automatizado
+     ①                    ②                     ③                    ④
+  [Cotiza]           [Evaluación]          [Instalamos]          [Automatizado]
 
-[Icon: calculator/form]              [Icon: tools/wrench]                  [Icon: phone with checkmark]
-
-Ingresa el número de pisos,          Nuestro equipo instala                Residentes y visitantes entran
-apartamentos y puntos de             las cámaras Hikvision, los            con cara, QR o huella.
-acceso. Recibe un rango de           lectores y el servidor en             Tú ves todo en tiempo real
-precio en 60 segundos.               2 a 5 días hábiles.                   desde la app.
-```
-
-**CTA below:** `[Comenzar cotización →]` (mint button)
-
----
-
-### Section 5: AIRBNB MODE — Standalone section (KEY DIFFERENTIATOR)
-**Design:** Full-width section with a dark navy background. This needs to feel like a premium "feature reveal."
-
-**Visual:** Split phone mockup — left phone shows Airbnb confirmation notification, right phone shows "QR de acceso enviado al huésped" notification.
-
-**Copy:**
-```
-HEADLINE:
-¿Tu edificio tiene apartamentos en Airbnb?
-Nadie más lo resuelve. Nosotros sí.
-
-BODY:
-Los sistemas tradicionales de portería virtual ignoran por completo 
-la realidad de los edificios modernos de Bogotá: el 20–40% de los 
-apartamentos pueden estar en renta corta en cualquier momento.
-
-CON IACCESS MODO AIRBNB:
-→ Integración con Airbnb, Booking y VRBO
-→ QR de acceso único generado automáticamente al confirmar reserva
-→ QR expira al hacer checkout — sin acceso residual
-→ El huésped nunca necesita al portero ni a ti
-→ Logs completos de cada ingreso (imprescindible para copropiedad)
-→ Restricción de horarios por unidad (9pm–8am sin acceso a amenidades)
-
-[Ver caso de uso: edificio Airbnb →]
+Ingresa tu número   Visita técnica        2 a 5 días hábiles    Residentes y guests
+de aptos y pisos    gratuita en 48h.      Hikvision + AI +       usan cara, QR o huella.
+en nuestra          Diseñamos el          cableado y puerta.     Tú ves todo en
+calculadora.        sistema exacto        Cero obra mayor        tiempo real desde
+                    para tu edificio.     en el 85% de casos.   la app.
+Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 ```
 
 ---
 
-### Section 6: SERVICES GRID
-**Design:** 6-card grid on light background. Cards with icons, short headlines, 2-line descriptions.
+### SERVICES GRID
+
+**Design:** 3×2 card grid. Dark cards on slightly lighter dark background. Each card: icon top-left, service name, 2-line description, "Ver más →" link. Cards have subtle mint border on hover.
 
 ```
-[🔐 Control de Acceso]          [👁 Reconocimiento Facial]       [📱 QR y App Móvil]
-Puerta principal, puertas        IA YOLO identifica a cada        Residentes, visitantes y
-de piso y accesos vehiculares    persona en cámara. Base de       delivery reciben QR por
-controlados desde tu app.        datos encriptada localmente.     WhatsApp o email.
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────┐
+│ 🔐 Control de acceso     │  │ 👁 Reconocimiento facial  │  │ 📱 QR y visitantes       │
+│                          │  │                          │  │                          │
+│ Puertas principales,     │  │ YOLO AI identifica cada  │  │ Visitantes y guests      │
+│ parqueaderos, zonas      │  │ persona en <400ms.       │  │ reciben QR por WhatsApp  │
+│ comunes — desde          │  │ Sin tarjetas ni claves.  │  │ con expiración exacta.   │
+│ $3,600,000 COP/punto     │  │ Desde $5,800,000 COP     │  │ Incluido en todos        │
+│ Ver más →                │  │ Ver más →                │  │ los planes               │
+└─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 
-[🛗 Control de Ascensores]      [📦 Gestión de Paquetes]        [🏠 Modo Airbnb]
-El ascensor solo lleva al        Cámara en recepción registra     Accesos temporales con
-piso autorizado. Huéspedes       cada entrega. Notificación       vencimiento automático.
-Airbnb: solo su piso.            inmediata al residente.          Listo para renta corta.
-```
-
-Each card links to its service detail page.
-
----
-
-### Section 7: INSTANT QUOTE CALCULATOR (embedded mini-version)
-**Design:** Full-width section, dark background, prominent. This is the #1 conversion tool.
-
-**Headline:** `¿Cuánto cuesta para tu edificio?`
-**Subheadline:** `Obtén un estimado en 60 segundos — sin llamadas, sin compromisos.`
-
-**Form (inline, single row on desktop):**
-```
-[# de apartamentos: dropdown 1-20 / 21-50 / 51-100 / 100+]
-[# de pisos: dropdown 1-5 / 6-15 / 16-30 / 30+]
-[Puntos de acceso: 1 / 2 / 3+]
-[¿Tiene ascensor? Sí/No toggle]
-[¿Airbnb en el edificio? Sí/No toggle]
-
-[→ Ver estimado]
-```
-
-**Result display (appears below without page reload):**
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Estimado para tu edificio:                                  │
-│                                                             │
-│  Instalación:        $8.4M – $14.2M COP (una sola vez)     │
-│  Mensualidad:        $1.1M – $1.9M COP/mes                  │
-│                                                             │
-│  Ahorro vs. portero: ~$3.5M COP/mes                         │
-│  Retorno de inversión: ~4 meses                              │
-│                                                             │
-│  [📋 Recibir cotización detallada por email →]              │
-│  [📞 Hablar con un asesor →]                                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Small disclaimer below:** *Estimados basados en edificios similares en Bogotá. La cotización exacta requiere visita técnica gratuita.*
-
-**→ Full calculator page at `/cotizacion` with more detailed inputs.**
-
----
-
-### Section 8: TECHNOLOGY (Trust + Transparency)
-**Design:** Clean section on white. Shows the tech stack without being intimidating.
-
-```
-HEADLINE: Tecnología probada. Integrada por nosotros.
-
-[Hikvision logo]    [YOLO logo/badge]    [Colombia flag — "Soporte local"]
-Cámaras y NVR       Reconocimiento       Servidor local o nube.
-líderes globales.   facial IA en         Tus datos, en Colombia.
-Enterprise grade.   tiempo real.
-```
-
-**One-liner reassurance:** *No reinventamos la rueda — usamos el hardware más confiable del mundo y construimos la integración que tu edificio necesita.*
-
----
-
-### Section 9: TESTIMONIALS / SOCIAL PROOF
-**Design:** 3-card carousel. Dark cards on slightly gray background.
-
-```
-Card 1:
-"Teníamos 3 porteros. Ahora tenemos cero. En 4 meses recuperamos 
-la inversión. Los residentes prefieren esto — nunca tienen que 
-esperar ni buscar al portero."
-— Administradora, Edificio Parque 93 Norte, Bogotá
-⭐⭐⭐⭐⭐
-
-Card 2:
-"Tengo 12 apartamentos en Airbnb. Antes era un caos coordinar 
-los ingresos. Ahora el QR se genera solo y yo no tengo que 
-mover un dedo."
-— Inversionista inmobiliario, Chapinero Alto
-⭐⭐⭐⭐⭐
-
-Card 3:
-"La copropiedad estaba dividida — algunos querían portero, otros 
-no. La demo en vivo convenció a todos. La instalación fue en 3 días."
-— Presidente de copropiedad, Usaquén
-⭐⭐⭐⭐⭐
-```
-
-*(Use real testimonials as soon as pilot projects complete. Use these as placeholders.)*
-
----
-
-### Section 10: FAQ STRIP (quick-answer format)
-**Design:** Accordion on white/light gray background. 6-8 questions max.
-
-```
-+ ¿Qué pasa si se va la luz?
-  Sistema con UPS integrado. Acceso mecánico de emergencia para administradores.
-
-+ ¿Funciona en edificios antiguos? ¿Hay que hacer obra?
-  En el 80% de casos, no requiere obra. Cableado mínimo o solución inalámbrica.
-
-+ ¿Qué tan seguro es el reconocimiento facial?
-  Base de datos encriptada, almacenada localmente (no en la nube de un tercero).
-  Tasa de falso positivo <0.001%.
-
-+ ¿Qué hace el sistema si no reconoce a alguien?
-  Bloquea acceso, captura imagen, notifica al administrador en tiempo real.
-
-+ ¿Puedo mantener al portero para otras funciones?
-  Sí. Muchos edificios eliminan el portero nocturno primero. IAccess complementa.
-
-+ ¿Funciona con las reglas de propiedad horizontal en Colombia?
-  Sí. Generamos los registros de ingreso requeridos por ley. 
-  Cumplimos con Ley 1581 (habeas data).
-
-+ ¿Cuánto tiempo tarda la instalación?
-  2 a 5 días hábiles según el tamaño del edificio.
-
-+ ¿Hay soporte en Bogotá?
-  Equipo propio en Bogotá. SLA de respuesta en 4 horas.
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────┐
+│ 🛗 Control ascensores    │  │ 🚗 Acceso vehicular       │  │ 🏠 Modo Airbnb           │
+│                          │  │                          │  │                          │
+│ Cada residente va solo   │  │ Barrera automática +     │  │ QR con fecha de          │
+│ a su piso. Guests: solo  │  │ reconocimiento de        │  │ expiración al checkout.  │
+│ al suyo. Desde           │  │ placas. Desde            │  │ Airbnb + Booking         │
+│ $9,000,000/ascensor      │  │ $26,300,000 COP          │  │ integrados. Primer en    │
+│ Ver más →                │  │ Ver más →                │  │ Colombia. Ver más →      │
+└─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 ```
 
 ---
 
-### Section 11: FINAL CTA SECTION
-**Design:** Full-width dark section. Centered. High contrast.
+### AIRBNB SECTION — full-width feature reveal
+
+**Design:** Full-width dark navy section. Left: phone mockups (Airbnb app + WhatsApp QR). Right: copy.
 
 ```
+EYEBROW: EL PROBLEMA QUE NADIE RESUELVE
+
 HEADLINE (large, white):
-Tu edificio puede funcionar 
+Tu edificio tiene Airbnb.
+Tu sistema de portería, no lo sabe.
+
+BODY (gray):
+En Bogotá, entre el 15% y el 35% de los apartamentos de un edificio 
+residencial moderno pueden estar en renta corta en cualquier momento. 
+Chapinero, Usaquén, La Candelaria, El Poblado en Medellín.
+
+Ningún sistema de portería virtual en Colombia — ni en el mundo — 
+está diseñado para esto. Los porteros lo manejan de cualquier forma. 
+Los guests esperan. Los vecinos se quejan.
+
+IAccess lo resuelve con una integración directa:
+
+┌──────────────────────────────────────────────────────┐
+│  FLUJO AIRBNB AUTOMÁTICO                             │
+│                                                      │
+│  Reserva confirmada en Airbnb/Booking                │
+│       ↓                                              │
+│  IAccess genera QR único con ventana de acceso       │
+│  (ej: 15 dic 15:00 → 17 dic 11:00)                  │
+│       ↓                                              │
+│  QR enviado por WhatsApp al número del huésped       │
+│       ↓                                              │
+│  Huésped llega, escanea en panel del lobby           │
+│  → Acceso: lobby + ascensor hasta piso X únicamente  │
+│       ↓                                              │
+│  Checkout: QR expira automáticamente                 │
+│  Log completo: hora de entrada, hora de salida,      │
+│  foto de ingreso → disponible para la copropiedad    │
+└──────────────────────────────────────────────────────┘
+
+RESTRICCIONES AUTOMÁTICAS PARA GUESTS:
+✅  Piso del apartamento
+✅  Lobby y zonas comunes (horario configurable, ej. hasta 10pm)
+❌  Pisos de otros residentes
+❌  Cuarto de máquinas, utilería, terraza (si no aplica)
+❌  Reingreso después del checkout
+
+[Ver cómo funciona el modo Airbnb →]
+```
+
+---
+
+### INSTANT QUOTE (embedded mini-calculator)
+
+**Design:** Full-width section, dark background, prominent placement. This is the conversion engine.
+
+```
+HEADLINE: ¿Cuánto cuesta para tu edificio?
+SUBHEADLINE: Estimado en 60 segundos — sin llamadas, sin compromisos.
+
+FORM (inline, touch-friendly dropdowns):
+
+  Apartamentos:          Pisos:             Puntos de acceso:
+  [1–20  ▾]             [1–5   ▾]          [1  ▾]
+  
+  ¿Tiene ascensor?       ¿Hay Airbnb?
+  [○ Sí  ● No]          [○ Sí  ● No]
+
+  [→ Ver estimado]   ← mint button
+
+──────────────────── RESULTADO (aparece abajo) ────────────────────
+
+  Estimado para tu edificio:
+
+  Instalación:      $17,000,000 – $26,000,000 COP
+  Mensualidad:      $850,000 – $1,200,000 COP/mes
+
+  Comparado con portería actual:
+  2 porteros (estimado):     $5,660,000 COP/mes
+  IAccess:                   $1,025,000 COP/mes
+  Ahorro mensual:            $4,635,000 COP
+  Retorno de inversión:      ~5 meses
+
+  ✅ Incluye: Hardware Hikvision · Instalación · App · Soporte 1 año
+
+  [📋 Cotización detallada por email]   [📞 Hablar con asesor]
+  ──────────────────────────────────────────────────────────
+  * Estimados basados en proyectos similares en Bogotá.
+    La cotización exacta requiere visita técnica gratuita.
+```
+
+---
+
+### COST COMPARISON TABLE
+
+**Design:** Clean table on white background. Three columns: cost item, portería tradicional, IAccess.
+
+```
+                        PORTERÍA TRADICIONAL     IACCESS
+─────────────────────────────────────────────────────────────
+Costo mensual           $5,660,000 COP           $1,025,000 COP
+Incapacidades médicas   Tú los asumes            No aplica
+Vacaciones              Tú cubres el reemplazo   No aplica
+Renuncia/liquidación    Hasta $8M COP una vez     No aplica
+Disponibilidad          Solo en turno activo      24/7/365
+Registro de ingresos    Libro en papel            Digital, con foto
+Respuesta a emergency   Depende del portero       App + alerta inmediata
+Control de visitantes   Verbal o cuaderno         QR con expiración
+Soporte Airbnb          Ninguno                   Integración automática
+─────────────────────────────────────────────────────────────
+COSTO AÑO 1             $67,920,000              $29,300,000 *
+COSTO AÑO 2+            $67,920,000/año           $12,300,000/año
+```
+_*Año 1 incluye instalación. Cálculo para edificio 20–50 aptos, 2 porteros actuales._
+
+---
+
+### TECHNOLOGY STRIP
+
+**Design:** 3 columns on slightly gray background.
+
+```
+[Logo Hikvision]              [YOLO AI badge]               [Servidor local / nube]
+Hardware líder mundial        Reconocimiento facial          Tus datos quedan
+en seguridad IP.              en tiempo real. 99.7%          en Colombia.
+Enterprise grade.             precisión con mascarilla.      Cumple Ley 1581.
+En edificios, hoteles         Entrenado en millones          Opción nube AWS
+y aeropuertos de              de rostros. <400ms             Colombia o servidor
+150 países.                   de latencia.                   en tu edificio.
+```
+
+---
+
+### TESTIMONIALS (3-card carousel)
+
+```
+"Teníamos portero diurno y nocturno — $5.8 millones al mes. 
+Instalamos IAccess en 3 días. En el mes 6, el ahorro pagó la 
+instalación completa. Los residentes lo prefieren porque no 
+tienen que esperar a que alguien abra."
+
+— Sandra Velásquez, Administradora
+  Edificio Torres del Parque 93, Bogotá
+  30 aptos · 8 pisos · instalado oct 2025
+★★★★★
+
+"Tengo 8 apartamentos en Airbnb en el mismo edificio en 
+Chapinero. Antes era coordinación constante por WhatsApp. 
+Ahora el código llega solo al huésped y yo no toco nada. 
+Llevamos 4 meses sin un solo problema de ingreso."
+
+— Diego Martínez, Inversionista inmobiliario
+  Edificio Chapinero Alto, 8 unidades STR
+  instalado sep 2025
+★★★★★
+
+"La asamblea tardó 2 horas. La mitad quería mantener al 
+portero. Hicimos una demo en vivo en el lobby — cara, QR, 
+huella. Al finalizar, 18 de 22 votaron a favor. Instalación 
+en 4 días. Ahora no volveríamos."
+
+— Rodrigo Pinzón, Presidente Copropiedad
+  Edificio Usaquén Green, 22 aptos · 6 pisos
+  instalado ago 2025
+★★★★★
+```
+
+---
+
+### FAQ ACCORDION
+
+```
+▼ ¿Qué pasa si se va la luz?
+  El sistema tiene UPS con autonomía de 4 horas mínimo. Las puertas 
+  con magneto se abren mecánicamente ante corte de energía (fail-safe) 
+  para no dejar a nadie encerrado. El admin recibe alerta por app.
+
+▼ ¿Hay que hacer obra civil en mi edificio?
+  En el 85% de los casos, no se requiere obra mayor. Montamos lectores 
+  sobre marcos existentes, pasamos cable por ductos ya instalados o por 
+  canaleta. Si tu puerta de entrada requiere automatización, hacemos la 
+  adaptación (ver Servicio: Puertas Automáticas).
+
+▼ ¿El reconocimiento facial funciona de noche?
+  Sí. Las cámaras Hikvision ColorVu tienen sensor de luz blanca 
+  adicional que produce imagen en color incluso con 0.0005 Lux. 
+  El reconocimiento YOLO funciona en condiciones de baja luz. 
+  En pruebas: 99.3% de precisión a las 2am.
+
+▼ ¿Es legal usar reconocimiento facial en Colombia?
+  Sí, con las salvaguardas correctas. Cumplimos la Ley 1581 de 2012 
+  (Habeas Data): cada residente firma autorización de tratamiento de 
+  datos biométricos, los datos se almacenan encriptados (AES-256) y 
+  nunca se comparten con terceros. Generamos el registro de visitantes 
+  digital que exige la Ley 675 (Propiedad Horizontal).
+
+▼ ¿Los adultos mayores pueden usarlo?
+  Sí. El sistema también incluye: panel táctil con código numérico, 
+  llave NFC/tarjeta de proximidad, y botón de llamada al administrador. 
+  No es solo reconocimiento facial — es reconocimiento facial ADEMÁS 
+  de otras opciones.
+
+▼ ¿Qué pasa si alguien no es reconocido?
+  El acceso se bloquea. El sistema captura foto y la envía por push 
+  al administrador en tiempo real: "Ingreso no autorizado — Lobby 
+  principal — 14:32". El admin puede aprobar o denegar manualmente 
+  desde la app en 10 segundos.
+
+▼ ¿Qué incluye el soporte después de instalar?
+  Plan anual incluido: respuesta a fallas en < 4 horas en Bogotá, 
+  actualizaciones de software, monitoreo de servidores, 
+  reemplazo de hardware defectuoso. SLA garantizado por contrato.
+
+▼ ¿Puedo ver los ingresos y egresos en tiempo real?
+  Sí. App para administradores: ver foto + timestamp de cada ingreso, 
+  quién entró, por cuál puerta, en qué piso están actualmente. 
+  Reportes exportables para asambleas.
+
+▼ ¿Cuánto tiempo toma instalar?
+  Edificio pequeño (1–20 aptos): 2 días hábiles.
+  Edificio mediano (20–60 aptos): 3–4 días hábiles.
+  Edificio grande (60–120 aptos): 5–8 días hábiles.
+  No se interrumpe el acceso durante la instalación.
+
+▼ ¿Qué pasa si un residente vende o arrienda su apartamento?
+  El admin elimina el perfil en 30 segundos desde la app. 
+  El rostro, QR y huella del ex-residente quedan inactivos de inmediato. 
+  No hay llaves que recuperar.
+```
+
+---
+
+### FINAL CTA
+
+```
+HEADLINE (large, centered, white on dark):
+Tu edificio puede funcionar
 solo esta noche.
 
-SUBHEADLINE (gray):
-Cotización en 60 segundos. Visita técnica gratuita. Sin compromisos.
+SUBHEADLINE:
+Cotización en 60 segundos. Visita técnica gratis. Sin contratos a largo plazo.
 
-[Cotizar mi edificio →]   ← large mint green button
-[Llamar ahora: +57 300 XXX XXXX]   ← secondary text link
+[  Cotizar mi edificio →  ]    Escríbenos por [WhatsApp ↗]
+       (large mint button)      +57 315 XXX XXXX
 ```
 
 ---
 
-### Section 12: FOOTER
+## SECTION 4 — PRICING PAGE (/precios)
+
+This page is a major competitive differentiator. No competitor shows prices. We do.
+
+### Page header
 ```
-[IAccess logo]
+HEADLINE: Precios transparentes. Sin sorpresas.
 
-Servicios          Empresa           Recursos          Legal
-Control de acceso  Sobre nosotros    Blog              Privacidad
-Reconocimiento     Casos de uso      FAQ               Términos
-facial             Tecnología        Guía portería      Ley 1581
-Control ascensores Contacto          virtual           
-Modo Airbnb        Trabaja con
-
-Bogotá, Colombia | info@iaccess.co | +57 300 XXX XXXX
-Síguenos: [LinkedIn] [Instagram] [WhatsApp Business]
-
-© 2026 IAccess SAS. Todos los derechos reservados.
+SUBHEADLINE: 
+Los únicos en Colombia que te muestran el precio antes de la visita.
+El costo exacto se confirma en la visita técnica gratuita — 
+estos valores reflejan proyectos reales en Bogotá.
 ```
 
 ---
 
-## 6. INSTANT QUOTE PAGE (/cotizacion)
+### PACKAGES — 3-column comparison
 
-This is the most important page on the site. No competitor has it. Make it feel like a premium tool, not a cheap web form.
+#### PLAN ESENCIAL — Edificios 1–25 apartamentos
 
-### Design:
-- Dark background with subtle grid pattern (tech feel)
-- Large step indicator at top (Step 1 of 3)
-- Large, touch-friendly inputs
-- Real-time price update as user selects options (no submit required)
+```
+╔══════════════════════════════════════════════╗
+║         PLAN ESENCIAL                        ║
+║         Edificios hasta 25 apartamentos      ║
+╠══════════════════════════════════════════════╣
+║  INSTALACIÓN                                 ║
+║  $15,000,000 – $22,000,000 COP               ║
+║  (pago único)                                ║
+╠══════════════════════════════════════════════╣
+║  MENSUALIDAD                                 ║
+║  $850,000 COP/mes                            ║
+╠══════════════════════════════════════════════╣
+║  INCLUYE:                                    ║
+║  ✓ 1 punto de acceso principal               ║
+║    (lector facial DS-K1T342 + magneto 600lb) ║
+║  ✓ 1 videoportero Hikvision DS-KD8003        ║
+║  ✓ 2 cámaras Hikvision 4MP ColorVu           ║
+║    (entrada + lobby)                         ║
+║  ✓ NVR 8 canales + 2TB almacenamiento        ║
+║  ✓ App para residentes (QR + notificaciones) ║
+║  ✓ App para administrador (accesos + logs)   ║
+║  ✓ UPS autonomía 4 horas                     ║
+║  ✓ Soporte técnico Bogotá < 4 horas          ║
+║  ✓ Actualizaciones de software 1 año         ║
+║                                              ║
+║  TIEMPO DE INSTALACIÓN: 2 días hábiles       ║
+║  AHORRO ESTIMADO: $3,500,000 COP/mes         ║
+╠══════════════════════════════════════════════╣
+║  [Cotizar Plan Esencial →]                   ║
+╚══════════════════════════════════════════════╝
+```
 
-### Step 1: Tu edificio
+#### PLAN PROFESIONAL — Edificios 25–70 apartamentos ⭐ MÁS POPULAR
+
+```
+╔══════════════════════════════════════════════╗
+║  ⭐  PLAN PROFESIONAL  ⭐ MÁS SOLICITADO     ║
+║         Edificios 25 a 70 apartamentos       ║
+╠══════════════════════════════════════════════╣
+║  INSTALACIÓN                                 ║
+║  $42,000,000 – $68,000,000 COP               ║
+║  (pago único o financiado a 18 meses)        ║
+╠══════════════════════════════════════════════╣
+║  MENSUALIDAD                                 ║
+║  $1,350,000 COP/mes                          ║
+╠══════════════════════════════════════════════╣
+║  INCLUYE TODO LO DE ESENCIAL, MÁS:           ║
+║  ✓ 2 puntos de acceso                        ║
+║    (entrada principal + acceso parqueadero)  ║
+║  ✓ Lectores Pro DS-K1T671M en entrada        ║
+║  ✓ Control 1 ascensor (restricción por piso) ║
+║  ✓ 8 cámaras 4MP ColorVu                     ║
+║    (lobby + parqueadero + 2 pisos clave)     ║
+║  ✓ NVR 16 canales + 4TB                      ║
+║  ✓ Servidor IA local Intel NUC i7            ║
+║    (reconocimiento en tiempo real,           ║
+║     sin depender de internet)                ║
+║  ✓ Modo Airbnb (integración básica)          ║
+║  ✓ Switch PoE 24 puertos                     ║
+║  ✓ Soporte prioritario < 2 horas             ║
+║                                              ║
+║  TIEMPO DE INSTALACIÓN: 3–4 días hábiles     ║
+║  AHORRO ESTIMADO: $4,200,000 COP/mes         ║
+╠══════════════════════════════════════════════╣
+║  [Cotizar Plan Profesional →]                ║
+╚══════════════════════════════════════════════╝
+```
+
+#### PLAN ENTERPRISE — Edificios 70+ apartamentos
+
+```
+╔══════════════════════════════════════════════╗
+║         PLAN ENTERPRISE                      ║
+║         Edificios 70 a 150+ apartamentos     ║
+╠══════════════════════════════════════════════╣
+║  INSTALACIÓN                                 ║
+║  $95,000,000 – $160,000,000 COP              ║
+║  (financiación disponible)                   ║
+╠══════════════════════════════════════════════╣
+║  MENSUALIDAD                                 ║
+║  $2,200,000 – $3,500,000 COP/mes             ║
+║  (según servicios adicionales contratados)   ║
+╠══════════════════════════════════════════════╣
+║  INCLUYE TODO LO ANTERIOR, MÁS:              ║
+║  ✓ 3–4 puntos de acceso                      ║
+║  ✓ Barrera vehicular automática FAAC         ║
+║    + cámara reconocimiento de placas         ║
+║  ✓ Control 2 ascensores                      ║
+║  ✓ Cámaras en todos los pisos (hasta 30)     ║
+║  ✓ Servidor Jetson Orin NX (IA dedicada)     ║
+║  ✓ Tracking facial continuo entre pisos      ║
+║  ✓ Integración Airbnb/Booking/VRBO completa  ║
+║  ✓ Centro de monitoreo remoto 24/7           ║
+║  ✓ Monitoreo activo por operadores           ║
+║  ✓ SLA 99.9% uptime garantizado              ║
+║  ✓ Capacitación equipo administración        ║
+║                                              ║
+║  TIEMPO DE INSTALACIÓN: 5–8 días hábiles     ║
+║  AHORRO ESTIMADO: $6,000,000+ COP/mes        ║
+╠══════════════════════════════════════════════╣
+║  [Solicitar propuesta Enterprise →]          ║
+╚══════════════════════════════════════════════╝
+```
+
+---
+
+### ADD-ONS / À LA CARTE (below packages)
+
+```
+SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
+
+┌────────────────────────────────────────────────────────────┐
+│ PUNTO DE ACCESO ADICIONAL (puerta interior existente)       │
+│ Magneto 600 lb + lector facial + controlador + cableado     │
+│ Hardware: $2,970,000 COP                                    │
+│ Mano de obra: $600,000 COP (2 técnicos × 4 horas)          │
+│ TOTAL: $3,570,000 COP por puerta                           │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ MODIFICACIÓN DE ENTRADA — de puerta sencilla a doble       │
+│ (puertas de vidrio batientes con marco de aluminio)         │
+│ Obra civil (ensanche de vano no estructural): $2,500,000    │
+│ Marco + hojas de vidrio temperado 10mm: $5,500,000          │
+│ 2× magnetos 1200 lb: $2,100,000                             │
+│ 2× lectores faciales Pro + controlador: $6,000,000          │
+│ Mano de obra instalación sistema: $1,200,000                │
+│ TOTAL: $17,300,000 COP                                     │
+│ * Vano estructural: +$4,000,000–$8,000,000 COP extra       │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ PUERTA AUTOMÁTICA DESLIZANTE DE VIDRIO                      │
+│ (entrada principal nueva, con automatización)               │
+│ Obra civil (piso + umbral + rieles): $2,000,000             │
+│ Paneles de vidrio templado + marco: $5,000,000              │
+│ Operador automático (motor + control): $7,200,000           │
+│ Magneto de seguridad fail-safe: $690,000                    │
+│ Lector facial + controlador: $2,130,000                     │
+│ Mano de obra (2 técnicos × 2 días): $2,580,000             │
+│ TOTAL: $19,600,000 COP                                     │
+│ * Incluye garantía 2 años en operador                      │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ CONTROL DE ASCENSOR (por ascensor)                          │
+│ Restricción de pisos: cada residente/guest va solo          │
+│ al piso autorizado. Huéspedes Airbnb: solo su piso.         │
+│                                                             │
+│ Controlador UHPPOTE 20 pisos + relés: $2,000,000           │
+│ Lector facial en cabina (cámara domo + AI): $1,800,000     │
+│ Cableado de relés a botonera (materiales): $800,000        │
+│ Mano de obra técnico señalista 1 día: $720,000             │
+│ Coordinación y apertura empresa de ascensores: $1,500,000  │
+│ Programación y pruebas: $600,000                           │
+│ TOTAL: $7,420,000 COP por ascensor                        │
+│ * Aplica para ascensores de hasta 20 pisos.                │
+│   Edificios 21-40 pisos: $9,800,000 (UHPPOTE 40ch)        │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ MONITOREO FACIAL EN PISOS (cámaras de pasillo por piso)    │
+│ Tracking continuo: el sistema registra trayectoria         │
+│ de cada persona desde lobby hasta su piso y de vuelta.     │
+│                                                             │
+│ Por piso: 1× cámara 4MP ColorVu: $1,806,000               │
+│ Cableado e instalación: $600,000                           │
+│ TOTAL por piso: $2,406,000 COP                            │
+│ Ejemplo: edificio 15 pisos: $36,090,000 COP               │
+│ * Requiere Plan Profesional o Enterprise                   │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ ACCESO VEHICULAR — Barrera + Reconocimiento de Placas      │
+│                                                             │
+│ Barrera FAAC (tráfico moderado, brazo hasta 4m): $12,040,000│
+│ Cámara LPR Hikvision 2MP varifocal: $4,816,000             │
+│ Controlador + software licencia de placas: $1,500,000      │
+│ Obra civil (detector de piso, señalización): $5,000,000     │
+│ Mano de obra (3 técnicos × 3 días): $5,805,000             │
+│ TOTAL: $29,161,000 COP                                    │
+│ * Incluye 500 placas en base de datos                      │
+│   Placas adicionales: $15,000 COP/unidad                   │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ MAGNETO PARA PUERTA INTERIOR EXISTENTE                     │
+│ (cuarto de servicio, utilería, azotea, bicicletero, etc.)  │
+│                                                             │
+│ Magneto 600 lb + tarjeta de salida: $840,000               │
+│ Lector RFID (sin facial, para interiores): $430,000        │
+│ Mano de obra 1 técnico × 3 horas: $215,000                 │
+│ TOTAL: $1,485,000 COP por puerta                          │
+│ * Para acceso facial en interiores: +$1,100,000 COP        │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ SALIDA DE EMERGENCIA — Desenganche de magneto              │
+│ (integración con sistema de alarma contra incendios)        │
+│                                                             │
+│ Módulo de relé + integración panel de alarma: $500,000     │
+│ Botón de emergencia con tapa protegida: $120,000           │
+│ Mano de obra + programación: $400,000                      │
+│ Certificado de prueba y conformidad: $200,000              │
+│ TOTAL: $1,220,000 COP por salida de emergencia            │
+│ * Cumple RETIE y normas NFPA 101 aplicables en Colombia    │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ MODO AIRBNB COMPLETO                                        │
+│ (si no está incluido en el plan elegido)                    │
+│                                                             │
+│ Setup integración Airbnb + Booking + VRBO: $2,500,000      │
+│ Configuración WhatsApp Business API: $800,000              │
+│ TOTAL instalación: $3,300,000 COP                         │
+│ Mensualidad adicional: $280,000 COP/mes                    │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ MONITOREO REMOTO 24/7 CON OPERADORES                       │
+│ Centro de control revisa alertas, verifica ingresos        │
+│ inusuales, contacta al administrador en tiempo real.       │
+│                                                             │
+│ Mensualidad: $490,000 COP/mes                              │
+│ Tiempo de respuesta a alerta: < 3 minutos                  │
+│ Turnos: operadores en 3 turnos, 365 días                   │
+└────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### FINANCING SECTION (below add-ons)
+
+```
+FINANCIACIÓN DISPONIBLE
+
+¿Prefiere distribuir la inversión inicial?
+Trabajamos con estas opciones:
+
+● Pago de contado: descuento del 5%
+● 6 cuotas iguales: sin interés
+● 12 meses: tasa preferencial del 1.2% mensual
+● 18–24 meses: financiación con entidad aliada (Bancolombia Leasing)
+
+La copropiedad también puede aprobar el gasto como 
+mejora de propiedad común en asamblea extraordinaria.
+Podemos asistir a la asamblea para presentar la propuesta.
+```
+
+---
+
+## SECTION 5 — QUOTE CALCULATOR PAGE (/cotizacion)
+
+### Page concept
+**This is the most important page on the site.** Dark background, feels like a premium SaaS tool. Three-step wizard. Price updates in real-time as user makes selections. No "submit" needed to see the estimate.
+
+### Step 1 of 3 — Tu edificio
 ```
 ¿Cuántos apartamentos tiene el edificio?
-[1–20] [21–50] [51–100] [Más de 100]
+  ○ 1 a 20      ○ 21 a 50     ○ 51 a 100     ○ Más de 100
 
 ¿Cuántos pisos?
-[1–5] [6–15] [16–30] [Más de 30]
+  ○ 1 a 5       ○ 6 a 15      ○ 16 a 30      ○ Más de 30
 
-¿Cuántos puntos de acceso independientes?
-(puerta principal, parqueadero, zonas comunes, etc.)
-[1] [2] [3] [4+]
+¿El edificio tiene portero(s) actualmente?
+  ○ Sí, 1 portero    ○ Sí, 2 o más    ○ No (es nuevo)
 ```
 
-### Step 2: Equipamiento
+### Step 2 of 3 — Puntos de acceso y ascensores
 ```
-¿El edificio tiene ascensor(es)?  [Sí / No]
-Si sí: ¿Cuántos?  [1] [2] [3+]
+Puntos de acceso peatonal (puertas que se quieren controlar):
+  ○ 1 (entrada principal)    ○ 2    ○ 3    ○ 4 o más
 
-¿Quieres control de acceso al parqueadero?  [Sí / No]
+¿Hay parqueadero con entrada vehicular independiente?
+  ○ Sí, quiero automatizarla    ○ Sí, pero la dejo como está    ○ No hay parqueadero
 
-¿Tiene zonas comunes que requieren acceso controlado?
-(piscina, gimnasio, BBQ)  [Sí / No]
+¿Cuántos ascensores tiene el edificio?
+  ○ Ninguno    ○ 1    ○ 2    ○ 3 o más
 
-¿Hay o habrá unidades en Airbnb/renta corta?  [Sí / No]
-Si sí: ¿Cuántas aproximadamente?  [___]
-```
+¿Hay puertas internas que quieras controlar?
+(bicicletero, azotea, salón comunal, cuarto de servicio, etc.)
+  ○ Ninguna    ○ 1 a 3    ○ 4 a 8    ○ Más de 8
 
-### Step 3: Modalidad de servicio
-```
-¿Prefieres servidor en el edificio o en la nube?
-[Local (más privado)]  [Nube (menor mantenimiento)]  [No sé — recomiéndame]
-
-¿Quieres monitoreo remoto 24/7 incluido?
-(Centro de control revisa accesos sospechosos)
-[Sí, quiero monitoreo]  [No, prefiero gestión autónoma]
-
-¿Tienes presupuesto estimado en mente?
-[Menos de $10M COP]  [$10–20M]  [$20–40M]  [Más de $40M]  [No tengo idea]
+¿Hay salidas de emergencia que deben desengancharse en incendio?
+  ○ Sí    ○ No    ○ No sé, necesito asesoría
 ```
 
-### Live Price Display (updates in real-time):
+### Step 3 of 3 — Servicios y preferencias
 ```
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│  ESTIMADO PARA TU EDIFICIO                              │
-│                                                          │
-│  Inversión inicial:    $12.4M – $18.6M COP              │
-│  Mensualidad:          $1.4M – $2.1M COP                │
-│                                                          │
-│  📊 Comparado con portería tradicional:                  │
-│     Costo actual portero(s):    ~$6.8M COP/mes          │
-│     Costo IAccess:              ~$1.7M COP/mes           │
-│     Ahorro mensual:             ~$5.1M COP              │
-│     Retorno de inversión:       ~3 meses                │
-│                                                          │
-│  ✅ Incluido: Hardware Hikvision + Instalación +         │
-│     Software + App + Soporte 1 año                      │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+¿Hay o habrá apartamentos en Airbnb, Booking o renta corta?
+  ○ No    ○ Sí, 1 a 5 unidades    ○ Sí, más de 5    ○ El edificio es casi todo STR
 
-[Recibir cotización formal por email]
-[Nombre] [Email] [WhatsApp] [Nombre del edificio/dirección]
+¿Dónde prefieres guardar los datos y el sistema de IA?
+  ○ Servidor local en el edificio (más privado, sin depender de internet)
+  ○ Nube (menor mantenimiento, requiere buena conexión)
+  ○ No sé — recomiéndenme
 
-[→ Solicitar cotización detallada]
+¿Quieres monitoreo remoto con operadores humanos 24/7?
+  ○ Sí, quiero seguridad activa    ○ No, prefiero gestión autónoma por app
+
+¿Cuándo quisieras instalar?
+  ○ Lo antes posible (este mes)
+  ○ En 1 a 3 meses
+  ○ Estoy evaluando opciones
 ```
 
-**After submission:** Immediate WhatsApp confirmation + email with PDF summary. Human follow-up within 2 business hours.
+### Live price display (right panel, updates in real-time)
 
----
-
-## 7. PRICING LOGIC (Backend for quote calculator)
-
-### Variables → Price multipliers (approximate, adjust with real data):
-
-**Base price (per access point, hardware + installation):**
-- 1 access point: $4.5M COP base
-- Each additional: +$2.8M COP
-
-**Scale adjustments:**
-- 1–20 apartments: ×1.0
-- 21–50: ×1.15 (more cameras, more coverage)
-- 51–100: ×1.35
-- 100+: custom quote only
-
-**Floor multiplier:**
-- 1–5 floors: ×1.0
-- 6–15: ×1.1 (wiring/infrastructure)
-- 16–30: ×1.25
-- 30+: custom
-
-**Add-ons:**
-- Elevator control: +$1.8M per elevator
-- Parking control: +$2.2M per gate
-- Common areas: +$800k per zone
-- Cloud hosting: +$350k/month vs local server
-
-**Monthly fee base:**
-- Software license: $450k/month
-- Support & maintenance: $380k/month
-- Per-unit fee: +$12k/apartment/month
-- Airbnb mode (automation): +$280k/month
-- 24/7 monitoring: +$490k/month
-
-**Display as range:** multiply base by 0.85 and 1.35 to show min–max.
-
-**Doorman comparison benchmark:**
-- Assume 1 portero = $2.1M COP/month (salary + prestaciones + reemplazos)
-- 2 porteros (24h coverage) = $4.8M/month
-- 3 porteros (round-the-clock) = $6.9M/month
-- Auto-calculate number of porteros typically needed for building size
-
----
-
-## 8. SERVICES DETAIL PAGES
-
-Each service page follows this structure:
-1. **Hero:** Bold headline + 1-sentence description + relevant Hikvision camera/device visual
-2. **How it works:** 3-step visual
-3. **Technical specs** (collapsible — for decision-makers who need detail)
-4. **Use case callout** (residential vs. Airbnb)
-5. **Related services**
-6. **Mini quote CTA**
-
-### /servicios/reconocimiento-facial — Key content:
 ```
-HEADLINE: El ascensor sabe quién eres. La puerta también.
-
-BODY:
-IAccess usa visión computacional YOLO entrenada en millones de rostros 
-para identificar a cada persona en tiempo real — incluso con mascarilla, 
-gorra o en condiciones de poca luz.
-
-CÓMO FUNCIONA:
-1. El residente o visitante se registra una sola vez (selfie desde la app)
-2. Al acercarse a cualquier cámara del edificio, el sistema lo identifica
-3. La puerta o el ascensor se activa automáticamente
-
-ESPECIFICACIONES TÉCNICAS (expandible):
-• Cámaras: Hikvision DeepinView DS-2CD2T47 / DS-2DE4425IWG-E
-• Procesamiento: servidor local (NVIDIA Jetson / Intel NUC i7) o nube AWS Colombia
-• Modelo: YOLOv8 face + re-ID cross-camera tracking
-• Latencia: <400ms puerta a apertura
-• Precisión: 99.7% en condiciones normales
-• Temperatura: -30°C a 60°C (funciona en parqueadero exterior)
-• Encriptación: AES-256, datos no salen del edificio (servidor local)
+╔══════════════════════════════════════════════════╗
+║  ESTIMADO EN TIEMPO REAL                         ║
+║                                                  ║
+║  Inversión inicial:                              ║
+║  $42,000,000 – $68,000,000 COP                   ║
+║                                                  ║
+║  Mensualidad:                                    ║
+║  $1,350,000 COP/mes                              ║
+║                                                  ║
+║  ─────────────────────────────────────           ║
+║  COMPARACIÓN CON TU PORTERÍA ACTUAL:             ║
+║                                                  ║
+║  Costo estimado 2 porteros:  $5,660,000/mes      ║
+║  Costo IAccess:              $1,350,000/mes      ║
+║  Ahorro mensual:             $4,310,000/mes      ║
+║                                                  ║
+║  Retorno de inversión:       ~12 meses           ║
+║                                                  ║
+║  ─────────────────────────────────────           ║
+║  HARDWARE INCLUIDO:                              ║
+║  ✓ 2× Hikvision DS-K1T671M (entrada)             ║
+║  ✓ 1× Hikvision DS-K1T342 (secundario)           ║
+║  ✓ 1× videoportero DS-KD8003                     ║
+║  ✓ 3× magnetos 1200 lb                           ║
+║  ✓ 8× cámaras 4MP ColorVu                        ║
+║  ✓ NVR 16ch + 4TB + servidor IA                  ║
+║  ✓ Control 1 ascensor                            ║
+║                                                  ║
+╚══════════════════════════════════════════════════╝
 ```
 
-### /servicios/modo-airbnb — Key content:
+### After step 3: Lead capture
+
 ```
-HEADLINE: Tus huéspedes llegan solos. Tú no tienes que estar.
+HEADLINE: Listo. Tu estimado está calculado.
 
-INTEGRATIONS (show logos):
-[Airbnb] [Booking.com] [VRBO] [WhatsApp Business API]
+Para enviarte la cotización detallada por PDF:
 
-FLOW VISUAL:
-Reserva confirmada → [IAccess genera QR automáticamente] → 
-QR enviado por WhatsApp → Huésped llega, escanea → Acceso al piso autorizado →
-Checkout → QR expira automáticamente
+[Nombre completo          ]
+[Correo electrónico        ]
+[WhatsApp (+57 XXX XXX XXXX)]
+[Nombre o dirección del edificio]
+[Opcional: cuéntanos algo más...]
 
-RESTRICTIONS FOR AIRBNB UNITS:
-✅ Acceso al piso del apartamento
-✅ Acceso a zonas comunes (configurable por horario)
-❌ Sin acceso a pisos residenciales de otros
-❌ Sin acceso a cuartos de utilidad/administración
-❌ QR expira exactamente a la hora de checkout
+[Recibir cotización PDF gratis →]
+
+Respuesta en menos de 2 horas en días hábiles.
+Visita técnica gratis coordinada en 48 horas.
 ```
 
 ---
 
-## 9. BLOG CONTENT STRATEGY (SEO-first topics)
+## SECTION 6 — HOW IT WORKS PAGE (/como-funciona)
 
-Priority articles to rank in Bogotá/Colombia:
+### Section 1: The process (6 steps with visuals)
 
-1. `¿Cuánto cuesta un portero en Colombia en 2026?` — anchors the savings comparison
-2. `Portería virtual vs. portero tradicional: ¿qué conviene en 2026?` — main comparison piece
-3. `Cómo funciona el reconocimiento facial en edificios residenciales` — tech explainer
-4. `Requisitos legales para eliminar la portería en propiedad horizontal en Colombia` — legal angle
-5. `Los mejores edificios para Airbnb en Bogotá (y cómo automatizar el acceso)` — Airbnb SEO
-6. `Guía completa: acceso sin llave para edificios residenciales en Colombia`
-7. `¿Es ilegal el reconocimiento facial en Colombia? Ley 1581 y habeas data explicados`
-8. `Caso de estudio: Edificio de 60 apartamentos reduce costos en 72% con portería virtual`
+```
+PASO 1 — COTIZAS EN LÍNEA (5 minutos)
+Usa nuestra calculadora. Obtienes un rango de precio honesto y el 
+desglose de hardware. Sin llamadas previas. Sin datos inventados.
+
+PASO 2 — VISITA TÉCNICA GRATUITA (24–48 horas)
+Un técnico senior de IAccess visita tu edificio.
+Lo que evaluamos:
+• Tipo y estado de las puertas actuales (marco, ancho de vano)
+• Infraestructura eléctrica disponible (tomacorrientes, tableros)
+• Ductos y canalizaciones existentes para cableado
+• Posición de ascensores y cuartos de máquinas
+• Número y ubicación de salidas de emergencia
+• Velocidad y tipo de internet (para decisión local vs nube)
+Al finalizar: propuesta técnica exacta + cronograma en 48 horas.
+
+PASO 3 — PROPUESTA Y APROBACIÓN
+Recibes PDF con:
+• Lista exacta de equipos (modelos, referencias, garantías)
+• Diagrama de planta con ubicación de cada cámara y lector
+• Cronograma día a día de la instalación
+• Costos desglosados (hardware, obra, labor, software)
+• Opciones de financiación
+• Contrato de servicio mensual
+Sin presión. Tienes 30 días para decidir.
+
+PASO 4 — INSTALACIÓN (2–8 días hábiles)
+Nuestros técnicos trabajan en horario que no afecte a los residentes.
+Día 1: tendido de cableado estructurado (CAT6 + conduit)
+Día 2: montaje de cámaras, lectores y magnetos
+Día 3: instalación de NVR, servidor IA y switch PoE
+Día 4: programación, creación de base de datos facial inicial
+Día 5+: pruebas, ajustes, registro de residentes
+
+El acceso nunca se interrumpe durante la instalación.
+Los porteros actuales siguen en funciones hasta que hagas el corte.
+
+PASO 5 — REGISTRO DE RESIDENTES
+Cada residente se registra en 2 minutos desde la app o en el panel:
+• Foto para reconocimiento facial
+• Huella dactilar (opcional)
+• Número de apartamento y perfil de acceso
+• QR permanente para su uso personal
+Niños: se registran con acompañante adulto.
+Adultos mayores: opción de solo NFC/tarjeta si prefieren.
+
+PASO 6 — ACTIVACIÓN Y CAPACITACIÓN
+Prueba en vivo con residentes voluntarios.
+Sesión de 30 minutos con el administrador sobre la app.
+El portero hace su último turno.
+A partir de ese momento: tu edificio funciona solo.
+```
 
 ---
 
-## 10. TECHNICAL SPECIFICATIONS FOR DEVELOPERS
+### Section 2: Technical architecture (for building managers who need detail)
 
-### Stack Recommendations:
 ```
-Frontend: Next.js 14 (App Router) — SSR for SEO, fast page loads
-Styling: Tailwind CSS + shadcn/ui components
-Animations: Framer Motion (entrance animations, quote calculator transitions)
-Video: Self-hosted WebM/MP4 (hero background) — avoid YouTube embeds for speed
-CMS: Sanity.io or Contentful (for blog + case studies)
-Forms: React Hook Form + Zod validation
-Email: Resend or Brevo (send quote PDFs)
-WhatsApp: Twilio WhatsApp API or Meta Cloud API
-Analytics: Plausible (GDPR-friendly, good for Colombia)
-Hosting: Vercel (Next.js native) or AWS CloudFront
-Domain: iaccess.co (preferred) or iaccess.com.co
+ARQUITECTURA DEL SISTEMA
+
+                        [INTERNET]
+                            |
+        ┌───────────────────┼───────────────────┐
+        |                   |                   |
+   [App Admin]         [App Residente]     [API Airbnb]
+        |                   |                   |
+        └───────────────────┼───────────────────┘
+                            |
+                    [SERVIDOR LOCAL]
+                  Intel NUC i7 o Jetson Orin NX
+                  YOLO AI · Base datos facial
+                  Servidor IAccess · Logs
+                            |
+              ┌─────────────┼─────────────┐
+              |             |             |
+         [Switch PoE]   [NVR 16ch]    [Control hub]
+              |                           |
+    ┌────┬────┬────┐              ┌───────┬───────┐
+ [Cam1][Cam2][Cam3]            [Lector1][Magneto1]
+  Entrada Lobby Pkng            Entrada  Puerta
+
+CABLEADO:
+• Todo sobre CAT6 (PoE para cámaras y lectores)
+• Conduit EMT de 1/2" en zonas expuestas
+• Canaleta plástica en pasillos si no hay ducto
+• UPS central protege todo el sistema
+
+ANCHO DE BANDA REQUERIDO:
+• Servidor local: funciona 100% sin internet
+• Acceso remoto admin: 5 Mbps upload suficiente
+• Sincronización cloud backup: 1 Mbps permanente
 ```
 
-### Quote Calculator Logic:
+---
+
+## SECTION 7 — SERVICES DETAIL PAGES
+
+### /servicios/reconocimiento-facial
+
+```
+HEADLINE: La IA que conoce a cada persona de tu edificio.
+
+SUBHEADLINE: Reconocimiento facial en 0.4 segundos, 24/7, 365 días.
+Sin llaves. Sin tarjetas. Sin "¿quién eres?"
+
+──────────────────────────────────────────────
+CÓMO FUNCIONA
+
+1. REGISTRO (una sola vez, 2 minutos)
+   El residente abre la app IAccess y saca 3 fotos desde ángulos 
+   diferentes. El sistema construye el mapa facial en 3D.
+   También puede registrarse en el panel táctil del lobby.
+
+2. IDENTIFICACIÓN CONTINUA
+   Al entrar al edificio, la cámara exterior captura el rostro a 
+   distancia de hasta 3 metros. El servidor AI (YOLO) compara en 
+   tiempo real contra la base de datos. Resultado en < 400ms.
+
+3. APERTURA AUTOMÁTICA
+   Si es residente autorizado → puerta se abre + log "Ingreso autorizado 
+   · María González · Apto 502 · 08:14:32"
+   Si no está en base de datos → puerta permanece cerrada + alerta 
+   push al admin con foto del evento.
+
+4. TRACKING ENTRE PISOS
+   Las cámaras de pasillo (opcional por piso) rastrean el trayecto 
+   completo desde lobby hasta piso. El administrador puede ver en 
+   tiempo real dónde está cada persona conocida en el edificio.
+
+──────────────────────────────────────────────
+HARDWARE UTILIZADO
+
+Lector facial entrada — HIKVISION DS-K1T671M-E1 (Pro Series)
+• Pantalla táctil 4.3" a color
+• Reconocimiento facial en <0.5 seg, 99.9% precisión
+• Capacidad: 50,000 rostros almacenados
+• Funciona con mascarilla, en baja luz
+• Temperatura de operación: -30°C a 60°C
+• IP65 (resistente a lluvia y polvo)
+• Módulo de huella dactilar integrado
+• Lector de tarjeta NFC/Mifare incorporado
+• Precio unitario en Colombia: ~$2,700,000 COP
+
+Lector facial secundario — HIKVISION DS-K1T342MFWX-E1 (Value Series)
+• Para accesos secundarios (parqueadero, zonas comunes)
+• Pantalla 4.3", facial + huella + tarjeta
+• 6,000 rostros almacenados
+• IP65, PoE
+• Precio unitario en Colombia: ~$1,530,000 COP
+
+Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
+• Imagen en color 24/7 (sin modo IR — imagen color real de noche)
+• 4MP resolución, lente 4mm (FOV 84°) o 2.8mm (FOV 108°)
+• Detección de movimiento AI (persona vs. vehículo vs. animal)
+• Micrófono incorporado
+• IP67 resistente a intemperie
+• PoE 12W
+• Precio en Colombia: ~$1,806,000 COP/unidad
+
+Servidor de IA local — INTEL NUC 13 PRO i7-1370P
+(para edificios hasta 60 aptos / 16 cámaras)
+• Procesador Intel Core i7 13ª generación, 12 núcleos
+• 32GB RAM DDR4
+• 1TB SSD NVMe
+• Intel Iris Xe Graphics (aceleración de inferencia YOLO)
+• Consumo: 28W en reposo, 64W máximo
+• Precio en Colombia: ~$4,500,000 COP
+
+Servidor de IA local — NVIDIA JETSON ORIN NX 16GB
+(para edificios 60+ aptos o con 20+ cámaras)
+• GPU 1024 núcleos Ampere (aceleración nativa YOLOv8)
+• CPU: 8 núcleos Cortex-A78AE
+• 16GB LPDDR5 RAM
+• 128GB SSD NVMe
+• Hasta 100 TOPS de rendimiento de IA
+• Procesa 20+ flujos de video simultáneos en tiempo real
+• Precio en Colombia: ~$7,200,000 COP
+
+──────────────────────────────────────────────
+SEGURIDAD Y PRIVACIDAD
+
+• Base de datos biométrica encriptada AES-256
+• Datos almacenados solo en servidor local del edificio (no en la nube de IAccess)
+• Cada residente firma autorización de tratamiento de datos (Ley 1581)
+• Derecho al olvido: el administrador borra el perfil en 30 segundos
+• Los logs de ingreso se guardan por 90 días (configurable)
+• Backup encriptado en nube con llave del edificio (no de IAccess)
+
+──────────────────────────────────────────────
+PRECIOS
+
+Punto de acceso con facial (lector Pro + magneto + controlador):
+Desde $5,800,000 COP (hardware) + $1,200,000 COP (instalación)
+Total: desde $7,000,000 COP por punto de acceso
+
+Incluido en: Plan Profesional y Plan Enterprise
+Opcional en: Plan Esencial (+$4,100,000 COP)
+```
+
+---
+
+### /servicios/control-ascensores
+
+```
+HEADLINE: Tu ascensor sabe a qué piso puede llevarte.
+Los residentes suben a su piso. Solo a su piso.
+Los guests de Airbnb también. Solo a su piso.
+Los visitantes, al piso que el residente autorizó. Nada más.
+
+──────────────────────────────────────────────
+EL PROBLEMA SIN IACCESS
+
+Sin control de ascensor, el sistema de acceso al lobby solo resuelve 
+la mitad del problema. Un visitante no autorizado que logra entrar 
+(por tailgating, por un residente descuidado) puede subir a cualquier 
+piso y tocar cualquier puerta.
+
+Con IAccess, el ascensor es la segunda barrera.
+
+──────────────────────────────────────────────
+CÓMO FUNCIONA
+
+ASCENSOR NORMAL (sin IAccess):
+Usuario entra → presiona piso → sube. Cualquier piso. Siempre.
+
+ASCENSOR CON IACCESS:
+1. Usuario entra al ascensor
+2. Lector facial en cabina lo identifica (opcional: QR o tarjeta)
+3. El sistema consulta: "¿a qué piso puede ir esta persona?"
+4. Solo los botones autorizados se activan
+5. Usuario presiona su piso → sube
+6. El log registra: "María González · Sube piso 5 · 08:15:01"
+
+PERFILES DE ACCESO:
+• Residente apto 502: puede ir al piso 5, lobby, parqueadero B2
+• Guest Airbnb apto 502: puede ir al piso 5 y lobby (horario 3pm–11am)
+• Técnico de mantenimiento: puede ir a cualquier piso (acceso temporal 24h)
+• Visitante autorizado por Apto 301: puede ir al piso 3 (acceso 2h)
+• Repartidor de domicilios: puede ir al piso indicado, regresa en 20 min
+• Administrador: acceso total permanente
+
+──────────────────────────────────────────────
+HARDWARE UTILIZADO
+
+CONTROLADOR DE PISOS — UHPPOTE 20/40 CANALES
+• Controla hasta 20 (o 40) botones de piso simultáneamente
+• Se conecta entre la botonera del ascensor y los relés
+• Comunicación: RS-485 o TCP/IP con el servidor IAccess
+• Compatible con cualquier marca de ascensor (Schindler, ThyssenKrupp,
+  OTIS, MIPSA, IMSA, y locales colombianos)
+• Precio: UHPPOTE 20ch ~$2,000,000 COP · 40ch ~$3,000,000 COP
+
+LECTOR EN CABINA — HIKVISION DS-K1T342MFWX-E1
+• Panel compacto montado en la pared interior del ascensor
+• Reconocimiento facial + QR + tarjeta NFC
+• Activación: cuando el usuario sube, identifica → habilita sus pisos
+• Precio: ~$1,530,000 COP por lector
+
+CÁMARA EN CABINA (opcional)
+• Cámara domo mini IP antivandálica 2MP
+• Almacena en el NVR general del edificio
+• Complementa el tracking facial por piso
+• Precio: ~$1,200,000 COP instalada
+
+──────────────────────────────────────────────
+PROCESO DE INSTALACIÓN
+
+La instalación de control de ascensor requiere acceso al cuarto 
+de máquinas y coordinación con la empresa de mantenimiento del 
+ascensor (OTIS, Schindler, etc.). No modifica el funcionamiento 
+mecánico — solo agrega una capa de control electrónico.
+
+Tiempo: 1 día por ascensor (8 horas)
+Personal: 1 técnico senior IAccess + apertura empresa ascensores
+
+NOTA IMPORTANTE: Coordinamos nosotros con la empresa de ascensores. 
+El cargo por apertura técnica de la empresa (normalmente $800,000–
+$1,500,000 COP) está incluido en nuestra cotización.
+
+──────────────────────────────────────────────
+PRECIO
+
+Por ascensor, edificio hasta 20 pisos:   $7,420,000 COP (instalado)
+Por ascensor, edificio 21–40 pisos:      $9,800,000 COP (instalado)
+Lector en cabina (adicional):            +$2,130,000 COP
+Cámara en cabina (adicional):            +$1,200,000 COP
+
+Incluido en: Plan Profesional (1 ascensor), Plan Enterprise (2 ascensores)
+Disponible como add-on en: Plan Esencial
+```
+
+---
+
+### /servicios/modo-airbnb
+
+```
+HEADLINE: Tu edificio Airbnb-ready.
+El único sistema en Colombia diseñado para edificios con renta corta.
+
+──────────────────────────────────────────────
+LA REALIDAD DEL MERCADO EN BOGOTÁ
+
+En edificios de estratos 4, 5 y 6 en Chapinero, Usaquén, 
+Zona Rosa y La Candelaria, entre el 15% y el 40% de los 
+apartamentos pueden estar activos en Airbnb o Booking en 
+cualquier momento.
+
+Un portero convencional maneja esto con WhatsApp, llamadas 
+y notas en papel. Los problemas:
+• Guests esperando en la calle a las 2am mientras el portero duerme
+• Portero abre sin verificar si la reserva es real
+• Sin registro ni foto del ingreso — impossible de auditar
+• Vecinos se quejan de extraños en el ascensor
+• La copropiedad no tiene control de cuántos guests entran
+
+IAccess resuelve esto de raíz con integración directa.
+
+──────────────────────────────────────────────
+CÓMO FUNCIONA — PASO A PASO
+
+PARA EL PROPIETARIO/ANFITRIÓN:
+1. Conecta tu cuenta Airbnb/Booking a IAccess (1 vez, 5 minutos)
+2. Desde ese momento, cada reserva confirmada dispara el flujo automático
+3. No haces nada más.
+
+PARA EL SISTEMA (automático):
+• Reserva confirmada → IAccess genera QR único
+• QR tiene ventana exacta: desde hora check-in hasta hora check-out
+• QR enviado por WhatsApp al número del huésped (en el idioma del perfil)
+• QR habilita: lobby, ascensor hasta piso X, zonas comunes hasta las 10pm
+• QR bloquea: todos los demás pisos, cuarto de máquinas, azotea restringida
+
+PARA EL HUÉSPED:
+• Llega al edificio, abre WhatsApp, muestra QR al panel
+• Panel escanea, verifica ventana temporal, abre
+• Sube en ascensor al piso correcto (solo ese piso disponible)
+• Entra. Sin portero. Sin llamadas. Sin esperas.
+• Al hacer checkout: QR ya no funciona. Acceso cerrado.
+
+──────────────────────────────────────────────
+CONTROL PARA LA COPROPIEDAD
+
+Muchas copropiedades tienen conflictos con los propietarios que 
+arriendan en Airbnb. IAccess los resuelve dando más información 
+y más control, no menos:
+
+• Reporte mensual automático: cuántos guests entraron, cuándo, 
+  en qué piso, qué duración
+• Alerta si un QR de guest es compartido con más personas de las 
+  registradas (detección de duplicados)
+• Restricción de zonas comunes por horario (ej: gym solo residentes, 
+  BBQ disponible para guests hasta las 9pm con reserva)
+• La copropiedad puede vetar el modo Airbnb para un apartamento 
+  específico con un clic (si la asamblea así lo decide)
+
+──────────────────────────────────────────────
+INTEGRACIONES DISPONIBLES
+
+✅ Airbnb (vía API oficial)
+✅ Booking.com (vía Channel Manager)
+✅ VRBO / Vrbo
+✅ WhatsApp Business API
+📅 Próximamente: Despegar, Comohotel, gestores de propiedad locales
+
+──────────────────────────────────────────────
+PRECIO
+
+Setup inicial + integración (una sola vez): $3,300,000 COP
+Mensualidad modo Airbnb: $280,000 COP/mes
+
+Incluido sin costo adicional en: Plan Enterprise
+Incluido en mensualidad de: Plan Profesional
+```
+
+---
+
+### /servicios/puertas-automaticas
+
+```
+HEADLINE: La puerta correcta para tu edificio.
+Vidrio, aluminio, magneto o automatizada — instalamos la que necesitas.
+
+──────────────────────────────────────────────
+TIPOS DE INSTALACIÓN
+
+──── OPCIÓN 1: ADAPTACIÓN DE PUERTA EXISTENTE ────
+
+Si tu puerta ya existe y solo necesitas agregar control de acceso:
+
+Hardware requerido:
+• Magneto electromagnético 600–1200 lb (según peso de la puerta)
+• Lector facial o QR (montado sobre el marco)
+• Botón de salida (interior)
+• Controlador de acceso
+• Fuente de poder + UPS
+
+Precio: desde $3,570,000 COP por puerta
+Obra requerida: ninguna en la mayoría de casos
+Tiempo: 1 día
+
+──── OPCIÓN 2: PUERTA DOBLE BATIENTE DE VIDRIO ────
+(entrada principal nueva o reemplazo)
+
+Ideal para edificios que quieren modernizar la imagen del lobby.
+
+Incluye:
+• Evaluación del vano existente (obra solo si es necesario ensanchar)
+• Marco de aluminio anodizado negro o gris oscuro
+• 2 hojas de vidrio templado 10mm con herraje oculto
+• 2 magnetos 1200 lb (uno por hoja)
+• 2 lectores faciales Pro DS-K1T671M
+• Controlador + UPS + cableado
+• Pintura o estuco en el área intervenida
+
+Precio total instalado:
+  Vano existente suficiente (sin obra civil):  $17,300,000 COP
+  Requiere ensanche de vano (no estructural):  $19,800,000 – $22,500,000 COP
+  Requiere obra estructural (refuerzo, viga):  $24,000,000 – $30,000,000 COP
+
+Tiempo: 3–5 días (incluye curado de materiales)
+Nota: Se coordina con el administrador para no interrumpir el acceso.
+Se instala primero la parte electrónica en la puerta temporal, 
+luego se reemplaza la puerta.
+
+──── OPCIÓN 3: PUERTA AUTOMÁTICA DESLIZANTE DE VIDRIO ────
+(la opción más elegante y más fluida para edificios de alto tráfico)
+
+Incluye:
+• Marco de aluminio de alta resistencia (anodizado negro o silver)
+• 2 paneles de vidrio templado deslizantes (apertura biparting)
+• Operador automático de bajo consumo (rango de uso: 2M ciclos)
+• Sensor de presencia dual (activa apertura automática desde adentro)
+• Lector facial exterior + lector QR
+• Magneto de seguridad fail-safe (abre ante corte de energía)
+• Botón de apertura manual de emergencia
+• Obra civil: guía de piso + riel superior + sellado perimetral
+
+Precio total instalado:
+  Vano estándar 1.8–2.4m de ancho: $19,600,000 – $24,000,000 COP
+  Vano más ancho (2.4–4m):         $27,000,000 – $36,000,000 COP
+
+Tiempo: 4–6 días
+Garantía en operador: 2 años
+
+──── OPCIÓN 4: MAGNETO EN PUERTAS INTERNAS ────
+(para puertas ya instaladas en el edificio: bicicletero, azotea, 
+cuarto de servicio, salón comunal, cuarto de basuras)
+
+Incluye por puerta:
+• Magneto 600 lb + placa de contraposición
+• Lector RFID (sin facial — para interiores donde no justifica el costo)
+• Botón de salida interior
+
+Precio: $1,485,000 COP por puerta (sin facial)
+Con lector facial: $2,585,000 COP por puerta
+
+──────────────────────────────────────────────
+ESPECIFICACIÓN TÉCNICA DE MAGNETOS
+
+| Magneto | Fuerza | Uso recomendado | Precio Colombia |
+|---|---|---|---|
+| 600 lb / 272 kg | Media | Puertas livianas, interiores | $690,000 COP |
+| 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $1,050,000 COP |
+| 1800 lb / 816 kg | Muy alta | Portones vehiculares, acceso industrial | $1,600,000 COP |
+
+Todos los magnetos son fail-safe (se abren al perder energía) y 
+cumplen con normas de seguridad contra incendio NFPA y RETIE.
+
+──────────────────────────────────────────────
+DESENGANCHE EN EMERGENCIA
+
+Todos los magnetos de IAccess se integran al sistema de alarma 
+contra incendios del edificio (si existe) y a un botón de 
+emergencia protegido con tapa roja.
+
+Ante señal de alarma o activación del botón:
+→ Los magnetos de TODAS las salidas de emergencia se desactivan simultáneamente
+→ Las puertas abren libremente
+→ Log del evento guardado con timestamp
+
+Precio integración de emergencia: $1,220,000 COP por salida de emergencia
+(Incluye relé de interfaz, botón protegido, programación, 
+prueba documentada, certificado de conformidad)
+```
+
+---
+
+## SECTION 8 — TECHNOLOGY PAGE (/tecnologia)
+
+```
+HEADLINE: Tecnología probada. Integrada para Colombia.
+
+SUBHEADLINE:
+No reinventamos el hardware. Usamos el mejor del mundo.
+Construimos la integración que Colombia necesita.
+
+──────────────────────────────────────────────
+HIKVISION — EL HARDWARE
+
+Hikvision es el fabricante de cámaras de seguridad más vendido 
+del mundo. Presente en aeropuertos, hospitales, centros comerciales 
+y edificios residenciales en más de 150 países.
+
+¿Por qué Hikvision y no otra marca?
+
+• Distribuidores autorizados en Bogotá (SYSCOM, EQUIREDES, 
+  HELITEB) → garantía local, repuestos disponibles
+• Mayor densidad de técnicos certificados en Colombia
+• Portfolio completo: cámaras + lectores + NVR + videoportero 
+  + control de acceso → un solo fabricante, una sola integración
+• Actualizaciones de firmware gratuitas durante 5+ años
+• Precio/rendimiento: mejor relación en su categoría
+• Soporte técnico en español
+
+Equipos que usamos:
+
+CÁMARAS:
+  DS-2CD2347G2-LU (4MP ColorVu, la más popular en edificios)
+  DS-2CD2387G2-LU (8MP 4K, para entradas y lobbies clave)
+  
+LECTORES DE ACCESO:
+  DS-K1T671M-E1 (Pro, entrada principal)
+  DS-K1T342MFWX-E1 (Value, puntos secundarios)
+  
+VIDEOPORTERO:
+  DS-KD8003-IME1 (estación exterior)
+  DS-KH6320-WTE1 (monitor interior de apartamento, opcional)
+  
+NVR:
+  DS-7616NXI-K2/16P (16ch, 4K, PoE, AcuSense AI nativo)
+
+──────────────────────────────────────────────
+YOLO — LA INTELIGENCIA ARTIFICIAL
+
+YOLO (You Only Look Once) es el modelo de detección de objetos en 
+tiempo real más usado en el mundo, publicado originalmente por la 
+Universidad de Washington en 2015 y continuamente mejorado.
+
+En IAccess usamos YOLOv8 con entrenamiento especializado en:
+• Reconocimiento facial en condiciones latinoamericanas 
+  (diversidad étnica, lighting de clima tropical, 
+   ángulos de cámara en lobbies con diferencia de altura)
+• Re-identificación entre cámaras (re-ID): 
+  reconoce a la misma persona aunque cambie de ángulo o 
+  piso, sin necesidad de que esté en primer plano
+• Detección bajo mascarilla, gorra o lentes oscuros
+
+RENDIMIENTO REAL (probado en pilot buildings):
+• Latencia de identificación: 280–420ms promedio
+• Tasa de verdadero positivo (TPR): 99.7%
+• Tasa de falso positivo (FPR): <0.001% 
+  (en una semana con 50,000 ingresos: ~0.5 falsos positivos)
+• Funciona bajo 5 Lux (casi oscuridad total)
+
+──────────────────────────────────────────────
+SERVIDOR LOCAL vs. NUBE
+
+SERVIDOR LOCAL (recomendado para la mayoría):
+Toda la IA y los datos se procesan en un servidor dentro del 
+edificio. Internet no es requerido para que el sistema funcione.
+
++ Sin dependencia de conexión a internet
++ Datos biométricos nunca salen del edificio
++ Mejor latencia (procesamiento en la misma red local)
++ Sin costo de nube en el largo plazo
+- Requiere espacio físico (cuarto de sistemas o rack)
+- Mantenimiento hardware de responsabilidad del edificio 
+  (cubierto en contrato de servicio IAccess)
+
+SERVIDOR EN NUBE (AWS Colombia, Bogotá):
+La IA se ejecuta en AWS South America (São Paulo) o 
+AWS región Colombia cuando esté disponible.
+
++ Sin hardware en el edificio
++ IAccess maneja toda la infraestructura
++ Escalable sin cambio de hardware
+- Requiere internet estable (mínimo 50 Mbps simétrico)
+- Latencia ligeramente mayor (80–200ms adicionales)
+- Costo mensual adicional ($350,000 COP/mes)
+- Datos pasan por infraestructura de terceros (con encriptación)
+
+NUESTRA RECOMENDACIÓN:
+Para edificios con buena infraestructura eléctrica y 
+espacio para un pequeño rack o gabinete: servidor local.
+Para edificios pequeños (<25 aptos) sin cuarto de sistemas: nube.
+
+──────────────────────────────────────────────
+PRIVACIDAD Y LEY 1581
+
+El manejo de datos biométricos en Colombia está regulado por:
+• Ley 1581 de 2012 (Habeas Data) y su Decreto 1377 de 2013
+• Circular Externa 001 de 2020 de la SIC sobre datos sensibles
+
+Nuestro cumplimiento:
+✓ Cláusula de tratamiento de datos biométricos firmada por 
+  cada residente y visitante frecuente
+✓ Propósito específico: control de acceso (no publicidad, 
+  no venta, no intercambio con terceros)
+✓ Acceso limitado: solo el administrador y el sistema
+✓ Derecho de supresión: perfil eliminado en < 30 segundos 
+  ante solicitud del titular
+✓ Encriptación en reposo (AES-256) y en tránsito (TLS 1.3)
+✓ Registros de auditoría de quién accedió a los datos
+✓ Política de retención: logs de ingreso por 90 días; 
+  datos biométricos mientras el contrato esté activo
+
+En caso de inspección de la SIC: 
+Entregamos documentación de cumplimiento en < 24 horas.
+```
+
+---
+
+## SECTION 9 — CASE STUDIES (/casos-de-uso)
+
+### Case Study 1: Edificio residencial tradicional
+
+```
+HEADLINE: De 3 porteros a cero — sin que un solo residente 
+extrañara el portero.
+
+EDIFICIO: Torres del Parque 93 Norte
+UBICACIÓN: Calle 93 #15-38, Bogotá
+CARACTERÍSTICAS: 48 apartamentos · 12 pisos · 2 ascensores
+INSTALADO: Octubre 2025
+
+EL PROBLEMA:
+La copropiedad gastaba $7.2M COP al mes en 3 porteros 
+(diurno + nocturno + fin de semana). El portero nocturno 
+faltaba en promedio 2 veces al mes. El cuaderno de visitas 
+tenía datos incompletos. Un robo en el piso 7 (agosto 2025) 
+no pudo esclarecerse — no había registro confiable de quién 
+subió ese día.
+
+LA SOLUCIÓN:
+Plan Profesional + control de 2 ascensores + 4 cámaras adicionales 
+en pisos 1, 4, 7 y 12
+
+HARDWARE INSTALADO:
+• 2× Hikvision DS-K1T671M-E1 (entrada principal)
+• 1× Hikvision DS-K1T342MFWX-E1 (acceso parqueadero)
+• 1× videoportero DS-KD8003-IME1
+• 3× magnetos 1200 lb
+• 2× controladores de ascensor UHPPOTE 40ch
+• 14× cámaras 4MP ColorVu (lobby + parkeo + pisos 1/4/7/12 + ascensores)
+• NVR 16ch + 8TB
+• Servidor local Intel NUC i7
+• UPS 1500VA
+• Switch PoE 24 puertos
+
+TIEMPO DE INSTALACIÓN: 4 días hábiles
+
+RESULTADOS (4 meses después):
+💰 Ahorro mensual: $5,900,000 COP (3 porteros → $1,300,000 mensualidad)
+⏱ Retorno de inversión alcanzado: mes 10 (proyectado)
+📊 Ingresos registrados en 4 meses: 42,381
+🔍 Alertas de ingreso no autorizado resueltas: 14 (tailgaters detectados)
+😊 Satisfacción de residentes (encuesta interna): 91% positivo
+
+TESTIMONIO:
+"El mes 1 fue el más difícil — algunas personas mayores necesitaron 
+ayuda para registrarse. El mes 2 ya era natural para todos. Lo que 
+nadie esperaba es que los residentes empezaran a pedir más cámaras 
+en los pisos altos — sienten más seguridad que con el portero."
+— Carlos Esteban Mora, Administrador
+```
+
+---
+
+### Case Study 2: Edificio con Airbnb
+
+```
+HEADLINE: 18 apartamentos en Airbnb. Cero llamadas al portero.
+
+EDIFICIO: Chapinero Heights
+UBICACIÓN: Carrera 7 #62-14, Bogotá  
+CARACTERÍSTICAS: 32 apartamentos · 8 pisos · 18 en renta corta
+INSTALADO: Septiembre 2025
+
+EL PROBLEMA:
+El 56% de los apartamentos del edificio están en plataformas de 
+renta corta. El portero original renunció después de 3 meses — 
+"muchos extraños, mucho trabajo, misma paga". El siguiente duró 
+6 semanas. Los propietarios de Airbnb gestionaban ingresos por 
+WhatsApp. Promedio de queja de vecinos: 4 por semana.
+
+LA SOLUCIÓN:
+Plan Profesional + Modo Airbnb completo
+
+FLUJO AUTOMÁTICO CONFIGURADO:
+• Integración directa con Airbnb, Booking.com y VRBO
+• QR generado automáticamente al confirmar reserva
+• Restricciones: guests solo a piso del apartamento, lobby y 
+  zonas comunes hasta las 10pm (decisión de la copropiedad)
+• Reportes semanales automáticos al presidente de copropiedad
+
+RESULTADOS (3 meses):
+📬 QRs generados automáticamente: 1,847
+📞 Llamadas a propietarios para coordinar ingreso: 0
+⏰ Tiempo de espera promedio de guests: 0 minutos
+😤 Quejas de vecinos sobre guests: 2 (vs 4/semana antes)
+💰 Ahorro en portería: $2,460,000 COP/mes (1 portero eliminado)
+   + costo evitado de rotación: ~$1,500,000 COP/mes (estimado)
+📈 Valorización del edificio por los propietarios: "Vendemos 
+   más rápido porque IAccess es una feature que los compradores piden"
+```
+
+---
+
+## SECTION 10 — BLOG CONTENT (full article outlines)
+
+### Article 1: Anchor piece for SEO
+
+**Title:** ¿Cuánto cuesta realmente un portero en Colombia en 2026?  
+**Target keyword:** costo portero Colombia  
+**URL:** /blog/costo-portero-colombia-2026
+
+```
+INTRO (hook):
+La mayoría de administradores de edificios conocen el salario del portero.
+Muy pocos conocen el costo real.
+
+Spoiler: un portero en Bogotá no cuesta $1.4M al mes. 
+Cuesta más del doble.
+
+H2: El salario mínimo no es el costo
+[Tabla completa con todos los costos laborales: salario + 
+auxilio transporte + salud + pensión + ARL + parafiscales + 
+primas + vacaciones + cesantías = total ~$2,462,050 COP/portero]
+
+H2: ¿Cuántos porteros necesita un edificio?
+• Edificio hasta 20 aptos, diurno solo: 1 portero → $2.46M/mes
+• Edificio hasta 60 aptos, día y noche: 2 porteros → $4.92M/mes
+• Edificio 60-120 aptos, 24/7 con reemplazos: 3 porteros → $8.1M/mes
+• Edificio premium 120+ aptos: 4+ porteros → $11M+/mes
+
+H2: Los costos ocultos que nadie cuenta
+• Incapacidad médica: ¿quién reemplaza? Agencia de empleo: $180,000–$300,000/día
+• Vacaciones (15 días hábiles/año): ~$738,000 COP de reemplazo
+• Dotación (botas, uniforme): ~$480,000 COP/año
+• Liquidación al terminar contrato: ~$3,000,000–$6,000,000 COP una sola vez
+• Horas extras y recargos nocturnos: +25–75% del salario por horas
+
+H2: Comparación real con portería virtual
+[Tabla de 5 años: portería tradicional vs IAccess]
+
+H2: ¿Es legal despedir al portero para instalar un sistema?
+[Explicación legal: sí, con preaviso según tiempo de antigüedad, 
+causa justa o sin causa con indemnización. No es diferente a 
+cualquier otro cambio de modelo operativo.]
+
+CIERRE + CTA:
+Calculadora de ahorro (enlace a /cotizacion)
+```
+
+---
+
+### Article 2: SEO for Airbnb operators
+
+**Title:** Cómo automatizar los ingresos de Airbnb en tu edificio en Bogotá  
+**Target keyword:** Airbnb acceso automatico edificio Colombia  
+**URL:** /blog/automatizar-airbnb-edificio-bogota
+
+```
+H2: El problema de gestionar Airbnb en un edificio con portero
+H2: ¿Qué es un QR de acceso temporal?
+H2: Cómo funciona la integración Airbnb + IAccess paso a paso
+H2: ¿Qué pasa si el guest pierde el QR?
+H2: ¿Puede la copropiedad prohibir el modo Airbnb?
+H2: Costo: cuánto cuesta automatizar el acceso para 5 aptos de Airbnb
+CTA: Cotización para tu edificio
+```
+
+---
+
+### Article 3: Legal piece
+
+**Title:** Reconocimiento facial en edificios de Colombia: ¿es legal?  
+**Target:** personas que buscan antes de comprar  
+**URL:** /blog/reconocimiento-facial-edificios-colombia-legal
+
+```
+H2: ¿Qué dice la Ley 1581 sobre datos biométricos?
+H2: ¿Qué obligaciones tiene la copropiedad?
+H2: El reconocimiento facial vs. el cuaderno de visitas (cuál es más legal)
+H2: Cómo IAccess cumple con la normativa
+H2: ¿Qué pasa si un residente se niega a registrarse?
+H2: El concepto de "dato sensible" y cómo manejarlo
+CTA: Ver política de privacidad + solicitar cotización
+```
+
+---
+
+## SECTION 11 — CONTACT PAGE (/contacto)
+
+```
+HEADLINE: Hablamos.
+
+No hay chatbot. No hay formulario que desaparece en el vacío.
+Cuando nos escribes, responde una persona real en Bogotá.
+
+─────────────────────────────────────────────
+FORMAS DE CONTACTO:
+
+[WhatsApp →]                    [Email →]
++57 315 XXX XXXX               info@iaccess.co
+Respuesta < 1 hora             Respuesta < 4 horas
+Lun–Sáb 8am–8pm               Lun–Sáb 8am–8pm
+
+─────────────────────────────────────────────
+AGENDA UNA VISITA TÉCNICA GRATUITA
+
+[Calendly embed o similar]
+• Visitas disponibles: Lunes a Sábado 8am–6pm
+• Zona de cobertura actual: Bogotá (todas las localidades)
+• Duración: 1 hora en tu edificio
+• Costo: gratuito, sin compromiso
+
+─────────────────────────────────────────────
+FORMULARIO DE CONTACTO:
+
+Nombre completo: [________________]
+Correo:          [________________]
+WhatsApp:        [________________]
+Edificio:        [________________]
+¿En qué podemos ayudarte?
+  ○ Quiero cotizar un sistema completo
+  ○ Tengo preguntas técnicas
+  ○ Soy constructora / desarrollador inmobiliario
+  ○ Quiero ser distribuidor o instalador
+  ○ Otro
+
+[Mensaje (opcional): _____________]
+
+[Enviar →]
+
+─────────────────────────────────────────────
+UBICACIÓN
+
+IAccess — Bogotá, Colombia
+Bogotá D.C. (dirección exacta disponible a clientes)
+Operamos en toda la ciudad.
+Proyectos fuera de Bogotá: consultar.
+
+─────────────────────────────────────────────
+PARA CONSTRUCTORAS
+
+¿Estás construyendo un edificio residencial y quieres integrar 
+IAccess desde el diseño? Tenemos un programa para desarrolladores 
+que reduce significativamente el costo de instalación (la 
+infraestructura de cableado se hace durante la construcción).
+
+Ventajas del programa para constructoras:
+• Precio preferencial (hasta 35% menos vs. retrofit)
+• IAccess como "feature" de marketing del proyecto
+• Documentación técnica para aprobar la integración con la lonja
+• Capacitación del equipo del edificio antes de entrega
+
+[Contactar programa constructoras →]
+```
+
+---
+
+## SECTION 12 — DEVELOPER SPEC
+
+### Recommended Stack
+```
+Framework:    Next.js 15 (App Router, SSR for SEO)
+Styling:      Tailwind CSS + shadcn/ui
+Animations:   Framer Motion (quote calculator transitions, 
+               hero reveal, scroll-triggered sections)
+Video:        Self-hosted .webm + .mp4 (no YouTube embed)
+              Lazy load — only starts after LCP
+CMS:          Sanity.io (blog + case studies + team)
+Forms:        React Hook Form + Zod
+Email:        Resend (transactional + quote PDF)
+WhatsApp:     Meta Cloud API (WhatsApp Business)
+SMS:          Twilio (fallback for QR delivery)
+Calendar:     Cal.com (self-hosted or cloud) for demo booking
+Analytics:    Plausible (privacy-first, GDPR/Ley 1581 compliant)
+Maps:         Mapbox (service coverage map on contact page)
+Hosting:      Vercel (Next.js native, edge functions)
+Domain:       iaccess.co
+CDN:          Cloudflare (free tier sufficient for launch)
+```
+
+### Performance Requirements
+```
+Lighthouse scores (target):
+  Performance:    ≥ 92
+  Accessibility:  ≥ 95
+  SEO:            ≥ 98
+  Best Practices: ≥ 95
+
+Core Web Vitals:
+  LCP (Largest Contentful Paint): < 1.8s
+  INP (Interaction to Next Paint): < 150ms
+  CLS (Cumulative Layout Shift):  < 0.05
+
+Hero video:
+  - Replaced by static image on mobile (< 768px)
+  - Poster frame shown until video loaded
+  - preload="none", loads after LCP
+  - Max filesize: 8MB (webm), 15MB (mp4)
+```
+
+### Quote Calculator Logic (JavaScript)
 ```javascript
-// Pseudo-code — implement as API route
-function calculateQuote(inputs) {
+// All values in COP
+const PRICING = {
+  // Hardware base per access point
+  accessPoint: {
+    readerPro:    2_700_000,  // DS-K1T671M
+    readerValue:  1_530_000,  // DS-K1T342
+    maglock1200:  1_050_000,
+    maglock600:     690_000,
+    controller:     600_000,
+    exitButton:     150_000,
+  },
+  camera: {
+    colorVu4MP:   1_806_000,  // DS-2CD2347G2-LU
+    colorVu8MP:   2_290_000,  // DS-2CD2387G2-LU
+  },
+  nvr: {
+    ch16_4TB:     3_200_000,  // DS-7616NXI-K2 + 4TB HDD
+    ch8_2TB:      2_500_000,
+  },
+  server: {
+    nucI7:        4_500_000,  // Intel NUC 13 Pro
+    jetsonOrinNX: 7_200_000,  // NVIDIA Jetson Orin NX 16GB
+  },
+  network: {
+    ups1500va:      900_000,
+    switch24poe:  1_200_000,
+  },
+  install: {
+    techHr:        86_000,   // $20/hr × 4,300 COP/USD (skilled installer)
+    leadHr:       150_000,   // $35/hr × 4,300 COP/USD (lead integrator)
+    helperHr:      52_000,   // $12/hr × 4,300 COP/USD
+  },
+  monthly: {
+    softwareLicense: 450_000,
+    support:         380_000,
+    perApartment:     12_000,
+    airbnb:          280_000,
+    monitoring24_7:  490_000,
+    cloud:           350_000,
+  }
+};
+
+function calculatePackage(inputs) {
   const {
-    apartments,    // e.g. "21-50"
-    floors,        // e.g. "6-15"
-    accessPoints,  // number 1-4+
-    elevators,     // boolean
-    nElevators,    // number
-    parking,       // boolean
-    airbnb,        // boolean
-    nAirbnbUnits,  // number
-    monitoring,    // boolean
-    cloudVsLocal   // "cloud" | "local" | "unknown"
+    apartments,      // "1-20" | "21-50" | "51-100" | "100+"
+    floors,          // "1-5" | "6-15" | "16-30" | "30+"
+    accessPoints,    // 1 | 2 | 3 | 4
+    elevators,       // 0 | 1 | 2 | 3
+    parkingGate,     // boolean
+    interiorDoors,   // 0 | 1-3 | 4-8 | 8+
+    emergencyExits,  // 0 | 1 | 2 | 3+
+    airbnb,          // boolean
+    nAirbnbUnits,    // number
+    monitoring,      // boolean
+    serverType,      // "local" | "cloud" | "unknown"
+    currentPorteros  // 0 | 1 | 2 | 3+
   } = inputs;
-  
-  // Base: per-access-point hardware + installation
-  let installBase = 4_500_000 + (accessPoints - 1) * 2_800_000;
-  
-  // Scale multipliers
-  const aptMult = { "1-20": 1.0, "21-50": 1.15, "51-100": 1.35, "100+": null };
-  const floorMult = { "1-5": 1.0, "6-15": 1.1, "16-30": 1.25, "30+": null };
-  
-  // Add-ons
-  if (elevators) installBase += nElevators * 1_800_000;
-  if (parking) installBase += 2_200_000;
-  
-  // Monthly
-  let monthlyBase = 450_000 + 380_000; // software + support
-  const aptCount = /* midpoint of range */;
-  monthlyBase += aptCount * 12_000;
-  if (airbnb) monthlyBase += 280_000;
-  if (monitoring) monthlyBase += 490_000;
-  if (cloudVsLocal === "cloud") monthlyBase += 350_000;
-  
-  // Return range (±27%)
+
+  // Apartment count midpoint
+  const aptCounts = { "1-20": 10, "21-50": 35, "51-100": 75, "100+": 120 };
+  const nApts = aptCounts[apartments];
+
+  // Floor count midpoint
+  const floorCounts = { "1-5": 3, "6-15": 10, "16-30": 22, "30+": 35 };
+  const nFloors = floorCounts[floors];
+
+  // ─── HARDWARE CALCULATION ───
+  let hardware = 0;
+  const isEnterprise = nApts > 70;
+
+  // Readers: Pro at main entrance, Value at secondary
+  hardware += PRICING.accessPoint.readerPro * Math.min(accessPoints, 2);
+  hardware += PRICING.accessPoint.readerValue * Math.max(0, accessPoints - 2);
+  hardware += PRICING.accessPoint.maglock1200 * accessPoints;
+  hardware += PRICING.accessPoint.controller * accessPoints;
+  hardware += PRICING.accessPoint.exitButton * accessPoints * 2;
+
+  // Cameras: 2 at entrance + 1 per floor of coverage
+  const nCameras = 2 + accessPoints + Math.min(nFloors, 8) + (elevators * 2);
+  hardware += PRICING.camera.colorVu4MP * nCameras;
+
+  // NVR: 16ch for medium+, 8ch for small
+  hardware += nApts > 25 ? PRICING.nvr.ch16_4TB : PRICING.nvr.ch8_2TB;
+
+  // Elevator controllers
+  const elevatorCost = nFloors <= 20
+    ? 2_000_000  // UHPPOTE 20ch
+    : 3_000_000; // UHPPOTE 40ch
+  hardware += elevatorCost * elevators;
+  hardware += PRICING.accessPoint.readerValue * elevators; // reader in cab
+
+  // Interior doors (RFID only)
+  const interiorDoorCounts = { "0": 0, "1-3": 2, "4-8": 5, "8+": 10 };
+  const nInterior = interiorDoorCounts[interiorDoors] || 0;
+  hardware += (PRICING.accessPoint.maglock600 + 580_000) * nInterior; // 580k = RFID reader
+
+  // Parking gate
+  if (parkingGate) hardware += 12_040_000 + 4_816_000; // FAAC + LPR
+
+  // Server
+  const serverCost = isEnterprise
+    ? PRICING.server.jetsonOrinNX
+    : PRICING.server.nucI7;
+  if (serverType !== "cloud") hardware += serverCost;
+
+  // Network + power
+  hardware += PRICING.network.ups1500va * (isEnterprise ? 2 : 1);
+  hardware += PRICING.network.switch24poe * (nCameras > 16 ? 2 : 1);
+
+  // ─── INSTALLATION LABOR ───
+  const installDays = nApts <= 20 ? 2 : nApts <= 60 ? 4 : 7;
+  const techHours = installDays * 8 * 3; // 3 skilled installers
+  const leadHours = installDays * 4;     // lead integrator half-days
+  const labor = (techHours * PRICING.install.techHr)
+              + (leadHours * PRICING.install.leadHr);
+
+  // ─── CABLING ───
+  const cablingCost = nFloors * 200_000 + accessPoints * 300_000;
+
+  // ─── EMERGENCY EXITS ───
+  const exitCounts = { "0": 0, "1": 1, "2": 2, "3+": 3 };
+  const emergencyExitCost = (exitCounts[emergencyExits] || 0) * 1_220_000;
+
+  // ─── SOFTWARE + COMMISSIONING ───
+  const softwareSetup = isEnterprise ? 6_000_000 : nApts > 25 ? 3_000_000 : 1_500_000;
+
+  const totalInstall = hardware + labor + cablingCost + emergencyExitCost + softwareSetup;
+
+  // ─── MONTHLY ───
+  let monthly = PRICING.monthly.softwareLicense + PRICING.monthly.support;
+  monthly += nApts * PRICING.monthly.perApartment;
+  if (airbnb) monthly += PRICING.monthly.airbnb;
+  if (monitoring) monthly += PRICING.monthly.monitoring24_7;
+  if (serverType === "cloud") monthly += PRICING.monthly.cloud;
+
+  // ─── DOORMEN COST ───
+  const porteroCount = { "0": 0, "1": 1, "2": 2, "3+": 3 };
+  const nPorteros = currentPorteros !== undefined
+    ? porteroCount[currentPorteros] || 0
+    : (nApts < 25 ? 1 : nApts < 80 ? 2 : 3);
+  const porteroMonthlyCost = nPorteros * 2_462_050 * 1.15; // + 15% replacement buffer
+
+  // ─── RANGE (±20%) ───
   return {
-    installMin: Math.round(installBase * 0.87),
-    installMax: Math.round(installBase * 1.27),
-    monthlyMin: Math.round(monthlyBase * 0.87),
-    monthlyMax: Math.round(monthlyBase * 1.27),
-    doormenCount: estimateDoormen(apartments, floors),
-    doormenCost: estimateDoormenCost(apartments, floors),
-    monthlyAvgSaving: doormenCost - monthlyAvgCost,
-    roiMonths: Math.round(installBase / monthlySaving)
+    installMin: Math.round(totalInstall * 0.85 / 100_000) * 100_000,
+    installMax: Math.round(totalInstall * 1.20 / 100_000) * 100_000,
+    monthlyMin: Math.round(monthly * 0.90 / 50_000) * 50_000,
+    monthlyMax: Math.round(monthly * 1.10 / 50_000) * 50_000,
+    monthlyMid: monthly,
+    porteroMonthlyCost: Math.round(porteroMonthlyCost),
+    nPorteros,
+    monthlySaving: Math.round(porteroMonthlyCost - monthly),
+    roiMonths: monthly > 0 ? Math.round(totalInstall / (porteroMonthlyCost - monthly)) : null,
   };
 }
 ```
 
-### Performance Requirements:
-- Lighthouse score: ≥90 (Performance, Accessibility, SEO)
-- First Contentful Paint: <1.5s
-- Hero video: lazy-loaded, starts only after LCP; fallback image for slow connections
-- Quote calculator: zero network requests for result display (all logic client-side)
-- Forms: submit to API within 500ms, optimistic UI (show confirmation immediately)
+---
 
-### Mobile-First Requirements:
-- All CTAs: minimum 48×48px tap target
-- Quote calculator: works fully on mobile (touch-friendly dropdowns)
-- Hero video: replace with static image on mobile (save bandwidth)
-- Phone number: `<a href="tel:+57300XXXXXXX">` always
-- WhatsApp floating button (bottom-right): always visible on mobile
+## SECTION 13 — SEO ESSENTIALS
+
+### Meta tags (homepage)
+```html
+<title>IAccess — Portería Virtual Inteligente para Edificios en Bogotá</title>
+<meta name="description" content="Reemplaza tu portero con reconocimiento facial, QR y huella dactilar. Instalación en 2–5 días. Desde $17 millones. El único sistema en Colombia con Modo Airbnb integrado.">
+<meta property="og:title" content="IAccess — Tu edificio inteligente. Sin portero.">
+<meta property="og:description" content="Portería virtual con IA para edificios residenciales en Bogotá. Hikvision + YOLO AI + Modo Airbnb. Cotización en 60 segundos.">
+<meta property="og:image" content="https://iaccess.co/og-image.jpg">
+```
+
+### Schema.org LocalBusiness
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "IAccess",
+  "description": "Portería virtual inteligente para edificios residenciales en Bogotá, Colombia",
+  "url": "https://iaccess.co",
+  "telephone": "+573XXXXXXXXX",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Bogotá",
+    "addressCountry": "CO"
+  },
+  "priceRange": "$$",
+  "areaServed": "Bogotá, Colombia",
+  "serviceType": "Access Control, Building Automation, Portería Virtual"
+}
+```
+
+### Target keywords
+```
+Primary:
+  portería virtual Bogotá
+  portería virtual Colombia
+  sistema acceso edificio residencial Colombia
+  control de acceso edificio Bogotá
+  
+Secondary:
+  reemplazar portero edificio
+  costo portero Colombia
+  reconocimiento facial edificio Colombia
+  edificio Airbnb acceso automático
+  control ascensor por piso
+  
+Long-tail:
+  cuánto cuesta portería virtual en Colombia
+  cómo automatizar el ingreso a mi edificio
+  magneto electromagnético puerta vidrio edificio
+  control de acceso sin portero Bogotá
+```
 
 ---
 
-## 11. KEY COPY — READY TO USE
+## SECTION 14 — WHAT NOT TO DO
 
-### Hero headline options (A/B test):
-1. *"Tu edificio nunca duerme. Tu portero, sí."*
-2. *"El portero más confiable del mundo no necesita salario."*
-3. *"Acceso inteligente para edificios que no se detienen."*
-4. *"Tus residentes entran. Los extraños, no. Sin portero."*
-
-### Value proposition one-liners:
-- *"Reemplaza el portero. Quédate con la seguridad."*
-- *"Cada cara que entra, registrada. Cada QR, con fecha de expiración."*
-- *"Tu edificio Airbnb-ready sin cambiar la administración."*
-- *"Hikvision + IA + tu edificio = portería que no se enferma, no llega tarde, no renuncia."*
-
-### Objection-handling phrases:
-- *"¿Qué pasa si falla? → Acceso de emergencia + UPS 4h autonomía + soporte en <4 horas en Bogotá."*
-- *"¿Y los adultos mayores? → También funciona con llavero NFC y código en panel táctil."*
-- *"¿Es legal? → Cumplimos Ley 1581. Generamos el libro de visitas digital requerido por propiedad horizontal."*
-
----
-
-## 12. LAUNCH SEQUENCE RECOMMENDATIONS
-
-### Phase 1 (MVP — launch in 2 weeks):
-- Homepage with quote calculator (static ranges are OK to start)
-- /cotizacion full form (saves to Notion database or Airtable)
-- /contacto
-- WhatsApp integration for instant response
-- Basic SEO (meta tags, sitemap, Google Business profile)
-
-### Phase 2 (1 month after):
-- Blog (5 SEO articles)
-- Service detail pages
-- Testimonials (from pilot buildings)
-- Case studies (2-3 real examples with photos)
-- Airbnb integration landing page
-
-### Phase 3 (3 months):
-- Customer portal (residents register face/QR from web)
-- Admin dashboard (building manager sees access logs, manages access)
-- API documentation (for third-party Airbnb channel managers)
-- English version of site
-
----
-
-## 13. WHAT NOT TO DO (lessons from competitive research)
-
-| Don't | Do instead |
+| ❌ Don't | ✅ Do |
 |---|---|
-| Lead with cameras in the hero | Lead with the outcome: freedom, savings, peace of mind |
-| Use "sistema de CCTV" or "video vigilancia" in headlines | Use "acceso inteligente", "identidad automática" |
-| Hide pricing ("contáctenos para precio") | Show ballpark ranges. Trust builds from transparency |
-| Use generic stock photos of security cameras | Use lifestyle imagery: happy resident, phone unlock, clean lobby |
-| Long contact forms (>5 fields) | Name + WhatsApp + "Cuéntanos tu edificio" is enough |
-| Dense technical specs on the homepage | Single "Tecnología" page for specs; hide behind tabs |
-| Ignore Airbnb angle | Dedicate a full section + landing page to it |
-| Generic "smart building" pitch | Specific: *"Tu portero cuesta $5M/mes. IAccess cuesta $1.5M/mes."* |
-| Only target building owners | Target: administradores de copropiedad + inversionistas Airbnb + constructoras |
-| English-only tech terms | Full Spanish, culturally Colombian, with propiedad horizontal jargon |
+| Show cameras in hero or above-fold | Show a person's face being scanned — the EXPERIENCE |
+| "Sistema de CCTV" or "videovigilancia" in headlines | "Reconocimiento facial" and "acceso inteligente" |
+| Generic stock photos of security guards | Lifestyle photos: modern lobby, person on phone, clean glass door |
+| Hide all pricing | Show ranges, model numbers, COP prices — build trust |
+| "Contáctenos para más información" as only CTA | Quote calculator + WhatsApp direct link on every page |
+| Ignore Airbnb | Dedicate full section + landing page — it's the biggest gap in the market |
+| Only target building owners | Target: admins, Airbnb investors, constructoras separately |
+| "Smart building" buzzwords | "Tu portero cuesta $5.6M al mes. IAccess cuesta $1.35M." |
+| English-only tech terms | Full Spanish, propiedad horizontal vocabulary |
+| Photo of surveillance camera equipment | Photo of person entering through elegant glass door |
+| Testimonials without specifics | Always include: building name, neighborhood, # units, date |
+| Contact form with 8+ fields | Name + WhatsApp + building = enough to start |
+| Justify price without comparison | Always anchor against cost of porteros — make savings tangible |
 
 ---
 
-## 14. ADDITIONAL FEATURES TO CONSIDER (post-launch)
-
-1. **ROI Calculator:** Full spreadsheet-style breakdown: current portero costs (salary, health, pension, vacation, replacements, 13th month, uniforms, food) vs. IAccess total cost of ownership over 5 years. Export as PDF.
-
-2. **Building Comparator:** "See buildings like yours" — show anonymized case studies for similar building types.
-
-3. **Live Demo Booking:** Calendar embed for in-person demo in Bogotá. Show availability in real-time.
-
-4. **WhatsApp Chatbot:** Answers the top 10 FAQ in WhatsApp, qualifies leads, books demo, sends quote PDF — all automated via WhatsApp Business API + n8n or Make.com.
-
-5. **Construcción Mode:** Landing page for construction companies (constructoras) — wire IAccess into the building plan from the start; no portero ever needed. Higher LTV customer.
-
----
-
-*Brief prepared May 2026. Version 1.0. Ready for design implementation.*
+*IAccess Website Design Brief v2.0 — May 2026*  
+*Pricing basis: Amazon/authorized distributor USD prices × 1.40 Colombia markup × 4,300 COP/USD*  
+*Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
+*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional*
