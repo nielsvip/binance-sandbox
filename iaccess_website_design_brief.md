@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v3.4
+# IAccess — Website Design Brief v3.5
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -293,7 +293,7 @@ IAccess is **the only Colombian system that replaces the portero completely** �
 | Airbnb/Booking API integration | ✅ | basic | ❌ | ❌ | ❌ |
 | Fingerprint access | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Resident app (QR, visitor invites, alerts) | ✅ | ✅ | partial | **❌ NONE** | ❌ |
-| Cloud GPU SaaS (no on-prem server) | ✅ | ❌ | ❌ | edge only | ❌ |
+| Cloud AI GPU + local access bridge | ✅ | ❌ | ❌ | edge AI only | ❌ |
 | Transparent pricing online | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Zero human operator in loop | ✅ | ❌ | ❌ | ❌ still alerts humans | ❌ |
 | Colombian-made + Colombian support | ✅ | ✅ | ❌ Argentina | ✅ | partial |
@@ -803,13 +803,17 @@ Nota debajo de la tabla (pequeña, gris):
   para no dejar a nadie encerrado. El admin recibe alerta por app.
 
 ▼ ¿Qué pasa si se cae el internet?
-  Las puertas siguen funcionando. El lector facial DS-K1T671M tiene 
-  procesador propio y almacena 50,000 rostros localmente — la apertura 
-  por reconocimiento facial no necesita internet. Los QR se cachean 
-  cada 15 minutos en los controladores. El NVR graba las cámaras 
-  sin importar la conexión. Lo que sí se pausa durante el corte: 
-  tracking entre pisos, alertas push al admin y sincronización de 
-  nuevos perfiles. Todo se reanuda automáticamente al recuperar señal.
+  Las puertas siguen funcionando completamente — incluyendo QR generados 
+  hace 30 segundos. IAccess instala en tu cuarto técnico un Local Access 
+  Bridge (Raspberry Pi 5), que mantiene una copia sincronizada en tiempo 
+  real de todas las credenciales activas: QR, huellas, horarios. Si el 
+  internet cae, el Bridge valida los accesos localmente y envía la señal 
+  de apertura directamente al controlador de puerta. El lector DS-K1T671M 
+  también almacena 50,000 rostros en su propio chip — el reconocimiento 
+  facial funciona sin nube ni Bridge. Lo que sí se pausa durante el corte: 
+  tracking entre pisos, alertas push al admin, inscripción de nuevos 
+  perfiles y detección de incendio/armas. Todo se reanuda automáticamente 
+  al recuperar la señal, sin ninguna acción por tu parte.
 
 ▼ ¿Qué pasa si mi edificio ya tiene cámaras instaladas?
   Si son cámaras Hikvision IP (modelo 2018 en adelante), muy probablemente 
@@ -1942,18 +1946,25 @@ Resultado: latencia de 230–420ms con RTX 4060 Ti o 4090,
 en lugar de los 3,000–5,000ms de un NUC sin GPU dedicada.
 
 ──────────────────────────────────────────────
-MODELO SAAS: IACCESS GESTIONA LA INFRAESTRUCTURA
+MODELO SAAS: IACCESS GESTIONA LA INFRAESTRUCTURA AI
 
-IAccess no vende ni instala un servidor en tu edificio.
-La IA corre en nuestra infraestructura GPU en la nube,
-gestionada, actualizada y monitoreada por nuestro equipo.
+La IA (YOLO, reconocimiento facial avanzado, detección de amenazas)
+corre en nuestra infraestructura GPU en la nube (Hetzner, Europa),
+gestionada, actualizada y monitoreada por nuestro equipo 24/7.
+
+En tu edificio instalamos un Local Access Bridge (Raspberry Pi 5,
+tamaño de un libro) en el cuarto técnico. Este dispositivo:
+• Sincroniza la base de credenciales (QR, huellas, horarios) en tiempo real
+• Funciona como relay de puerta cuando el internet cae
+• No tiene GPU ni corre IA — es solo un caché de credenciales
+• Sin suscripción IAccess, el Bridge no puede generar ni sincronizar nada
 
 ¿QUÉ SIGNIFICA ESTO PARA TI?
-• Sin hardware que deprecia en tu edificio
+• Puertas abren con QR/huella incluso sin internet (Bridge local)
+• Sin servidor AI que deprecia en tu edificio — la GPU es nuestra
 • Sin actualizaciones manuales — nosotros las hacemos en la noche
-• Sin riesgo de que el "servidor del edificio" falle a las 3am
-• El costo de cómputo está incluido en tu mensualidad
-• Cuando agregamos cámaras, escalamos la GPU automáticamente
+• El costo de cómputo AI está incluido en tu mensualidad
+• Cuando agregas cámaras, escalamos la GPU en la nube automáticamente
 
 ¿DÓNDE ESTÁN LOS SERVIDORES?
 Utilizamos infraestructura de cómputo en Europa 
@@ -1991,26 +2002,46 @@ independientemente de si hay internet. Tiene AI AcuSense
 para detectar personas (no identificarlas). Si el edificio
 pierde conexión, el video sigue grabando sin interrupción.
 
-CAPA 3 — CACHE QR LOCAL EN CONTROLADORES
-Los QR de residentes y guests activos se sincronizan cada
-15 minutos al controlador local. Un corte de internet de
-horas no afecta los accesos QR ya en el cache.
+CAPA 3 — LOCAL ACCESS BRIDGE (Raspberry Pi 5 — incluido en instalación)
+Un microordenador de $430,000 COP instalado en el cuarto técnico.
+Sincroniza en tiempo real con la nube IAccess toda la base de
+credenciales: rostros, huellas, QR activos, horarios, listas negras.
+Cuando el internet cae, el Bridge tiene la copia completa y puede:
+  → Validar QR (incluyendo QR generados hace 30 segundos)
+  → Confirmar huellas dactilares contra la base de datos
+  → Enviar la señal de apertura al controlador de puerta
+  → Registrar todos los eventos localmente para sincronizar después
+NO corre YOLO. NO tiene GPU. Solo es un caché de credenciales + relay.
+Cuando internet regresa, se sincroniza automáticamente sin acción.
 
-CAPA 4 — UPS (autonomía 4 horas mínimo)
-El UPS cubre un corte de luz. Puertas, cámaras, lectores
+¿Por qué no reemplaza al servidor AI?
+El Bridge no tiene capacidad de inferencia. No puede reconocer
+una cara nueva, no puede detectar incendios, no puede rastrear
+personas entre pisos. Para eso está la nube. El Bridge solo dice:
+"este QR está en mi lista — abre" o "este QR no está — no abre."
+
+CAPA 4 — CACHE QR EN CONTROLADORES (respaldo del Bridge)
+Si el Bridge también falla (probabilidad: muy baja), los QR
+activos siguen sincronizados en el controlador Hikvision.
+Cache de 15 minutos → cobertura de respaldo adicional.
+
+CAPA 5 — UPS (autonomía 4 horas mínimo)
+El UPS cubre un corte de luz. Bridge, puertas, cámaras, lectores
 y controladores siguen operando sin interrupción.
 
 ¿QUÉ SÍ REQUIERE NUBE?
-Solo las funciones avanzadas: tracking cross-floor (ReID),
-alertas push en tiempo real al admin, sincronización de
-nuevos rostros o QR, dashboard web en vivo.
-Estas se suspenden durante el corte y se reanudan solas.
+Funciones avanzadas: tracking cross-floor (YOLO ReID),
+alertas push en tiempo real al admin, nuevas inscripciones
+de rostros, generación de nuevos QR, dashboard web en vivo,
+detección de incendio/arma/caída. Se suspenden durante el
+corte y se reanudan automáticamente al recuperar conexión.
 
 RESUMEN PARA EL ADMINISTRADOR:
-• Internet caído → puertas abren con cara/QR: ✅ FUNCIONA
-• Internet caído → videos grabados: ✅ FUNCIONA
-• Internet caído → tracking en pisos: ⏸ SUSPENDIDO
-• Internet caído → alertas push: ⏸ SUSPENDIDO
+• Internet caído → cara/QR/huella conocidos: ✅ FUNCIONA (Bridge)
+• Internet caído → QR generado hace 5 min: ✅ FUNCIONA (Bridge)
+• Internet caído → videos grabados: ✅ FUNCIONA (NVR)
+• Internet caído → tracking entre pisos: ⏸ SUSPENDIDO
+• Internet caído → alertas push admin: ⏸ SUSPENDIDO
 • Luz cortada (con UPS) → todo lo anterior: ✅ 4 HORAS
 
 ──────────────────────────────────────────────
@@ -2473,8 +2504,15 @@ const PRICING = {
     ch16_4TB:     2_900_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 → $2,865k → rounded)
     ch8_2TB:      2_200_000,  // 8ch NVR + 2TB (~$400 → $2,150k → rounded)
   },
-  // Server: CLOUD ONLY — IAccess rents Hetzner GPU and bundles in monthly fee. No on-prem server sold.
-  // (If server is in the building, client can bypass IAccess — this kills the SaaS model.)
+  // AI server: CLOUD ONLY (Hetzner GPU). No YOLO/AI server sold to buildings — ever.
+  // Local Access Bridge: Raspberry Pi 5 or mini PC — credential cache ONLY (no YOLO/GPU).
+  // Bridge is worthless without cloud subscription (can't enroll new faces, can't generate QRs).
+  localBridge: {
+    raspberryPi5_8gb:  430_000,  // RPi 5 8GB (~$80 USD × 5,375 = ~$430k; rounds to 10k)
+    enclosureDinRail:  120_000,  // DIN rail enclosure for cuarto técnico
+    install:           150_000,  // 1 tech × 1.5 hrs (30 min setup + 1 hr config/testing)
+    // Total installed: ~$700,000 COP — include in base installation, not extra charge
+  },
   network: {
     ups1500va:      810_000,  // ($150 → $806k → rounded to 10k)
     switch24poe:  1_100_000,  // ($200 → $1,075k → rounded)
@@ -2574,7 +2612,12 @@ function calculatePackage(inputs) {
   // Parking gate
   if (parkingGate) hardware += 12_040_000 + 4_816_000; // FAAC + LPR
 
-  // Server: CLOUD ONLY — never a hardware line item. Monthly fee covers GPU compute.
+  // AI server: CLOUD ONLY — never a hardware line item. Monthly fee covers GPU compute.
+
+  // Local Access Bridge (always included — credential cache for offline QR/fingerprint)
+  hardware += PRICING.localBridge.raspberryPi5_8gb
+            + PRICING.localBridge.enclosureDinRail
+            + PRICING.localBridge.install;
 
   // Network + power
   hardware += PRICING.network.ups1500va * (isEnterprise ? 2 : 1);
@@ -2735,8 +2778,8 @@ GuardIA-specific long-tail (high commercial intent):
 
 ---
 
-*IAccess Website Design Brief v3.4 — May 2026*  
+*IAccess Website Design Brief v3.5 — May 2026*  
 *Pricing basis: Amazon USD retail price + 25% importation/shipping/customs × 4,300 COP/USD = × 5,375 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
 *Portero cost basis: real $4,300,000/turno-slot (10-apt Bogotá 2026 = $12,894,398/month for 3 shifts). Base formula: $2,462,050 carga laboral + 20% empresa de vigilancia = $2,954,460 base; rest = night/festivo surcharges.*  
-*Business model (v3.1 — cloud-only): IAccess owns and operates cloud GPU infrastructure (Hetzner GEX44 RTX 4000 Ada, ~$191/month IAccess cost). No server sold or installed in buildings — EVER. Monthly fee covers GPU compute + software + maintenance + support SLA. No on-premises option: if the server is in the building, the client can bypass the IAccess platform, which kills the SaaS lock-in.*
+*Business model (v3.1 — cloud-only): IAccess owns and operates cloud GPU infrastructure (Hetzner GEX44 RTX 4000 Ada, ~$191/month IAccess cost). AI GPU: cloud-only (Hetzner). Local Access Bridge (Raspberry Pi 5, ~$700k COP installed): always included — credential cache for offline QR/fingerprint/face. Bridge cannot run YOLO, cannot generate QR codes, cannot enroll faces — worthless without cloud subscription. SaaS lock-in intact.*

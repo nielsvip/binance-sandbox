@@ -105,6 +105,18 @@ class VecConfig:
     # 900s = 15 min default per CLAUDE.md AUGMENT_LOCK.
     ENTRY_COOLDOWN_SEC: int = 900
 
+    # ── ENTRY SIGNAL GATE (parity with backtest_v8_engine:1708) ──
+    # Real engine pre-computes per-symbol mask: union of wt/stoch/dc cross binary flags,
+    # dilated ±3 bars. Only checks entries on flagged bars (~10% of bars).
+    # Comment in real engine: "Skips ~90% of bars where no signal can possibly trigger".
+    ENTRY_SIGNAL_GATE_ENABLED: bool = True
+
+    # ── MIN HOLD MINUTES (parity with tradier_manage TRADIER_MIN_HOLD_MINUTES) ──
+    # Real engine: tradier 240 min (4h), crypto N/A but practical ~30 min effective.
+    # Block ALL exits (except R1 emergency) until min_hold elapsed since entry.
+    MIN_HOLD_MINUTES: float = 240.0       # tradier default
+    MIN_HOLD_MINUTES_CRYPTO: float = 30.0  # crypto looser
+
     # ── Stoch gates ──────────────────────────────────────────
     TRADIER_STOCH_ENTRY_LONG_TRADIER: float = 80.0
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: float = 20.0
@@ -604,6 +616,40 @@ class VecEngine:
         # Tracking for sizing scalars
         dd_state: Dict[str, float] = {"peak": 0.0, "dd_pct": 0.0}
 
+        # ── ENTRY SIGNAL GATE (parity with backtest_v8_engine:1708) ──
+        # Real engine ONLY checks entry candidates on bars where at least one binary
+        # cross flag fires (dilated ±3 bars). Skips ~90% of bars. CRITICAL for parity.
+        entry_gate_per_sym: Dict[str, Optional[set]] = {}
+        GATE_KEYS = [
+            "wt_cross_bull_15m", "wt_cross_bear_15m",
+            "wt_cross_bull_3m", "wt_cross_bear_3m",
+            "wt_cross_bull_1h", "wt_cross_bear_1h",
+            "stoch_crossover_3m", "stoch_crossunder_3m",
+            "stoch_crossover_15m", "stoch_crossunder_15m",
+            "dc_high_crossover_3m", "dc_low_crossunder_3m",
+        ]
+        if cfg.ENTRY_SIGNAL_GATE_ENABLED:
+            for g_sym, g_store in stores.items():
+                try:
+                    g_n = len(g_store.timestamps)
+                    g_mask = np.zeros(g_n, dtype=bool)
+                    for g_key in GATE_KEYS:
+                        arr = g_store.arrays.get(g_key)
+                        if arr is not None and arr.ndim >= 1 and arr.shape[0] == g_n:
+                            g_mask |= arr.astype(bool)
+                    if g_mask.any():
+                        g_dil = g_mask.copy()
+                        for g_d in range(1, 4):
+                            if g_d < g_n:
+                                g_dil[g_d:] |= g_mask[:-g_d]
+                                g_dil[:-g_d] |= g_mask[g_d:]
+                        g_mask = g_dil
+                    entry_gate_per_sym[g_sym] = set(int(g_store.timestamps[i]) for i in np.where(g_mask)[0])
+                except Exception:
+                    entry_gate_per_sym[g_sym] = None
+        else:
+            entry_gate_per_sym = {sym: None for sym in stores}
+
         for idx, ts in enumerate(all_ts):
             ts_i = int(ts)
 
@@ -739,6 +785,12 @@ class VecEngine:
                                   (pos.side == "SHORT" and cross == "BULL")
                     if not exit_signal:
                         continue
+                    # ── MIN_HOLD_MINUTES gate (parity with TRADIER_MIN_HOLD_MINUTES=240) ──
+                    min_hold = cfg.MIN_HOLD_MINUTES if self.mode == "tradier" else cfg.MIN_HOLD_MINUTES_CRYPTO
+                    if min_hold > 0:
+                        hold_min = (ts_i - pos.entry_ts) / 60.0
+                        if hold_min < min_hold:
+                            continue
                     # UNIVERSAL_NOLOSS_GATE: block loss exits (except R1/R2 already handled)
                     if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0:
                         continue
@@ -806,6 +858,12 @@ class VecEngine:
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i
+
+                # ── Entry signal gate (parity with backtest_v8_engine:2321) ──
+                # Real engine: skip entry check if ts not in pre-computed gate set.
+                _gate = entry_gate_per_sym.get(sym)
+                if _gate is not None and ts_i not in _gate:
+                    continue  # skip BOTH LONG and SHORT entry attempts on this bar
 
                 # ── Entry logic ─────────────────────────────────
                 for side in ("LONG", "SHORT"):
