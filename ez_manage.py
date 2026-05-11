@@ -13579,7 +13579,20 @@ class MultiAccountTradeManager:
         try:
             _stale_block_act = (action or '').upper()
             _stale_block_reason_up = (reason or '').upper()
-            _stale_block_skip = ('CLOSE' in _stale_block_act) or is_full_close or ('INTERVENTION' in _stale_block_reason_up) or ('MANUAL' in _stale_block_reason_up) or ('AGENT' in _stale_block_reason_up)
+            # 2026-05-11 BACKTEST BYPASS: V8 sweep engine creates positions without
+            # mark_price_last_updated stamping → age stays at 999999s default → every
+            # entry/augment/hedge gets REFUSED → engine spins on infinite loop producing
+            # GB of log spam → pipe blocks → rc=-9. The guard's purpose is to protect
+            # LIVE from stale Redis-fed mark prices; in backtest, mark prices come
+            # from indicator NPZ + sim_ts so freshness is structural. Skip in sweep mode.
+            _stale_block_skip = (
+                ('CLOSE' in _stale_block_act) or is_full_close
+                or ('INTERVENTION' in _stale_block_reason_up)
+                or ('MANUAL' in _stale_block_reason_up)
+                or ('AGENT' in _stale_block_reason_up)
+                or (os.environ.get('V8_SWEEP_MODE') == '1')
+                or (os.environ.get('V8_OVERRIDE_FILE', '') != '')
+            )
             if not _stale_block_skip and position_key:
                 _stale_max_age = float(getattr(config, 'EXECUTE_NOW_MAX_MARK_AGE_S', 3.0))
                 _stale_pos = None

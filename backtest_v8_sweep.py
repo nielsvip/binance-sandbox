@@ -1301,7 +1301,113 @@ def _load_configs_from_file(path: str, mode: str, max_variants: int = None):
     return out
 
 
+def grid_canonical_audit_full():
+    """2026-05-11 USER MANDATE: test EVERY canonical switch + GR knob ONE AT A TIME.
+    Identifies dead knobs (no Sharpe delta vs baseline) and ranks live knobs by impact.
+
+    Sources:
+    - 51 switches from data/sweep_alerts/canonical_switches.json
+    - 12 GR knobs (HTF/MIN_IND/EXIT/MULT/VETO/BB_15M etc.)
+    - 8 key REENTRY + PPL + WT_EXIT knobs
+
+    Each variant flips ONE override vs baseline. Compare pool_sharpe delta to identify
+    dead vs live knobs. Run on a fast 4-sym × 7d sample to keep total time < 1.5h.
+
+    Per CLAUDE.md: dead switches must be FIXED (wired), not skipped. Output flagging is
+    handled by sweep_duplicate_guard.py downstream.
+    """
+    combos = [("baseline", {})]
+    # === Canonical 51 switches — boolean flips + threshold sweeps ===
+    BOOL_OFF_FLIP = {
+        "SATOSHIT_ENABLED_TRADIER": False,
+        "DELTA_ENTRY_ENABLED": False,
+        "DELTA_ENGINE_ENABLED": False,
+        "RZ_EXIT_ENABLED": False,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": False,
+        "WT_CROSSUNDER_FINAL_ENABLED": False,
+        "TRADIER_DC_DAYTRADE_ENABLED": False,
+        "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": False,
+        "TRADIER_FH_MOMENTUM_DC_CONFIRM": False,
+        "TRADIER_FH_MOMENTUM_MFI_CONFIRM": False,
+        "TRADIER_MI_ENTRY_ENABLED_TRADIER": False,
+        "TRADIER_MI_EXIT_ENABLED_TRADIER": False,
+        "TRADIER_RSI2_ENABLED": False,
+        "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": False,
+        "HEDGE_EXIT_BYPASS_NOLOSS": False,
+        "HEDGE_CLOSE_REMOVE_FROM_TRADEABLE": False,
+        "HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE": False,
+        "REENTRY_WT15M_CROSS_ENABLED": False,
+        "REENTRY_WT15M_HTF_FAVOR_REQUIRED": False,
+        "REENTRY_K15M_PARTIAL_ENABLED": False,
+        "REENTRY_POST_CONSOL_ENABLED": False,
+        "GOLDEN_RULE_HTF_VETO_ENABLED": False,
+        "GOLDEN_RULE_BB_15M_ENABLED": False,
+        "GOLDEN_RULE_BB_1H_ENABLED": False,
+        "GOLDEN_RULE_BB_4H_ENABLED": False,
+        "GOLDEN_RULE_BB_D_ENABLED": False,
+        "GOLDEN_RULE_DC_15M_ENABLED": False,
+        "GOLDEN_RULE_DC_1H_ENABLED": False,
+        "GOLDEN_RULE_DC_4H_ENABLED": False,
+        "GOLDEN_RULE_DC_D_ENABLED": False,
+        "GOLDEN_RULE_MULT_APPLY": False,
+        "GOLDEN_RULE_GATE_MODE": False,
+        "PARTIAL_PROFIT_LOCK_ENABLED": False,
+        "CT_WT_VELOCITY_GATE_ENABLED": True,  # default False — test True
+        "ATR_TRAIL_ENABLED": True,  # tradier default False (per CLAUDE.md tradier is OFF for stock pnl)
+    }
+    for k, v in BOOL_OFF_FLIP.items():
+        combos.append((f"{k}_{'OFF' if v is False else 'ON'}", {k: v}))
+    # === Threshold knobs — test 3 values around default ===
+    NUMERIC_SWEEPS = {
+        "TRADIER_ENTRY_SCORE_THRESHOLD": [12, 18, 24, 30],
+        "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES": [30, 90, 240],
+        "TRADIER_DC_DAYTRADE_STOP_PCT": [0.3, 0.7, 1.5],
+        "TRADIER_DC_DAYTRADE_TARGET_PCT": [0.5, 1.0, 2.0],
+        "TRADIER_DC_POSITION_ENTRY_THRESHOLD": [0.3, 0.5, 0.7],
+        "TRADIER_FH_MOMENTUM_DC_MAX_LONG": [0.5, 0.7, 0.85],
+        "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT": [0.5, 1.0, 2.0],
+        "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER": [4, 8, 12],
+        "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER": [20, 30, 40],
+        "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": [60, 70, 80],
+        "TRADIER_RSI_ENTRY_LONG_TRADIER": [25, 35, 45],
+        "TRADIER_RSI_ENTRY_SHORT_TRADIER": [55, 65, 75],
+        "TRADIER_RSI2_EXIT_THRESHOLD_LONG": [60, 70, 80],
+        "TRADIER_RSI2_EXIT_THRESHOLD_SHORT": [20, 30, 40],
+        "TRADIER_STOCH_ENTRY_LONG_TRADIER": [15, 25, 35],
+        "TRADIER_STOCH_ENTRY_SHORT_TRADIER": [65, 75, 85],
+        "TRADIER_STOCH_EXTREME_LONG_TRADIER": [5, 10, 15],
+        "TRADIER_STOCH_EXTREME_SHORT_TRADIER": [85, 90, 95],
+        "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [1, 2, 3, 4],
+        "HEDGE_EXIT_WT_TF": ["3m", "15m", "1h"],
+        "HEDGE_SAME_SYMBOL_PCT": [0.5, 1.0, 1.5],
+        "REENTRY_WT15M_SIZE_MULT": [0.5, 1.0, 2.0],
+        "REENTRY_WT15M_K_MAX": [60, 80, 100],
+        "REENTRY_K15M_PARTIAL_THRESHOLD": [80, 90, 95],
+        "REENTRY_K15M_PARTIAL_MULT": [0.25, 0.5, 1.0],
+        "REENTRY_POST_CONSOL_MULT": [0.5, 1.0, 2.0],
+        "REENTRY_POST_CONSOL_ATR_THRESHOLD": [0.3, 0.5, 0.8],
+        "REENTRY_POST_CONSOL_TFS_REQUIRED": [1, 2, 3],
+        "GOLDEN_RULE_HTF_MIN_TFS": [1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [2, 3, 5, 7],
+        "GOLDEN_RULE_EXIT_MIN_TFS": [1, 2, 3],
+        "GOLDEN_RULE_EXIT_MIN_IND": [3, 5, 7],
+        "GOLDEN_RULE_MULT_BREAKOUT": [0.05, 0.2, 0.5],
+        "GOLDEN_RULE_MULT_RETEST": [2.0, 5.0, 10.0],
+        "PARTIAL_PROFIT_LOCK_GAIN_PCT": [0.3, 0.5, 1.0],
+        "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": [0.5, 0.75, 1.5],
+    }
+    for k, vals in NUMERIC_SWEEPS.items():
+        for v in vals:
+            label = f"{k}_{str(v).replace('.', 'p')}"
+            combos.append((label, {k: v}))
+    # === Categorical knobs ===
+    for tf in ("3m", "15m", "1h", "4h", "D"):
+        combos.append((f"STRUCTURAL_RANGE_SHIFT_TF_{tf}", {"STRUCTURAL_RANGE_SHIFT_TF": tf}))
+    return combos
+
+
 TIER_MAP = {
+    "canonical_audit_full": grid_canonical_audit_full,
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
