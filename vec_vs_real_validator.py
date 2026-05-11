@@ -96,6 +96,7 @@ def _run_real_engine(
     override_path = None
     env = os.environ.copy()
     env["V8_SWEEP_MODE"] = "1"
+    env["V8_RATE_GUARD_DISABLED"] = "1"  # validator must see ALL configs, not abort low-rate
 
     if overrides:
         import tempfile
