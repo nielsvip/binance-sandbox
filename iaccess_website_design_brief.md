@@ -96,7 +96,7 @@ Slate:        #6B7280   (secondary text, captions)
 
 ### NAV BAR
 ```
-[IAccess ●] | Servicios ▾  Precios  Cómo funciona  Blog  [+57 315 XXX XXXX]  [Cotizar →]
+[IAccess ●] | Servicios ▾  Precios  Cómo funciona  Blog  [+57 320 343 8733]  [Cotizar →]
 ```
 - Sticky. Dark navy background (`#0A0E1A`) on scroll.
 - `[Cotizar →]` = mint pill button, always visible
@@ -106,8 +106,29 @@ Slate:        #6B7280   (secondary text, captions)
 
 ### HERO — Full viewport
 
-**Background video** (autoplay, muted, loop, 8–12 sec):  
-Shot inside a modern Bogotá residential lobby. 5:45am light. A woman in business clothes approaches — a thin mint-green scan ring briefly overlays her face on screen — the frameless glass door opens silently. She walks in. No guard. No desk. Just clean lobby, plants, clean concrete. Cinematic grade.
+**Background video** (autoplay, muted, loop, 8–12 sec — lifestyle-first, access-second):
+Three scene cuts looped seamlessly:
+
+SCENE A (3 sec): A woman in sunglasses, mid-20s, Mediterranean / Latin look,
+approaches a modern brick-facade building (Cartagena / Málaga / San Telmo style —
+NOT recognizably Bogotá, but warm Latin architecture) in a small convertible.
+Electric gate opens as her face is recognized at 5 meters. She drives in smoothly.
+Warm golden-hour light. She's smiling at her phone.
+
+SCENE B (3 sec): A different woman, heels, blazer, just arrived home.
+The frameless glass lobby door opens silently as she approaches.
+She doesn't break stride. No fumbling for keys. No looking at camera.
+Dark lobby lit with warm interior light. The door closes behind her.
+
+SCENE C (2 sec): Drone pullback from the building facade at dusk —
+warm apartment lights, a few balconies with plants, the glass lobby
+glowing mint-green from the access panel. Urban, elegant, safe.
+
+NO guards. NO surveillance cameras in frame. NO technology close-ups.
+The technology is invisible — that's the point. Style ref: faac.biz hero + kastle.com lifestyle.
+Film on REAL Latin-neighborhood architecture: narrow colonial streets, warm brick,
+wrought-iron balconies, green bougainvillea — NOT Bogotá (avoid legal/PR risk),
+use Cartagena, Medellín Laureles, Cali El Peñón, or Buenos Aires Palermo as visual stand-ins.
 
 **Desktop layout:** Text left (60%), video right bleeds to edge. Dark gradient over video on left half.  
 **Mobile:** Video behind text, dark overlay at 70% opacity.
@@ -201,7 +222,7 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │ Puertas principales,     │  │ YOLO AI identifica cada  │  │ Visitantes y guests      │
 │ parqueaderos, zonas      │  │ persona en <400ms.       │  │ reciben QR por WhatsApp  │
 │ comunes — desde          │  │ Sin tarjetas ni claves.  │  │ con expiración exacta.   │
-│ $3,384,000 COP/punto     │  │ Desde $6,566,000 COP     │  │ Incluido en todos        │
+│ $3,400,000 COP/punto     │  │ Desde $6,500,000 COP     │  │ Incluido en todos        │
 │ Ver más →                │  │ Ver más →                │  │ los planes               │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 
@@ -211,7 +232,7 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │ Cada residente va solo   │  │ Barrera automática +     │  │ QR con fecha de          │
 │ a su piso. Guests: solo  │  │ reconocimiento de        │  │ expiración al checkout.  │
 │ al suyo. Desde           │  │ placas. Desde            │  │ Airbnb + Booking         │
-│ $6,759,000/ascensor      │  │ $27,355,000 COP          │  │ integrados. Primer en    │
+│ $6,800,000/ascensor      │  │ $27,400,000 COP          │  │ integrados. Primer en    │
 │ Ver más →                │  │ Ver más →                │  │ Colombia. Ver más →      │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 ```
@@ -297,8 +318,8 @@ FORM (inline, touch-friendly dropdowns):
 
   Comparado con portería actual:
   2 porteros (estimado):     $6,795,000 COP/mes
-  IAccess:                   $1,025,000 COP/mes
-  Ahorro mensual:            $5,770,000 COP
+  IAccess:                   $1,100,000 COP/mes
+  Ahorro mensual:            $5,700,000 COP
   Retorno de inversión:      ~3–4 meses
 
   ✅ Incluye: Hardware Hikvision · Instalación · App · Soporte 1 año
@@ -318,7 +339,7 @@ FORM (inline, touch-friendly dropdowns):
 ```
                         PORTERÍA TRADICIONAL     IACCESS
 ─────────────────────────────────────────────────────────────
-Costo mensual           $6,795,000 COP           $1,025,000 COP
+Costo mensual           $6,795,000 COP           $1,100,000 COP
 Incapacidades médicas   Tú los asumes            No aplica
 Vacaciones              Tú cubres el reemplazo   No aplica
 Renuncia/liquidación    Hasta $8M COP una vez     No aplica
@@ -395,6 +416,15 @@ en 4 días. Ahora no volveríamos."
   con magneto se abren mecánicamente ante corte de energía (fail-safe) 
   para no dejar a nadie encerrado. El admin recibe alerta por app.
 
+▼ ¿Qué pasa si se cae el internet?
+  Las puertas siguen funcionando. El lector facial DS-K1T671M tiene 
+  procesador propio y almacena 50,000 rostros localmente — la apertura 
+  por reconocimiento facial no necesita internet. Los QR se cachean 
+  cada 15 minutos en los controladores. El NVR graba las cámaras 
+  sin importar la conexión. Lo que sí se pausa durante el corte: 
+  tracking entre pisos, alertas push al admin y sincronización de 
+  nuevos perfiles. Todo se reanuda automáticamente al recuperar señal.
+
 ▼ ¿Hay que hacer obra civil en mi edificio?
   En el 85% de los casos, no se requiere obra mayor. Montamos lectores 
   sobre marcos existentes, pasamos cable por ductos ya instalados o por 
@@ -461,7 +491,7 @@ SUBHEADLINE:
 Cotización en 60 segundos. Visita técnica gratis. Sin contratos a largo plazo.
 
 [  Cotizar mi edificio →  ]    Escríbenos por [WhatsApp ↗]
-       (large mint button)      +57 315 XXX XXXX
+       (large mint button)      +57 320 343 8733
 ```
 
 ---
@@ -532,7 +562,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  (pago único o financiado a 18 meses)        ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
-║  $1,350,000 COP/mes                          ║
+║  $1,400,000 COP/mes                          ║
 ║  (incluye GPU en nube + software + soporte   ║
 ║   + actualizaciones + SLA 4h Bogotá)         ║
 ╠══════════════════════════════════════════════╣
@@ -552,7 +582,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  ✓ Soporte prioritario < 2 horas             ║
 ║                                              ║
 ║  TIEMPO DE INSTALACIÓN: 3–4 días hábiles     ║
-║  AHORRO ESTIMADO: $5,445,000 COP/mes         ║
+║  AHORRO ESTIMADO: $5,400,000 COP/mes         ║
 ╠══════════════════════════════════════════════╣
 ║  [Cotizar Plan Profesional →]                ║
 ╚══════════════════════════════════════════════╝
@@ -606,13 +636,13 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 ┌────────────────────────────────────────────────────────────┐
 │ PUNTO DE ACCESO ADICIONAL (puerta interior existente)       │
 │ Magneto 600 lb + lector facial + controlador + cableado     │
-│ Magneto 600 lb (Seco-Larm $114 + 25% imp.): $613,000       │
-│ Lector DS-K1T342 ($254 + 25%): $1,365,000                  │
-│ Controlador (~$100 + 25%): $538,000                        │
-│ Botones de salida × 2: $268,000                            │
-│ Hardware subtotal: $2,784,000 COP                          │
+│ Magneto 600 lb (Seco-Larm $114 + 25% imp.): $610,000       │
+│ Lector DS-K1T342 ($254 + 25%): $1,400,000                  │
+│ Controlador (~$100 + 25%): $540,000                        │
+│ Botones de salida × 2: $260,000                            │
+│ Hardware subtotal: $2,810,000 COP                          │
 │ Mano de obra: $600,000 COP (2 técnicos × 4 horas)          │
-│ TOTAL: $3,384,000 COP por puerta                           │
+│ TOTAL: $3,400,000 COP por puerta                           │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -620,11 +650,11 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ (puertas de vidrio batientes con marco de aluminio)         │
 │ Obra civil (ensanche de vano no estructural): $2,500,000    │
 │ Marco + hojas de vidrio temperado 10mm: $5,500,000          │
-│ 2× magnetos 1200 lb ($175 × 2 + 25% imp.): $1,882,000     │
-│ 2× lectores Pro DS-K1T671M ($450 × 2 + 25%): $4,838,000   │
-│ Controlador + salidas ($100 + 25%): $672,000               │
+│ 2× magnetos 1200 lb ($175 × 2 + 25% imp.): $1,880,000     │
+│ 2× lectores Pro DS-K1T671M ($450 × 2 + 25%): $4,800,000   │
+│ Controlador + salidas ($100 + 25%): $670,000               │
 │ Mano de obra instalación sistema: $1,200,000               │
-│ TOTAL: $16,592,000 COP                                    │
+│ TOTAL: $16,600,000 COP                                    │
 │ * Vano estructural: +$4,000,000–$8,000,000 COP extra       │
 └────────────────────────────────────────────────────────────┘
 
@@ -633,11 +663,11 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ (entrada principal nueva, con automatización)               │
 │ Obra civil (piso + umbral + rieles): $2,000,000             │
 │ Paneles de vidrio templado + marco: $5,000,000              │
-│ Operador automático ($1,200 + 25% imp.): $6,450,000        │
-│ Magneto fail-safe ($114 + 25%): $613,000                   │
-│ Lector facial DS-K1T342 + controlador: $1,903,000          │
-│ Mano de obra (2 técnicos × 2 días): $2,580,000             │
-│ TOTAL: $18,546,000 COP                                    │
+│ Operador automático ($1,200 + 25% imp.): $6,500,000        │
+│ Magneto fail-safe ($114 + 25%): $610,000                   │
+│ Lector facial DS-K1T342 + controlador: $1,900,000          │
+│ Mano de obra (2 técnicos × 2 días): $2,600,000             │
+│ TOTAL: $18,600,000 COP                                    │
 │ * Incluye garantía 2 años en operador                      │
 └────────────────────────────────────────────────────────────┘
 
@@ -646,15 +676,15 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Restricción de pisos: cada residente/guest va solo          │
 │ al piso autorizado. Huéspedes Airbnb: solo su piso.         │
 │                                                             │
-│ Controlador UHPPOTE 20ch ($330 + 25%): $1,774,000          │
-│ Lector facial cabina DS-K1T342 ($254 + 25%): $1,365,000    │
+│ Controlador UHPPOTE 20ch ($330 + 25%): $1,800,000          │
+│ Lector facial cabina DS-K1T342 ($254 + 25%): $1,400,000    │
 │ Cableado de relés a botonera (materiales): $800,000         │
 │ Mano de obra técnico señalista 1 día: $720,000             │
 │ Coordinación y apertura empresa de ascensores: $1,500,000  │
 │ Programación y pruebas: $600,000                           │
-│ TOTAL: $6,759,000 COP por ascensor                        │
+│ TOTAL: $6,800,000 COP por ascensor                        │
 │ * Hasta 20 pisos. Edificios 21–40 pisos:                   │
-│   UHPPOTE 40ch ($500 + 25%): $8,636,000 COP total         │
+│   UHPPOTE 40ch ($500 + 25%): $8,600,000 COP total         │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -662,22 +692,22 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Tracking continuo: el sistema registra trayectoria         │
 │ de cada persona desde lobby hasta su piso y de vuelta.     │
 │                                                             │
-│ Por piso: 1× cámara 4MP ColorVu ($300 + 25%): $1,613,000  │
+│ Por piso: 1× cámara 4MP ColorVu ($300 + 25%): $1,600,000  │
 │ Cableado e instalación: $600,000                           │
-│ TOTAL por piso: $2,213,000 COP                            │
-│ Ejemplo: edificio 15 pisos: $33,195,000 COP               │
+│ TOTAL por piso: $2,200,000 COP                            │
+│ Ejemplo: edificio 15 pisos: $33,000,000 COP               │
 │ * Requiere Plan Profesional o Enterprise                   │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
 │ ACCESO VEHICULAR — Barrera + Reconocimiento de Placas      │
 │                                                             │
-│ Barrera FAAC ($2,000 + 25% imp.): $10,750,000             │
+│ Barrera FAAC ($2,000 + 25% imp.): $10,800,000             │
 │ Cámara LPR Hikvision ($800 + 25%): $4,300,000             │
 │ Controlador + software licencia de placas: $1,500,000      │
 │ Obra civil (detector de piso, señalización): $5,000,000     │
-│ Mano de obra (3 técnicos × 3 días): $5,805,000             │
-│ TOTAL: $27,355,000 COP                                    │
+│ Mano de obra (3 técnicos × 3 días): $5,800,000             │
+│ TOTAL: $27,400,000 COP                                    │
 │ * Incluye 500 placas en base de datos                      │
 │   Placas adicionales: $15,000 COP/unidad                   │
 └────────────────────────────────────────────────────────────┘
@@ -686,12 +716,12 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ MAGNETO PARA PUERTA INTERIOR EXISTENTE                     │
 │ (cuarto de servicio, utilería, azotea, bicicletero, etc.)  │
 │                                                             │
-│ Magneto 600 lb ($114 + 25% imp.): $613,000                 │
-│ Botón de salida interior ($25 + 25%): $134,000             │
-│ Lector RFID sin facial ($90 + 25%): $484,000              │
-│ Mano de obra 1 técnico × 3 horas: $215,000                 │
-│ TOTAL: $1,446,000 COP por puerta                          │
-│ * Para acceso facial en interiores: +$935,000 COP          │
+│ Magneto 600 lb ($114 + 25% imp.): $610,000                 │
+│ Botón de salida interior ($25 + 25%): $130,000             │
+│ Lector RFID sin facial ($90 + 25%): $480,000              │
+│ Mano de obra 1 técnico × 3 horas: $210,000                 │
+│ TOTAL: $1,400,000 COP por puerta                          │
+│ * Para acceso facial en interiores: +$900,000 COP          │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -702,7 +732,7 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Botón de emergencia con tapa protegida: $120,000           │
 │ Mano de obra + programación: $400,000                      │
 │ Certificado de prueba y conformidad: $200,000              │
-│ TOTAL: $1,220,000 COP por salida de emergencia            │
+│ TOTAL: $1,200,000 COP por salida de emergencia            │
 │ * Cumple RETIE y normas NFPA 101 aplicables en Colombia    │
 └────────────────────────────────────────────────────────────┘
 
@@ -814,14 +844,14 @@ Puntos de acceso peatonal (puertas que se quieren controlar):
 ║  $42,000,000 – $68,000,000 COP                   ║
 ║                                                  ║
 ║  Mensualidad:                                    ║
-║  $1,350,000 COP/mes                              ║
+║  $1,400,000 COP/mes                              ║
 ║                                                  ║
 ║  ─────────────────────────────────────           ║
 ║  COMPARACIÓN CON TU PORTERÍA ACTUAL:             ║
 ║                                                  ║
 ║  Costo estimado 2 porteros:  $6,795,000/mes      ║
-║  Costo IAccess:              $1,350,000/mes      ║
-║  Ahorro mensual:             $5,445,000/mes      ║
+║  Costo IAccess:              $1,400,000/mes      ║
+║  Ahorro mensual:             $5,400,000/mes      ║
 ║                                                  ║
 ║  Retorno de inversión:       ~9 meses            ║
 ║                                                  ║
@@ -847,7 +877,7 @@ Para enviarte la cotización detallada por PDF:
 
 [Nombre completo          ]
 [Correo electrónico        ]
-[WhatsApp (+57 XXX XXX XXXX)]
+[WhatsApp (+57 320 343 8733)]
 [Nombre o dirección del edificio]
 [Opcional: cuéntanos algo más...]
 
@@ -1004,14 +1034,14 @@ Lector facial entrada — HIKVISION DS-K1T671M-E1 (Pro Series)
 • IP65 (resistente a lluvia y polvo)
 • Módulo de huella dactilar integrado
 • Lector de tarjeta NFC/Mifare incorporado
-• Amazon USA: ~$450 · Precio Colombia (importado +25%): **~$2,419,000 COP**
+• Amazon USA: ~$450 · Precio Colombia (importado +25%): **~$2,400,000 COP**
 
 Lector facial secundario — HIKVISION DS-K1T342MFWX-E1 (Value Series)
 • Para accesos secundarios (parqueadero, zonas comunes)
 • Pantalla 4.3", facial + huella + tarjeta
 • 6,000 rostros almacenados
 • IP65, PoE
-• Amazon USA: ~$254 · Precio Colombia (importado +25%): **~$1,365,000 COP**
+• Amazon USA: ~$254 · Precio Colombia (importado +25%): **~$1,400,000 COP**
 
 Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
 • Imagen en color 24/7 (sin modo IR — imagen color real de noche)
@@ -1020,7 +1050,7 @@ Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
 • Micrófono incorporado
 • IP67 resistente a intemperie
 • PoE 12W
-• Amazon USA: ~$300 · Precio Colombia (importado +25%): **~$1,613,000 COP/unidad**
+• Amazon USA: ~$300 · Precio Colombia (importado +25%): **~$1,600,000 COP/unidad**
 
 Infraestructura de IA — MODELO SAAS (IACCESS CLOUD)
 IAccess NO vende ni instala un servidor en tu edificio.
@@ -1080,8 +1110,8 @@ SEGURIDAD Y PRIVACIDAD
 PRECIOS
 
 Punto de acceso con facial (lector Pro + magneto + controlador):
-Desde $5,366,000 COP (hardware: DS-K1T671M $2,419k + magneto 1200 lb $941k + controlador $538k + salidas $268k) + $1,200,000 COP (instalación)
-Total: desde $6,566,000 COP por punto de acceso
+Desde $5,300,000 COP (hardware: DS-K1T671M $2,400k + magneto 1200 lb $940k + controlador $540k + salidas $260k) + $1,200,000 COP (instalación)
+Total: desde $6,500,000 COP por punto de acceso
 
 Incluido en: Plan Profesional y Plan Enterprise
 Opcional en: Plan Esencial (+$4,100,000 COP)
@@ -1139,13 +1169,13 @@ CONTROLADOR DE PISOS — UHPPOTE 20/40 CANALES
 • Compatible con cualquier marca de ascensor (Schindler, ThyssenKrupp,
   OTIS, MIPSA, IMSA, y locales colombianos)
 • Amazon USA: $330 (20ch) / $500 (40ch) · Precio Colombia (+25% imp.):
-  UHPPOTE 20ch **~$1,774,000 COP** · 40ch **~$2,688,000 COP**
+  UHPPOTE 20ch **~$1,800,000 COP** · 40ch **~$2,700,000 COP**
 
 LECTOR EN CABINA — HIKVISION DS-K1T342MFWX-E1
 • Panel compacto montado en la pared interior del ascensor
 • Reconocimiento facial + QR + tarjeta NFC
 • Activación: cuando el usuario sube, identifica → habilita sus pisos
-• Amazon USA: $254 · Precio Colombia (+25% imp.): **~$1,365,000 COP** por lector
+• Amazon USA: $254 · Precio Colombia (+25% imp.): **~$1,400,000 COP** por lector
 
 CÁMARA EN CABINA (opcional)
 • Cámara domo mini IP antivandálica 2MP
@@ -1171,10 +1201,10 @@ $1,500,000 COP) está incluido en nuestra cotización.
 ──────────────────────────────────────────────
 PRECIO
 
-Por ascensor, edificio hasta 20 pisos:   $6,759,000 COP (instalado)
-Por ascensor, edificio 21–40 pisos:      $8,636,000 COP (instalado)
-Lector en cabina (adicional):            +$1,903,000 COP
-Cámara en cabina (adicional):            +$1,075,000 COP
+Por ascensor, edificio hasta 20 pisos:   $6,800,000 COP (instalado)
+Por ascensor, edificio 21–40 pisos:      $8,600,000 COP (instalado)
+Lector en cabina (adicional):            +$1,900,000 COP
+Cámara en cabina (adicional):            +$1,100,000 COP
 
 Incluido en: Plan Profesional (1 ascensor), Plan Enterprise (2 ascensores)
 Disponible como add-on en: Plan Esencial
@@ -1304,9 +1334,9 @@ Incluye:
 • Pintura o estuco en el área intervenida
 
 Precio total instalado:
-  Vano existente suficiente (sin obra civil):  $16,270,000 COP
-  Requiere ensanche de vano (no estructural):  $18,770,000 – $21,270,000 COP
-  Requiere obra estructural (refuerzo, viga):  $22,770,000 – $28,770,000 COP
+  Vano existente suficiente (sin obra civil):  $16,600,000 COP
+  Requiere ensanche de vano (no estructural):  $19,100,000 – $21,600,000 COP
+  Requiere obra estructural (refuerzo, viga):  $23,100,000 – $29,100,000 COP
 
 Tiempo: 3–5 días (incluye curado de materiales)
 Nota: Se coordina con el administrador para no interrumpir el acceso.
@@ -1327,7 +1357,7 @@ Incluye:
 • Obra civil: guía de piso + riel superior + sellado perimetral
 
 Precio total instalado:
-  Vano estándar 1.8–2.4m de ancho: $18,187,000 – $22,000,000 COP
+  Vano estándar 1.8–2.4m de ancho: $18,200,000 – $22,000,000 COP
   Vano más ancho (2.4–4m):         $25,000,000 – $33,000,000 COP
 
 Tiempo: 4–6 días
@@ -1342,16 +1372,16 @@ Incluye por puerta:
 • Lector RFID (sin facial — para interiores donde no justifica el costo)
 • Botón de salida interior
 
-Precio: $1,485,000 COP por puerta (sin facial)
-Con lector facial: $2,585,000 COP por puerta
+Precio: $1,400,000 COP por puerta (sin facial)
+Con lector facial: $2,500,000 COP por puerta
 
 ──────────────────────────────────────────────
 ESPECIFICACIÓN TÉCNICA DE MAGNETOS
 
 | Magneto | Fuerza | Uso recomendado | Amazon USA | Colombia (+25% imp.) |
 |---|---|---|---|---|
-| 600 lb / 272 kg | Media | Puertas livianas, interiores | $114 | **$613,000 COP** |
-| 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $175 | **$941,000 COP** |
+| 600 lb / 272 kg | Media | Puertas livianas, interiores | $114 | **$610,000 COP** |
+| 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $175 | **$940,000 COP** |
 | 1800 lb / 816 kg | Muy alta | Portones vehiculares, acceso industrial | $310 | **$1,666,000 COP** |
 
 Todos los magnetos son fail-safe (se abren al perder energía) y 
@@ -1369,7 +1399,7 @@ Ante señal de alarma o activación del botón:
 → Las puertas abren libremente
 → Log del evento guardado con timestamp
 
-Precio integración de emergencia: $1,220,000 COP por salida de emergencia
+Precio integración de emergencia: $1,200,000 COP por salida de emergencia
 (Incluye relé de interfaz, botón protegido, programación, 
 prueba documentada, certificado de conformidad)
 ```
@@ -1509,6 +1539,46 @@ Para edificios que requieren operación 100% sin internet,
 ofrecemos instalación de NVIDIA Jetson AGX Orin 64GB en sitio.
 Precio instalado: $6,873,000 COP + $1,500,000 instalación.
 Nota: actualizaciones de software requieren visita técnica presencial.
+
+──────────────────────────────────────────────
+RESILIENCIA OFFLINE — ¿QUÉ PASA SI SE CAE INTERNET?
+
+PREGUNTA CLAVE: "¿Si se va el internet funciona la puerta?"
+Respuesta: Sí. Así funciona la redundancia:
+
+CAPA 1 — LECTORES HIKVISION CON IA LOCAL (siempre activa)
+El lector DS-K1T671M-E1 tiene un procesador facial propio.
+Almacena hasta 50,000 rostros localmente en el dispositivo.
+La apertura de puerta principal por reconocimiento facial
+NO depende del internet ni de la nube — corre en el lector.
+
+CAPA 2 — NVR HIKVISION DS-7616NXI-K2 (siempre grabando)
+El NVR graba las 16 cámaras en su disco local de 4TB
+independientemente de si hay internet. Tiene AI AcuSense
+para detectar personas (no identificarlas). Si el edificio
+pierde conexión, el video sigue grabando sin interrupción.
+
+CAPA 3 — CACHE QR LOCAL EN CONTROLADORES
+Los QR de residentes y guests activos se sincronizan cada
+15 minutos al controlador local. Un corte de internet de
+horas no afecta los accesos QR ya en el cache.
+
+CAPA 4 — UPS (autonomía 4 horas mínimo)
+El UPS cubre un corte de luz. Puertas, cámaras, lectores
+y controladores siguen operando sin interrupción.
+
+¿QUÉ SÍ REQUIERE NUBE?
+Solo las funciones avanzadas: tracking cross-floor (ReID),
+alertas push en tiempo real al admin, sincronización de
+nuevos rostros o QR, dashboard web en vivo.
+Estas se suspenden durante el corte y se reanudan solas.
+
+RESUMEN PARA EL ADMINISTRADOR:
+• Internet caído → puertas abren con cara/QR: ✅ FUNCIONA
+• Internet caído → videos grabados: ✅ FUNCIONA
+• Internet caído → tracking en pisos: ⏸ SUSPENDIDO
+• Internet caído → alertas push: ⏸ SUSPENDIDO
+• Luz cortada (con UPS) → todo lo anterior: ✅ 4 HORAS
 
 ──────────────────────────────────────────────
 PRIVACIDAD Y LEY 1581
@@ -1728,7 +1798,7 @@ Cuando nos escribes, responde una persona real en Bogotá.
 FORMAS DE CONTACTO:
 
 [WhatsApp →]                    [Email →]
-+57 315 XXX XXXX               info@iaccess.co
++57 320 343 8733               info@iaccess.co
 Respuesta < 1 hora             Respuesta < 4 horas
 Lun–Sáb 8am–8pm               Lun–Sáb 8am–8pm
 
@@ -1763,7 +1833,9 @@ Edificio:        [________________]
 UBICACIÓN
 
 IAccess — Bogotá, Colombia
-Bogotá D.C. (dirección exacta disponible a clientes)
+Carrera 7 #82-66, Bogotá 110221
+Zona Rosa · Chapinero
+[Google Maps embed]
 Operamos en toda la ciudad.
 Proyectos fuera de Bogotá: consultar.
 
@@ -1786,7 +1858,34 @@ Ventajas del programa para constructoras:
 
 ---
 
-## SECTION 12 — DEVELOPER SPEC
+## SECTION 12 — DESIGN INSPIRATION REFERENCES
+
+These were verified by visiting each site directly (May 2026). Use as design mood-board.
+
+| # | URL | What to borrow | Best for section |
+|---|-----|----------------|-----------------|
+| 1 | https://www.faac.biz | Dark nav + white space, "Unlock New Worlds" aspirational hero, real-world context product shots, industry-vertical structure | Homepage hero, technology page |
+| 2 | https://www.kastle.com | Navy/charcoal hero with embedded motion video, lifestyle imagery per property type, stat counters ("1K+ buildings") above fold | Hero video execution, social proof row |
+| 3 | https://www.supremainc.com | Deep black/white, flagship biometric hardware in controlled-light photography, certification badges, clean isolated product shots | Technology/product page, hardware specs |
+| 4 | https://www.avigilon.com/access-control | Charcoal + electric blue CTAs (mirror with mint), 4-pillar layout, FAQ accordion, "Trusted by 100,000+ orgs" headline | Technology page, feature pillars, CTA buttons |
+| 5 | https://butterflymx.com | "Property access made simple" hero, dual CTA (Get Quote / Watch How It Works), hardware + app side by side, 20k properties stat | Homepage hero, hardware+app lifestyle photography |
+| 6 | https://door.com | Deep black hero, "Your Key to Smart Buildings" with embedded video, residents using app on mobile, multi-product hardware grid | Smart building hero, resident-lifestyle photography |
+| 7 | https://www.spaceflow.io | Dark theme + bright accent typography, smartphone mockups, IoT data viz, "84% adoption rate" stat | Dark-theme hero, mobile app showcase |
+| 8 | https://proptechos.com | Dark hero + city photography, "AI for real estate. Built to act.", digital twin viz, partner logos row | Dark hero with city photography, AI storytelling |
+| 9 | https://houm.com | Full Spanish UX with COP prices, "+20,000 Propietarios" trust, neighborhood names, 1,600+ Google reviews format | Spanish-language hero copy, Colombian trust signals |
+| 10 | https://deas.com.co | Colombian security brand, Spanish CTAs, "Cotizar" button, biometric access, 370+ clients — **benchmark to beat visually** | Competitive reference / what NOT to look like |
+| 11 | https://appmosfera.com | Direct "portería virtual" competitor, WhatsApp CTA, "conjunto residencial" language — **closest local competitor** | Spanish terminology, Airbnb integration framing |
+| 12 | https://www.getkisi.com | Nearest color palette match (dark navy + white), ISO/SOC badges immediately visible, rare transparent pricing page | Transparent pricing layout, trust badge row |
+
+**Key differentiators IAccess should own that no competitor has:**
+- Before/after slider: traditional portero desk (left) → IAccess glass lobby (right)
+- Interactive ROI calculator (input: # units × portero count → output: monthly savings in COP)
+- Transparent pricing with line-item hardware breakdown (Kisi does this, no Colombian competitor does)
+- WhatsApp CTA on every page (critical for Colombian B2B)
+
+---
+
+## SECTION 14 — DEVELOPER SPEC
 
 ### Recommended Stack
 ```
@@ -1835,57 +1934,56 @@ Hero video:
 // Pricing formula: Amazon USD × 1.25 (importation+shipping+customs) × 4,300 COP/USD = × 5,375
 const PRICING = {
   // Hardware base per access point
+  // All values: Amazon USD × 1.25 import × 4,300 COP/USD, rounded to nearest 10k (<1M) or 100k (≥1M)
   accessPoint: {
-    readerPro:    2_419_000,  // DS-K1T671M  ($450 × 5,375)
-    readerValue:  1_365_000,  // DS-K1T342   ($254 × 5,375)
-    maglock1200:    941_000,  // 1200 lb     ($175 × 5,375)
-    maglock600:     613_000,  // 600 lb      ($114 × 5,375)
-    controller:     538_000,  // (~$100 × 5,375)
-    exitButton:     134_000,  // (~$25  × 5,375)
+    readerPro:    2_400_000,  // DS-K1T671M  ($450 → $2,419k → rounded)
+    readerValue:  1_400_000,  // DS-K1T342   ($254 → $1,365k → rounded)
+    maglock1200:    940_000,  // 1200 lb     ($175 → $941k  → rounded to 10k)
+    maglock600:     610_000,  // 600 lb      ($114 → $613k  → rounded to 10k)
+    controller:     540_000,  // (~$100 → $538k → rounded to 10k)
+    exitButton:     130_000,  // (~$25  → $134k → rounded to 10k)
   },
   camera: {
-    colorVu4MP:   1_613_000,  // DS-2CD2347G2-LU  ($300 × 5,375)
-    colorVu8MP:   2_043_000,  // DS-2CD2387G2-LU  ($380 × 5,375)
+    colorVu4MP:   1_600_000,  // DS-2CD2347G2-LU  ($300 → $1,613k → rounded)
+    colorVu8MP:   2_000_000,  // DS-2CD2387G2-LU  ($380 → $2,043k → rounded)
   },
   nvr: {
-    ch16_4TB:     2_865_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 × 5,375)
-    ch8_2TB:      2_150_000,  // 8ch NVR + 2TB (~$400 × 5,375)
+    ch16_4TB:     2_900_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 → $2,865k → rounded)
+    ch8_2TB:      2_200_000,  // 8ch NVR + 2TB (~$400 → $2,150k → rounded)
   },
   // Server: NOT sold to buildings — IAccess rents cloud GPU and bundles it in monthly fee.
-  // Edge option (offline buildings only): Jetson AGX Orin 64GB $999 → $5,373,000 COP + $1,500,000 install
+  // Edge option (offline buildings only): Jetson AGX Orin 64GB $999 → $5,373k → $5,400k
   edgeServer: {
-    jetsonAgxOrin64: 5_373_000,  // NVIDIA Jetson AGX Orin 64GB ($999 × 5,375) — edge/offline only
+    jetsonAgxOrin64: 5_400_000,  // NVIDIA Jetson AGX Orin 64GB — edge/offline only
   },
   network: {
-    ups1500va:      806_000,  // ($150 × 5,375)
-    switch24poe:  1_075_000,  // ($200 × 5,375)
-    switch8poe:     430_000,  // ($80  × 5,375)
+    ups1500va:      810_000,  // ($150 → $806k → rounded to 10k)
+    switch24poe:  1_100_000,  // ($200 → $1,075k → rounded)
+    switch8poe:     430_000,  // ($80  → $430k  — already clean)
   },
   elevator: {
-    uhppote20ch:  1_774_000,  // UHPPOTE 20ch ($330 × 5,375)
-    uhppote40ch:  2_688_000,  // UHPPOTE 40ch ($500 × 5,375)
+    uhppote20ch:  1_800_000,  // UHPPOTE 20ch ($330 → $1,774k → rounded)
+    uhppote40ch:  2_700_000,  // UHPPOTE 40ch ($500 → $2,688k → rounded)
   },
   vehicle: {
-    faacGate:    10_750_000,  // FAAC barrier ($2,000 × 5,375)
-    lprCamera:    4_300_000,  // Hikvision LPR ($800 × 5,375)
+    faacGate:    10_800_000,  // FAAC barrier ($2,000 → $10,750k → rounded)
+    lprCamera:    4_300_000,  // Hikvision LPR ($800 → $4,300k — clean)
   },
   install: {
-    techHr:        86_000,   // $20/hr × 4,300 COP/USD (skilled installer)
-    leadHr:       150_000,   // $35/hr × 4,300 COP/USD (lead integrator)
-    helperHr:      52_000,   // $12/hr × 4,300 COP/USD
+    techHr:        90_000,   // $20/hr × 4,300 COP/USD (rounded to 10k)
+    leadHr:       150_000,   // $35/hr × 4,300 COP/USD
+    helperHr:      50_000,   // $12/hr × 4,300 COP/USD (rounded to 10k)
   },
   monthly: {
-    // Cloud GPU compute is now ALWAYS included (IAccess rents Hetzner GEX44 at ~$191/month = ~$820,000 COP
-    // and amortizes across buildings). The monthly fee below already includes compute + software + support.
-    // Per-plan base monthly (cloud GPU + software + support + updates):
-    baseEsencial:     850_000,  // RTX 4060 Ti shared  + software + support Esencial
-    baseProfessional: 1_350_000, // RTX 4060 Ti dedicated + software + SLA 4h
-    baseEnterprise:   2_200_000, // RTX 4090 dedicated + software + SLA 99.9% + monitoring
-    // Add-ons on top of base:
-    perApartment:      12_000,  // per-apartment fee above base
+    // Cloud GPU compute is now ALWAYS included (IAccess rents Hetzner GEX44 at ~$191/month = ~$820k COP
+    // and amortizes across buildings). The monthly fee below includes compute + software + support.
+    baseEsencial:     850_000,  // RTX 4060 Ti shared  + software + support
+    baseProfessional: 1_400_000, // RTX 4060 Ti dedicated + software + SLA 4h (rounded from 1,350k)
+    baseEnterprise:   2_200_000, // RTX 4090 dedicated + software + SLA 99.9%
+    // Add-ons:
+    perApartment:      10_000,  // per-apartment fee (rounded from 12k)
     airbnb:           280_000,  // Airbnb integration (included in Pro+)
     monitoring24_7:   490_000,  // human operators 24/7 (always add-on)
-    edgeCloudSurcharge: 0,      // no surcharge — cloud compute is in base fee
   }
 };
 
@@ -2009,7 +2107,7 @@ function calculatePackage(inputs) {
 
 ---
 
-## SECTION 13 — SEO ESSENTIALS
+## SECTION 15 — SEO ESSENTIALS
 
 ### Meta tags (homepage)
 ```html
@@ -2028,10 +2126,12 @@ function calculatePackage(inputs) {
   "name": "IAccess",
   "description": "Portería virtual inteligente para edificios residenciales en Bogotá, Colombia",
   "url": "https://iaccess.co",
-  "telephone": "+573XXXXXXXXX",
+  "telephone": "+573203438733",
   "address": {
     "@type": "PostalAddress",
+    "streetAddress": "Carrera 7 #82-66",
     "addressLocality": "Bogotá",
+    "postalCode": "110221",
     "addressCountry": "CO"
   },
   "priceRange": "$$",
@@ -2064,7 +2164,7 @@ Long-tail:
 
 ---
 
-## SECTION 14 — WHAT NOT TO DO
+## SECTION 16 — WHAT NOT TO DO
 
 | ❌ Don't | ✅ Do |
 |---|---|
