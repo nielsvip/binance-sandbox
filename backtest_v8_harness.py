@@ -323,6 +323,8 @@ class IndicatorStore:
         arr = self.arrays.get(key)
         if arr is None:
             return default
+        if getattr(arr, "ndim", 1) == 0:
+            return default
         if idx < 0 or idx >= len(arr):
             return default
         val = arr[idx]

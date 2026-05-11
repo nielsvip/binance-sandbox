@@ -622,8 +622,11 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
         if start_ts:
             _idx = int(np.searchsorted(store.timestamps, start_ts))
             if _idx > 0:
+                _n_ts = len(store.timestamps)
                 for _k in list(store.arrays):
-                    store.arrays[_k] = store.arrays[_k][_idx:]
+                    _arr = store.arrays[_k]
+                    if _arr.ndim >= 1 and _arr.shape[0] == _n_ts:
+                        store.arrays[_k] = _arr[_idx:]
                 store.timestamps = store.arrays["timestamps"]
                 store.n_bars = len(store.timestamps)
                 store.ts_to_idx = {int(_t): _i for _i, _t in enumerate(store.timestamps)}
