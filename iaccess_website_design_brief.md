@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v3.2
+# IAccess — Website Design Brief v3.3
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -168,6 +168,86 @@ IACCESS — What's actually happening:
 
 ---
 
+### GuardIA (Appmosfera) — Deep Competitive Analysis (May 2026)
+
+*appmosfera.com/guardia | Threat: 🟡 3/5 — AI-native, strong SEO, good industrial pitch — but a fundamentally different product that IAccess can absorb entirely*
+
+#### What GuardIA Actually Is
+
+GuardIA is a **video surveillance intelligence overlay**, not a portería replacement system. Their architecture:
+1. Connect to existing IP cameras (no new hardware required — their primary pitch)
+2. Run AI models locally on edge equipment to detect threats
+3. Alert partner security firms (human response teams) when threat detected
+
+This means GuardIA **cannot open or close a door**. It can only watch and alert. A building using GuardIA still needs a human guard to actually control who enters. GuardIA makes the portero smarter — IAccess makes the portero irrelevant.
+
+#### What GuardIA Detects (from their product page)
+- Perimeter intrusion (virtual zones)
+- Fire and smoke
+- Weapons
+- Fall detection and drowning
+- License plate recognition (vehicle tracking only, no gate trigger)
+- PPE compliance (industrial use case)
+- Custom person/object/vehicle counting
+
+#### GuardIA's Strengths — Copy These
+| What they do well | IAccess implementation |
+|---|---|
+| "No new hardware" pitch for existing cameras | Offer IAccess Software Tier: connect to any ONVIF/HIKVISION camera already installed. Compatibility check first visit. |
+| Fire/smoke/weapon/fall detection marketed front-and-center | IAccess YOLO already runs on every camera. Market these detection capabilities explicitly as "Detección Inteligente" (already in 7th service card). |
+| PPE verification for industrial | Industrial cross-sell: parking structures, distribution centers, factories. Same GPU, same YOLO, new fine-tuned model. |
+| Clean "3-step explainer" UX on website | Adopted in IAccess "How It Works" (Section 3 of this brief). |
+| "Hecho en Colombia" trust signal | IAccess prominently Bogotá-headquartered. Use Carrera 7 address on every page footer. |
+| Blog content volume (20+ articles, good SEO) | IAccess blog section in Section 11 targets 12 articles covering the same keywords. Expand to match/exceed GuardIA's SEO footprint. |
+| Partnership with physical security response firm | Announce IAccess + allied certified security firm. "AI detects, humans respond" hybrid for buildings that want both layers. |
+
+#### GuardIA's Weaknesses — Attack These
+| GuardIA limitation | IAccess absolute advantage |
+|---|---|
+| **NO door control** — cameras alert but can't open/close entry | IAccess controls the door. The door is the entire point. |
+| **NO resident app** — buildings using GuardIA have no resident-facing product | IAccess resident app: QR generation, visitor invites, package alerts, Airbnb sync. |
+| **NO access credentials** — no QR, fingerprint, fob, NFC | IAccess multi-modal: face + QR + fingerprint + NFC. SIC-compliant by design. |
+| **NO elevator control** — cannot restrict floor access per person | IAccess elevator restriction via UHPPOTE controller. |
+| **NO gate automation** — LPR reads plates but cannot trigger barrier | IAccess FAAC gate + LPR whitelist = car approaches → plate matched → gate opens. |
+| **NO resident notifications** — alerts go to security firm, not residents | IAccess: resident gets push notification + photo within 2 seconds of any event. |
+| **Requires physical response team** — still depends on human security firm | IAccess has no humans in the decision loop. 400ms AI decision, door reacts. |
+| **No pricing transparency** — quote-based only | IAccess pricing page with full hardware + monthly cost breakdowns. |
+| **No Airbnb/Rappi/WhatsApp integration** — zero ecosystem | IAccess: Airbnb API → checkout QR, Rappi Business API → delivery PIN, WhatsApp for all notifications. |
+| **Edge-only compute** — requires local server per building | IAccess: cloud GPU (Hetzner RTX 4000 Ada) shared across buildings. Economies of scale. |
+| **SIC non-compliant risk** — AI surveillance without multi-modal consent flow | IAccess: consent module built-in. SIC ruling (Aug 2025) compliance guaranteed. |
+
+#### The Sales Comparison Pitch: "GuardIA vs IAccess"
+
+When a prospect says they're "looking at GuardIA" — or has already installed GuardIA — use this framing:
+
+> "GuardIA is an excellent surveillance tool. We use similar AI technology. Here's the difference: GuardIA tells your security team that someone suspicious is near the door. IAccess *is* the security team — the door opens or stays locked, automatically, in 400 milliseconds, without a human in the loop. GuardIA still requires you to pay someone to respond to the alert. IAccess eliminates that person."
+
+> "Buildings using GuardIA are paying for AI surveillance AND a portero or security response contract. Buildings using IAccess pay only for IAccess. The total cost is lower."
+
+For buildings that already have GuardIA installed:
+> "Good news — if you have Hikvision cameras, IAccess connects to them directly. You don't lose your GuardIA surveillance investment. You add door control, elevator restriction, resident app, and Airbnb sync on top of what you already have."
+
+#### What GuardIA Proves About the Market
+1. **Colombians will pay for AI-powered security** — GuardIA has paying residential and industrial clients. Market education is done.
+2. **"No hardware" is a strong objection handler** — offer IAccess Software Tier as response.
+3. **Industrial is a real cross-sell** — PPE detection, zone counting, perimeter alerts. Same YOLO stack, different fine-tuned models.
+4. **Blog/SEO matters** — GuardIA has invested in content. IAccess must match this from day 1.
+
+#### Companies at or near GuardIA's level (verified May 2026 — these are the only ones)
+After full research, confirmed: **no other Colombian company combines AI video analytics + access control at GuardIA's execution level.** Closest players and why they don't match:
+
+| Company | Level | Why below GuardIA |
+|---|---|---|
+| Simón Seguridad | Regional (Medellín) | Human-operator centered, minimal AI claims |
+| GUVI | Multi-city | Biometric focus only, no video AI |
+| DEAS Ltda. | Bogotá legacy | Grupo Altum partner, human-operator, no AI |
+| HSRC Guardia Virtual | Unknown | 7,000 buildings claim unverifiable, no tech spec |
+| Sevicol | Bucaramanga regional | Legacy brand, no AI |
+
+**Conclusion: IAccess competes in a tier above all of these.** The real competitive field is Portea (SaaS-only, best Colombian app UX) + GuardIA (AI-native, surveillance-focused) + HIPCAM/Alarmar (hardware/reseller). IAccess is the only player that combines all three layers: hardware + AI + resident app + access control.
+
+---
+
 ## SECTION 1 — BRAND & POSITIONING
 
 ### Company Snapshot
@@ -183,7 +263,7 @@ IAccess is **the only Colombian system that replaces the portero completely** �
 |---|---|---|---|
 | Portea | portea.com.co | 🔴 4/5 | Transparent pricing, QR, AI partnership (Arturo IA), growing fast |
 | HIPCAM (via Alarmar/GVS) | hipcam.com | 🔴 4/5 | Already in Colombia, 4.7★ app, 800+ buildings in LatAm |
-| Appmosfera GuardIA | appmosfera.com/guardia | 🟡 3/5 | AI-native, SEO moat, no-hardware pitch — but no resident app |
+| Appmosfera GuardIA | appmosfera.com/guardia | 🟡 3/5 | AI-native, SEO moat, no-hardware pitch — surveillance ONLY, no door control, no resident app, no access credentials |
 | Alarmar | alarmar.com.co | 🟡 3/5 | Multi-city, HIPCAM reseller, established |
 | HSRC Guardia Virtual | guardiaporteriavirtual.com | 🟠 2/5 | 7,000 buildings claimed, credibility unclear |
 | Simón Seguridad | simonseguridad.com | 🟠 2/5 | Medellín, solid tech, no scale |
@@ -199,32 +279,40 @@ IAccess is **the only Colombian system that replaces the portero completely** �
 | Feature | IAccess | Portea | HIPCAM | Appmosfera | Alarmar |
 |---|---|---|---|---|---|
 | YOLO AI (own, not partner) | ✅ | ❌ partner | ❌ | ✅ | ❌ |
+| **Door actually opens/closes (access control)** | ✅ | ✅ | ✅ | **❌ NEVER** | ✅ |
 | Hikvision enterprise hardware | ✅ | ❌ | ❌ doorbell | ✅ compatible | ❌ |
 | Elevator floor restriction | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Vehicle LPR → gate trigger | ✅ | ❌ | ❌ | ❌ | partial |
+| Vehicle LPR → gate trigger | ✅ | ❌ | ❌ | ❌ LPR read only | partial |
 | Airbnb/Booking API integration | ✅ | basic | ❌ | ❌ | ❌ |
 | Fingerprint access | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Resident app (QR, visitor invites, alerts) | ✅ | ✅ | partial | **❌ NONE** | ❌ |
 | Cloud GPU SaaS (no on-prem server) | ✅ | ❌ | ❌ | edge only | ❌ |
 | Transparent pricing online | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Zero human operator in loop | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Zero human operator in loop | ✅ | ❌ | ❌ | ❌ still alerts humans | ❌ |
 | Colombian-made + Colombian support | ✅ | ✅ | ❌ Argentina | ✅ | partial |
-| Fire/weapon/fall AI detection | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Fire/weapon/fall/smoke AI detection | ✅ | ❌ | ❌ | ✅ | ❌ |
 | SIC Ley 1581 consent module built-in | ✅ | unknown | ❌ | unknown | ❌ |
+| Connects to existing cameras | ✅ software tier | ❌ | ❌ | ✅ | ❌ |
+
+**Critical distinction — GuardIA is not a portería replacement:**
+GuardIA (Appmosfera) is a *surveillance intelligence overlay* — it makes cameras smarter and alerts human security teams. It cannot open or close a door. A building using GuardIA still needs and pays for a human guard or security firm to respond to alerts. IAccess eliminates that person entirely. GuardIA enhances the portero; IAccess replaces him.
 
 **What IAccess copies from Appmosfera (but does better):**
-- "Your existing cameras can connect to IAccess" — offer compatibility assessment for buildings that already have Hikvision cameras (eliminates hardware objection)
-- Perimeter framing beyond the door: fire, weapon, fall detection are part of the IAccess YOLO stack — lead with total safety, not just access
-- "Hecho en Colombia" branding — trust signal vs. HIPCAM (Argentine), Porteo Seguro (Peruvian)
+- "Your existing cameras can connect to IAccess" — offer IAccess Software Tier: ONVIF/Hikvision camera compatibility assessment at first visit (eliminates hardware objection)
+- Perimeter framing beyond the door: fire, weapon, fall, drowning, smoke detection are part of the IAccess YOLO stack — lead with total building safety, not just access control
+- "Hecho en Colombia" branding — explicit trust signal vs. HIPCAM (Argentine-made), Portero Seguro (Peruvian)
 - Content marketing SEO: own "portería virtual Bogotá precio", "reconocimiento facial edificio Colombia", "reemplazar portero edificio Bogotá", "Airbnb conjunto residencial acceso"
-- Industrial cross-sell: parking structures, gated offices, utilities — same stack applies
-- Physical response partnership: announce IAccess + allied security firm for physical response to AI alerts
+- Industrial cross-sell: parking structures, gated offices, utilities — same GPU stack applies with fine-tuned models
+- Physical response partnership: announce IAccess + allied certified security firm (empresa de vigilancia) for buildings that want both AI + physical layer
 
-**What IAccess does that Appmosfera never will:**
-- Resident app with QR, visitor invites, notifications
-- Elevator floor control
-- Vehicle gate automation (LPR whitelist)
-- Airbnb/Booking checkout-synchronized access
-- Completely eliminate the human operator — GuardIA still requires a remote monitoring center
+**What IAccess does that GuardIA structurally never will (architectural limitations):**
+- **Control physical access** — doors, gates, turnstiles open/close based on AI decision
+- Resident app with QR codes, visitor invites, package notifications, Airbnb sync
+- Elevator floor restriction per resident/guest
+- Vehicle gate automation (LPR → gate open, not just LPR → log)
+- Airbnb/Booking/VRBO checkout-synchronized access credentials
+- Rappi delivery driver PIN integration
+- Completely eliminate the human security response layer — GuardIA always needs a human at the end of the alert chain
 
 ### Critical Legal Compliance Note (SIC Ruling, August 2025)
 The Superintendencia de Industria y Comercio (SIC) ordered a Bogotá conjunto residencial (Parque de los Cipreses) to **delete all facial recognition biometric data and cease conditioning access on facial scans** after an uncontested habeas data complaint.
@@ -665,20 +753,29 @@ Header: "Comparamos honestamente." Subheader: "Hay otras opciones. Aquí está l
                            IACCESS    APPMOSFERA   PORTEA      HIPCAM
                                       GuardIA      Arturo IA   (Alarmar)
 ─────────────────────────────────────────────────────────────────────────
+⭐ LA PUERTA SE ABRE SOLA     ✅ SÍ      ❌ NUNCA     ✅ sí        ✅ sí
+  (sin humano en el loop)
+─────────────────────────────────────────────────────────────────────────
 Reconocimiento facial IA      ✅           ✅           ✅*          ✅
 Huella dactilar               ✅           ❌           ❌           ❌
 QR para visitantes y guests   ✅           ❌           ✅           ✅
 App para residentes           ✅           ❌           ✅           ✅
 Control de ascensores         ✅           ❌           ❌           ❌
-Acceso vehicular (LPR)        ✅           ❌           ❌           ❌
+Acceso vehicular (LPR+barrera)✅           ❌†          ❌           ❌
 Modo Airbnb / Booking         ✅           ❌           básico       ❌
-Operador humano requerido     ❌ nunca     ✅ sí         ✅ sí         ✅ sí
+Detección incendio/armas/caída✅           ✅           ❌           ❌
+Operador humano requerido     ❌ nunca     ✅ siempre   ✅ sí         ✅ sí
 Precios publicados en web     ✅           ❌           ✅           ❌
 Hecho en Colombia             ✅           ✅           ✅           ❌ Argentina
 Cumple fallo SIC ago 2025     ✅           ❌ solo cara  ?            ❌
 ─────────────────────────────────────────────────────────────────────────
 * Portea usa reconocimiento de un tercero (Portero Seguro / Arturo IA)
+† GuardIA lee placas pero no abre barreras — sigue alertando a un humano
 ```
+
+Nota debajo del ⭐:
+"GuardIA detecta amenazas. La empresa de vigilancia responde. Tú sigues pagando la vigilancia.
+ IAccess toma la decisión en 400ms. Sin humano. Sin costo adicional de vigilancia."
 
 Nota debajo de la tabla (pequeña, gris):
 "Esta comparación está basada en información pública de cada empresa a mayo de 2026.
@@ -710,6 +807,16 @@ Nota debajo de la tabla (pequeña, gris):
   cámaras, cableado, NVR, ductos, tableros. Si tus equipos son compatibles, 
   te presentamos una cotización reducida que reutiliza lo que ya tienes.
   Cámaras de otras marcas (Dahua, Axis, Bosch): evaluamos caso a caso.
+
+▼ Ya tenemos un sistema de vigilancia IA (como GuardIA). ¿Qué cambia con IAccess?
+  GuardIA y sistemas similares son capas de inteligencia sobre cámaras — 
+  excelentes para detectar amenazas. Pero no controlan quién entra. La puerta 
+  sigue necesitando a alguien (portero o empresa de vigilancia) que la abra.
+  IAccess cierra ese ciclo: la IA toma la decisión de acceso y la puerta 
+  reacciona en 400 milisegundos, sin humano en el loop. 
+  Si tu edificio tiene cámaras Hikvision compatibles con GuardIA, en muchos casos 
+  IAccess puede montarse sobre la misma infraestructura. Agenda la visita técnica 
+  y evaluamos si puedes conservar las cámaras y añadir solo el control de acceso.
 
 ▼ ¿Hay que hacer obra civil en mi edificio?
   En el 85% de los casos, no se requiere obra mayor. Montamos lectores 
@@ -2109,6 +2216,62 @@ CTA: Ver política de privacidad + solicitar cotización
 
 ---
 
+### Article 6: GuardIA comparison (decision-stage, high-intent)
+
+**Title:** GuardIA (Appmosfera) vs IAccess: ¿cuál reemplaza realmente al portero?  
+**Target keyword:** guardia appmosfera portería virtual / appmosfera vs portería virtual Colombia  
+**URL:** /blog/guardia-appmosfera-vs-iaccess-porteria-virtual
+
+```
+INTRO (hook):
+GuardIA detecta que alguien rompió una ventana a las 2am.
+Pero nadie abre la puerta.
+Esa diferencia cuesta $4,000,000 COP al mes.
+
+H2: ¿Qué hace GuardIA realmente?
+  Explicación neutral y honesta: GuardIA es una capa de 
+  inteligencia sobre cámaras existentes. Detecta amenazas, 
+  envía alertas a la empresa de vigilancia asociada. No controla 
+  acceso. No tiene app de residentes. No integra Airbnb.
+
+H2: Lo que GuardIA hace bien (y que IAccess también hace)
+  • Conectar cámaras existentes — IAccess tiene el mismo tier 
+    "sin hardware nuevo" para cámaras Hikvision compatibles
+  • Detección de incendio, humo, caídas — YOLOv8 de IAccess hace 
+    esto nativamente, incluido en Plan Profesional y Enterprise
+  • "Hecho en Colombia" — IAccess también, con sede en Bogotá
+
+H2: La diferencia fundamental: ¿quién abre la puerta?
+  [Diagrama / tabla comparando el flujo de decisión de cada sistema]
+  GuardIA: Cámara → AI detecta → alerta a empresa de vigilancia → 
+           humano decide → ¿llama policía? ¿va al sitio? (tarda minutos)
+  IAccess: Cámara → AI reconoce rostro → puerta se abre en 400ms → 
+           registro automático con foto (cero humanos en el loop)
+
+H2: El costo real de cada opción
+  GuardIA (surveillance) + empresa de vigilancia (física) = 
+  todavía pagando vigilancia + hardware de cámaras = coste total alto
+  
+  IAccess = elimina la empresa de vigilancia por completo. 
+  Un edificio de 50 aptos ahorra $4,000,000–$6,000,000 COP/mes.
+
+H2: Si ya tienes GuardIA instalado — ¿qué haces?
+  Opción A: Añadir IAccess sobre las cámaras existentes 
+  (IAccess Software Tier es compatible con cámaras Hikvision).
+  Ahora tienes surveillance + access control. Completo.
+  
+  Opción B: Reemplazar GuardIA completamente y 
+  ahorrar la cuota mensual de GuardIA.
+
+H2: Tabla de comparación final
+  [La misma tabla del homepage — ver sección de Comparación de Competidores]
+
+CTA: Agenda una visita técnica gratuita — en 48 horas sabemos 
+     si tus cámaras son compatibles con IAccess.
+```
+
+---
+
 ## SECTION 11 — CONTACT PAGE (/contacto)
 
 ```
@@ -2493,6 +2656,16 @@ Competitor displacement (people already searching competitors):
   HIPCAM precio Colombia
   appmosfera guardia alternativa
   portería remota DEAS precio
+  GuardIA vs IAccess
+  appmosfera guardia precio Colombia
+  guardia appmosfera reemplazar portero
+  guardia IA portería colombiana alternativa
+  
+GuardIA-specific long-tail (high commercial intent):
+  appmosfera guardia precio
+  guardia IA control acceso edificio
+  guardia appmosfera sin operador humano
+  reemplazar portero con IA Colombia sin operador
 ```
 
 ---
@@ -2517,7 +2690,7 @@ Competitor displacement (people already searching competitors):
 
 ---
 
-*IAccess Website Design Brief v3.1 — May 2026*  
+*IAccess Website Design Brief v3.3 — May 2026*  
 *Pricing basis: Amazon USD retail price + 25% importation/shipping/customs × 4,300 COP/USD = × 5,375 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
 *Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*  

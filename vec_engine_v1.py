@@ -852,9 +852,11 @@ class VecEngine:
                         wt2_D = store.f("wt2_D", bar_idx, 0.0)
                         wt1_4h = store.f("wt1_4h", bar_idx, 0.0)
                         wt2_4h = store.f("wt2_4h", bar_idx, 0.0)
+                        # NPZ wt_cross_1h is int8 {-1, 0, 1} - transient cross event flag.
+                        # Real engine's trade reasons confirm only firing on 1h cross bars.
                         wt_cross_1h_v = store.f("wt_cross_1h", bar_idx, 0)
-                        bull_1h = wt_cross_1h_v > 0 or store.f("wt_cross_bull_1h", bar_idx, 0) > 0
-                        bear_1h = wt_cross_1h_v < 0 or store.f("wt_cross_bear_1h", bar_idx, 0) > 0
+                        bull_1h = wt_cross_1h_v > 0
+                        bear_1h = wt_cross_1h_v < 0
                         dc_1h = store.f("dc_position_1h", bar_idx, 0.5)
                         k_5m_for_score = store.f("stoch_k_5m" if self.mode == "tradier" else "stoch_k_3m", bar_idx, 50.0)
                         wtdc_score = 0.0
