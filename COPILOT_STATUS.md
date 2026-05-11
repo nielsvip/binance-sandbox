@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-11 11:14:21 UTC
+# Copilot Status — 2026-05-11 11:29:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:10:29
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:11:31
-- **STALE_INDICATORS** [tradier]  — 2026-05-11T11:11:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T11:11:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T11:11:53
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:12:35
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:13:39
-- **STALE_INDICATORS** [tradier]  — 2026-05-11T11:14:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T11:14:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T11:14:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:26:19
+- **STALE_INDICATORS** [tradier]  — 2026-05-11T11:26:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T11:26:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T11:26:40
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:27:21
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:28:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-11T11:28:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T11:28:46
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T11:28:46
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T11:29:29
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 7 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-14.9%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-30.2%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-6.3%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-6.7%
-- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-15.2%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-15.1%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-34.3%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-6.6%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-6.5%
+- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-15.6%
 - HELD: **SLV** LONG (tradier) peak +3.6%, now +0.5%
 - HELD: **NVDA** LONG (tradier) peak +3.2%, now +0.9%
 
