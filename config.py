@@ -1999,7 +1999,7 @@ class Config:
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0    # 🚩 Min score to fire OPEN (n_tfs × min_ind). ROLLBACK: 1000.0
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score at which entry size doubles. ROLLBACK: 1000.0
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
-    GR_HTF_DIRECT_EXIT_SCORE: float = 18.0          # 🚩 Opposite-direction score to CLOSE. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger
@@ -2731,7 +2731,7 @@ class Config:
     # If position.mark_price_last_updated > this, REFUSE non-CLOSE orders (after
     # one Redis refresh attempt). Saved 1000LUNCUSDT-style 45% loss where every
     # gain-gated guard read an hour-stale mark and fired wrong decisions.
-    EXECUTE_NOW_MAX_MARK_AGE_S: float = 120.0  # 2026-05-12 BUMP 3→120 — killer of all webhooks post-IP-change. Live WS reconnect after Mac IP change takes >30s; 3s gate caused 48 STALE_MARK_PRICE_BLOCK in 90s, zero webhooks since May 10.
+    EXECUTE_NOW_MAX_MARK_AGE_S: float = 60.0  # 2026-05-12: was 120→60. Fallback now queries price_cache (WS-updated, no TTL) so block only fires if ALL in-mem caches are >60s old — impossible under normal WS operation.
     # User 2026-05-05 (1000LUNCUSDT screenshot): a LONG/SHORT on a symbol whose
     # OPPOSITE side is deeply losing acts as a de-facto hedge. Ban PPL,
     # WT_CROSS_EXIT, BANDAID_OFF, PEAK_GIVEBACK, and similar small-gain closes

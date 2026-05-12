@@ -292,6 +292,27 @@ def run_sweep(
             f"rate={rate:.2f}/s  eta={eta:.0f}s"
         )
 
+    # 🚩 NO-OP DETECTOR (2026-05-12 user mandate): if 2+ configs produce IDENTICAL
+    # (pool_sharpe, trades, max_dd) over the same window, ABORT — that's a silent
+    # no-op pattern that wastes compute and lies about knob effects.
+    _result_fingerprints: Dict[Tuple[float, int, float], str] = {}
+    _DUP_ABORT_THRESHOLD = 2  # abort on 2nd identical result
+
+    def _check_duplicate(label: str, result: Dict[str, Any]) -> Optional[str]:
+        """Return offending-other-label if result is a duplicate of a prior one."""
+        try:
+            ps = round(float(result.get("pool_sharpe", 0.0) or 0.0), 6)
+            tr = int(result.get("trades", 0) or 0)
+            dd = round(float(result.get("max_dd_pct", 0.0) or 0.0), 4)
+        except (TypeError, ValueError):
+            return None
+        fp = (ps, tr, dd)
+        prior = _result_fingerprints.get(fp)
+        if prior is not None and prior != label:
+            return prior
+        _result_fingerprints[fp] = label
+        return None
+
     if workers <= 1:
         # ── Single-process path ─────────────────────────────────────────
         # Avoids ProcessPoolExecutor overhead — ideal for small tiers / debugging.
@@ -301,6 +322,17 @@ def run_sweep(
                 result = _run_one_config(task)
                 _write_result_row(result, out_path, mode)
                 n_ok += 1
+                dup = _check_duplicate(task[1], result)
+                if dup is not None:
+                    log.error(
+                        f"🛑 NO-OP DETECTED — IDENTICAL OUTPUT: '{task[1]}' "
+                        f"== '{dup}' "
+                        f"(pool_sharpe={result.get('pool_sharpe')} "
+                        f"trades={result.get('trades')} "
+                        f"max_dd={result.get('max_dd_pct')}). "
+                        f"Aborting sweep per user mandate 2026-05-12."
+                    )
+                    raise SystemExit(2)
             except metrics_guard.FakeMetricRefused as exc:
                 log.error(f"METRICS_GUARD REFUSED [{task[1]}]: {exc}")
                 n_err += 1
@@ -327,6 +359,20 @@ def run_sweep(
                     result = future.result()
                     _write_result_row(result, out_path, mode)
                     n_ok += 1
+                    dup = _check_duplicate(task[1], result)
+                    if dup is not None:
+                        log.error(
+                            f"🛑 NO-OP DETECTED — IDENTICAL OUTPUT: '{task[1]}' "
+                            f"== '{dup}' "
+                            f"(pool_sharpe={result.get('pool_sharpe')} "
+                            f"trades={result.get('trades')} "
+                            f"max_dd={result.get('max_dd_pct')}). "
+                            f"Aborting sweep per user mandate 2026-05-12."
+                        )
+                        for fut2 in future_map:
+                            fut2.cancel()
+                        pool.shutdown(wait=False, cancel_futures=True)
+                        raise SystemExit(2)
                 except metrics_guard.FakeMetricRefused as exc:
                     log.error(f"METRICS_GUARD REFUSED [{task[1]}]: {exc}")
                     n_err += 1

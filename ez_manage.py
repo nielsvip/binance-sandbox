@@ -22707,28 +22707,60 @@ class MultiAccountTradeManager:
                         # Try one Redis refresh before refusing.
                         _stale_sym = getattr(_stale_pos, "symbol", None) or symbol
                         try:
-                            _ref_price, _ref_ts = (
-                                await self._get_mark_price_from_redis(_stale_sym)
-                                if _stale_sym
-                                else (None, None)
+                            _ref_price = 0.0
+                            # _get_mark_price_from_redis / _apply_mark_price live on
+                            # WebSocketManager, not MultiAccountTradeManager — calling self.*
+                            # raises AttributeError caught silently, so refresh never ran.
+                            # Fix: query in-memory price caches directly (WS-updated, no TTL).
+                            # Mark-price stream publishes USDT syms; _apply_mark_price normalises
+                            # USDT→USDC for the 10 majors before storing, so check both.
+                            _usdt_alt = (
+                                _stale_sym.replace("USDC", "USDT")
+                                if _stale_sym and _stale_sym.endswith("USDC")
+                                else None
                             )
-                            if _ref_price and _ref_price > 0:
-                                await self._apply_mark_price(
-                                    _stale_sym,
-                                    _ref_price,
-                                    _ref_ts or datetime.now(timezone.utc),
-                                )
-                                _stale_ts2 = getattr(
-                                    _stale_pos, "mark_price_last_updated", None
-                                )
-                                if isinstance(_stale_ts2, datetime):
-                                    if _stale_ts2.tzinfo is None:
-                                        _stale_ts2 = _stale_ts2.replace(
-                                            tzinfo=timezone.utc
+                            _now_ref = datetime.now(timezone.utc)
+                            for _pc in (
+                                self.price_cache,
+                                getattr(self, "price_cache_2", {}),
+                                getattr(self, "price_cache_3", {}),
+                            ):
+                                if not isinstance(_pc, dict):
+                                    continue
+                                for _lkup in filter(None, [_stale_sym, _usdt_alt]):
+                                    _ce = _pc.get(_lkup)
+                                    if not isinstance(_ce, dict):
+                                        continue
+                                    _cp = safe_fetch_float(_ce.get("price"), 0.0)
+                                    if _cp <= 0:
+                                        continue
+                                    _cts_raw = _ce.get("timestamp")
+                                    _cts = None
+                                    if isinstance(_cts_raw, str):
+                                        with suppress(Exception):
+                                            _cts = ensure_tz(isoparse(_cts_raw))
+                                    _cage = (_now_ref - _cts).total_seconds() if _cts else 999
+                                    if _cage < 60:
+                                        _ref_price = _cp
+                                        logger.debug(
+                                            f"[STALE_MARK_PRICE_REFRESH] {position_key}:"
+                                            f" cache={_lkup} price={_cp:.4f} cache_age={_cage:.1f}s"
                                         )
-                                    _stale_age_s = (
-                                        datetime.now(timezone.utc) - _stale_ts2
-                                    ).total_seconds()
+                                        break
+                                if _ref_price > 0:
+                                    break
+                            if _ref_price > 0:
+                                _now_apply = datetime.now(timezone.utc)
+                                _stale_pos.mark_price = _ref_price
+                                _stale_pos.mark_price_last_updated = _now_apply
+                                try:
+                                    self.price_cache[_stale_sym] = {
+                                        "price": _ref_price,
+                                        "timestamp": _now_apply.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                                    }
+                                except Exception:
+                                    pass
+                                _stale_age_s = 0.0
                         except Exception as _ref_e:
                             logger.debug(
                                 f"[STALE_MARK_PRICE_REFRESH_ERR] {position_key} sym={_stale_sym}: {type(_ref_e).__name__}: {_ref_e}"
