@@ -15620,33 +15620,32 @@ class MultiAccountTradeManager:
         self.price_caches_last_loaded = now_ts
 
     async def save_price_cache(self):
+        # User mandate: no price file can be >15s old — many WS sources update the
+        # in-memory price_cache continuously; flush it to ALL cache files.
+        # price_cache_3 dict is only populated at startup from a stale file so we write
+        # price_cache (the live WS dict) there instead of the stale copy.
         while True:
             try:
                 async with self.markprice_lock:
-                    price_cache_copy = self.price_cache.copy()
-                # price_svc middleman removed — self.price_cache is shared directly with service via getattr
-                filepath = self.config.PRICE_CACHE_FILE
+                    pc_copy = self.price_cache.copy()
+                # Normalise datetime timestamps to ISO strings so JSON is uniform.
+                snapshot: dict = {}
+                for k, v in pc_copy.items():
+                    if isinstance(v, dict):
+                        ts = v.get("timestamp")
+                        if isinstance(ts, datetime):
+                            v = {**v, "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
+                    snapshot[k] = v
+                fp1 = self.config.PRICE_CACHE_FILE
+                fp3 = getattr(self.config, "PRICE_CACHE_FILE_3", None)
+                await atomic_write_json(fp1, snapshot)
+                if fp3 and snapshot:
+                    await atomic_write_json(fp3, snapshot)
                 logger.debug(
-                    f"💾 Saving price cache with {len(price_cache_copy)} symbols to {filepath}"
+                    f"💾 price_cache flush: {len(snapshot)} syms → {fp1.name}"
+                    + (f" + {fp3.name}" if fp3 and snapshot else "")
                 )
-                await atomic_write_json(filepath, price_cache_copy)
-                logger.debug(
-                    f" Successfully saved price cache ({len(price_cache_copy)} symbols)"
-                )
-                backup_folder = os.path.join(
-                    os.path.dirname(filepath), "backup_price_caches"
-                )
-                os.makedirs(backup_folder, exist_ok=True)
-                now_str = (
-                    datetime.now(timezone.utc)
-                    .strftime("%Y-%m-%dT%H:%M:%S")
-                    .replace(":", "-")
-                )
-                backup_filename = f"price_cache_{now_str}.json"
-                backup_path = os.path.join(backup_folder, backup_filename)
-                await atomic_write_json(backup_path, price_cache_copy)
-                logger.debug(f"💾 Created backup: {backup_filename}")
-                await asyncio.sleep(21)
+                await asyncio.sleep(12)
             except Exception as e:
                 logger.error(f"Error writing price cache: {e}")
                 await asyncio.sleep(10)
@@ -47406,6 +47405,9 @@ async def main():
             background_tasks.append(asyncio.create_task(order_queue.process_orders()))
             background_tasks.append(
                 asyncio.create_task(periodic_tasks(order_queue, trade_manager))
+            )
+            background_tasks.append(
+                asyncio.create_task(trade_manager.save_price_cache())
             )
             if bool(getattr(config, "EZ_REENTRY_INLINE_ENABLED", True)) and bool(
                 getattr(config, "EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED", True)

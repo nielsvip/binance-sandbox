@@ -1337,6 +1337,17 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
             return True
         ez_positions_quick.verify_trade_via_websocket = _instant_ws_verify
 
+    # --- 2026-05-12 USER FIX: short-circuit execute_dual_hedge when HEDGE_DUAL_IF_HEDGE_MODE=False ---
+    # Without this, the engine hits a HEDGE_ELECTED_DISABLED log spam every bar for every losing
+    # position with an opposite-side counterpart. Engine "stuck" at 0% CPU due to log I/O.
+    # In sweep/decision-only mode we just no-op the call entirely (no log, no work).
+    if hasattr(ez_positions_quick, 'LossManager') and getattr(config, 'HEDGE_DUAL_IF_HEDGE_MODE', False) is False:
+        _orig_execute_dual = getattr(ez_positions_quick.LossManager, 'execute_dual_hedge', None)
+        if _orig_execute_dual is not None:
+            async def _noop_execute_dual_hedge(self, *args, **kwargs):
+                return {'status': 'skipped', 'reason': 'HEDGE_DUAL_IF_HEDGE_MODE=False (backtest-engine short-circuit)'}
+            ez_positions_quick.LossManager.execute_dual_hedge = _noop_execute_dual_hedge
+
     # --- Patch get_simple_redis_manager to return in-memory Redis ---
     _mem_redis = InMemoryRedis()
     import utils
