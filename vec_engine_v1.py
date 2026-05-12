@@ -117,6 +117,13 @@ class VecConfig:
     MIN_HOLD_MINUTES: float = 240.0       # tradier default
     MIN_HOLD_MINUTES_CRYPTO: float = 30.0  # crypto looser
 
+    # ── Tradeability whitelist (parity with TradeManager.is_symbol_tradeable) ──
+    # Real engine LIVE reads symbols_trb_long.json / symbols_trb_short.json — per-side whitelist.
+    # Real engine BACKTEST OVERRIDES this to always-True (backtest_v8_engine.py:3537).
+    # Default OFF for backtest parity. Set True to gate by live whitelist in dev/live sims.
+    TRADEABILITY_GATE_ENABLED: bool = False
+    TRADEABILITY_ACCOUNT: str = "trb"
+
     # ── Stoch gates ──────────────────────────────────────────
     TRADIER_STOCH_ENTRY_LONG_TRADIER: float = 80.0
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: float = 20.0
@@ -616,6 +623,22 @@ class VecEngine:
         # Tracking for sizing scalars
         dd_state: Dict[str, float] = {"peak": 0.0, "dd_pct": 0.0}
 
+        # ── TRADEABILITY whitelist load (parity with TradeManager.is_symbol_tradeable) ──
+        tradeable_long: set = set()
+        tradeable_short: set = set()
+        if cfg.TRADEABILITY_GATE_ENABLED and self.mode == "tradier":
+            try:
+                _acct = cfg.TRADEABILITY_ACCOUNT
+                _base = BASE_PATH
+                _long_fp = _base / f"symbols_{_acct}_long.json"
+                _short_fp = _base / f"symbols_{_acct}_short.json"
+                if _long_fp.exists():
+                    tradeable_long = set(s.upper() for s in json.load(open(_long_fp)))
+                if _short_fp.exists():
+                    tradeable_short = set(s.upper() for s in json.load(open(_short_fp)))
+            except Exception:
+                pass
+
         # ── ENTRY SIGNAL GATE (parity with backtest_v8_engine:1708) ──
         # Real engine ONLY checks entry candidates on bars where at least one binary
         # cross flag fires (dilated ±3 bars). Skips ~90% of bars. CRITICAL for parity.
@@ -870,6 +893,14 @@ class VecEngine:
                     pos = pos_states[sym][side]
                     if pos.open:
                         continue
+
+                    # ── Tradeability gate (parity with is_symbol_tradeable) ──
+                    if cfg.TRADEABILITY_GATE_ENABLED and self.mode == "tradier":
+                        _sym_u = sym.upper()
+                        if side == "LONG" and _sym_u not in tradeable_long:
+                            continue
+                        if side == "SHORT" and _sym_u not in tradeable_short:
+                            continue
 
                     # ── Per-sym entry cooldown (parity with AUGMENT_LOCK / DUP_GUARD) ──
                     # Real engine blocks new entries for N seconds after last close on this pk.

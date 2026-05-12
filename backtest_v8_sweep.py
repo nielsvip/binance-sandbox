@@ -916,6 +916,25 @@ def grid_gr_entry_exit_grid_crypto():
     return combos
 
 
+def grid_gr_consensus_targeted_crypto():
+    """USER 2026-05-12: targeted GOLDEN_RULE consensus grid — 8 cells the user asked
+    about: TFS in {3,4} x IND in {2,3,4,5}. Plus baseline (TFS=0, gate off) for
+    delta-vs-no-gate reference. 9 variants total.
+    NOTE: with the current additive-engine path, GR is one of several entry sources
+    (alongside check_entry_candidates, satoshit, reentry). Tightening MIN_TFS only
+    filters GR's own candidates; non-GR trade rate is the dominator. Expect modest
+    deltas. Sample size: pick a wider universe + >=1yr to escape sub-floor noise."""
+    combos = [("baseline_gr_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0})]
+    for entry_tfs in [3, 4]:
+        for entry_ind in [2, 3, 4, 5]:
+            name = f"GR_e{entry_tfs}i{entry_ind}"
+            combos.append((name, {
+                "GOLDEN_RULE_HTF_MIN_TFS": entry_tfs,
+                "GOLDEN_RULE_MIN_IND": entry_ind,
+            }))
+    return combos
+
+
 def grid_indicator_audit_v3_full():
     """2026-04-19 FULL indicator-audit matrix — every new switch gets systematic coverage.
     Four sections: (A) single-switch ablations, (B) value sweeps for numeric params,
@@ -1426,6 +1445,7 @@ TIER_MAP = {
     "gr_entry_exit_grid_crypto": grid_gr_entry_exit_grid_crypto,
     "gr_micro_ablation_tradier": grid_gr_micro_ablation_tradier,
     "gr_micro_ablation_crypto": grid_gr_micro_ablation_crypto,
+    "gr_consensus_targeted_crypto": grid_gr_consensus_targeted_crypto,
     "gr_phase2_bb_tradier": grid_gr_phase2_bb_tradier,
     "gr_phase2_bb_crypto": grid_gr_phase2_bb_crypto,
     "vec_validate_5cfg": grid_vec_validate_5cfg,
