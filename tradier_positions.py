@@ -1460,24 +1460,16 @@ class TradierPositionManager:
 
                 existing_position = account_positions.get(position_key)
                 if not existing_position:
-                    # Every symbol always has a permanent position object. If it's missing here,
-                    # ensure_permanent_positions hasn't run yet or was called before this symbol was
-                    # added to the tradeable list. Create a flat stub now (positionAmt=0) so the
-                    # normal diff routing below sets positionAmt correctly via handle_augmentation.
-                    logger.warning(f"[{self.account_key}] {position_key}: permanent object missing — creating flat stub now.")
-                    existing_position = TradierPosition(
-                        symbol=symbol,
-                        position_side=position_side,
-                        positionAmt=0.0,
-                        entry_price=entry_price,
-                        mark_price=current_market_price or entry_price,
-                        opened_at=now,
-                        last_updated=now,
-                        last_update=now.isoformat(),
-                        entry_time=now.isoformat(),
-                    )
-                    account_positions[position_key] = existing_position
-                    self._mark_positions_dirty()
+                    # SHOULD NEVER HAPPEN. Every tradeable symbol has a permanent position object
+                    # created at startup by ensure_permanent_positions. If we get here it means
+                    # ensure_permanent_positions is broken or was never called — a critical system
+                    # failure. Kill trading immediately; do NOT fabricate or skip.
+                    logger.critical(f"💀 [MISSING_POSITION_KILL] {position_key}: permanent position object missing — ensure_permanent_positions failed. HALTING all trading for {self.account_key}.")
+                    try:
+                        self._trading_halted = True
+                    except Exception:
+                        pass
+                    return set()
                 # UPDATE THE MARK PRICE BEFORE HANDLING LOGIC
                 if current_market_price:
                     existing_position.mark_price = current_market_price
