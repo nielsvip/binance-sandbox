@@ -208,7 +208,29 @@ TIER_REGISTRY: Dict[str, Any] = {
     "entry_path_ablation": entry_path_ablation,
     "exit_path_ablation": exit_path_ablation,
     "mega_combo_v1": mega_combo_v1,
+    "grtf7_full": lambda: grtf7_full(),
 }
+
+
+# ───────────────────────────────────────────────────────────────────────
+# TIER: grtf7_full
+# Full 5 × 7 = 35-config GR_HTF entry grid: GOLDEN_RULE_HTF_MIN_TFS × MIN_IND.
+# Mirrors backtest_v8_sweep.grid_tradier_grtf7_hunt but runs on vec_sweep
+# (550× faster, no OOM). Plus baseline + GR7_off = 37 total.
+# Per user 2026-05-12: this is the GR_HTF DIRECT signal threshold sweep.
+# ───────────────────────────────────────────────────────────────────────
+def grtf7_full() -> Tier:
+    combos: Tier = [
+        ("baseline", {}),
+        ("GR7_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0, "GOLDEN_RULE_MIN_IND": 2}),
+    ]
+    for tfs in [1, 2, 3, 4, 5]:
+        for ind in [1, 2, 3, 4, 5, 6, 7]:
+            combos.append((f"GR7_tfs{tfs}_ind{ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": tfs,
+                "GOLDEN_RULE_MIN_IND": ind,
+            }))
+    return combos
 
 
 def get_tier(name: str) -> Tier:

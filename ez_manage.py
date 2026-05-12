@@ -20314,7 +20314,7 @@ class MultiAccountTradeManager:
         )
         if result and "SUCCESS" not in result:
             logger.warning(
-                f"🔍 [WH_TRACE_3_done] NO RESULT after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
+                f"🔍 [WH_TRACE_3_done] NO SUCCESSFUL RESULT after_execute_now pk={position_key} result={result[:60] if result else 'None'}"
             )
             if self.order_execution_monitor:
                 self.order_execution_monitor.pending_orders.pop(position_key, None)
@@ -37509,13 +37509,13 @@ async def process_position(
     # ═══════════════════════════════════════════════════════════════════════════
     if (
         position
-        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0 and position.gain > 0
         and bool(getattr(config, "R3_HEDGE_INVARIANT_DUMP_ENABLED", True))
     ):
         try:
             _r3_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
             _r3_gain_max = float(getattr(config, "R3_GAIN_MAX_PCT", 0.0))
-            if _r3_gain < _r3_gain_max:
+            if _r3_gain < _r3_gain_max and _r3_gain > 0:
                 _r3_ind = await ii(trade_manager, symbol)
                 if _r3_ind:
                     _r3_w1_3m = safe_fetch_float(_r3_ind.get("wt1_3m"), 0)
@@ -37708,7 +37708,6 @@ async def process_position(
                             # BOTH hedge AND close failed. Alert ONLY if neither failure has a valid reason.
                             try:
                                 import ez_alert
-
                                 _r3_alert_hedge = ez_alert.should_alert_for_failure(
                                     _r3_hedge_err
                                 )

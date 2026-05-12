@@ -1734,6 +1734,7 @@ def _inject_market_sentiment(out_dir, symbols):
 def main():
     parser = argparse.ArgumentParser(description="V7 Precompute")
     parser.add_argument("--symbol", type=str, default="")
+    parser.add_argument("--symbols", type=str, default="", help="Comma-separated symbols (overrides --all)")
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--mode", choices=["tradier", "crypto"], required=True)
     parser.add_argument("--workers", type=int, default=1)
@@ -1743,7 +1744,9 @@ def main():
     global MODE
     MODE = args.mode
     klines_dir = TRADIER_KLINES if args.mode == "tradier" else CRYPTO_KLINES
-    if args.symbol:
+    if args.symbols:
+        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    elif args.symbol:
         symbols = [args.symbol.upper()]
     else:
         # ONLY the 48 crypto / 121 tradier symbols — not the entire klines_cache
@@ -1766,7 +1769,7 @@ def main():
             if compute_symbol(sym, args.mode):
                 done += 1
     logger.info(f"DONE: {done}/{len(symbols)}")
-    if done > 1 and not args.symbol:
+    if done > 1 and not args.symbol and not args.symbols:
         _inject_market_sentiment(OUT_DIR, symbols)
 
 

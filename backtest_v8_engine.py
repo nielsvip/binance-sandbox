@@ -663,6 +663,81 @@ def _v8_vec_short_circuit(
 
     return False, ""
 
+def _v8_reentry_cooldown_check(
+    *, pk, position_side, mark_price, last_reduce_ts, now_ts,
+    indicators, cfg, state_dict,
+):
+    """2026-05-12 FIX 3 — sim-time price-cross gate for REENTRY actions.
+
+    Mirrors ez_reentry_daemon.py + ez_reentry.evaluate_obligatory_reentry: a
+    REENTRY is only allowed once price has crossed one of the configured
+    reentry-trigger conditions OR the configured min-gap (default 60s) has
+    elapsed since the close. Live runs this as a separate process; backtest
+    inlines the check.
+
+    Conditions (any-of, mirrors the daemon's tier logic):
+      1) Min-gap elapsed since close (EZ_REENTRY_PRICE_CROSS_MIN_GAP_S, 60s).
+         AND price has actually crossed one of:
+           - SMA_200_15m (long: above, short: below)
+           - dc_high4_3m / dc_low4_3m breakout
+           - K_15m extreme reversal (long: k_15m<5 → bounce; short: k_15m>95)
+      2) Once a position has satisfied #1, it stays unlocked until next CLOSE.
+
+    Returns (blocked: bool, reason: str). Fail-open on missing data.
+    """
+    try:
+        # If we already unlocked this pk in a previous bar, stay unlocked.
+        unblocked = state_dict.setdefault('_bt_reentry_unblock', {}).get(pk, False)
+        if unblocked:
+            return (False, "")
+        # Minimum gap-since-close (mirrors EZ_REENTRY_PRICE_CROSS_MIN_GAP_S).
+        min_gap = float(getattr(cfg, 'EZ_REENTRY_PRICE_CROSS_MIN_GAP_S', 60.0) or 60.0)
+        gap = (now_ts or 0.0) - (last_reduce_ts or 0.0)
+        if last_reduce_ts and gap < min_gap:
+            return (True, f"BLOCKED_V8_REENTRY_GAP_{gap:.0f}s_lt_{min_gap:.0f}s")
+        is_long = (str(position_side or "").upper() == "LONG") or (pk or "").endswith("_LONG")
+        ind = indicators or {}
+
+        def _f(k, d=0.0):
+            try:
+                v = ind.get(k)
+                return float(v) if v is not None else d
+            except (TypeError, ValueError):
+                return d
+
+        # Tier 1: SMA_200_15m (or ema_50_15m fallback)
+        sma_now = _f('sma_200_15m') or _f('ema_50_15m')
+        # Tier 2: DC break
+        dc_lvl = _f('dc_high4_3m') if is_long else _f('dc_low4_3m')
+        if dc_lvl == 0.0:
+            dc_lvl = _f('dc_high_3m') if is_long else _f('dc_low_3m')
+        # Tier 3: K_15m extreme
+        k_15m = _f('stoch_k_15m', 50.0)
+        # Cross conditions
+        cond_sma = False
+        cond_dc = False
+        cond_k = False
+        if mark_price > 0:
+            if sma_now > 0:
+                cond_sma = (mark_price > sma_now) if is_long else (mark_price < sma_now)
+            if dc_lvl > 0:
+                cond_dc = (mark_price >= dc_lvl) if is_long else (mark_price <= dc_lvl)
+        cond_k = (k_15m < 5.0) if is_long else (k_15m > 95.0)
+
+        # No data at all → fail-open (don't fabricate a block from zeros).
+        if sma_now == 0.0 and dc_lvl == 0.0 and k_15m == 50.0:
+            return (False, "")
+
+        crossed = cond_sma or cond_dc or cond_k
+        if not crossed:
+            return (True, f"BLOCKED_V8_REENTRY_NO_PRICE_CROSS_sma={int(cond_sma)}_dc={int(cond_dc)}_k={int(cond_k)}")
+        # Mark unblocked — stays unlocked until next CLOSE clears it.
+        state_dict.setdefault('_bt_reentry_unblock', {})[pk] = True
+        return (False, "")
+    except Exception:
+        return (False, "")
+
+
 def _v8_vec_hedge_scan_check(
     *, position_key, account_key, pos_obj, indicators, tracker_state,
     cfg, sim_ts, mode="crypto",
@@ -2111,6 +2186,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
                                     "side": side, "quantity": qty, "price": px, "action": act,
                                     "reason": str(reason)[:200], "decision_only": True})
+            # 2026-05-12 FIX 2 — sim-time state hooks (DECISION_ONLY crypto path).
+            try:
+                _bt_now_do = float(_sim_ts[0]) if _sim_ts else 0.0
+                _bt_act_do = (act or "").upper()
+                if _bt_act_do in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN'):
+                    trade_manager.__dict__.setdefault('_bt_augment_lock', {})[pk] = _bt_now_do
+                    trade_manager.__dict__.setdefault('_bt_open_attempt', {})[pk] = _bt_now_do
+                    if is_hedge or 'HEDGE' in (reason or '').upper():
+                        trade_manager.__dict__.setdefault('_bt_hedge_completed', {})[pk] = _bt_now_do
+                elif _bt_act_do in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'HEDGE_CLOSE'):
+                    trade_manager.__dict__.setdefault('_bt_reduce_lock', {})[pk] = _bt_now_do
+                    trade_manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(pk, None)
+            except Exception:
+                pass
             if is_red and _do_pos:
                 _old_amt = _do_pos_amt
                 _new_amt = max(0.0, _old_amt - abs(qty))
@@ -2192,6 +2281,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         ):
             _vec_pos_c = trade_manager.positions.get(pk)
             _vec_aug_lock_c = (trade_manager.__dict__.get('_bt_augment_lock') or {}).get(pk, 0.0)
+            # 2026-05-12 FIX 2 — read sim-time state maps populated post-fill.
+            _vec_reduce_lock_c = (trade_manager.__dict__.get('_bt_reduce_lock') or {}).get(pk, 0.0)
+            _vec_open_attempt_c = (trade_manager.__dict__.get('_bt_open_attempt') or {}).get(pk, 0.0)
             _vec_tk_c = set()
             try:
                 _ac = trade_manager.accounts.get(acct)
@@ -2208,10 +2300,26 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 positions_dict=trade_manager.positions,
                 indicators=_vec_ind_c, sim_ts=_sim_ts[0] if _sim_ts else 0,
                 cfg=config, last_augment_ts=_vec_aug_lock_c,
-                last_reduce_ts=0.0, last_open_ts=_vec_aug_lock_c,
+                last_reduce_ts=_vec_reduce_lock_c, last_open_ts=_vec_open_attempt_c,
             )
             if _vec_blk_c:
                 return _vec_reason_c
+            # 2026-05-12 FIX 3 — reentry price-cross cooldown (mirrors ez_reentry_daemon).
+            # Only applies to REENTRY action — blocks until price crosses one of the
+            # configured cross conditions OR the lock is older than the daemon's min-gap.
+            if (act or '').upper() == 'REENTRY':
+                try:
+                    _rx_blk, _rx_reason = _v8_reentry_cooldown_check(
+                        pk=pk, position_side=ps, mark_price=px,
+                        last_reduce_ts=_vec_reduce_lock_c,
+                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                        indicators=_vec_ind_c, cfg=config,
+                        state_dict=trade_manager.__dict__,
+                    )
+                    if _rx_blk:
+                        return _rx_reason
+                except Exception:
+                    pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — DUP_GUARD_GAIN — mirror ez_manage.py:10970-10988
         # Live blocks AUGMENT below 0.5*MIN_GAIN (=1.5%). v8 was emitting 870 AUGMENT
@@ -2371,6 +2479,23 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             elif _v8ns_sf_fired:
                 reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus:.0f}"
         executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk, "side": side, "quantity": qty, "price": px, "action": act, "reason": str(reason)[:200]})
+        # 2026-05-12 FIX 2 — sim-time state hooks for the vec cooldown gates.
+        # Every accepted fill updates the corresponding sim_ts map. Read by
+        # _v8_vec_short_circuit (last_augment_ts / last_reduce_ts / last_open_ts).
+        try:
+            _bt_now_ts_c = float(_sim_ts[0]) if _sim_ts else 0.0
+            _bt_act_up_c = (act or "").upper()
+            if _bt_act_up_c in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN'):
+                trade_manager.__dict__.setdefault('_bt_augment_lock', {})[pk] = _bt_now_ts_c
+                trade_manager.__dict__.setdefault('_bt_open_attempt', {})[pk] = _bt_now_ts_c
+                if is_hedge or 'HEDGE' in (reason or '').upper():
+                    trade_manager.__dict__.setdefault('_bt_hedge_completed', {})[pk] = _bt_now_ts_c
+            elif _bt_act_up_c in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'HEDGE_CLOSE'):
+                trade_manager.__dict__.setdefault('_bt_reduce_lock', {})[pk] = _bt_now_ts_c
+                # Reset reentry unblock: closing means price-cross check resets
+                trade_manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(pk, None)
+        except Exception:
+            pass
         # ═══ LIVE PnL TRACKING — instrument every open/close to find problem paths ═══
         _is_open_action = act.upper() in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN')
         _entry_reason_short = reason.split('_')[0] if reason else 'UNK'
@@ -4432,6 +4557,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if qty > 0 and px > 0:
             executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "symbol": sym, "side": side, "quantity": qty, "price": px, "action": act, "reason": reason, "position_key": pk, "position_side": ps, "is_full_close": kw.get("is_full_close", False)})
             v8_logger.warning(f"[TRADE] {side} {qty:.0f} {sym} @{px:.2f} {act} {reason[:50]}")
+            # 2026-05-12 FIX 2 — sim-time state hooks (tradier _place path).
+            try:
+                _bt_now_pl = float(_sim_ts[0]) if _sim_ts else 0.0
+                _bt_act_pl = (act or "").upper()
+                _bt_is_hedge_pl = bool(kw.get("is_hedge", False)) or 'HEDGE' in reason.upper()
+                if _bt_act_pl in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN'):
+                    manager.__dict__.setdefault('_bt_augment_lock', {})[pk] = _bt_now_pl
+                    manager.__dict__.setdefault('_bt_open_attempt', {})[pk] = _bt_now_pl
+                    if _bt_is_hedge_pl:
+                        manager.__dict__.setdefault('_bt_hedge_completed', {})[pk] = _bt_now_pl
+                elif _bt_act_pl in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'HEDGE_CLOSE'):
+                    manager.__dict__.setdefault('_bt_reduce_lock', {})[pk] = _bt_now_pl
+                    manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(pk, None)
+            except Exception:
+                pass
         return {"id": len(executed_trades), "status": "filled", "order": {"id": len(executed_trades), "status": "ok"}}
     manager.place_order = _place
     # Patch execute_trade_action to route through our _v8_execute_now (captures ALL trade paths)
@@ -4474,6 +4614,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception:
                 pass
             _vec_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            # 2026-05-12 FIX 2 — read sim-time state maps populated post-fill.
+            _vec_aug_lock_t = (manager.__dict__.get('_bt_augment_lock') or {}).get(position_key, 0.0)
+            _vec_reduce_lock_t = (manager.__dict__.get('_bt_reduce_lock') or {}).get(position_key, 0.0)
+            _vec_open_attempt_t = (manager.__dict__.get('_bt_open_attempt') or {}).get(position_key, 0.0)
             _vec_blk_t, _vec_reason_t = _v8_vec_short_circuit(
                 action=act, position_key=position_key, symbol=symbol, account_key=account_key,
                 qty=qty, px=px, side=side, position_side=position_side, reason=reason or "",
@@ -4481,10 +4625,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pos_obj=_vec_pos_t, tradeable_keys=_vec_tk_t,
                 positions_dict=(manager.position_manager.positions if manager.position_manager else {}),
                 indicators=_vec_ind_t, sim_ts=_sim_ts[0] if _sim_ts else 0,
-                cfg=_vec_cfg_t, last_augment_ts=0.0, last_reduce_ts=0.0, last_open_ts=0.0,
+                cfg=_vec_cfg_t, last_augment_ts=_vec_aug_lock_t,
+                last_reduce_ts=_vec_reduce_lock_t, last_open_ts=_vec_open_attempt_t,
             )
             if _vec_blk_t:
                 return _vec_reason_t
+            # 2026-05-12 FIX 3 — reentry price-cross cooldown (tradier eta).
+            if (act or '').upper() == 'REENTRY':
+                try:
+                    _rx_blk_t, _rx_reason_t = _v8_reentry_cooldown_check(
+                        pk=position_key, position_side=position_side, mark_price=px,
+                        last_reduce_ts=_vec_reduce_lock_t,
+                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                        indicators=_vec_ind_t, cfg=_vec_cfg_t,
+                        state_dict=manager.__dict__,
+                    )
+                    if _rx_blk_t:
+                        return _rx_reason_t
+                except Exception:
+                    pass
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
         if (not is_reduce) and (not is_hedge):
             _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
@@ -4765,6 +4924,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                         "quantity": _do_qty, "price": _do_px, "action": _act,
                                         "reason": str(_reason)[:200], "position_side": str(position_side),
                                         "is_full_close": is_full_close, "decision_only": True})
+                # 2026-05-12 FIX 2 — sim-time state hooks (tradier real-eta DECISION_ONLY).
+                try:
+                    _bt_now_re = float(_sim_ts[0]) if _sim_ts else 0.0
+                    _bt_act_re = (_act or "").upper()
+                    if _bt_act_re in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN'):
+                        manager.__dict__.setdefault('_bt_augment_lock', {})[_pk] = _bt_now_re
+                        manager.__dict__.setdefault('_bt_open_attempt', {})[_pk] = _bt_now_re
+                        if is_hedge or 'HEDGE' in (_reason or '').upper():
+                            manager.__dict__.setdefault('_bt_hedge_completed', {})[_pk] = _bt_now_re
+                    elif _bt_act_re in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'HEDGE_CLOSE'):
+                        manager.__dict__.setdefault('_bt_reduce_lock', {})[_pk] = _bt_now_re
+                        manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(_pk, None)
+                except Exception:
+                    pass
                 if _is_reduce and _do_pos:
                     _old = _do_pos_amt
                     _new = max(0.0, _old - abs(_do_qty))
@@ -5059,6 +5232,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                     "action": _do_act, "reason": str(reason)[:200],
                                     "position_side": position_side, "is_full_close": is_full_close,
                                     "decision_only": True})
+            # 2026-05-12 FIX 2 — sim-time state hooks (tradier exec_now DECISION_ONLY).
+            try:
+                _bt_now_xn = float(_sim_ts[0]) if _sim_ts else 0.0
+                _bt_act_xn = (_do_act or "").upper()
+                if _bt_act_xn in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN'):
+                    manager.__dict__.setdefault('_bt_augment_lock', {})[position_key] = _bt_now_xn
+                    manager.__dict__.setdefault('_bt_open_attempt', {})[position_key] = _bt_now_xn
+                    if _do_is_hedge or 'HEDGE' in (reason or '').upper():
+                        manager.__dict__.setdefault('_bt_hedge_completed', {})[position_key] = _bt_now_xn
+                elif _bt_act_xn in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'HEDGE_CLOSE'):
+                    manager.__dict__.setdefault('_bt_reduce_lock', {})[position_key] = _bt_now_xn
+                    manager.__dict__.setdefault('_bt_reentry_unblock', {}).pop(position_key, None)
+            except Exception:
+                pass
             if is_reduce and _do_pos:
                 _new = max(0.0, _do_pos_amt - abs(_do_qty))
                 _do_pos.positionAmt = 0.0 if (is_full_close or _new < 0.0001) else _new
@@ -5119,6 +5306,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception:
                 pass
             _vec_ind_en = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            # 2026-05-12 FIX 2 — read sim-time state maps populated post-fill.
+            _vec_aug_lock_en = (manager.__dict__.get('_bt_augment_lock') or {}).get(position_key, 0.0)
+            _vec_reduce_lock_en = (manager.__dict__.get('_bt_reduce_lock') or {}).get(position_key, 0.0)
+            _vec_open_attempt_en = (manager.__dict__.get('_bt_open_attempt') or {}).get(position_key, 0.0)
             _vec_blk_en, _vec_reason_en = _v8_vec_short_circuit(
                 action=_vec_act_en, position_key=position_key, symbol=symbol,
                 account_key=account_key_en, qty=float(quantity or 0), px=float(px or 0),
@@ -5127,10 +5318,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pos_obj=_vec_pos_en, tradeable_keys=_vec_tk_en,
                 positions_dict=(manager.position_manager.positions if manager.position_manager else {}),
                 indicators=_vec_ind_en, sim_ts=_sim_ts[0] if _sim_ts else 0,
-                cfg=_vec_cfg_en, last_augment_ts=0.0, last_reduce_ts=0.0, last_open_ts=0.0,
+                cfg=_vec_cfg_en, last_augment_ts=_vec_aug_lock_en,
+                last_reduce_ts=_vec_reduce_lock_en, last_open_ts=_vec_open_attempt_en,
             )
             if _vec_blk_en:
                 return _vec_reason_en
+            # 2026-05-12 FIX 3 — reentry price-cross cooldown (tradier exec_now).
+            if (_vec_act_en or '').upper() == 'REENTRY':
+                try:
+                    _rx_blk_e, _rx_reason_e = _v8_reentry_cooldown_check(
+                        pk=position_key, position_side=position_side, mark_price=float(px or 0),
+                        last_reduce_ts=_vec_reduce_lock_en,
+                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                        indicators=_vec_ind_en, cfg=_vec_cfg_en,
+                        state_dict=manager.__dict__,
+                    )
+                    if _rx_blk_e:
+                        return _rx_reason_e
+                except Exception:
+                    pass
         # ═══════════════════════════════════════════════════════════════════════════
         # DISC-6: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:13998
         # Live execute_now blocks any close at loss unless reason bypasses the gate.
