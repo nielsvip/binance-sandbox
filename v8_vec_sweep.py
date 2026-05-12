@@ -221,6 +221,9 @@ class SweepConfig:
     EXECUTE_NOW_MAX_MARK_AGE_S: float = 120.0
     # ── ratio sizing (kept as knob; backtest reads as multiplier) ─────────
     RATIO_MULTIPLIER: float = 3.0
+    # ── DC stop loss sweep flags ──────────────────────────────────────────
+    DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_3m/dc_low4_5m recorded at entry
+    DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_3m/dc_low_5m (1-bar)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -313,6 +316,7 @@ class SymState:
     ppl_fired: bool = False
     intent_lock_stamp: float = 0.0
     last_open_attempt_ts: float = 0.0
+    r1_stop_price: float = 0.0
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -365,6 +369,12 @@ def simulate_one_symbol(
     wt2_1h = np.nan_to_num(npz.get("wt2_1h", np.zeros(n)).astype(np.float32))
     dc_h_4h = exit_gates["dc_h_4h"]
     dc_l_4h = exit_gates["dc_l_4h"]
+    # DC stop loss arrays (mode-aware TF: crypto=3m, tradier=5m)
+    _dc_stop_tf = "5m" if mode == "tradier" else "3m"
+    _dc4_stop_long  = np.nan_to_num(npz.get(f"dc_low4_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
+    _dc4_stop_short = np.nan_to_num(npz.get(f"dc_high4_{_dc_stop_tf}", np.zeros(n)).astype(np.float32))
+    _dc1_stop_long  = np.nan_to_num(npz.get(f"dc_low_{_dc_stop_tf}",   np.zeros(n)).astype(np.float32))
+    _dc1_stop_short = np.nan_to_num(npz.get(f"dc_high_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
     # WT 3m direction-aligned (for OPEN on empty per WT_3M_FORCE_OPEN spec)
     if is_long:
         wt_3m_aligned = wt1_3m > wt2_3m
@@ -420,6 +430,15 @@ def simulate_one_symbol(
             state.augmented_count = 0
             state.max_gain = 0.0
             state.last_open_attempt_ts = bar_ts
+            # Record DC stop price at entry time
+            if config.DC_LOW4_STOP_ENABLED:
+                _s = float(_dc4_stop_long[i] if is_long else _dc4_stop_short[i])
+                state.r1_stop_price = _s if _s > 0 else 0.0
+            elif config.DC_LOW_STOP_ENABLED:
+                _s = float(_dc1_stop_long[i] if is_long else _dc1_stop_short[i])
+                state.r1_stop_price = _s if _s > 0 else 0.0
+            else:
+                state.r1_stop_price = 0.0
             continue
 
         # ─── HOLDING: compute gain + age ────────────────────────────────

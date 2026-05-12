@@ -8941,6 +8941,44 @@ class TradierTradeManager:
         logger.info(f"[{position_key}] {action} EXECUTE: {final_shares} shares @ {current_price}")
         return await self.execute_now(position_key, account_key, symbol, abs(position.positionAmt), side, position_side, float(final_shares), current_price, unique_id, reason, is_full_close, action)
 
+    async def _get_settled_cash_from_broker(self, account_key: str) -> float:
+        # Query Tradier for ACTUAL settled cash. Fail-closed: return 0.0 on any error.
+        # Prevents GFV: buying with unsettled proceeds crashes cash accounts.
+        # Cache 30s — fresh enough to catch same-day sells, cheap enough not to rate-limit.
+        try:
+            if not hasattr(self, '_settled_cash_cache'):
+                self._settled_cash_cache = {}  # {account_key: {ts, settled_cash}}
+            _now = time.time()
+            _entry = self._settled_cash_cache.get(account_key)
+            if _entry and (_now - _entry.get('ts', 0)) < 30.0:
+                return _entry['settled_cash']
+            _client = None
+            _existing = getattr(self, 'api_client', None)
+            if _existing is not None and getattr(_existing, 'account_key', None) == account_key:
+                _client = _existing
+            else:
+                _client = TradierAPIClient(config, account_key=account_key)
+                try:
+                    await asyncio.wait_for(_client.connect(), timeout=5.0)
+                except Exception as _ce:
+                    logger.critical(f"[GFV_SETTLED_CASH] {account_key}: API connect failed ({_ce}) — FAIL CLOSED, returning 0.0")
+                    return 0.0
+            try:
+                _balances = await asyncio.wait_for(_client.get_account_balances(account_key), timeout=5.0)
+            except Exception as _be:
+                logger.critical(f"[GFV_SETTLED_CASH] {account_key}: balances fetch failed ({_be}) — FAIL CLOSED, returning 0.0")
+                return 0.0
+            _cash_block = _balances.get('cash', {})
+            _cash_available = float(_cash_block.get('cash_available') or _balances.get('total_cash') or 0.0)
+            _unsettled = float(_cash_block.get('unsettled_funds') or _balances.get('uncleared_funds') or 0.0)
+            _settled = max(0.0, _cash_available - _unsettled)
+            self._settled_cash_cache[account_key] = {'ts': _now, 'settled_cash': _settled}
+            logger.info(f"[GFV_SETTLED_CASH] {account_key}: cash_available=${_cash_available:.2f} unsettled=${_unsettled:.2f} settled=${_settled:.2f}")
+            return _settled
+        except Exception as _err:
+            logger.critical(f"[GFV_SETTLED_CASH] {account_key}: unexpected error ({_err}) — FAIL CLOSED, returning 0.0")
+            return 0.0
+
     async def _broker_preflight_check(self, account_key: str, symbol: str, position_side: str, quantity: float) -> tuple:
         # Self-verify with broker before opening — returns (block: bool, tag: str).
         # User mandate 2026-05-11: tradier_manage must hit the broker API directly even if
@@ -9525,7 +9563,7 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return "MARKET_CLOSED"
-            # ═══ GFV PROTECTION: Block sells on positions bought with unsettled funds ═══
+            # ═══ GFV PROTECTION 1: Block sells on positions bought with unsettled funds ═══
             if is_reduce:
                 _gfv_ok, _gfv_reason = self.gfv_tracker.can_sell(position_key)
                 if not _gfv_ok:
@@ -9533,6 +9571,21 @@ class TradierTradeManager:
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return "GFV_BLOCKED"
+            # ═══ GFV PROTECTION 2: AUTHORITATIVE settled-cash gate — blocks buys using unsettled proceeds ═══
+            # Internal GFV tracker can drift/lose state on restart. This gate queries Tradier directly.
+            # Fail-closed: API error → return 0.0 → buy blocked. No exceptions. No bypasses.
+            if not is_reduce:
+                _sc = await self._get_settled_cash_from_broker(account_key)
+                _buy_cost = float(quantity) * float(current_price)
+                if _buy_cost > _sc:
+                    _msg = f"settled=${_sc:.2f} need=${_buy_cost:.2f} — BUY BLOCKED: would use unsettled funds and trigger GFV"
+                    logger.critical(f"[GFV_SETTLED_CASH_BLOCK] 🚨 {position_key}: {_msg}")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    # Invalidate cache so next attempt re-checks fresh balance
+                    if hasattr(self, '_settled_cash_cache'):
+                        self._settled_cash_cache.pop(account_key, None)
+                    return f"GFV_SETTLED_CASH_BLOCK_{_sc:.0f}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
                 action=action, position_side=position_side, account_key=account_key  )
             
