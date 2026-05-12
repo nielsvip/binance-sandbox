@@ -87,7 +87,7 @@ if _SWEEP_MODE:
         "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_TIER2_CHART_TRADES",
         "V8_QUICK_RESULT", "EARLY_ABORT_LOW_RATE", "FINAL_BROKEN_RATE",
         "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT",
-        "MODE_CONFIG_MISMATCH",
+        "MODE_CONFIG_MISMATCH", "V8_VEC_SHADOW",
     )
     def _quiet_print(*args, **kwargs):
         if not args:
@@ -1519,6 +1519,36 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             _real_gain_c = float(getattr(_pos_for_gain, 'gain', 0) or 0)
                         if _real_gain_c < _comm_buf_c:
                             return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_BACKTEST_CRYPTO"
+        # ── NEWBORN_PROTECT (crypto path) — mirror ez_manage.py:14210-14262 ──
+        # Live execute_now blocks closes on positions < 15min old unless DC broken.
+        # Age < 0 = position opened after sim start (tracker artifact) → pass through.
+        if is_red and not is_hedge:
+            try:
+                _nbc_pos = trade_manager.positions.get(pk)
+                if _nbc_pos:
+                    _nbc_opened = getattr(_nbc_pos, 'last_augmentation_time', None) or getattr(_nbc_pos, 'opened_at', None)
+                    _nbc_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                    _nbc_dc_low_3m = float(_nbc_ind.get('dc_low_3m', 0) or 0)
+                    _nbc_dc_high_3m = float(_nbc_ind.get('dc_high_3m', 0) or 0)
+                    _nbc_is_long = (ps == 'LONG') if ps else pk.endswith('_LONG')
+                    _nbc_now_ts = float(_sim_ts[0]) if _sim_ts[0] else _real_time_module.time()
+                    _nbc_blocked, _nbc_reason, _nbc_age, _ = evaluate_newborn_protect_core(
+                        action=act,
+                        position_opened_at=_nbc_opened,
+                        now_ts=_nbc_now_ts,
+                        mark_price=px,
+                        dc_low_3m=_nbc_dc_low_3m,
+                        dc_high_3m=_nbc_dc_high_3m,
+                        is_long=_nbc_is_long,
+                        reason=reason,
+                        is_hedge=is_hedge,
+                        config=config,
+                    )
+                    if _nbc_blocked and _nbc_age >= 0:
+                        v8_logger.debug(f"[V8_NEWBORN_PROTECT] {pk}: BLOCKED {act} — {_nbc_reason} age={_nbc_age:.0f}s")
+                        return _nbc_reason
+            except Exception as _nbc_err:
+                v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {pk}: fail-open ({_nbc_err})")
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (crypto path).
         # Apply ONLY to non-reduce / non-hedge OPEN/AUGMENT/REENTRY actions. All default OFF.
         # Hedges intentionally bypass — hedge gates live in HEDGE_* config and hedge_engine.
@@ -3611,6 +3641,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # evaluate_newborn_protect_core is imported at the top of the file but was
         # never called here, so the engine never blocked close attempts on freshly
         # opened positions. Live execute_now applies this gate on every is_reduce.
+        # BACKTEST CAVEAT: positions pre-loaded from a live tracker have opened_at
+        # timestamps from the real system (e.g. 2026-05-12) but sim time starts at
+        # the backtest start date (e.g. 2026-01-01). This produces negative age.
+        # Negative age = position NOT opened during this sim run → skip the gate.
         if is_reduce and not is_hedge:
             try:
                 _nb_pos = None
@@ -3637,7 +3671,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         is_hedge=is_hedge,
                         config=getattr(tm_mod, 'config', None) or ez_manage.config,
                     )
-                    if _nb_blocked:
+                    if _nb_blocked and _nb_age >= 0:
                         v8_logger.debug(f"[V8_NEWBORN_PROTECT] {position_key}: BLOCKED {action} — {_nb_reason} age={_nb_age:.0f}s")
                         return _nb_reason
             except Exception as _nb_err:
@@ -4046,6 +4080,37 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if quantity <= 0:
                     return f"BLOCKED_V8NS_SIZE_ZERO_vt={_v8ns_vt_e:.2f}_dk={_v8ns_dk_e:.2f}_tm={_v8ns_tm_e:.2f}"
                 reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt_e:.2f}_dk={_v8ns_dk_e:.2f}_tm={_v8ns_tm_e:.2f}"
+        # ── NEWBORN_PROTECT (tradier exec_now path) — mirror ez_manage.py:14210-14262 ──
+        # Age < 0 = position opened after sim start (tracker artifact) → pass through.
+        if is_reduce:
+            _is_hedge_en2 = _en_kw.get('is_hedge', False)
+            if not _is_hedge_en2:
+                try:
+                    _nbe_pos = manager.position_manager.positions.get(position_key) if manager.position_manager else None
+                    if _nbe_pos:
+                        _nbe_opened = getattr(_nbe_pos, 'last_augmentation_time', None) or getattr(_nbe_pos, 'opened_at', None)
+                        _nbe_ind = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                        _nbe_dc_low_3m = float(_nbe_ind.get('dc_low_3m', 0) or 0)
+                        _nbe_dc_high_3m = float(_nbe_ind.get('dc_high_3m', 0) or 0)
+                        _nbe_is_long = (position_side == 'LONG')
+                        _nbe_now_ts = float(_sim_ts[0]) if _sim_ts[0] else _real_time_module.time()
+                        _nbe_blocked, _nbe_reason, _nbe_age, _ = evaluate_newborn_protect_core(
+                            action=action or ("CLOSE" if is_reduce else "OPEN"),
+                            position_opened_at=_nbe_opened,
+                            now_ts=_nbe_now_ts,
+                            mark_price=float(px),
+                            dc_low_3m=_nbe_dc_low_3m,
+                            dc_high_3m=_nbe_dc_high_3m,
+                            is_long=_nbe_is_long,
+                            reason=reason,
+                            is_hedge=_is_hedge_en2,
+                            config=getattr(tm_mod, 'config', None),
+                        )
+                        if _nbe_blocked and _nbe_age >= 0:
+                            v8_logger.debug(f"[V8_NEWBORN_PROTECT] {position_key}: BLOCKED (exec_now) — {_nbe_reason} age={_nbe_age:.0f}s")
+                            return _nbe_reason
+                except Exception as _nbe_err:
+                    v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {position_key}: exec_now fail-open ({_nbe_err})")
         v8_logger.warning(f"[V8_EXEC_NOW] {position_key} {side} qty={quantity} px={old_price} action={action}")
         act = action or ("CLOSE" if is_reduce else "OPEN")
         await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)

@@ -64,7 +64,7 @@ if [ "$NC" -lt 1 ]; then
         echo "[$TS] crypto system_combo dead — it's crypto's turn, relaunching (4 syms, 2026-01-01, timeout=5400)" >> "$LOG"
         TS2=$(date +%Y%m%d_%H%M)
         cd "$DIR"
-        nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
+        nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
             --mode crypto --account ang \
             --start 2026-01-01 \
             --symbols "$CORE4_CRYPTO" \
@@ -100,7 +100,7 @@ if [ "$NT" -lt 1 ]; then
         echo "[$TS] tradier tradier_grtf7_hunt_resume dead — relaunching (20 stocks, 2026-01-01, mem-throttle 70)" >> "$LOG"
         TS2=$(date +%Y%m%d_%H%M)
         cd "$DIR"
-        nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
+        nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
             --mode tradier --account trb \
             --start 2026-01-01 \
             --symbols "$CORE20_TRADIER" \
