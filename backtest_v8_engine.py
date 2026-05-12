@@ -87,7 +87,7 @@ if _SWEEP_MODE:
         "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_TIER2_CHART_TRADES",
         "V8_QUICK_RESULT", "EARLY_ABORT_LOW_RATE", "FINAL_BROKEN_RATE",
         "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT",
-        "MODE_CONFIG_MISMATCH", "V8_VEC_SHADOW",
+        "MODE_CONFIG_MISMATCH", "V8_VEC_SHADOW", "V8_VEC_STATS",
     )
     def _quiet_print(*args, **kwargs):
         if not args:
@@ -251,6 +251,357 @@ if V8_USE_VEC_ALL:
     V8_USE_VEC_NEWBORN_PROTECT = V8_USE_VEC_COOLDOWN_LOCKS = V8_USE_VEC_PROTECT_BALANCE = True
     V8_USE_VEC_CIRCUIT_SHARPE = V8_USE_VEC_TRADEABLE_STATE = True
     V8_USE_VEC_OPEN_INTENT_SIZE = V8_USE_VEC_QUARANTINE_STRATEGY = True
+
+# ═══════════════════════════════════════════════════════════════
+# 2026-05-12 — VEC SHORT-CIRCUIT HELPERS
+# Centralized vec-path early-return logic shared by _crypto_eta,
+# _v8_execute_trade_action and _v8_execute_now. Each helper returns
+# (blocked: bool, reason: str). Blocked → caller returns reason immediately.
+#
+# When the corresponding V8_USE_VEC_* flag is 0 → the helper returns
+# (False, "") and the engine continues to its original scalar gate.
+# All helpers are wrapped in defensive try/except — failures fail-open
+# so a broken vec module never breaks the sim.
+# ═══════════════════════════════════════════════════════════════
+_V8_VEC_STATS: Dict[str, int] = {
+    "noloss_blocks": 0, "augment_blocks": 0, "brake_blocks": 0,
+    "stale_blocks": 0, "cooldown_blocks": 0, "open_intent_blocks": 0,
+    "protect_balance_blocks": 0, "circuit_sharpe_blocks": 0,
+    "tradeable_state_blocks": 0, "quarantine_blocks": 0,
+    "hedge_scan_blocks": 0,
+    "noloss_calls": 0, "augment_calls": 0, "brake_calls": 0,
+    "stale_calls": 0, "cooldown_calls": 0, "open_intent_calls": 0,
+    "protect_balance_calls": 0, "circuit_sharpe_calls": 0,
+    "tradeable_state_calls": 0, "quarantine_calls": 0,
+    "hedge_scan_calls": 0,
+}
+
+# Lazy BrakeLookup singleton — built on first call per sim. Backtest mode
+# does not maintain a /decisions/ file (live-only artifact). When empty
+# event source: load_decision_events returns [] and brake is fail-open.
+_V8_BRAKE_LOOKUP: Dict[str, Any] = {"obj": None, "built": False}
+
+# Lazy quarantine set — load once from data/_quarantine/strategy.json if present.
+_V8_QUARANTINE_SET: Dict[str, Any] = {"set": None, "loaded": False}
+
+def _v8_get_quarantine_set():
+    if _V8_QUARANTINE_SET["loaded"]:
+        return _V8_QUARANTINE_SET["set"] or []
+    try:
+        from vec_paths.quarantine_strategy_validation import load_quarantine_list
+        _V8_QUARANTINE_SET["set"] = load_quarantine_list(getattr(config, "BASE_PATH", None))
+    except Exception:
+        _V8_QUARANTINE_SET["set"] = []
+    _V8_QUARANTINE_SET["loaded"] = True
+    return _V8_QUARANTINE_SET["set"] or []
+
+def _v8_vec_short_circuit(
+    *, action, position_key, symbol, account_key,
+    qty, px, side, position_side, reason,
+    is_reduce, is_hedge, is_full_close,
+    pos_obj, tradeable_keys, positions_dict,
+    indicators, sim_ts, cfg,
+    last_augment_ts=0.0, last_reduce_ts=0.0, last_open_ts=0.0,
+):
+    """Single early-return checkpoint that fires every enabled V8_USE_VEC_* gate.
+
+    Returns (blocked: bool, reason: str). When blocked=True the caller MUST
+    return `reason` immediately — equivalent to the scalar gate firing.
+
+    Order mirrors live precedence: stale_mark → emergency_brake →
+    cooldown_locks → open_intent_size → noloss → augment_eligibility →
+    protect_balance_overtrade → circuit_sharpe → tradeable_state →
+    quarantine → hedge_scan_gates.
+    """
+    if not V8_VEC_PARITY_AVAILABLE:
+        return False, ""
+    act = (action or "").upper()
+    pos_amt = 0.0
+    pos_gain = 0.0
+    pos_entry = 0.0
+    pos_max_gain = 0.0
+    pos_initial_qty = 0.0
+    pos_last_aug_t = float(last_augment_ts or 0.0)
+    pos_opened = None
+    if pos_obj is not None:
+        try:
+            pos_amt = abs(float(getattr(pos_obj, 'positionAmt', 0) or 0))
+            pos_gain = float(getattr(pos_obj, 'gain', 0) or 0)
+            pos_entry = float(getattr(pos_obj, 'entry_price', 0) or 0)
+            pos_max_gain = float(getattr(pos_obj, 'max_gain', 0) or 0)
+            pos_initial_qty = float(getattr(pos_obj, 'initial_quantity', 0) or 0)
+            pos_opened = getattr(pos_obj, 'last_augmentation_time', None) or getattr(pos_obj, 'opened_at', None)
+            if pos_last_aug_t == 0.0:
+                _lat = getattr(pos_obj, 'last_augmentation_time', None)
+                if _lat is not None:
+                    try:
+                        pos_last_aug_t = float(_lat.timestamp()) if hasattr(_lat, 'timestamp') else float(_lat)
+                    except Exception:
+                        pos_last_aug_t = 0.0
+        except Exception:
+            pass
+    # Compute real_gain from entry+mark (mirrors scalar gates)
+    is_long = (position_side == 'LONG') if position_side else (position_key or '').endswith('_LONG')
+    if pos_entry > 0 and px > 0:
+        real_gain = ((px - pos_entry) / pos_entry * 100.0) if is_long else ((pos_entry - px) / pos_entry * 100.0)
+    else:
+        real_gain = pos_gain
+
+    # ─── 1) STALE_MARK_PRICE — backtest is fail-open unless V8_BACKTEST_SIMULATE_STALE_MARK=1
+    if V8_USE_VEC_STALE_MARK:
+        try:
+            _V8_VEC_STATS["stale_calls"] += 1
+            _sb_blocked, _sb_reason, _ = evaluate_stale_mark_block_backtest(
+                bar_close_ts=float(sim_ts or 0),
+                cfg=cfg,
+                action=act,
+                reason=reason or "",
+            )
+            if _sb_blocked:
+                _V8_VEC_STATS["stale_blocks"] += 1
+                return True, f"BLOCKED_STALE_MARK_PRICE_{_sb_reason}"
+        except Exception:
+            pass
+
+    # ─── 2) EMERGENCY_BRAKE — lazy lookup; fail-open without /decisions/ file
+    if V8_USE_VEC_EMERGENCY_BRAKE:
+        try:
+            _V8_VEC_STATS["brake_calls"] += 1
+            if not _V8_BRAKE_LOOKUP["built"]:
+                _V8_BRAKE_LOOKUP["obj"] = BrakeLookup({account_key: []}, cfg)
+                _V8_BRAKE_LOOKUP["built"] = True
+            _bl = _V8_BRAKE_LOOKUP["obj"]
+            if _bl is not None and sim_ts:
+                _ts_dt = datetime.utcfromtimestamp(float(sim_ts)).replace(tzinfo=timezone.utc)
+                _is_prof = is_reduce and real_gain > 0.1
+                _br_thr, _br_reason = _bl.is_throttled(
+                    account_key, _ts_dt, position_key or "", action=act,
+                    is_profitable_close=_is_prof, config=cfg,
+                )
+                if _br_thr:
+                    _V8_VEC_STATS["brake_blocks"] += 1
+                    return True, f"BLOCKED_EMERGENCY_BRAKE_{_br_reason}"
+        except Exception:
+            pass
+
+    # ─── 3) COOLDOWN_LOCKS — HARD_REDUCE_LOCK / HARD_AUGMENT_LOCK / AUGMENTATION_COOLDOWN
+    if V8_USE_VEC_COOLDOWN_LOCKS:
+        try:
+            _V8_VEC_STATS["cooldown_calls"] += 1
+            _cl_blocked, _cl_reason, _cl_gate = evaluate_cooldown_locks_core(
+                action=act,
+                now_ts=float(sim_ts or 0),
+                last_reduce_ts=float(last_reduce_ts or 0),
+                last_augment_ts=float(pos_last_aug_t or 0),
+                reason=reason or "",
+                position_amt=pos_amt,
+                is_hedge=bool(is_hedge),
+                current_gain_pct=real_gain,
+                cfg=cfg,
+            )
+            if _cl_blocked:
+                _V8_VEC_STATS["cooldown_blocks"] += 1
+                return True, _cl_reason
+        except Exception:
+            pass
+
+    # ─── 4) OPEN_INTENT_SIZE_GATES — ABSOLUTE_OPEN_LOCK / PREFLIGHT_INTENT / HARD_SIZE
+    if V8_USE_VEC_OPEN_INTENT_SIZE and not is_reduce:
+        try:
+            _V8_VEC_STATS["open_intent_calls"] += 1
+            _oi_blocked, _oi_reason, _oi_gate = evaluate_open_intent_size_gates_core(
+                action=act,
+                position_key=position_key or "",
+                now_ts=float(sim_ts or 0),
+                last_open_attempt_ts=float(last_open_ts or 0),
+                intent_locks_map=None,
+                proposed_qty=float(qty or 0),
+                gain=real_gain,
+                config=cfg,
+                position_amt=pos_amt,
+                mark_price=float(px or 0),
+                is_hedge=bool(is_hedge),
+                reason=reason or "",
+            )
+            if _oi_blocked:
+                _V8_VEC_STATS["open_intent_blocks"] += 1
+                return True, _oi_reason
+        except Exception:
+            pass
+
+    # ─── 5) NOLOSS_GATE — exit-side noloss + OBLIGATORY_HEDGE
+    if V8_USE_VEC_NOLOSS_GATE and is_reduce:
+        try:
+            _V8_VEC_STATS["noloss_calls"] += 1
+            _nl_action, _nl_reason, _nl_hedge_fire, _nl_hedge_qty = evaluate_noloss_gate_core(
+                indicators=indicators or {},
+                is_long=is_long,
+                real_gain_pct=real_gain,
+                positionAmt=pos_amt,
+                mark_price=float(px or 0),
+                reason=reason or "",
+                config=cfg,
+                account_key=account_key or "",
+                is_hedge=bool(is_hedge),
+                is_reduce=True,
+            )
+            # If noloss says HOLD or CLOSE_HEDGE_FAILED → block this reduce
+            if _nl_action == NOLOSS_ACTION_HOLD:
+                _V8_VEC_STATS["noloss_blocks"] += 1
+                return True, "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_VEC"
+            # ALLOW_REDUCE / CLOSE_HEDGE_FAILED → fall through (scalar will or already did record close)
+        except Exception:
+            pass
+
+    # ─── 6) AUGMENT_ELIGIBILITY — augment/reentry/open gate cascade
+    if V8_USE_VEC_AUGMENT_GATE and not is_reduce:
+        try:
+            _V8_VEC_STATS["augment_calls"] += 1
+            _ae_allowed, _ae_reason, _ae_qty, _ae_sub = evaluate_augment_eligibility_core(
+                action=act,
+                position_amt=pos_amt,
+                real_gain=real_gain,
+                entry_price=pos_entry,
+                mark_price=float(px or 0),
+                proposed_qty=float(qty or 0),
+                config=cfg,
+                last_augmentation_time=pos_last_aug_t if pos_last_aug_t > 0 else None,
+                augmented_count=0.0,
+                initial_quantity=pos_initial_qty,
+                max_gain=pos_max_gain,
+                now_ts=float(sim_ts or 0),
+                is_hedge=bool(is_hedge),
+                is_long=is_long,
+                reason=reason or "",
+            )
+            if not _ae_allowed:
+                _V8_VEC_STATS["augment_blocks"] += 1
+                return True, _ae_reason
+        except Exception:
+            pass
+
+    # ─── 7) PROTECT_BALANCE_OVERTRADE — BALANCE_FLOOR_HALT / OVERTRADE / HEDGE_PROTECT_OPPOSITE
+    if V8_USE_VEC_PROTECT_BALANCE:
+        try:
+            _V8_VEC_STATS["protect_balance_calls"] += 1
+            _pb_blocked, _pb_reason, _pb_gate = evaluate_protect_balance_overtrade_core(
+                action=act,
+                position_key=position_key or "",
+                account_key=account_key or "",
+                positions_dict=positions_dict or {},
+                balance_sentinel_path=None,
+                decisions_events=None,
+                now_ts=int(sim_ts or 0),
+                config=cfg,
+                reason=reason or "",
+                is_full_close=bool(is_full_close),
+                is_hedge=bool(is_hedge),
+            )
+            if _pb_blocked:
+                _V8_VEC_STATS["protect_balance_blocks"] += 1
+                return True, _pb_reason
+        except Exception:
+            pass
+
+    # ─── 8) CIRCUIT_SHARPE_GATES — CIRCUIT / SHARPE_HOUR / REGIME / VOLUME
+    if V8_USE_VEC_CIRCUIT_SHARPE and not is_reduce:
+        try:
+            _V8_VEC_STATS["circuit_sharpe_calls"] += 1
+            _cs_blocked, _cs_reason, _cs_gate = evaluate_circuit_sharpe_gates_core(
+                action=act,
+                position_key=position_key or "",
+                now_ts=float(sim_ts or 0),
+                hour_of_day_sharpe=float((indicators or {}).get('hour_of_day_sharpe', float('nan'))),
+                regime_score=float((indicators or {}).get('regime_score', float('nan'))),
+                volume_score=float((indicators or {}).get('volume_score', float('nan'))),
+                last_circuit_open_ts=0.0,
+                position_amt=pos_amt,
+                config=cfg,
+            )
+            if _cs_blocked:
+                _V8_VEC_STATS["circuit_sharpe_blocks"] += 1
+                return True, f"BLOCKED_{_cs_reason}"
+        except Exception:
+            pass
+
+    # ─── 9) TRADEABLE_STATE_GATES — NON_TRADEABLE / FLAGGED / POSITION_EXISTS / OPEN_ON_OPEN
+    if V8_USE_VEC_TRADEABLE_STATE and not is_reduce:
+        try:
+            _V8_VEC_STATS["tradeable_state_calls"] += 1
+            _ts_allowed, _ts_reason, _ts_act, _ts_gate = evaluate_tradeable_state_gates_core(
+                action=act,
+                symbol=symbol or "",
+                position_key=position_key or "",
+                tradeable_keys_set=tradeable_keys or set(),
+                positions_dict=positions_dict or {},
+                quarantine_set={},
+                config=cfg,
+                is_hedge=bool(is_hedge),
+                reason=reason or "",
+                fallback_price=float(px or 0),
+            )
+            if not _ts_allowed:
+                _V8_VEC_STATS["tradeable_state_blocks"] += 1
+                return True, _ts_reason
+        except Exception:
+            pass
+
+    # ─── 10) QUARANTINE — substring match against quarantined strategy names
+    if V8_USE_VEC_QUARANTINE_STRATEGY:
+        try:
+            _V8_VEC_STATS["quarantine_calls"] += 1
+            _qset = _v8_get_quarantine_set()
+            if _qset:
+                _qb_blocked, _qb_reason = evaluate_quarantine_core(
+                    position_key=position_key or "",
+                    reason=reason or "",
+                    action=act,
+                    is_hedge=bool(is_hedge),
+                    position_amt=pos_amt,
+                    quarantine_set=_qset,
+                    config=cfg,
+                )
+                if _qb_blocked:
+                    _V8_VEC_STATS["quarantine_blocks"] += 1
+                    return True, _qb_reason
+        except Exception:
+            pass
+
+    return False, ""
+
+def _v8_vec_hedge_scan_check(
+    *, position_key, account_key, pos_obj, indicators, tracker_state,
+    cfg, sim_ts, mode="crypto",
+):
+    """Vec replacement for the 7-gate hedge-scan cluster. Returns
+    (fire: bool, qty: float, reason: str, blocked_by: Optional[str]).
+
+    Caller decides what to do with the result — typically only used to
+    short-circuit the scalar hedge-scan path inside ez_positions_quick.
+
+    Currently NOT auto-invoked from the dispatch sites because the
+    scalar hedge_scan runs inside ez_positions_quick, not in execute_now.
+    Exposed for use by sweep harnesses + future engine hooks.
+    """
+    if not V8_VEC_PARITY_AVAILABLE or not V8_USE_VEC_HEDGE_SCAN_GATES:
+        return (False, 0.0, "VEC_HEDGE_SCAN_DISABLED", None)
+    try:
+        _V8_VEC_STATS["hedge_scan_calls"] += 1
+        fire, qty, reason, blocked = evaluate_hedge_scan_gates_core(
+            position_key=position_key,
+            account_key=account_key,
+            pos=pos_obj,
+            indicators=indicators or {},
+            tracker_state=tracker_state or {},
+            cfg=cfg,
+            now_ts=float(sim_ts or 0),
+            mode=mode,
+        )
+        if not fire:
+            _V8_VEC_STATS["hedge_scan_blocks"] += 1
+        return (fire, qty, reason, blocked)
+    except Exception:
+        return (False, 0.0, "VEC_HEDGE_SCAN_ERROR", None)
 
 # ═══════════════════════════════════════════════════════════════
 # 2026-05-12 — SHADOW VALIDATOR
@@ -1449,6 +1800,41 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             except Exception:
                 pass
         # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-12 — VEC SHORT-CIRCUIT (crypto eta path)
+        # When any V8_USE_VEC_* flag is set, this checkpoint runs the corresponding
+        # vec parity module BEFORE the scalar gates below. A BLOCKED verdict returns
+        # the canonical reason string immediately. When all flags are OFF this is a
+        # near-zero-cost noop (single function call + early returns inside).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if V8_VEC_PARITY_AVAILABLE and (
+            V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
+            or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
+            or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
+            or V8_USE_VEC_TRADEABLE_STATE or V8_USE_VEC_QUARANTINE_STRATEGY
+        ):
+            _vec_pos_c = trade_manager.positions.get(pk)
+            _vec_aug_lock_c = (trade_manager.__dict__.get('_bt_augment_lock') or {}).get(pk, 0.0)
+            _vec_tk_c = set()
+            try:
+                _ac = trade_manager.accounts.get(acct)
+                if _ac is not None:
+                    _vec_tk_c = set(getattr(_ac, 'tradeable_keys', set()) or set())
+            except Exception:
+                pass
+            _vec_ind_c = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+            _vec_blk_c, _vec_reason_c = _v8_vec_short_circuit(
+                action=act, position_key=pk, symbol=sym, account_key=acct,
+                qty=qty, px=px, side=side, position_side=ps, reason=reason or "",
+                is_reduce=is_red, is_hedge=is_hedge, is_full_close=ifc,
+                pos_obj=_vec_pos_c, tradeable_keys=_vec_tk_c,
+                positions_dict=trade_manager.positions,
+                indicators=_vec_ind_c, sim_ts=_sim_ts[0] if _sim_ts else 0,
+                cfg=config, last_augment_ts=_vec_aug_lock_c,
+                last_reduce_ts=0.0, last_open_ts=_vec_aug_lock_c,
+            )
+            if _vec_blk_c:
+                return _vec_reason_c
+        # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — DUP_GUARD_GAIN — mirror ez_manage.py:10970-10988
         # Live blocks AUGMENT below 0.5*MIN_GAIN (=1.5%). v8 was emitting 870 AUGMENT
         # events on GOLDEN_RULE every 3min bar without this gate.
@@ -1522,7 +1908,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # ── NEWBORN_PROTECT (crypto path) — mirror ez_manage.py:14210-14262 ──
         # Live execute_now blocks closes on positions < 15min old unless DC broken.
         # Age < 0 = position opened after sim start (tracker artifact) → pass through.
-        if is_red and not is_hedge:
+        # 2026-05-12 — flag-gated; was unconditionally firing before. With flag OFF
+        # the gate is skipped (matches engine behaviour pre-newborn-wire).
+        if V8_USE_VEC_NEWBORN_PROTECT and is_red and not is_hedge:
             try:
                 _nbc_pos = trade_manager.positions.get(pk)
                 if _nbc_pos:
@@ -2941,6 +3329,28 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _shadow_sum = _v8_shadow_summary()
     if _shadow_sum:
         v8_logger.warning(f"[V8_VEC_SHADOW] {_shadow_sum} (log: {_V8_SHADOW_DIVERGENCE_PATH})")
+    # 2026-05-12 — Vec short-circuit stats (only emit when any vec flag is on).
+    if V8_VEC_PARITY_AVAILABLE and (
+        V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
+        or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
+        or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
+        or V8_USE_VEC_TRADEABLE_STATE or V8_USE_VEC_QUARANTINE_STRATEGY
+        or V8_USE_VEC_NEWBORN_PROTECT or V8_USE_VEC_HEDGE_SCAN_GATES
+    ):
+        _vs = _V8_VEC_STATS
+        v8_logger.info(
+            f"[V8_VEC_STATS] noloss={_vs['noloss_blocks']}/{_vs['noloss_calls']} "
+            f"augment={_vs['augment_blocks']}/{_vs['augment_calls']} "
+            f"brake={_vs['brake_blocks']}/{_vs['brake_calls']} "
+            f"stale={_vs['stale_blocks']}/{_vs['stale_calls']} "
+            f"cooldown={_vs['cooldown_blocks']}/{_vs['cooldown_calls']} "
+            f"open_intent={_vs['open_intent_blocks']}/{_vs['open_intent_calls']} "
+            f"protect_balance={_vs['protect_balance_blocks']}/{_vs['protect_balance_calls']} "
+            f"circuit_sharpe={_vs['circuit_sharpe_blocks']}/{_vs['circuit_sharpe_calls']} "
+            f"tradeable_state={_vs['tradeable_state_blocks']}/{_vs['tradeable_state_calls']} "
+            f"quarantine={_vs['quarantine_blocks']}/{_vs['quarantine_calls']} "
+            f"hedge_scan={_vs['hedge_scan_blocks']}/{_vs['hedge_scan_calls']}"
+        )
     # ═══ NO-LIES RULE #2 — MARK-TO-MARKET OPEN POSITIONS AT FINAL BAR ═══
     # CLAUDE.md: "Open losing positions MUST be marked-to-market at the final bar
     # and appended to the return distribution BEFORE computing Sharpe. Skipping
@@ -3602,6 +4012,39 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-12 — VEC SHORT-CIRCUIT (tradier eta path). Same checkpoint as
+        # crypto eta. With all flags OFF this is a near-zero-cost noop.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if V8_VEC_PARITY_AVAILABLE and (
+            V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
+            or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
+            or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
+            or V8_USE_VEC_TRADEABLE_STATE or V8_USE_VEC_QUARANTINE_STRATEGY
+        ):
+            _vec_cfg_t = getattr(tm_mod, 'config', None) or config
+            _vec_pos_t = None
+            _vec_tk_t = set()
+            try:
+                if manager.position_manager:
+                    _vec_pos_t = manager.position_manager.positions.get(position_key)
+                _ac_t = manager.accounts.get(account_key) if hasattr(manager, 'accounts') else None
+                if _ac_t is not None:
+                    _vec_tk_t = set(getattr(_ac_t, 'tradeable_keys', set()) or set())
+            except Exception:
+                pass
+            _vec_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _vec_blk_t, _vec_reason_t = _v8_vec_short_circuit(
+                action=act, position_key=position_key, symbol=symbol, account_key=account_key,
+                qty=qty, px=px, side=side, position_side=position_side, reason=reason or "",
+                is_reduce=is_reduce, is_hedge=is_hedge, is_full_close=is_full_close,
+                pos_obj=_vec_pos_t, tradeable_keys=_vec_tk_t,
+                positions_dict=(manager.position_manager.positions if manager.position_manager else {}),
+                indicators=_vec_ind_t, sim_ts=_sim_ts[0] if _sim_ts else 0,
+                cfg=_vec_cfg_t, last_augment_ts=0.0, last_reduce_ts=0.0, last_open_ts=0.0,
+            )
+            if _vec_blk_t:
+                return _vec_reason_t
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
         if (not is_reduce) and (not is_hedge):
             _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
@@ -3708,7 +4151,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # timestamps from the real system (e.g. 2026-05-12) but sim time starts at
         # the backtest start date (e.g. 2026-01-01). This produces negative age.
         # Negative age = position NOT opened during this sim run → skip the gate.
-        if is_reduce and not is_hedge:
+        # 2026-05-12 — flag-gated; with flag OFF the gate is skipped (matches
+        # engine behaviour pre-newborn-wire).
+        if V8_USE_VEC_NEWBORN_PROTECT and is_reduce and not is_hedge:
             try:
                 _nb_pos = None
                 if manager.position_manager:
@@ -4045,6 +4490,42 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _existing_amt < 0.0001:
                 return "BLOCKED_ALREADY_CLOSED"
         # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-12 — VEC SHORT-CIRCUIT (tradier exec_now path). Mirrors the
+        # checkpoints in _crypto_eta and _v8_execute_trade_action.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if V8_VEC_PARITY_AVAILABLE and (
+            V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
+            or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
+            or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
+            or V8_USE_VEC_TRADEABLE_STATE or V8_USE_VEC_QUARANTINE_STRATEGY
+        ):
+            _vec_cfg_en = getattr(tm_mod, 'config', None) or config
+            _vec_act_en = action or ("CLOSE" if is_reduce else "OPEN")
+            _vec_is_hedge_en = _en_kw.get('is_hedge', False)
+            _vec_pos_en = None
+            _vec_tk_en = set()
+            try:
+                if manager.position_manager:
+                    _vec_pos_en = manager.position_manager.positions.get(position_key)
+                _ac_en = manager.accounts.get(account_key_en) if hasattr(manager, 'accounts') else None
+                if _ac_en is not None:
+                    _vec_tk_en = set(getattr(_ac_en, 'tradeable_keys', set()) or set())
+            except Exception:
+                pass
+            _vec_ind_en = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _vec_blk_en, _vec_reason_en = _v8_vec_short_circuit(
+                action=_vec_act_en, position_key=position_key, symbol=symbol,
+                account_key=account_key_en, qty=float(quantity or 0), px=float(px or 0),
+                side=side, position_side=position_side, reason=reason or "",
+                is_reduce=is_reduce, is_hedge=_vec_is_hedge_en, is_full_close=is_full_close,
+                pos_obj=_vec_pos_en, tradeable_keys=_vec_tk_en,
+                positions_dict=(manager.position_manager.positions if manager.position_manager else {}),
+                indicators=_vec_ind_en, sim_ts=_sim_ts[0] if _sim_ts else 0,
+                cfg=_vec_cfg_en, last_augment_ts=0.0, last_reduce_ts=0.0, last_open_ts=0.0,
+            )
+            if _vec_blk_en:
+                return _vec_reason_en
+        # ═══════════════════════════════════════════════════════════════════════════
         # DISC-6: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:13998
         # Live execute_now blocks any close at loss unless reason bypasses the gate.
         # Bypass reasons: RIDICULOUS_LOSS, UNDERWATER_HEDGE_OR_CLOSE, STRUCTURAL_RANGE_SHIFT, LIQUIDATION, is_hedge.
@@ -4145,7 +4626,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt_e:.2f}_dk={_v8ns_dk_e:.2f}_tm={_v8ns_tm_e:.2f}"
         # ── NEWBORN_PROTECT (tradier exec_now path) — mirror ez_manage.py:14210-14262 ──
         # Age < 0 = position opened after sim start (tracker artifact) → pass through.
-        if is_reduce:
+        # 2026-05-12 — flag-gated; with flag OFF the gate is skipped (matches
+        # engine behaviour pre-newborn-wire).
+        if V8_USE_VEC_NEWBORN_PROTECT and is_reduce:
             _is_hedge_en2 = _en_kw.get('is_hedge', False)
             if not _is_hedge_en2:
                 try:

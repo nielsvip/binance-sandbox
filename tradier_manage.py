@@ -1511,6 +1511,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             try:
                 # Fixed stop price set at open/augment time — no time window.
                 _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                # Fallback: if stop was never stored (position opened before R1 wiring or via other path),
+                # read LIVE dc channel level. This ensures R1 fires for every open position.
+                if _r1_stop <= 0:
+                    _r1_live_key = 'dc_low4_5m' if is_long else 'dc_high4_5m'
+                    _r1_stop_live = safe_fetch_float(i.get(_r1_live_key), 0.0)
+                    if _r1_stop_live > 0:
+                        _r1_stop = _r1_stop_live
+                        position.r1_stop_price = _r1_stop_live  # persist so next bar uses same level
+                        logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised from live {_r1_live_key}={_r1_stop_live:.4f}")
                 _r1_age_min = 0.0  # kept for log only
                 _r1_opened = getattr(position, 'opened_at', None)
                 if isinstance(_r1_opened, datetime):
@@ -9586,6 +9595,21 @@ class TradierTradeManager:
                     if hasattr(self, '_settled_cash_cache'):
                         self._settled_cash_cache.pop(account_key, None)
                     return f"GFV_SETTLED_CASH_BLOCK_{_sc:.0f}"
+            # ═══ TRA DAILY TRADE LIMIT — 1 BUY per day, hard cap, no exceptions ═══
+            # tra = cash account (ending 627), 4th GFV → account close risk.
+            # 1 trade/day ensures absolute cash settlement control.
+            if not is_reduce and account_key == 'tra':
+                if not hasattr(self, '_tra_daily_buy_count'):
+                    self._tra_daily_buy_count = {'date': '', 'count': 0}
+                _today_et = datetime.now(ZoneInfo("US/Eastern")).strftime('%Y%m%d')
+                if self._tra_daily_buy_count['date'] != _today_et:
+                    self._tra_daily_buy_count = {'date': _today_et, 'count': 0}
+                _tra_max = int(getattr(config, 'TRA_MAX_BUYS_PER_DAY', 1))
+                if self._tra_daily_buy_count['count'] >= _tra_max:
+                    logger.critical(f"[TRA_DAILY_BUY_LIMIT] 🚨 {position_key}: already {self._tra_daily_buy_count['count']}/{_tra_max} buy(s) today ({_today_et}) — BUY BLOCKED to prevent GFV. reason={reason}")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return f"TRA_DAILY_BUY_LIMIT_{self._tra_daily_buy_count['count']}of{_tra_max}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
                 action=action, position_side=position_side, account_key=account_key  )
             
@@ -9614,6 +9638,14 @@ class TradierTradeManager:
                     tradier_action_logger.info(f"{position_key}: {log_msg}")
                     
                     self.recently_processed_signals[position_key] = time.time()
+                    # ═══ TRA DAILY BUY COUNTER: increment on successful buy ═══
+                    if not is_reduce and account_key == 'tra':
+                        if hasattr(self, '_tra_daily_buy_count'):
+                            self._tra_daily_buy_count['count'] += 1
+                            logger.critical(f"[TRA_DAILY_BUY_LIMIT] {position_key}: buy #{self._tra_daily_buy_count['count']} of {getattr(config, 'TRA_MAX_BUYS_PER_DAY', 1)} today ({self._tra_daily_buy_count['date']})")
+                        # Invalidate settled cash cache — balance changed
+                        if hasattr(self, '_settled_cash_cache'):
+                            self._settled_cash_cache.pop(account_key, None)
                     # ═══ GFV TRACKING: record sales + mark buys with unsettled funds ═══
                     _trade_value = quantity * current_price
                     if is_reduce and order_id != "GHOST_CLEARED":
@@ -11560,7 +11592,10 @@ class TradierTradeManager:
                 if not _tra_long_only_acc:
                     final_shorts.update(file_shorts)
 
-                # C. Merge Account Specific Whitelist
+                # C. Whitelist is NEVER a source of new symbols — JSON files are the sole gate.
+                # ALWAYS_TRADEABLE / always_tradeable_trb can only RE-AFFIRM symbols already
+                # present in the JSON files. A symbol not in symbols_{acc}_long.json CANNOT
+                # be monitored as long, and same for shorts. No exceptions.
                 acc_whitelist = whitelist.copy()
                 if acc == 'trb' and hasattr(self, 'always_tradeable_trb'):
                     acc_whitelist.update(self.always_tradeable_trb)
@@ -11568,9 +11603,10 @@ class TradierTradeManager:
                 for sym in acc_whitelist:
                     sym = sym.strip().upper()
                     if not sym: continue
-                    # Add to both sides for monitoring (Strategy decides entry)
-                    final_longs.add(sym)
-                    if not _tra_long_only_acc and sym not in self.non_shortable_symbols:
+                    # Only add if the symbol is already in the JSON file for that side.
+                    if sym in file_longs:
+                        final_longs.add(sym)
+                    if not _tra_long_only_acc and sym not in self.non_shortable_symbols and sym in file_shorts:
                         final_shorts.add(sym)
 
                 # D. Save to Memory
@@ -11708,21 +11744,10 @@ class TradierTradeManager:
             c_long = set(getattr(self, f"symbols_long_{acc}", []))
             c_short = set(getattr(self, f"symbols_short_{acc}", []))
 
-            # 2. Add TRB Whitelist Logic (The "Always Tradeable" Injection)
-            if acc == 'trb' and hasattr(self, 'always_tradeable_trb'):
-                for sym in self.always_tradeable_trb:
-                    sym = sym.strip().upper()
-                    if not sym: continue
-                    
-                    is_winner = sym in valid_longs_ctx
-                    is_loser = sym in valid_shorts_ctx
-                    is_nowhere = not is_winner and not is_loser
-                    
-                    if not context_avail: is_nowhere = True
-
-                    # "If in winners -> Long. If in losers -> Short. If nowhere -> Both."
-                    if is_winner or is_nowhere: c_long.add(sym)
-                    if is_loser or is_nowhere: c_short.add(sym)
+            # 2. JSON files are the SOLE source of monitored symbols.
+            # ALWAYS_TRADEABLE / always_tradeable_trb cannot inject symbols that are
+            # absent from symbols_{acc}_long.json or symbols_{acc}_short.json.
+            # c_long and c_short were already populated from those files above — no injection.
 
             # 3. Create Positions
             for sym in c_long:

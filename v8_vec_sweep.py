@@ -451,6 +451,25 @@ def simulate_one_symbol(
         exit_id = EXIT_NONE
         exit_reason = ""
 
+        # DC_STOP: fixed stop price recorded at entry — bypasses noloss (R1 spec)
+        if (config.DC_LOW4_STOP_ENABLED or config.DC_LOW_STOP_ENABLED) and state.r1_stop_price > 0:
+            _dc_breached = (is_long and mark <= state.r1_stop_price) or ((not is_long) and mark >= state.r1_stop_price)
+            if _dc_breached:
+                pnl_pct = gain
+                ev = TradeEvent(
+                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark,
+                    reason=f"DC_STOP_px{mark:.4f}_stop{state.r1_stop_price:.4f}",
+                    pnl_pct=pnl_pct,
+                )
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                continue
+
         # WT_4H_VEL_EXIT (needs profit + age; vec gave us full mask)
         if exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= comm_buf:
             exit_id = EXIT_WT_4H_VEL

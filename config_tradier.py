@@ -90,6 +90,7 @@ class TradierConfig:
     TRA_STRICT_EXIT_ONLY: bool = True                # only the 5-of-5 STRICT_EXIT gate counts
     TRA_DISABLE_DELTA_ENTRY: bool = True             # delta engine is too fast for long-term hold
     TRA_DISABLE_AUGMENT: bool = True                 # no churn from augments either
+    TRA_MAX_BUYS_PER_DAY: int = 1                   # GFV guard: at most 1 buy per calendar day for tra (cash acct, 4th violation)
     TRA_WT_DC_ENTRY_THRESHOLD: float = 85.0          # high bar — only the strongest HTF setups
     TRA_MIN_HOLD_MINUTES: float = 1440.0             # 24h hold floor before any exit considered
     # 2026-04-27 — live entry-engine boost (defaults OFF for safety; user flips when ready).
@@ -1140,7 +1141,19 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 0  # 2026-05-09 ENTRY_THR_0: sweep confirmed pool_sharpe=0.1804 (+86% vs baseline 0.0971), 163 trades vs 69. Gate OFF — GR7 HTF is the primary quality filter.
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🚩 NEW BASELINE 2026-05-12 (sweep winner dc45_h1_s40_grOFF on FIXED engine
+    #     + FIXED stoch_k_1h NPZ precompute).
+    # ───────────────────────────────────────────────────────────────────────────
+    # Sweep: vec_sweep_FIXED_tradier_20260512_0706.csv, 20 syms × 16mo × 1005 configs
+    # Winning metrics: pool_sharpe=+0.1421, trades=212, max_dd=11.9%, gain=+88.6%
+    # TAG: [DIAGNOSTIC ONLY · n_syms=20 · years=1.36] [VEC ONLY — UNVALIDATED]
+    # PRIOR VALUE (rollback): WT_DC_ENTRY_THRESHOLD = 0 (2026-05-09 ENTRY_THR_0
+    #     sweep claim pool_sharpe=0.1804, 163 trades). To revert: change to 0.
+    # WHY changed despite lower new-sweep sharpe: user explicit directive 2026-05-12,
+    #     applying new BASELINE for forward-test alignment between vec and live.
+    # ═══════════════════════════════════════════════════════════════════════════
+    WT_DC_ENTRY_THRESHOLD: float = 45  # 🚩 NEW BASELINE 2026-05-12 (was 0). ROLLBACK: set to 0.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage
