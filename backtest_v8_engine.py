@@ -272,6 +272,77 @@ if V8_USE_VEC_ALL:
     V8_USE_VEC_CIRCUIT_SHARPE = V8_USE_VEC_TRADEABLE_STATE = True
     V8_USE_VEC_OPEN_INTENT_SIZE = V8_USE_VEC_QUARANTINE_STRATEGY = True
 
+# 2026-05-12 — SIGNAL-ONLY / DECISION-ONLY MODE (USER MANDATE)
+# Bypass execute_trade_action quantity/sizing/balance math AND most of execute_now.
+# Keep only: (a) double-open reclassification, (b) hedge-obligation logging,
+# (c) JSONL decision log compatible with data/history/<acct>/*.jsonl schema.
+# Live is trading min-qty only until backtest entry/exit TIMING matches /history.
+# qty becomes a 1.0 placeholder; gain/sharpe become noisy but ENTRY/EXIT TIMES are
+# the only thing that matters in this mode. Expected speedup: 10-50x.
+V8_DECISION_ONLY               = os.environ.get("V8_DECISION_ONLY",               "0") == "1"
+V8_DECISION_OUT_DIR            = os.environ.get("V8_DECISION_OUT_DIR",            "")  # required when DECISION_ONLY=1
+# Per-(account, position_key) decision log handle cache. One JSONL file per
+# (acct, sym, side) mirroring data/history/<acct>/<SYMBOL>_<SIDE>.jsonl schema.
+_V8_DECISION_FILE_HANDLES: Dict[str, Any] = {}
+_V8_DECISION_COUNTERS: Dict[str, int] = {"opens": 0, "augments": 0, "reduces": 0, "closes": 0, "hedges": 0, "doubleopen_reclass": 0, "blocks": 0}
+
+def _v8_decision_log(*, account_key: str, position_key: str, symbol: str, side_long: bool,
+                     action: str, reason: str, price: float, sim_ts, indicators: dict = None):
+    """Append a decision event to data/<DECISION_OUT_DIR>/<acct>/<SYMBOL>_<SIDE>.jsonl
+    in the schema used by data/history/. qty is a 1.0 placeholder (we ignore size).
+    No-op if V8_DECISION_OUT_DIR is unset."""
+    if not V8_DECISION_OUT_DIR:
+        return
+    try:
+        side_str = "LONG" if side_long else "SHORT"
+        acct_dir = os.path.join(V8_DECISION_OUT_DIR, account_key)
+        if not os.path.isdir(acct_dir):
+            os.makedirs(acct_dir, exist_ok=True)
+        fname = f"{symbol}_{side_str}.jsonl"
+        cache_key = f"{account_key}:{fname}"
+        fh = _V8_DECISION_FILE_HANDLES.get(cache_key)
+        if fh is None:
+            fh = open(os.path.join(acct_dir, fname), "a", buffering=1)
+            _V8_DECISION_FILE_HANDLES[cache_key] = fh
+        # Convert sim_ts (float epoch) to ISO format
+        try:
+            ts_dt = datetime.fromtimestamp(float(sim_ts), tz=timezone.utc) if sim_ts else datetime.now(timezone.utc)
+            ts_iso = ts_dt.isoformat()
+        except Exception:
+            ts_iso = str(sim_ts)
+        ind_clean = {}
+        if indicators:
+            for k in ("k_1m", "d_1m", "k_3m", "d_3m", "k_15m", "d_15m",
+                      "wt1_15m", "wt2_15m", "wt1_3m", "wt2_3m", "wt1_1h", "wt2_1h",
+                      "wt1_4h", "wt2_4h", "wt1_D", "wt2_D", "rsi_15m", "rsi_1h"):
+                v = indicators.get(k)
+                if v is not None:
+                    try:
+                        ind_clean[k] = float(v)
+                    except (TypeError, ValueError):
+                        pass
+        evt = {
+            "ts": ts_iso,
+            "type": action.upper(),
+            "qty": 1.0,
+            "price": float(price) if price else 0.0,
+            "value": float(price) if price else 0.0,
+            "reason": (reason or "")[:200],
+            "indicators": ind_clean,
+            "_v8_decision_only": True,
+        }
+        fh.write(json.dumps(evt) + "\n")
+    except Exception as _dl_err:
+        if os.environ.get("V8_DECISION_LOG_DEBUG") == "1":
+            print(f"[V8_DECISION_LOG_ERR] {account_key}:{position_key}: {_dl_err}", flush=True)
+
+def _v8_decision_close_files():
+    """Close all decision log file handles. Called at sim end."""
+    for fh in list(_V8_DECISION_FILE_HANDLES.values()):
+        try: fh.close()
+        except Exception: pass
+    _V8_DECISION_FILE_HANDLES.clear()
+
 # ═══════════════════════════════════════════════════════════════
 # 2026-05-12 — VEC SHORT-CIRCUIT HELPERS
 # Centralized vec-path early-return logic shared by _crypto_eta,
@@ -545,7 +616,10 @@ def _v8_vec_short_circuit(
             pass
 
     # ─── 9) TRADEABLE_STATE_GATES — NON_TRADEABLE / FLAGGED / POSITION_EXISTS / OPEN_ON_OPEN
-    if V8_USE_VEC_TRADEABLE_STATE and not is_reduce:
+    # USER 2026-05-12: tradeable_keys are IRRELEVANT for backtesting (sweep needs every sym tradeable).
+    # Skip this gate entirely in V8_SWEEP_MODE; tradeable_keys is only enforced for live-comparison
+    # filtering, NOT for decision-making during the sim.
+    if V8_USE_VEC_TRADEABLE_STATE and not is_reduce and not _SWEEP_MODE:
         try:
             _V8_VEC_STATS["tradeable_state_calls"] += 1
             _ts_allowed, _ts_reason, _ts_act, _ts_gate = evaluate_tradeable_state_gates_core(
@@ -1982,13 +2056,104 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         acct = account_key; pk = position_key; sym = symbol
         qty = quantity; px = current_price; ps = position_side
         uid = unique_id; ifc = is_full_close
-        qty = float(override_qty or qty or 0)
+        # 2026-05-12 — V8_DECISION_ONLY: ignore qty (set to 1.0 placeholder). User mandate:
+        # live is trading min-qty only until backtest entry/exit TIMING matches /history.
+        if V8_DECISION_ONLY:
+            qty = 1.0
+        else:
+            qty = float(override_qty or qty or 0)
         px = float(px or price_cache.get(sym.upper(), 0))
         if qty <= 0 or px <= 0:
             return "BLOCKED_ZERO"
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
         is_aug_action = (not is_red) and (not is_hedge)
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-12 — V8_DECISION_ONLY FAST PATH (crypto)
+        # Skip ALL _v8ns_* sizing scalars and most heavy gates. Keep:
+        #   (a) Double-open reclassification: OPEN on existing position → AUGMENT
+        #   (b) UNIVERSAL_NOLOSS_GATE (so loss-exits respect the same bypass list as live)
+        #   (c) Position dict update + executed_trades append for downstream metrics
+        #   (d) JSONL decision log compatible with data/history/<acct>/*.jsonl schema
+        # Hedge obligation logging: when wt_3m against AND gain<0 the engine ALREADY
+        # routes hedge calls through _crypto_eta with is_hedge=True; we log them here.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if V8_DECISION_ONLY:
+            _do_pos = trade_manager.positions.get(pk)
+            _do_pos_amt = abs(float(getattr(_do_pos, 'positionAmt', 0) or 0)) if _do_pos else 0.0
+            _do_is_long = (ps == 'LONG') if ps else pk.endswith('_LONG')
+            # (a) Double-open reclassification
+            if act.upper() in ('OPEN', 'QUICK_OPEN', 'REENTRY') and _do_pos_amt > 0.0001:
+                _V8_DECISION_COUNTERS["doubleopen_reclass"] += 1
+                act = "AUGMENT"
+                reason = f"DECISION_ONLY_DOUBLEOPEN_RECLASS|{reason}"[:200]
+            # (b) UNIVERSAL_NOLOSS_GATE — compute real gain at this px, block if at loss
+            if is_red and not is_hedge:
+                _do_ung_on = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
+                if _do_ung_on:
+                    _do_reason_up = (reason or '').upper()
+                    _do_bypass = ('LIQUIDATION' in _do_reason_up or 'RIDICULOUS_LOSS' in _do_reason_up
+                                  or 'UNDERWATER_HEDGE_OR_CLOSE' in _do_reason_up
+                                  or 'STRUCTURAL_RANGE_SHIFT' in _do_reason_up)
+                    if not _do_bypass:
+                        for _brk in (getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []):
+                            if _brk and _brk.upper() in _do_reason_up:
+                                _do_bypass = True; break
+                    if not _do_bypass and _do_pos:
+                        _do_entry = float(getattr(_do_pos, 'entry_price', 0) or 0)
+                        _do_comm = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                        if _do_entry > 0:
+                            _do_gain = ((px - _do_entry) / _do_entry * 100) if _do_is_long else ((_do_entry - px) / _do_entry * 100)
+                            if _do_gain < _do_comm:
+                                _V8_DECISION_COUNTERS["blocks"] += 1
+                                return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_DECISION_ONLY"
+            # (c) Update position dict + executed_trades — mirror full-mode path
+            executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
+                                    "side": side, "quantity": qty, "price": px, "action": act,
+                                    "reason": str(reason)[:200], "decision_only": True})
+            if is_red and _do_pos:
+                _old_amt = _do_pos_amt
+                _new_amt = max(0.0, _old_amt - abs(qty))
+                _do_pos.positionAmt = _new_amt
+                _do_pos.quantity = _new_amt
+                if ifc or _new_amt < 0.0001:
+                    _do_pos.positionAmt = 0; _do_pos.quantity = 0
+                _do_pos.was_reduced = True
+                try: _do_pos.last_reduction_time = _sim_datetime_now(timezone.utc)
+                except Exception: pass
+                _do_pos.last_reduction_price = px
+                if is_hedge: _V8_DECISION_COUNTERS["hedges"] += 1
+                elif ifc or _new_amt < 0.0001: _V8_DECISION_COUNTERS["closes"] += 1
+                else: _V8_DECISION_COUNTERS["reduces"] += 1
+            elif not is_red:
+                if _do_pos:
+                    _old_amt = _do_pos_amt
+                    _old_ep = getattr(_do_pos, 'entry_price', px) or px
+                    _new_amt = _old_amt + abs(qty)
+                    _do_pos.entry_price = (_old_ep * _old_amt + px * abs(qty)) / _new_amt if _new_amt > 0 else px
+                    _do_pos.positionAmt = _new_amt; _do_pos.quantity = _new_amt
+                    _do_pos.augmented_count = getattr(_do_pos, 'augmented_count', 0) + 1
+                    try: _do_pos.last_augmentation_time = _sim_datetime_now(timezone.utc)
+                    except Exception: pass
+                    _V8_DECISION_COUNTERS["augments" if not is_hedge else "hedges"] += 1
+                else:
+                    class _DP:
+                        def __init__(s, sy, sd, q, ep):
+                            s.symbol=sy; s.position_side=sd; s.positionAmt=q; s.quantity=q; s.entry_price=ep; s.mark_price=ep
+                            s.gain=0; s.prev_gain=0; s.max_gain=0
+                            s.opened_at=_sim_datetime_now(timezone.utc); s.last_updated=_sim_datetime_now(timezone.utc)
+                            s.last_augmentation_time=None; s.last_reduction_time=None; s.last_reduction_price=0
+                            s.was_reduced=False; s.augmented_count=0; s.max_quantity=q; s.mark_price_last_updated=None
+                    _np = _DP(sym, ps, abs(qty), px)
+                    trade_manager.positions[pk] = _np
+                    trade_manager.positions_by_account.setdefault(acct, {})[pk] = _np
+                    _V8_DECISION_COUNTERS["opens" if not is_hedge else "hedges"] += 1
+            # (d) JSONL decision log
+            _ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+            _v8_decision_log(account_key=acct, position_key=pk, symbol=sym,
+                             side_long=_do_is_long, action=act, reason=reason,
+                             price=px, sim_ts=_sim_ts[0], indicators=_ind)
+            return "SUCCESS_DECISION_ONLY"
         # ── Shadow validator hook (V8_VEC_SHADOW_VALIDATE=1) — audit only, no behavior change.
         # Engine outcome here is unknown yet (we have not run the gates). We pass
         # scalar_outcome=None and let the validator flag any vec module that says
@@ -2345,6 +2510,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.positions_by_account.setdefault(acct, {})[pk] = np2
         return "SUCCESS"
     trade_manager.execute_trade_action = _crypto_eta
+
+    # 2026-05-12 — V8_DECISION_ONLY: stub calculate_final_order_quantity so queue_trade_action
+    # doesn't spin up the expensive `ii()` indicator fetcher to compute sizing. We don't care
+    # about qty in decision-only mode; we just want entry/exit TIMING to match /history.
+    if V8_DECISION_ONLY:
+        async def _v8_do_calc_qty(position_key=None, account_key=None, symbol=None, position=None,
+                                  action="", trade_manager=None, conviction=0.5, base_quantity=0.0,
+                                  reason="", signal_data=None):
+            # Return a small non-zero qty so add_order doesn't reject. Actual qty is overwritten
+            # to 1.0 inside _crypto_eta when DECISION_ONLY is on.
+            return max(0.001, float(base_quantity or 0.001))
+        ez_manage.calculate_final_order_quantity = _v8_do_calc_qty
+        v8_logger.info("[V8_DECISION_ONLY] calculate_final_order_quantity stubbed (crypto path)")
 
     # PositionService — start EMPTY, no disk positions
     # Backtest must earn every position through the trading logic
@@ -3692,6 +3870,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _re:
             print(f"V8_RAW_EVENTS_ERR: {_re}", flush=True)
 
+    # 2026-05-12 — V8_DECISION_ONLY: close decision-log file handles + print counter summary.
+    if V8_DECISION_ONLY:
+        try: _v8_decision_close_files()
+        except Exception: pass
+        _doc = _V8_DECISION_COUNTERS
+        print(f"V8_DECISION_ONLY_SUMMARY: opens={_doc['opens']} augments={_doc['augments']} reduces={_doc['reduces']} closes={_doc['closes']} hedges={_doc['hedges']} doubleopen_reclass={_doc['doubleopen_reclass']} ung_blocks={_doc['blocks']} out_dir={V8_DECISION_OUT_DIR}", flush=True)
+
     # Now cancel queue processor.
     # 2026-05-09 fix: in Python 3.11+, asyncio.CancelledError inherits from
     # BaseException (NOT Exception), so `except Exception:` does NOT catch it.
@@ -4219,7 +4404,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _orig_eta = getattr(manager, 'execute_trade_action', None)
     async def _v8_execute_trade_action(account_key='', position_key='', symbol='', quantity=0, current_price=0, side='', position_side='', unique_id=None, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kw):
         action = str(action or ''); reason = str(reason or ''); symbol = str(symbol or ''); side = str(side or ''); position_side = str(position_side or '')
-        qty = float(override_qty or quantity or 0)
+        if V8_DECISION_ONLY:
+            qty = 1.0
+        else:
+            qty = float(override_qty or quantity or 0)
         px = float(current_price or price_cache.get(symbol.upper(), 0))
         if qty <= 0 or px <= 0:
             return "BLOCKED_ZERO_QTY_OR_PRICE"
@@ -4494,6 +4682,92 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _act = str(action or '')
             _reason = str(reason or '')
             _is_reduce = _act.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in _reason.upper() or 'REDUCE' in _reason.upper()
+            # ═══════════════════════════════════════════════════════════════════════════
+            # 2026-05-12 — V8_DECISION_ONLY FAST PATH (tradier real-eta)
+            # Bypass _orig_eta (which calls calculate_final_order_quantity and many gates).
+            # Same semantics as crypto fast path: double-open reclass, UNIVERSAL_NOLOSS_GATE,
+            # position-dict update, decision log.
+            # ═══════════════════════════════════════════════════════════════════════════
+            if V8_DECISION_ONLY:
+                _do_qty = 1.0
+                _do_px = float(current_price or price_cache.get(str(symbol).upper(), 0))
+                if _do_px <= 0:
+                    return "BLOCKED_ZERO_PX_DECISION_ONLY"
+                _do_pos = None
+                if manager.position_manager:
+                    _do_pos = manager.position_manager.positions.get(_pk)
+                if _do_pos is None and hasattr(manager, 'positions'):
+                    _do_pos = manager.positions.get(_pk)
+                _do_pos_amt = abs(float(getattr(_do_pos, 'positionAmt', 0) or 0)) if _do_pos else 0.0
+                _do_is_long = (str(position_side) == 'LONG') if position_side else _pk.endswith('_LONG')
+                # (a) Double-open reclass
+                if _act.upper() in ('OPEN', 'QUICK_OPEN', 'REENTRY') and _do_pos_amt > 0.0001:
+                    _V8_DECISION_COUNTERS["doubleopen_reclass"] += 1
+                    _act = "AUGMENT"; _reason = f"DECISION_ONLY_DOUBLEOPEN_RECLASS|{_reason}"[:200]
+                # (b) UNIVERSAL_NOLOSS_GATE
+                if _is_reduce and not is_hedge:
+                    _do_cfg = getattr(tm_mod, 'config', None) or config
+                    _do_ung_on = bool(getattr(_do_cfg, 'UNIVERSAL_NOLOSS_GATE', True))
+                    if _do_ung_on:
+                        _do_reason_up = (_reason or '').upper()
+                        _do_bypass = ('LIQUIDATION' in _do_reason_up or 'RIDICULOUS_LOSS' in _do_reason_up
+                                      or 'UNDERWATER_HEDGE_OR_CLOSE' in _do_reason_up
+                                      or 'STRUCTURAL_RANGE_SHIFT' in _do_reason_up)
+                        if not _do_bypass:
+                            for _brk in (getattr(_do_cfg, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []):
+                                if _brk and _brk.upper() in _do_reason_up:
+                                    _do_bypass = True; break
+                        if not _do_bypass and _do_pos:
+                            _do_entry = float(getattr(_do_pos, 'entry_price', 0) or 0)
+                            _do_comm = float(getattr(_do_cfg, 'COMMISSION_BUFFER_PCT', 0.10))
+                            if _do_entry > 0:
+                                _do_gain = ((_do_px - _do_entry) / _do_entry * 100) if _do_is_long else ((_do_entry - _do_px) / _do_entry * 100)
+                                if _do_gain < _do_comm:
+                                    _V8_DECISION_COUNTERS["blocks"] += 1
+                                    return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_DECISION_ONLY"
+                # (c) Update positions + executed_trades
+                executed_trades.append({"timestamp": _sim_ts[0], "type": "eta_real",
+                                        "position_key": _pk, "symbol": str(symbol), "side": str(side),
+                                        "quantity": _do_qty, "price": _do_px, "action": _act,
+                                        "reason": str(_reason)[:200], "position_side": str(position_side),
+                                        "is_full_close": is_full_close, "decision_only": True})
+                if _is_reduce and _do_pos:
+                    _old = _do_pos_amt
+                    _new = max(0.0, _old - abs(_do_qty))
+                    _do_pos.positionAmt = 0.0 if (is_full_close or _new < 0.0001) else _new
+                    _do_pos.quantity = _do_pos.positionAmt
+                    if is_hedge: _V8_DECISION_COUNTERS["hedges"] += 1
+                    elif is_full_close or _new < 0.0001: _V8_DECISION_COUNTERS["closes"] += 1
+                    else: _V8_DECISION_COUNTERS["reduces"] += 1
+                elif not _is_reduce:
+                    if _do_pos:
+                        _old = _do_pos_amt
+                        _old_ep = getattr(_do_pos, 'entry_price', _do_px) or _do_px
+                        _new = _old + abs(_do_qty)
+                        _do_pos.entry_price = (_old_ep * _old + _do_px * abs(_do_qty)) / _new if _new > 0 else _do_px
+                        _do_pos.positionAmt = _new; _do_pos.quantity = _new
+                        _V8_DECISION_COUNTERS["augments" if not is_hedge else "hedges"] += 1
+                    else:
+                        class _DPT:
+                            def __init__(s2, sy, sd, q, ep):
+                                s2.symbol=sy; s2.position_side=sd; s2.positionAmt=q; s2.quantity=q
+                                s2.entry_price=ep; s2.mark_price=ep; s2.gain=0; s2.prev_gain=0; s2.max_gain=0
+                                s2.opened_at=_sim_now_t(timezone.utc); s2.last_updated=_sim_now_t(timezone.utc)
+                                s2.last_augmentation_time=None; s2.last_augmentation_price=0
+                                s2.last_reduction_time=None; s2.last_reduction_price=0
+                                s2.was_reduced=False; s2.augmented_count=0; s2.max_quantity=q; s2.mark_price_last_updated=None
+                        _np = _DPT(str(symbol), str(position_side), abs(_do_qty), _do_px)
+                        if hasattr(manager, 'positions'): manager.positions[_pk] = _np
+                        if hasattr(manager, 'positions_by_account') and isinstance(manager.positions_by_account, dict):
+                            manager.positions_by_account.setdefault(account_key, {})[_pk] = _np
+                        if manager.position_manager: manager.position_manager.positions[_pk] = _np
+                        _V8_DECISION_COUNTERS["opens" if not is_hedge else "hedges"] += 1
+                # (d) JSONL decision log
+                _ind_t = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                _v8_decision_log(account_key=account_key, position_key=_pk, symbol=str(symbol),
+                                 side_long=_do_is_long, action=_act, reason=_reason,
+                                 price=_do_px, sim_ts=_sim_ts[0], indicators=_ind_t)
+                return "SUCCESS_DECISION_ONLY"
             # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier real-eta path).
             _v8ns_sf_bonus_r = 0.0
             if (not _is_reduce) and (not is_hedge):
@@ -4707,6 +4981,86 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _existing_amt = abs(getattr(_existing, 'positionAmt', 0)) if _existing else 0
             if _existing_amt < 0.0001:
                 return "BLOCKED_ALREADY_CLOSED"
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-12 — V8_DECISION_ONLY FAST PATH (tradier exec_now)
+        # Mirrors crypto + real-eta fast path. exec_now is the broker-routing layer in live;
+        # in decision-only mode we just log + update position dict.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if V8_DECISION_ONLY:
+            _do_qty = 1.0
+            _do_px = float(px or 0)
+            if _do_px <= 0:
+                return "BLOCKED_ZERO_PX_DECISION_ONLY"
+            _do_act = action or ("CLOSE" if is_reduce else "OPEN")
+            _do_is_hedge = _en_kw.get('is_hedge', False)
+            _do_pos = manager.position_manager.positions.get(position_key) if manager.position_manager else None
+            _do_pos_amt = abs(float(getattr(_do_pos, 'positionAmt', 0) or 0)) if _do_pos else 0.0
+            _do_is_long = (position_side == 'LONG') if position_side else position_key.endswith('_LONG')
+            # Double-open reclass
+            if _do_act.upper() in ('OPEN', 'QUICK_OPEN', 'REENTRY') and _do_pos_amt > 0.0001:
+                _V8_DECISION_COUNTERS["doubleopen_reclass"] += 1
+                _do_act = "AUGMENT"; reason = f"DECISION_ONLY_DOUBLEOPEN_RECLASS|{reason}"[:200]
+            # UNIVERSAL_NOLOSS_GATE
+            if is_reduce and not _do_is_hedge:
+                _do_cfg = getattr(tm_mod, 'config', None) or config
+                if bool(getattr(_do_cfg, 'UNIVERSAL_NOLOSS_GATE', True)):
+                    _do_reason_up = reason.upper()
+                    _do_bypass = ('LIQUIDATION' in _do_reason_up or 'RIDICULOUS_LOSS' in _do_reason_up
+                                  or 'UNDERWATER_HEDGE_OR_CLOSE' in _do_reason_up
+                                  or 'STRUCTURAL_RANGE_SHIFT' in _do_reason_up)
+                    if not _do_bypass:
+                        for _brk in (getattr(_do_cfg, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []):
+                            if _brk and _brk.upper() in _do_reason_up:
+                                _do_bypass = True; break
+                    if not _do_bypass and _do_pos:
+                        _do_entry = float(getattr(_do_pos, 'entry_price', 0) or 0)
+                        _do_comm = float(getattr(_do_cfg, 'COMMISSION_BUFFER_PCT', 0.10))
+                        if _do_entry > 0:
+                            _do_gain = ((_do_px - _do_entry) / _do_entry * 100) if _do_is_long else ((_do_entry - _do_px) / _do_entry * 100)
+                            if _do_gain < _do_comm:
+                                _V8_DECISION_COUNTERS["blocks"] += 1
+                                return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_DECISION_ONLY"
+            executed_trades.append({"timestamp": _sim_ts[0], "type": "exec_now", "position_key": position_key,
+                                    "symbol": symbol, "side": side, "quantity": _do_qty, "price": _do_px,
+                                    "action": _do_act, "reason": str(reason)[:200],
+                                    "position_side": position_side, "is_full_close": is_full_close,
+                                    "decision_only": True})
+            if is_reduce and _do_pos:
+                _new = max(0.0, _do_pos_amt - abs(_do_qty))
+                _do_pos.positionAmt = 0.0 if (is_full_close or _new < 0.0001) else _new
+                _do_pos.quantity = _do_pos.positionAmt
+                if _do_is_hedge: _V8_DECISION_COUNTERS["hedges"] += 1
+                elif is_full_close or _new < 0.0001: _V8_DECISION_COUNTERS["closes"] += 1
+                else: _V8_DECISION_COUNTERS["reduces"] += 1
+            elif not is_reduce:
+                if _do_pos:
+                    _old = _do_pos_amt
+                    _old_ep = getattr(_do_pos, 'entry_price', _do_px) or _do_px
+                    _new = _old + abs(_do_qty)
+                    _do_pos.entry_price = (_old_ep * _old + _do_px * abs(_do_qty)) / _new if _new > 0 else _do_px
+                    _do_pos.positionAmt = _new; _do_pos.quantity = _new
+                    _V8_DECISION_COUNTERS["augments" if not _do_is_hedge else "hedges"] += 1
+                else:
+                    class _DEN:
+                        def __init__(s3, sy, sd, q, ep):
+                            s3.symbol=sy; s3.position_side=sd; s3.positionAmt=q; s3.quantity=q
+                            s3.entry_price=ep; s3.mark_price=ep; s3.gain=0; s3.prev_gain=0; s3.max_gain=0
+                            s3.opened_at=_sim_now_t(timezone.utc); s3.last_updated=_sim_now_t(timezone.utc)
+                            s3.last_augmentation_time=None; s3.last_augmentation_price=0
+                            s3.last_reduction_time=None; s3.last_reduction_price=0
+                            s3.was_reduced=False; s3.augmented_count=0; s3.max_quantity=q; s3.mark_price_last_updated=None
+                    _np_en = _DEN(symbol, position_side, abs(_do_qty), _do_px)
+                    if manager.position_manager:
+                        manager.position_manager.positions[position_key] = _np_en
+                        manager.position_manager.positions_by_account.setdefault(account_key_en, {})[position_key] = _np_en
+                    if hasattr(manager, 'positions'): manager.positions[position_key] = _np_en
+                    _V8_DECISION_COUNTERS["opens" if not _do_is_hedge else "hedges"] += 1
+            _ind_en = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _v8_decision_log(account_key=account_key_en, position_key=position_key, symbol=symbol,
+                             side_long=_do_is_long, action=_do_act, reason=reason,
+                             price=_do_px, sim_ts=_sim_ts[0], indicators=_ind_en)
+            manager.recently_processed_signals[position_key] = _sim_ts[0]
+            return "SUCCESS_DECISION_ONLY"
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — VEC SHORT-CIRCUIT (tradier exec_now path). Mirrors the
         # checkpoints in _crypto_eta and _v8_execute_trade_action.
@@ -4940,6 +5294,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     override_qty = _actual_qty
         return await _orig_qta(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt, override_qty=override_qty)
     tm_mod.queue_trade_action = _bt_queue_trade_action
+    # 2026-05-12 — V8_DECISION_ONLY: stub tradier sizing/qty calculator (tradier_manage version
+    # mirrors ez_manage.calculate_final_order_quantity). Also stub ez_manage's in case the
+    # tradier mode shares the crypto helper (it shouldn't, but defense-in-depth).
+    if V8_DECISION_ONLY:
+        async def _v8_do_calc_qty_t(position_key=None, account_key=None, symbol=None, position=None,
+                                    action="", trade_manager=None, conviction=0.5, base_quantity=0.0,
+                                    reason="", signal_data=None):
+            return max(0.001, float(base_quantity or 0.001))
+        if hasattr(tm_mod, 'calculate_final_order_quantity'):
+            tm_mod.calculate_final_order_quantity = _v8_do_calc_qty_t
+        ez_manage.calculate_final_order_quantity = _v8_do_calc_qty_t
+        v8_logger.info("[V8_DECISION_ONLY] calculate_final_order_quantity stubbed (tradier path)")
     # _en is NOT needed — _v8_execute_now already handles all paths including
     # self.execute_now() calls from the real execute_trade_action.
     # Previously _en OVERWROTE _v8_execute_now and broke position tracking.
@@ -5614,6 +5980,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             print(f"V8_RAW_EVENTS: wrote {len(executed_trades)} events to {_raw_events_path}", flush=True)
         except Exception as _re:
             print(f"V8_RAW_EVENTS_ERR: {_re}", flush=True)
+    if V8_DECISION_ONLY:
+        try: _v8_decision_close_files()
+        except Exception: pass
+        _doc = _V8_DECISION_COUNTERS
+        print(f"V8_DECISION_ONLY_SUMMARY: opens={_doc['opens']} augments={_doc['augments']} reduces={_doc['reduces']} closes={_doc['closes']} hedges={_doc['hedges']} doubleopen_reclass={_doc['doubleopen_reclass']} ung_blocks={_doc['blocks']} out_dir={V8_DECISION_OUT_DIR}", flush=True)
     v8_logger.info(f"\n{'='*60}\n  V8 TRADIER: {len(stores)} syms, {len(all_ts)} bars, {len(executed_trades)} trades, {elapsed:.0f}s\n  Log: {log_path}\n{'='*60}")
     print(f"V8_LOG: {log_path}")
 
