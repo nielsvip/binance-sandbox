@@ -222,8 +222,9 @@ class SweepConfig:
     # ── ratio sizing (kept as knob; backtest reads as multiplier) ─────────
     RATIO_MULTIPLIER: float = 3.0
     # ── DC stop loss sweep flags ──────────────────────────────────────────
-    DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_3m/dc_low4_5m recorded at entry
-    DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_3m/dc_low_5m (1-bar)
+    DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_<TF> recorded at entry
+    DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_<TF> (1-bar)
+    DC_STOP_TF: str = ""                 # override TF (empty = auto: "3m" crypto / "5m" tradier)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -369,8 +370,8 @@ def simulate_one_symbol(
     wt2_1h = np.nan_to_num(npz.get("wt2_1h", np.zeros(n)).astype(np.float32))
     dc_h_4h = exit_gates["dc_h_4h"]
     dc_l_4h = exit_gates["dc_l_4h"]
-    # DC stop loss arrays (mode-aware TF: crypto=3m, tradier=5m)
-    _dc_stop_tf = "5m" if mode == "tradier" else "3m"
+    # DC stop loss arrays (mode-aware TF, overridable via DC_STOP_TF)
+    _dc_stop_tf = str(config.DC_STOP_TF).strip() if str(config.DC_STOP_TF).strip() else ("5m" if mode == "tradier" else "3m")
     _dc4_stop_long  = np.nan_to_num(npz.get(f"dc_low4_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
     _dc4_stop_short = np.nan_to_num(npz.get(f"dc_high4_{_dc_stop_tf}", np.zeros(n)).astype(np.float32))
     _dc1_stop_long  = np.nan_to_num(npz.get(f"dc_low_{_dc_stop_tf}",   np.zeros(n)).astype(np.float32))

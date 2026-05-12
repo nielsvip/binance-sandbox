@@ -11161,25 +11161,25 @@ class MultiAccountTradeManager:
         # ═══ MANIPULATION FLAG — diminish entry for flagged symbols ═══
         # 2026-04-23: bypass for SCALP_V3 — $10-$30 cap is the safety, don't shrink further.
         _reason_is_scalp_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
-        if is_augment and not is_hedge and not _reason_is_scalp_v3:
-            try:
-                _manip_flags_file = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
-                if _manip_flags_file.exists():
-                    with open(_manip_flags_file) as _mf:
-                        _manip_flags = json.load(_mf)
-                    _mflag = _manip_flags.get(symbol)
-                    if _mflag and isinstance(_mflag, dict):
-                        _manip_mult = _mflag.get("size_multiplier", 0.3)
-                        _manip_max = _mflag.get("max_usd", 10.0)
-                        _old_val = quantity * current_price
-                        quantity = quantity * _manip_mult
-                        if current_price > 0 and quantity * current_price > _manip_max:
-                            quantity = _manip_max / current_price
-                        logger.warning(f"[MANIP_FLAG_SIZE_CUT] {position_key}: manipulation flagged (sev={_mflag.get('severity', '?')}) — qty ${_old_val:.2f} → ${quantity*current_price:.2f} (mult={_manip_mult}, max=${_manip_max})")
-                        reason += f"|MANIP_FLAG_CUT(sev={_mflag.get('severity', '?')},mult={_manip_mult})"
-                        # override_qty corruption FIX 2026-03-30: don't overwrite caller's override_qty
-            except Exception as _me:
-                logger.error(f"[MANIP_FLAG_CHECK] Error reading flags: {_me}")
+        # if is_augment and not is_hedge and not _reason_is_scalp_v3: #TEMP OUT
+            # try: #TEMP OUT
+            #     _manip_flags_file = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
+            #     if _manip_flags_file.exists():
+            #         with open(_manip_flags_file) as _mf:
+            #             _manip_flags = json.load(_mf)
+            #         _mflag = _manip_flags.get(symbol)
+            #         if _mflag and isinstance(_mflag, dict):
+            #             _manip_mult = _mflag.get("size_multiplier", 0.3)
+            #             _manip_max = _mflag.get("max_usd", 10.0)
+            #             _old_val = quantity * current_price
+            #             quantity = quantity * _manip_mult
+            #             if current_price > 0 and quantity * current_price > _manip_max:
+            #                 quantity = _manip_max / current_price
+            #             logger.warning(f"[MANIP_FLAG_SIZE_CUT] {position_key}: manipulation flagged (sev={_mflag.get('severity', '?')}) — qty ${_old_val:.2f} → ${quantity*current_price:.2f} (mult={_manip_mult}, max=${_manip_max})")
+            #             reason += f"|MANIP_FLAG_CUT(sev={_mflag.get('severity', '?')},mult={_manip_mult})"
+            #             # override_qty corruption FIX 2026-03-30: don't overwrite caller's override_qty
+            # except Exception as _me:
+            #     logger.error(f"[MANIP_FLAG_CHECK] Error reading flags: {_me}")
         if is_reduce and (config.MANAGE_REDUCE or 'QUICK' in action or 'SCALP' in action or 'HEDGE' in action):
             result = await self.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, quantity, current_price, unique_id, reason, is_full_close, action, is_hedge, hedge_for)
             if result and 'SUCCESS' not in result:
@@ -11271,16 +11271,16 @@ class MultiAccountTradeManager:
         if not current_price or current_price <= 0: current_price, _ = await get_current_price(symbol)
         logger.warning(f"[exe cute_traddse_action] ENTRY: {position_key} {action} {side} qty={quantity:.6f} ${quantity*current_price:.2f}")
         logger.warning(f"🔍 [WH_TRACE_1] after_ENTRY_log pk={position_key} act={action} is_reduce={is_reduce} is_augment={is_augment}")
-        if position is None:
-            sym_eff = (symbol or parsed_symbol or "").strip().upper()
-            side_eff = position_side if position_side in ("LONG","SHORT") else (parsed_position_side if parsed_position_side in ("LONG","SHORT") else "LONG")
-            try:
-                placeholder = Position.from_dict({"symbol": sym_eff, "position_side": side_eff, "positionAmt": 0.0})
-            except Exception:
-                placeholder = Position.from_dict({"symbol": sym_eff or "UNKNOWN", "position_side": side_eff, "positionAmt": 0.0})
-            self.positions[position_key] = placeholder
-            self.positions_by_account.setdefault(account_key, {})[position_key] = placeholder
-            position = placeholder
+        # if position is None:
+        #     sym_eff = (symbol or parsed_symbol or "").strip().upper()
+        #     side_eff = position_side if position_side in ("LONG","SHORT") else (parsed_position_side if parsed_position_side in ("LONG","SHORT") else "LONG")
+        #     try:
+        #         placeholder = Position.from_dict({"symbol": sym_eff, "position_side": side_eff, "positionAmt": 0.0})
+        #     except Exception:
+        #         placeholder = Position.from_dict({"symbol": sym_eff or "UNKNOWN", "position_side": side_eff, "positionAmt": 0.0})
+        #     self.positions[position_key] = placeholder
+        #     self.positions_by_account.setdefault(account_key, {})[position_key] = placeholder
+        #     position = placeholder
         positionAmt_abs = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
         
         # --- SUBSTITUTION LOGIC (Make Room for Winners) ---
@@ -11671,6 +11671,7 @@ class MultiAccountTradeManager:
             # that would inflate a $20 scalp into a $55 swing. V3 cap locks size.
             _skip_size_adds_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
             if account_key in ['ang', 'inf', 'men', 'flz', 'fin'] and not _skip_size_adds_v3:
+
                 if dc_high_3m - dc_low_3m > 5 * float(atr_15m):
                     quantity += 0.8 * SP
                 if (position_side == "LONG" and current_price > dc_high_1h ) or (position_side == "SHORT" and current_price < dc_low_1h ):
