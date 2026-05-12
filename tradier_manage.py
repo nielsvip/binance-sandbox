@@ -1513,7 +1513,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _r1_opened = getattr(position, 'opened_at', None)
                 _r1_age_min = 999.0
                 if isinstance(_r1_opened, datetime):
-                    _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                    _r1_actual_age = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                    # Pre-market BROKER_ORPHAN_ADOPTED positions have opened_at = adoption time,
+                    # not market open. By 13:30 ET they look 80+ min old → R1 never fires.
+                    # Fix: clamp age to mins-since-market-open so pre-market positions get
+                    # the full R1 window from 9:30 ET.
+                    _, _r1_mso = in_opening_buffer(min_minutes=9999)
+                    if _r1_mso >= 0:
+                        _r1_age_min = min(_r1_actual_age, _r1_mso)
+                    else:
+                        _r1_age_min = _r1_actual_age
                 if _r1_age_min <= _r1_window:
                     _r1_use_4bar = bool(getattr(config, 'R1_USE_DC_4BAR', True))
                     _r1_low_field = 'dc_low4_5m' if _r1_use_4bar else 'dc_low_5m'

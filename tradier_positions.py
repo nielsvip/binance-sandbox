@@ -1420,18 +1420,12 @@ class TradierPositionManager:
             try: await asyncio.wait_for(self._loading_complete_event.wait(), timeout=5.0)
             except Exception: pass
 
-        logger.info("DEBUG: Step 2 - Fetching API Positions")
         raw_positions_data = data
         if raw_positions_data is None:
             raw_positions_data = await self.fetch_positions_from_api(self.account_key)
-        
         if raw_positions_data is None:
             logger.warning(f"[{self.account_key}] Update skipped: API failure.")
             return set()
-
-        # 2. FETCH FRESH PRICES IMMEDIATELY (Redis -> Disk)
-        # Get the latest price bundle before doing ANY logic
-        logger.info("DEBUG: Step 3 - Fetching External Prices")
 
         fresh_prices = await self.fetch_prices_from_external_cache()
         if fresh_prices is None:
@@ -1466,22 +1460,21 @@ class TradierPositionManager:
 
                 existing_position = account_positions.get(position_key)
                 if not existing_position:
-                    # 2026-05-11 USER MEGA URGENT: do NOT skip orphans — that's how MU_SHORT $12k slipped through.
-                    # Broker shows it → it IS real → adopt it so management cycle can close it via R1/R2/etc.
-                    # The "never fabricate" rule applied to startup boot, NOT to a running broker-reconciliation loop.
-                    logger.critical(f"🚨 [{self.account_key}] {position_key} BROKER-ONLY ORPHAN amt={amt_abs} entry={entry_price:.4f} — ADOPTING into memory so management cycle can act.")
-                    _mp = current_market_price or entry_price
+                    # Every symbol always has a permanent position object. If it's missing here,
+                    # ensure_permanent_positions hasn't run yet or was called before this symbol was
+                    # added to the tradeable list. Create a flat stub now (positionAmt=0) so the
+                    # normal diff routing below sets positionAmt correctly via handle_augmentation.
+                    logger.warning(f"[{self.account_key}] {position_key}: permanent object missing — creating flat stub now.")
                     existing_position = TradierPosition(
                         symbol=symbol,
                         position_side=position_side,
-                        positionAmt=amt_abs,
+                        positionAmt=0.0,
                         entry_price=entry_price,
-                        mark_price=_mp,
+                        mark_price=current_market_price or entry_price,
                         opened_at=now,
                         last_updated=now,
                         last_update=now.isoformat(),
                         entry_time=now.isoformat(),
-                        augment_reason="BROKER_ORPHAN_ADOPTED",
                     )
                     account_positions[position_key] = existing_position
                     self._mark_positions_dirty()
@@ -1489,23 +1482,23 @@ class TradierPositionManager:
                 if current_market_price:
                     existing_position.mark_price = current_market_price
                     existing_position.mark_price_last_updated = now
-                # Now 'current_price' for these functions is actually accurate
                 current_price = existing_position.mark_price or entry_price
                 prev_amt = float(existing_position.positionAmt)
                 diff = amt_abs - prev_amt
-                # Sync metadata from API
                 existing_position.entry_price = entry_price
-                # 4. NOW RUN LOGIC WITH ACCURATE GAINS
-                if abs(diff) < 0.0001:
-                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
-                elif diff > 0:
-                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
-                elif diff < 0:
-                    await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
-                existing_position.last_updated = now
-
-                if existing_position.positionAmt != amt_abs:
+                try:
+                    if abs(diff) < 0.0001:
+                        await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
+                    elif diff > 0:
+                        await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
+                    elif diff < 0:
+                        await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
+                except Exception as _upd_err:
+                    logger.error(f"[POSITION_UPDATE_ERR] {position_key}: handle_* raised: {_upd_err}")
+                finally:
+                    # UNCONDITIONAL: API quantity is the ground truth for positionAmt — always.
                     existing_position.positionAmt = amt_abs
+                    existing_position.last_updated = now
 
         # Handle Missing
         await self._handle_missing_positions(self.account_key, updated_keys_in_api, account_positions, now)
