@@ -47,6 +47,16 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
+# vec_paths — live entry path modules (imported lazily to avoid circular deps)
+try:
+    from vec_paths.dc_break import check_dc_break_entry as _check_dc_break_entry
+    from vec_paths.reentry import check_reentry_entry as _check_reentry_entry
+    _VEC_PATHS_AVAILABLE = True
+except ImportError:
+    _VEC_PATHS_AVAILABLE = False
+    def _check_dc_break_entry(store, bar_idx, cfg): return None
+    def _check_reentry_entry(store, bar_idx, sym, pos_state, side, cfg): return None
+
 # ───────────────────────────────────────────────────────────
 # Path setup
 # ───────────────────────────────────────────────────────────
@@ -198,6 +208,24 @@ class VecConfig:
     DELTA_ENGINE_ENABLED: bool = False
     DELTA_ENTRY_VEL_MIN: float = 0.5
     DELTA_ENTRY_TF: str = "15m"
+    DELTA_HTF_GATE: str = "none"         # "none", "4h", "4h_D", "4h_D_strict"
+    DELTA_ENTRY_MIN_TF: int = 4          # min TF count for delta entry (DEFAULT_CFG)
+
+    # ── SENTIMENT_BOOST augment ───────────────────────────────
+    # Source: tradier_manage.py:7408 periodic_sentiment_rebalancing()
+    SENTIMENT_BOOST_ENABLED: bool = False
+    SENTIMENT_BOOST_MIN_GAIN_PCT: float = 0.5    # min pos gain to allow boost
+    SENTIMENT_BOOST_DEVIATION_PCT: float = 0.25  # min deviation from ideal to augment
+    SENTIMENT_BOOST_COOLDOWN_SEC: float = 1800.0  # 30-min cooldown
+    SENTIMENT_BOOST_START_POSITION_SIZE: float = 600.0  # mirrors config.START_POSITION_SIZE
+
+    # ── RATIO_BOOST / RATIO_CUT sizing ───────────────────────
+    # Source: tradier_manage.py:9337 execute_now RATIO-AWARE SIZING block
+    RATIO_BOOST_ENABLED: bool = False    # OFF by default (backtest ratio=0.5 neutral)
+    LS_RATIO_MIN: float = 0.50           # below this: RATIO_BOOST
+    LS_RATIO_MAX: float = 2.00           # above this: RATIO_CUT
+    TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False
+    TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0
 
     # ── RZ exit ──────────────────────────────────────────────
     RZ_EXIT_ENABLED: bool = False
@@ -295,6 +323,29 @@ class VecConfig:
 
     # ── Universal no-loss gate ───────────────────────────────
     UNIVERSAL_NOLOSS_GATE: bool = True
+
+    # ── DC_BREAK_HIGH / DC_BREAK_LOW (mirrors tradier_manage._check_dc_break) ──
+    # Default OFF — only relevant for tradier mode with DC daytrade enabled.
+    # When TRADIER_DC_DAYTRADE_ENABLED=True, vec_paths/dc_break.py is wired in
+    # after the existing WT_DC_ENTRY gate and fires independently.
+    # Source: tradier_manage.py:14624 (_check_dc_break)
+    TRADIER_DC_DAYTRADE_BUFFER: float = 0.001
+    TRADIER_DC_DAYTRADE_STOCH_FILTER: bool = True
+    TRADIER_DC_DAYTRADE_K_EXHAUSTED_LONG: float = 85.0
+    TRADIER_DC_DAYTRADE_K_EXHAUSTED_SHORT: float = 15.0
+    # TRADIER_DC_DAYTRADE_ENABLED and TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION
+    # already declared above — these map 1-to-1 with config_tradier.py
+
+    # ── REENTRY paths (mirrors ez_reentry_pullback + backup tradier_manage) ──
+    REENTRY_ENABLED: bool = True             # master gate for all REENTRY variants
+    REENTRY_BREAKOUT_ENABLED: bool = True    # DC_BREAK_HIGH_15m + DC_BASIS_5m reclaim
+    REENTRY_PULLBACK_ENABLED: bool = True    # profit-reduce + pullback + WT oversold
+    REENTRY_TREND_ENABLED: bool = True       # HA + WT + stoch cross trend resume
+    REENTRY_PROBE_ENABLED: bool = True       # HA-only, smallest size (0.6x)
+    REENTRY_PULLBACK_DROP_PCT: float = 3.0   # price must drop >= X% from reduce level
+    REENTRY_PULLBACK_WT3M_OS_THRESH: float = -10.0  # wt1_3m_prev threshold for oversold
+    REENTRY_PULLBACK_REQUIRE_15M: bool = True   # require WT15m cross in direction
+    REENTRY_PULLBACK_REQUIRE_VEL: bool = True   # require wt_velocity_3m > 0 (LONG)
 
     # ── Misc ─────────────────────────────────────────────────
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
@@ -497,6 +548,11 @@ class _PositionState:
     augmented: bool = False
     # Open-position MtM for final bar
     mark_price: float = 0.0
+    # REENTRY_PULLBACK: price at which last profit-taking REDUCE occurred
+    # Updated whenever gain drops from max_gain by more than 1% (approximation of a reduce).
+    last_reduce_price: float = 0.0
+    # SENTIMENT_BOOST: timestamp of last augment (cooldown gate)
+    last_augment_ts: float = 0.0
 
 
 # ───────────────────────────────────────────────────────────
@@ -620,6 +676,30 @@ class VecEngine:
             for sym in stores
         }
 
+        # ── Portfolio state for RATIO_BOOST sizing (tracks all open positions) ──
+        # portfolio_state: {position_key -> {qty, price}} where position_key = "SYMBOL_SIDE"
+        portfolio_state: Dict[str, Dict[str, float]] = {}
+
+        # ── Lazy-import new path modules (defensive — don't fail if not present) ──
+        _sentiment_boost_fn = None
+        _ratio_size_fn = None
+        _delta_entry_fn = None
+        try:
+            from vec_paths.sentiment_boost import check_sentiment_boost_augment as _sbf
+            _sentiment_boost_fn = _sbf
+        except Exception:
+            pass
+        try:
+            from vec_paths.ratio_size import compute_size_multiplier as _rsf
+            _ratio_size_fn = _rsf
+        except Exception:
+            pass
+        try:
+            from vec_paths.delta_engine import check_delta_entry as _def
+            _delta_entry_fn = _def
+        except Exception:
+            pass
+
         # Tracking for sizing scalars
         dd_state: Dict[str, float] = {"peak": 0.0, "dd_pct": 0.0}
 
@@ -706,6 +786,17 @@ class VecEngine:
                             pos.gain_pct = (pos.entry_price - price) / pos.entry_price * 100.0
                         if pos.gain_pct > pos.max_gain_pct:
                             pos.max_gain_pct = pos.gain_pct
+                        # Track last_reduce_price: if gain was previously >PPL threshold
+                        # and has now dropped by >= 1%, approximate as a profit-take reduce.
+                        # (REENTRY_PULLBACK uses this to know reentry is warranted.)
+                        _ppl_thr = cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT
+                        if pos.max_gain_pct >= _ppl_thr and pos.gain_pct < pos.max_gain_pct - 1.0:
+                            if pos.last_reduce_price == 0.0:
+                                # Record the peak price as the approximate reduce level
+                                if pos.side == "LONG":
+                                    pos.last_reduce_price = pos.entry_price * (1.0 + pos.max_gain_pct / 100.0)
+                                else:
+                                    pos.last_reduce_price = pos.entry_price * (1.0 - pos.max_gain_pct / 100.0)
 
                 # ── R1: DC emergency exit (within newborn window) ──
                 if cfg.R1_DC_LOW4_3M_EMERGENCY_ENABLED:
@@ -733,6 +824,8 @@ class VecEngine:
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i
+                            if pnl > 0:
+                                pos.last_reduce_price = price
                             pos.r1_fired = True
                             continue
 
@@ -762,6 +855,8 @@ class VecEngine:
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i
+                            if pnl > 0:
+                                pos.last_reduce_price = price
 
                 # ── PARTIAL_PROFIT_LOCK v2 ──────────────────────
                 if cfg.PARTIAL_PROFIT_LOCK_ENABLED:
@@ -845,6 +940,8 @@ class VecEngine:
                     all_returns.append(pnl)
                     running_gain += pnl
                     pos.open = False; pos.last_close_ts = ts_i
+                    if pnl > 0:
+                        pos.last_reduce_price = price
 
                 # ── RZ exit ─────────────────────────────────────
                 if cfg.RZ_EXIT_ENABLED:
@@ -882,6 +979,27 @@ class VecEngine:
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i
 
+                # ── SENTIMENT_BOOST augment (tradier_manage.py:7408) ──────────
+                # Check for augment on open positions before the entry gate.
+                # This fires AUGMENT events on already-open positions when
+                # market_sentiment indicates the position should be larger.
+                # ADDITIVE: does not replace any existing logic, only augments qty.
+                if _sentiment_boost_fn is not None:
+                    try:
+                        for _sb_pos in (pos_long, pos_short):
+                            if not _sb_pos.open:
+                                continue
+                            _sb_result = _sentiment_boost_fn(store, bar_idx, _sb_pos, ts_i, cfg)
+                            if _sb_result is not None:
+                                # Record augment as a separate (small positive) return
+                                _sb_pos.last_augment_ts = float(ts_i)
+                                _sb_pos.augmented = True
+                                # Augment is a sizing event — does not directly produce a PnL.
+                                # We scale pos.qty by the qty multiplier to track position growth.
+                                _sb_pos.qty = _sb_pos.qty * (1.0 + _sb_result.get("qty_mult", 0.0))
+                    except Exception:
+                        pass  # never let augment path break simulation
+
                 # ── Entry signal gate (parity with backtest_v8_engine:2321) ──
                 # Real engine: skip entry check if ts not in pre-computed gate set.
                 _gate = entry_gate_per_sym.get(sym)
@@ -909,6 +1027,62 @@ class VecEngine:
                     if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
                         if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
                             continue
+
+                    # ── DC_BREAK_HIGH / DC_BREAK_LOW path (tradier_manage._check_dc_break) ──
+                    # Independent of WT gate — fires when DC channel is broken with
+                    # expansion confirmation.  Only active when TRADIER_DC_DAYTRADE_ENABLED.
+                    # If this fires we skip the WT filter chain and open directly.
+                    _dc_break_sig = None
+                    if _VEC_PATHS_AVAILABLE and self.mode == "tradier":
+                        _dc_break_sig = _check_dc_break_entry(store, bar_idx, cfg)
+                        if _dc_break_sig is not None and _dc_break_sig["side"] != side:
+                            _dc_break_sig = None  # wrong side for this loop iteration
+
+                    if _dc_break_sig is not None:
+                        # DC_BREAK fired for this side — open position immediately
+                        _dc_size_mult = _dc_break_sig.get("size_mult", 1.0)
+                        pos.open = True
+                        pos.side = side
+                        pos.entry_price = price
+                        pos.entry_ts = ts_i
+                        pos.mark_price = price
+                        pos.gain_pct = 0.0
+                        pos.max_gain_pct = 0.0
+                        pos.last_reduce_price = 0.0
+                        pos.ppl_fired = False
+                        pos.ppl_stop_level = 0.0
+                        pos.ppl_stop_upgraded = False
+                        pos.ppl_first_exit_price = 0.0
+                        pos.r1_fired = False
+                        _base_sz = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                        pos.qty = _base_sz * _dc_size_mult
+                        continue  # skip WT path for this side
+
+                    # ── REENTRY paths (profit-pullback, trend-resume, breakout-reclaim, probe) ──
+                    # Independent of WT gate — fires when position is closed and
+                    # reentry conditions from the live system match.
+                    _reentry_sig = None
+                    if _VEC_PATHS_AVAILABLE and cfg.REENTRY_ENABLED:
+                        _reentry_sig = _check_reentry_entry(store, bar_idx, sym, pos, side, cfg)
+
+                    if _reentry_sig is not None:
+                        _re_size_mult = _reentry_sig.get("size_mult", 1.0)
+                        pos.open = True
+                        pos.side = side
+                        pos.entry_price = price
+                        pos.entry_ts = ts_i
+                        pos.mark_price = price
+                        pos.gain_pct = 0.0
+                        pos.max_gain_pct = 0.0
+                        pos.last_reduce_price = 0.0
+                        pos.ppl_fired = False
+                        pos.ppl_stop_level = 0.0
+                        pos.ppl_stop_upgraded = False
+                        pos.ppl_first_exit_price = 0.0
+                        pos.r1_fired = False
+                        _base_sz = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                        pos.qty = _base_sz * _re_size_mult
+                        continue  # skip WT path for this side
 
                     # ── GOLDEN_RULE entry filter ─────────────
                     if cfg.GOLDEN_RULE_ENABLED:
@@ -1057,8 +1231,23 @@ class VecEngine:
                         if not sat_ok:
                             continue
 
-                    # ── DELTA_ENTRY: velocity filter ─────────
-                    if cfg.DELTA_ENTRY_ENABLED:
+                    # ── DELTA_ENTRY: full state-machine path (tradier_manage.py:1917) ──
+                    # When DELTA_ENGINE_ENABLED AND DELTA_ENTRY_ENABLED: check_delta_entry
+                    # fires BEFORE the WT scorer (it's a separate, independent entry path).
+                    # In the vec engine we wire it AFTER the WT gate as an ADDITIVE check
+                    # (conservative: only fire when WT also signals, to avoid over-trading).
+                    # When only DELTA_ENTRY_ENABLED (not DELTA_ENGINE_ENABLED): use velocity
+                    # proxy (existing code below).
+                    if cfg.DELTA_ENGINE_ENABLED and cfg.DELTA_ENTRY_ENABLED and _delta_entry_fn is not None:
+                        try:
+                            _de_result = _delta_entry_fn(store, bar_idx, side, self.mode, cfg)
+                            if _de_result is None:
+                                continue  # delta engine didn't confirm — skip this entry
+                        except Exception:
+                            pass  # fail-open: if delta_engine throws, allow entry via WT path
+
+                    elif cfg.DELTA_ENTRY_ENABLED:
+                        # Velocity-proxy filter (original approximation)
                         tf_d = cfg.DELTA_ENTRY_TF
                         vel = store.f(f"wt_velocity_{tf_d}", bar_idx)
                         vel_ok = (side == "LONG" and vel >= cfg.DELTA_ENTRY_VEL_MIN) or \
@@ -1073,7 +1262,7 @@ class VecEngine:
                         if not lr_ok:
                             continue
 
-                    # ── Entry accepted — open position ───────
+                    # ── Entry accepted — open position (WT path) ───────
                     pos.open = True
                     pos.side = side
                     pos.entry_price = price
@@ -1081,12 +1270,42 @@ class VecEngine:
                     pos.mark_price = price
                     pos.gain_pct = 0.0
                     pos.max_gain_pct = 0.0
+                    pos.last_reduce_price = 0.0
+                    pos.last_augment_ts = 0.0
                     pos.ppl_fired = False
                     pos.ppl_stop_level = 0.0
                     pos.ppl_stop_upgraded = False
                     pos.ppl_first_exit_price = 0.0
                     pos.r1_fired = False
-                    pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                    _base_sz = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                    # ── RATIO_BOOST / RATIO_CUT sizing (tradier_manage.py:9337) ──
+                    _ratio_mult = 1.0
+                    if _ratio_size_fn is not None and cfg.RATIO_BOOST_ENABLED:
+                        try:
+                            _ratio_mult = _ratio_size_fn(portfolio_state, sym, side, cfg)
+                        except Exception:
+                            pass  # fail-safe: ratio error → 1.0
+                    pos.qty = _base_sz * _ratio_mult
+                    # Track in portfolio_state for L/S ratio computation
+                    _pk = f"{sym}_{side}"
+                    portfolio_state[_pk] = {"qty": pos.qty, "price": price, "side": side}
+
+            # ── Refresh portfolio_state for RATIO_BOOST (end of each bar) ──
+            # portfolio_state tracks all open positions for L/S ratio computation.
+            # We rebuild it each bar to capture all close/open events this bar.
+            if cfg.RATIO_BOOST_ENABLED:
+                portfolio_state.clear()
+                for _ps_sym, _ps_pss in pos_states.items():
+                    _ps_st = stores.get(_ps_sym)
+                    for _ps_side, _ps_pos in _ps_pss.items():
+                        if _ps_pos.open and _ps_st is not None:
+                            _ps_bi = store_start_idx.get(_ps_sym, 0) + idx
+                            if _ps_bi < _ps_st.n_bars:
+                                _ps_price = _ps_st.price(_ps_bi)
+                            else:
+                                _ps_price = _ps_pos.entry_price
+                            _ps_pk = f"{_ps_sym}_{_ps_side}"
+                            portfolio_state[_ps_pk] = {"qty": _ps_pos.qty, "price": _ps_price, "side": _ps_side}
 
             # ── Update DD state (end of each bar) ────────────
             # Include open position unrealized PnL in equity estimate

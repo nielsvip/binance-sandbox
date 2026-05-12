@@ -566,7 +566,7 @@ class Config:
     HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-side dc_position_1h/4h threshold (<=) for rejection.
     HEDGE_WT_VEL_GATE_ENABLED: bool = False         # 2026-04-26: OFF — same reason as DC gate above. Hedge-the-bleeder must not be filtered by candidate-symbol velocity. Sweep-only knob.
     # 2026-04-26 — Force-reentry HTF veto (refuse PRICE_CROSSED_MANDATORY when 1h+15m+4h all confirm trend AGAINST). Triggered after C98USDT triple-open against bullish HTF.
-    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
+    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = False
     # 2026-04-26 USER RULE — HARD hedge sizing caps. Trades move <1% per cycle on a ~$1k crypto
     # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
     # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
@@ -635,11 +635,11 @@ class Config:
     # Wall must also exceed RED_ZONE_MIN_WALL_NOTIONAL_USD to count (filters tiny walls on illiquid pairs).
     # Stocks side: Tradier exposes no L2 depth — RED_ZONE_GATE is crypto-only.
     # Stocks proxy = options-chain OI walls (call OI = ceiling, put OI = floor) — deferred to tradier_options_oi_fetcher build.
-    RED_ZONE_GATE_ENABLED: bool = True             # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
+    RED_ZONE_GATE_ENABLED: bool = False             # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
     RED_ZONE_MIN_DISTANCE_PCT: float = 0.4         # block entry when wall is closer than 0.4% from current price
     RED_ZONE_MIN_WALL_NOTIONAL_USD: float = 50_000 # ignore walls smaller than $50k notional (illiquid noise)
-    RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
-    RED_ZONE_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into resistance)
+    RED_ZONE_HEDGE_GATE_ENABLED: bool = False       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
+    RED_ZONE_AUGMENT_GATE_ENABLED: bool = False     # apply to AUGMENT actions (don't add into resistance)
     RED_ZONE_STALE_MAX_SEC: float = 30.0           # ignore ob_*_wall fields older than 30s (orderbook:_heartbeat dead)
     # === 2026-04-28 DEEP VOLUME-PROFILE HEATMAP GATE (crypto, ±50% range) ===
     # User 2026-04-28: "Did you search find and apply heat maps (basically ez_order_book but over the next 50% up or down...
@@ -650,11 +650,11 @@ class Config:
     # Block LONG when underlying within VP_GATE_MIN_DISTANCE_PCT below an HVN above (resistance shelf).
     # Block SHORT when underlying within VP_GATE_MIN_DISTANCE_PCT above an HVN below (support floor).
     # Complements RED_ZONE_GATE (near-term, ±5% L2 walls): VP_GATE = long-term (±50% historical density).
-    VP_GATE_ENABLED: bool = True                   # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
+    VP_GATE_ENABLED: bool = False                   # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
     VP_GATE_MIN_DISTANCE_PCT: float = 1.0          # block entries within 1% of an HVN shelf
     VP_GATE_MIN_DENSITY_Z: float = 2.0             # require HVN density-z ≥ 2.0 (~5× mean) to block
     VP_GATE_HEDGE_GATE_ENABLED: bool = False       # apply to hedge entries (default off)
-    VP_GATE_AUGMENT_GATE_ENABLED: bool = True      # apply to AUGMENT actions
+    VP_GATE_AUGMENT_GATE_ENABLED: bool = False      # apply to AUGMENT actions
     VP_GATE_STALE_MAX_SEC: float = 7200.0          # 2h freshness — daemon refreshes hourly
     # === 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable, default OFF) ===
     # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
@@ -671,7 +671,7 @@ class Config:
     LH_HL_FILTER_TF_REQ: int = 2                       # 1=either 1h or 4h, 2=both must confirm
     LH_HL_FILTER_DC_THRESHOLD_PCT: float = 0.5         # only used in DC_REGRESS mode
     LH_HL_FILTER_REPLACE_SMA200D: bool = False         # if True, also turns off HTF_GATE_SIGNALS_SMA200D
-    LH_HL_FILTER_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into reversing trend)
+    LH_HL_FILTER_AUGMENT_GATE_ENABLED: bool = False     # apply to AUGMENT actions (don't add into reversing trend)
     LH_HL_FILTER_HEDGE_GATE_ENABLED: bool = False      # apply to hedge entries (default OFF — hedges are intentional counter-trend)
     # Sweep dimension (user 2026-04-27): test LH alone vs LH+LL for LONGS, HL alone vs HL+HH for SHORTS.
     #   False (default): block LONG on LH only / block SHORT on HL only — catches trend hesitation.
@@ -1173,7 +1173,7 @@ class Config:
     #   v2 (+ PT=1.5) 11-sym:          Sharpe 1.39, 89% WR, 1.37% avg (8× baseline)
     #   v2 TOP-5 symbols:              Sharpe 1.74, 96% WR, 1.59% avg, 89 trades
     #   v2 TOP-3 symbols:              Sharpe 1.90, 98% WR, 1.73% avg, 58 trades ✅ EXCEEDS 1.8
-    V8Q_STRENGTH_FILTER_ENABLED: bool = True
+    V8Q_STRENGTH_FILTER_ENABLED: bool = False
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_HTF_MIN_ALIGNED: int = 1
     V8Q_MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold. Sharpe 1.508→2.554 on 48-sym crypto. Was 10.
@@ -1456,7 +1456,7 @@ class Config:
     LS_RATIO_LOG_INTERVAL: int = 60  # Seconds between ratio warning logs
     # === HTF DIRECTION GATE — entries must align with D/4h/1h WT + price vs SMA200D ===
     # Added 2026-04-16 after audit: shorts opened against bullish 4h/1h/D caused 1:10 short-heavy PnL trap
-    HTF_DIRECTION_GATE_ENABLED: bool = True
+    HTF_DIRECTION_GATE_ENABLED: bool = False
     HTF_GATE_MIN_CONFIRMATIONS: int = 2  # 2026-04-16: lowered 3→2 per user directive "HTF confirmations should not be exaggerated". D still mandatory via HTF_GATE_D_MANDATORY.
     HTF_GATE_D_MANDATORY: bool = False  # 2026-04-27 owner: loosened from True. With min_conf=2, requiring D=aligned in addition was too strict — V3 blocks at 03:31 had D=✗ but 4h+1h+SMA all aligned. Now D can dissent if 2+ of (4h,1h,SMA) align.
     HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
@@ -1899,15 +1899,15 @@ class Config:
     # Source: trader_research_agent.py edge mining, 1130 IS / 485 OOS split
     # Method: quantile scan + stacked gates. Only gates with IS lift>5pp AND OOS lift>2pp AND n>=50
     # --- BC_155a: ADX_4h GATE — #1 filter. ADX_4h<=16: 75.6% IS / 69.2% OOS (+11.5pp) ---
-    TR_ADX4H_GATE_ENABLED: bool = True  # BC_155a: Boycott when ADX_4h trending (bad for mean-reversion system)
+    TR_ADX4H_GATE_ENABLED: bool = False  # BC_155a: Boycott when ADX_4h trending (bad for mean-reversion system)
     TR_ADX4H_MAX: float = 20.0  # BC_155a: Conservative (16 optimal). ADX_4h above this = heavy penalty
     TR_ADX4H_BOYCOTT_SCORE: int = -40  # BC_155a: Severe. Stacked with BB_width: 81% OOS WR
     # --- BC_155b: BB_WIDTH_4h GATE — #2 filter. BB_w<=7.94: 68.4% IS / 68.7% OOS (+11.0pp) ---
-    TR_BBWIDTH4H_GATE_ENABLED: bool = True  # BC_155b: Boycott wide BBands (high vol = bad entries)
+    TR_BBWIDTH4H_GATE_ENABLED: bool = False  # BC_155b: Boycott wide BBands (high vol = bad entries)
     TR_BBWIDTH4H_MAX: float = 10.0  # BC_155b: Conservative (7.94 optimal)
     TR_BBWIDTH4H_BOYCOTT_SCORE: int = -35  # BC_155b: Severe penalty when too volatile
     # --- BC_155c: CHOPPINESS_4h GATE — #3 filter. Chop>=54: 64% IS / 66.7% OOS (+8.9pp) ---
-    TR_CHOP4H_GATE_ENABLED: bool = True  # BC_155c: Bonus choppy, penalty trending. Our system IS mean-reversion.
+    TR_CHOP4H_GATE_ENABLED: bool = False  # BC_155c: Bonus choppy, penalty trending. Our system IS mean-reversion.
     TR_CHOP4H_MIN: float = 50.0  # BC_155c: Choppy above this = bonus
     TR_CHOP4H_BONUS: int = 15  # BC_155c: Mean-reversion sweet spot
     TR_CHOP4H_TREND_MAX: float = 38.0  # BC_155c: Strong trend below this = penalty
@@ -1966,7 +1966,7 @@ class Config:
     FAST_RISER_DOUBLE_ENABLED: bool = False  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
     AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk
     # === RESEARCH-BACKED STRATEGIES (2026-03-23 — 9 agents, 100+ sources, 567k backtests, academic papers) ===
-    ADX_REGIME_FILTER_ENABLED: bool = True  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
+    ADX_REGIME_FILTER_ENABLED: bool = False  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
     ADX_TRENDING_THRESHOLD: float = 25.0  # BACKTEST_CHANGE_137: ADX above this = trending
     ADX_RANGING_THRESHOLD: float = 20.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion)
     ADX_TF: str = "1h"  # BACKTEST_CHANGE_137: Timeframe for ADX regime check
