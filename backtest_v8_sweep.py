@@ -602,6 +602,12 @@ def grid_tradier_param_hunt():
     """
     from itertools import product as _product
     combos = [("baseline", {})]
+    # ── PRIORITY 0: DC stop loss sweep — dc_low4_5m (4-bar) vs dc_low_5m (1-bar) ──
+    # Added 2026-05-12: test fixed stop at DC channel recorded at entry time.
+    # Run first so result is visible immediately before long knob sweep continues.
+    combos.insert(1, ("DC_LOW4_STOP_ON",  {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False}))
+    combos.insert(2, ("DC_LOW_STOP_ON",   {"DC_LOW4_STOP_ENABLED": False, "DC_LOW_STOP_ENABLED": True}))
+    combos.insert(3, ("DC_BOTH_STOPS_ON", {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": True}))
     # ── PRIORITY 1: WT_DC_ENTRY_THRESHOLD sweep — THE main entry gate (default=75) ──
     # Start at 0 (diagnostic), then find the real optimum.
     for thr in [0, 24, 35, 50, 65, 75]:
@@ -1134,6 +1140,13 @@ def grid_system_combo():
       - PPL gain trigger + arm pct (currently 0.5/0.75 — sweep around)
     """
     out = [("baseline", {})]
+
+    # ── PRIORITY 0: DC stop loss sweep — dc_low4_3m (4-bar) vs dc_low_3m (1-bar) ──
+    # Added 2026-05-12: test fixed stop at DC channel recorded at entry time.
+    # Run first so result is visible immediately before long knob sweep continues.
+    out.insert(1, ("DC_LOW4_STOP_ON",  {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False}))
+    out.insert(2, ("DC_LOW_STOP_ON",   {"DC_LOW4_STOP_ENABLED": False, "DC_LOW_STOP_ENABLED": True}))
+    out.insert(3, ("DC_BOTH_STOPS_ON", {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": True}))
 
     # 1. Entry score threshold — primary trade-frequency vs quality gate
     for v in (16, 18, 20, 22, 24, 26, 28):
