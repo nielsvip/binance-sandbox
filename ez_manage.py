@@ -14271,6 +14271,48 @@ class MultiAccountTradeManager:
         _ung_active = getattr(config, 'UNIVERSAL_NOLOSS_GATE', True)
         _ung_strict = is_strict_no_loss_account(config, account_key)
         if (_ung_active or _ung_strict) and _is_reduce:
+            # ═══ 2026-05-12 HEDGE_MISIDENT GUARD — USER MANDATE ═══
+            # The hedge engine sometimes misidentifies roles: when a manually-opened hedge
+            # is NEWER than the existing position, the engine can tag the older position
+            # as "the hedge" and the newer one as "the original". Then HEDGE_WT_KILL closes
+            # the actual ORIGINAL at a loss with is_hedge=True bypass.
+            # USER RULE: ORIGINAL never closes at loss. ORIGINAL = the older same-symbol position.
+            # This guard refuses any is_hedge=True close where THIS position is OLDER than the opposite side.
+            # 3 exception reasons that bypass HEDGE_MISIDENT block (per USER 2026-05-09 mandate):
+            # R1_DC_LOW4_3M_EMERGENCY (newborn DC4 break), R2_WT_VEL_SLOW (vel-slow at breakeven), HEDGE_FAILED (hedge couldn't take)
+            _hmi_3_exceptions = ('R1_DC_LOW4_3M_EMERGENCY', 'R2_WT_VEL_SLOW', 'WT_15M_VEL_SLOW', 'HEDGE_FAILED')
+            _hmi_bypass_3_exc = any(b in reason_upper for b in _hmi_3_exceptions)
+            _ung_hedge_misident_block = False
+            if is_hedge and position_key and not _hmi_bypass_3_exc:
+                _opp_pk = None
+                if position_key.endswith('_LONG'):
+                    _opp_pk = position_key[:-len('_LONG')] + '_SHORT'
+                elif position_key.endswith('_SHORT'):
+                    _opp_pk = position_key[:-len('_SHORT')] + '_LONG'
+                if _opp_pk:
+                    _this_pos = self.positions.get(position_key)
+                    _opp_pos = self.positions.get(_opp_pk)
+                    if _this_pos is not None and _opp_pos is not None:
+                        try:
+                            _this_o = getattr(_this_pos, 'opened_at', None)
+                            _opp_o = getattr(_opp_pos, 'opened_at', None)
+                            if isinstance(_this_o, str):
+                                with suppress(Exception): _this_o = isoparse(_this_o)
+                            if isinstance(_opp_o, str):
+                                with suppress(Exception): _opp_o = isoparse(_opp_o)
+                            if isinstance(_this_o, datetime) and isinstance(_opp_o, datetime):
+                                if _this_o.tzinfo is None: _this_o = _this_o.replace(tzinfo=timezone.utc)
+                                if _opp_o.tzinfo is None: _opp_o = _opp_o.replace(tzinfo=timezone.utc)
+                                # THIS opened BEFORE opposite → THIS is the ORIGINAL. Block close.
+                                if _this_o < _opp_o:
+                                    _opp_amt = abs(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0))
+                                    if _opp_amt > 0.0001:  # opposite side has live qty
+                                        logger.critical(f"🚫 [HEDGE_MISIDENT_BLOCK] {position_key}: is_hedge=True but THIS opened={_this_o} BEFORE opposite {_opp_pk} opened={_opp_o} — THIS is the ORIGINAL, refusing close at loss. reason={reason[:60]}")
+                                        _ung_hedge_misident_block = True
+                        except Exception as _hmi_e:
+                            logger.debug(f"[HEDGE_MISIDENT_CHECK_ERR] {position_key}: {_hmi_e}")
+            if _ung_hedge_misident_block:
+                return f"BLOCKED_HEDGE_MISIDENT_this_is_original"
             _ung_bypass = is_hedge or 'LIQUIDATION' in reason_upper
             # 2026-04-16: bypass for technical-exit reasons (WT cross, ratio-close-losing).
             # Default list covers the exits I added today. User controls via config.

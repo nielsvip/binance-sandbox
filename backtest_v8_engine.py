@@ -157,6 +157,55 @@ import ez_reentry
 from utils import parse_position_key, construct_position_key, load_environment_from_gpg, get_simple_redis_manager
 
 # ═══════════════════════════════════════════════════════════════
+# 2026-05-12 — VEC PARITY MODULES (5 paired _core/_vec gates, all 100% bit-identical)
+# Each opt-in via env var. Default OFF; live behavior unchanged.
+# Smoke: tools/test_*_parity.py (1000–7000 synthetic bars per gate, 0 diffs each)
+#
+# Integration recipes per module:
+#   evaluate_noloss_gate_core(...)                # exit-side noloss + OBLIGATORY_HEDGE
+#                                                 # call before placing reduce/close
+#                                                 # returns (action, reason, hedge_fire, hedge_qty)
+#   evaluate_augment_eligibility_core(...)        # augment/reentry/open gate cascade
+#                                                 # call before AUGMENT execution
+#                                                 # returns (allowed, reason, qty, sub_gate)
+#   BrakeLookup(events, config).is_throttled(...) # EMERGENCY_BRAKE rate limiter
+#                                                 # call once at sim start, lookup per-bar
+#   evaluate_hedge_scan_gates_core(...)           # 7-gate hedge-scan cluster
+#                                                 # call in scan loop per position
+#                                                 # returns (fire, qty, reason, blocked_by)
+#   backtest_should_block(bar_ts, cfg, ...)       # stale-mark-price gate (default no-op)
+#                                                 # only fires under V8_BACKTEST_SIMULATE_STALE_MARK=1
+# ═══════════════════════════════════════════════════════════════
+try:
+    from position_evaluator import (
+        evaluate_noloss_gate_core,
+        evaluate_noloss_gate_vec,
+        evaluate_augment_eligibility_core,
+        evaluate_augment_eligibility_vec,
+        evaluate_emergency_brake_core,
+        evaluate_emergency_brake_vec,
+        BrakeLookup,
+        NOLOSS_ACTION_HOLD, NOLOSS_ACTION_ALLOW_REDUCE, NOLOSS_ACTION_CLOSE_HEDGE_FAILED,
+        SUB_GATE_NONE_ALLOWED,
+    )
+    from vec_paths.hedge_engine import evaluate_hedge_scan_gates_core
+    from vec_paths.stale_mark_price import backtest_should_block as evaluate_stale_mark_block_backtest
+    V8_VEC_PARITY_AVAILABLE = True
+except ImportError as _e:
+    V8_VEC_PARITY_AVAILABLE = False
+    print(f"[WARN] vec parity modules not available: {_e}")
+
+V8_USE_VEC_NOLOSS_GATE        = os.environ.get("V8_USE_VEC_NOLOSS_GATE",       "0") == "1"
+V8_USE_VEC_AUGMENT_GATE       = os.environ.get("V8_USE_VEC_AUGMENT_GATE",      "0") == "1"
+V8_USE_VEC_EMERGENCY_BRAKE    = os.environ.get("V8_USE_VEC_EMERGENCY_BRAKE",   "0") == "1"
+V8_USE_VEC_HEDGE_SCAN_GATES   = os.environ.get("V8_USE_VEC_HEDGE_SCAN_GATES",  "0") == "1"
+V8_USE_VEC_STALE_MARK         = os.environ.get("V8_USE_VEC_STALE_MARK",        "0") == "1"
+V8_USE_VEC_ALL                = os.environ.get("V8_USE_VEC_ALL",               "0") == "1"
+if V8_USE_VEC_ALL:
+    V8_USE_VEC_NOLOSS_GATE = V8_USE_VEC_AUGMENT_GATE = V8_USE_VEC_EMERGENCY_BRAKE = True
+    V8_USE_VEC_HEDGE_SCAN_GATES = V8_USE_VEC_STALE_MARK = True
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 1c: Re-apply overrides to instances created during ez_manage import
 # ez_manage.py line 730 does `config = Config()` at import time. Even with
 # dataclass defaults patched above, we re-apply to all instances now in case

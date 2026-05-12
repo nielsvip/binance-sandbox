@@ -1229,3 +1229,345 @@ def evaluate_noloss_gate_vec(
         'oh_user_trigger': out_oh_user_trigger,
         'comm_loss': in_loss,
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# EMERGENCY_BRAKE — re-exports from vec_paths/emergency_brake.py
+# Mirrors ez_manage.py:14114-14166 (per-hour rate limiter).
+# ════════════════════════════════════════════════════════════════════════════════
+try:
+    from vec_paths.emergency_brake import (
+        evaluate_emergency_brake_core,
+        evaluate_emergency_brake_vec,
+        BrakeLookup,
+        load_decision_events,
+        REASON_OK,
+        REASON_DISABLED,
+        REASON_MAX_ENTRIES,
+        REASON_MAX_TRADES,
+        REASON_SYMBOL_CHURN,
+        CODE_OK,
+        CODE_DISABLED,
+        CODE_MAX_ENTRIES,
+        CODE_MAX_TRADES,
+        CODE_SYMBOL_CHURN,
+        REASON_BY_CODE,
+    )
+except ImportError:
+    pass
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# AUGMENT ELIGIBILITY — LOSING_POSITION_HARD_BLOCK + DUP_GUARD + PULLBACK_AUGMENT
+# Live scalar site: ez_manage.py:13704-13787 (LOSING_POSITION_HARD_BLOCK)
+#                   ez_manage.py:11014-11038 (DUP_GUARD_GAIN_GATE)
+#                   ez_manage.py:14062-14080 (HARD_AUGMENT_LOCK)
+# User mandate: "NEVER AUGMENTING LOSING POSITIONS OR POSITIONS NOT IN A DECENT GAIN!"
+# AUGMENT requires real_gain > 0.5 * MIN_GAIN_TO_BUY_AGGRESSIVELY (default = 1.5%).
+# REENTRY (positionAmt==0) and HEDGE bypass these gates.
+# AUGMENT on losing position → ALWAYS REFUSED.
+# ════════════════════════════════════════════════════════════════════════════════
+
+# sub_gate_fired enum (string literals match REPORT contract)
+SUB_GATE_NONE_ALLOWED = "NONE_ALLOWED"
+SUB_GATE_HARD_AUGMENT_LOCK = "HARD_AUGMENT_LOCK"
+SUB_GATE_DUP_GUARD_GAIN_GATE = "DUP_GUARD_GAIN_GATE"
+SUB_GATE_MIN_GAIN_FLOOR = "MIN_GAIN_FLOOR"
+SUB_GATE_ENTRY_PRICE_GATE = "ENTRY_PRICE_GATE"
+SUB_GATE_PULLBACK_AUGMENT_LEVEL = "PULLBACK_AUGMENT_LEVEL"
+SUB_GATE_AUGMENT_LEVEL = "AUGMENT_LEVEL"
+
+# enum mapping for vec output (sub_gate as int8 for compactness)
+_SUB_GATE_TO_INT = {
+    SUB_GATE_NONE_ALLOWED: 0,
+    SUB_GATE_HARD_AUGMENT_LOCK: 1,
+    SUB_GATE_DUP_GUARD_GAIN_GATE: 2,
+    SUB_GATE_MIN_GAIN_FLOOR: 3,
+    SUB_GATE_ENTRY_PRICE_GATE: 4,
+    SUB_GATE_PULLBACK_AUGMENT_LEVEL: 5,
+    SUB_GATE_AUGMENT_LEVEL: 6,
+}
+_INT_TO_SUB_GATE = {v: k for k, v in _SUB_GATE_TO_INT.items()}
+
+# Default constants (mirror ez_manage.py module-level)
+_DEFAULT_AUGMENT_LOCK_MIN_SECONDS = 900  # ez_manage.py:4238
+
+
+def evaluate_augment_eligibility_core(
+    action: str,
+    position_amt: float,
+    real_gain: float,
+    entry_price: float,
+    mark_price: float,
+    proposed_qty: float,
+    config: Any,
+    last_augmentation_time: Optional[float] = None,
+    augmented_count: float = 0.0,
+    initial_quantity: float = 0.0,
+    max_gain: float = 0.0,
+    now_ts: Optional[float] = None,
+    is_hedge: bool = False,
+    is_long: bool = True,
+    ppl_fired: bool = False,
+    min_qty: float = 0.0001,
+    reason: str = "",
+) -> Tuple[bool, str, Optional[float], str]:
+    """Scalar augment-eligibility gate. Byte-equivalent to ez_manage.execute_now
+    LOSING_POSITION_HARD_BLOCK + DUP_GUARD_GAIN_GATE + HARD_AUGMENT_LOCK +
+    AUGMENT_LEVEL + ENTRY_PRICE_GATE + PULLBACK_AUGMENT paths.
+
+    Returns (allowed, reason_str, augment_qty_or_None, sub_gate_fired).
+
+    User contract:
+      • REENTRY/OPEN with position_amt==0 → bypass (positionAmt==0 means flat)
+      • is_hedge=True → bypass (opposite-side open, not augment)
+      • AUGMENT on losing position (gain<0) → always REFUSED
+      • AUGMENT requires real_gain > 0.5 * MIN_GAIN_TO_BUY_AGGRESSIVELY
+      • PULLBACK_AUGMENT_ENABLED → allows augment if peak hit MIN_GAIN/required
+        AND gain ≥ 0.5*MIN_GAIN AND (max_gain-gain) ≥ PULLBACK_AUGMENT_REVERSAL_MIN
+    """
+    act_up = (action or '').upper()
+    # ─── Action classification (mirrors ez_manage _lpb_is_increase + is_augment) ───
+    is_increase = (
+        ('OPEN' in act_up or 'AUGMENT' in act_up or 'REENTRY' in act_up
+         or 'ENTRY' in act_up or 'HEDGE_OPEN' in act_up or 'HEDGE_AUGMENT' in act_up
+         or 'REVERSE' in act_up)
+        and 'CLOSE' not in act_up and 'REDUCE' not in act_up and 'KILL' not in act_up
+    )
+    if not is_increase:
+        return True, "NOT_AN_INCREASE", proposed_qty, SUB_GATE_NONE_ALLOWED
+    # ─── Bypass 1: is_hedge=True opens opposite-side key, not augmenting ───
+    if is_hedge:
+        return True, "HEDGE_BYPASS", proposed_qty, SUB_GATE_NONE_ALLOWED
+    # ─── Bypass 2: REENTRY / OPEN on flat position (positionAmt==0) ───
+    is_aug_only = 'AUGMENT' in act_up and 'REENTRY' not in act_up
+    if abs(position_amt) <= min_qty:
+        return True, "FLAT_POS_REENTRY_OR_OPEN", proposed_qty, SUB_GATE_NONE_ALLOWED
+    # ─── Bypass 3: WT_3M_FORCE_OPEN reason (per 2026-05-10 mandate) ───
+    reason_up = (reason or '').upper()
+    wt3m_bypass = (
+        'WT_3M_FORCE_OPEN' in reason_up
+        and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+    )
+    # ─── PPL doubled gain (mirrors ez_reentry.effective_gain_pct) ───
+    eff_gain = real_gain
+    if ppl_fired and bool(getattr(config, 'EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', True)):
+        frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
+        if 0.0 < frac < 1.0:
+            eff_gain = real_gain / (1.0 - frac)
+    # ─── Config knobs (snapshot once for vectorization parity) ───
+    min_gain = float(getattr(config, 'MIN_GAIN', getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0)))
+    dup_use_gain = bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True))
+    dup_mult = float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))
+    pullback_enabled = bool(getattr(config, 'PULLBACK_AUGMENT_ENABLED', True))
+    pullback_rev_min = float(getattr(config, 'PULLBACK_AUGMENT_REVERSAL_MIN', 1.0))
+    aug_lock_secs = float(getattr(config, 'HARD_AUGMENT_LOCK_SECONDS', _DEFAULT_AUGMENT_LOCK_MIN_SECONDS))
+    pb_floor = 0.5 * min_gain
+    dup_thr = min_gain * dup_mult
+    # ─── 1) DUP_GUARD_GAIN_GATE — ez_manage.py:11019 (runs first in live) ───
+    if is_aug_only and dup_use_gain and not wt3m_bypass:
+        if eff_gain <= dup_thr:
+            return False, f"BLOCKED_DUP_GUARD_GAIN_{eff_gain:.2f}pct_lt_{dup_thr:.2f}pct", None, SUB_GATE_DUP_GUARD_GAIN_GATE
+    # ─── 2) HARD_AUGMENT_LOCK (ez_manage.py:14062) ───
+    if last_augmentation_time is not None and aug_lock_secs > 0 and not wt3m_bypass:
+        now = now_ts if now_ts is not None else 0.0
+        since_aug = now - float(last_augmentation_time)
+        gain_ok = eff_gain >= min_gain
+        if since_aug < aug_lock_secs and not gain_ok and is_aug_only:
+            return False, f"BLOCKED_HARD_AUGMENT_LOCK_{since_aug:.0f}s", None, SUB_GATE_HARD_AUGMENT_LOCK
+    # ─── 3) LOSING_POSITION_HARD_BLOCK — ground truth (ez_manage.py:13740) ───
+    if eff_gain < min_gain:
+        # PULLBACK_AUGMENT carve-out: real winner pulled back
+        pb_ok = (
+            is_aug_only
+            and pullback_enabled
+            and max_gain >= min_gain
+            and eff_gain >= pb_floor
+            and (max_gain - eff_gain) >= pullback_rev_min
+        )
+        if pb_ok:
+            # Fall through to AUGMENT_LEVEL and ENTRY_PRICE_GATE
+            pass
+        elif not wt3m_bypass:
+            return False, f"BLOCKED_LOSING_POSITION_GAIN{real_gain:.2f}_EFF{eff_gain:.2f}_LT_MIN{min_gain:.2f}", None, SUB_GATE_MIN_GAIN_FLOOR
+    # ─── 4) AUGMENT_LEVEL gate — N-th augment requires N × MIN_GAIN ───
+    if is_aug_only and initial_quantity > 0:
+        aug_n = max(1, round(abs(position_amt) / initial_quantity))
+        req = aug_n * min_gain
+        if eff_gain < req:
+            # PULLBACK_AUGMENT_LEVEL carve-out
+            pb_level_ok = (
+                pullback_enabled
+                and max_gain >= req
+                and eff_gain >= pb_floor
+                and (max_gain - eff_gain) >= pullback_rev_min
+            )
+            if pb_level_ok:
+                # Allowed via PULLBACK_AUGMENT_LEVEL; fall through to ENTRY_PRICE_GATE
+                sub_gate_pulled = SUB_GATE_PULLBACK_AUGMENT_LEVEL
+            elif not wt3m_bypass:
+                return False, f"BLOCKED_AUGMENT_LEVEL{aug_n}_need{req:.1f}_got{eff_gain:.2f}", None, SUB_GATE_AUGMENT_LEVEL
+    # ─── 5) ENTRY_PRICE_GATE — weighted-entry must keep post-augment gain ≥ 0 ───
+    if is_aug_only and entry_price > 0 and proposed_qty > 0 and mark_price > 0:
+        amt = abs(position_amt)
+        new_entry = (amt * entry_price + proposed_qty * mark_price) / (amt + proposed_qty)
+        if is_long:
+            post_gain = (mark_price - new_entry) / new_entry * 100.0
+        else:
+            post_gain = (new_entry - mark_price) / new_entry * 100.0
+        if post_gain < 0.0 and not wt3m_bypass:
+            return False, f"BLOCKED_ENTRY_PRICE_GATE_post_gain{post_gain:.2f}", None, SUB_GATE_ENTRY_PRICE_GATE
+    # ─── All gates passed ───
+    return True, "AUGMENT_ALLOWED", proposed_qty, SUB_GATE_NONE_ALLOWED
+
+
+def evaluate_augment_eligibility_vec(
+    action: str,
+    position_amt_arr: np.ndarray,
+    real_gain_arr: np.ndarray,
+    entry_price_arr: np.ndarray,
+    mark_price_arr: np.ndarray,
+    proposed_qty_arr: np.ndarray,
+    config: Any,
+    last_augmentation_time_arr: Optional[np.ndarray] = None,
+    initial_quantity_arr: Optional[np.ndarray] = None,
+    max_gain_arr: Optional[np.ndarray] = None,
+    now_ts_arr: Optional[np.ndarray] = None,
+    is_hedge_arr: Optional[np.ndarray] = None,
+    is_long: bool = True,
+    ppl_fired_arr: Optional[np.ndarray] = None,
+    min_qty: float = 0.0001,
+    reason_arr: Optional[np.ndarray] = None,
+) -> Dict[str, np.ndarray]:
+    """Vectorized augment-eligibility gate — identical decisions to _core per bar.
+
+    Returns dict:
+        allowed (bool[n]):      True → entry proceeds
+        augment_qty (f32[n]):   per-bar qty (proposed_qty when allowed, else 0)
+        sub_gate (int8[n]):     enum of which gate fired (see SUB_GATE_* constants
+                                mapped to ints via _SUB_GATE_TO_INT)
+    """
+    n = len(real_gain_arr)
+    pa = np.asarray(position_amt_arr, dtype=np.float64)
+    rg = np.asarray(real_gain_arr, dtype=np.float64)
+    ep = np.asarray(entry_price_arr, dtype=np.float64)
+    mp = np.asarray(mark_price_arr, dtype=np.float64)
+    pq = np.asarray(proposed_qty_arr, dtype=np.float64)
+    out_allowed = np.ones(n, dtype=bool)
+    out_qty = pq.astype(np.float32).copy()
+    out_sub = np.full(n, _SUB_GATE_TO_INT[SUB_GATE_NONE_ALLOWED], dtype=np.int8)
+    # ─── Action classification ───
+    act_up = (action or '').upper()
+    is_increase = (
+        ('OPEN' in act_up or 'AUGMENT' in act_up or 'REENTRY' in act_up
+         or 'ENTRY' in act_up or 'HEDGE_OPEN' in act_up or 'HEDGE_AUGMENT' in act_up
+         or 'REVERSE' in act_up)
+        and 'CLOSE' not in act_up and 'REDUCE' not in act_up and 'KILL' not in act_up
+    )
+    if not is_increase:
+        return {'allowed': out_allowed, 'augment_qty': out_qty, 'sub_gate': out_sub}
+    is_aug_only = 'AUGMENT' in act_up and 'REENTRY' not in act_up
+    # ─── Bypass masks ───
+    hedge_mask = (np.asarray(is_hedge_arr, dtype=bool) if is_hedge_arr is not None else np.zeros(n, dtype=bool))
+    flat_mask = (np.abs(pa) <= min_qty)
+    # WT_3M_FORCE_OPEN reason bypass (per-bar)
+    if reason_arr is not None and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True)):
+        wt3m_bypass = np.array([('WT_3M_FORCE_OPEN' in (str(r) or '').upper()) for r in reason_arr], dtype=bool)
+    else:
+        wt3m_bypass = np.zeros(n, dtype=bool)
+    bypass_mask = hedge_mask | flat_mask
+    eligible = ~bypass_mask
+    # ─── PPL doubled gain ───
+    eff_gain = rg.copy()
+    if ppl_fired_arr is not None and bool(getattr(config, 'EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED', True)):
+        frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
+        if 0.0 < frac < 1.0:
+            ppl_mask = np.asarray(ppl_fired_arr, dtype=bool)
+            eff_gain = np.where(ppl_mask, rg / (1.0 - frac), rg)
+    # ─── Config snapshot ───
+    min_gain = float(getattr(config, 'MIN_GAIN', getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0)))
+    dup_use_gain = bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True))
+    dup_mult = float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))
+    pullback_enabled = bool(getattr(config, 'PULLBACK_AUGMENT_ENABLED', True))
+    pullback_rev_min = float(getattr(config, 'PULLBACK_AUGMENT_REVERSAL_MIN', 1.0))
+    aug_lock_secs = float(getattr(config, 'HARD_AUGMENT_LOCK_SECONDS', _DEFAULT_AUGMENT_LOCK_MIN_SECONDS))
+    pb_floor = 0.5 * min_gain
+    dup_thr = min_gain * dup_mult
+    # ─── 1) DUP_GUARD_GAIN_GATE (runs first in live, ez_manage.py:11019) ───
+    if is_aug_only and dup_use_gain:
+        dup_fire = (eff_gain <= dup_thr) & eligible & (~wt3m_bypass)
+        out_allowed = np.where(dup_fire, False, out_allowed)
+        out_sub = np.where(dup_fire, np.int8(_SUB_GATE_TO_INT[SUB_GATE_DUP_GUARD_GAIN_GATE]), out_sub)
+        out_qty = np.where(dup_fire, np.float32(0.0), out_qty)
+        eligible = eligible & (~dup_fire)
+    # ─── 2) HARD_AUGMENT_LOCK ───
+    if last_augmentation_time_arr is not None and now_ts_arr is not None and aug_lock_secs > 0 and is_aug_only:
+        la = np.asarray(last_augmentation_time_arr, dtype=np.float64)
+        nt = np.asarray(now_ts_arr, dtype=np.float64)
+        since_aug = nt - la
+        gain_ok = eff_gain >= min_gain
+        hard_lock_mask = (since_aug < aug_lock_secs) & (~gain_ok) & eligible & (~wt3m_bypass) & (la > 0)
+        out_allowed = np.where(hard_lock_mask, False, out_allowed)
+        out_sub = np.where(hard_lock_mask, np.int8(_SUB_GATE_TO_INT[SUB_GATE_HARD_AUGMENT_LOCK]), out_sub)
+        out_qty = np.where(hard_lock_mask, np.float32(0.0), out_qty)
+        eligible = eligible & (~hard_lock_mask)
+    # ─── 3) LOSING_POSITION_HARD_BLOCK ───
+    losing_mask_raw = eff_gain < min_gain
+    if max_gain_arr is not None:
+        mg = np.asarray(max_gain_arr, dtype=np.float64)
+        pb_ok = (
+            is_aug_only
+            & pullback_enabled
+            & (mg >= min_gain)
+            & (eff_gain >= pb_floor)
+            & ((mg - eff_gain) >= pullback_rev_min)
+        )
+    else:
+        pb_ok = np.zeros(n, dtype=bool)
+    min_floor_fire = losing_mask_raw & (~pb_ok) & eligible & (~wt3m_bypass)
+    out_allowed = np.where(min_floor_fire, False, out_allowed)
+    out_sub = np.where(min_floor_fire, np.int8(_SUB_GATE_TO_INT[SUB_GATE_MIN_GAIN_FLOOR]), out_sub)
+    out_qty = np.where(min_floor_fire, np.float32(0.0), out_qty)
+    eligible = eligible & (~min_floor_fire)
+    # ─── 4) AUGMENT_LEVEL ───
+    if is_aug_only and initial_quantity_arr is not None:
+        iq = np.asarray(initial_quantity_arr, dtype=np.float64)
+        safe_iq = np.where(iq > 0, iq, 1.0)
+        aug_n = np.maximum(1.0, np.round(np.abs(pa) / safe_iq))
+        aug_n = np.where(iq > 0, aug_n, 1.0)
+        req = aug_n * min_gain
+        under_req = (eff_gain < req) & (iq > 0)
+        if max_gain_arr is not None:
+            mg = np.asarray(max_gain_arr, dtype=np.float64)
+            pb_level_ok = (
+                pullback_enabled
+                & (mg >= req)
+                & (eff_gain >= pb_floor)
+                & ((mg - eff_gain) >= pullback_rev_min)
+            )
+        else:
+            pb_level_ok = np.zeros(n, dtype=bool)
+        level_fire = under_req & (~pb_level_ok) & eligible & (~wt3m_bypass)
+        out_allowed = np.where(level_fire, False, out_allowed)
+        out_sub = np.where(level_fire, np.int8(_SUB_GATE_TO_INT[SUB_GATE_AUGMENT_LEVEL]), out_sub)
+        out_qty = np.where(level_fire, np.float32(0.0), out_qty)
+        eligible = eligible & (~level_fire)
+    # ─── 5) ENTRY_PRICE_GATE ───
+    if is_aug_only:
+        amt = np.abs(pa)
+        denom = amt + pq
+        safe_denom = np.where(denom > 0, denom, 1.0)
+        new_entry = (amt * ep + pq * mp) / safe_denom
+        safe_new_entry = np.where(new_entry > 0, new_entry, 1.0)
+        if is_long:
+            post_gain = (mp - safe_new_entry) / safe_new_entry * 100.0
+        else:
+            post_gain = (safe_new_entry - mp) / safe_new_entry * 100.0
+        ep_fire = (
+            (ep > 0) & (pq > 0) & (mp > 0) & (post_gain < 0.0)
+            & eligible & (~wt3m_bypass)
+        )
+        out_allowed = np.where(ep_fire, False, out_allowed)
+        out_sub = np.where(ep_fire, np.int8(_SUB_GATE_TO_INT[SUB_GATE_ENTRY_PRICE_GATE]), out_sub)
+        out_qty = np.where(ep_fire, np.float32(0.0), out_qty)
+    return {'allowed': out_allowed, 'augment_qty': out_qty, 'sub_gate': out_sub}
