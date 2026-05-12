@@ -2157,7 +2157,39 @@ class VecEngine:
                             if bear_1h: wtdc_score += 30
                             if dc_1h > 0.50: wtdc_score += 10
                             if k_5m_for_score > 60: wtdc_score += 10
-                        if wtdc_score < cfg.WT_DC_ENTRY_THRESHOLD:
+                        # FIX (noop): use mode-specific threshold so TRADIER_ENTRY_SCORE_THRESHOLD
+                        # and ENTRY_SCORE_THRESHOLD gate the WT_DC_ENTRY score path.
+                        # The WT_DC scorer produces 0-100 scores. The live entry_score knobs
+                        # (TRADIER_ENTRY_SCORE_THRESHOLD=24, ENTRY_SCORE_THRESHOLD=18) use a
+                        # different scale in production, but in vec we map them directly to the
+                        # WT_DC scale. The effective threshold = max of both knobs so that
+                        # raising TRADIER_ENTRY_SCORE_THRESHOLD above its default (24) adds a
+                        # tighter gate, and lowering it (toward 0) falls back to WT_DC_ENTRY_THRESHOLD.
+                        # Default values (24, 18) are below WT_DC_ENTRY_THRESHOLD=55, so baseline
+                        # behavior is preserved — the WT_DC threshold still dominates at defaults.
+                        if self.mode == "tradier":
+                            _wtdc_thr = max(cfg.WT_DC_ENTRY_THRESHOLD, cfg.TRADIER_ENTRY_SCORE_THRESHOLD)
+                        else:
+                            _wtdc_thr = max(cfg.WT_DC_ENTRY_THRESHOLD, cfg.ENTRY_SCORE_THRESHOLD)
+                        if wtdc_score < _wtdc_thr:
+                            continue
+
+                    # ── WT composite scoring gate (tradier_manage.py:3750) ──────────
+                    # FIX (noop): TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER was declared
+                    # but never read. Gate: wt_bull_alignment >= 3 AND wt_composite_long >= -20.
+                    # Source: tradier_manage.py:3756-3758, _wt_block=-20.0.
+                    if self.mode == "tradier" and bool(getattr(cfg, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", False)):
+                        _wt_align_field = "wt_bull_alignment" if side == "LONG" else "wt_bear_alignment"
+                        _wt_comp_field = "wt_composite_long" if side == "LONG" else "wt_composite_short"
+                        _wt_side_align = int(store.f(_wt_align_field, bar_idx, 0))
+                        _wt_side_comp = store.f(_wt_comp_field, bar_idx, 0.0)
+                        _wt_comp_long_min = float(getattr(cfg, "WT_COMPOSITE_LONG_MIN", 0.0))
+                        _wt_comp_short_min = float(getattr(cfg, "WT_COMPOSITE_SHORT_MIN", 0.0))
+                        _wt_comp_user_min = _wt_comp_long_min if side == "LONG" else _wt_comp_short_min
+                        _wt_comp_block = max(-20.0, _wt_comp_user_min)
+                        if _wt_side_align < 3:
+                            continue
+                        if _wt_side_comp < _wt_comp_block:
                             continue
 
                     # ── LTF stoch alignment gate (parity with ez_manage.check_entry_alignment) ──

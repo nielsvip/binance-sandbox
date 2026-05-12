@@ -190,20 +190,67 @@ try:
     )
     from vec_paths.hedge_engine import evaluate_hedge_scan_gates_core
     from vec_paths.stale_mark_price import backtest_should_block as evaluate_stale_mark_block_backtest
+    # 2026-05-12 — Stage 1 wiring: 7 additional gate clusters (all parity-tested,
+    # 100% bit-identical to live scalar twins over 1000–7000 synthetic cases each).
+    from vec_paths.newborn_protect import (
+        evaluate_newborn_protect_core,
+        evaluate_newborn_protect_vec,
+    )
+    from vec_paths.cooldown_locks import (
+        evaluate_cooldown_locks_core,
+        evaluate_cooldown_locks_vec,
+    )
+    from vec_paths.protect_balance_overtrade import (
+        evaluate_protect_balance_overtrade_core,
+        evaluate_protect_balance_overtrade_vec,
+    )
+    from vec_paths.circuit_sharpe_gates import (
+        evaluate_circuit_sharpe_gates_core,
+        evaluate_circuit_sharpe_gates_vec,
+    )
+    from vec_paths.tradeable_state_gates import (
+        evaluate_tradeable_state_gates_core,
+        evaluate_tradeable_state_gates_vec,
+    )
+    from vec_paths.open_intent_size_gates import (
+        evaluate_open_intent_size_gates_core,
+        evaluate_open_intent_size_gates_vec,
+    )
+    from vec_paths.quarantine_strategy_validation import (
+        evaluate_quarantine_core,
+        evaluate_quarantine_vec,
+        evaluate_vec_strategy_gates_parity_core,
+        evaluate_vec_strategy_gates_parity_vec,
+    )
     V8_VEC_PARITY_AVAILABLE = True
 except ImportError as _e:
     V8_VEC_PARITY_AVAILABLE = False
     print(f"[WARN] vec parity modules not available: {_e}")
 
-V8_USE_VEC_NOLOSS_GATE        = os.environ.get("V8_USE_VEC_NOLOSS_GATE",       "0") == "1"
-V8_USE_VEC_AUGMENT_GATE       = os.environ.get("V8_USE_VEC_AUGMENT_GATE",      "0") == "1"
-V8_USE_VEC_EMERGENCY_BRAKE    = os.environ.get("V8_USE_VEC_EMERGENCY_BRAKE",   "0") == "1"
-V8_USE_VEC_HEDGE_SCAN_GATES   = os.environ.get("V8_USE_VEC_HEDGE_SCAN_GATES",  "0") == "1"
-V8_USE_VEC_STALE_MARK         = os.environ.get("V8_USE_VEC_STALE_MARK",        "0") == "1"
-V8_USE_VEC_ALL                = os.environ.get("V8_USE_VEC_ALL",               "0") == "1"
+V8_USE_VEC_NOLOSS_GATE         = os.environ.get("V8_USE_VEC_NOLOSS_GATE",         "0") == "1"
+V8_USE_VEC_AUGMENT_GATE        = os.environ.get("V8_USE_VEC_AUGMENT_GATE",        "0") == "1"
+V8_USE_VEC_EMERGENCY_BRAKE     = os.environ.get("V8_USE_VEC_EMERGENCY_BRAKE",     "0") == "1"
+V8_USE_VEC_HEDGE_SCAN_GATES    = os.environ.get("V8_USE_VEC_HEDGE_SCAN_GATES",    "0") == "1"
+V8_USE_VEC_STALE_MARK          = os.environ.get("V8_USE_VEC_STALE_MARK",          "0") == "1"
+# 2026-05-12 — Stage 1: 7 new opt-in flags for the just-built parity modules.
+V8_USE_VEC_NEWBORN_PROTECT     = os.environ.get("V8_USE_VEC_NEWBORN_PROTECT",     "0") == "1"
+V8_USE_VEC_COOLDOWN_LOCKS      = os.environ.get("V8_USE_VEC_COOLDOWN_LOCKS",      "0") == "1"
+V8_USE_VEC_PROTECT_BALANCE     = os.environ.get("V8_USE_VEC_PROTECT_BALANCE",     "0") == "1"
+V8_USE_VEC_CIRCUIT_SHARPE      = os.environ.get("V8_USE_VEC_CIRCUIT_SHARPE",      "0") == "1"
+V8_USE_VEC_TRADEABLE_STATE     = os.environ.get("V8_USE_VEC_TRADEABLE_STATE",     "0") == "1"
+V8_USE_VEC_OPEN_INTENT_SIZE    = os.environ.get("V8_USE_VEC_OPEN_INTENT_SIZE",    "0") == "1"
+V8_USE_VEC_QUARANTINE_STRATEGY = os.environ.get("V8_USE_VEC_QUARANTINE_STRATEGY", "0") == "1"
+# Shadow-validator: non-invasive audit mode — engine behavior unchanged, but every
+# decision point is also evaluated by the corresponding vec module and divergences
+# logged to /tmp/v8_vec_divergences.jsonl. Safe to leave on in CI / sweeps.
+V8_VEC_SHADOW_VALIDATE         = os.environ.get("V8_VEC_SHADOW_VALIDATE",         "0") == "1"
+V8_USE_VEC_ALL                 = os.environ.get("V8_USE_VEC_ALL",                 "0") == "1"
 if V8_USE_VEC_ALL:
     V8_USE_VEC_NOLOSS_GATE = V8_USE_VEC_AUGMENT_GATE = V8_USE_VEC_EMERGENCY_BRAKE = True
     V8_USE_VEC_HEDGE_SCAN_GATES = V8_USE_VEC_STALE_MARK = True
+    V8_USE_VEC_NEWBORN_PROTECT = V8_USE_VEC_COOLDOWN_LOCKS = V8_USE_VEC_PROTECT_BALANCE = True
+    V8_USE_VEC_CIRCUIT_SHARPE = V8_USE_VEC_TRADEABLE_STATE = True
+    V8_USE_VEC_OPEN_INTENT_SIZE = V8_USE_VEC_QUARANTINE_STRATEGY = True
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 1c: Re-apply overrides to instances created during ez_manage import

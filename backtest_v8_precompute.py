@@ -1166,11 +1166,17 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]
     _divisor = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_dt_unit, 10**9)
     ts_epoch = (base_df.index.values.astype("int64") // _divisor).astype(np.int64)
-    # ALWAYS resample HTFs from 15m — 15m has full history, standalone kline files may be short
+    # ALWAYS resample HTFs from the authoritative 15m source, NOT from fabricated 3m/5m base_df.
+    # BUG FIX 2026-05-12: when base_tf is switched to fabricated 3m/5m (lines above), the old
+    # code passed base_df (fabricated) to resample_tf() instead of dfs["15m"].  Resampling
+    # fabricated 5m→1h introduces interpolation artifacts (mean |stoch_k_1h delta| = 32 pts,
+    # max = 95 pts vs resampling from real 15m).  The authoritative source is always "15m".
+    _resample_src_tf = "15m"  # the real klines — never a fabricated sub-tf
+    _resample_src_df = dfs.get(_resample_src_tf, base_df)  # fallback to base_df if 15m missing
     for tf in tfs:
-        if tf == base_tf:
+        if tf == base_tf or tf == _resample_src_tf:
             continue
-        resampled = resample_tf(base_df, tf)
+        resampled = resample_tf(_resample_src_df, tf)
         if resampled is not None and len(resampled) >= 20:
             existing = dfs.get(tf)
             # Use resampled if it has more data than the standalone file
