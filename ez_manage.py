@@ -3861,22 +3861,34 @@ async def ii(
                             trade_manager.indicators_source_label = "redis_hot"
             except Exception:
                 pass
-    # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing
+    # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing.
+    # Bridge (shared memory) returns stoch_k_3m=0/stoch_d_3m=0 when ez_indicators skips 3m
+    # computation due to stale mark price (>3s gap). Override both-zero 3m stoch from JSON.
     _htf_needed = bool(result) and result.get("stoch_k_15m") is None
-    if not result or _htf_needed:
+    _3m_zero = bool(result) and result.get("stoch_k_3m", 0) == 0 and result.get("stoch_d_3m", 0) == 0
+    if not result or _htf_needed or _3m_zero:
         snapshot = getattr(trade_manager, "indicators_snapshot", {})
         bulk_data = snapshot.get(sym)
         if isinstance(bulk_data, dict):
-            if _htf_needed and bulk_data.get("stoch_k_15m") is not None:
-                for key, val in bulk_data.items():
-                    if key not in result:
-                        result[key] = val
-                trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + "+snapshot_htf"
-            elif not result:
+            if not result:
                 result = bulk_data.copy()
                 trade_manager.indicators_source_label = trade_manager.indicators_source_label or "snapshot"
+            else:
+                _label_add = ""
+                if _htf_needed and bulk_data.get("stoch_k_15m") is not None:
+                    for key, val in bulk_data.items():
+                        if key not in result:
+                            result[key] = val
+                    _label_add += "+snapshot_htf"
+                if _3m_zero and bulk_data.get("stoch_k_3m"):
+                    result["stoch_k_3m"] = bulk_data["stoch_k_3m"]
+                    result["stoch_d_3m"] = bulk_data.get("stoch_d_3m", result.get("stoch_d_3m", 0))
+                    _label_add += "+snapshot_3m"
+                if _label_add:
+                    trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + _label_add
     _htf_needed = bool(result) and result.get("stoch_k_15m") is None
-    if not result or _htf_needed:
+    _3m_zero = bool(result) and result.get("stoch_k_3m", 0) == 0 and result.get("stoch_d_3m", 0) == 0
+    if not result or _htf_needed or _3m_zero:
         try:
             latest_file = _get_latest_market_data_file()
             if latest_file:
@@ -3886,14 +3898,22 @@ async def ii(
                         full_data = orjson.loads(file_content)
                         if isinstance(full_data, dict) and sym in full_data:
                             file_sym_data = full_data[sym]
-                            if _htf_needed:
-                                for key, val in file_sym_data.items():
-                                    if key not in result:
-                                        result[key] = val
-                                trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + "+json_htf"
-                            else:
+                            if not result:
                                 result = file_sym_data.copy()
                                 trade_manager.indicators_source_label = "json_file"
+                            else:
+                                _label_add = ""
+                                if _htf_needed:
+                                    for key, val in file_sym_data.items():
+                                        if key not in result:
+                                            result[key] = val
+                                    _label_add += "+json_htf"
+                                if _3m_zero and file_sym_data.get("stoch_k_3m"):
+                                    result["stoch_k_3m"] = file_sym_data["stoch_k_3m"]
+                                    result["stoch_d_3m"] = file_sym_data.get("stoch_d_3m", result.get("stoch_d_3m", 0))
+                                    _label_add += "+json_3m"
+                                if _label_add:
+                                    trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + _label_add
         except Exception:
             pass
     if result:
