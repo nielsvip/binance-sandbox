@@ -144,6 +144,62 @@ except ImportError:
     _SRS_AVAILABLE = False
     def _check_srs_exit(store, bar_idx, pos_state, mode, cfg): return None
 
+# SIZING pipeline (Path 1) — compute_position_size + WT_HTF_DISCOUNT + HEDGE_SIZE_CAP
+try:
+    from vec_paths.sizing import compute_position_size as _compute_position_size_v2
+    from vec_paths.sizing import compute_size_multiplier as _compute_size_mult_v2
+    _SIZING_V2_AVAILABLE = True
+except ImportError:
+    _SIZING_V2_AVAILABLE = False
+    def _compute_position_size_v2(store, bar_idx, side, mode, cfg, dd_state, running_gain, pos_state=None, is_hedge=False, origin_pos_usd=0.0, is_rz_entry=False, base_qty_override=None): return (1.0, 0)
+    def _compute_size_mult_v2(store, bar_idx, side, mode, cfg, dd_state, running_gain, pos_state=None, is_hedge=False, origin_pos_usd=0.0, is_rz_entry=False): return 1.0
+
+# DUP_GUARD (Path 2) — AUGMENT_LOCK + DUPLICATE_OPEN_GUARD
+try:
+    from vec_paths.dup_guard import check_dup_guard_block as _check_dup_guard_block
+    _DUP_GUARD_AVAILABLE = True
+except ImportError:
+    _DUP_GUARD_AVAILABLE = False
+    def _check_dup_guard_block(pos_state, ts_i, current_gain_pct, cfg, pos_value_usd=0.0, action="AUGMENT", reason_hint=""): return None
+
+# REDUCE PATHS (Path 3) — K1M_EXTREME_REVERSE, STRONG_REDUCE_K, PROFIT_TAKE_REDUCE
+try:
+    from vec_paths.reduce_paths import (
+        check_k1m_extreme_reverse as _check_k1m_extreme_reverse,
+        check_strong_reduce_k as _check_strong_reduce_k,
+        check_profit_take_reduce as _check_profit_take_reduce,
+    )
+    _REDUCE_PATHS_AVAILABLE = True
+except ImportError:
+    _REDUCE_PATHS_AVAILABLE = False
+    def _check_k1m_extreme_reverse(store, bar_idx, pos_state, mode, cfg): return None
+    def _check_strong_reduce_k(store, bar_idx, pos_state, mode, cfg): return None
+    def _check_profit_take_reduce(store, bar_idx, pos_state, mode, cfg): return None
+
+# PEAK_GIVEBACK / BE_EROSION (Path 4)
+try:
+    from vec_paths.peak_giveback_be_erosion import (
+        check_peak_giveback_exit as _check_peak_giveback_exit,
+        check_be_erosion_exit as _check_be_erosion_exit,
+    )
+    _PEAK_GIVEBACK_AVAILABLE = True
+except ImportError:
+    _PEAK_GIVEBACK_AVAILABLE = False
+    def _check_peak_giveback_exit(store, bar_idx, pos_state, mode, cfg): return None
+    def _check_be_erosion_exit(store, bar_idx, pos_state, mode, cfg): return None
+
+# WINNER_PROTECT / WT_15M_VEL_SLOW (Path 5)
+try:
+    from vec_paths.winner_protect import (
+        check_winner_protect_hold as _check_winner_protect_hold,
+        check_wt_15m_vel_slow_zero_gain as _check_wt_15m_vel_slow_zero_gain,
+    )
+    _WINNER_PROTECT_AVAILABLE = True
+except ImportError:
+    _WINNER_PROTECT_AVAILABLE = False
+    def _check_winner_protect_hold(store, bar_idx, pos_state, mode, cfg): return False
+    def _check_wt_15m_vel_slow_zero_gain(store, bar_idx, pos_state, mode, cfg): return None
+
 # ───────────────────────────────────────────────────────────
 # Path setup
 # ───────────────────────────────────────────────────────────
@@ -620,6 +676,73 @@ class VecConfig:
     MICRO_SCALP_MIN_HOLD_BARS: int = 0
     MICRO_SCALP_USDC_MAKER_ENABLED: bool = False
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
+
+    # ── Path 1: Sizing pipeline (WT_HTF_DISCOUNT + HEDGE_SIZE_CAP + MIN_POS) ──
+    # Source: vec_paths/sizing.py + position_evaluator.compute_trade_qty_core()
+    WT_HTF_DISCOUNT_ENABLED: bool = True        # reduce size when HTF WT misaligned
+    HEDGE_MAX_PCT_OF_LOSER: float = 1.0         # max hedge size as pct of loser value
+    MIN_POSITION_SIZE: float = 55.0             # USD floor (maps to min_qty at current price)
+    WINNER_AUGMENT_ENABLED: bool = False        # avg-in on profitable position
+    WINNER_AUGMENT_MIN_GAIN_PCT: float = 2.0    # min gain to trigger augment bonus
+    WINNER_AUGMENT_SIZE_MULT: float = 1.5       # qty multiplier when augmenting winner
+    SIZING_V2_ENABLED: bool = False             # opt-in: use compute_position_size_v2 pipeline
+
+    # ── Path 2: DUP_GUARD + AUGMENT_LOCK ─────────────────────────────────────
+    # Source: vec_paths/dup_guard.py + ez_manage.py:11014+14062
+    DUP_GUARD_ENABLED: bool = True              # master gate for both guards
+    DUP_GUARD_USE_GAIN_GATE: bool = True        # True=gain-based, False=time-cooldown
+    DUP_GUARD_GAIN_MULTIPLIER: float = 0.5      # threshold = MIN_GAIN * multiplier = 1.5%
+    AUGMENT_LOCK_MIN_SECONDS: float = 900.0     # cooldown for AUGMENT_LOCK
+    DUPLICATE_OPEN_COOLDOWN: float = 900.0      # fallback time-based cooldown
+
+    # ── Path 3: Reduce paths ──────────────────────────────────────────────────
+    # Source: vec_paths/reduce_paths.py
+    K1M_EXTREME_REVERSE_ENABLED: bool = False   # k_1m extreme + turn → partial close
+    K1M_EXTREME_HIGH: float = 90.0
+    K1M_EXTREME_LOW: float = 10.0
+    K1M_REVERSE_REQUIRES_PROFIT: bool = True
+    K1M_REVERSE_REDUCE_FRAC: float = 0.5
+    STRONG_REDUCE_K_ENABLED: bool = False       # k_15m extreme + k_1h opposite → partial
+    SRK_K15M_LONG_MIN: float = 80.0
+    SRK_K1H_LONG_MAX: float = 30.0
+    SRK_K15M_SHORT_MAX: float = 20.0
+    SRK_K1H_SHORT_MIN: float = 70.0
+    SRK_REDUCE_FRAC: float = 0.5
+    PROFIT_TAKE_REDUCE_ENABLED: bool = False    # gain >= threshold → partial close
+    PROFIT_TAKE_GAIN_PCT: float = 2.0
+    PROFIT_TAKE_REDUCE_FRAC: float = 0.5
+
+    # ── Path 4: PEAK_GIVEBACK + BE_EROSION ───────────────────────────────────
+    # Source: vec_paths/peak_giveback_be_erosion.py + tradier_manage.py:5028
+    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5
+    PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False   # OFF per USER 2026-05-11
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False      # OFF since 2026-04-27
+    PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN: bool = True
+    PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = -0.5
+    BREAKEVEN_GRACE_MINUTES: float = 15.0
+    BE_EROSION_ENABLED: bool = False
+    BE_EROSION_MIN_PEAK_PCT: float = 0.5
+    BE_EROSION_FLOOR_PCT: float = 0.0
+    BE_EROSION_HOLD_MIN_MIN: float = 15.0
+
+    # ── Path 5: WINNER_PROTECT + WT_15M_VEL_SLOW zero-gain variant ───────────
+    # Source: vec_paths/winner_protect.py
+    # WINNER_PROTECT: ez_positions_quick.py:13918
+    WINNER_PROTECT_ENABLED: bool = False
+    WINNER_PROTECT_GAIN_PCT: float = 2.0        # alias for RP_PROTECT_MIN_GAIN
+    RP_PROTECT_THRESHOLD: float = 70.0
+    RP_PROTECT_MIN_GAIN: float = 2.0
+    WINNER_PROTECT_HTF_MIN_ALIGNED: int = 2     # vec proxy for live ranking threshold
+    # WT_15M_VEL_SLOW (zero-gain variant): ez_manage.py:21022 R2
+    # Note: R2_USE_EXIT_R1_R2_MODULE=True means exit_r1_r2.py handles R2 above.
+    # winner_protect.py R2 only activates when R2_USE_EXIT_R1_R2_MODULE=False.
+    R2_USE_EXIT_R1_R2_MODULE: bool = True       # True = use exit_r1_r2.py (default)
+    R2_PEAK_MIN_PCT: float = 0.5
+    # WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED, WT_15M_VEL_SLOW_GAIN_BAND_PCT,
+    # WT_15M_VEL_SLOW_GAIN_FLOOR_PCT, WT_VEL_DECEL_RATIO, WT_VEL_USE_DECEL_RATIO_ONLY,
+    # R2_TF_LIST, WT_15M_VEL_NEAR_ZERO_THRESHOLD already declared above in R2 section.
 
     # ── Misc ─────────────────────────────────────────────────
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
@@ -1161,6 +1284,97 @@ class VecEngine:
                         if pnl > 0:
                             pos.last_reduce_price = price
 
+                # ── WT_15M_VEL_SLOW near-zero gain exit (Path 5 / R2 variant) ──────
+                # Source: vec_paths/winner_protect.py + ez_manage.py:21022 R2 block.
+                # Fires BEFORE NOLOSS gate — is a NOLOSS bypass.
+                # Different from exit_r1_r2.check_r2_wt_vel_slow_exit which uses
+                # WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED default True. This path duplicates
+                # that logic inside winner_protect.py for composition clarity.
+                # NOTE: exit_r1_r2.py already wires R2 above. This block is gated to
+                # AVOID double-firing: only runs when exit_r1_r2's R2 is disabled.
+                if not bool(getattr(cfg, 'R2_USE_EXIT_R1_R2_MODULE', True)):
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _wp_r2_sig = _check_wt_15m_vel_slow_zero_gain(store, bar_idx, pos, self.mode, cfg)
+                        if _wp_r2_sig is not None:
+                            pnl = pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                            if pnl > 0:
+                                pos.last_reduce_price = price
+
+                # ── PEAK_GIVEBACK exit (Path 4) ──────────────────────────────────
+                # Source: vec_paths/peak_giveback_be_erosion.py + tradier_manage.py:5028.
+                # Fires BEFORE NOLOSS gate (trades still open at loss allowed to close).
+                # Default: PEAK_GIVEBACK_PROTECTION_ENABLED=True but
+                #   PEAK_GIVEBACK_HARD_ZERO_ENABLED=False +
+                #   PEAK_GIVEBACK_DROP_TRIGGER_ENABLED=False → effectively disabled in current config.
+                if bool(getattr(cfg, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _pgb_sig = _check_peak_giveback_exit(store, bar_idx, pos, self.mode, cfg)
+                        if _pgb_sig is not None:
+                            pnl = pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                            if pnl > 0:
+                                pos.last_reduce_price = price
+
+                # ── BE_EROSION exit (Path 4 variant) ────────────────────────────
+                # Source: vec_paths/peak_giveback_be_erosion.py.
+                # Default OFF (BE_EROSION_ENABLED=False).
+                if bool(getattr(cfg, 'BE_EROSION_ENABLED', False)):
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _be_sig = _check_be_erosion_exit(store, bar_idx, pos, self.mode, cfg)
+                        if _be_sig is not None:
+                            pnl = pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                            if pnl > 0:
+                                pos.last_reduce_price = price
+
+                # ── REDUCE paths (Path 3) ────────────────────────────────────────
+                # K1M_EXTREME_REVERSE, STRONG_REDUCE_K, PROFIT_TAKE_REDUCE.
+                # These are PARTIAL closes: append fractional pnl, reduce pos.qty.
+                # All three default OFF. Firing one reduces qty but leaves position open.
+                for _rp_pos in (pos_long, pos_short):
+                    if not _rp_pos.open:
+                        continue
+                    _rp_gain = _rp_pos.gain_pct
+                    for _rp_fn, _rp_enabled_attr in (
+                        (_check_k1m_extreme_reverse, 'K1M_EXTREME_REVERSE_ENABLED'),
+                        (_check_strong_reduce_k, 'STRONG_REDUCE_K_ENABLED'),
+                        (_check_profit_take_reduce, 'PROFIT_TAKE_REDUCE_ENABLED'),
+                    ):
+                        if not bool(getattr(cfg, _rp_enabled_attr, False)):
+                            continue
+                        _rp_sig = _rp_fn(store, bar_idx, _rp_pos, self.mode, cfg)
+                        if _rp_sig is None:
+                            continue
+                        if _rp_sig.get('require_profit', True) and _rp_gain < 0:
+                            continue
+                        _frac = float(_rp_sig.get('frac', 0.5))
+                        partial_pnl = _rp_gain * _frac
+                        returns_by_sym[sym].append(partial_pnl)
+                        all_returns.append(partial_pnl)
+                        running_gain += partial_pnl
+                        _rp_pos.qty *= (1.0 - _frac)
+                        # Track profit-take state (reuse ppl_fired as "took-profit" flag)
+                        _rp_pos.ppl_fired = True
+                        if _rp_gain > 0:
+                            _rp_pos.last_reduce_price = price
+                        break  # only one reduce path fires per bar per position
+
                 # ── SRS: Structural Range Shift exit ── BYPASSES NOLOSS gate.
                 # Fires ABOVE NOLOSS gate in live (tradier_manage.py:5129, BEFORE gate at 5218).
                 # Source: vec_paths/structural_range_shift.py.
@@ -1495,6 +1709,24 @@ class VecEngine:
                         except Exception:
                             pass
 
+                # ── DUP_GUARD augment check (Path 2) ────────────────────────────
+                # Source: vec_paths/dup_guard.py + ez_manage.py:11014+14062.
+                # Applied to all AUGMENT-eligible open positions BEFORE sentiment boost.
+                # In simulate() this gates the SENTIMENT_BOOST augment path.
+                # DUP_GUARD for NEW opens (empty position) is handled in the entry loop below.
+                _dg_blocked: set = set()
+                if _DUP_GUARD_AVAILABLE and bool(getattr(cfg, 'DUP_GUARD_ENABLED', True)):
+                    for _dg_pos in (pos_long, pos_short):
+                        if not _dg_pos.open:
+                            continue
+                        _dg_val = _dg_pos.qty * price if price > 0 else 0.0
+                        _dg_blk = _check_dup_guard_block(
+                            _dg_pos, float(ts_i), _dg_pos.gain_pct, cfg,
+                            pos_value_usd=_dg_val, action="AUGMENT"
+                        )
+                        if _dg_blk is not None:
+                            _dg_blocked.add(_dg_pos.side)
+
                 # ── SENTIMENT_BOOST augment (tradier_manage.py:7408) ──────────
                 # Check for augment on open positions before the entry gate.
                 # This fires AUGMENT events on already-open positions when
@@ -1504,6 +1736,8 @@ class VecEngine:
                     try:
                         for _sb_pos in (pos_long, pos_short):
                             if not _sb_pos.open:
+                                continue
+                            if _sb_pos.side in _dg_blocked:
                                 continue
                             _sb_result = _sentiment_boost_fn(store, bar_idx, _sb_pos, ts_i, cfg)
                             if _sb_result is not None:
@@ -1643,6 +1877,18 @@ class VecEngine:
                     last_close_ts = pos.last_close_ts if hasattr(pos, "last_close_ts") else 0
                     if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
                         if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
+                            continue
+
+                    # ── DUP_GUARD on NEW opens (Path 2) ──────────────────────────
+                    # Source: vec_paths/dup_guard.py + ez_manage.py:14062 HARD_AUGMENT_LOCK.
+                    # Per CLAUDE.md 2026-05-09: AUGMENT_LOCK extends to ALL opens,
+                    # including true OPEN on empty positions.
+                    if _DUP_GUARD_AVAILABLE and bool(getattr(cfg, 'DUP_GUARD_ENABLED', True)):
+                        _new_open_blk = _check_dup_guard_block(
+                            pos, float(ts_i), 0.0, cfg,
+                            pos_value_usd=0.0, action="OPEN"
+                        )
+                        if _new_open_blk is not None:
                             continue
 
                     # ── PRICE_CROSS_BACK_REENTRY (tradier_manage.py:1880) ───────────

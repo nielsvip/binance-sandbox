@@ -1,1223 +1,557 @@
 #!/usr/bin/env python3
-"""vec_sweep.py — fully-vectorized backtest sweep, audited Sharpe, SQLite store.
+"""
+vec_sweep.py — Ultra-fast multi-process vectorized sweep runner using vec_engine_v1.py.
 
-Built per CLAUDE.md NO-LIES MANDATE. Every Sharpe in the DB is per-trade
-pool_sharpe = mean(returns)/std(returns). NO annualization, NO sqrt(N), NO
-sym-avg masquerading as pool. Open trades at last bar are MtM'd (rule 2).
-Per-trade returns are stored as a zlib'd float16 blob alongside every result
-so any number can be recomputed via metrics_guard.pool_sharpe(returns).
+DESIGN:
+  - Loads NPZ once per worker process (cached across all configs that process handles).
+  - Runs configs in concurrent.futures.ProcessPoolExecutor (--workers N processes).
+  - Uses vec_engine_v1.VecEngine.simulate() directly — no subprocess overhead.
+  - Streams results to CSV via metrics_guard.write_sharpe_row() (NEVER bypassed).
+  - All Sharpe values route through metrics_guard — CLAUDE.md NO-LIES MANDATE enforced.
 
-EVERY NPZ FIELD IS SWITCHABLE WITH SWEEPABLE THRESHOLDS
-=======================================================
-On startup, vec_sweep reads one sample NPZ and auto-classifies every field
-(530 in current backtest_v8/indicators/ files) into a PrimitiveFamily:
+PERFORMANCE:
+  - Target: 100 configs × 10 syms × 16 months under 5 minutes.
+  - Target: 1000 configs × 10 syms × 16 months under 60 minutes.
+  - Memory: < 4 GB total with 8 workers (NPZ loaded once per worker, not per config).
 
-  - bool-like  (crossover/crossunder/detected/_pass/_long/_short/state):
-        materialized as `field == 1` (or `==-1` for the negative side).
-        1 primitive per field per side.
-  - oscillator (rsi/k_/d_/mfi/bb_pct_b/wt_*):
-        materialized as `field >= T` and `field <= T`, with T sweeping the
-        oscillator range. ~10 thresholds per side per field.
-  - centered-zero (macd/wt1/wt2/clenow_*/funding_rate/ratio):
-        thresholds at percentiles {5,10,25,50,75,90,95} of the sample, both
-        sides.
-  - unbounded-pos (atr/dc_*/close/volume/etc.):
-        thresholds at percentiles {10,25,50,75,90} for `>=` and `<=`. Plus
-        cross-field comparisons against `close` (e.g. close>dc_high_4h).
+VALIDATION GATES (CLAUDE.md NO-LIES MANDATE):
+  - Every row includes all 9 canonical fields: pool_sharpe, sym_sharpe, avg_gain_trade,
+    gain_per_yr, gain_sym_yr, trades, max_dd_pct, n_syms, years.
+  - Sub-floor results tagged [DIAGNOSTIC ONLY · n_syms=X · years=Y].
+  - NO banned column names (sharpe_annual, sharpe_yearly, etc.).
+  - Rows written ONLY via metrics_guard.write_sharpe_row().
+  - NO per-symbol BEST promotion (IMPOSTER BLOCK rule 1).
 
-The family + threshold tuple is the primitive id. Cartesian product over
-(k entry primitives) AND (k exit primitives) for both long and short =
-order of 10^15 unique configs. We don't enumerate; we sample randomly and
-let the DB act as the leaderboard.
+USAGE:
+    # Quick validation (1 config, 3 symbols):
+    python vec_sweep.py --mode tradier --symbols AMD,AMZN,AVGO --start 2025-01-01 \\
+                        --tier live_default_baseline --workers 1 \\
+                        --out /tmp/test.csv
 
-Switchability: every family has `enabled=True` by default. Pass
-`--disable-families "atr_*,kc_*"` (glob) to drop entire families from the
-grid. Pass `--ranges-json path` to override default thresholds.
+    # 42-config grid (8 symbols):
+    python vec_sweep.py --mode tradier \\
+                        --symbols AMD,AMZN,AVGO,ARM,GOOGL,MSTR,NVDA,COP \\
+                        --start 2025-01-01 --tier gr_entry_consensus_grid \\
+                        --workers 4 --out /tmp/test_grid.csv
 
-USAGE
-=====
-  # Catalog of all auto-generated primitive families:
-  python3 vec_sweep.py catalog --sample-sym BTCUSDC
+    # 1000+ config stress test:
+    python vec_sweep.py --mode tradier --symbols AMD,AMZN,AVGO,ARM,GOOGL,MSTR,NVDA,COP \\
+                        --start 2025-01-01 --tier mega_combo_v1 --workers 8 \\
+                        --out data/sweep_results/vec_sweep_mega.csv
 
-  # Per-symbol diagnostic sweep (priority 6 syms):
-  python3 vec_sweep.py per_symbol --syms BTCUSDC,ETHUSDC,SOLUSDC,BTCDOMUSDT,DOGEUSDT,ZECUSDT --max-configs 200000
+    # List available tiers:
+    python vec_sweep.py --list-tiers
 
-  # Pooled 48-sym crypto basket (publishable):
-  python3 vec_sweep.py pooled --basket crypto48 --max-configs 50000
-
-  # S2: validate seeds → climb to Sharpe target:
-  python3 vec_sweep.py validate --seed-mode pooled:crypto48 --top-n 1000 --target-pool-sharpe 4.0
-
-  # Mac: V3 fast-scalp (3m primitives only):
-  python3 vec_sweep.py v3 --syms BTCUSDC,ETHUSDC,SOLUSDC --max-configs 100000
-
-  # Read DB:
-  python3 vec_sweep.py top --mode pooled:crypto48 --top-n 1000
-
-LIMITATIONS (honest)
-====================
-  * Single-symbol Sharpes are DIAGNOSTIC by CLAUDE.md rule 5. Per-symbol
-    rows in this DB cannot promote to live alone — only via a ≥48-sym
-    (crypto) / ≥100-sym (stocks) pooled re-run.
-  * No commission/slippage model. Subtract a haircut in `_trade_returns`
-    if you want to bake one in.
-  * "Trillions of configs" is a property of the search space; we sample.
-  * Cache is LRU 4000 masks (~5GB for 1.1M-bar series). Bump
-    MASK_CACHE_LIMIT if you have RAM.
+NOTES:
+  - vec_engine_v1 results are Tier-1 shortlist only — NOT a substitute for
+    backtest_v8_engine.py (Tier-2). Any config promoted from this sweep MUST
+    be re-validated via backtest_v8_engine before touching live config.
+  - All rows are tagged [VEC ONLY — UNVALIDATED] for this reason.
 """
 from __future__ import annotations
 
 import argparse
-import collections
-import fnmatch
-import hashlib
+import csv
 import json
+import logging
 import os
-import random
-import re
-import signal
-import sqlite3
+import platform
 import sys
 import time
-import zlib
-from dataclasses import dataclass, field
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
+# ── Path setup — mirrors vec_engine_v1.py ─────────────────────────────
+IS_SERVER = platform.system() == "Linux"
+if IS_SERVER:
+    BASE_PATH = Path("/home/niels/binance-sandbox")
+else:
+    BASE_PATH = Path("/Users/niels/Documents/binance")
 
-import metrics_guard as mg
+sys.path.insert(0, str(BASE_PATH))
 
-# ---------------------------------------------------------------------------
-# CONST
-# ---------------------------------------------------------------------------
-REPO = Path(__file__).resolve().parent
-NPZ_DIR_DEFAULT = REPO / "backtest_v8" / "indicators"
-DB_DEFAULT = REPO / "data" / "vec_sweep.db"
-HOLD_SENTINEL = Path("/tmp/BACKTEST_HOLD")
-BARS_PER_YEAR_3M = 525_600 / 3  # 175,200 3m bars per year
-MASK_CACHE_LIMIT = 4000          # LRU cap; ~137KB packed/1.1MB bool per mask
-SAMPLE_SIZE_FOR_PERCENTILES = 200_000  # bars used to derive percentile thresholds
+import metrics_guard  # MANDATORY — CLAUDE.md NO-LIES MANDATE
+from vec_sweep_tiers import get_tier, list_tiers
 
-BASKETS: Dict[str, List[str]] = {
-    "crypto48": [
-        "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC", "BNBUSDC", "AVAXUSDC",
-        "XRPUSDC", "LINKUSDC", "LTCUSDC", "UNIUSDC",
-        "1INCHUSDT", "ALGOUSDT", "ANKRUSDT", "ATOMUSDT", "AXSUSDT", "BANDUSDT",
-        "BATUSDT", "BELUSDT", "BTCDOMUSDT", "C98USDT", "CELRUSDT", "CHRUSDT",
-        "COMPUSDT", "COTIUSDT", "DASHUSDT", "DOTUSDT", "EGLDUSDT", "ENJUSDT",
-        "ETCUSDT", "GRTUSDT", "GTCUSDT", "HOTUSDT", "IOSTUSDT", "IOTAUSDT",
-        "IOTXUSDT", "KAVAUSDT", "KNCUSDT", "KSMUSDT", "LRCUSDT", "MANAUSDT",
-        "MTLUSDT", "NKNUSDT", "QTUMUSDT", "RLCUSDT", "RSRUSDT", "RVNUSDT",
-        "SANDUSDT", "SKLUSDT",
-    ],
-    "priority6": ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BTCDOMUSDT", "DOGEUSDT", "ZECUSDT"],
-}
-
-# Field-name regex → side hint. Used only for bool-like primitives where the
-# name carries direction info; oscillators/centered/unbounded sample both sides.
-SIDE_HINTS = [
-    (re.compile(r"(crossover|bull|long|breakout|detected|pass|above)"), ("long_entry", "short_exit")),
-    (re.compile(r"(crossunder|bear|short|breakdown|below)"),            ("short_entry", "long_exit")),
-]
-
-OSCILLATOR_PATTERNS = re.compile(
-    r"^(rsi|k_|d_|mfi|stoch|bb_pct_b|wt_overbought|wt_oversold)", re.IGNORECASE
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
 )
-CENTERED_PATTERNS = re.compile(
-    r"^(macd|wt1_|wt2_|wt_composite|clenow_score|clenow_slope|funding_rate|"
-    r"pct_from|wt_momentum_state|wt_composite_delta|wt_falling|wt_rising|"
-    r"oi_|delta_|vol_z)", re.IGNORECASE
-)
+log = logging.getLogger("vec_sweep")
 
 
-# ---------------------------------------------------------------------------
-# AUTO PRIMITIVE FAMILIES
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class PrimitiveFamily:
-    """A field + a sweep specification. Materializes into N primitives, one
-    per threshold."""
-    field: str
-    kind: str                   # "bool", "oscillator", "centered", "unbounded", "signed", "cross"
-    sides: Tuple[str, ...]      # which sides this family contributes primitives to
-    thresholds: Tuple[float, ...]  # empty for bool kind
-    ops: Tuple[str, ...]        # subset of {"ge","le","eq","ne"}; for cross-field "gt_field:<other>"
-    enabled: bool = True
-    # True when the field's threshold is comparable across symbols. Bool,
-    # oscillator, cross, and centered-around-zero are symbol-relative;
-    # unbounded-positive (atr, dc_*, bb_lower, etc.) and signed-with-large-
-    # magnitude are not. Pooled/validate runners drop non-relative families
-    # by default to avoid "atr>=70.7 USD" applied to ETH.
-    symbol_relative: bool = True
+# ───────────────────────────────────────────────────────────
+# Worker globals — loaded once per worker process
+# ───────────────────────────────────────────────────────────
+_worker_engine = None
+_worker_symbols: List[str] = []
+_worker_start_ts: Optional[int] = None
+_worker_end_ts: Optional[int] = None
+_worker_mode: str = "tradier"
 
 
-def _classify_field(name: str, arr: np.ndarray) -> Optional[Tuple[str, Tuple[str, ...], Tuple[float, ...], Tuple[str, ...], bool]]:
-    """Classify a single NPZ field. Returns (kind, sides, thresholds, ops) or
-    None if field should be excluded (constant, NaN-only, time/string)."""
-    if name in ("timestamps", "close"):
-        return None
-    if arr.dtype.kind not in "fiub":
-        return None
-    finite = arr[np.isfinite(arr)]
-    if finite.size < 1000:
-        return None
-    uniq_sample = np.unique(finite[: min(50_000, finite.size)])
-    is_bool_like = uniq_sample.size <= 4 and np.all(np.isin(uniq_sample, np.array([-1.0, 0.0, 1.0, 2.0])))
-    p1, p10, p25, p50, p75, p90, p99 = np.percentile(finite, [1, 10, 25, 50, 75, 90, 99])
+def _worker_init(
+    mode: str,
+    symbols: List[str],
+    start_ts: Optional[int],
+    end_ts: Optional[int],
+    npz_dir: Optional[str],
+) -> None:
+    """Called once per worker process — creates VecEngine and pre-loads NPZ stores."""
+    global _worker_engine, _worker_symbols, _worker_start_ts, _worker_end_ts, _worker_mode
 
-    sides_long = ("long_entry", "short_exit")
-    sides_short = ("short_entry", "long_exit")
-    sides_both = sides_long + sides_short
+    _worker_mode = mode
+    _worker_symbols = symbols
+    _worker_start_ts = start_ts
+    _worker_end_ts = end_ts
 
-    if is_bool_like:
-        sides = sides_both
-        for rx, s in SIDE_HINTS:
-            if rx.search(name):
-                sides = s
-                break
-        return ("bool", sides, (1.0,), ("eq",), True)
+    from vec_engine_v1 import VecEngine
+    _worker_engine = VecEngine(mode=mode, npz_dir=npz_dir)
 
-    is_osc = bool(OSCILLATOR_PATTERNS.search(name)) or (p1 >= -5 and p99 <= 105)
-    if is_osc:
-        thresholds = tuple(float(t) for t in (10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90))
-        return ("oscillator", sides_both, thresholds, ("ge", "le"), True)
-
-    is_centered = bool(CENTERED_PATTERNS.search(name)) or (p10 < 0 and p90 > 0 and abs(p50) < (p90 - p10) * 0.3)
-    if is_centered:
-        candidates = sorted(set([float(x) for x in (p10, p25, p50, p75, p90, 0.0)]))
-        # Centered fields whose magnitudes are price-scaled (macd_*) are
-        # NOT symbol-relative; flag accordingly.
-        sym_rel = bool(re.match(r"^(wt|funding_rate|pct_from|wt_momentum_state|"
-                                r"clenow_score|delta_)", name)) or (abs(p90) < 50 and abs(p10) < 50)
-        return ("centered", sides_both, tuple(candidates), ("ge", "le"), sym_rel)
-
-    if p10 < 0 < p90:
-        return ("signed", sides_both, (float(p10), float(p25), 0.0, float(p75), float(p90)),
-                ("ge", "le"), abs(p10) < 100 and abs(p90) < 100)
-
-    # Unbounded positive — absolute thresholds are NOT comparable across syms.
-    return ("unbounded", sides_both,
-            (float(p10), float(p25), float(p50), float(p75), float(p90)),
-            ("ge", "le"), False)
+    t0 = time.perf_counter()
+    loaded = 0
+    for sym in symbols:
+        store = _worker_engine._load_store(sym)
+        if store is not None:
+            loaded += 1
+    elapsed = time.perf_counter() - t0
+    log.debug(
+        f"Worker {os.getpid()}: loaded {loaded}/{len(symbols)} NPZ stores in {elapsed:.2f}s"
+    )
 
 
-def auto_families(sample_npz: Dict[str, np.ndarray],
-                  enabled_globs: Sequence[str] = ("*",),
-                  disabled_globs: Sequence[str] = ()) -> List[PrimitiveFamily]:
-    """Build the recipe catalog from one sample NPZ. Idempotent."""
-    fams: List[PrimitiveFamily] = []
-    for name in sorted(sample_npz.keys()):
-        if any(fnmatch.fnmatchcase(name, g) for g in disabled_globs):
-            continue
-        if not any(fnmatch.fnmatchcase(name, g) for g in enabled_globs):
-            continue
-        arr = sample_npz[name]
-        if arr.ndim != 1:
-            continue
-        cls = _classify_field(name, arr)
-        if cls is None:
-            continue
-        kind, sides, thresholds, ops, sym_rel = cls
-        fams.append(PrimitiveFamily(field=name, kind=kind, sides=sides,
-                                    thresholds=thresholds, ops=ops, enabled=True,
-                                    symbol_relative=sym_rel))
-    # Cross-field price-vs-channel primitives (always symbol-relative).
-    for tf in ("3m", "15m", "1h", "4h", "D"):
-        for upper, lower in (("dc_high_" + tf, "dc_low_" + tf),
-                             ("bb_upper_" + tf, "bb_lower_" + tf),
-                             ("kc_upper_" + tf, "kc_lower_" + tf)):
-            if upper in sample_npz and lower in sample_npz:
-                fams.append(PrimitiveFamily(
-                    field=f"close_above_{upper}", kind="cross",
-                    sides=("long_entry", "short_exit"), thresholds=(0.0,),
-                    ops=("gt_field:" + upper,), symbol_relative=True))
-                fams.append(PrimitiveFamily(
-                    field=f"close_below_{lower}", kind="cross",
-                    sides=("short_entry", "long_exit"), thresholds=(0.0,),
-                    ops=("lt_field:" + lower,), symbol_relative=True))
-    return fams
+def _run_one_config(
+    task: Tuple[int, str, Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Run a single config variant inside a worker process.
+
+    Args:
+        task: (config_idx, label, overrides_dict)
+
+    Returns:
+        canonical metric dict + label, config_idx, elapsed_s, overrides_json
+    """
+    config_idx, label, overrides = task
+
+    from vec_engine_v1 import VecConfig
+
+    cfg = VecConfig()
+    if overrides:
+        cfg = cfg.update_from_dict(overrides)
+
+    t0 = time.perf_counter()
+    result = _worker_engine.simulate(
+        symbols=_worker_symbols,
+        cfg=cfg,
+        start_ts=_worker_start_ts,
+        end_ts=_worker_end_ts,
+    )
+    elapsed = time.perf_counter() - t0
+
+    result["label"] = label
+    result["config_idx"] = config_idx
+    result["elapsed_s"] = round(elapsed, 3)
+    result["overrides_json"] = json.dumps(overrides)
+    result["mode"] = _worker_mode
+    result["engine"] = "vec_engine_v1"
+    return result
 
 
-# ---------------------------------------------------------------------------
-# PRIMITIVE = (family, op, threshold) — hashable id
-# ---------------------------------------------------------------------------
+# ───────────────────────────────────────────────────────────
+# Row writer — routes through metrics_guard exclusively
+# ───────────────────────────────────────────────────────────
+def _write_result_row(
+    result: Dict[str, Any],
+    out_path: Path,
+    mode: str,
+) -> None:
+    """Write one result row to CSV via metrics_guard.write_sharpe_row().
 
-@dataclass(frozen=True)
-class Primitive:
-    field: str
-    op: str
-    threshold: float
+    Tags all rows [VEC ONLY — UNVALIDATED].
+    Sub-floor results also get [DIAGNOSTIC ONLY · n_syms=X · years=Y] from metrics_guard.
+    NEVER writes banned column names. NEVER bypasses metrics_guard.
 
-    @property
-    def name(self) -> str:
-        if self.op == "eq":
-            return f"{self.field}=={self.threshold:g}"
-        if self.op.startswith("gt_field:"):
-            return f"{self.field}>{self.op.split(':',1)[1]}"
-        if self.op.startswith("lt_field:"):
-            return f"{self.field}<{self.op.split(':',1)[1]}"
-        return f"{self.field}{self.op}{self.threshold:g}"
+    Raises metrics_guard.FakeMetricRefused on violation (caller logs and skips).
+    """
+    pool_sharpe = float(result.get("pool_sharpe") or 0.0)
+    sym_sharpe = float(result.get("sym_sharpe") or 0.0)
+    avg_gain_trade = float(result.get("avg_gain_trade") or 0.0)
+    gain_per_yr = float(result.get("gain_per_yr") or 0.0)
+    gain_sym_yr = float(result.get("gain_sym_yr") or 0.0)
+    trades = int(result.get("trades") or 0)
+    max_dd_pct = float(result.get("max_dd_pct") or 0.0)
+    n_syms = int(result.get("n_syms") or 0)
+    years = float(result.get("years") or 0.0)
 
-    @property
-    def id(self) -> str:
-        return hashlib.sha1(f"{self.field}|{self.op}|{self.threshold:.10g}".encode()).hexdigest()[:14]
+    # Tag as VEC ONLY — results here are Tier-1 shortlist, NOT Tier-2 validated.
+    # The [VEC ONLY — UNVALIDATED] tag must appear on every row per design contract.
+    verdict_base = str(result.get("verdict", "DIAGNOSTIC"))
+    vec_tag = "[VEC ONLY — UNVALIDATED]"
+    verdict = f"{verdict_base} {vec_tag}" if vec_tag not in verdict_base else verdict_base
 
-
-def materialize(fam: PrimitiveFamily, threshold_idx: int, op: str) -> Primitive:
-    if fam.kind == "cross":
-        return Primitive(field=fam.field, op=fam.ops[0], threshold=0.0)
-    return Primitive(field=fam.field, op=op, threshold=fam.thresholds[threshold_idx])
-
-
-def compute_mask(npz: Dict[str, np.ndarray], prim: Primitive) -> np.ndarray:
-    """Materialize a single primitive's bool mask. Pure function over npz.
-    Returns all-False if any referenced field is missing in this symbol's
-    NPZ — pooled mode runs across symbols with non-identical schemas."""
-    n = len(npz["close_3m"])
-    op = prim.op
-    if op.startswith("gt_field:"):
-        other = op.split(":", 1)[1]
-        if other not in npz:
-            return np.zeros(n, dtype=bool)
-        a = npz.get("close", npz["close_3m"])
-        return np.asarray(a > npz[other], dtype=bool)
-    if op.startswith("lt_field:"):
-        other = op.split(":", 1)[1]
-        if other not in npz:
-            return np.zeros(n, dtype=bool)
-        a = npz.get("close", npz["close_3m"])
-        return np.asarray(a < npz[other], dtype=bool)
-    if prim.field not in npz:
-        return np.zeros(n, dtype=bool)
-    a = npz[prim.field]
-    t = prim.threshold
-    if op == "ge":
-        return np.asarray(a >= t, dtype=bool)
-    if op == "le":
-        return np.asarray(a <= t, dtype=bool)
-    if op == "eq":
-        return np.asarray(a == t, dtype=bool)
-    if op == "ne":
-        return np.asarray(a != t, dtype=bool)
-    return np.zeros(len(npz["close_3m"]), dtype=bool)
-
-
-class MaskCache:
-    """LRU bool-mask cache keyed by primitive.id, scoped to one symbol."""
-    def __init__(self, npz: Dict[str, np.ndarray], limit: int = MASK_CACHE_LIMIT):
-        self.npz = npz
-        self.limit = limit
-        self.store: "collections.OrderedDict[str, np.ndarray]" = collections.OrderedDict()
-
-    def get(self, prim: Primitive) -> np.ndarray:
-        pid = prim.id
-        if pid in self.store:
-            self.store.move_to_end(pid)
-            return self.store[pid]
-        m = compute_mask(self.npz, prim)
-        self.store[pid] = m
-        if len(self.store) > self.limit:
-            self.store.popitem(last=False)
-        return m
-
-    def and_many(self, prims: Sequence[Primitive]) -> np.ndarray:
-        if not prims:
-            return np.zeros(len(self.npz["close_3m"]), dtype=bool)
-        out = self.get(prims[0]).copy()
-        for p in prims[1:]:
-            out &= self.get(p)
-        return out
-
-
-# ---------------------------------------------------------------------------
-# CONFIG (4 sets of primitives)
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class Config:
-    entry_long: Tuple[Primitive, ...]
-    exit_long: Tuple[Primitive, ...]
-    entry_short: Tuple[Primitive, ...]
-    exit_short: Tuple[Primitive, ...]
-
-    @property
-    def hash(self) -> str:
-        ids = (tuple(sorted(p.id for p in self.entry_long)),
-               tuple(sorted(p.id for p in self.exit_long)),
-               tuple(sorted(p.id for p in self.entry_short)),
-               tuple(sorted(p.id for p in self.exit_short)))
-        return hashlib.sha1(json.dumps(ids).encode()).hexdigest()[:20]
-
-    def label(self) -> str:
-        def ns(ps): return "+".join(p.name for p in ps) or "_"
-        return f"EL[{ns(self.entry_long)}] XL[{ns(self.exit_long)}] ES[{ns(self.entry_short)}] XS[{ns(self.exit_short)}]"
-
-    def to_json(self) -> str:
-        def dump(ps): return [{"f": p.field, "op": p.op, "t": p.threshold} for p in ps]
-        return json.dumps({
-            "entry_long": dump(self.entry_long), "exit_long": dump(self.exit_long),
-            "entry_short": dump(self.entry_short), "exit_short": dump(self.exit_short),
-        }, separators=(",", ":"))
-
-    @staticmethod
-    def from_json(s: str) -> "Config":
-        d = json.loads(s)
-        def load(lst): return tuple(Primitive(x["f"], x["op"], float(x["t"])) for x in lst)
-        return Config(load(d["entry_long"]), load(d["exit_long"]),
-                      load(d["entry_short"]), load(d["exit_short"]))
-
-
-# Family-class buckets: groups of related fields. The diverse sampler picks
-# at most ONE primitive per class per side, ensuring strategies mix indicators
-# (e.g. WT + DC + BB) instead of stacking 3 different stoch primitives.
-_CLASS_PATTERNS = [
-    ("WT",       re.compile(r"^wt\d?_|^wt_")),
-    ("DC",       re.compile(r"^dc_")),
-    ("BB",       re.compile(r"^bb_")),
-    ("KC",       re.compile(r"^kc_")),
-    ("STOCH",    re.compile(r"^stoch_")),
-    ("RSI",      re.compile(r"^rsi_|^connors_rsi")),
-    ("MFI",      re.compile(r"^mfi_")),
-    ("MA",       re.compile(r"^(ema|sma)_")),
-    ("TREND",    re.compile(r"^clenow_|^sepa_")),
-    ("SQUEEZE",  re.compile(r"^squeeze_")),
-    ("FUNDING",  re.compile(r"^funding_rate")),
-    ("OI",       re.compile(r"^oi_")),
-    ("VOL",      re.compile(r"^(volume|relative_volume|vol_z)")),
-    ("DIV",      re.compile(r"^(div_|wt_(any_|composite_)?(bull|bear)_div)")),
-    ("CROSS",    re.compile(r"^close_(above|below)_")),
-    ("EP",       re.compile(r"^ep_")),
-    ("ATR",      re.compile(r"^atr_")),
-    ("PRICE",    re.compile(r"^(close|open|high|low)(_|\d|$)")),
-    ("HA",       re.compile(r"^ha_")),
-    ("MACD",     re.compile(r"^macd")),
-]
-
-
-def _family_class(field: str) -> str:
-    for cls, rx in _CLASS_PATTERNS:
-        if rx.search(field):
-            return cls
-    return "OTHER"
-
-
-def random_config(rng: random.Random, families: List[PrimitiveFamily],
-                  k_entry: Tuple[int, int] = (1, 4),
-                  k_exit: Tuple[int, int] = (1, 3),
-                  side: str = "both",
-                  min_classes_per_side: int = 1) -> Config:
-    """Sample one config by drawing K primitives per side from the enabled
-    family pool, with one threshold per family. When min_classes_per_side > 1,
-    selection is class-stratified — picks one primitive from each of N
-    distinct family classes, guaranteeing diversity (WT + DC + BB combos
-    instead of 4× stoch)."""
-    by_side: Dict[str, List[PrimitiveFamily]] = collections.defaultdict(list)
-    by_side_class: Dict[str, Dict[str, List[PrimitiveFamily]]] = collections.defaultdict(lambda: collections.defaultdict(list))
-    for f in families:
-        if not f.enabled:
-            continue
-        cls = _family_class(f.field)
-        for s in f.sides:
-            by_side[s].append(f)
-            by_side_class[s][cls].append(f)
-
-    def materialize_one(fam: PrimitiveFamily) -> Primitive:
-        if fam.kind in ("bool", "cross"):
-            return materialize(fam, 0, fam.ops[0])
-        op = rng.choice(fam.ops)
-        ti = rng.randrange(len(fam.thresholds))
-        return materialize(fam, ti, op)
-
-    def pick(side_key: str, lo: int, hi: int) -> Tuple[Primitive, ...]:
-        pool = by_side.get(side_key, [])
-        if not pool:
-            return tuple()
-        # Class-stratified pick when min_classes_per_side > 1: choose K distinct
-        # classes, then one primitive from each. K randomized in [lo,hi].
-        if min_classes_per_side >= 2:
-            classes = list(by_side_class.get(side_key, {}).keys())
-            if len(classes) >= min_classes_per_side:
-                k = rng.randint(max(lo, min_classes_per_side), min(hi, len(classes)))
-                chosen_classes = rng.sample(classes, k)
-                prims: List[Primitive] = []
-                for cls in chosen_classes:
-                    fam = rng.choice(by_side_class[side_key][cls])
-                    prims.append(materialize_one(fam))
-                return tuple(sorted(prims, key=lambda p: (p.field, p.op, p.threshold)))
-        # Fallback: vanilla random sample (no class constraint)
-        k = rng.randint(lo, min(hi, len(pool)))
-        chosen_fams = rng.sample(pool, k)
-        return tuple(sorted([materialize_one(f) for f in chosen_fams],
-                           key=lambda p: (p.field, p.op, p.threshold)))
-
-    el = pick("long_entry", *k_entry) if side in ("long", "both") else tuple()
-    xl = pick("long_exit", *k_exit) if side in ("long", "both") else tuple()
-    es = pick("short_entry", *k_entry) if side in ("short", "both") else tuple()
-    xs = pick("short_exit", *k_exit) if side in ("short", "both") else tuple()
-    return Config(el, xl, es, xs)
-
-
-def neighbor_config(seed: Config, families: List[PrimitiveFamily],
-                    rng: random.Random) -> Config:
-    """Mutate exactly one primitive — swap threshold OR replace with a new
-    family — in one of the 4 sets. Used by validate-mode to climb."""
-    sets = ["entry_long", "exit_long", "entry_short", "exit_short"]
-    s = rng.choice(sets)
-    cur = list(getattr(seed, s))
-    if not cur:
-        # add one
-        side_key = {"entry_long": "long_entry", "exit_long": "long_exit",
-                    "entry_short": "short_entry", "exit_short": "short_exit"}[s]
-        pool = [f for f in families if f.enabled and side_key in f.sides]
-        if not pool:
-            return seed
-        fam = rng.choice(pool)
-        if fam.kind in ("bool", "cross"):
-            new = [materialize(fam, 0, fam.ops[0])]
-        else:
-            new = [materialize(fam, rng.randrange(len(fam.thresholds)), rng.choice(fam.ops))]
-        new_kw = {a: getattr(seed, a) for a in sets}
-        new_kw[s] = tuple(new)
-        return Config(**new_kw)
-    # mutate one entry
-    idx = rng.randrange(len(cur))
-    target = cur[idx]
-    fam = next((f for f in families if f.field == target.field), None)
-    if fam and fam.kind not in ("bool", "cross"):
-        # nudge threshold
-        ops = list(fam.ops); ops.append(target.op)
-        new_op = rng.choice(ops)
-        new_t = rng.choice(fam.thresholds)
-        cur[idx] = Primitive(target.field, new_op, float(new_t))
-    else:
-        # replace family
-        side_key = {"entry_long": "long_entry", "exit_long": "long_exit",
-                    "entry_short": "short_entry", "exit_short": "short_exit"}[s]
-        pool = [f for f in families if f.enabled and side_key in f.sides
-                and f.field != target.field]
-        if pool:
-            f2 = rng.choice(pool)
-            if f2.kind in ("bool", "cross"):
-                cur[idx] = materialize(f2, 0, f2.ops[0])
-            else:
-                cur[idx] = materialize(f2, rng.randrange(len(f2.thresholds)), rng.choice(f2.ops))
-    cur = tuple(sorted(cur, key=lambda p: (p.field, p.op, p.threshold)))
-    new_kw = {a: getattr(seed, a) for a in sets}
-    new_kw[s] = cur
-    return Config(**new_kw)
-
-
-# ---------------------------------------------------------------------------
-# TRADE LOOP (vectorized)
-# ---------------------------------------------------------------------------
-
-def _trade_returns(entry_mask: np.ndarray, exit_mask: np.ndarray,
-                   close: np.ndarray, direction: int) -> np.ndarray:
-    entry_bars = np.flatnonzero(entry_mask)
-    if entry_bars.size == 0:
-        return np.empty(0, dtype=np.float32)
-    exit_bars = np.flatnonzero(exit_mask)
-    rets: List[float] = []
-    last_exit = -1
-    n = len(close)
-    for e in entry_bars:
-        if e <= last_exit:
-            continue
-        if exit_bars.size:
-            idx = np.searchsorted(exit_bars, e + 1)
-            xb = int(exit_bars[idx]) if idx < exit_bars.size else (n - 1)
-        else:
-            xb = n - 1
-        ep = float(close[e]); xp = float(close[xb])
-        if ep <= 0 or not np.isfinite(ep) or not np.isfinite(xp):
-            continue
-        r = (xp - ep) / ep
-        if direction < 0:
-            r = -r
-        rets.append(r)
-        last_exit = xb
-        if xb >= n - 1:
-            break
-    return np.asarray(rets, dtype=np.float32)
-
-
-def _max_drawdown_pct(rets: np.ndarray) -> float:
-    if rets.size == 0:
-        return 0.0
-    eq = np.cumsum(rets)
-    peak = np.maximum.accumulate(eq)
-    dd = (peak - eq).max()
-    return float(dd * 100.0)
-
-
-def evaluate_config(cache: MaskCache, close: np.ndarray, cfg: Config,
-                    n_years: float) -> Dict[str, object]:
-    el = cache.and_many(cfg.entry_long) if cfg.entry_long else np.zeros(len(close), dtype=bool)
-    xl = cache.and_many(cfg.exit_long) if cfg.exit_long else np.zeros(len(close), dtype=bool)
-    es = cache.and_many(cfg.entry_short) if cfg.entry_short else np.zeros(len(close), dtype=bool)
-    xs = cache.and_many(cfg.exit_short) if cfg.exit_short else np.zeros(len(close), dtype=bool)
-    rets_l = _trade_returns(el, xl, close, +1)
-    rets_s = _trade_returns(es, xs, close, -1)
-    rets = np.concatenate([rets_l, rets_s]) if rets_l.size or rets_s.size else np.empty(0, dtype=np.float32)
-    n = int(rets.size)
-    pool = mg.pool_sharpe(rets.tolist()) if n >= 2 else 0.0
-    total_gain = float(rets.sum() * 100.0)
-    avg_gain = (total_gain / n) if n else 0.0
-    return {
-        "pool_sharpe": pool, "sym_sharpe": pool,
-        "trades": n, "trades_long": int(rets_l.size), "trades_short": int(rets_s.size),
-        "acc_gain_pct": total_gain, "avg_gain_trade": avg_gain,
-        "gain_per_yr": total_gain / max(0.01, n_years),
-        "max_dd_pct": _max_drawdown_pct(rets),
-        "win_rate_pct": float((rets > 0).mean() * 100.0) if n else 0.0,
-        "rets_blob": zlib.compress(rets.astype(np.float16).tobytes(), 6),
+    row: Dict[str, Any] = {
+        # ── 9 canonical columns (CLAUDE.md NO-LIES rule 2) ──────────────────
+        "pool_sharpe": pool_sharpe,
+        "sym_sharpe": sym_sharpe,
+        "avg_gain_trade": avg_gain_trade,
+        "gain_per_yr": gain_per_yr,
+        "gain_sym_yr": gain_sym_yr,
+        "trades": trades,
+        "max_dd_pct": max_dd_pct,
+        "n_syms": n_syms,
+        "years": years,
+        # ── Extra provenance fields (appended after canonical 9) ─────────────
+        "label": result.get("label", ""),
+        "config_idx": int(result.get("config_idx") or 0),
+        "elapsed_s": float(result.get("elapsed_s") or 0.0),
+        "overrides_json": result.get("overrides_json", "{}"),
+        "acc_gain_pct": float(result.get("acc_gain_pct") or 0.0),
+        "wins": int(result.get("wins") or 0),
+        "losses": int(result.get("losses") or 0),
+        "mode": result.get("mode", mode),
+        "engine": result.get("engine", "vec_engine_v1"),
+        "verdict": verdict,
+        "note": result.get("note", ""),
+        "ts_utc": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-
-# ---------------------------------------------------------------------------
-# SQLITE
-# ---------------------------------------------------------------------------
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS streaming_returns (
-    config_hash TEXT NOT NULL,
-    symbol TEXT NOT NULL,
-    returns_blob BLOB,
-    n_trades INTEGER NOT NULL,
-    n_long INTEGER NOT NULL,
-    n_short INTEGER NOT NULL,
-    years REAL NOT NULL,
-    PRIMARY KEY(config_hash, symbol)
-);
-CREATE INDEX IF NOT EXISTS idx_streaming_hash ON streaming_returns(config_hash);
-CREATE TABLE IF NOT EXISTS configs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_hash TEXT UNIQUE NOT NULL,
-    config_json TEXT NOT NULL,
-    label TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS results (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_id INTEGER NOT NULL REFERENCES configs(id),
-    symbol TEXT NOT NULL,
-    n_syms INTEGER NOT NULL,
-    years REAL NOT NULL,
-    pool_sharpe REAL NOT NULL,
-    sym_sharpe REAL NOT NULL,
-    trades INTEGER NOT NULL,
-    trades_long INTEGER NOT NULL,
-    trades_short INTEGER NOT NULL,
-    acc_gain_pct REAL NOT NULL,
-    avg_gain_trade REAL NOT NULL,
-    gain_per_yr REAL NOT NULL,
-    gain_sym_yr REAL NOT NULL,
-    max_dd_pct REAL NOT NULL,
-    win_rate_pct REAL NOT NULL,
-    verdict TEXT NOT NULL,
-    rets_blob BLOB,
-    mode TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(config_id, symbol, mode)
-);
-CREATE INDEX IF NOT EXISTS idx_results_pool ON results(pool_sharpe DESC);
-CREATE INDEX IF NOT EXISTS idx_results_sym_pool ON results(symbol, pool_sharpe DESC);
-CREATE INDEX IF NOT EXISTS idx_results_mode ON results(mode, pool_sharpe DESC);
-CREATE TABLE IF NOT EXISTS family_catalog (
-    field TEXT PRIMARY KEY, kind TEXT, sides TEXT,
-    thresholds TEXT, ops TEXT, enabled INTEGER
-);
-"""
+    # metrics_guard.write_sharpe_row:
+    #   - validates all 9 canonical columns present
+    #   - refuses banned column names (sharpe_annual, etc.)
+    #   - tags sub-floor as DIAGNOSTIC automatically
+    #   - raises FakeMetricRefused on any violation
+    metrics_guard.write_sharpe_row(
+        csv_path=out_path,
+        row=row,
+        mode="stocks" if mode == "tradier" else "crypto",
+        append=True,
+    )
 
 
-def open_db(path: Path) -> sqlite3.Connection:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(path), timeout=30, isolation_level=None)
-    con.execute("PRAGMA journal_mode=WAL")
-    con.execute("PRAGMA synchronous=NORMAL")
-    con.executescript(SCHEMA)
-    return con
+# ───────────────────────────────────────────────────────────
+# Main sweep runner
+# ───────────────────────────────────────────────────────────
+def run_sweep(
+    mode: str,
+    symbols: List[str],
+    start_ts: Optional[int],
+    end_ts: Optional[int],
+    tier_name: str,
+    workers: int,
+    out_path: Path,
+    npz_dir: Optional[str] = None,
+) -> None:
+    """Run the full tier sweep and stream results to out_path CSV.
 
+    Args:
+        mode: "crypto" or "tradier"
+        symbols: list of symbols e.g. ["AMD", "AMZN"]
+        start_ts: Unix timestamp UTC for simulation start (None = NPZ start)
+        end_ts: Unix timestamp UTC for simulation end (None = NPZ end)
+        tier_name: name from vec_sweep_tiers.TIER_REGISTRY
+        workers: parallel worker processes (1 = single-process, no fork overhead)
+        out_path: CSV output path (written exclusively via metrics_guard)
+        npz_dir: override NPZ directory (default: BASE_PATH/backtest_v8/indicators)
+    """
+    configs = get_tier(tier_name)
+    n_configs = len(configs)
 
-def upsert_config(con: sqlite3.Connection, cfg: Config) -> int:
-    h = cfg.hash
-    r = con.execute("SELECT id FROM configs WHERE config_hash=?", (h,)).fetchone()
-    if r:
-        return r[0]
-    con.execute("INSERT INTO configs(config_hash, config_json, label) VALUES(?,?,?)",
-                (h, cfg.to_json(), cfg.label()[:300]))
-    return int(con.execute("SELECT id FROM configs WHERE config_hash=?", (h,)).fetchone()[0])
+    log.info(
+        f"vec_sweep START: tier={tier_name!r} mode={mode} n_syms={len(symbols)} "
+        f"n_configs={n_configs} workers={workers}"
+    )
+    log.info(f"  symbols: {', '.join(symbols)}")
+    log.info(f"  output:  {out_path}")
 
+    if n_configs == 0:
+        log.error(f"Tier {tier_name!r} returned 0 configs — nothing to run.")
+        return
 
-def already_have(con: sqlite3.Connection, config_id: int, sym: str, mode: str) -> bool:
-    return con.execute("SELECT 1 FROM results WHERE config_id=? AND symbol=? AND mode=?",
-                       (config_id, sym, mode)).fetchone() is not None
+    tasks: List[Tuple[int, str, Dict[str, Any]]] = [
+        (i, label, overrides) for i, (label, overrides) in enumerate(configs)
+    ]
 
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-def insert_result(con: sqlite3.Connection, config_id: int, sym: str,
-                  n_syms: int, years: float, mode: str, metrics: Dict[str, object]) -> None:
-    floor = mg.MIN_SYMS_STOCKS if "tradier" in mode else mg.MIN_SYMS_CRYPTO
-    publishable = (n_syms >= floor) and (years >= mg.MIN_YEARS) and (metrics["trades"] >= 30 * max(1, n_syms))
-    verdict = "PUBLISHABLE" if publishable else "DIAGNOSTIC"
-    gsym_yr = (metrics["acc_gain_pct"] / max(1, n_syms)) / max(0.01, years)
-    con.execute("""INSERT OR REPLACE INTO results
-        (config_id, symbol, n_syms, years, pool_sharpe, sym_sharpe, trades,
-         trades_long, trades_short, acc_gain_pct, avg_gain_trade, gain_per_yr,
-         gain_sym_yr, max_dd_pct, win_rate_pct, verdict, rets_blob, mode)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (config_id, sym, n_syms, years,
-         metrics["pool_sharpe"], metrics["sym_sharpe"], metrics["trades"],
-         metrics["trades_long"], metrics["trades_short"], metrics["acc_gain_pct"],
-         metrics["avg_gain_trade"], metrics["gain_per_yr"], gsym_yr,
-         metrics["max_dd_pct"], metrics["win_rate_pct"], verdict,
-         metrics.get("rets_blob"), mode))
+    t_start = time.perf_counter()
+    n_done = 0
+    n_ok = 0
+    n_err = 0
+    last_log_n = 0
+    log_interval = max(1, n_configs // 10)
 
+    def _log_progress():
+        elapsed = time.perf_counter() - t_start
+        rate = n_done / elapsed if elapsed > 0 else 0.0
+        eta = (n_configs - n_done) / rate if rate > 0 else float("inf")
+        log.info(
+            f"Progress {n_done}/{n_configs}  ok={n_ok}  err={n_err}  "
+            f"rate={rate:.2f}/s  eta={eta:.0f}s"
+        )
 
-def write_family_catalog(con: sqlite3.Connection, fams: List[PrimitiveFamily]) -> None:
-    con.execute("DELETE FROM family_catalog")
-    for f in fams:
-        con.execute("INSERT INTO family_catalog VALUES(?,?,?,?,?,?)",
-                    (f.field, f.kind, json.dumps(list(f.sides)),
-                     json.dumps(list(f.thresholds)), json.dumps(list(f.ops)),
-                     int(f.enabled)))
-
-
-def top_seeds(con: sqlite3.Connection, mode: str, n: int,
-              allowed_fields: Optional[set] = None) -> List[Config]:
-    """Pull top-N configs from a mode. If `allowed_fields` provided, drops
-    primitives whose field is not in the allow-set — used by pooled
-    validate-mode to strip absolute-price primitives from per-symbol seeds
-    before mutating, so seed contamination doesn't produce filter-by-
-    coincidence pooled Sharpes."""
-    rows = con.execute(
-        "SELECT c.config_json FROM results r JOIN configs c ON c.id=r.config_id "
-        "WHERE r.mode=? AND r.trades>=30 ORDER BY r.pool_sharpe DESC LIMIT ?",
-        (mode, n)).fetchall()
-    out: List[Config] = []
-    for (j,) in rows:
-        try:
-            cfg = Config.from_json(j)
-            if allowed_fields is not None:
-                def filt(prims):
-                    return tuple(p for p in prims if p.field in allowed_fields
-                                 or p.op.startswith("gt_field:") or p.op.startswith("lt_field:"))
-                cfg = Config(filt(cfg.entry_long), filt(cfg.exit_long),
-                             filt(cfg.entry_short), filt(cfg.exit_short))
-                if not (cfg.entry_long or cfg.exit_long or cfg.entry_short or cfg.exit_short):
-                    continue
-            out.append(cfg)
-        except Exception:
-            continue
-    return out
-
-
-# ---------------------------------------------------------------------------
-# RUNNERS
-# ---------------------------------------------------------------------------
-
-def _years_of(close: np.ndarray) -> float:
-    return len(close) / BARS_PER_YEAR_3M
-
-
-def _load_npz(sym: str, npz_dir: Path) -> Dict[str, np.ndarray]:
-    p = npz_dir / f"{sym}.npz"
-    if not p.exists():
-        raise FileNotFoundError(f"{p}")
-    return dict(np.load(p, allow_pickle=False))
-
-
-_HTF_SUFFIX_RE = re.compile(r"_(4h|D|W|M|D_prev|W_prev|M_prev|D_ant|W_ant|M_ant)$|^wt_(composite|bull_alignment|bear_alignment|cross_count|falling|rising|peak|trough)")
-
-
-def _families_for(args, sample_npz: Dict[str, np.ndarray],
-                  symbol_relative_only: bool = False) -> List[PrimitiveFamily]:
-    enabled = tuple((args.enable_families or "*").split(","))
-    disabled = tuple(g for g in (args.disable_families or "").split(",") if g)
-    fams = auto_families(sample_npz, enabled_globs=enabled, disabled_globs=disabled)
-    if symbol_relative_only or getattr(args, "symbol_relative_only", False):
-        fams = [f for f in fams if f.symbol_relative]
-    tf = getattr(args, "tf_filter", "any")
-    if tf == "htf_only":
-        # Keep only 4h/D/W/M-suffixed fields + multi-TF wt aggregates.
-        fams = [f for f in fams if _HTF_SUFFIX_RE.search(f.field)]
-    elif tf == "no_3m":
-        # Drop 3m-only primitives (often noise-firing); keep 15m up.
-        fams = [f for f in fams if not f.field.endswith("_3m") and not f.field.endswith("_3m_prev")]
-    return fams
-
-
-def run_per_symbol(args) -> None:
-    syms = [s.strip() for s in args.syms.split(",") if s.strip()]
-    db = open_db(Path(args.db))
-    rng = random.Random(args.seed)
-    npz_dir = Path(args.npz_dir)
-    mode = "per_symbol"
-    print(f"[per_symbol] syms={syms} max_configs={args.max_configs:,}")
-    sample = _load_npz(syms[0], npz_dir)
-    fams = _families_for(args, sample)
-    write_family_catalog(db, fams)
-    n_prims = sum(len(f.thresholds) * len(f.ops) for f in fams)
-    print(f"[per_symbol] {len(fams)} families → {n_prims:,} primitives in pool")
-    for sym in syms:
-        try: npz = _load_npz(sym, npz_dir)
-        except FileNotFoundError as e: print(f"  skip {sym}: {e}"); continue
-        close = npz["close_3m"]; years = _years_of(close)
-        cache = MaskCache(npz)
-        print(f"  {sym}: bars={len(close):,} years={years:.2f}")
-        t0 = time.time(); n_done = n_skipped = 0; best = -9.0
-        while n_done < args.max_configs:
-            cfg = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
-            cid = upsert_config(db, cfg)
-            if already_have(db, cid, sym, mode):
-                n_skipped += 1; n_done += 1; continue
-            m = evaluate_config(cache, close, cfg, years)
-            insert_result(db, cid, sym, n_syms=1, years=years, mode=mode, metrics=m)
+    if workers <= 1:
+        # ── Single-process path ─────────────────────────────────────────
+        # Avoids ProcessPoolExecutor overhead — ideal for small tiers / debugging.
+        _worker_init(mode, symbols, start_ts, end_ts, npz_dir)
+        for task in tasks:
+            try:
+                result = _run_one_config(task)
+                _write_result_row(result, out_path, mode)
+                n_ok += 1
+            except metrics_guard.FakeMetricRefused as exc:
+                log.error(f"METRICS_GUARD REFUSED [{task[1]}]: {exc}")
+                n_err += 1
+            except Exception as exc:
+                log.error(f"ERROR [{task[1]}]: {exc}", exc_info=True)
+                n_err += 1
             n_done += 1
-            if m["pool_sharpe"] > best and m["trades"] >= 30:
-                best = m["pool_sharpe"]
-                print(f"    {sym} new best pool_sharpe={best:+.4f} trades={m['trades']} dd={m['max_dd_pct']:.1f}%")
-            if n_done % 500 == 0:
-                rate = n_done / max(0.01, time.time() - t0)
-                print(f"    {sym}: {n_done:,}/{args.max_configs:,} ({rate:.0f}/s, skip={n_skipped}, best={best:+.4f})")
-        print(f"  {sym} done in {time.time()-t0:.0f}s")
+            if n_done - last_log_n >= log_interval:
+                _log_progress()
+                last_log_n = n_done
+    else:
+        # ── Multi-process path ──────────────────────────────────────────
+        # Each worker process gets _worker_init called once, loading all NPZ stores.
+        # Results streamed back to master process as they complete.
+        with ProcessPoolExecutor(
+            max_workers=workers,
+            initializer=_worker_init,
+            initargs=(mode, symbols, start_ts, end_ts, npz_dir),
+        ) as pool:
+            future_map = {pool.submit(_run_one_config, task): task for task in tasks}
+            for future in as_completed(future_map):
+                task = future_map[future]
+                try:
+                    result = future.result()
+                    _write_result_row(result, out_path, mode)
+                    n_ok += 1
+                except metrics_guard.FakeMetricRefused as exc:
+                    log.error(f"METRICS_GUARD REFUSED [{task[1]}]: {exc}")
+                    n_err += 1
+                except Exception as exc:
+                    log.error(f"ERROR [{task[1]}]: {exc}", exc_info=True)
+                    n_err += 1
+                n_done += 1
+                if n_done - last_log_n >= log_interval:
+                    _log_progress()
+                    last_log_n = n_done
+
+    elapsed_total = time.perf_counter() - t_start
+    rate = n_done / elapsed_total if elapsed_total > 0 else 0.0
+
+    log.info(
+        f"SWEEP DONE: {n_done}/{n_configs} configs in {elapsed_total:.1f}s "
+        f"({rate:.2f} cfg/s)  ok={n_ok}  err={n_err}  out={out_path}"
+    )
+    if n_err > 0:
+        log.warning(
+            f"{n_err} config(s) failed — METRICS_GUARD refused or exception. "
+            f"These were NOT written to the output CSV. Check logs above."
+        )
+
+    _print_top_results(out_path, n=5)
 
 
-def run_pooled(args) -> None:
-    basket = BASKETS.get(args.basket, [])
-    if args.syms:
-        basket = [s.strip() for s in args.syms.split(",") if s.strip()]
-    db = open_db(Path(args.db))
-    rng = random.Random(args.seed)
-    npz_dir = Path(args.npz_dir)
-    mode = f"pooled:{args.basket}"
-    print(f"[pooled] basket={args.basket} n_syms={len(basket)} max_configs={args.max_configs:,}")
-    sym_data: Dict[str, Tuple[np.ndarray, MaskCache, float]] = {}
-    sample: Optional[Dict[str, np.ndarray]] = None
-    for sym in basket:
-        try:
-            npz = _load_npz(sym, npz_dir)
-            close = npz["close_3m"]
-            sym_data[sym] = (close, MaskCache(npz, limit=600), _years_of(close))
-            if sample is None:
-                sample = npz
-        except FileNotFoundError:
-            print(f"  skip {sym}: NPZ missing")
-    if not sym_data: print("[pooled] no data — abort"); return
-    fams = _families_for(args, sample, symbol_relative_only=True); write_family_catalog(db, fams)
-    n_syms = len(sym_data); avg_years = sum(y for _, _, y in sym_data.values()) / n_syms
-    print(f"[pooled] {len(fams)} families loaded; n_syms={n_syms} avg_years={avg_years:.2f}")
-    t0 = time.time(); n_done = 0; best = -9.0
-    while n_done < args.max_configs:
-        cfg = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
-        cid = upsert_config(db, cfg)
-        if already_have(db, cid, args.basket, mode):
-            n_done += 1; continue
-        all_rets: List[float] = []; per_sym: Dict[str, List[float]] = {}; tl = ts = 0
-        for sym, (close, cache, years) in sym_data.items():
-            m = evaluate_config(cache, close, cfg, years)
-            blob = m.get("rets_blob")
-            if blob:
-                rets = np.frombuffer(zlib.decompress(blob), dtype=np.float16).astype(np.float32)
-                if rets.size:
-                    all_rets.extend(rets.tolist())
-                    per_sym[sym] = rets.tolist()
-            tl += m["trades_long"]; ts += m["trades_short"]
-        if not all_rets: n_done += 1; continue
-        rets_arr = np.asarray(all_rets, dtype=np.float32)
-        pool = mg.pool_sharpe(all_rets); ssh = mg.sym_sharpe_from_groups(per_sym)
-        total_gain = float(rets_arr.sum() * 100.0)
-        metrics = {
-            "pool_sharpe": pool, "sym_sharpe": ssh, "trades": len(all_rets),
-            "trades_long": tl, "trades_short": ts, "acc_gain_pct": total_gain,
-            "avg_gain_trade": total_gain / len(all_rets),
-            "gain_per_yr": total_gain / max(0.01, avg_years),
-            "max_dd_pct": _max_drawdown_pct(rets_arr),
-            "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
-            "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
-        }
-        # Trade-frequency gates: drop overtrading and undertrading configs at insert time.
-        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
-        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
-        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
-        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
-            n_done += 1
-            continue
-        insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=mode, metrics=metrics)
-        n_done += 1
-        # Same sample-floor gate as validate-mode.
-        sample_ok = len(all_rets) >= 30 * n_syms and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
-        if pool > best and sample_ok:
-            best = pool
-            print(f"  [pooled] new best pool_sharpe={pool:+.4f} sym_sharpe={ssh:+.4f} "
-                  f"trades={len(all_rets)} hash={cfg.hash}")
-        if n_done % 50 == 0:
-            print(f"  [pooled] {n_done:,}/{args.max_configs:,} ({n_done/(time.time()-t0):.2f}/s, best={best:+.4f})")
-
-
-def run_validate(args) -> None:
-    db = open_db(Path(args.db))
-    npz_dir = Path(args.npz_dir)
-    basket = [s.strip() for s in (args.syms or ",".join(BASKETS.get(args.basket, []))).split(",") if s.strip()]
-    sym_data: Dict[str, Tuple[np.ndarray, MaskCache, float]] = {}
-    sample: Optional[Dict[str, np.ndarray]] = None
-    for sym in basket:
-        try:
-            npz = _load_npz(sym, npz_dir); close = npz["close_3m"]
-            sym_data[sym] = (close, MaskCache(npz, limit=600), _years_of(close))
-            if sample is None: sample = npz
-        except FileNotFoundError: pass
-    if not sym_data: print("[validate] no data — abort"); return
-    # Pooled basket → only symbol-relative primitives. Filter applies to BOTH
-    # the random sampler AND the seed configs: per-symbol seeds carry
-    # absolute-price primitives that produce filter-by-coincidence Sharpes
-    # (e.g. kc_lower_4h≤486 fires only on cheap-coin syms by accident).
-    fams = _families_for(args, sample, symbol_relative_only=True)
-    allowed = {f.field for f in fams}
-    seeds = top_seeds(db, args.seed_mode, args.top_n, allowed_fields=allowed)
-    print(f"[validate] {len(seeds)} seeds (after sym-relative filter) from mode={args.seed_mode} target={args.target_pool_sharpe:+.2f}")
-    if not seeds: print("[validate] no seeds — run a base sweep first."); return
-    rng = random.Random(args.seed)
-    n_syms = len(sym_data); avg_years = sum(y for _, _, y in sym_data.values()) / n_syms
-    out_mode = f"validate:{args.seed_mode}"
-    t0 = time.time(); n_done = 0; best = -9.0
-    while n_done < args.max_configs:
-        seed = seeds[rng.randrange(len(seeds))]
-        cfg = neighbor_config(seed, fams, rng)
-        cid = upsert_config(db, cfg)
-        if already_have(db, cid, args.basket, out_mode):
-            n_done += 1; continue
-        all_rets: List[float] = []; per_sym: Dict[str, List[float]] = {}; tl = ts = 0
-        for sym, (close, cache, years) in sym_data.items():
-            m = evaluate_config(cache, close, cfg, years)
-            blob = m.get("rets_blob")
-            if blob:
-                rets = np.frombuffer(zlib.decompress(blob), dtype=np.float16).astype(np.float32)
-                if rets.size:
-                    all_rets.extend(rets.tolist()); per_sym[sym] = rets.tolist()
-            tl += m["trades_long"]; ts += m["trades_short"]
-        if not all_rets: n_done += 1; continue
-        rets_arr = np.asarray(all_rets, dtype=np.float32)
-        pool = mg.pool_sharpe(all_rets); ssh = mg.sym_sharpe_from_groups(per_sym)
-        total_gain = float(rets_arr.sum() * 100.0)
-        metrics = {
-            "pool_sharpe": pool, "sym_sharpe": ssh, "trades": len(all_rets),
-            "trades_long": tl, "trades_short": ts, "acc_gain_pct": total_gain,
-            "avg_gain_trade": total_gain / len(all_rets),
-            "gain_per_yr": total_gain / max(0.01, avg_years),
-            "max_dd_pct": _max_drawdown_pct(rets_arr),
-            "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
-            "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
-        }
-        # Trade-frequency gates same as pooled.
-        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
-        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
-        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
-        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
-            n_done += 1
-            continue
-        insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=out_mode, metrics=metrics)
-        n_done += 1
-        sample_ok = len(all_rets) >= 30 * max(1, n_syms) and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
-        if pool > best and sample_ok:
-            best = pool
-            print(f"  [validate] new best pool_sharpe={pool:+.4f} trades={len(all_rets)} hash={cfg.hash}")
-        floor_syms = mg.MIN_SYMS_STOCKS if "tradier" in out_mode else mg.MIN_SYMS_CRYPTO
-        if pool >= args.target_pool_sharpe and len(all_rets) >= 30 * n_syms and n_syms >= floor_syms:
-            print(f"  [validate] TARGET HIT pool={pool:+.4f} n_syms={n_syms} years={avg_years:.2f} hash={cfg.hash}"); break
-        if n_done % 100 == 0:
-            print(f"  [validate] {n_done:,}/{args.max_configs:,} best={best:+.4f}")
-
-
-def run_streamed(args) -> None:
-    """Streaming pooled mode — fits ANY basket size in low RAM by processing
-    one symbol at a time. Pre-generates configs upfront, per-symbol loads NPZ,
-    evaluates all configs, saves per-(sym,cfg) returns blobs to streaming_returns
-    table, unloads. Final pass aggregates per config across syms → publishable
-    pool_sharpe + sym_sharpe."""
-    basket = BASKETS.get(args.basket, [])
-    if args.syms:
-        basket = [s.strip() for s in args.syms.split(",") if s.strip()]
-    db = open_db(Path(args.db))
-    rng = random.Random(args.seed)
-    npz_dir = Path(args.npz_dir)
-    mode = f"streamed:{args.basket}"
-    print(f"[streamed] basket={args.basket} n_syms={len(basket)} max_configs={args.max_configs:,}")
-    # Pre-generate configs from sample sym's families.
-    sample_sym = next((s for s in basket if (npz_dir / f"{s}.npz").exists()), None)
-    if not sample_sym:
-        print("[streamed] no NPZ in basket — abort"); return
-    sample = _load_npz(sample_sym, npz_dir)
-    fams = _families_for(args, sample, symbol_relative_only=True)
-    print(f"[streamed] {len(fams)} symbol-relative families "
-          f"({sum(len(f.thresholds)*len(f.ops) for f in fams):,} primitives)")
-    # Pre-roll N configs; save in DB up front.
-    configs: List[Config] = []
-    seen: set = set()
-    while len(configs) < args.max_configs:
-        c = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
-        if c.hash in seen: continue
-        seen.add(c.hash); configs.append(c)
-    cids = [upsert_config(db, c) for c in configs]
-    print(f"[streamed] pre-generated {len(configs):,} unique configs")
-    del sample
-    # Per-sym evaluation; persist returns blobs.
-    sym_years: Dict[str, float] = {}
-    t0 = time.time()
-    for s_idx, sym in enumerate(basket):
-        try:
-            npz = _load_npz(sym, npz_dir)
-        except FileNotFoundError:
-            print(f"  [streamed] skip {sym}: NPZ missing"); continue
-        close = npz["close_3m"]
-        years = _years_of(close)
-        sym_years[sym] = years
-        cache = MaskCache(npz, limit=2000)
-        ts = time.time()
-        already = set(r[0] for r in db.execute(
-            "SELECT config_hash FROM streaming_returns WHERE symbol=?", (sym,)).fetchall())
-        n_skipped = 0
-        for cfg in configs:
-            if cfg.hash in already:
-                n_skipped += 1; continue
-            m = evaluate_config(cache, close, cfg, years)
-            db.execute("INSERT OR REPLACE INTO streaming_returns VALUES(?,?,?,?,?,?,?)",
-                       (cfg.hash, sym, m["rets_blob"], m["trades"],
-                        m["trades_long"], m["trades_short"], years))
-        del npz, cache
-        rate = (len(configs) - n_skipped) / max(0.01, time.time() - ts)
-        print(f"  [streamed] {sym} done ({s_idx+1}/{len(basket)}): "
-              f"{len(configs)-n_skipped} new evals @ {rate:.0f}/s "
-              f"(skipped {n_skipped} cached) total elapsed {time.time()-t0:.0f}s")
-    # Aggregate per config.
-    print(f"[streamed] aggregating {len(configs):,} configs across {len(sym_years)} syms")
-    n_syms = len(sym_years)
-    avg_years = sum(sym_years.values()) / max(1, n_syms)
-    floor_syms = mg.MIN_SYMS_STOCKS if "tradier" in args.basket else mg.MIN_SYMS_CRYPTO
-    n_above_floor = 0
-    n_inserted = 0
-    best_pool = -9.0
-    for cfg in configs:
-        rows = db.execute(
-            "SELECT symbol, returns_blob, n_trades, n_long, n_short FROM streaming_returns "
-            "WHERE config_hash=?", (cfg.hash,)).fetchall()
-        all_rets: List[float] = []
-        per_sym: Dict[str, List[float]] = {}
-        tl = ts = 0
-        for sym, blob, n_tr, n_l, n_s in rows:
-            if not blob or n_tr == 0:
-                continue
-            rets = np.frombuffer(zlib.decompress(blob), dtype=np.float16).astype(np.float32)
-            if rets.size:
-                all_rets.extend(rets.tolist())
-                per_sym[sym] = rets.tolist()
-            tl += n_l; ts += n_s
-        if not all_rets:
-            continue
-        # Trade-frequency gates (sample-floor + cap)
-        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
-        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
-        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
-        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
-            continue
-        rets_arr = np.asarray(all_rets, dtype=np.float32)
-        pool = mg.pool_sharpe(all_rets)
-        ssh = mg.sym_sharpe_from_groups(per_sym)
-        total_gain = float(rets_arr.sum() * 100.0)
-        metrics = {
-            "pool_sharpe": pool, "sym_sharpe": ssh, "trades": len(all_rets),
-            "trades_long": tl, "trades_short": ts, "acc_gain_pct": total_gain,
-            "avg_gain_trade": total_gain / len(all_rets),
-            "gain_per_yr": total_gain / max(0.01, avg_years),
-            "max_dd_pct": _max_drawdown_pct(rets_arr),
-            "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
-            "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
-        }
-        insert_result(db, upsert_config(db, cfg), args.basket,
-                      n_syms=n_syms, years=avg_years, mode=mode, metrics=metrics)
-        n_inserted += 1
-        sample_ok = len(all_rets) >= 30 * n_syms and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
-        if pool > best_pool and sample_ok:
-            best_pool = pool
-            tag = "PUBLISHABLE" if (n_syms >= floor_syms and avg_years >= 1.0) else "DIAGNOSTIC"
-            print(f"  [streamed] new best pool={pool:+.4f} sym={ssh:+.4f} "
-                  f"trades={len(all_rets)} tps/yr={tps:.0f} dd={metrics['max_dd_pct']:.1f}% "
-                  f"hash={cfg.hash} [{tag}]")
-    print(f"[streamed] done: {n_inserted:,} configs aggregated, best pool={best_pool:+.4f}, "
-          f"floor={'PUBLISHABLE' if n_syms>=floor_syms else 'DIAGNOSTIC'} "
-          f"({n_syms} syms × {avg_years:.2f}yr)")
-
-
-def run_v3(args) -> None:
-    """V3 fast-scalp: restrict families to 3m-suffixed fields."""
-    syms = [s.strip() for s in args.syms.split(",") if s.strip()]
-    db = open_db(Path(args.db))
-    rng = random.Random(args.seed)
-    npz_dir = Path(args.npz_dir)
-    mode = "v3"
-    sample = _load_npz(syms[0], npz_dir)
-    all_fams = auto_families(sample,
-                             enabled_globs=("*_3m", "*_3m_*", "k_*_3m", "rsi_3m", "bb_pct_b_3m",
-                                            "dc_*_3m", "wt*_3m", "close_above_*_3m", "close_below_*_3m"),
-                             disabled_globs=())
-    if not all_fams:
-        all_fams = [f for f in auto_families(sample) if "_3m" in f.field]
-    write_family_catalog(db, all_fams)
-    print(f"[v3] {len(all_fams)} 3m-only families across {len(syms)} syms")
-    for sym in syms:
-        try: npz = _load_npz(sym, npz_dir)
-        except FileNotFoundError as e: print(f"  skip {sym}: {e}"); continue
-        close = npz["close_3m"]; years = _years_of(close)
-        cache = MaskCache(npz)
-        t0 = time.time(); n_done = 0; best = -9.0
-        while n_done < args.max_configs:
-            cfg = random_config(rng, all_fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
-            cid = upsert_config(db, cfg)
-            if already_have(db, cid, sym, mode):
-                n_done += 1; continue
-            m = evaluate_config(cache, close, cfg, years)
-            insert_result(db, cid, sym, n_syms=1, years=years, mode=mode, metrics=m)
-            n_done += 1
-            if m["pool_sharpe"] > best and m["trades"] >= 30:
-                best = m["pool_sharpe"]
-                print(f"  v3 {sym} best pool_sharpe={best:+.4f} trades={m['trades']} dd={m['max_dd_pct']:.1f}%")
-            if n_done % 500 == 0:
-                print(f"  v3 {sym}: {n_done:,}/{args.max_configs:,} "
-                      f"({n_done/(time.time()-t0):.0f}/s best={best:+.4f})")
-
-
-def run_top(args) -> None:
-    db = open_db(Path(args.db))
-    where = "WHERE r.mode=?" if args.mode else ""
-    params: Tuple = (args.mode,) if args.mode else ()
-    rows = db.execute(f"""
-        SELECT r.symbol, r.mode, r.pool_sharpe, r.sym_sharpe, r.trades, r.acc_gain_pct,
-               r.max_dd_pct, r.n_syms, r.years, r.verdict, c.label
-        FROM results r JOIN configs c ON c.id=r.config_id {where}
-        ORDER BY r.pool_sharpe DESC LIMIT ?""",
-        (*params, args.top_n)).fetchall()
-    print(f"# Top {len(rows)} ({args.mode or 'ALL'})  -- per-trade pool_sharpe; DIAGNOSTIC if below floor")
-    for i, r in enumerate(rows, 1):
-        print(f"{i:5d} | {r[0]:>10s} | {r[1]:<22s} | pool={r[2]:+.4f} | sym={r[3]:+.4f} | "
-              f"t={r[4]:6d} | gain={r[5]:+8.1f}% | dd={r[6]:5.1f}% | "
-              f"{r[7]:3d}sym | {r[8]:.2f}y | {r[9]:<11s} | {r[10][:80]}")
-
-
-def run_catalog(args) -> None:
-    npz_dir = Path(args.npz_dir)
-    sample = _load_npz(args.sample_sym, npz_dir)
-    fams = auto_families(sample,
-                         enabled_globs=tuple((args.enable_families or "*").split(",")),
-                         disabled_globs=tuple(g for g in (args.disable_families or "").split(",") if g))
-    print(f"# Auto family catalog from {args.sample_sym} — {len(fams)} families")
-    by_kind: Dict[str, int] = {}
-    n_prims = 0
-    for f in fams:
-        by_kind[f.kind] = by_kind.get(f.kind, 0) + 1
-        n_prims += len(f.thresholds) * len(f.ops)
-    print(f"# kind counts: {by_kind}")
-    print(f"# total materializable primitives: {n_prims:,}")
-    if args.show:
-        for f in fams[: args.show]:
-            print(f"  {f.field:<32s} kind={f.kind:<10s} sides={'+'.join(f.sides):<24s} "
-                  f"ops={list(f.ops)} thresholds={[round(x,3) for x in f.thresholds[:8]]}")
-
-
-# ---------------------------------------------------------------------------
-# MAIN
-# ---------------------------------------------------------------------------
-def _on_exit(signum, frame):
-    if HOLD_SENTINEL.exists() and HOLD_SENTINEL.read_text().startswith("vec_sweep:"):
-        try: HOLD_SENTINEL.unlink()
-        except Exception: pass
-    sys.exit(0)
-
-
-def _touch_hold(reason: str) -> None:
-    try: HOLD_SENTINEL.write_text(f"vec_sweep:{reason}:{time.strftime('%FT%T')}\n")
-    except Exception: pass
-
-
-def _add_common(p):
-    p.add_argument("--npz-dir", default=str(NPZ_DIR_DEFAULT))
-    p.add_argument("--db", default=str(DB_DEFAULT))
-    p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--enable-families", default="*",
-                   help="comma globs of family field-names to ENABLE (default: all)")
-    p.add_argument("--disable-families", default="",
-                   help="comma globs of family field-names to DISABLE")
-    p.add_argument("--tf-filter", default="any", choices=("any", "htf_only", "no_3m"),
-                   help="restrict primitive timeframes: any (default), htf_only (4h/D/W/M), no_3m")
-    p.add_argument("--max-tps-per-yr", type=float, default=0,
-                   help="reject configs with > N trades/sym/yr (anti-overtrading; 0=disabled)")
-    p.add_argument("--min-tps-per-yr", type=float, default=0,
-                   help="reject configs with < N trades/sym/yr (sample floor; 0=disabled)")
-    p.add_argument("--min-classes", type=int, default=1,
-                   help="min distinct family classes per side (default 1=any). "
-                        "Set ≥3 for diverse strategies (WT+DC+BB combos, not 4×stoch)")
-    p.add_argument("--max-classes", type=int, default=5,
-                   help="max distinct family classes per side")
-
-
-def main():
-    p = argparse.ArgumentParser(description="vec_sweep — vectorized audited backtest sweep")
-    sub = p.add_subparsers(dest="cmd", required=True)
-
-    a = sub.add_parser("per_symbol"); _add_common(a)
-    a.add_argument("--syms", default="BTCUSDC,ETHUSDC,SOLUSDC,BTCDOMUSDT,DOGEUSDT,ZECUSDT")
-    a.add_argument("--max-configs", type=int, default=200_000)
-    a.set_defaults(fn=run_per_symbol)
-
-    b = sub.add_parser("pooled"); _add_common(b)
-    b.add_argument("--basket", default="crypto48")
-    b.add_argument("--syms", default="")
-    b.add_argument("--max-configs", type=int, default=50_000)
-    b.set_defaults(fn=run_pooled)
-
-    c = sub.add_parser("validate"); _add_common(c)
-    c.add_argument("--seed-mode", default="pooled:crypto48")
-    c.add_argument("--top-n", type=int, default=1000)
-    c.add_argument("--basket", default="crypto48")
-    c.add_argument("--syms", default="")
-    c.add_argument("--target-pool-sharpe", type=float, default=4.0)
-    c.add_argument("--max-configs", type=int, default=200_000)
-    c.set_defaults(fn=run_validate)
-
-    s = sub.add_parser("streamed", help="Streaming pooled — fits ANY basket in low RAM")
-    _add_common(s)
-    s.add_argument("--basket", default="crypto48")
-    s.add_argument("--syms", default="")
-    s.add_argument("--max-configs", type=int, default=2000)
-    s.set_defaults(fn=run_streamed)
-
-    d = sub.add_parser("v3"); _add_common(d)
-    d.add_argument("--syms", default="BTCUSDC,ETHUSDC,SOLUSDC")
-    d.add_argument("--max-configs", type=int, default=100_000)
-    d.set_defaults(fn=run_v3)
-
-    e = sub.add_parser("top")
-    e.add_argument("--mode", default="")
-    e.add_argument("--top-n", type=int, default=1000)
-    e.add_argument("--db", default=str(DB_DEFAULT))
-    e.set_defaults(fn=run_top)
-
-    f = sub.add_parser("catalog"); _add_common(f)
-    f.add_argument("--sample-sym", default="BTCUSDC")
-    f.add_argument("--show", type=int, default=0,
-                   help="print first N families with their thresholds")
-    f.set_defaults(fn=run_catalog)
-
-    args = p.parse_args()
-    signal.signal(signal.SIGINT, _on_exit)
-    signal.signal(signal.SIGTERM, _on_exit)
-    _touch_hold(args.cmd)
+def _print_top_results(csv_path: Path, n: int = 5) -> None:
+    """Log top-N rows by pool_sharpe from the output CSV (informational only)."""
+    if not csv_path.exists():
+        return
     try:
-        args.fn(args)
-    finally:
-        if HOLD_SENTINEL.exists() and HOLD_SENTINEL.read_text().startswith("vec_sweep:"):
-            try: HOLD_SENTINEL.unlink()
-            except Exception: pass
+        rows = []
+        with csv_path.open(encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    float(row.get("pool_sharpe") or 0)
+                    rows.append(row)
+                except (ValueError, TypeError):
+                    pass
+        if not rows:
+            return
+        rows_sorted = sorted(
+            rows, key=lambda r: float(r.get("pool_sharpe") or 0), reverse=True
+        )
+        log.info(f"Top {min(n, len(rows_sorted))} results by pool_sharpe:")
+        for r in rows_sorted[:n]:
+            ps = float(r.get("pool_sharpe") or 0)
+            ss = float(r.get("sym_sharpe") or 0)
+            ag = float(r.get("avg_gain_trade") or 0)
+            tr = int(r.get("trades") or 0)
+            dd = float(r.get("max_dd_pct") or 0)
+            ns = int(r.get("n_syms") or 0)
+            yr = float(r.get("years") or 0)
+            lbl = r.get("label", "?")
+            log.info(
+                f"  [{lbl}] pool_sharpe={ps:+.4f} sym_sharpe={ss:+.4f} "
+                f"avg_gain={ag:.2f}%/trade trades={tr} dd={dd:.1f}% "
+                f"n_syms={ns} years={yr:.2f}"
+            )
+    except Exception as exc:
+        log.debug(f"_print_top_results error: {exc}")
+
+
+# ───────────────────────────────────────────────────────────
+# CLI
+# ───────────────────────────────────────────────────────────
+def main():
+    ap = argparse.ArgumentParser(
+        description="vec_sweep.py — ultra-fast multi-process vectorized sweep runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument(
+        "--mode", choices=["crypto", "tradier"], default="tradier",
+        help="Mode: crypto (3m base TF) or tradier (5m base TF)"
+    )
+    ap.add_argument(
+        "--symbols", default="",
+        help="Comma-separated symbol list e.g. AMD,AMZN,AVGO"
+    )
+    ap.add_argument(
+        "--symbols-file", default="",
+        help="JSON file with list or dict of symbols (overrides --symbols)"
+    )
+    ap.add_argument(
+        "--start", default="",
+        help="Start date YYYY-MM-DD (UTC). Default = NPZ start."
+    )
+    ap.add_argument(
+        "--end", default="",
+        help="End date YYYY-MM-DD (UTC). Default = latest bar in NPZ."
+    )
+    ap.add_argument(
+        "--tier", default="live_default_baseline",
+        help=f"Tier name. Available: {', '.join(list_tiers())}"
+    )
+    ap.add_argument(
+        "--workers", type=int, default=4,
+        help="Parallel worker processes (default 4; use 1 for debugging)"
+    )
+    ap.add_argument(
+        "--out", default="",
+        help="Output CSV path. Default: data/sweep_results/vec_sweep_<tier>_<ts>.csv"
+    )
+    ap.add_argument(
+        "--npz-dir", default="",
+        help="Override NPZ directory (default: BASE_PATH/backtest_v8/indicators)"
+    )
+    ap.add_argument(
+        "--list-tiers", action="store_true",
+        help="List available tier names with config counts and exit"
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help="Show tier config list without running the sweep"
+    )
+    ap.add_argument(
+        "--debug", action="store_true",
+        help="Enable DEBUG logging"
+    )
+    args = ap.parse_args()
+
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    # ── --list-tiers ─────────────────────────────────────────
+    if args.list_tiers:
+        print("Available tiers:")
+        for t in list_tiers():
+            cfgs = get_tier(t)
+            print(f"  {t}: {len(cfgs)} configs")
+        return
+
+    # ── Resolve symbols ───────────────────────────────────────
+    symbols: List[str] = []
+    if args.symbols_file:
+        fp = Path(args.symbols_file)
+        if not fp.exists():
+            log.error(f"--symbols-file not found: {fp}")
+            sys.exit(1)
+        data = json.loads(fp.read_text())
+        if isinstance(data, list):
+            symbols = [str(s).strip().upper() for s in data if s]
+        elif isinstance(data, dict):
+            symbols = [str(s).strip().upper() for s in data.keys()]
+        else:
+            log.error("--symbols-file must contain a JSON list or object.")
+            sys.exit(1)
+    elif args.symbols:
+        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+
+    if not symbols:
+        log.error(
+            "No symbols specified. Use --symbols AMD,AMZN,AVGO "
+            "or --symbols-file path/to/symbols.json"
+        )
+        sys.exit(1)
+
+    # ── Resolve timestamps ────────────────────────────────────
+    start_ts: Optional[int] = None
+    end_ts: Optional[int] = None
+    if args.start:
+        try:
+            start_ts = int(datetime.strptime(args.start, "%Y-%m-%d").timestamp())
+        except ValueError:
+            log.error(f"Invalid --start: {args.start!r}  Use YYYY-MM-DD.")
+            sys.exit(1)
+    if args.end:
+        try:
+            end_ts = int(datetime.strptime(args.end, "%Y-%m-%d").timestamp())
+        except ValueError:
+            log.error(f"Invalid --end: {args.end!r}  Use YYYY-MM-DD.")
+            sys.exit(1)
+
+    # ── Resolve output path ───────────────────────────────────
+    ts_str = str(int(time.time()))
+    if args.out:
+        out_path = Path(args.out)
+    else:
+        out_path = (
+            BASE_PATH / "data" / "sweep_results"
+            / f"vec_sweep_{args.tier}_{ts_str}.csv"
+        )
+
+    # ── Resolve NPZ dir ───────────────────────────────────────
+    npz_dir: Optional[str] = args.npz_dir if args.npz_dir else None
+
+    # ── Validate tier ─────────────────────────────────────────
+    try:
+        configs = get_tier(args.tier)
+    except KeyError as exc:
+        log.error(str(exc))
+        sys.exit(1)
+
+    # ── --dry-run ─────────────────────────────────────────────
+    if args.dry_run:
+        print(f"DRY RUN: tier={args.tier}  n_configs={len(configs)}  symbols={symbols}")
+        show_n = min(10, len(configs))
+        for i, (label, overrides) in enumerate(configs[:show_n]):
+            print(f"  [{i:4d}] {label}: {json.dumps(overrides)}")
+        if len(configs) > show_n:
+            print(f"  ... ({len(configs) - show_n} more)")
+        return
+
+    # ── IMPOSTER BLOCK sanity check ───────────────────────────
+    # Single-symbol runs: always DIAGNOSTIC. Warn loudly.
+    if len(symbols) < 2:
+        log.warning(
+            "IMPOSTER BLOCK WARNING: single-symbol run (n_syms=1). "
+            "Results will be tagged [DIAGNOSTIC ONLY · n_syms=1]. "
+            "Never use single-symbol results for live config changes per CLAUDE.md."
+        )
+
+    # ── Run ───────────────────────────────────────────────────
+    run_sweep(
+        mode=args.mode,
+        symbols=symbols,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        tier_name=args.tier,
+        workers=args.workers,
+        out_path=out_path,
+        npz_dir=npz_dir,
+    )
 
 
 if __name__ == "__main__":

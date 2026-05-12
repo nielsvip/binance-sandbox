@@ -1768,7 +1768,7 @@ class TradierConfig:
     HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
-    HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
+    HEDGE_NEWBORN_GRACE_MINUTES: float = 0.0  # 2026-05-12 USER MANDATE: hedges should have NO grace period — must close instantly when WT flips.
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2% ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
     HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system

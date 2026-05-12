@@ -799,3 +799,433 @@ def evaluate_exit_gates_vec(
         out['e3_structure'] = np.zeros(n, dtype=bool)
 
     return out
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# UNIVERSAL_NOLOSS_GATE + OBLIGATORY_HEDGE — exit-side gate parity
+# ════════════════════════════════════════════════════════════════════════════════
+# Mirrors ez_manage.py:14263-14436 (execute_now reduce-at-loss branch).
+#
+# Decision flow (live):
+#   1. If reduce/close attempt arrives while UNIVERSAL_NOLOSS_GATE is active
+#      AND position is in real-loss (gain < COMMISSION_BUFFER_PCT):
+#      a) Check bypass list (UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS, is_hedge,
+#         LIQUIDATION, STRUCTURAL_RANGE_SHIFT) → if match: ALLOW_REDUCE.
+#      b) Else fire OBLIGATORY_HEDGE if enabled + WT cascade fires.
+#         - cascade preference (live ez_manage:14387-14401):
+#           * HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H (default True 2026-05-12)
+#               trigger = 3m AND (15m OR 1h)
+#           * HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H (older)
+#               trigger = 3m AND 1h
+#           * HEDGE_TRIGGER_USE_WT_3M_ALONE
+#               trigger = 3m alone
+#           * else fallback = 15m OR (3m AND 1h)
+#         - Plus the OBLIGATORY_HEDGE_WT_TFS_REQUIRED count gate (OR with cascade).
+#      c) If hedge fires successfully → HOLD (block reduce).
+#      d) If hedge attempt fails AND HEDGE_FAILED_FALLBACK_CLOSE_ENABLED →
+#         CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK (reason gets 'HEDGE_FAILED_FALLBACK_CLOSE'
+#         prefix so downstream paths match the bypass list).
+#      e) Else (hedge skipped/disabled/wt_not_against/gain_too_small) → HOLD.
+#
+# In backtest the hedge_attempt_succeeded outcome is supplied by the caller (engine
+# decides whether the hedge can be opened — usually True in vec sim).
+#
+# OUTPUT: (action, reason, hedge_should_fire, hedge_qty)
+#   action ∈ {"HOLD", "ALLOW_REDUCE", "CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK"}
+
+# Action constants for callers
+NOLOSS_ACTION_HOLD = "HOLD"
+NOLOSS_ACTION_ALLOW_REDUCE = "ALLOW_REDUCE"
+NOLOSS_ACTION_CLOSE_HEDGE_FAILED = "CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK"
+
+
+def _wt_against_scalar(ind: Dict[str, Any], tf: str, is_long: bool) -> bool:
+    """LONG: wt1 < wt2 is against (price falling). SHORT: wt1 > wt2 is against (price rising).
+    Mirrors ez_manage.py:14373 `_ag = (_w1 < _w2) if _is_long else (_w1 > _w2)`."""
+    w1 = _sf(ind.get(f'wt1_{tf}'), 0.0)
+    w2 = _sf(ind.get(f'wt2_{tf}'), 0.0)
+    return (w1 < w2) if is_long else (w1 > w2)
+
+
+def _bypass_reason_matches(reason: str, bypass_list) -> Optional[str]:
+    """Case-insensitive substring match of `reason` against bypass list."""
+    if not reason or not bypass_list:
+        return None
+    ru = reason.upper()
+    for b in bypass_list:
+        if b and b.upper() in ru:
+            return b
+    return None
+
+
+def evaluate_noloss_gate_core(
+    indicators: Dict[str, Any],
+    is_long: bool,
+    real_gain_pct: float,
+    positionAmt: float,
+    mark_price: float,
+    reason: str,
+    config: Any,
+    *,
+    account_key: str = "",
+    is_hedge: bool = False,
+    is_reduce: bool = True,
+    hedge_already_active: bool = False,
+    hedge_attempt_succeeded: bool = True,
+) -> Tuple[str, str, bool, Optional[float]]:
+    """Scalar UNIVERSAL_NOLOSS_GATE + OBLIGATORY_HEDGE evaluator.
+
+    Returns (action, reason_out, hedge_should_fire, hedge_qty):
+        action ∈ {HOLD, ALLOW_REDUCE, CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK}
+        reason_out — possibly mutated reason (live appends HEDGE_FAILED_FALLBACK_CLOSE prefix)
+        hedge_should_fire — True when OBLIGATORY_HEDGE conditions met (caller actually fires it)
+        hedge_qty — abs(positionAmt) * OBLIGATORY_HEDGE_PCT when hedge fires, else None
+
+    Pure function: no I/O, no side effects, no logger calls. Live ez_manage retains the
+    logging at its own callsite; this function provides ground-truth decision parity.
+
+    NOTE: This evaluator does NOT implement DC_RECOVERY_EXIT_BYPASS or NOLOSS_MIN_PROFIT
+    blocking — those are secondary paths inside the live gate that depend on indicator
+    fetching outside the canonical (real_gain, wt_*) decision surface. Callers who need
+    them must run their own pre-checks; backtest_v8_engine has historically skipped
+    DC_RECOVERY (default OFF) and runs NOLOSS_MIN_PROFIT=0 globally, so omitting them
+    matches the production sweep config.
+    """
+    # Gate not active at all → caller can reduce freely
+    ung_active = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
+    if not ung_active or not is_reduce:
+        return (NOLOSS_ACTION_ALLOW_REDUCE, reason, False, None)
+
+    reason_upper = (reason or "").upper()
+
+    # Hedge / liquidation bypass (live ez_manage:14274)
+    if is_hedge or 'LIQUIDATION' in reason_upper:
+        return (NOLOSS_ACTION_ALLOW_REDUCE, reason, False, None)
+
+    # Technical bypass list (live ez_manage:14277-14283)
+    if bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL', True)):
+        bypass_list = getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
+        matched = _bypass_reason_matches(reason_upper, bypass_list)
+        if matched is not None:
+            return (NOLOSS_ACTION_ALLOW_REDUCE, reason, False, None)
+
+    # Structural range shift bypass (live ez_manage:14286, 14333)
+    if 'STRUCTURAL_RANGE_SHIFT' in reason_upper:
+        return (NOLOSS_ACTION_ALLOW_REDUCE, reason, False, None)
+
+    # COMMISSION_BUFFER_PCT loss check (live ez_manage:14294-14295)
+    comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+    if real_gain_pct >= comm_buf:
+        # Not in real loss (after commissions) → caller can reduce
+        return (NOLOSS_ACTION_ALLOW_REDUCE, reason, False, None)
+
+    # ─── In real loss + no bypass → consider OBLIGATORY_HEDGE ────────────────────
+    hedge_outcome = "skip"
+    hedge_should_fire = False
+    hedge_qty: Optional[float] = None
+
+    if bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)):
+        oh_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+        if real_gain_pct <= oh_min_loss and not hedge_already_active:
+            # WT cascade — mirrors ez_manage.py:14357-14401 exactly
+            oh_use = {
+                '1m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1M', False)),
+                '3m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True)),
+                '15m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False)),
+                '1h': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True)),
+            }
+            oh_wt_against = 0
+            oh_tfs_enabled = 0
+            oh_3m_against = False
+            oh_15m_against = False
+            oh_1h_against = False
+            for tf in ('1m', '3m', '15m', '1h'):
+                if not oh_use[tf]:
+                    continue
+                oh_tfs_enabled += 1
+                ag = _wt_against_scalar(indicators, tf, is_long)
+                oh_wt_against += int(ag)
+                if tf == '3m':
+                    oh_3m_against = bool(ag)
+                elif tf == '15m':
+                    oh_15m_against = bool(ag)
+                elif tf == '1h':
+                    oh_1h_against = bool(ag)
+            # USER 2026-05-12 (ez_manage.py:14378-14383): compute 15m independently
+            # even if OBLIGATORY_HEDGE_WT_USE_15M=False, so the (15m OR 1h)
+            # cascade works regardless of loop config.
+            if not oh_use['15m']:
+                oh_15m_against = _wt_against_scalar(indicators, '15m', is_long)
+
+            oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+            req_3m_15m_or_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
+            req_3m_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', False))
+            use_3m_alone = bool(getattr(config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
+
+            # Cascade precedence: matches ez_manage.py:14390-14401 if/elif chain
+            if req_3m_15m_or_1h:
+                oh_user_trigger = oh_3m_against and (oh_15m_against or oh_1h_against)
+                trigger_label = "3m_AND_(15m_OR_1h)"
+            elif req_3m_1h:
+                oh_user_trigger = oh_3m_against and oh_1h_against
+                trigger_label = "3m_AND_1h"
+            elif use_3m_alone:
+                oh_user_trigger = oh_3m_against
+                trigger_label = "3m_alone"
+            else:
+                oh_user_trigger = oh_15m_against or (oh_3m_against and oh_1h_against)
+                trigger_label = "15m_OR_(3m_AND_1h)"
+
+            # Live ez_manage:14402 — fire on count OR cascade match
+            if oh_tfs_enabled > 0 and (oh_wt_against >= oh_req or oh_user_trigger):
+                hedge_should_fire = True
+                oh_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
+                hedge_qty = abs(float(positionAmt)) * oh_pct
+                hedge_outcome = "success" if hedge_attempt_succeeded else "failed"
+            else:
+                hedge_outcome = "wt_not_against"
+        else:
+            hedge_outcome = "gain_too_small" if real_gain_pct > oh_min_loss else (
+                "already_covered" if hedge_already_active else "disabled")
+    else:
+        hedge_outcome = "disabled"
+
+    # Decision — live ez_manage:14425-14436
+    fallback_enabled = bool(getattr(config, 'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED', True))
+    if hedge_outcome == "failed" and fallback_enabled:
+        # Live mutates reason → HEDGE_FAILED_FALLBACK_CLOSE_g{gain}%_orig:{prev}
+        new_reason = f"HEDGE_FAILED_FALLBACK_CLOSE_g{real_gain_pct:.2f}%_orig:{(reason or '')[:60]}"
+        return (NOLOSS_ACTION_CLOSE_HEDGE_FAILED, new_reason, hedge_should_fire, hedge_qty)
+
+    # All other outcomes block the reduce — HOLD.
+    return (NOLOSS_ACTION_HOLD, reason, hedge_should_fire, hedge_qty)
+
+
+def evaluate_noloss_gate_vec(
+    npz: Dict[str, np.ndarray],
+    is_long: bool,
+    real_gain_pct: np.ndarray,
+    positionAmt: np.ndarray,
+    mark_price: np.ndarray,
+    reason: str,
+    config: Any,
+    *,
+    is_hedge: bool = False,
+    is_reduce: bool = True,
+    hedge_already_active=None,  # bool array or scalar
+    hedge_attempt_succeeded=None,  # bool array or scalar
+) -> Dict[str, np.ndarray]:
+    """Vectorized UNIVERSAL_NOLOSS_GATE + OBLIGATORY_HEDGE evaluator.
+
+    Inputs are per-bar arrays where indicated; `reason`, `is_hedge`, `is_reduce`,
+    `is_long` are scalars (the reduce attempt has a single reason string —
+    backtest engines that re-evaluate per bar can supply the same arrays with a
+    fresh `reason` per call).
+
+    Returns dict with per-bar arrays:
+        action_id        — np.int8 (0=HOLD, 1=ALLOW_REDUCE, 2=CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK)
+        hedge_fire       — bool per bar
+        hedge_qty        — float32 per bar (0.0 when no hedge)
+        oh_wt_against    — int8 count of TFs against (diagnostic)
+        oh_user_trigger  — bool per bar (cascade matched)
+        comm_loss        — bool per bar (real_gain_pct < commission buffer)
+    Plus scalar metadata:
+        reason_out       — string (only differs from `reason` if action_id==2 at any bar;
+                           live mutates per fire so caller should regenerate per bar if needed)
+
+    NOTE: For action_id==2 (HEDGE_FAILED close), the live code emits a reason string
+    containing the gain at that bar. The vec version returns the canonical action label;
+    callers that need per-bar reason strings should iterate firing bars and call
+    evaluate_noloss_gate_core on those — keeps the hot loop fast.
+    """
+    # Pick array length from real_gain_pct as the canonical "n"
+    real_gain_pct = np.asarray(real_gain_pct, dtype=np.float32)
+    n = len(real_gain_pct)
+
+    positionAmt = np.asarray(positionAmt, dtype=np.float32)
+    if positionAmt.shape == ():
+        positionAmt = np.full(n, float(positionAmt), dtype=np.float32)
+
+    def f(name: str, default: float = 0.0) -> np.ndarray:
+        a = npz.get(name)
+        if a is None:
+            return np.full(n, default, dtype=np.float32)
+        a = np.asarray(a, dtype=np.float32)
+        if len(a) != n:
+            out_a = np.full(n, default, dtype=np.float32)
+            m = min(len(a), n)
+            out_a[:m] = a[:m]
+            a = out_a
+        return np.nan_to_num(a, nan=default)
+
+    # Defaults: hedge_already_active=False, hedge_attempt_succeeded=True (both per-bar)
+    if hedge_already_active is None:
+        haa = np.zeros(n, dtype=bool)
+    else:
+        haa = np.asarray(hedge_already_active, dtype=bool)
+        if haa.shape == ():
+            haa = np.full(n, bool(hedge_already_active), dtype=bool)
+    if hedge_attempt_succeeded is None:
+        hsucc = np.ones(n, dtype=bool)
+    else:
+        hsucc = np.asarray(hedge_attempt_succeeded, dtype=bool)
+        if hsucc.shape == ():
+            hsucc = np.full(n, bool(hedge_attempt_succeeded), dtype=bool)
+
+    # ─── Quick exits for scalar conditions ───────────────────────────────────────
+    ung_active = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
+    reason_upper = (reason or "").upper()
+
+    out_action = np.zeros(n, dtype=np.int8)  # 0=HOLD default; we'll overwrite
+    out_hedge_fire = np.zeros(n, dtype=bool)
+    out_hedge_qty = np.zeros(n, dtype=np.float32)
+    out_oh_wt_against = np.zeros(n, dtype=np.int8)
+    out_oh_user_trigger = np.zeros(n, dtype=bool)
+
+    if not ung_active or not is_reduce:
+        out_action[:] = 1  # ALLOW_REDUCE everywhere
+        return {
+            'action_id': out_action,
+            'hedge_fire': out_hedge_fire,
+            'hedge_qty': out_hedge_qty,
+            'oh_wt_against': out_oh_wt_against,
+            'oh_user_trigger': out_oh_user_trigger,
+            'comm_loss': np.zeros(n, dtype=bool),
+        }
+
+    if is_hedge or 'LIQUIDATION' in reason_upper:
+        out_action[:] = 1
+        return {
+            'action_id': out_action,
+            'hedge_fire': out_hedge_fire,
+            'hedge_qty': out_hedge_qty,
+            'oh_wt_against': out_oh_wt_against,
+            'oh_user_trigger': out_oh_user_trigger,
+            'comm_loss': np.zeros(n, dtype=bool),
+        }
+
+    if bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL', True)):
+        bypass_list = getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
+        if _bypass_reason_matches(reason_upper, bypass_list) is not None:
+            out_action[:] = 1
+            return {
+                'action_id': out_action,
+                'hedge_fire': out_hedge_fire,
+                'hedge_qty': out_hedge_qty,
+                'oh_wt_against': out_oh_wt_against,
+                'oh_user_trigger': out_oh_user_trigger,
+                'comm_loss': np.zeros(n, dtype=bool),
+            }
+
+    if 'STRUCTURAL_RANGE_SHIFT' in reason_upper:
+        out_action[:] = 1
+        return {
+            'action_id': out_action,
+            'hedge_fire': out_hedge_fire,
+            'hedge_qty': out_hedge_qty,
+            'oh_wt_against': out_oh_wt_against,
+            'oh_user_trigger': out_oh_user_trigger,
+            'comm_loss': np.zeros(n, dtype=bool),
+        }
+
+    # ─── Per-bar evaluation ──────────────────────────────────────────────────────
+    comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+    in_loss = real_gain_pct < comm_buf  # below commission buffer = real loss territory
+    # Bars NOT in real loss → ALLOW_REDUCE
+    out_action[~in_loss] = 1
+
+    # For in_loss bars, evaluate OBLIGATORY_HEDGE cascade
+    if not bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)):
+        # OH disabled — all in_loss bars stay HOLD (action=0), already-default
+        return {
+            'action_id': out_action,
+            'hedge_fire': out_hedge_fire,
+            'hedge_qty': out_hedge_qty,
+            'oh_wt_against': out_oh_wt_against,
+            'oh_user_trigger': out_oh_user_trigger,
+            'comm_loss': in_loss,
+        }
+
+    oh_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+    oh_eligible = in_loss & (real_gain_pct <= oh_min_loss) & (~haa)
+
+    # Build WT-against bool arrays
+    oh_use = {
+        '1m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1M', False)),
+        '3m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True)),
+        '15m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False)),
+        '1h': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True)),
+    }
+
+    def _against_vec(tf: str) -> np.ndarray:
+        w1 = f(f'wt1_{tf}', 0.0)
+        w2 = f(f'wt2_{tf}', 0.0)
+        return (w1 < w2) if is_long else (w1 > w2)
+
+    oh_wt_against = np.zeros(n, dtype=np.int8)
+    oh_tfs_enabled = 0
+    oh_3m_against = np.zeros(n, dtype=bool)
+    oh_15m_against = np.zeros(n, dtype=bool)
+    oh_1h_against = np.zeros(n, dtype=bool)
+    for tf in ('1m', '3m', '15m', '1h'):
+        ag = _against_vec(tf) if oh_use[tf] else None
+        if oh_use[tf]:
+            oh_tfs_enabled += 1
+            oh_wt_against = oh_wt_against + ag.astype(np.int8)
+        if tf == '3m':
+            oh_3m_against = ag if ag is not None else _against_vec('3m') if oh_use['3m'] else np.zeros(n, dtype=bool)
+        elif tf == '15m':
+            oh_15m_against = ag if ag is not None else np.zeros(n, dtype=bool)
+        elif tf == '1h':
+            oh_1h_against = ag if ag is not None else np.zeros(n, dtype=bool)
+    # Live: compute 15m independently when OBLIGATORY_HEDGE_WT_USE_15M=False (ez_manage:14380-14383)
+    if not oh_use['15m']:
+        oh_15m_against = _against_vec('15m')
+    # Live: 3m & 1h are read into oh_3m/1h_against ONLY when use flag True; otherwise False.
+    # If oh_use['3m']=False, the cascade's '3m alone' / '3m AND (...)' branches see False.
+    if not oh_use['3m']:
+        oh_3m_against = np.zeros(n, dtype=bool)
+    if not oh_use['1h']:
+        oh_1h_against = np.zeros(n, dtype=bool)
+
+    oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+    req_3m_15m_or_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
+    req_3m_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', False))
+    use_3m_alone = bool(getattr(config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
+
+    if req_3m_15m_or_1h:
+        oh_user_trigger = oh_3m_against & (oh_15m_against | oh_1h_against)
+    elif req_3m_1h:
+        oh_user_trigger = oh_3m_against & oh_1h_against
+    elif use_3m_alone:
+        oh_user_trigger = oh_3m_against
+    else:
+        oh_user_trigger = oh_15m_against | (oh_3m_against & oh_1h_against)
+
+    # Fire condition: count OR cascade (ez_manage:14402)
+    cascade_fire = (oh_wt_against >= oh_req) | oh_user_trigger
+    hedge_fire_mask = oh_eligible & (oh_tfs_enabled > 0) & cascade_fire
+
+    out_hedge_fire = hedge_fire_mask
+    out_oh_wt_against = oh_wt_against
+    out_oh_user_trigger = oh_user_trigger
+
+    oh_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
+    out_hedge_qty = np.where(hedge_fire_mask, np.abs(positionAmt) * oh_pct, 0.0).astype(np.float32)
+
+    # Action assignment for in_loss bars:
+    # - hedge fires + attempt fails + fallback enabled → CLOSE_AT_LOSS_VIA_HEDGE_FALLBACK (2)
+    # - else HOLD (0)
+    fallback_enabled = bool(getattr(config, 'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED', True))
+    if fallback_enabled:
+        close_mask = hedge_fire_mask & (~hsucc)
+        out_action[close_mask] = 2
+
+    return {
+        'action_id': out_action,
+        'hedge_fire': out_hedge_fire,
+        'hedge_qty': out_hedge_qty,
+        'oh_wt_against': out_oh_wt_against,
+        'oh_user_trigger': out_oh_user_trigger,
+        'comm_loss': in_loss,
+    }

@@ -183,9 +183,10 @@ def mega_combo_v1() -> Tier:
                     overrides.update(gr_ovr)
                     combos.append((label, overrides))
 
-    # 2D WT_DC × TRADIER_ENTRY_SCORE grid (800 configs)
-    dc_thrs_2d = [float(x) for x in range(20, 90, 4)]    # 18 values
-    score_thrs_2d = [float(x) for x in range(16, 36, 1)]  # 20 values
+    # 2D WT_DC × TRADIER_ENTRY_SCORE grid
+    # 19 × 41 = 779 configs to bring total above 1000
+    dc_thrs_2d = [float(x) for x in range(20, 96, 4)]    # 19 values (20,24,...,92)
+    score_thrs_2d = [float(x) for x in range(16, 57, 1)]  # 41 values (16..56)
     for dc_thr in dc_thrs_2d:
         for score_thr in score_thrs_2d:
             label = f"2d_dc{int(dc_thr)}_sc{int(score_thr)}"

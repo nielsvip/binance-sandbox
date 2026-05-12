@@ -547,7 +547,7 @@ class Config:
     HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = 0.0  # 2026-04-18: hedge when gain hits 0% — if system failed to sell at a gain this is the fallback
-    HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
+    HEDGE_NEWBORN_GRACE_MINUTES: float = 0.0  # 2026-05-12 USER MANDATE: hedges should have NO grace period — must close instantly when WT flips. Original 10.0 blocked needed unwinds during fast adverse moves.
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
@@ -1843,7 +1843,7 @@ class Config:
     # 2026-04-28 USER RULE: maker CLOSE orders rest at a commission-positive price.
     # When market is below the floor (LONG close) / above the floor (SHORT close), the post-only
     # GTX limit rests at the floor and waits — does not chase into a net-loss fill.
-    MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = True
+    MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = False  # 2026-05-12 USER MANDATE: DISABLED. Was clamping SELL limits ABOVE market (entry+buf) — orders never filled when price moved against entry. User: "only valid value is dc_low4_3m and that can never be above price". Until rewritten to use dc_low4_3m (LONG) / dc_high4_3m (SHORT), keep OFF so exits aren't blocked.
     MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC: float = 300.0  # how long to wait at floor before timing out
     # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation, plus a tight stop.
     GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — strip K-adverse + full-stack-confirmation gates that blocked reentries on inf positions. The 3m+15m+HTF stack requirement was the silent killer.

@@ -14337,14 +14337,19 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                 return
                     await tracker_manager.set_processing(position_key)
                     action_type = "REDUCE"
-                    reduction_qty = position.positionAmt if action_type == "CLOSE" or stagnation_exit else (positionAmt - pos_min_qty)
+                    # 2026-05-12 BUG FIX: position.positionAmt is NEGATIVE for SHORT positions.
+                    # Without abs() the engine treated the order as ADD-MORE-SHORT (AUGMENT) instead
+                    # of CLOSE-SHORT (REDUCE). User saw fin:ENSUSDT_SHORT grow 1→8.5 instead of closing.
+                    # Also set is_full_close=True on stagnation so the engine treats it as a full close.
+                    reduction_qty = abs(position.positionAmt) if action_type == "CLOSE" or stagnation_exit else abs(positionAmt - pos_min_qty)
+                    _is_full_close_flag = bool(stagnation_exit) or (action_type == "CLOSE")
                     full_reason = f"{action_type}_{rec_exit}_{k_str}_{reason_exit}"
                     if 'WAIT' in full_reason or 'HOLD' in rec_exit or 'NOLOSS_HOLD' in full_reason:
                         return f'{position_key} HOLD/WAIT MEANS NO TRADE'
                     side='SELL' if is_long else 'BUY'
                     if 'WAIT' in full_reason:
                         return f'{position_key} WAIT MEANS WAIT'
-                    result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduction_qty, current_price, f"QUICK_{full_reason}_REDUCE", f"QUICK_{full_reason}_REDUCE", False, rec_exit, is_hedge=is_hedge, hedge_for=hedge_for)
+                    result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduction_qty, current_price, f"QUICK_{full_reason}_REDUCE", f"QUICK_{full_reason}_REDUCE", _is_full_close_flag, rec_exit, is_hedge=is_hedge, hedge_for=hedge_for)
                     if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
                         logger.error(f"🚫 [REDUCE_EXECUTE_NOW_FAILED] {position_key}: execute_now={str(result)[:60]} — no fallback (ONLY execute_now can execute).")
                     if result and 'SUCCESS' in result:

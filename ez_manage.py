@@ -14363,6 +14363,7 @@ class MultiAccountTradeManager:
                                         _oh_wt_against = 0
                                         _oh_tfs_enabled = 0
                                         _oh_3m_against = False
+                                        _oh_15m_against = False
                                         _oh_1h_against = False
                                         for _tf in ('1m', '3m', '15m', '1h'):
                                             if not _oh_use[_tf]: continue
@@ -14372,16 +14373,36 @@ class MultiAccountTradeManager:
                                             _ag = (_w1 < _w2) if _is_long else (_w1 > _w2)
                                             _oh_wt_against += int(_ag)
                                             if _tf == '3m': _oh_3m_against = bool(_ag)
+                                            elif _tf == '15m': _oh_15m_against = bool(_ag)
                                             elif _tf == '1h': _oh_1h_against = bool(_ag)
+                                        # USER 2026-05-12: new gate requires wt_15m even if OBLIGATORY_HEDGE_WT_USE_15M=False.
+                                        # Compute it independently so the (15m OR 1h) confirmation works regardless of loop config.
+                                        if not _oh_use['15m']:
+                                            _w1_15m = safe_fetch_float(_oh_ind.get('wt1_15m'), 0)
+                                            _w2_15m = safe_fetch_float(_oh_ind.get('wt2_15m'), 0)
+                                            _oh_15m_against = (_w1_15m < _w2_15m) if _is_long else (_w1_15m > _w2_15m)
                                         _oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
-                                        # User mandate 2026-05-10: wt1_3m alone against = obligatory trigger.
-                                        # Override req when 3m is against, regardless of 1h (1h becomes optional confirmation).
-                                        # The May-9 "3m AND 1h" rule blocked hedges on 7 deep-loss SHORTs over 5 days.
-                                        _oh_user_trigger = _oh_3m_against
+                                        # USER 2026-05-12: mirror EPQ hedge scan trigger priority (ez_positions_quick.py:5206-5219).
+                                        # Both per-tick OBLIGATORY_HEDGE and scan-loop hedge must use the SAME predicate.
+                                        _oh_req_3m_15m_or_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
+                                        _oh_req_3m_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', False))
+                                        _oh_use_3m_alone = bool(getattr(config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
+                                        if _oh_req_3m_15m_or_1h:
+                                            _oh_user_trigger = _oh_3m_against and (_oh_15m_against or _oh_1h_against)
+                                            _oh_trigger_label = "3m_AND_(15m_OR_1h)"
+                                        elif _oh_req_3m_1h:
+                                            _oh_user_trigger = _oh_3m_against and _oh_1h_against
+                                            _oh_trigger_label = "3m_AND_1h"
+                                        elif _oh_use_3m_alone:
+                                            _oh_user_trigger = _oh_3m_against
+                                            _oh_trigger_label = "3m_alone"
+                                        else:
+                                            _oh_user_trigger = _oh_15m_against or (_oh_3m_against and _oh_1h_against)
+                                            _oh_trigger_label = "15m_OR_(3m_AND_1h)"
                                         if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_req or _oh_user_trigger):
                                             _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                                             _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
-                                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m={_oh_3m_against} 1h={_oh_1h_against}) — SAME-SYMBOL hedge via execute_now (SYNCHRONOUS)")
+                                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% trigger={_oh_trigger_label} wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m={_oh_3m_against} 15m={_oh_15m_against} 1h={_oh_1h_against}) — SAME-SYMBOL hedge via execute_now (SYNCHRONOUS)")
                                             try:
                                                 logger.warning(f"🎬 [OBLIGATORY_HEDGE_TASK_START] {position_key}: calling execute_same_symbol_hedge")
                                                 _r = await _he.execute_same_symbol_hedge(account_key, pos, symbol, 'LONG' if _is_long else 'SHORT', _oh_pos_amt, _oh_mark)
@@ -14391,7 +14412,7 @@ class MultiAccountTradeManager:
                                                 logger.critical(f"💥 [OBLIGATORY_HEDGE_TASK_CRASH] {position_key}: {type(_e).__name__}: {_e}", exc_info=True)
                                                 _hedge_outcome = "failed"
                                         else:
-                                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} 3m={_oh_3m_against} 1h={_oh_1h_against} req={_oh_req} — WT not yet confirming reversal")
+                                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% trigger={_oh_trigger_label} wt_against={_oh_wt_against}/{_oh_tfs_enabled} 3m={_oh_3m_against} 15m={_oh_15m_against} 1h={_oh_1h_against} req={_oh_req} — WT not yet confirming reversal")
                                             _hedge_outcome = "wt_not_against"
                                     else:
                                         _hedge_outcome = "disabled"
