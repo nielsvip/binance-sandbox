@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-12 06:48:56 UTC
+# Copilot Status — 2026-05-12 07:04:04 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:45:33
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:46:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-12T06:46:22
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T06:46:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T06:46:22
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:47:12
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:48:05
-- **STALE_INDICATORS** [tradier]  — 2026-05-12T06:48:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T06:48:26
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T06:48:26
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T07:00:35
+- **STALE_INDICATORS** [tradier]  — 2026-05-12T07:00:56
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T07:00:56
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T07:00:56
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T07:01:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T07:02:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-12T07:03:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T07:03:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T07:03:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T07:03:42
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 8 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.3%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-3.8%
 - HELD: **SLV** LONG (tradier) peak +10.6%, now +2.8%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-4.5%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-4.0%
 - HELD: **NEM** LONG (tradier) peak +5.5%, now +1.5%
 - HELD: **USO** LONG (tradier) peak +5.2%, now +-0.5%
 - HELD: **NVDA** LONG (tradier) peak +4.4%, now +1.0%
@@ -47,8 +47,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
