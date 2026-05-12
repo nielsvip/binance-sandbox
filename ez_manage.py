@@ -22764,6 +22764,53 @@ class MultiAccountTradeManager:
                             logger.debug(
                                 f"[STALE_MARK_PRICE_REFRESH_ERR] {position_key} sym={_stale_sym}: {type(_ref_e).__name__}: {_ref_e}"
                             )
+                        # Last resort: live REST bid/ask. All in-mem caches stale — hit
+                        # the exchange directly (USDC perp REST symbol = USDT stream sym).
+                        if _stale_age_s > _stale_max_age and _stale_sym and account_key:
+                            try:
+                                _rest_sym = (
+                                    _stale_sym.replace("USDC", "USDT")
+                                    if _stale_sym.endswith("USDC")
+                                    else _stale_sym
+                                )
+                                _rest_client = self.get_client(account_key)
+                                if _rest_client:
+                                    _book = await asyncio.wait_for(
+                                        asyncio.to_thread(
+                                            _rest_client.futures_order_book,
+                                            symbol=_rest_sym,
+                                            limit=5,
+                                        ),
+                                        timeout=3.0,
+                                    )
+                                    _bids = _book.get("bids") or []
+                                    _asks = _book.get("asks") or []
+                                    if _bids and _asks:
+                                        _bid = safe_fetch_float(_bids[0][0], 0.0)
+                                        _ask = safe_fetch_float(_asks[0][0], 0.0)
+                                        _mid = (_bid + _ask) / 2 if _bid > 0 and _ask > 0 else max(_bid, _ask)
+                                        if _mid > 0:
+                                            _now_api = datetime.now(timezone.utc)
+                                            _stale_pos.mark_price = _mid
+                                            _stale_pos.mark_price_last_updated = _now_api
+                                            try:
+                                                self.price_cache[_stale_sym] = {
+                                                    "price": _mid,
+                                                    "timestamp": _now_api.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                                                }
+                                            except Exception:
+                                                pass
+                                            _stale_age_s = 0.0
+                                            logger.warning(
+                                                f"[STALE_MARK_PRICE_REFRESH_API] {position_key}:"
+                                                f" REST bid/ask fallback sym={_rest_sym}"
+                                                f" bid={_bid} ask={_ask} mid={_mid:.4f}"
+                                            )
+                            except Exception as _api_e:
+                                logger.debug(
+                                    f"[STALE_MARK_PRICE_REFRESH_API_ERR] {position_key}"
+                                    f" sym={_stale_sym}: {type(_api_e).__name__}: {_api_e}"
+                                )
                         if _stale_age_s > _stale_max_age:
                             logger.critical(
                                 f"🚫 [STALE_MARK_PRICE_BLOCK] {position_key}: mark_price age={_stale_age_s:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action} reason={(reason or '')[:60]} — would make decision on stale gain. CLOSE actions bypass this gate."
