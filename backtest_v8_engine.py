@@ -2597,6 +2597,51 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_PPB_REENTRY_ERR] step={step} err={_ppb_err}")
 
+        # DC stop loss sweep test (DC_LOW4_STOP_ENABLED / DC_LOW_STOP_ENABLED).
+        # Uses fixed r1_stop_price recorded at open/augment time.
+        _dc4_stop_on = getattr(config, 'DC_LOW4_STOP_ENABLED', False)
+        _dc1_stop_on = getattr(config, 'DC_LOW_STOP_ENABLED', False)
+        if _dc4_stop_on or _dc1_stop_on:
+            _dc_stop_mode = getattr(config, 'mode', 'crypto') if hasattr(config, 'mode') else os.environ.get('V8_MODE', 'crypto')
+            for _ds_pk, _ds_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_ds_pos, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _ds_sym = getattr(_ds_pos, 'symbol', '') or _ds_pk.split(':', 1)[-1].rsplit('_', 1)[0]
+                _ds_is_long = _ds_pk.endswith('_LONG')
+                _ds_ind = indicator_cache.get(_ds_sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                _ds_px = float(getattr(_ds_pos, 'mark_price', 0) or _ds_ind.get('current_price', 0) or 0)
+                if _ds_px <= 0:
+                    continue
+                _ds_stop = float(getattr(_ds_pos, 'r1_stop_price', 0.0) or 0.0)
+                if _ds_stop <= 0:
+                    if str(_dc_stop_mode).lower() == 'tradier':
+                        if _dc4_stop_on:
+                            _ds_stop = float(_ds_ind.get('dc_low4_5m' if _ds_is_long else 'dc_high4_5m') or 0)
+                        if _ds_stop <= 0 and _dc1_stop_on:
+                            _ds_stop = float(_ds_ind.get('dc_low_5m' if _ds_is_long else 'dc_high_5m') or 0)
+                    else:
+                        if _dc4_stop_on:
+                            _ds_stop = float(_ds_ind.get('dc_low4_3m' if _ds_is_long else 'dc_high4_3m') or 0)
+                        if _ds_stop <= 0 and _dc1_stop_on:
+                            _ds_stop = float(_ds_ind.get('dc_low_3m' if _ds_is_long else 'dc_high_3m') or 0)
+                if _ds_stop <= 0:
+                    continue
+                _ds_breached = (_ds_is_long and _ds_px <= _ds_stop) or ((not _ds_is_long) and _ds_px >= _ds_stop)
+                if _ds_breached:
+                    _ds_amt = abs(float(getattr(_ds_pos, 'positionAmt', 0)))
+                    _ds_side = 'SELL' if _ds_is_long else 'BUY'
+                    try:
+                        await trade_manager.execute_now(
+                            position_key=_ds_pk, account_key=account_key, symbol=_ds_sym,
+                            original_positionAmt=_ds_amt, side=_ds_side,
+                            position_side='LONG' if _ds_is_long else 'SHORT',
+                            quantity=_ds_amt, old_price=_ds_px,
+                            unique_id=f"DC_STOP_{int(_sim_ts[0])}",
+                            reason=f"DC_STOP_BREACH_px{_ds_px:.6f}_stop{_ds_stop:.6f}",
+                            is_full_close=True, action='CLOSE')
+                    except Exception:
+                        pass
+
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()
                       if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
@@ -4676,6 +4721,42 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # the first. Clear per step so each bar gets one close attempt per symbol.
         if hasattr(manager, '_pending_closes'):
             manager._pending_closes.clear()
+        # DC stop loss sweep test (DC_LOW4_STOP_ENABLED / DC_LOW_STOP_ENABLED) — tradier path.
+        _dc4_stop_on_tr = getattr(config, 'DC_LOW4_STOP_ENABLED', False)
+        _dc1_stop_on_tr = getattr(config, 'DC_LOW_STOP_ENABLED', False)
+        if (_dc4_stop_on_tr or _dc1_stop_on_tr) and manager.position_manager:
+            for _ds_pk_tr, _ds_pos_tr in list(manager.position_manager.positions.items()):
+                if abs(getattr(_ds_pos_tr, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _ds_sym_tr = getattr(_ds_pos_tr, 'symbol', '') or _ds_pk_tr.split(':', 1)[-1].rsplit('_', 1)[0]
+                _ds_is_long_tr = _ds_pk_tr.endswith('_LONG')
+                _ds_ind_tr = indicator_cache.get(_ds_sym_tr.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                _ds_px_tr = float(price_cache.get(_ds_sym_tr.upper(), 0) or _ds_ind_tr.get('current_price', 0) or 0)
+                if _ds_px_tr <= 0:
+                    continue
+                _ds_stop_tr = float(getattr(_ds_pos_tr, 'r1_stop_price', 0.0) or 0.0)
+                if _ds_stop_tr <= 0:
+                    if _dc4_stop_on_tr:
+                        _ds_stop_tr = float(_ds_ind_tr.get('dc_low4_5m' if _ds_is_long_tr else 'dc_high4_5m') or 0)
+                    if _ds_stop_tr <= 0 and _dc1_stop_on_tr:
+                        _ds_stop_tr = float(_ds_ind_tr.get('dc_low_5m' if _ds_is_long_tr else 'dc_high_5m') or 0)
+                if _ds_stop_tr <= 0:
+                    continue
+                _ds_breached_tr = (_ds_is_long_tr and _ds_px_tr <= _ds_stop_tr) or ((not _ds_is_long_tr) and _ds_px_tr >= _ds_stop_tr)
+                if _ds_breached_tr:
+                    _ds_amt_tr = abs(float(getattr(_ds_pos_tr, 'positionAmt', 0)))
+                    _ds_side_tr = 'SELL' if _ds_is_long_tr else 'BUY'
+                    try:
+                        await manager.execute_now(
+                            position_key=_ds_pk_tr, account_key=account_key, symbol=_ds_sym_tr,
+                            original_positionAmt=_ds_amt_tr, side=_ds_side_tr,
+                            position_side='LONG' if _ds_is_long_tr else 'SHORT',
+                            quantity=_ds_amt_tr, old_price=_ds_px_tr,
+                            unique_id=f"DC_STOP_TR_{int(step)}",
+                            reason=f"DC_STOP_BREACH_px{_ds_px_tr:.4f}_stop{_ds_stop_tr:.4f}",
+                            is_full_close=True, action='CLOSE')
+                    except Exception:
+                        pass
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
         oq = manager.order_queue
         if hasattr(oq, '_orders'):
