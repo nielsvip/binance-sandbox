@@ -3861,15 +3861,22 @@ async def ii(
                             trade_manager.indicators_source_label = "redis_hot"
             except Exception:
                 pass
-    if not result:
+    # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing
+    _htf_needed = bool(result) and result.get("stoch_k_15m") is None
+    if not result or _htf_needed:
         snapshot = getattr(trade_manager, "indicators_snapshot", {})
         bulk_data = snapshot.get(sym)
         if isinstance(bulk_data, dict):
-            result = bulk_data.copy()
-            trade_manager.indicators_source_label = (
-                trade_manager.indicators_source_label or "snapshot"
-            )
-    if not result:
+            if _htf_needed and bulk_data.get("stoch_k_15m") is not None:
+                for key, val in bulk_data.items():
+                    if key not in result:
+                        result[key] = val
+                trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + "+snapshot_htf"
+            elif not result:
+                result = bulk_data.copy()
+                trade_manager.indicators_source_label = trade_manager.indicators_source_label or "snapshot"
+    _htf_needed = bool(result) and result.get("stoch_k_15m") is None
+    if not result or _htf_needed:
         try:
             latest_file = _get_latest_market_data_file()
             if latest_file:
@@ -3878,8 +3885,15 @@ async def ii(
                     if file_content:
                         full_data = orjson.loads(file_content)
                         if isinstance(full_data, dict) and sym in full_data:
-                            result = full_data[sym].copy()
-                            trade_manager.indicators_source_label = "json_file"
+                            file_sym_data = full_data[sym]
+                            if _htf_needed:
+                                for key, val in file_sym_data.items():
+                                    if key not in result:
+                                        result[key] = val
+                                trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + "+json_htf"
+                            else:
+                                result = file_sym_data.copy()
+                                trade_manager.indicators_source_label = "json_file"
         except Exception:
             pass
     if result:
@@ -5854,6 +5868,7 @@ class IndicatorsBridge:
         if updated_count > 0:
             self.trade_manager.indicators_source_label = source
             self.trade_manager.indicators_snapshot_refresh_time = now
+            self.trade_manager.indicators_timestamp = datetime.now(timezone.utc)
 
 
 class RemoteStopLevelsManager:
@@ -18193,8 +18208,9 @@ class MultiAccountTradeManager:
                 and ("OPEN" in action or "AUGMENT" in action)
                 and not _is_reentry_bypass
             ):
+                _src_label = getattr(self, "indicators_source_label", "unknown")
                 logger.warning(
-                    f"[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m}"
+                    f"[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m} src={_src_label}"
                 )
                 return f"{position_key}_BLOCKED_UNCALCULATED_STOCH"
             if _stoch_uncalc and _is_reentry_bypass:
@@ -18241,8 +18257,10 @@ class MultiAccountTradeManager:
                             break
                 if not (_htf_winner or _htf_pullback or _htf_reason_bypass):
                     if is_long and _htf_dir_eta == "BEAR" and _htf_score_eta <= -5:
+                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED LONG — dir=BEAR htfScore={_htf_score_eta} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}"
                     if not is_long and _htf_dir_eta == "BULL" and _htf_score_eta >= 5:
+                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED SHORT — dir=BULL htfScore={_htf_score_eta} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}"
             if (
                 position
@@ -18542,6 +18560,7 @@ class MultiAccountTradeManager:
                 and "QUICK" not in action
                 and "REENTRY" not in reason.upper()
             ):
+                logger.warning(f"[ENTRY_VET] {position_key}: BLOCKED — reason={_tp_entry_reason} action={action} r={(reason or '')[:60]}")
                 return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
             # DELTA ENGINE GATE — V2 sweep validated on 48 symbols / 4 years
             # 2026-04-23: bypass for SCALP_V3 — scanner uses divergence+velocity as its own
@@ -18561,6 +18580,7 @@ class MultiAccountTradeManager:
                 )
                 if not _delta_ok:
                     _htf_gate = getattr(config, "DELTA_HTF_GATE", "none")
+                    logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED NO_SIGNAL htf={_htf_gate} action={action} r={(reason or '')[:50]}")
                     return f"{position_key}_BLOCKED_DELTA_NO_SIGNAL_htf={_htf_gate}"
                 _htf_gate = getattr(config, "DELTA_HTF_GATE", "none")
                 if _htf_gate != "none":
@@ -18571,10 +18591,12 @@ class MultiAccountTradeManager:
                     if _htf_gate in ("4h", "4h_D", "4h_D_strict"):
                         _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
                         if not _4h_ok:
+                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_4h_AGAINST wt1_4h={_wt1_4h:.2f} wt2_4h={_wt2_4h:.2f} is_long={is_long}")
                             return f"{position_key}_BLOCKED_DELTA_HTF_4h_AGAINST"
                     if _htf_gate in ("4h_D", "4h_D_strict"):
                         _D_ok = (_wt1_D > _wt2_D) if is_long else (_wt1_D < _wt2_D)
                         if not _D_ok:
+                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_D_AGAINST wt1_D={_wt1_D:.2f} wt2_D={_wt2_D:.2f} is_long={is_long}")
                             return f"{position_key}_BLOCKED_DELTA_HTF_D_AGAINST"
                 # 2026-04-10 BUGFIX: bull_speed_z/bear_speed_z and active_tf_count don't exist on
                 # DeltaSignal __slots__. Direct attr access here was raising AttributeError, caught
