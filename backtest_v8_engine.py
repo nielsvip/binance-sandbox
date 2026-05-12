@@ -2589,6 +2589,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 v8_logger.warning(f"[V8_SEED] snapshot account={_seed_account} != run account={account_key} — skipping seed")
             else:
                 _n_pos = 0
+                # 2026-05-12 FIX 1 — Sim-time anchor for position-state timestamps.
+                # Live `from_dict` carries wall-clock datetimes (today) on the loaded
+                # position. The vec-gate cooldown evaluators do `now_ts - last_aug_ts`
+                # against sim_ts (e.g. 2026-04-15), which yields a wildly negative or
+                # ~0-bounded value → every cooldown gate fails open. Anchor every
+                # state-timestamp to sim_start so deltas are well-defined.
+                _sim_start_ts = float(start_ts_filter) if 'start_ts_filter' in dir() else float(_sim_ts[0] or 0)
+                if _sim_start_ts <= 0:
+                    try:
+                        _sim_start_ts = float(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
+                    except Exception:
+                        _sim_start_ts = 0.0
+                _sim_start_dt = datetime.utcfromtimestamp(_sim_start_ts).replace(tzinfo=timezone.utc) if _sim_start_ts > 0 else None
                 for _pk, _pdict in (_seed.get("positions") or {}).items():
                     try:
                         _pos = ez_manage.Position.from_dict(_pdict)
@@ -2621,6 +2634,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                     pass
                         except Exception:
                             pass
+                    # 2026-05-12 FIX 1 — clear wall-clock cooldown timestamps so vec
+                    # gates compute correct sim-time deltas. Setting to None means
+                    # "never augmented during this sim" — the gates fall through to
+                    # default-permissive on first attempt, then start tracking from
+                    # the first sim-time fill onwards.
+                    for _ts_attr in ("last_augmentation_time", "last_reduction_time",
+                                       "opened_at", "mark_price_last_updated", "last_updated"):
+                        try:
+                            object.__setattr__(_pos, _ts_attr, _sim_start_dt)
+                        except Exception:
+                            pass
                     trade_manager.positions[_pk] = _pos
                     trade_manager.positions_by_account.setdefault(account_key, {})[_pk] = _pos
                     if trade_manager.positions_service:
@@ -2640,6 +2664,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if _seed_file:
             v8_logger.warning(f"[V8_SEED] file not found: {_seed_file}")
         v8_logger.info(f"V8 BACKTEST: cleared all loaded positions for clean sim")
+
+    # 2026-05-12 FIX 1 — clear sim-time state maps that the vec gates read.
+    # These hold (position_key → sim_ts) entries and MUST start empty so the
+    # first event is naturally "no prior cooldown". Seeded positions get state
+    # only from sim-time fills (see Fix 2 in _crypto_eta / _v8_real_eta_wrapper).
+    trade_manager.__dict__['_bt_augment_lock'] = {}     # last AUGMENT/OPEN/REENTRY ts per pk
+    trade_manager.__dict__['_bt_reduce_lock'] = {}      # last REDUCE/CLOSE ts per pk
+    trade_manager.__dict__['_bt_open_attempt'] = {}     # last OPEN-attempt ts per pk
+    trade_manager.__dict__['_bt_hedge_completed'] = {}  # last successful hedge ts per pk
+    trade_manager.__dict__['_bt_reentry_unblock'] = {}  # pk → bool (price-cross unlocked)
 
     data_path = Path(config.DATA_DIR) if hasattr(config, 'DATA_DIR') else BASE_PATH / "data"
     data_manager = ez_positions_quick.FastDataManager(redis_manager, data_path, trade_manager=trade_manager)
