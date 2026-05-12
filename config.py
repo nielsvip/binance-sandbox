@@ -2707,7 +2707,7 @@ class Config:
     # If position.mark_price_last_updated > this, REFUSE non-CLOSE orders (after
     # one Redis refresh attempt). Saved 1000LUNCUSDT-style 45% loss where every
     # gain-gated guard read an hour-stale mark and fired wrong decisions.
-    EXECUTE_NOW_MAX_MARK_AGE_S: float = 3.0
+    EXECUTE_NOW_MAX_MARK_AGE_S: float = 120.0  # 2026-05-12 BUMP 3→120 — killer of all webhooks post-IP-change. Live WS reconnect after Mac IP change takes >30s; 3s gate caused 48 STALE_MARK_PRICE_BLOCK in 90s, zero webhooks since May 10.
     # User 2026-05-05 (1000LUNCUSDT screenshot): a LONG/SHORT on a symbol whose
     # OPPOSITE side is deeply losing acts as a de-facto hedge. Ban PPL,
     # WT_CROSS_EXIT, BANDAID_OFF, PEAK_GIVEBACK, and similar small-gain closes

@@ -377,6 +377,99 @@ class VecConfig:
     REENTRY_PULLBACK_REQUIRE_15M: bool = True   # require WT15m cross in direction
     REENTRY_PULLBACK_REQUIRE_VEL: bool = True   # require wt_velocity_3m > 0 (LONG)
 
+    # ── PRICE_CROSS_BACK_REENTRY ─────────────────────────────
+    # Source: tradier_manage.py:1880-1912 (BRANCH B, positionAmt==0).
+    # Fires a reopen when: last close within max_age AND price within band_pct%.
+    # Default OFF to match backtest_v8_engine behavior (loop doesn't track exit prices).
+    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = False
+    PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0    # 4 hours
+    PRICE_CROSS_BACK_BAND_PCT: float = 0.3         # 0.3% distance band
+    START_POSITION_SIZE: float = 600.0             # USD notional for new opens (tradier)
+
+    # ── WT_3M_FORCE_OPEN ─────────────────────────────────────
+    # Source: ez_manage.py:19969 + tradier_manage.py:1604.
+    # Forces OPEN when position is ZERO and wt1_btf direction matches side.
+    # Default OFF in vec to avoid dominating all signal paths.
+    WT_3M_FORCE_OPEN_ENABLED: bool = False
+    WT_3M_FORCE_OPEN_SIZE_USD: float = 9.0         # crypto default (100.0 for tradier)
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True     # bypasses cooldown / dup-guard
+
+    # ── GOLDEN_RULE enforcement loop ─────────────────────────
+    # Source: ez_manage.py:_golden_rule_loop() + backtest_v8_engine.py:2339.
+    # GOLDEN_RULE_ENABLED / BASE_USD / MULT_* / DC_*/BB_* already declared above.
+    # New: HTF VETO (default False in backtest path per backtest_v8_engine.py:2416).
+    GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
+    # GOLDEN_RULE_ENFORCE_LOOP_ENABLED: activates the always-on enforcement loop
+    # (separate from the GOLDEN_RULE_ENABLED entry filter on the WT path).
+    # Default OFF — the enforcement loop is a live-trading mandate (ang/inf always-long),
+    # not needed for standard backtest sweeps.
+    GOLDEN_RULE_ENFORCE_LOOP_ENABLED: bool = False
+
+    # ── SCALP_V2 — HTF Breakout Scalper (htf_breakout_scalper.py) ───────────
+    SCALP_MODE: bool = False
+    SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"
+    SCALP_V2_DC_HTF_LIST: List[str] = field(default_factory=lambda: ["15m", "1h"])
+    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True
+    SCALP_V2_ENTRY_MODE: str = "breakout"
+    SCALP_V2_MAX_HOLD_MINUTES: float = 15.0
+    SCALP_V2_REDZONE_EXIT: bool = True
+    SCALP_V2_REDZONE_K_THRESHOLD: int = 90
+    SCALP_V2_LH_LL_EXIT: bool = True
+    SCALP_V2_LH_LL_TF: str = "15m"
+    SCALP_V2_MAX_CONCURRENT: int = 5
+    SCALP_V2_REENTRY_COOLDOWN_S: int = 300
+    SCALP_V2_ISOLATE: bool = True
+
+    # ── SCALP_V3 — Ultra-short bar-based scalper (scalp_v3_live.py) ──────────
+    SCALP_V3_ENABLED: bool = False
+    SCALP_V3_MAX_CONCURRENT: int = 8
+    SCALP_V3_POSITION_CAP_USD: float = 20.0
+    SCALP_V3_SIDE_MODE: str = "BOTH"
+    SCALP_V3_ENTRY_TREND_ENABLED: bool = True
+    SCALP_V3_ENTRY_BAR_BREAK_ENABLED: bool = False
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN: float = 1.0
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_LONG: float = 1.0
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_SHORT: float = 1.0
+    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = False
+    SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = False
+    SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = False
+    SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = False
+    SCALP_V3_ENTRY_STDEV_ENABLED: bool = False
+    SCALP_V3_STDEV_TF: str = "3m"
+    SCALP_V3_STDEV_MODE: str = "BOUNCE"
+    SCALP_V3_STDEV_BREAK_HI: float = 1.0
+    SCALP_V3_STDEV_BREAK_LO: float = 0.0
+    SCALP_V3_STDEV_BREAK_HI_LONG: float = 1.0
+    SCALP_V3_STDEV_BREAK_LO_SHORT: float = 0.0
+    SCALP_V3_STDEV_BOUNCE_LO: float = 0.10
+    SCALP_V3_STDEV_BOUNCE_HI: float = 0.90
+    SCALP_V3_STDEV_BOUNCE_LO_LONG: float = 0.10
+    SCALP_V3_STDEV_BOUNCE_HI_SHORT: float = 0.90
+    SCALP_V3_STDEV_REJECT_HI: float = 0.95
+    SCALP_V3_STDEV_REJECT_LO: float = 0.05
+    SCALP_V3_K_FRESH_LO: float = 25.0
+    SCALP_V3_K_FRESH_MID_LO: float = 50.0
+    SCALP_V3_K_FRESH_MID_HI: float = 50.0
+    SCALP_V3_K_FRESH_HI: float = 75.0
+    SCALP_V3_LONG_K_RISE_MIN: float = 50.0
+    SCALP_V3_LONG_K_RISE_MAX: float = 75.0
+    SCALP_V3_SHORT_K_FALL_MIN: float = 25.0
+    SCALP_V3_SHORT_K_FALL_MAX: float = 50.0
+    SCALP_V3_EXIT_BAR_REVERSAL_ENABLED: bool = True
+    SCALP_V3_EXIT_WT_FLIP_ENABLED: bool = True
+    SCALP_V3_EXIT_K_CROSS_ENABLED: bool = True
+    SCALP_V3_EXIT_REQUIRE_N_SIGNALS: int = 1
+    SCALP_V3_EXIT_PROFIT_ONLY: bool = False
+    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = False
+    SCALP_V3_MAX_HOLD_MIN: float = 5.0
+
+    # ── MICRO_SCALP — stocks + USDC micro-scalper ────────────────────────────
+    MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = False
+    MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.05
+    MICRO_SCALP_MIN_HOLD_BARS: int = 0
+    MICRO_SCALP_USDC_MAKER_ENABLED: bool = False
+    MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
+
     # ── Misc ─────────────────────────────────────────────────
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     RATIO_MULTIPLIER: float = 3.0
@@ -586,6 +679,15 @@ class _PositionState:
     # PRICE_CROSS_BACK_REENTRY: price at which the last close occurred.
     # Set by VecEngine.simulate() whenever a position closes. Required by price_cross_back.py.
     last_close_price: float = 0.0
+    # SCALP_V2/V3: entry reason tag (contains SCALP_V2_OPEN_ / SCALP_V3_OPEN_ prefix).
+    # Used by exit checker to identify V2/V3-managed positions.
+    reason: str = ""
+    # Bar index when position was opened (used for max-hold exit approximation in V2/V3).
+    open_bar: int = 0
+    # MICRO_SCALP: prev_gain and reopen state for micro-scalp close/reopen logic.
+    prev_gain: float = 0.0
+    micro_scalp_exit_price: float = 0.0
+    micro_scalp_orig_side: str = ""
 
 
 # ───────────────────────────────────────────────────────────
@@ -717,6 +819,9 @@ class VecEngine:
         _sentiment_boost_fn = None
         _ratio_size_fn = None
         _delta_entry_fn = None
+        _golden_rule_enforce_fn = None
+        _wt_force_open_fn = None
+        _price_cross_back_fn = None
         try:
             from vec_paths.sentiment_boost import check_sentiment_boost_augment as _sbf
             _sentiment_boost_fn = _sbf
@@ -730,6 +835,21 @@ class VecEngine:
         try:
             from vec_paths.delta_engine import check_delta_entry as _def
             _delta_entry_fn = _def
+        except Exception:
+            pass
+        try:
+            from vec_paths.golden_rule_enforce import check_golden_rule_enforce as _gref
+            _golden_rule_enforce_fn = _gref
+        except Exception:
+            pass
+        try:
+            from vec_paths.wt_force_open import check_wt_force_open as _wtfof
+            _wt_force_open_fn = _wtfof
+        except Exception:
+            pass
+        try:
+            from vec_paths.price_cross_back import check_price_cross_back as _pcbf
+            _price_cross_back_fn = _pcbf
         except Exception:
             pass
 
@@ -813,6 +933,7 @@ class VecEngine:
                 for pos in (pos_long, pos_short):
                     if pos.open:
                         pos.mark_price = price
+                        pos.prev_gain = pos.gain_pct  # save before update (MICRO_SCALP decel detect)
                         if pos.side == "LONG":
                             pos.gain_pct = (price - pos.entry_price) / pos.entry_price * 100.0
                         else:
@@ -856,7 +977,7 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False; pos.last_close_ts = ts_i
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
                             if pnl > 0:
                                 pos.last_reduce_price = price
                             pos.r1_fired = True
@@ -887,7 +1008,7 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False; pos.last_close_ts = ts_i
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
                             if pnl > 0:
                                 pos.last_reduce_price = price
 
@@ -924,7 +1045,7 @@ class VecEngine:
                                 returns_by_sym[sym].append(pnl)
                                 all_returns.append(pnl)
                                 running_gain += pnl
-                                pos.open = False; pos.last_close_ts = ts_i
+                                pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
 
                 # ── WT-based exit logic ─────────────────────────
                 for pos in (pos_long, pos_short):
@@ -993,7 +1114,7 @@ class VecEngine:
                                 returns_by_sym[sym].append(pnl)
                                 all_returns.append(pnl)
                                 running_gain += pnl
-                                pos.open = False; pos.last_close_ts = ts_i
+                                pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
 
                 # ── DELTA_ENGINE: velocity-proxy exit ──────────
                 if cfg.DELTA_ENGINE_ENABLED:
@@ -1010,7 +1131,169 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False; pos.last_close_ts = ts_i
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+
+                # ── SCALP_V2 exit (htf_breakout_scalper.py) ──────────────────
+                # Only fires when SCALP_MODE=True AND position reason contains SCALP_V2_OPEN_.
+                # Bypasses UNIVERSAL_NOLOSS_GATE (V2 positions use their own stop logic).
+                if _SCALP_V2_AVAILABLE and cfg.SCALP_MODE:
+                    for _v2e_pos in (pos_long, pos_short):
+                        if not _v2e_pos.open:
+                            continue
+                        _v2e_reason = str(getattr(_v2e_pos, "reason", "") or "")
+                        if "SCALP_V2_OPEN_" not in _v2e_reason:
+                            continue
+                        try:
+                            _v2e_sig = _check_scalp_v2_exit(store, bar_idx, _v2e_pos, _v2e_pos.side, cfg)
+                        except Exception:
+                            _v2e_sig = None
+                        if _v2e_sig is not None:
+                            pnl = _v2e_pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            _v2e_pos.open = False; _v2e_pos.last_close_ts = ts_i; _v2e_pos.last_close_price = price
+                            if pnl > 0:
+                                _v2e_pos.last_reduce_price = price
+
+                # ── SCALP_V3 exit (scalp_v3_live.py) ────────────────────────────
+                # Only fires when SCALP_V3_ENABLED=True AND position reason contains SCALP_V3_OPEN_.
+                if _SCALP_V3_AVAILABLE and cfg.SCALP_V3_ENABLED:
+                    for _v3e_pos in (pos_long, pos_short):
+                        if not _v3e_pos.open:
+                            continue
+                        _v3e_reason = str(getattr(_v3e_pos, "reason", "") or "")
+                        if "SCALP_V3_OPEN_" not in _v3e_reason and "QUICK_SCALP_V3_OPEN_" not in _v3e_reason:
+                            continue
+                        try:
+                            _v3e_sig = _check_scalp_v3_exit(store, bar_idx, _v3e_pos, _v3e_pos.side, cfg)
+                        except Exception:
+                            _v3e_sig = None
+                        if _v3e_sig is not None:
+                            pnl = _v3e_pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            _v3e_pos.open = False; _v3e_pos.last_close_ts = ts_i; _v3e_pos.last_close_price = price
+                            if pnl > 0:
+                                _v3e_pos.last_reduce_price = price
+
+                # ── MICRO_SCALP exit + reopen (tradier_manage.py:1646 / ez_manage.py:21825) ──
+                # CLOSE: gain >= threshold AND gain < prev_gain (first decel).
+                # REOPEN: flat + price re-crosses exit_price.
+                if _MICRO_SCALP_AVAILABLE:
+                    _ms_mode = "usdc" if (self.mode == "crypto" and cfg.MICRO_SCALP_USDC_MAKER_ENABLED) else ("stocks" if (self.mode == "tradier" and cfg.MICRO_SCALP_STOCKS_MAKER_ENABLED) else None)
+                    if _ms_mode is not None:
+                        for _ms_pos in (pos_long, pos_short):
+                            if _ms_pos.open:
+                                try:
+                                    _ms_sig = _check_micro_scalp_close(store, bar_idx, _ms_pos, _ms_mode, cfg)
+                                except Exception:
+                                    _ms_sig = None
+                                if _ms_sig is not None:
+                                    pnl = _ms_pos.gain_pct
+                                    returns_by_sym[sym].append(pnl)
+                                    all_returns.append(pnl)
+                                    running_gain += pnl
+                                    _ms_exit_px = price
+                                    _ms_orig_side = _ms_pos.side
+                                    _ms_pos.open = False; _ms_pos.last_close_ts = ts_i; _ms_pos.last_close_price = price
+                                    _ms_pos.micro_scalp_exit_price = _ms_exit_px
+                                    _ms_pos.micro_scalp_orig_side = _ms_orig_side
+                                    if pnl > 0:
+                                        _ms_pos.last_reduce_price = price
+                            else:
+                                # REOPEN check — position flat, check if price re-crossed exit
+                                _ms_exit_px2 = float(getattr(_ms_pos, "micro_scalp_exit_price", 0.0) or 0.0)
+                                _ms_orig_side2 = str(getattr(_ms_pos, "micro_scalp_orig_side", "") or "")
+                                if _ms_exit_px2 > 0 and _ms_orig_side2 in ("LONG", "SHORT"):
+                                    try:
+                                        _ms_re_sig = _check_micro_scalp_reopen(store, bar_idx, _ms_exit_px2, _ms_mode, cfg, _ms_orig_side2)
+                                    except Exception:
+                                        _ms_re_sig = None
+                                    if _ms_re_sig is not None:
+                                        _ms_pos.open = True
+                                        _ms_pos.side = _ms_orig_side2
+                                        _ms_pos.entry_price = price
+                                        _ms_pos.entry_ts = ts_i
+                                        _ms_pos.mark_price = price
+                                        _ms_pos.gain_pct = 0.0
+                                        _ms_pos.max_gain_pct = 0.0
+                                        _ms_pos.last_reduce_price = 0.0
+                                        _ms_pos.ppl_fired = False
+                                        _ms_pos.ppl_stop_level = 0.0
+                                        _ms_pos.ppl_stop_upgraded = False
+                                        _ms_pos.ppl_first_exit_price = 0.0
+                                        _ms_pos.r1_fired = False
+                                        _ms_pos.micro_scalp_exit_price = 0.0
+                                        _ms_pos.micro_scalp_orig_side = ""
+                                        _ms_pos.qty = self._compute_sizing(store, bar_idx, _ms_orig_side2, cfg, dd_state, running_gain)
+
+                # ── GOLDEN_RULE enforcement (ez_manage._golden_rule_loop) ──────
+                # Fires OPEN/AUGMENT on every qualifying bar independent of WT signal gate.
+                # Default OFF. Only active when GOLDEN_RULE_ENFORCE_LOOP_ENABLED.
+                # NOTE: The existing _check_golden_rule() is an ENTRY FILTER for the WT path.
+                # This enforcement loop is a SEPARATE always-on mandate (ang/inf accounts).
+                if _golden_rule_enforce_fn is not None and getattr(cfg, 'GOLDEN_RULE_ENFORCE_LOOP_ENABLED', False):
+                    for _gr_pos in (pos_long, pos_short):
+                        try:
+                            _gr_result = _golden_rule_enforce_fn(store, bar_idx, sym, _gr_pos.side if _gr_pos.open else ("LONG" if _gr_pos is pos_long else "SHORT"), _gr_pos, cfg, mode=btf[:2] if False else self.mode)
+                            if _gr_result is not None:
+                                _gr_side = _gr_result["side"]
+                                _gr_target_usd = _gr_result["target_usd"]
+                                _gr_qty_new = _gr_target_usd / max(price, 1e-9)
+                                if not _gr_pos.open:
+                                    _gr_pos.open = True
+                                    _gr_pos.side = _gr_side
+                                    _gr_pos.entry_price = price
+                                    _gr_pos.entry_ts = ts_i
+                                    _gr_pos.mark_price = price
+                                    _gr_pos.gain_pct = 0.0
+                                    _gr_pos.max_gain_pct = 0.0
+                                    _gr_pos.last_reduce_price = 0.0
+                                    _gr_pos.last_close_price = 0.0
+                                    _gr_pos.last_augment_ts = 0.0
+                                    _gr_pos.ppl_fired = False
+                                    _gr_pos.ppl_stop_level = 0.0
+                                    _gr_pos.ppl_stop_upgraded = False
+                                    _gr_pos.ppl_first_exit_price = 0.0
+                                    _gr_pos.r1_fired = False
+                                    _gr_pos.qty = _gr_qty_new
+                                else:
+                                    # AUGMENT: scale qty toward target
+                                    _gr_pos.qty = max(_gr_pos.qty, _gr_qty_new)
+                        except Exception:
+                            pass
+
+                # ── WT_3M_FORCE_OPEN (ez_manage.py:19969 / tradier_manage.py:1604) ─
+                # Forces OPEN when position is ZERO and wt1_btf matches side direction.
+                # Default OFF. When ON, fires before WT signal gate.
+                if _wt_force_open_fn is not None and getattr(cfg, 'WT_3M_FORCE_OPEN_ENABLED', False):
+                    for _wf_pos in (pos_long, pos_short):
+                        if _wf_pos.open:
+                            continue
+                        _wf_side = "LONG" if _wf_pos is pos_long else "SHORT"
+                        try:
+                            _wf_result = _wt_force_open_fn(store, bar_idx, _wf_side, self.mode, cfg, _wf_pos)
+                            if _wf_result is not None:
+                                _wf_pos.open = True
+                                _wf_pos.side = _wf_side
+                                _wf_pos.entry_price = price
+                                _wf_pos.entry_ts = ts_i
+                                _wf_pos.mark_price = price
+                                _wf_pos.gain_pct = 0.0
+                                _wf_pos.max_gain_pct = 0.0
+                                _wf_pos.last_reduce_price = 0.0
+                                _wf_pos.last_close_price = 0.0
+                                _wf_pos.last_augment_ts = 0.0
+                                _wf_pos.ppl_fired = False
+                                _wf_pos.ppl_stop_level = 0.0
+                                _wf_pos.ppl_stop_upgraded = False
+                                _wf_pos.ppl_first_exit_price = 0.0
+                                _wf_pos.r1_fired = False
+                                _wf_pos.qty = _wf_result["qty"]
+                        except Exception:
+                            pass
 
                 # ── SENTIMENT_BOOST augment (tradier_manage.py:7408) ──────────
                 # Check for augment on open positions before the entry gate.
@@ -1060,6 +1343,33 @@ class VecEngine:
                     if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
                         if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
                             continue
+
+                    # ── PRICE_CROSS_BACK_REENTRY (tradier_manage.py:1880) ───────────
+                    # Fires when last close was recent and price is back near exit level.
+                    # Default OFF. Fires BEFORE DC_BREAK and WT gate — mirrors live priority.
+                    if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False):
+                        try:
+                            _pcb_result = _price_cross_back_fn(store, bar_idx, sym, side, pos, cfg, mode=self.mode)
+                            if _pcb_result is not None:
+                                pos.open = True
+                                pos.side = side
+                                pos.entry_price = price
+                                pos.entry_ts = ts_i
+                                pos.mark_price = price
+                                pos.gain_pct = 0.0
+                                pos.max_gain_pct = 0.0
+                                pos.last_reduce_price = 0.0
+                                pos.last_close_price = 0.0
+                                pos.last_augment_ts = 0.0
+                                pos.ppl_fired = False
+                                pos.ppl_stop_level = 0.0
+                                pos.ppl_stop_upgraded = False
+                                pos.ppl_first_exit_price = 0.0
+                                pos.r1_fired = False
+                                pos.qty = float(_pcb_result["qty"])
+                                continue  # skip DC_BREAK and WT path
+                        except Exception:
+                            pass
 
                     # ── DC_BREAK_HIGH / DC_BREAK_LOW path (tradier_manage._check_dc_break) ──
                     # Independent of WT gate — fires when DC channel is broken with
@@ -1116,6 +1426,70 @@ class VecEngine:
                         _base_sz = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
                         pos.qty = _base_sz * _re_size_mult
                         continue  # skip WT path for this side
+
+                    # ── SCALP_V2 entry (htf_breakout_scalper.py) ─────────────────
+                    # Fires when SCALP_MODE=True and HTF DC breakout condition met.
+                    # All variants are tried. Only fires on EMPTY position (no augment path).
+                    if _SCALP_V2_AVAILABLE and cfg.SCALP_MODE:
+                        try:
+                            _v2_sig = _check_scalp_v2_entry(store, bar_idx, side, cfg)
+                        except Exception:
+                            _v2_sig = None
+                        if _v2_sig is not None:
+                            pos.open = True
+                            pos.side = side
+                            pos.entry_price = price
+                            pos.entry_ts = ts_i
+                            pos.mark_price = price
+                            pos.gain_pct = 0.0
+                            pos.max_gain_pct = 0.0
+                            pos.prev_gain = 0.0
+                            pos.last_reduce_price = 0.0
+                            pos.last_close_price = 0.0
+                            pos.last_augment_ts = 0.0
+                            pos.ppl_fired = False
+                            pos.ppl_stop_level = 0.0
+                            pos.ppl_stop_upgraded = False
+                            pos.ppl_first_exit_price = 0.0
+                            pos.r1_fired = False
+                            pos.reason = _v2_sig["reason"]
+                            pos.open_bar = bar_idx
+                            pos.micro_scalp_exit_price = 0.0
+                            pos.micro_scalp_orig_side = ""
+                            pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                            continue  # skip WT path
+
+                    # ── SCALP_V3 entry (scalp_v3_live.py) ─────────────────────────
+                    # Fires when SCALP_V3_ENABLED=True. Multiple entry paths per
+                    # scalp_v3_live.py (TREND, BAR_BREAK, PULLBACK, DC_BREAK, WT_CROSS, STOCH_BOUNCE, STDEV).
+                    if _SCALP_V3_AVAILABLE and cfg.SCALP_V3_ENABLED:
+                        try:
+                            _v3_sig = _check_scalp_v3_entry(store, bar_idx, side, cfg)
+                        except Exception:
+                            _v3_sig = None
+                        if _v3_sig is not None and _v3_sig["side"] == side:
+                            pos.open = True
+                            pos.side = side
+                            pos.entry_price = price
+                            pos.entry_ts = ts_i
+                            pos.mark_price = price
+                            pos.gain_pct = 0.0
+                            pos.max_gain_pct = 0.0
+                            pos.prev_gain = 0.0
+                            pos.last_reduce_price = 0.0
+                            pos.last_close_price = 0.0
+                            pos.last_augment_ts = 0.0
+                            pos.ppl_fired = False
+                            pos.ppl_stop_level = 0.0
+                            pos.ppl_stop_upgraded = False
+                            pos.ppl_first_exit_price = 0.0
+                            pos.r1_fired = False
+                            pos.reason = _v3_sig["reason"]
+                            pos.open_bar = bar_idx
+                            pos.micro_scalp_exit_price = 0.0
+                            pos.micro_scalp_orig_side = ""
+                            pos.qty = cfg.SCALP_V3_POSITION_CAP_USD / max(price, 1e-9)
+                            continue  # skip WT path
 
                     # ── GOLDEN_RULE entry filter ─────────────
                     if cfg.GOLDEN_RULE_ENABLED:

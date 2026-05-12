@@ -11270,6 +11270,7 @@ class MultiAccountTradeManager:
             self.order_execution_monitor.track_order( position_key=position_key, action=action, quantity=quantity, reason=reason )
         if not current_price or current_price <= 0: current_price, _ = await get_current_price(symbol)
         logger.warning(f"[exe cute_traddse_action] ENTRY: {position_key} {action} {side} qty={quantity:.6f} ${quantity*current_price:.2f}")
+        logger.warning(f"🔍 [WH_TRACE_1] after_ENTRY_log pk={position_key} act={action} is_reduce={is_reduce} is_augment={is_augment}")
         if position is None:
             sym_eff = (symbol or parsed_symbol or "").strip().upper()
             side_eff = position_side if position_side in ("LONG","SHORT") else (parsed_position_side if parsed_position_side in ("LONG","SHORT") else "LONG")
@@ -12416,7 +12417,9 @@ class MultiAccountTradeManager:
         else:
             rating_marker = ""
         logger.info(f"[execute_trade_action][{account_key}] {rating_marker} {action} {position_key} @ {current_price:.6f} qty={quantity:.6f} (${order_value:.2f}) side={side} | {reason}")
+        logger.warning(f"🔍 [WH_TRACE_2] before_execute_now pk={position_key} act={action} qty={quantity:.6f}")
         result = await self.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, quantity, current_price, unique_id, reason, is_full_close, action, is_hedge, hedge_for)
+        logger.warning(f"🔍 [WH_TRACE_2_done] after_execute_now pk={position_key} result={result[:60] if result else 'None'}")
         if result and 'SUCCESS' not in result:
             if self.order_execution_monitor: self.order_execution_monitor.pending_orders.pop(position_key, None) 
         return result
@@ -13399,6 +13402,7 @@ class MultiAccountTradeManager:
 #0E
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
     async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None, url_variant: str = "") -> str:
+        logger.warning(f"🔍 [WH_TRACE_3] execute_now_top pk={position_key} act={action} side={side} qty={quantity:.6f}")
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # ═══════════════════════════════════════════════════════════════════════════
@@ -14772,7 +14776,9 @@ class MultiAccountTradeManager:
                         await self.clear_all_cooldowns_for_position(position_key, side)
                         return "BLOCKED_MAKER_SUPPRESS_WEBHOOK"
                     logger.warning(f"[MAKER_EXIT_FALLBACK] {position_key}: Maker order failed, falling back to webhook")
+                logger.warning(f"🔍 [WH_TRACE_4] before_send_webhook pk={position_key} act={action} qty={quantity:.6f} reason={(reason or '')[:50]}")
                 webhook_success = await self.send_webhook( position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:{reason}", is_full_close, f"{reason}_QWH", level=None, stoch_required=False, url_variant=url_variant )
+                logger.warning(f"🔍 [WH_TRACE_4_done] after_send_webhook pk={position_key} ok={webhook_success}")
                 if not webhook_success:
                     return "FAILED_WEBHOOK"
                 if position: position.last_signal = action.upper()
@@ -15410,11 +15416,13 @@ class MultiAccountTradeManager:
             payload.pop("open", None)
             payload.pop("dca", None)
         logger.info(f"👷 [{position_key}] WEBHOOK: {resolved_kind} {side}/{position_side} qty={quantity:.6f} usd=${usd_value:.2f} reason={reason} payload={json.dumps({k:v for k,v in payload.items() if k != 'secret'})}")
+        logger.warning(f"🔍 [WH_TRACE_5] before_http_post pk={position_key} url={webhook_url[:60]} payload_kind={resolved_kind}")
         try:
             async with self._webhook_semaphore:
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=15, limit_per_host=15, force_close=False)) as session:
                     async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=60, connect=20)) as resp:
                         resp_text = await resp.text()
+                        logger.warning(f"🔍 [WH_TRACE_5_done] http_resp pk={position_key} status={resp.status} body={resp_text[:120]}")
                         if resp.status != 200:
                             logger.error(f"[{position_key}] WEBHOOK_FAIL: Status {resp.status} - {resp_text}")
                             return False
