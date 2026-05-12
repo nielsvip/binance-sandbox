@@ -1126,6 +1126,10 @@ class Config:
         # condition met must always have a position. Reopen after every close. See
         # WT_3M_FORCE_OPEN_ENABLED below for full description.
         'WT_3M_FORCE_OPEN',
+        # 🚩 2026-05-12 USER MANDATE: GR_HTF_DIRECT_EXIT closes at any gain (loss exit sanctioned).
+        # Per CLAUDE.md exit-rules: "exit signal when >=18 (against the trade) → close even at a loss."
+        # ROLLBACK: remove this line + set GR_HTF_DIRECT_EXIT_ENABLED=False in config.
+        'GR_HTF_DIRECT_EXIT',
     ])
     # 2026-05-10 USER NON-NEGOTIABLE: every tradeable_key with wt1_3m > wt2_3m (LONG) /
     # wt1_3m < wt2_3m (SHORT) must always have a position open. If flat, OPEN immediately;
@@ -1984,6 +1988,18 @@ class Config:
     # Range: 1 (loosest, 1 vote anywhere) ... 35 (5 TFs × 7 indicators all agreeing — tightest possible for crypto).
     # When 0: falls back to legacy MIN_TFS × MIN_IND binary gate above.
     GR_TOTAL_VOTE_SCORE_MIN: int = 0
+    # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate)
+    # Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND (computed by golden_rule_htf.score_entry_htf)
+    # ENTRY: flat position + score >= SCORE_MIN → OPEN at START_POSITION_SIZE.
+    #        If score >= DOUBLE_SCORE: size × 2.
+    # EXIT:  open position + opposite-direction score >= EXIT_SCORE → CLOSE (bypasses NOLOSS gate).
+    # ROLLBACK entry: set GR_HTF_DIRECT_ENTRY_ENABLED=False (or raise SCORE_MIN to 1000.0).
+    # ROLLBACK exit : set GR_HTF_DIRECT_EXIT_ENABLED=False (or raise EXIT_SCORE to 1000.0).
+    GR_HTF_DIRECT_ENTRY_ENABLED: bool = True       # 🚩 Master entry switch. ROLLBACK: False
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0    # 🚩 Min score to fire OPEN (n_tfs × min_ind). ROLLBACK: 1000.0
+    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score at which entry size doubles. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
+    GR_HTF_DIRECT_EXIT_SCORE: float = 18.0          # 🚩 Opposite-direction score to CLOSE. ROLLBACK: 1000.0
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger

@@ -18604,6 +18604,37 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             _rz_action = _decide_action(_rz_pos_amt, _rz_min_qty)
             logger.info(f"[RZ_BREAKOUT] {ctx['position_key']}: bb_pctb_1h={_rz_bb:.2f} action={_rz_action}")
             return Signal(action=_rz_action, reason=f"RZ_BREAKOUT_{'L' if is_long else 'S'}_bb={_rz_bb:.2f}", conviction=70.0)
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE (crypto)
+    # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
+    # Fires BEFORE alignment gates — independent of existing WT/DC/trading-policy path.
+    # If score >= GR_HTF_DIRECT_ENTRY_SCORE_MIN and position is flat → OPEN.
+    # If score >= GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE → double size (2×START_POSITION_SIZE).
+    # Reason: GR_HTF_DIRECT_ENTRY_{score}_{detail}
+    # ROLLBACK: set GR_HTF_DIRECT_ENTRY_ENABLED=False in config.py.
+    # ═══════════════════════════════════════════════════════════════════════════
+    _tm_cfg_grde = getattr(trade_manager, 'config', config)
+    if bool(getattr(_tm_cfg_grde, 'GR_HTF_DIRECT_ENTRY_ENABLED', True)):
+        try:
+            from golden_rule_htf import score_entry_htf as _gr_htf_de_fn
+            _grde_min_ind = int(getattr(_tm_cfg_grde, 'GOLDEN_RULE_MIN_IND', 1))
+            _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_de_fn(
+                i, is_long, 'crypto', min_tfs=1, min_ind=_grde_min_ind, current_price=current_price)
+            _grde_score = float(_grde_n_tfs) * float(_grde_min_ind)
+            _grde_score_min = float(getattr(_tm_cfg_grde, 'GR_HTF_DIRECT_ENTRY_SCORE_MIN', 12.0))
+            _grde_double = float(getattr(_tm_cfg_grde, 'GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE', 18.0))
+            if _grde_score >= _grde_score_min:
+                _grde_sps = float(getattr(_tm_cfg_grde, 'START_POSITION_SIZE', 200))
+                _grde_mult = 2.0 if _grde_score >= _grde_double else 1.0
+                _grde_pos_amt = float(getattr(position, 'positionAmt', 0.0) or 0.0)
+                _grde_min_qty = float((trade_manager.min_qty or {}).get(symbol, 0.0)) if hasattr(trade_manager, 'min_qty') and isinstance(getattr(trade_manager, 'min_qty', None), dict) else 0.0
+                _grde_action = _decide_action(_grde_pos_amt, _grde_min_qty)
+                _grde_reason = f"GR_HTF_DIRECT_ENTRY_{_grde_score:.0f}_{_grde_detail[:60]}"
+                logger.warning(f"[GR_HTF_DIRECT_ENTRY] {position_key}: score={_grde_score:.0f} (tfs={_grde_n_tfs}×ind={_grde_min_ind}) >= {_grde_score_min:.0f} mult={_grde_mult:.0f}x action={_grde_action}")
+                return Signal(action=_grde_action, reason=_grde_reason, conviction=_grde_score)
+        except Exception as _grde_err:
+            logger.warning(f"[GR_HTF_DIRECT_ENTRY_ERR] {position_key}: {_grde_err}")
+    # ═══ END GR_HTF_DIRECT_ENTRY ═══
     k_1m = float(i.get('stoch_k_1m', 50)); d_1m = float(i.get('stoch_d_1m', 50))
     k_3m = float(i.get('stoch_k_3m', 50)); d_3m = float(i.get('stoch_d_3m', 50))
     k_15m = float(i.get('stoch_k_15m', 50)); d_15m = float(i.get('stoch_d_15m', 50))
@@ -21269,6 +21300,53 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.warning(f"[R3_BOTH_VALID_SKIP] {position_key}: both hedge+close suppressed for valid reasons. hedge={_r3_hedge_err} close={_r3_close_err}")
         except Exception as _r3_outer:
             logger.debug(f"[R3_HEDGE_INVARIANT] {position_key} probe err: {_r3_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🚩 GR_HTF_DIRECT_EXIT — 2026-05-12 USER MANDATE (crypto)
+    # Direct exit signal: if opposite-direction GR_HTF score >= GR_HTF_DIRECT_EXIT_SCORE → CLOSE.
+    # Bypass UNIVERSAL_NOLOSS_GATE: reason contains 'GR_HTF_DIRECT_EXIT' (per config.py bypass list).
+    # Fires BEFORE ALL_TF_AGAINST_CLOSE — sanctioned technical loss-exit path per CLAUDE.md.
+    # ROLLBACK: set GR_HTF_DIRECT_EXIT_ENABLED=False in config.py.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'GR_HTF_DIRECT_EXIT_ENABLED', True)):
+        try:
+            _grde_exit_ind = await ii(trade_manager, symbol)
+        except Exception:
+            _grde_exit_ind = None
+        if _grde_exit_ind:
+            try:
+                from golden_rule_htf import score_entry_htf as _gr_htf_exit_fn
+                _grde_exit_is_long = (position_side == 'LONG')
+                _grde_exit_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
+                # Score opposite-direction alignment to determine exit signal
+                _grde_exit_pass, _grde_exit_n_tfs, _grde_exit_detail = _gr_htf_exit_fn(
+                    _grde_exit_ind, not _grde_exit_is_long, 'crypto',
+                    min_tfs=1, min_ind=_grde_exit_min_ind, current_price=current_price)
+                _grde_exit_score = float(_grde_exit_n_tfs) * float(_grde_exit_min_ind)
+                _grde_exit_score_min = float(getattr(config, 'GR_HTF_DIRECT_EXIT_SCORE', 18.0))
+                if _grde_exit_score >= _grde_exit_score_min:
+                    _grde_exit_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                    _grde_exit_side = 'SELL' if _grde_exit_is_long else 'BUY'
+                    _grde_exit_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    logger.critical(f"⛔ [GR_HTF_DIRECT_EXIT] {position_key}: opp_score={_grde_exit_score:.0f} (tfs={_grde_exit_n_tfs}×ind={_grde_exit_min_ind}) >= {_grde_exit_score_min:.0f} gain={_grde_exit_gain:.2f}% — CLOSE (bypasses NOLOSS)")
+                    try:
+                        await trade_manager.execute_now(
+                            position_key=position_key, account_key=account_key, symbol=symbol,
+                            original_positionAmt=_grde_exit_amt, side=_grde_exit_side,
+                            position_side=position_side, quantity=_grde_exit_amt,
+                            old_price=current_price,
+                            unique_id=f"GR_HTF_DIRECT_EXIT_{int(time.time())}",
+                            reason=f"GR_HTF_DIRECT_EXIT_{_grde_exit_score:.0f}_g{_grde_exit_gain:.2f}%_{_grde_exit_detail[:50]}",
+                            is_full_close=True, action='CLOSE')
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:GR_HTF_DIRECT_EXIT_CLOSED"
+                    except Exception as _grde_exit_err:
+                        logger.error(f"⛔ [GR_HTF_DIRECT_EXIT_EXEC_ERR] {position_key}: {_grde_exit_err}")
+                else:
+                    logger.debug(f"[GR_HTF_DIRECT_EXIT_MISS] {position_key}: opp_score={_grde_exit_score:.0f} < {_grde_exit_score_min:.0f}")
+            except Exception as _grde_exit_outer:
+                logger.warning(f"[GR_HTF_DIRECT_EXIT_ERR] {position_key}: {_grde_exit_outer}")
+    # ═══ END GR_HTF_DIRECT_EXIT ═══
     # ═══════════════════════════════════════════════════════════════════════════
     # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
     # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.

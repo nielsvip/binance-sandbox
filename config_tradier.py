@@ -1693,6 +1693,15 @@ class TradierConfig:
     GOLDEN_RULE_MIN_IND: int = 6      # 🚩 NEW BASELINE was 2. ROLLBACK: 2. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
+    # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate, mirrors config.py)
+    # Tradier TFs=[5m,15m,1h,4h,D,W] — 6 TFs × 7 indicators max = 42 total votes.
+    # ROLLBACK entry: GR_HTF_DIRECT_ENTRY_ENABLED=False (or SCORE_MIN=1000.0).
+    # ROLLBACK exit : GR_HTF_DIRECT_EXIT_ENABLED=False (or EXIT_SCORE=1000.0).
+    GR_HTF_DIRECT_ENTRY_ENABLED: bool = True       # 🚩 Master entry switch. ROLLBACK: False
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0    # 🚩 Min score (n_tfs × min_ind). ROLLBACK: 1000.0
+    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score for double-size entry. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
+    GR_HTF_DIRECT_EXIT_SCORE: float = 18.0          # 🚩 Opposite-direction score to CLOSE. ROLLBACK: 1000.0
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols

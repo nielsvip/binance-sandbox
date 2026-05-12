@@ -2095,6 +2095,39 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         conf = 70.0
                         reason = f"RZ_BREAKOUT_{'L' if is_long else 'S'}_bb={_rz_bb_1h:.2f}"
                         logger.info(f"[RZ_BREAKOUT] {account_key}:{symbol} {'L' if is_long else 'S'}: bb_pctb_1h={_rz_bb_1h:.2f} band=[{_rz_bot_b if is_long else _rz_top_b - _rz_band_b:.2f},{(_rz_bot_b + _rz_band_b) if is_long else _rz_top_b:.2f}]")
+                # ═══════════════════════════════════════════════════════════════════════
+                # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
+                # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
+                # If score >= GR_HTF_DIRECT_ENTRY_SCORE_MIN and no prior path fired → OPEN.
+                # If score >= GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE → double size (2×START_POSITION_SIZE).
+                # Reason: GR_HTF_DIRECT_ENTRY_{score}_{detail}
+                # ROLLBACK: set GR_HTF_DIRECT_ENTRY_ENABLED=False in config_tradier.py.
+                # ═══════════════════════════════════════════════════════════════════════
+                if action_type != "OPEN" and bool(getattr(config, 'GR_HTF_DIRECT_ENTRY_ENABLED', True)):
+                    try:
+                        from golden_rule_htf import score_entry_htf as _gr_htf_direct_entry
+                        _grde_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
+                        _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_direct_entry(
+                            indicators_raw if indicators_raw else i, is_long, 'tradier',
+                            min_tfs=1, min_ind=_grde_min_ind, current_price=current_price)
+                        # Build score as n_tfs × min_ind (the multiplicative score per spec)
+                        _grde_score = float(_grde_n_tfs) * float(_grde_min_ind)
+                        _grde_score_min = float(getattr(config, 'GR_HTF_DIRECT_ENTRY_SCORE_MIN', 12.0))
+                        _grde_double_score = float(getattr(config, 'GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE', 18.0))
+                        if _grde_score >= _grde_score_min:
+                            _grde_mult = 2.0 if _grde_score >= _grde_double_score else 1.0
+                            _grde_sps = float(getattr(config, 'START_POSITION_SIZE', 600))
+                            _grde_qty = int(max(1, (_grde_sps * _grde_mult) / current_price)) if current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = _grde_qty
+                            conf = _grde_score
+                            reason = f"GR_HTF_DIRECT_ENTRY_{_grde_score:.0f}_{_grde_detail[:60]}"
+                            logger.warning(f"[GR_HTF_DIRECT_ENTRY] {account_key}:{symbol} {'L' if is_long else 'S'}: score={_grde_score:.0f} (tfs={_grde_n_tfs}×ind={_grde_min_ind}) >= {_grde_score_min:.0f} mult={_grde_mult:.0f}x qty={_grde_qty}")
+                        else:
+                            logger.info(f"[GR_HTF_DIRECT_ENTRY_MISS] {account_key}:{symbol} {'L' if is_long else 'S'}: score={_grde_score:.0f} < {_grde_score_min:.0f} detail={_grde_detail[:60]}")
+                    except Exception as _grde_err:
+                        logger.warning(f"[GR_HTF_DIRECT_ENTRY_ERR] {account_key}:{symbol}: {_grde_err}")
+                # ═══ END GR_HTF_DIRECT_ENTRY ═══
                 # VARIANCE_FIX 2026-04-14 — canonical-switch gate application on PRIMARY entry path.
                 # The 8 previously-DEAD switches (K_ZONE_LONG/SHORT_THRESHOLD, MI_ENTRY_ENABLED,
                 # MI_EXIT_ENABLED, WT_COMPOSITE_SCORING_ENABLED, WT_EXIT_TFS, WT_EXIT_MIN_TFS,
@@ -5149,6 +5182,32 @@ class StockStrategy:
                 elif not is_long and current_price > _bb1h_upper:
                     logger.critical(f"🏗️[NOLOSS_BB1H_GATE] {symbol} S: price {current_price:.4f} > bb_upper_1h {_bb1h_upper:.4f} — structural breakout against, NO_LOSS overridden, gain={gain:.2f}%")
                     return True, f"NOLOSS_BB1H_BREAKDOWN_SHORT_px{current_price:.4f}>bb_up{_bb1h_upper:.4f}_g{gain:.2f}%", qty
+        # ═══════════════════════════════════════════════════════════════════════
+        # 🚩 GR_HTF_DIRECT_EXIT — 2026-05-12 USER MANDATE
+        # Direct exit signal: if opposite-direction GR_HTF score >= GR_HTF_DIRECT_EXIT_SCORE → CLOSE.
+        # Bypass UNIVERSAL_NOLOSS_GATE: reason contains 'GR_HTF_DIRECT_EXIT' (per config.py bypass list).
+        # Fires BEFORE STOCK_MIN_HOLD and NOLOSS gate — this is a sanctioned technical loss-exit path.
+        # ROLLBACK: set GR_HTF_DIRECT_EXIT_ENABLED=False in config_tradier.py.
+        # ═══════════════════════════════════════════════════════════════════════
+        if not _is_opts_check and bool(getattr(config, 'GR_HTF_DIRECT_EXIT_ENABLED', True)):
+            try:
+                from golden_rule_htf import score_entry_htf as _gr_htf_direct_exit_fn
+                _grde_exit_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
+                _grde_exit_ind = indicators if indicators else i
+                # Score opposite-direction alignment (is_long=False for LONG pos means we look for bearish)
+                _grde_exit_pass, _grde_exit_n_tfs, _grde_exit_detail = _gr_htf_direct_exit_fn(
+                    _grde_exit_ind, not is_long, 'tradier',
+                    min_tfs=1, min_ind=_grde_exit_min_ind, current_price=current_price)
+                _grde_exit_score = float(_grde_exit_n_tfs) * float(_grde_exit_min_ind)
+                _grde_exit_score_min = float(getattr(config, 'GR_HTF_DIRECT_EXIT_SCORE', 18.0))
+                if _grde_exit_score >= _grde_exit_score_min:
+                    logger.critical(f"⛔ [GR_HTF_DIRECT_EXIT] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} (tfs={_grde_exit_n_tfs}×ind={_grde_exit_min_ind}) >= {_grde_exit_score_min:.0f} gain={gain:.2f}% — CLOSE (bypasses NOLOSS)")
+                    return True, f"GR_HTF_DIRECT_EXIT_{_grde_exit_score:.0f}_g{gain:.2f}%_{_grde_exit_detail[:60]}", qty
+                else:
+                    logger.debug(f"[GR_HTF_DIRECT_EXIT_MISS] {symbol} {'L' if is_long else 'S'}: opp_score={_grde_exit_score:.0f} < {_grde_exit_score_min:.0f}")
+            except Exception as _grde_exit_err:
+                logger.warning(f"[GR_HTF_DIRECT_EXIT_ERR] {symbol}: {_grde_exit_err}")
+        # ═══ END GR_HTF_DIRECT_EXIT ═══
         # ==================================================================
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py
