@@ -57,6 +57,36 @@ except ImportError:
     def _check_dc_break_entry(store, bar_idx, cfg): return None
     def _check_reentry_entry(store, bar_idx, sym, pos_state, side, cfg): return None
 
+# SCALP_V2 — HTF Breakout Scalper (default OFF — SCALP_MODE=False)
+try:
+    from vec_paths.scalp_v2 import check_scalp_v2_entry as _check_scalp_v2_entry
+    from vec_paths.scalp_v2 import check_scalp_v2_exit as _check_scalp_v2_exit
+    _SCALP_V2_AVAILABLE = True
+except ImportError:
+    _SCALP_V2_AVAILABLE = False
+    def _check_scalp_v2_entry(store, bar_idx, side, cfg): return None
+    def _check_scalp_v2_exit(store, bar_idx, pos_state, side, cfg): return None
+
+# SCALP_V3 — Ultra-short bar-based scalper (default OFF — SCALP_V3_ENABLED=False)
+try:
+    from vec_paths.scalp_v3 import check_scalp_v3_entry as _check_scalp_v3_entry
+    from vec_paths.scalp_v3 import check_scalp_v3_exit as _check_scalp_v3_exit
+    _SCALP_V3_AVAILABLE = True
+except ImportError:
+    _SCALP_V3_AVAILABLE = False
+    def _check_scalp_v3_entry(store, bar_idx, side, cfg): return None
+    def _check_scalp_v3_exit(store, bar_idx, pos_state, side, cfg): return None
+
+# MICRO_SCALP — stocks + USDC micro-scalper (default OFF)
+try:
+    from vec_paths.micro_scalp import check_micro_scalp_close as _check_micro_scalp_close
+    from vec_paths.micro_scalp import check_micro_scalp_reopen as _check_micro_scalp_reopen
+    _MICRO_SCALP_AVAILABLE = True
+except ImportError:
+    _MICRO_SCALP_AVAILABLE = False
+    def _check_micro_scalp_close(store, bar_idx, pos_state, mode, cfg): return None
+    def _check_micro_scalp_reopen(store, bar_idx, last_exit_price, mode, cfg, original_side="LONG"): return None
+
 # ───────────────────────────────────────────────────────────
 # Path setup
 # ───────────────────────────────────────────────────────────
@@ -553,6 +583,9 @@ class _PositionState:
     last_reduce_price: float = 0.0
     # SENTIMENT_BOOST: timestamp of last augment (cooldown gate)
     last_augment_ts: float = 0.0
+    # PRICE_CROSS_BACK_REENTRY: price at which the last close occurred.
+    # Set by VecEngine.simulate() whenever a position closes. Required by price_cross_back.py.
+    last_close_price: float = 0.0
 
 
 # ───────────────────────────────────────────────────────────
