@@ -2114,6 +2114,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _pidx = max(0, idx - 1)
                     _src_k = f'stoch_k_{_ptf}'
                     indicators[_pk] = float(store.get(_src_k, _pidx)) if _pidx != idx and _src_k in store.arrays else indicators.get(_src_k, 50)
+            # ═══ R2 PARITY FIX 2026-05-12: inject wt_velocity_{tf}_prev ═══
+            # NPZ has wt_velocity_{tf} but not _prev. Without _prev, R2's decel check
+            # (|vel| < |vel_prev| * WT_VEL_DECEL_RATIO) falls back to _vp=_v → always
+            # False → R2 never fires in backtest. Fetch previous bar's velocity here.
+            if idx > 0:
+                _vp_pidx = idx - 1
+                for _vtf in ['3m', '5m', '15m', '1h', '4h', 'D']:
+                    _vk = f'wt_velocity_{_vtf}'
+                    _vk_prev = f'wt_velocity_{_vtf}_prev'
+                    if _vk_prev not in indicators and _vk in store.arrays:
+                        indicators[_vk_prev] = float(store.get(_vk, _vp_pidx))
             indicator_cache[sym] = indicators
             price_cache[sym] = p
             # Update ALL data sources so every code path sees fresh data
@@ -2130,6 +2141,69 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 trade_manager.price_cache_2[sym] = p
             if hasattr(trade_manager, 'price_update_time'):
                 trade_manager.price_update_time[sym] = float(ts)
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PORTFOLIO-AWARE SENTIMENT INJECTION (crypto path) — 2026-05-12
+        # Live: 0market_sentiment_local = per-symbol WT score normalized vs global max
+        #        0market_sentiment_score = global average WT score across all symbols
+        # These drive SENTIMENT_FADE/BOOST via calculate_quantity_complex in execute_trade_action.
+        # In backtest we approximate using wt1_15m - wt2_15m (the primary WT oscillator) as
+        # the raw sentiment score for each symbol, then normalize against the max absolute value
+        # across all symbols in the universe — mirroring ez_indicators.py:4232-4250.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _pf_wt_scores = {}
+        for _pf_sym, _pf_ind in indicator_cache.items():
+            _pf_wt1 = float(_pf_ind.get('wt1_15m', _pf_ind.get('wt1_3m', 0)) or 0)
+            _pf_wt2 = float(_pf_ind.get('wt2_15m', _pf_ind.get('wt2_3m', 0)) or 0)
+            _pf_wt_scores[_pf_sym] = _pf_wt1 - _pf_wt2
+        if _pf_wt_scores:
+            _pf_max_abs = max(abs(v) for v in _pf_wt_scores.values()) or 50.0
+            if _pf_max_abs < 50.0:
+                _pf_max_abs = 50.0
+            _pf_raw_vals = list(_pf_wt_scores.values())
+            _pf_global_avg = sum(_pf_raw_vals) / len(_pf_raw_vals)
+            _pf_global_score = (_pf_global_avg / _pf_max_abs) * 100.0
+            for _pf_sym, _pf_raw in _pf_wt_scores.items():
+                _pf_local = (_pf_raw / _pf_max_abs) * 100.0
+                indicator_cache[_pf_sym]['0market_sentiment_local'] = _pf_local
+                indicator_cache[_pf_sym]['0market_sentiment_score'] = _pf_global_score
+                # Also update the mirrored data sources
+                if _pf_sym in trade_manager.indicators_snapshot:
+                    trade_manager.indicators_snapshot[_pf_sym]['0market_sentiment_local'] = _pf_local
+                    trade_manager.indicators_snapshot[_pf_sym]['0market_sentiment_score'] = _pf_global_score
+                if hasattr(data_manager, '_cold_data') and _pf_sym in data_manager._cold_data:
+                    data_manager._cold_data[_pf_sym]['0market_sentiment_local'] = _pf_local
+                    data_manager._cold_data[_pf_sym]['0market_sentiment_score'] = _pf_global_score
+                if trade_manager.positions_service and hasattr(trade_manager.positions_service, 'indicators_snapshot') and _pf_sym in trade_manager.positions_service.indicators_snapshot:
+                    trade_manager.positions_service.indicators_snapshot[_pf_sym]['0market_sentiment_local'] = _pf_local
+                    trade_manager.positions_service.indicators_snapshot[_pf_sym]['0market_sentiment_score'] = _pf_global_score
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PORTFOLIO L/S RATIO STATE — compute from open positions and inject into indicators.
+        # Live: ratio_rebalance_loop reads positions_by_account, computes long_value/short_value,
+        # then fires RATIO_REDUCE/RATIO_CLOSE on overweight side.
+        # In backtest we compute the same ratio and attach it to each symbol's indicator dict
+        # as '0ls_ratio' and '0long_pct'/'0short_pct' for any gate that reads these.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _pf_long_val = 0.0
+        _pf_short_val = 0.0
+        for _pf_pk, _pf_pos in trade_manager.positions.items():
+            _pf_amt = abs(float(getattr(_pf_pos, 'positionAmt', 0) or 0))
+            if _pf_amt < 0.0001:
+                continue
+            _pf_mp = float(getattr(_pf_pos, 'mark_price', 0) or getattr(_pf_pos, 'entry_price', 0) or 0)
+            _pf_notional = _pf_amt * _pf_mp
+            if _pf_pk.endswith('_LONG'):
+                _pf_long_val += _pf_notional
+            elif _pf_pk.endswith('_SHORT'):
+                _pf_short_val += _pf_notional
+        _pf_total_val = _pf_long_val + _pf_short_val
+        _pf_long_pct = (_pf_long_val / _pf_total_val * 100.0) if _pf_total_val > 0 else 50.0
+        _pf_short_pct = (_pf_short_val / _pf_total_val * 100.0) if _pf_total_val > 0 else 50.0
+        _pf_ls_ratio = _pf_long_val / max(_pf_short_val, 1.0)
+        for _pf_sym in list(indicator_cache.keys()):
+            indicator_cache[_pf_sym]['0long_pct'] = _pf_long_pct
+            indicator_cache[_pf_sym]['0short_pct'] = _pf_short_pct
+            indicator_cache[_pf_sym]['0ls_ratio'] = _pf_ls_ratio
 
         # Update mark_price + gain on ALL open positions (critical for gate checks)
         for pk, pos in trade_manager.positions.items():
@@ -2255,10 +2329,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                 v8_logger.error(f"[UNDERWATER_HOC_CLOSE_ERR] {_uh_pk}: {_uh_cl_err}")
 
         # ═══════════════════════════════════════════════════════════════════════════
-        # DISC-4: OBLIGATORY_HEDGE — mirror ez_manage.py:14071
+        # DISC-4: OBLIGATORY_HEDGE — mirror ez_manage.py:14380 (updated 2026-05-12)
         # When UNIVERSAL_NOLOSS_GATE blocks a close, live fires a hedge if:
         #   gain <= OBLIGATORY_HEDGE_MIN_LOSS_PCT (-0.25% default)
-        #   AND wt against on (3m OR 15m) + (1h)  [≥2 of enabled TFs]
+        #   AND cascade: 3m AND (15m OR 1h) → 3m AND 1h → 3m alone → legacy count
         #   AND no existing hedge for this pk
         # In backtest: run per-bar for all underwater positions (NOLOSS gate fires before check_exit).
         # 2026-05-10 PARITY MODE gated.
@@ -2298,6 +2372,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 }
                 _oh_wt_against = 0
                 _oh_tfs_enabled = 0
+                _oh_3m_against = False
+                _oh_15m_against = False
+                _oh_1h_against = False
                 for _oh_tf in ('1m', '3m', '15m', '1h'):
                     if not _oh_use[_oh_tf]:
                         continue
@@ -2306,13 +2383,35 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _ow2 = float(_oh_ind.get(f'wt2_{_oh_tf}', 0) or 0)
                     if _ow1 == 0 and _ow2 == 0:
                         continue
-                    if _oh_is_long:
-                        _oh_wt_against += int(_ow1 < _ow2)
-                    else:
-                        _oh_wt_against += int(_ow1 > _ow2)
-                if _oh_tfs_enabled > 0 and _oh_wt_against >= _oh_bt_req:
+                    _oh_ag = (_ow1 < _ow2) if _oh_is_long else (_ow1 > _ow2)
+                    _oh_wt_against += int(_oh_ag)
+                    if _oh_tf == '3m': _oh_3m_against = bool(_oh_ag)
+                    elif _oh_tf == '15m': _oh_15m_against = bool(_oh_ag)
+                    elif _oh_tf == '1h': _oh_1h_against = bool(_oh_ag)
+                # USER 2026-05-12: compute 15m independently when not in loop (mirrors ez_manage.py:14422-14425)
+                if not _oh_use['15m']:
+                    _ow1_15m = float(_oh_ind.get('wt1_15m', 0) or 0)
+                    _ow2_15m = float(_oh_ind.get('wt2_15m', 0) or 0)
+                    _oh_15m_against = (_ow1_15m < _ow2_15m) if _oh_is_long else (_ow1_15m > _ow2_15m)
+                # Cascade: 3m AND (15m OR 1h) → 3m AND 1h → 3m alone → legacy count (mirrors ez_manage.py:14432-14443)
+                _oh_req_3m_15m_or_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
+                _oh_req_3m_1h = bool(getattr(config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', False))
+                _oh_use_3m_alone = bool(getattr(config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
+                if _oh_req_3m_15m_or_1h:
+                    _oh_user_trigger = _oh_3m_against and (_oh_15m_against or _oh_1h_against)
+                    _oh_trigger_label = "3m_AND_(15m_OR_1h)"
+                elif _oh_req_3m_1h:
+                    _oh_user_trigger = _oh_3m_against and _oh_1h_against
+                    _oh_trigger_label = "3m_AND_1h"
+                elif _oh_use_3m_alone:
+                    _oh_user_trigger = _oh_3m_against
+                    _oh_trigger_label = "3m_only"
+                else:
+                    _oh_user_trigger = _oh_15m_against or (_oh_3m_against and _oh_1h_against)
+                    _oh_trigger_label = "15m_OR_(3m_AND_1h)"
+                if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_bt_req or _oh_user_trigger):
                     _oh_bt_cd_dict[_oh_pk] = step
-                    v8_logger.warning(f"[OBLIGATORY_HEDGE_BACKTEST] {_oh_pk}: gain={_oh_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} — scan_and_hedge_losers")
+                    v8_logger.warning(f"[OBLIGATORY_HEDGE_BACKTEST] {_oh_pk}: gain={_oh_gain:.2f}% trigger={_oh_trigger_label} wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m={_oh_3m_against} 15m={_oh_15m_against} 1h={_oh_1h_against}) — scan_and_hedge_losers")
                     try:
                         await hedge_engine.scan_and_hedge_losers(account_key)
                     except Exception as _oh_err:
@@ -3508,6 +3607,41 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
                 except Exception:
                     pass
+        # ── NEWBORN_PROTECT (15-min grace) — mirror ez_manage.py:14210-14262 ──
+        # evaluate_newborn_protect_core is imported at the top of the file but was
+        # never called here, so the engine never blocked close attempts on freshly
+        # opened positions. Live execute_now applies this gate on every is_reduce.
+        if is_reduce and not is_hedge:
+            try:
+                _nb_pos = None
+                if manager.position_manager:
+                    _nb_pos = manager.position_manager.positions.get(position_key)
+                if not _nb_pos and hasattr(manager, 'positions'):
+                    _nb_pos = manager.positions.get(position_key)
+                if _nb_pos:
+                    _nb_opened = getattr(_nb_pos, 'last_augmentation_time', None) or getattr(_nb_pos, 'opened_at', None)
+                    _nb_ind = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                    _nb_dc_low_3m = float(_nb_ind.get('dc_low_3m', 0) or 0)
+                    _nb_dc_high_3m = float(_nb_ind.get('dc_high_3m', 0) or 0)
+                    _nb_is_long = (position_side == 'LONG')
+                    _nb_now_ts = float(_sim_ts[0]) if _sim_ts[0] else _real_time_module.time()
+                    _nb_blocked, _nb_reason, _nb_age, _ = evaluate_newborn_protect_core(
+                        action=action,
+                        position_opened_at=_nb_opened,
+                        now_ts=_nb_now_ts,
+                        mark_price=px,
+                        dc_low_3m=_nb_dc_low_3m,
+                        dc_high_3m=_nb_dc_high_3m,
+                        is_long=_nb_is_long,
+                        reason=reason,
+                        is_hedge=is_hedge,
+                        config=getattr(tm_mod, 'config', None) or ez_manage.config,
+                    )
+                    if _nb_blocked:
+                        v8_logger.debug(f"[V8_NEWBORN_PROTECT] {position_key}: BLOCKED {action} — {_nb_reason} age={_nb_age:.0f}s")
+                        return _nb_reason
+            except Exception as _nb_err:
+                v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {position_key}: fail-open ({_nb_err})")
         v8_logger.warning(f"[V8_ETA] {position_key} {side} qty={qty:.4f} px={px:.4f} {act} {reason[:60]}")
         await _place(symbol=symbol, side=side, quantity=qty, price=px, action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
         # Update position (check both dicts — tradier uses position_manager.positions)
@@ -4310,6 +4444,51 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             indicator_cache[sym.upper()] = ind
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PORTFOLIO-AWARE SENTIMENT INJECTION (tradier path) — 2026-05-12
+        # Mirror of crypto path above. Stocks use wt1_15m/wt1_1h hybrid as sentiment signal.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _tpf_wt_scores = {}
+        for _tpf_sym, _tpf_ind in indicator_cache.items():
+            _tpf_wt1 = float(_tpf_ind.get('wt1_15m', _tpf_ind.get('wt1_5m', 0)) or 0)
+            _tpf_wt2 = float(_tpf_ind.get('wt2_15m', _tpf_ind.get('wt2_5m', 0)) or 0)
+            _tpf_wt1h = float(_tpf_ind.get('wt1_1h', 0) or 0)
+            _tpf_wt2h = float(_tpf_ind.get('wt2_1h', 0) or 0)
+            _tpf_wt_scores[_tpf_sym] = 0.5 * (_tpf_wt1 - _tpf_wt2) + 0.5 * (_tpf_wt1h - _tpf_wt2h)
+        if _tpf_wt_scores:
+            _tpf_max_abs = max(abs(v) for v in _tpf_wt_scores.values()) or 50.0
+            if _tpf_max_abs < 50.0:
+                _tpf_max_abs = 50.0
+            _tpf_global_avg = sum(_tpf_wt_scores.values()) / len(_tpf_wt_scores)
+            _tpf_global_score = (_tpf_global_avg / _tpf_max_abs) * 100.0
+            for _tpf_sym, _tpf_raw in _tpf_wt_scores.items():
+                _tpf_local = (_tpf_raw / _tpf_max_abs) * 100.0
+                indicator_cache[_tpf_sym]['0market_sentiment_local'] = _tpf_local
+                indicator_cache[_tpf_sym]['0market_sentiment_score'] = _tpf_global_score
+        # ═══════════════════════════════════════════════════════════════════════════
+        # PORTFOLIO L/S RATIO (tradier path) — same as crypto path above.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _tpf_long_val = 0.0
+        _tpf_short_val = 0.0
+        _tpf_positions = (manager.position_manager.positions if manager.position_manager else {})
+        for _tpf_pk, _tpf_pos in _tpf_positions.items():
+            _tpf_amt = abs(float(getattr(_tpf_pos, 'positionAmt', getattr(_tpf_pos, 'quantity', 0)) or 0))
+            if _tpf_amt < 0.0001:
+                continue
+            _tpf_mp = float(getattr(_tpf_pos, 'mark_price', 0) or getattr(_tpf_pos, 'entry_price', 0) or 0)
+            _tpf_notional = _tpf_amt * _tpf_mp
+            if _tpf_pk.endswith('_LONG'):
+                _tpf_long_val += _tpf_notional
+            elif _tpf_pk.endswith('_SHORT'):
+                _tpf_short_val += _tpf_notional
+        _tpf_total_val = _tpf_long_val + _tpf_short_val
+        _tpf_long_pct = (_tpf_long_val / _tpf_total_val * 100.0) if _tpf_total_val > 0 else 50.0
+        _tpf_short_pct = (_tpf_short_val / _tpf_total_val * 100.0) if _tpf_total_val > 0 else 50.0
+        _tpf_ls_ratio = _tpf_long_val / max(_tpf_short_val, 1.0)
+        for _tpf_sym in list(indicator_cache.keys()):
+            indicator_cache[_tpf_sym]['0long_pct'] = _tpf_long_pct
+            indicator_cache[_tpf_sym]['0short_pct'] = _tpf_short_pct
+            indicator_cache[_tpf_sym]['0ls_ratio'] = _tpf_ls_ratio
         manager.market_snapshot = dict(indicator_cache)
         # DELTA_ENTRY prev-warmup: done AFTER process_position (see below).
         # Update position gains from current prices
@@ -4423,6 +4602,81 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     await oq.handle_order(order)
                     oq._orders.task_done()
                 except: break
+        # ═══════════════════════════════════════════════════════════════════════════
+        # SENTIMENT_REBALANCER (tradier path) — 2026-05-12
+        # Live: periodic_sentiment_rebalancing runs every 60s → fires SENTIMENT_FADE
+        # and SENTIMENT_BOOST by comparing ideal_qty (from calculate_quantity_complex)
+        # to current positionAmt. Run every ~12 bars (≈60s at 5m bars) to replicate
+        # live cadence. Gate: V8_SENTIMENT_REBALANCER_ENABLED (default 1).
+        # ═══════════════════════════════════════════════════════════════════════════
+        _v8_sent_rebal_enabled = os.environ.get("V8_SENTIMENT_REBALANCER_ENABLED", "1") == "1"
+        _v8_sent_rebal_freq = int(os.environ.get("V8_SENTIMENT_REBALANCER_FREQ_BARS", "12"))
+        if _v8_sent_rebal_enabled and step % _v8_sent_rebal_freq == 0 and hasattr(manager, 'periodic_sentiment_rebalancing'):
+            try:
+                _v8_rebal_positions = list((manager.position_manager.positions if manager.position_manager else {}).items())
+                for _v8_rebal_pk, _v8_rebal_pos in _v8_rebal_positions:
+                    try:
+                        if not _v8_rebal_pos or abs(getattr(_v8_rebal_pos, 'positionAmt', 0)) == 0:
+                            continue
+                        _v8_rebal_sym = getattr(_v8_rebal_pos, 'symbol', '')
+                        if not _v8_rebal_sym:
+                            continue
+                        _v8_rebal_side = getattr(_v8_rebal_pos, 'position_side', 'LONG')
+                        _v8_rebal_cur_qty = abs(float(getattr(_v8_rebal_pos, 'positionAmt', 0)))
+                        _v8_rebal_px = price_cache.get(_v8_rebal_sym.upper(), 0)
+                        if _v8_rebal_px <= 0:
+                            continue
+                        _v8_rebal_i = indicator_cache.get(_v8_rebal_sym.upper(), {})
+                        if not _v8_rebal_i:
+                            continue
+                        _v8_rebal_base_qty = tm_mod.config.START_POSITION_SIZE / _v8_rebal_px
+                        if not hasattr(manager, 'strategy') or manager.strategy is None:
+                            continue
+                        _v8_ideal_qty = await manager.strategy.calculate_quantity_complex(
+                            _v8_rebal_sym, "REBALANCE", _v8_rebal_side, _v8_rebal_base_qty, _v8_rebal_i, _v8_rebal_pos)
+                        if _v8_rebal_cur_qty == 0:
+                            continue
+                        _v8_dev_pct = (_v8_ideal_qty - _v8_rebal_cur_qty) / _v8_rebal_cur_qty
+                        if _v8_dev_pct < -0.20:
+                            _v8_qty_to_reduce = _v8_rebal_cur_qty - _v8_ideal_qty
+                            if _v8_qty_to_reduce * _v8_rebal_px > 100:
+                                _v8_gain_pct = float(getattr(_v8_rebal_pos, 'gain', 0) or 0)
+                                if _v8_gain_pct < 0.3:
+                                    continue
+                                _v8_wt_b5 = float(_v8_rebal_i.get('wt1_5m', 0) or 0) > float(_v8_rebal_i.get('wt2_5m', 0) or 0)
+                                _v8_wt_b15 = float(_v8_rebal_i.get('wt1_15m', 0) or 0) > float(_v8_rebal_i.get('wt2_15m', 0) or 0)
+                                _v8_wt_b1h = float(_v8_rebal_i.get('wt1_1h', 0) or 0) > float(_v8_rebal_i.get('wt2_1h', 0) or 0)
+                                _v8_wt_b4h = float(_v8_rebal_i.get('wt1_4h', 0) or 0) > float(_v8_rebal_i.get('wt2_4h', 0) or 0)
+                                if _v8_rebal_side == "LONG":
+                                    _v8_tf_against = sum([1 for b in [_v8_wt_b5, _v8_wt_b15, _v8_wt_b1h, _v8_wt_b4h] if not b])
+                                else:
+                                    _v8_tf_against = sum([1 for b in [_v8_wt_b5, _v8_wt_b15, _v8_wt_b1h, _v8_wt_b4h] if b])
+                                if _v8_tf_against < 2:
+                                    continue
+                                _v8_fade_reason = f"SENTIMENT_FADE ideal={int(_v8_ideal_qty)} cur={int(_v8_rebal_cur_qty)} loc={_v8_rebal_i.get('0market_sentiment_local', 0):.1f} WT{_v8_tf_against}TF"
+                                _v8_acct = _v8_rebal_pk.split(':')[0] if ':' in _v8_rebal_pk else account_key
+                                await manager.execute_trade_action(
+                                    _v8_acct, _v8_rebal_pk, _v8_rebal_sym, _v8_qty_to_reduce, _v8_rebal_px,
+                                    "SELL" if _v8_rebal_side == "LONG" else "BUY",
+                                    _v8_rebal_side, f"rebal_{step}",
+                                    action="REDUCE", reason=_v8_fade_reason, override_qty=_v8_qty_to_reduce)
+                        elif _v8_dev_pct > 0.25:
+                            _v8_qty_to_add = _v8_ideal_qty - _v8_rebal_cur_qty
+                            _v8_gain_pct = float(getattr(_v8_rebal_pos, 'gain', 0) or 0)
+                            if _v8_gain_pct > 0.5 and _v8_qty_to_add * _v8_rebal_px > 100:
+                                _v8_boost_reason = f"SENTIMENT_BOOST ideal={int(_v8_ideal_qty)} cur={int(_v8_rebal_cur_qty)} loc={_v8_rebal_i.get('0market_sentiment_local', 0):.1f}"
+                                _v8_acct = _v8_rebal_pk.split(':')[0] if ':' in _v8_rebal_pk else account_key
+                                await manager.execute_trade_action(
+                                    _v8_acct, _v8_rebal_pk, _v8_rebal_sym, _v8_qty_to_add, _v8_rebal_px,
+                                    "BUY" if _v8_rebal_side == "LONG" else "SELL",
+                                    _v8_rebal_side, f"rebal_{step}",
+                                    action="AUGMENT", reason=_v8_boost_reason, override_qty=_v8_qty_to_add)
+                    except Exception as _v8_rebal_inner_err:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[V8_SENTIMENT_REBAL_INNER] {_v8_rebal_pk}: {_v8_rebal_inner_err}")
+            except Exception as _v8_rebal_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_SENTIMENT_REBAL_ERR] step={step}: {_v8_rebal_err}")
         await asyncio.sleep(0)
         if hasattr(manager, 'delta_tracker') and manager.delta_tracker:
             _dt_wt_fields = ["wt1", "wt2", "wt_score", "wt_velocity", "wt_acceleration", "wt_percentile", "wt_zscore"]

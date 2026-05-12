@@ -1170,7 +1170,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # BUG FIX 2026-05-12: when base_tf is switched to fabricated 3m/5m (lines above), the old
     # code passed base_df (fabricated) to resample_tf() instead of dfs["15m"].  Resampling
     # fabricated 5m→1h introduces interpolation artifacts (mean |stoch_k_1h delta| = 32 pts,
-    # max = 95 pts vs resampling from real 15m).  The authoritative source is always "15m".
+    # max = 95 pts vs resampling from real 15m).  The authoritative source is ALWAYS "15m".
+    # Second part of fix: standalone D/4h/1h files loaded from klines_cache (Mac fallback) are
+    # STALE (short, old) vs the 15m-resampled versions.  ALWAYS prefer 15m-resampled for all HTFs
+    # regardless of existing file length — 15m is the canonical backtest source.
     _resample_src_tf = "15m"  # the real klines — never a fabricated sub-tf
     _resample_src_df = dfs.get(_resample_src_tf, base_df)  # fallback to base_df if 15m missing
     for tf in tfs:
@@ -1178,10 +1181,9 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             continue
         resampled = resample_tf(_resample_src_df, tf)
         if resampled is not None and len(resampled) >= 20:
-            existing = dfs.get(tf)
-            # Use resampled if it has more data than the standalone file
-            if existing is None or len(resampled) > len(existing) * 1.5:
-                dfs[tf] = resampled
+            # ALWAYS use 15m-resampled version — standalone D/4h/1h files from klines_cache
+            # may be stale (Mac fallback). 15m backtest data is the authoritative source.
+            dfs[tf] = resampled
     merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
     # Compute indicators per TF — ONE call, returns FULL arrays
     for tf in tfs:
