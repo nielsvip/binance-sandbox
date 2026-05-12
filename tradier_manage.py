@@ -9246,9 +9246,13 @@ class TradierTradeManager:
             # ═══ DISASTER_GUARD (2026-05-11 after MU $12k short-against-rally) ═══
             # 10 controls that REFUSE entry before any order is queued. Applies to
             # every entry path including WT_3M_FORCE_OPEN. Exits/reduces are NOT gated.
-            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce:
+            # Only fires on fresh opens where the position is currently flat (positionAmt==0).
+            # Augments on existing open positions are NOT gated here — they pass through.
+            _dg_is_flat_open = abs(float(original_position_amt or 0)) < 0.0001
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and _dg_is_flat_open:
                 _dg_block, _dg_tag = self._disaster_guard_for_entry(position_key, account_key, symbol, position_side, float(quantity), float(old_price), reason)
                 if _dg_block:
+                    logger.critical(f"🛑 [DISASTER_GUARD_BLOCKED_FORCE_OPEN] {position_key}: {_dg_tag} reason={reason}")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"BLOCKED_{_dg_tag}"
