@@ -87,6 +87,63 @@ except ImportError:
     def _check_micro_scalp_close(store, bar_idx, pos_state, mode, cfg): return None
     def _check_micro_scalp_reopen(store, bar_idx, last_exit_price, mode, cfg, original_side="LONG"): return None
 
+# HEDGE_ENGINE — same-symbol hedge paths (crypto only, default OFF in backtest)
+try:
+    from vec_paths.hedge_engine import (
+        check_scan_hedge_losers as _check_scan_hedge_losers,
+        check_obligatory_hedge as _check_obligatory_hedge,
+        check_hedge_failed_fallback as _check_hedge_failed_fallback,
+        check_hedge_close as _check_hedge_close,
+        compute_hedge_size as _compute_hedge_size,
+    )
+    _HEDGE_ENGINE_AVAILABLE = True
+except ImportError:
+    _HEDGE_ENGINE_AVAILABLE = False
+    def _check_scan_hedge_losers(store, bar_idx, pos_state, all_pos_states=None, mode="crypto", cfg=None): return None
+    def _check_obligatory_hedge(store, bar_idx, pos_state, mode="crypto", cfg=None): return None
+    def _check_hedge_failed_fallback(store, bar_idx, pos_state, mode="crypto", cfg=None, hedge_attempt_result=False): return None
+    def _check_hedge_close(store, bar_idx, hedge_pos_state, mode="crypto", cfg=None): return None
+    def _compute_hedge_size(pos_state, cfg): return 0.0
+
+# EXIT PATHS — R1/R2 loss bypasses + PPL v2 + WT crossunder final + SRS
+try:
+    from vec_paths.exit_r1_r2 import (
+        check_r1_emergency_exit as _check_r1_emergency_exit,
+        check_r2_wt_vel_slow_exit as _check_r2_wt_vel_slow_exit,
+    )
+    _EXIT_R1_R2_AVAILABLE = True
+except ImportError:
+    _EXIT_R1_R2_AVAILABLE = False
+    def _check_r1_emergency_exit(store, bar_idx, pos_state, mode, cfg): return None
+    def _check_r2_wt_vel_slow_exit(store, bar_idx, pos_state, mode, cfg): return None
+
+try:
+    from vec_paths.partial_profit_lock_v2 import (
+        check_ppl_step1 as _check_ppl_step1,
+        check_ppl_step2 as _check_ppl_step2,
+        check_ppl_step3 as _check_ppl_step3,
+    )
+    _PPL_V2_AVAILABLE = True
+except ImportError:
+    _PPL_V2_AVAILABLE = False
+    def _check_ppl_step1(store, bar_idx, pos_state, cfg): return None
+    def _check_ppl_step2(store, bar_idx, pos_state, cfg): return None
+    def _check_ppl_step3(store, bar_idx, pos_state, cfg): return None
+
+try:
+    from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit as _check_wt_crossunder_final_exit
+    _WT_CROSSUNDER_FINAL_AVAILABLE = True
+except ImportError:
+    _WT_CROSSUNDER_FINAL_AVAILABLE = False
+    def _check_wt_crossunder_final_exit(store, bar_idx, pos_state, mode, cfg): return None
+
+try:
+    from vec_paths.structural_range_shift import check_srs_exit as _check_srs_exit
+    _SRS_AVAILABLE = True
+except ImportError:
+    _SRS_AVAILABLE = False
+    def _check_srs_exit(store, bar_idx, pos_state, mode, cfg): return None
+
 # ───────────────────────────────────────────────────────────
 # Path setup
 # ───────────────────────────────────────────────────────────
@@ -220,6 +277,40 @@ class VecConfig:
     HEDGE_SAME_SYMBOL_PCT: float = 0.5
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = False  # currently disabled by design
 
+    # ── HEDGE_ENGINE (vec_paths/hedge_engine.py) ─────────────
+    # Master gate — OFF by default in backtest (hedge is a live-trading recovery tool).
+    # Enable for backtest experiments to measure hedge impact on Sharpe/DD.
+    # Source: ez_positions_quick.py:5002 scan_and_hedge_losers + ez_manage.py:14339.
+    # Config defaults match 2026-05-10 strip values (CLAUDE.md).
+    HEDGE_ENGINE_ENABLED: bool = False
+    # HEDGE_ACCOUNTS: which accounts are hedge-enabled (crypto only).
+    # In vec sim we use HEDGE_MODE as the global gate; HEDGE_ENGINE_ENABLED is the backtest gate.
+    HEDGE_ACCOUNTS: list = None  # type: ignore — set to list by default in __post_init__ below
+    # OBLIGATORY_HEDGE: fires inside UNIVERSAL_NOLOSS_GATE when WT confirms reversal.
+    OBLIGATORY_HEDGE_ENABLED: bool = True
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.25   # must be at or below this gain to trigger
+    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 1      # after 2026-05-10 strip: 3m alone (req=1)
+    OBLIGATORY_HEDGE_WT_USE_3M: bool = True
+    OBLIGATORY_HEDGE_WT_USE_1M: bool = False
+    OBLIGATORY_HEDGE_WT_USE_15M: bool = False
+    OBLIGATORY_HEDGE_WT_USE_1H: bool = True
+    # HEDGE_TRIGGER (scan_and_hedge_losers trigger mode)
+    # 2026-05-10 strip: all three require_* flags set to False, use_3m_alone=True
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = False
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True
+    # HEDGE_CLOSE_MODE: how to close the hedge when loser recovers.
+    # 'wt_3m' = close when wt1_3m turns against the hedge (= back in favor of loser).
+    # Other options: 'wt_3m_and_1h', 'wt_15m'.
+    HEDGE_CLOSE_MODE: str = "wt_3m"
+    # HEDGE_FAILED_FALLBACK: close the loser when hedge can't be taken.
+    HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True
+    # HEDGE_DETERIORATING_GAIN: require gain to be actively dropping before hedging.
+    # 2026-05-10 strip: DISABLED (False) — wt_3m trigger supersedes this requirement.
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = False
+    HEDGE_OVERSIZE_RATIO: float = 2.0   # max ratio of hedge to loser (cap from config.py)
+    HEDGE_MAX_RATIO: float = 2.0        # hard cap (mirrors config.py)
+
     # ── Reentry overhaul ─────────────────────────────────────
     REENTRY_WT15M_CROSS_ENABLED: bool = True
     REENTRY_WT15M_SIZE_MULT: float = 1.5
@@ -260,9 +351,69 @@ class VecConfig:
     # ── RZ exit ──────────────────────────────────────────────
     RZ_EXIT_ENABLED: bool = False
 
-    # ── SATOSHIT ─────────────────────────────────────────────
+    # ── SATOSHIT (crypto + tradier additive entry) ──────────
+    # Source: ez_satoshit.satoshit_entry_signal() + ez_manage.py:10116/10397.
+    # 5-vote system on 15m indicators: rsi/bb_pct_b_1h/ha/stoch_k/mfi + HTF mfi_D/rvol_1h.
+    # SATOSHIT_ENTRY_FILTER=True (crypto default) uses it as a GATE on the WT path.
+    # SATOSHIT_ENABLED=True (additive) fires OPEN independently via vec_paths/satoshit.py.
+    # SATOSHIT_ENABLED_TRADIER: tradier additive (also via vec_paths/satoshit.py).
     SATOSHIT_ENABLED_TRADIER: bool = False
-    SATOSHIT_ENTRY_FILTER: bool = True   # crypto
+    SATOSHIT_ENTRY_FILTER: bool = True   # crypto gate (default True per config.py)
+    SATOSHIT_ENABLED: bool = False       # additive open (default OFF — both modes)
+    SATOSHIT_MIN_VOTES: int = 3
+    SATOSHIT_SCORE_BONUS: float = 30.0
+    SATOSHIT_LONG_RSI_MAX: float = 50.0
+    SATOSHIT_LONG_BB_PCTB_MAX: float = 0.50
+    SATOSHIT_LONG_HA_STREAK_MAX: int = 1
+    SATOSHIT_LONG_STOCH_K_MAX: float = 60.0
+    SATOSHIT_LONG_MFI_MAX: float = 60.0
+    SATOSHIT_SHORT_RSI_MIN: float = 55.0
+    SATOSHIT_SHORT_BB_PCTB_MIN: float = 0.55
+    SATOSHIT_SHORT_HA_STREAK_MIN: int = 0
+    SATOSHIT_SHORT_STOCH_K_MIN: float = 50.0
+    SATOSHIT_SHORT_MFI_MIN: float = 50.0
+    SATOSHIT_HTF_MFI_D_MIN: float = 30.0
+    SATOSHIT_HTF_RVOL_1H_MIN: float = 0.3
+
+    # ── FH_MOMENTUM (first-hour momentum entry — tradier + crypto) ──────────
+    # Source: tradier_manage.py:5876-5917 (fires FIRST before all other entries).
+    #         ez_manage.py:24001 (crypto_first_hour_momentum_loop, 13:00-14:30 UTC).
+    # Fires OPEN when price has moved >= min_move from daily open in first-hour window.
+    # FH_MOMENTUM_ENABLED: tradier gate (default OFF, TRADIER_FH_MOMENTUM_ENABLED alias).
+    # CRYPTO_FH_MOMENTUM_ENABLED: crypto gate (default ON per config.py).
+    FH_MOMENTUM_ENABLED: bool = False        # tradier default (OFF)
+    CRYPTO_FH_MOMENTUM_ENABLED: bool = True  # crypto default (ON per config.py)
+    FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5
+    FH_MOMENTUM_MFI_CONFIRM: bool = True
+    FH_MOMENTUM_DC_CONFIRM: bool = True
+    FH_MOMENTUM_DC_MAX_LONG: float = 0.5
+    FH_MOMENTUM_WINDOW_MINUTES: float = 60.0  # stocks: 60 min after open
+    CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5
+    CRYPTO_FH_MOMENTUM_DC_CONFIRM: bool = True
+    CRYPTO_FH_MOMENTUM_DC_MAX_LONG: float = 0.5
+
+    # ── BB_RECOVERY exit (bypass NOLOSS gate for stranded entries outside BB) ─
+    # Source: tradier_manage.py:9275-9307 (execute_now, before NOLOSS block).
+    # Fires when position entry was outside BB and price has recovered within tolerance.
+    # tradier default: BB_RECOVERY_EXIT_ENABLED_TRADIER=True (config_tradier.py:778).
+    # crypto default: BB_RECOVERY_EXIT_ENABLED=False (not in config.py).
+    BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = True   # tradier default (ON)
+    BB_RECOVERY_EXIT_ENABLED: bool = False           # crypto default (OFF)
+    BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30
+    BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0
+
+    # ── MOM3 / MOM5 additive entry score boost ────────────────────────────────
+    # Source: ez_manage.py:18765-18778 (BACKTEST_CHANGE_4/5, +22 per signal).
+    # 3-bar (and 5-bar) mean-reversion: LONG when price < close_N_bar by threshold.
+    # TF_FOCUS = "3m" for crypto, "5m" for tradier.
+    # config.py: MOM3_ENTRY_ENABLED=True, thresholds ±1.0%/±1.5%.
+    MOM3_ENTRY_ENABLED: bool = True
+    MOM3_LONG_THRESHOLD: float = -1.0
+    MOM3_SHORT_THRESHOLD: float = 1.0
+    MOM5_ENTRY_ENABLED: bool = True
+    MOM5_LONG_THRESHOLD: float = -1.5
+    MOM5_SHORT_THRESHOLD: float = 1.5
+    MOM3_GATE_REQUIRED: bool = False  # when True, block WT entry if neither MOM3 nor MOM5 fires
 
     # ── R1 DC emergency exit ─────────────────────────────────
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
@@ -682,6 +833,9 @@ class _PositionState:
     # SCALP_V2/V3: entry reason tag (contains SCALP_V2_OPEN_ / SCALP_V3_OPEN_ prefix).
     # Used by exit checker to identify V2/V3-managed positions.
     reason: str = ""
+    # HEDGE_ENGINE: True when this position was opened as a same-symbol hedge.
+    # Prevents double-hedging (hedge positions don't get hedged again).
+    hedge_active: bool = False
     # Bar index when position was opened (used for max-hold exit approximation in V2/V3).
     open_bar: int = 0
     # MICRO_SCALP: prev_gain and reopen state for micro-scalp close/reopen logic.
@@ -852,6 +1006,30 @@ class VecEngine:
             _price_cross_back_fn = _pcbf
         except Exception:
             pass
+        _satoshit_fn = None
+        _fh_momentum_fn = None
+        _bb_recovery_fn = None
+        _mom3_fn = None
+        try:
+            from vec_paths.satoshit import check_satoshit_entry as _sat_fn
+            _satoshit_fn = _sat_fn
+        except Exception:
+            pass
+        try:
+            from vec_paths.fh_momentum import check_fh_momentum_entry as _fhm_fn
+            _fh_momentum_fn = _fhm_fn
+        except Exception:
+            pass
+        try:
+            from vec_paths.bb_recovery import check_bb_recovery_exit as _bbr_fn
+            _bb_recovery_fn = _bbr_fn
+        except Exception:
+            pass
+        try:
+            from vec_paths.mom3 import check_mom3_boost as _m3fn
+            _mom3_fn = _m3fn
+        except Exception:
+            pass
 
         # Tracking for sizing scalars
         dd_state: Dict[str, float] = {"peak": 0.0, "dd_pct": 0.0}
@@ -953,57 +1131,47 @@ class VecEngine:
                                     pos.last_reduce_price = pos.entry_price * (1.0 - pos.max_gain_pct / 100.0)
 
                 # ── R1: DC emergency exit (within newborn window) ──
-                if cfg.R1_DC_LOW4_3M_EMERGENCY_ENABLED:
-                    for pos in (pos_long, pos_short):
-                        if not pos.open:
-                            continue
-                        age_min = (ts_i - pos.entry_ts) / 60.0
-                        if age_min > cfg.R1_NEWBORN_WINDOW_MIN:
-                            continue
-                        tf = cfg.R1_TF
-                        if cfg.R1_USE_DC_4BAR:
-                            dc_level_l = store.f(f"dc_low4_{tf}", bar_idx)
-                            dc_level_h = store.f(f"dc_high4_{tf}", bar_idx)
-                        else:
-                            dc_level_l = store.f(f"dc_low_{tf}", bar_idx)
-                            dc_level_h = store.f(f"dc_high_{tf}", bar_idx)
-                        r1_fired = False
-                        if pos.side == "LONG" and dc_level_l > 0 and price < dc_level_l:
-                            r1_fired = True
-                        elif pos.side == "SHORT" and dc_level_h > 0 and price > dc_level_h:
-                            r1_fired = True
-                        if r1_fired:
-                            pnl = pos.gain_pct
-                            returns_by_sym[sym].append(pnl)
-                            all_returns.append(pnl)
-                            running_gain += pnl
-                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
-                            if pnl > 0:
-                                pos.last_reduce_price = price
-                            pos.r1_fired = True
-                            continue
+                # Routed via vec_paths/exit_r1_r2.py — BYPASSES NOLOSS gate.
+                for pos in (pos_long, pos_short):
+                    if not pos.open:
+                        continue
+                    _r1_sig = _check_r1_emergency_exit(store, bar_idx, pos, self.mode, cfg)
+                    if _r1_sig is not None:
+                        pnl = pos.gain_pct
+                        returns_by_sym[sym].append(pnl)
+                        all_returns.append(pnl)
+                        running_gain += pnl
+                        pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                        if pnl > 0:
+                            pos.last_reduce_price = price
+                        pos.r1_fired = True
 
-                # ── R2: WT velocity slow exit ──────────────────
-                if cfg.WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED:
+                # ── R2: WT velocity slow exit ── BYPASSES NOLOSS gate.
+                # Routed via vec_paths/exit_r1_r2.py.
+                for pos in (pos_long, pos_short):
+                    if not pos.open:
+                        continue
+                    _r2_sig = _check_r2_wt_vel_slow_exit(store, bar_idx, pos, self.mode, cfg)
+                    if _r2_sig is not None:
+                        pnl = pos.gain_pct
+                        returns_by_sym[sym].append(pnl)
+                        all_returns.append(pnl)
+                        running_gain += pnl
+                        pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                        if pnl > 0:
+                            pos.last_reduce_price = price
+
+                # ── SRS: Structural Range Shift exit ── BYPASSES NOLOSS gate.
+                # Fires ABOVE NOLOSS gate in live (tradier_manage.py:5129, BEFORE gate at 5218).
+                # Source: vec_paths/structural_range_shift.py.
+                # Replaces the old inline approximation (bb_pct_b crossing 0.5) that was
+                # wired as a gate on the WT-cross exit (incorrect — SRS is independent).
+                if cfg.STRUCTURAL_RANGE_SHIFT_EXIT:
                     for pos in (pos_long, pos_short):
                         if not pos.open:
                             continue
-                        gain = pos.gain_pct
-                        floor = cfg.WT_15M_VEL_SLOW_GAIN_FLOOR_PCT
-                        band = cfg.WT_15M_VEL_SLOW_GAIN_BAND_PCT
-                        if not (floor <= gain < band):
-                            continue
-                        r2_fired = False
-                        for r2_tf in cfg.R2_TF_LIST:
-                            vel = store.f(f"wt_velocity_{r2_tf}", bar_idx)
-                            vel_prev_idx = max(0, bar_idx - 1)
-                            vel_prev = store.f(f"wt_velocity_{r2_tf}", vel_prev_idx)
-                            vel_against = (pos.side == "LONG" and vel < 0) or (pos.side == "SHORT" and vel > 0)
-                            decel = (abs(vel) <= 0.1) or (abs(vel) < abs(vel_prev) * cfg.WT_VEL_DECEL_RATIO)
-                            if vel_against and decel:
-                                r2_fired = True
-                                break
-                        if r2_fired:
+                        _srs_sig = _check_srs_exit(store, bar_idx, pos, self.mode, cfg)
+                        if _srs_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
@@ -1012,40 +1180,86 @@ class VecEngine:
                             if pnl > 0:
                                 pos.last_reduce_price = price
 
-                # ── PARTIAL_PROFIT_LOCK v2 ──────────────────────
+                # ── PARTIAL_PROFIT_LOCK v2 (3-step) ─────────────
+                # Source: vec_paths/partial_profit_lock_v2.py.
+                # Replaces old inline approximation.
+                # NOTE: PARTIAL_PROFIT_LOCK_ENABLED=False in live as of 2026-05-12.
                 if cfg.PARTIAL_PROFIT_LOCK_ENABLED:
                     for pos in (pos_long, pos_short):
                         if not pos.open:
                             continue
-                        gain = pos.gain_pct
-                        if not pos.ppl_fired and gain >= cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT:
-                            # Step 1: close FRAC at current price (approximation)
-                            partial_pnl = gain * cfg.PARTIAL_PROFIT_LOCK_FRAC
-                            returns_by_sym[sym].append(partial_pnl)
-                            all_returns.append(partial_pnl)
-                            running_gain += partial_pnl
-                            pos.ppl_fired = True
-                            pos.ppl_first_exit_price = price
-                            be_buf = cfg.PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT / 100.0
-                            if pos.side == "LONG":
-                                pos.ppl_stop_level = pos.entry_price * (1.0 + be_buf)
-                            else:
-                                pos.ppl_stop_level = pos.entry_price * (1.0 - be_buf)
-                            pos.qty *= (1.0 - cfg.PARTIAL_PROFIT_LOCK_FRAC)
-                        elif pos.ppl_fired and not pos.ppl_stop_upgraded and gain >= cfg.PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT:
-                            # Step 2: upgrade stop
-                            pos.ppl_stop_level = pos.ppl_first_exit_price
-                            pos.ppl_stop_upgraded = True
-                        elif pos.ppl_fired and pos.ppl_stop_level > 0:
-                            # Step 3: stop hit check
-                            stop_hit = (pos.side == "LONG" and price <= pos.ppl_stop_level) or \
-                                       (pos.side == "SHORT" and price >= pos.ppl_stop_level)
-                            if stop_hit:
+                        if not pos.ppl_fired:
+                            _ppl1 = _check_ppl_step1(store, bar_idx, pos, cfg)
+                            if _ppl1 is not None:
+                                frac = _ppl1["frac"]
+                                partial_gain = pos.gain_pct * frac
+                                returns_by_sym[sym].append(partial_gain)
+                                all_returns.append(partial_gain)
+                                running_gain += partial_gain
+                                pos.qty *= (1.0 - frac)
+                                pos.ppl_fired = True
+                                pos.ppl_first_exit_price = price
+                                pos.ppl_stop_level = _ppl1["stop_level"]
+                                pos.ppl_stop_upgraded = False
+                                continue
+                        if pos.ppl_fired and not pos.ppl_stop_upgraded:
+                            _ppl2 = _check_ppl_step2(store, bar_idx, pos, cfg)
+                            if _ppl2 is not None:
+                                pos.ppl_stop_level = _ppl2["new_stop"]
+                                pos.ppl_stop_upgraded = True
+                        if pos.ppl_fired and pos.ppl_stop_level > 0:
+                            _ppl3 = _check_ppl_step3(store, bar_idx, pos, cfg)
+                            if _ppl3 is not None:
                                 pnl = pos.gain_pct
                                 returns_by_sym[sym].append(pnl)
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+
+                # ── BB_RECOVERY exit: bypass NOLOSS gate for stranded entries ───
+                # Source: tradier_manage.py:9275 (before NOLOSS block in execute_now).
+                # Fires when entry_price was outside BB and price returned within tolerance.
+                # Default: tradier=True, crypto=False. Bypasses NOLOSS gate (same as live).
+                if _bb_recovery_fn is not None:
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        if pos.gain_pct >= 0:
+                            continue  # only needed when at loss (is a NOLOSS bypass)
+                        try:
+                            _bbr_sig = _bb_recovery_fn(store, bar_idx, pos, self.mode, cfg)
+                            if _bbr_sig is not None:
+                                pnl = pos.gain_pct
+                                returns_by_sym[sym].append(pnl)
+                                all_returns.append(pnl)
+                                running_gain += pnl
+                                pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                        except Exception:
+                            pass
+
+                # ── WT_CROSSUNDER_FINAL standalone exit ──────────
+                # Source: vec_paths/wt_crossunder_final.py.
+                # Fires INDEPENDENTLY (not as a gate on the WT-cross below).
+                # Live logic: LTF down + 15m confirm + ≥1 HTF against → CLOSE.
+                # Default ON (WT_CROSSUNDER_FINAL_ENABLED=True) matching live.
+                # UNIVERSAL_NOLOSS_GATE honored here — live has NOLOSS gate BELOW SRS
+                # but ABOVE WT_CROSSUNDER_FINAL (live uses it inside the delta block
+                # which is below the NOLOSS gate for tradier accounts).
+                if cfg.WT_CROSSUNDER_FINAL_ENABLED:
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0:
+                            continue
+                        _xu_sig = _check_wt_crossunder_final_exit(store, bar_idx, pos, self.mode, cfg)
+                        if _xu_sig is not None:
+                            pnl = pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                            if pnl > 0:
+                                pos.last_reduce_price = price
 
                 # ── WT-based exit logic ─────────────────────────
                 for pos in (pos_long, pos_short):
@@ -1063,14 +1277,9 @@ class VecEngine:
                         hold_min = (ts_i - pos.entry_ts) / 60.0
                         if hold_min < min_hold:
                             continue
-                    # UNIVERSAL_NOLOSS_GATE: block loss exits (except R1/R2 already handled)
+                    # UNIVERSAL_NOLOSS_GATE: block loss exits (except R1/R2/SRS already handled)
                     if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0:
                         continue
-                    # WT_CROSSUNDER_FINAL_ENABLED: require additional crossunder
-                    if cfg.WT_CROSSUNDER_FINAL_ENABLED:
-                        crossunder = store.b(f"stoch_crossunder_{btf}", bar_idx)
-                        if not crossunder:
-                            continue
                     # RSI2 exit check (tradier mode)
                     if self.mode == "tradier" and cfg.TRADIER_RSI2_ENABLED:
                         rsi2 = store.f("rsi2_5m", bar_idx, default=50.0)
@@ -1079,15 +1288,6 @@ class VecEngine:
                         if pos.side == "LONG" and rsi2 < cfg.TRADIER_RSI2_EXIT_THRESHOLD_LONG:
                             continue
                         if pos.side == "SHORT" and rsi2 > cfg.TRADIER_RSI2_EXIT_THRESHOLD_SHORT:
-                            continue
-                    # STRUCTURAL_RANGE_SHIFT_EXIT (tradier)
-                    if self.mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_EXIT:
-                        tf_srs = cfg.STRUCTURAL_RANGE_SHIFT_TF
-                        bb_pctb = store.f(f"bb_pct_b_{tf_srs}", bar_idx, 0.5)
-                        bb_pctb_prev = store.f(f"bb_pct_b_{tf_srs}_prev", bar_idx, 0.5)
-                        srs_long_exit = (pos.side == "LONG" and bb_pctb < 0.5 and bb_pctb_prev >= 0.5)
-                        srs_short_exit = (pos.side == "SHORT" and bb_pctb > 0.5 and bb_pctb_prev <= 0.5)
-                        if not (srs_long_exit or srs_short_exit):
                             continue
                     pnl = pos.gain_pct
                     returns_by_sym[sym].append(pnl)
@@ -1316,6 +1516,107 @@ class VecEngine:
                     except Exception:
                         pass  # never let augment path break simulation
 
+                # ── HEDGE_ENGINE: same-symbol hedge paths (crypto only) ─────────
+                # Runs AFTER all exit blocks — hedge is a recovery action, not a primary exit.
+                # Disabled by default in backtest (HEDGE_ENGINE_ENABLED=False).
+                # Source: ez_positions_quick.py:5002 scan_and_hedge_losers +
+                #         ez_manage.py:14339 OBLIGATORY_HEDGE.
+                # 2026-05-10 strip defaults: 3m alone triggers, no deteriorating-gain gate.
+                if _HEDGE_ENGINE_AVAILABLE and getattr(cfg, "HEDGE_ENGINE_ENABLED", False) and self.mode == "crypto":
+                    for _hg_loser_side in ("LONG", "SHORT"):
+                        _hg_loser = pos_states[sym][_hg_loser_side]
+                        if not _hg_loser.open:
+                            continue
+                        _hg_hedge_side = "SHORT" if _hg_loser_side == "LONG" else "LONG"
+                        _hg_hedge_pos = pos_states[sym][_hg_hedge_side]
+                        try:
+                            _hg_scan_result = _check_scan_hedge_losers(store, bar_idx, _hg_loser, all_pos_states=pos_states[sym], mode=self.mode, cfg=cfg)
+                        except Exception:
+                            _hg_scan_result = None
+                        if _hg_scan_result is not None and not _hg_hedge_pos.open:
+                            _hg_hedge_pos.open = True
+                            _hg_hedge_pos.side = _hg_hedge_side
+                            _hg_hedge_pos.entry_price = price
+                            _hg_hedge_pos.entry_ts = float(ts_i)
+                            _hg_hedge_pos.mark_price = price
+                            _hg_hedge_pos.gain_pct = 0.0
+                            _hg_hedge_pos.max_gain_pct = 0.0
+                            _hg_hedge_pos.last_reduce_price = 0.0
+                            _hg_hedge_pos.last_close_price = 0.0
+                            _hg_hedge_pos.last_augment_ts = 0.0
+                            _hg_hedge_pos.ppl_fired = False
+                            _hg_hedge_pos.ppl_stop_level = 0.0
+                            _hg_hedge_pos.ppl_stop_upgraded = False
+                            _hg_hedge_pos.ppl_first_exit_price = 0.0
+                            _hg_hedge_pos.r1_fired = False
+                            _hg_hedge_pos.hedge_active = True
+                            _hg_hedge_pos.reason = _hg_scan_result["reason"]
+                            _hg_hedge_pos.qty = _hg_scan_result["size_qty"]
+                            _hg_loser.hedge_active = True
+                            continue
+                        try:
+                            _hg_obl_result = _check_obligatory_hedge(store, bar_idx, _hg_loser, mode=self.mode, cfg=cfg)
+                        except Exception:
+                            _hg_obl_result = None
+                        if _hg_obl_result is not None and not _hg_hedge_pos.open:
+                            _hg_hedge_pos.open = True
+                            _hg_hedge_pos.side = _hg_hedge_side
+                            _hg_hedge_pos.entry_price = price
+                            _hg_hedge_pos.entry_ts = float(ts_i)
+                            _hg_hedge_pos.mark_price = price
+                            _hg_hedge_pos.gain_pct = 0.0
+                            _hg_hedge_pos.max_gain_pct = 0.0
+                            _hg_hedge_pos.last_reduce_price = 0.0
+                            _hg_hedge_pos.last_close_price = 0.0
+                            _hg_hedge_pos.last_augment_ts = 0.0
+                            _hg_hedge_pos.ppl_fired = False
+                            _hg_hedge_pos.ppl_stop_level = 0.0
+                            _hg_hedge_pos.ppl_stop_upgraded = False
+                            _hg_hedge_pos.ppl_first_exit_price = 0.0
+                            _hg_hedge_pos.r1_fired = False
+                            _hg_hedge_pos.hedge_active = True
+                            _hg_hedge_pos.reason = _hg_obl_result["reason"]
+                            _hg_hedge_pos.qty = _hg_obl_result["size_qty"]
+                            _hg_loser.hedge_active = True
+                            continue
+                        _hg_needed = (_hg_scan_result is not None or _hg_obl_result is not None)
+                        _hg_blocked = _hg_needed and _hg_hedge_pos.open
+                        if _hg_blocked and bool(getattr(cfg, "HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", True)):
+                            try:
+                                _hg_fail_result = _check_hedge_failed_fallback(store, bar_idx, _hg_loser, mode=self.mode, cfg=cfg, hedge_attempt_result=False)
+                            except Exception:
+                                _hg_fail_result = None
+                            if _hg_fail_result is not None:
+                                pnl = _hg_loser.gain_pct
+                                returns_by_sym[sym].append(pnl)
+                                all_returns.append(pnl)
+                                running_gain += pnl
+                                _hg_loser.open = False
+                                _hg_loser.last_close_ts = float(ts_i)
+                                _hg_loser.last_close_price = price
+                                _hg_loser.hedge_active = False
+                    for _hc_side in ("LONG", "SHORT"):
+                        _hc_pos = pos_states[sym][_hc_side]
+                        if not _hc_pos.open or not getattr(_hc_pos, "hedge_active", False):
+                            continue
+                        try:
+                            _hc_result = _check_hedge_close(store, bar_idx, _hc_pos, mode=self.mode, cfg=cfg)
+                        except Exception:
+                            _hc_result = None
+                        if _hc_result is not None:
+                            pnl = _hc_pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            _hc_pos.open = False
+                            _hc_pos.last_close_ts = float(ts_i)
+                            _hc_pos.last_close_price = price
+                            _hc_pos.hedge_active = False
+                            _hc_orig_side = "LONG" if _hc_side == "SHORT" else "SHORT"
+                            _hc_orig = pos_states[sym].get(_hc_orig_side)
+                            if _hc_orig is not None:
+                                _hc_orig.hedge_active = False
+
                 # ── Entry signal gate (parity with backtest_v8_engine:2321) ──
                 # Real engine: skip entry check if ts not in pre-computed gate set.
                 _gate = entry_gate_per_sym.get(sym)
@@ -1370,6 +1671,74 @@ class VecEngine:
                                 continue  # skip DC_BREAK and WT path
                         except Exception:
                             pass
+
+                    # ── SATOSHIT additive open (ez_satoshit.evaluate_satoshit_entry) ─
+                    # Source: ez_manage.py:23266 eval_funcs pipeline.
+                    # When SATOSHIT_ENABLED=True AND position is ZERO: open via 5-vote system.
+                    # Fires BEFORE DC_BREAK and WT path (matches eval_funcs priority).
+                    # Default OFF (SATOSHIT_ENABLED=False). SATOSHIT_ENTRY_FILTER (crypto gate)
+                    # is handled separately inside the WT path — this is the independent open.
+                    _sat_enabled = (
+                        (self.mode == "crypto" and getattr(cfg, "SATOSHIT_ENABLED", False))
+                        or (self.mode == "tradier" and getattr(cfg, "SATOSHIT_ENABLED_TRADIER", False))
+                    )
+                    if _sat_enabled and _satoshit_fn is not None:
+                        try:
+                            _sat_sig = _satoshit_fn(store, bar_idx, side, self.mode, cfg)
+                            if _sat_sig is not None:
+                                pos.open = True
+                                pos.side = side
+                                pos.entry_price = price
+                                pos.entry_ts = ts_i
+                                pos.mark_price = price
+                                pos.gain_pct = 0.0
+                                pos.max_gain_pct = 0.0
+                                pos.last_reduce_price = 0.0
+                                pos.last_close_price = 0.0
+                                pos.last_augment_ts = 0.0
+                                pos.ppl_fired = False
+                                pos.ppl_stop_level = 0.0
+                                pos.ppl_stop_upgraded = False
+                                pos.ppl_first_exit_price = 0.0
+                                pos.r1_fired = False
+                                pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                                continue  # skip FH_MOMENTUM, DC_BREAK, WT path
+                        except Exception:
+                            pass
+
+                    # ── FH_MOMENTUM (tradier_manage.py:5876 / ez_manage.py:24001) ──────
+                    # First-Hour Momentum entry: fires BEFORE DC_BREAK and WT gate.
+                    # Detects price move from daily open within first-hour UTC window.
+                    # MFI and DC position gates confirm direction.
+                    # Default: tradier=OFF, crypto=ON per config.py.
+                    if _fh_momentum_fn is not None:
+                        _fhm_enabled = (
+                            (self.mode == "tradier" and getattr(cfg, "FH_MOMENTUM_ENABLED", False))
+                            or (self.mode == "crypto" and getattr(cfg, "CRYPTO_FH_MOMENTUM_ENABLED", True))
+                        )
+                        if _fhm_enabled:
+                            try:
+                                _fhm_sig = _fh_momentum_fn(store, bar_idx, side, self.mode, cfg)
+                                if _fhm_sig is not None:
+                                    pos.open = True
+                                    pos.side = side
+                                    pos.entry_price = price
+                                    pos.entry_ts = ts_i
+                                    pos.mark_price = price
+                                    pos.gain_pct = 0.0
+                                    pos.max_gain_pct = 0.0
+                                    pos.last_reduce_price = 0.0
+                                    pos.last_close_price = 0.0
+                                    pos.last_augment_ts = 0.0
+                                    pos.ppl_fired = False
+                                    pos.ppl_stop_level = 0.0
+                                    pos.ppl_stop_upgraded = False
+                                    pos.ppl_first_exit_price = 0.0
+                                    pos.r1_fired = False
+                                    pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                                    continue  # skip DC_BREAK and WT path
+                            except Exception:
+                                pass
 
                     # ── DC_BREAK_HIGH / DC_BREAK_LOW path (tradier_manage._check_dc_break) ──
                     # Independent of WT gate — fires when DC channel is broken with
@@ -1633,8 +2002,18 @@ class VecEngine:
                             continue
 
                     # ── SATOSHIT entry filter (crypto) ───────
+                    # Source: ez_manage.py:10116/10397 (SATOSHIT_ENTRY_FILTER gate on WT path).
+                    # Default True for crypto. When _satoshit_fn (vec_paths/satoshit.py) is
+                    # available, uses the full 5-vote system. Falls back to _check_satoshit().
                     if self.mode == "crypto" and cfg.SATOSHIT_ENTRY_FILTER:
-                        sat_ok = self._check_satoshit(store, bar_idx, side, cfg)
+                        if _satoshit_fn is not None:
+                            try:
+                                _sat_filter_sig = _satoshit_fn(store, bar_idx, side, self.mode, cfg)
+                                sat_ok = (_sat_filter_sig is not None)
+                            except Exception:
+                                sat_ok = self._check_satoshit(store, bar_idx, side, cfg)
+                        else:
+                            sat_ok = self._check_satoshit(store, bar_idx, side, cfg)
                         if not sat_ok:
                             continue
 
@@ -1668,6 +2047,21 @@ class VecEngine:
                         lr_ok = self._check_lr_filter(store, bar_idx, side, cfg)
                         if not lr_ok:
                             continue
+
+                    # ── MOM3 / MOM5 additive score boost (ez_manage.py:18765) ──
+                    # Source: BACKTEST_CHANGE_4/5 in final_order_quantity — each adds +22.
+                    # In vec: ADDITIVE (never gates by default). When MOM3_GATE_REQUIRED=True
+                    # it acts as a hard gate (block if neither MOM3 nor MOM5 fires).
+                    _mom3_gate = getattr(cfg, 'MOM3_GATE_REQUIRED', False)
+                    _mom3_boost_result = None
+                    if _mom3_fn is not None and (cfg.MOM3_ENTRY_ENABLED or cfg.MOM5_ENTRY_ENABLED):
+                        try:
+                            _mom3_boost_result = _mom3_fn(store, bar_idx, side, self.mode, cfg)
+                        except Exception:
+                            _mom3_boost_result = None
+                    if _mom3_gate and _mom3_boost_result is None:
+                        if cfg.MOM3_ENTRY_ENABLED or cfg.MOM5_ENTRY_ENABLED:
+                            continue  # gate mode: block if no MOM3/5 signal
 
                     # ── Entry accepted — open position (WT path) ───────
                     pos.open = True
@@ -2034,7 +2428,7 @@ def report_switch_coverage() -> Dict[str, str]:
       "MISSING"   — not wired in vec engine (silent bug!)
     """
     wired = {
-        "SATOSHIT_ENABLED_TRADIER": "APPROX",  # tradier satoshit not yet wired (stocks only)
+        "SATOSHIT_ENABLED_TRADIER": "WIRED",  # vec_paths/satoshit.py — full 5-vote + HTF gates
         "DELTA_ENTRY_ENABLED": "APPROX",        # velocity proxy
         "DELTA_ENGINE_ENABLED": "APPROX",       # velocity proxy exit
         "RZ_EXIT_ENABLED": "WIRED",
@@ -2048,10 +2442,10 @@ def report_switch_coverage() -> Dict[str, str]:
         "TRADIER_DC_DAYTRADE_TARGET_PCT": "APPROX",
         "TRADIER_DC_POSITION_ENTRY_THRESHOLD": "WIRED",
         "TRADIER_ENTRY_SCORE_THRESHOLD": "WIRED",
-        "TRADIER_FH_MOMENTUM_DC_CONFIRM": "APPROX",
-        "TRADIER_FH_MOMENTUM_DC_MAX_LONG": "APPROX",
-        "TRADIER_FH_MOMENTUM_MFI_CONFIRM": "APPROX",
-        "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT": "APPROX",
+        "TRADIER_FH_MOMENTUM_DC_CONFIRM": "WIRED",
+        "TRADIER_FH_MOMENTUM_DC_MAX_LONG": "WIRED",
+        "TRADIER_FH_MOMENTUM_MFI_CONFIRM": "WIRED",
+        "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT": "WIRED",
         "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER": "WIRED",
         "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER": "WIRED",
         "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": "WIRED",
