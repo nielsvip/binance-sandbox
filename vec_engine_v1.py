@@ -2176,20 +2176,23 @@ class VecEngine:
 
                     # ── WT composite scoring gate (tradier_manage.py:3750) ──────────
                     # FIX (noop): TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER was declared
-                    # but never read. Gate: wt_bull_alignment >= 3 AND wt_composite_long >= -20.
-                    # Source: tradier_manage.py:3756-3758, _wt_block=-20.0.
+                    # but never read. Gate: wt_bull_alignment >= 3 AND wt_composite_long >= threshold.
+                    # Source: tradier_manage.py:3750-3759.
+                    # In vec: wt_composite_long is always >= 0 (NPZ values [0, 503]). The meaningful
+                    # gate is WT_COMPOSITE_LONG_MIN / WT_COMPOSITE_SHORT_MIN — when raised above 0,
+                    # this filters to only high-quality WT composite bars.
+                    # Default WT_COMPOSITE_LONG_MIN=0.0 → gate is wt_alignment>=3 only.
                     if self.mode == "tradier" and bool(getattr(cfg, "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", False)):
                         _wt_align_field = "wt_bull_alignment" if side == "LONG" else "wt_bear_alignment"
                         _wt_comp_field = "wt_composite_long" if side == "LONG" else "wt_composite_short"
-                        _wt_side_align = int(store.f(_wt_align_field, bar_idx, 0))
+                        _wt_side_align = int(store.f(_wt_align_field, bar_idx, 5))
                         _wt_side_comp = store.f(_wt_comp_field, bar_idx, 0.0)
                         _wt_comp_long_min = float(getattr(cfg, "WT_COMPOSITE_LONG_MIN", 0.0))
                         _wt_comp_short_min = float(getattr(cfg, "WT_COMPOSITE_SHORT_MIN", 0.0))
                         _wt_comp_user_min = _wt_comp_long_min if side == "LONG" else _wt_comp_short_min
-                        _wt_comp_block = max(-20.0, _wt_comp_user_min)
                         if _wt_side_align < 3:
                             continue
-                        if _wt_side_comp < _wt_comp_block:
+                        if _wt_side_comp < _wt_comp_user_min:
                             continue
 
                     # ── LTF stoch alignment gate (parity with ez_manage.check_entry_alignment) ──

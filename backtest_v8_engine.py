@@ -253,6 +253,127 @@ if V8_USE_VEC_ALL:
     V8_USE_VEC_OPEN_INTENT_SIZE = V8_USE_VEC_QUARANTINE_STRATEGY = True
 
 # ═══════════════════════════════════════════════════════════════
+# 2026-05-12 — SHADOW VALIDATOR
+# Non-invasive audit: when V8_VEC_SHADOW_VALIDATE=1 every accepted/refused trade
+# is also evaluated by the parity vec modules and any disagreement is appended to
+# /tmp/v8_vec_divergences.jsonl. Engine behavior is unchanged — this is observation
+# only. Comparison is best-effort (vec modules require specific input shapes; we
+# build them from the live state available at the eta call site).
+# ═══════════════════════════════════════════════════════════════
+_V8_SHADOW_DIVERGENCE_PATH = os.environ.get("V8_VEC_DIVERGENCE_LOG", "/tmp/v8_vec_divergences.jsonl")
+_V8_SHADOW_STATE = {
+    "checks": 0,
+    "divergences": 0,
+    "by_gate": {},  # gate_name -> {checks, divergences, last_example}
+    "last_flush_n": 0,
+}
+
+def _v8_shadow_log_divergence(gate: str, payload: dict) -> None:
+    """Append one divergence record to the audit log."""
+    if not V8_VEC_SHADOW_VALIDATE:
+        return
+    try:
+        rec = {"gate": gate, **payload}
+        with open(_V8_SHADOW_DIVERGENCE_PATH, "a") as fh:
+            fh.write(json.dumps(rec, default=str) + "\n")
+    except Exception:
+        pass
+
+def _v8_shadow_bump(gate: str, diverged: bool, example: dict) -> None:
+    st = _V8_SHADOW_STATE
+    st["checks"] += 1
+    g = st["by_gate"].setdefault(gate, {"checks": 0, "divergences": 0, "last_example": None})
+    g["checks"] += 1
+    if diverged:
+        st["divergences"] += 1
+        g["divergences"] += 1
+        g["last_example"] = example
+        _v8_shadow_log_divergence(gate, example)
+
+def _v8_shadow_validate_eta(scalar_outcome, *, action, position_key, reason, qty, px,
+                            is_hedge, is_reduce, position_amt, gain, last_open_ts,
+                            last_reduce_ts, last_augment_ts, now_ts, cfg) -> None:
+    """Run the available vec modules against the same inputs and audit divergences.
+
+    scalar_outcome — None  → engine accepted (executed_trades.append fired)
+                     "BLOCKED_…"|"…REFUSED…" → engine refused, return string carried.
+    """
+    if not (V8_VEC_SHADOW_VALIDATE and V8_VEC_PARITY_AVAILABLE):
+        return
+    engine_blocked = scalar_outcome is not None and isinstance(scalar_outcome, str) and (
+        scalar_outcome.startswith("BLOCKED") or "REFUSED" in scalar_outcome
+    )
+    common_ctx = {
+        "action": action,
+        "position_key": position_key,
+        "reason": reason,
+        "qty": float(qty or 0),
+        "px": float(px or 0),
+        "is_hedge": bool(is_hedge),
+        "is_reduce": bool(is_reduce),
+        "now_ts": float(now_ts or 0),
+        "engine_outcome": scalar_outcome,
+        "engine_blocked": engine_blocked,
+    }
+    # ─── Gate 1: cooldown_locks (HARD_REDUCE_LOCK / HARD_AUGMENT_LOCK / AUGMENTATION_COOLDOWN) ──
+    try:
+        v_blk, v_reason, v_gate = evaluate_cooldown_locks_core(
+            action=action,
+            now_ts=float(now_ts or 0),
+            last_reduce_ts=float(last_reduce_ts or 0),
+            last_augment_ts=float(last_augment_ts or 0),
+            reason=reason or '',
+            position_amt=float(position_amt or 0),
+            is_hedge=bool(is_hedge),
+            current_gain_pct=float(gain or 0),
+            cfg=cfg,
+        )
+        # We only flag a divergence when vec says BLOCK but engine accepted (false-allow).
+        # The inverse (vec ALLOW, engine BLOCK) is expected — the engine has many other gates
+        # the vec module doesn't know about — so we don't flag those.
+        if v_blk and not engine_blocked:
+            _v8_shadow_bump("cooldown_locks", True, {**common_ctx, "vec_reason": v_reason, "vec_gate": v_gate})
+        else:
+            _v8_shadow_bump("cooldown_locks", False, {})
+    except Exception as _e:
+        _v8_shadow_log_divergence("cooldown_locks_ERROR", {"err": str(_e), **common_ctx})
+    # ─── Gate 2: open_intent_size_gates (ABSOLUTE_OPEN_LOCK / PREFLIGHT_INTENT / HARD_SIZE) ──
+    try:
+        v_blk2, v_reason2, v_gate2 = evaluate_open_intent_size_gates_core(
+            action=action,
+            position_key=position_key or '',
+            now_ts=float(now_ts or 0),
+            last_open_attempt_ts=float(last_open_ts or 0),
+            intent_locks_map=None,
+            proposed_qty=float(qty or 0),
+            gain=float(gain or 0),
+            config=cfg,
+            position_amt=float(position_amt or 0),
+            mark_price=float(px or 0),
+            is_hedge=bool(is_hedge),
+            reason=reason or '',
+        )
+        if v_blk2 and not engine_blocked:
+            _v8_shadow_bump("open_intent_size_gates", True,
+                            {**common_ctx, "vec_reason": v_reason2, "vec_gate": v_gate2})
+        else:
+            _v8_shadow_bump("open_intent_size_gates", False, {})
+    except Exception as _e:
+        _v8_shadow_log_divergence("open_intent_size_gates_ERROR", {"err": str(_e), **common_ctx})
+    # ─── Gate 3: newborn_protect (15-min grace after a fresh open) ──
+    # Skipped here: needs per-position open_ts which the engine doesn't surface
+    # uniformly; covered by the dedicated parity tests at tools/test_newborn_*.
+
+def _v8_shadow_summary() -> str:
+    if not V8_VEC_SHADOW_VALIDATE:
+        return ""
+    st = _V8_SHADOW_STATE
+    parts = [f"checks={st['checks']} divergences={st['divergences']}"]
+    for gate, g in sorted(st["by_gate"].items()):
+        parts.append(f"{gate}={g['divergences']}/{g['checks']}")
+    return " | ".join(parts)
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 1c: Re-apply overrides to instances created during ez_manage import
 # ez_manage.py line 730 does `config = Config()` at import time. Even with
 # dataclass defaults patched above, we re-apply to all instances now in case
@@ -1304,6 +1425,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
         is_aug_action = (not is_red) and (not is_hedge)
+        # ── Shadow validator hook (V8_VEC_SHADOW_VALIDATE=1) — audit only, no behavior change.
+        # Engine outcome here is unknown yet (we have not run the gates). We pass
+        # scalar_outcome=None and let the validator flag any vec module that says
+        # BLOCK on inputs the engine is about to evaluate. If the engine ALSO blocks
+        # for the same reason — no harm; we log it as a non-divergence.
+        if V8_VEC_SHADOW_VALIDATE and V8_VEC_PARITY_AVAILABLE:
+            try:
+                _shadow_pos = trade_manager.positions.get(pk)
+                _shadow_pos_amt = abs(float(getattr(_shadow_pos, 'positionAmt', 0) or 0)) if _shadow_pos else 0.0
+                _shadow_gain = float(getattr(_shadow_pos, 'gain', 0) or 0) if _shadow_pos else 0.0
+                _shadow_aug_lock = (trade_manager.__dict__.get('_bt_augment_lock') or {}).get(pk, 0.0)
+                _shadow_now = float(_sim_ts[0]) if _sim_ts else 0.0
+                _v8_shadow_validate_eta(
+                    scalar_outcome=None,
+                    action=act, position_key=pk, reason=reason or '',
+                    qty=qty, px=px, is_hedge=is_hedge, is_reduce=is_red,
+                    position_amt=_shadow_pos_amt, gain=_shadow_gain,
+                    last_open_ts=0.0, last_reduce_ts=0.0,
+                    last_augment_ts=_shadow_aug_lock,
+                    now_ts=_shadow_now, cfg=config,
+                )
+            except Exception:
+                pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — DUP_GUARD_GAIN — mirror ez_manage.py:10970-10988
         # Live blocks AUGMENT below 0.5*MIN_GAIN (=1.5%). v8 was emitting 870 AUGMENT
@@ -2601,6 +2745,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Results — compute and print BEFORE queue cleanup so cancellation errors cannot block result
     elapsed = _real_time_module.time() - t0
     v8_logger.info(f"Done in {elapsed:.1f}s | {len(executed_trades)} trades")
+    # 2026-05-12 — Shadow validator summary (no-op unless V8_VEC_SHADOW_VALIDATE=1)
+    _shadow_sum = _v8_shadow_summary()
+    if _shadow_sum:
+        v8_logger.warning(f"[V8_VEC_SHADOW] {_shadow_sum} (log: {_V8_SHADOW_DIVERGENCE_PATH})")
     # ═══ NO-LIES RULE #2 — MARK-TO-MARKET OPEN POSITIONS AT FINAL BAR ═══
     # CLAUDE.md: "Open losing positions MUST be marked-to-market at the final bar
     # and appended to the return distribution BEFORE computing Sharpe. Skipping

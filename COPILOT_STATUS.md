@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-12 05:46:34 UTC
+# Copilot Status — 2026-05-12 06:02:44 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T05:43:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T05:43:56
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-12T05:43:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T05:45:00
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-12T05:45:00
-- **STALE_INDICATORS** [tradier]  — 2026-05-12T05:45:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T05:45:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T05:45:31
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T05:46:12
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-12T05:46:12
+- **STALE_INDICATORS** [tradier]  — 2026-05-12T05:58:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T05:58:27
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T05:58:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T05:59:21
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:00:30
+- **STALE_INDICATORS** [tradier]  — 2026-05-12T06:00:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-12T06:00:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-12T06:00:42
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:01:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-12T06:02:43
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 8 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.8%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.5%
 - HELD: **SLV** LONG (tradier) peak +10.6%, now +2.8%
 - HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-4.3%
 - HELD: **NEM** LONG (tradier) peak +5.5%, now +1.5%
@@ -46,9 +46,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 16
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 48
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] tradier_indicators.py running but log stale (252min)
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
