@@ -11045,23 +11045,24 @@ class MultiAccountTradeManager:
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, 'MIN_POSITION_SIZE', 45.0)
             if _pos_val <= _min_pos_val:
-                # 2026-05-09 FOOTHOLD pile-on guard
-                _now = time.time()
-                _lock_until = _foothold_locked_until.get(position_key, 0.0)
-                if _now < _lock_until:
-                    logger.critical(f"🚫 [FOOTHOLD_PILEON_LOCKED] {position_key}: BLOCKED — locked for {_lock_until - _now:.0f}s (pos never grew across {FOOTHOLD_PILEON_MAX_ATTEMPTS}+ attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s). action={action}")
-                    return f"BLOCKED_FOOTHOLD_PILEON_{int(_lock_until - _now)}s"
-                _atts = _foothold_attempts.get(position_key, [])
-                _atts = [(t, v) for (t, v) in _atts if _now - t <= FOOTHOLD_PILEON_WINDOW]
-                _max_seen_pos = max([v for (_, v) in _atts], default=0.0)
-                if len(_atts) >= FOOTHOLD_PILEON_MAX_ATTEMPTS and _max_seen_pos <= _min_pos_val:
-                    _foothold_locked_until[position_key] = _now + FOOTHOLD_PILEON_LOCK
-                    _foothold_attempts.pop(position_key, None)
-                    logger.critical(f"🚫 [FOOTHOLD_PILEON_TRIGGER] {position_key}: BLOCKED + LOCKED {FOOTHOLD_PILEON_LOCK:.0f}s — {len(_atts)} attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s, max_pos=${_max_seen_pos:.2f} never crossed ${_min_pos_val:.2f}. action={action}")
-                    return f"BLOCKED_FOOTHOLD_PILEON_TRIGGER_{len(_atts)}_attempts"
-                _atts.append((_now, _pos_val))
-                _foothold_attempts[position_key] = _atts
-                logger.info(f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]")
+                # 2026-05-09 FOOTHOLD pile-on guard — 2026-05-12 gated by FOOTHOLD_PILEON_ENABLED (default False) after user reported blocked breakouts.
+                if bool(getattr(config, 'FOOTHOLD_PILEON_ENABLED', False)):
+                    _now = time.time()
+                    _lock_until = _foothold_locked_until.get(position_key, 0.0)
+                    if _now < _lock_until:
+                        logger.critical(f"🚫 [FOOTHOLD_PILEON_LOCKED] {position_key}: BLOCKED — locked for {_lock_until - _now:.0f}s (pos never grew across {FOOTHOLD_PILEON_MAX_ATTEMPTS}+ attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s). action={action}")
+                        return f"BLOCKED_FOOTHOLD_PILEON_{int(_lock_until - _now)}s"
+                    _atts = _foothold_attempts.get(position_key, [])
+                    _atts = [(t, v) for (t, v) in _atts if _now - t <= FOOTHOLD_PILEON_WINDOW]
+                    _max_seen_pos = max([v for (_, v) in _atts], default=0.0)
+                    if len(_atts) >= FOOTHOLD_PILEON_MAX_ATTEMPTS and _max_seen_pos <= _min_pos_val:
+                        _foothold_locked_until[position_key] = _now + FOOTHOLD_PILEON_LOCK
+                        _foothold_attempts.pop(position_key, None)
+                        logger.critical(f"🚫 [FOOTHOLD_PILEON_TRIGGER] {position_key}: BLOCKED + LOCKED {FOOTHOLD_PILEON_LOCK:.0f}s — {len(_atts)} attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s, max_pos=${_max_seen_pos:.2f} never crossed ${_min_pos_val:.2f}. action={action}")
+                        return f"BLOCKED_FOOTHOLD_PILEON_TRIGGER_{len(_atts)}_attempts"
+                    _atts.append((_now, _pos_val))
+                    _foothold_attempts[position_key] = _atts
+                    logger.info(f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]")
             elif _pos_val > _min_pos_val and _gain < 3.0:
                 # ABSOLUTE: NO opens/augments/reentries/hedges on positions with gain < 3%. No exceptions.
                 if _gain < 0.0:

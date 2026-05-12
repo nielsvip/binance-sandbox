@@ -883,7 +883,7 @@ class Config:
     # _DUPLICATE_OPEN_GUARD gain-based replacement (USER 2026-05-09):
     # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5         # threshold = MULT * config.MIN_GAIN (=1.5% by default)
-    DUP_GUARD_USE_GAIN_GATE: bool = True           # False = revert to 900s time gate
+    DUP_GUARD_USE_GAIN_GATE: bool = False           # False = revert to 900s time gate
     # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
     # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
     # Set False to re-enable the old open-underweight path once system is verified.
@@ -894,6 +894,7 @@ class Config:
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
     TRADES_PER_SYM_PER_DAY_MAX: int = 8
+    FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
     # Only variants with pool_sharpe ≥ DEEP_TEST floor AND positive monthly gain
@@ -2712,7 +2713,7 @@ class Config:
     # WT_CROSS_EXIT, BANDAID_OFF, PEAK_GIVEBACK, and similar small-gain closes
     # while opposite is bleeding and current side has not yet earned enough to
     # offset. Bypass at EMERGENCY/HARD_STOP/MAX_AGE/ORPHAN/LIQ/STRUCTURAL/AGENT/USER.
-    OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED: bool = True
+    OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED: bool = False
     OPPOSITE_LOSER_DEEP_LOSS_PCT: float = -5.0
     OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN: float = 5.0
     OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M: bool = False
