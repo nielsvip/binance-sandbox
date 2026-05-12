@@ -1425,7 +1425,20 @@ def grid_canonical_audit_full():
     return combos
 
 
+def grid_gr_vote_score():
+    """2026-05-12 USER MANDATE: sweep multiplicative GR total-vote-score gate.
+    Total score = sum across ALL TFs of (indicators_agreeing per TF). Range 0-35.
+    Tests every integer threshold from 1 (loosest — 1 vote anywhere) to 35
+    (tightest — all 5 TFs × 7 indicators agreeing). Each variant flips ONE override.
+    """
+    combos = [("baseline_vote_off", {"GR_TOTAL_VOTE_SCORE_MIN": 0})]
+    for n in range(1, 36):
+        combos.append((f"GR_VOTE_{n}", {"GR_TOTAL_VOTE_SCORE_MIN": n}))
+    return combos
+
+
 TIER_MAP = {
+    "gr_vote_score": grid_gr_vote_score,
     "canonical_audit_full": grid_canonical_audit_full,
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,

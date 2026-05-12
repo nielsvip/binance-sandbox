@@ -109,10 +109,37 @@ def _run_gate(
     min_ind: int,
     px: float = 0.0,
 ) -> tuple[bool, int, str]:
-    """Core gate shared by entry and exit checks."""
+    """Core gate shared by entry and exit checks.
+
+    2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE mode.
+    When config.GR_TOTAL_VOTE_SCORE_MIN > 0, switch to the multiplicative score gate:
+      total_votes = sum across ALL TFs of (indicators_agreeing in that TF)
+      passes when total_votes >= GR_TOTAL_VOTE_SCORE_MIN
+    Range 1-35 (5 TFs × 7 indicators for crypto; up to 6×7=42 for tradier with W).
+    Score 1 = "1 indicator on 1 TF must agree" (loose). Score 35 = "all indicators on all TFs" (tightest).
+
+    Legacy MIN_TFS × MIN_IND binary gate kept for backward compat: when
+    GR_TOTAL_VOTE_SCORE_MIN == 0 and min_tfs > 0, use legacy logic.
+    """
+    # === NEW total-vote-score gate ===
+    try:
+        import config as _cfg_mod
+        _vote_min = int(getattr(_cfg_mod, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
+    except Exception:
+        _vote_min = 0
+    tfs = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
+    if _vote_min > 0:
+        total = 0
+        parts = []
+        for tf in tfs:
+            n, _ = _ind_score(ind, tf, is_long, px)
+            total += n
+            parts.append(f"{tf}:{n}")
+        passes = total >= _vote_min
+        return passes, total, f"vote_total={total}/{_vote_min}req [{' '.join(parts)}]"
+    # === LEGACY MIN_TFS × MIN_IND binary gate ===
     if min_tfs <= 0:
         return True, 0, "GATE_OFF"
-    tfs = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
     confirmed = 0
     parts = []
     for tf in tfs:

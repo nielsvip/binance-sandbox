@@ -1976,6 +1976,11 @@ class Config:
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
     GOLDEN_RULE_HTF_MIN_TFS: int = 0  # GOLDEN_RULE gate: require this many TFs to confirm (0=off). TFs=[3m,15m,1h,4h,D]. Sweep 1-5 to find best.
     GOLDEN_RULE_MIN_IND: int = 1  # USER 2026-05-11: was 2 → 1. Loosen GR consensus to admit more breakout entries. Backtest sub-floor DIAGNOSTIC doesn't differentiate; user mandate explicit. Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree.
+    # 2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE gate (multiplicative).
+    # When > 0: passes if SUM across all TFs of (indicators_agreeing per TF) >= GR_TOTAL_VOTE_SCORE_MIN.
+    # Range: 1 (loosest, 1 vote anywhere) ... 35 (5 TFs × 7 indicators all agreeing — tightest possible for crypto).
+    # When 0: falls back to legacy MIN_TFS × MIN_IND binary gate above.
+    GR_TOTAL_VOTE_SCORE_MIN: int = 0
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger

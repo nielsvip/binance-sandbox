@@ -2442,26 +2442,31 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             continue
                         _gr_dc15_ok = _gr_dc_15 and _gr_dc_l15 > 0 and _gr_p < _gr_dc_l15
                         _gr_bb15_ok = _gr_bb_15 and _gr_bb_l15 > 0 and _gr_p < _gr_bb_l15
-                    if not (_gr_dc15_ok or _gr_bb15_ok):
-                        continue
-                    # ═══ DEAD-KNOB REPAIR 2026-05-10 ═══
-                    # Wire HTF consensus + HTF_VETO knobs that were dead in backtest path.
-                    # Ablation 2026-05-10 18:00 UTC found these knobs produced identical
-                    # results across 27/28 crypto + 27/30 tradier variants — they were defined
-                    # in config but never read by the engine GR producer. Now read directly
-                    # via golden_rule_htf.score_entry_htf() for both modes.
-                    _gr_htf_min_tfs = int(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0))
-                    if _gr_htf_min_tfs > 0:
-                        try:
+                    # ═══ 2026-05-12 USER MANDATE: GOLDEN_RULE IS A SIGNAL NOT A FILTER ═══
+                    # GR must GENERATE MORE entries, not block them. Two trigger paths now fire
+                    # entries (UNION, not intersection):
+                    #   1) DC/BB break path (legacy) — fires when _gr_dc15_ok OR _gr_bb15_ok
+                    #   2) GR_TOTAL_VOTE_SCORE_MIN signal — fires when sum-across-TFs of
+                    #      indicators-agreeing >= threshold. Adds entries the breakout path missed.
+                    # No filtering: if neither triggers, we skip; if either triggers, we enter.
+                    _vote_signal_fire = False
+                    try:
+                        _vote_min = int(getattr(ez_manage.config, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
+                        if _vote_min > 0:
                             from golden_rule_htf import score_entry_htf as _gr_score_entry_x
-                            _gr_min_ind_x = int(getattr(ez_manage.config, 'GOLDEN_RULE_MIN_IND', 2))
                             _gr_mode_x = "tradier" if mode == "tradier" else "crypto"
-                            _gr_passes_x, _gr_ntfs_x, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, _gr_htf_min_tfs, _gr_min_ind_x, _gr_p)
-                            if not _gr_passes_x:
-                                continue
-                        except Exception as _gr_consensus_err:
-                            if step < 5:
-                                v8_logger.warning(f'[GR_HTF_CONSENSUS] {_gr_pk}: {_gr_consensus_err} — gate fail-open')
+                            # When GR_TOTAL_VOTE_SCORE_MIN > 0, score_entry_htf internally switches to
+                            # vote-sum mode and `passes` reflects vote >= threshold.
+                            _vote_passes, _vote_n, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, 1, 1, _gr_p)
+                            _vote_signal_fire = bool(_vote_passes)
+                    except Exception as _gr_vote_err:
+                        if step < 5:
+                            v8_logger.warning(f'[GR_VOTE_SIGNAL] {_gr_pk}: {_gr_vote_err}')
+                    # SIGNAL UNION: skip ONLY when neither path triggers
+                    if not (_gr_dc15_ok or _gr_bb15_ok or _vote_signal_fire):
+                        continue
+                    # Tag the entry reason so we can distinguish vote-signal vs breakout origin
+                    _gr_signal_origin = "VOTE" if (_vote_signal_fire and not (_gr_dc15_ok or _gr_bb15_ok)) else ("BREAKOUT" if (_gr_dc15_ok or _gr_bb15_ok) else "BOTH")
                     if bool(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)):
                         _gr_w1_D_v = float(_gr_ind.get('wt1_D', 0) or 0)
                         _gr_w2_D_v = float(_gr_ind.get('wt2_D', 0) or 0)
