@@ -926,41 +926,56 @@ _executed_trades: List[Dict] = []
 #     no-op'd — wall-clock delays don't match sim-time and would otherwise
 #     fire mid-bar non-deterministically.
 _pending_v8_coros: List = []
-# Long-running task name patterns — keep on real scheduler so they survive bars
-_V8_LONG_RUNNING_TASK_PATTERNS = (
-    'process_orders', '_loop', 'scan_loop', 'monitor_loop', 'monitor_hedge',
-    'breathing_hedge_scan', 'obligatory_hedge_or_close_loop',
-    'priority_exit_scan', 'quick_exit_monitor', 'quick_entry_monitor',
-    'bulk_entry_scan', 'pair_flatten_stuck', 'quick_scalp_monitor',
-    'sla_miss_enforcer', 'position_watchdog', 'scalp_v3_scan',
-    '_maintain_', '_keepalive', '_hot_path', '_cold_data',
-    '_loader_loop', '_last_events_refresh_loop',
-    '_aggressive_indicator_health_check', '_intervention_queue_loop',
-    '_save_all_accounts', '_cleanuplocal_locks',
+# WHITELIST approach (safer): only specific fire-and-forget side-effect coroutines
+# get queued for deterministic drain. Everything else stays on the real scheduler.
+# This avoids deadlock from long-running tasks accidentally landing in the queue.
+# Patterns are substring-matched against coroutine name (co_name / __qualname__).
+_V8_FIRE_AND_FORGET_PATTERNS = (
+    # Redis writes (cooldowns, locks) — ez_manage.py:13286, 13303, 22407-22408 etc.
+    # These are guarded by attribute lookup `coro_name == 'set' or 'delete' or 'get'`
+    # plus context: only on InMemoryRedis instances. We use the function names.
+    'InMemoryRedis.set', 'InMemoryRedis.delete', 'InMemoryRedis.get',
+    'InMemoryRedis.hset', 'InMemoryRedis.hdel', 'InMemoryRedis.setex',
+    # Hedge persistence — ez_manage.py:15354, 15573
+    'persist_hedge_record',
+    # Stop level manager — ez_manage.py:13312, 10762, 10844
+    'StopLevelManager.manage', '_flush_registry',
+    # Hedge execution — ez_manage.py:13847, 12791, 6186, 13880, 13907, etc.
+    'execute_dual_hedge', 'execute_same_symbol_hedge', '_manage_hedge_for_position',
+    # Position service fire-and-forget
+    'fetch_positions', 'save_reduced_positions', 'save_augmented_positions',
+    'save_direct_high_gain_augmented', 'save_reversed_positions',
+    # Cancel order side-channel — ez_manage.py:10912, 2064
+    'futures_cancel_order',
+    # Verify reduction fields — ez_manage.py:13305 (call_later target, but if it ever
+    # gets wrapped in create_task)
+    '_verify_reduction_fields_set',
 )
 _v8_orig_create_task = None  # captured in apply_patches
 
 
 def _v8_det_create_task(coro, *, name=None, context=None):
     """Backtest deterministic create_task replacement.
-    Fire-and-forget coros queue into _pending_v8_coros for FIFO drain.
-    Long-running loops pass through to the real scheduler."""
+    Known fire-and-forget side-effect coros queue into _pending_v8_coros for
+    FIFO drain. EVERYTHING ELSE falls through to the real scheduler so
+    long-running tasks (process_orders, monitor loops, keepalives) keep running."""
     try:
         coro_name = ''
         cr_code = getattr(coro, 'cr_code', None)
         if cr_code is not None:
             coro_name = getattr(cr_code, 'co_name', '') or ''
-        if not coro_name:
-            coro_name = getattr(coro, '__qualname__', '') or getattr(coro, '__name__', '') or ''
+        # Walk the qualname which includes class for bound methods
+        qual = getattr(coro, '__qualname__', '') or ''
+        full_name = f"{qual}.{coro_name}" if qual and coro_name and not qual.endswith(coro_name) else (qual or coro_name)
     except Exception:
-        coro_name = ''
-    if any(p in coro_name for p in _V8_LONG_RUNNING_TASK_PATTERNS):
-        if context is not None:
-            return _v8_orig_create_task(coro, name=name, context=context)
-        return _v8_orig_create_task(coro, name=name)
-    # Fire-and-forget — queue for deterministic drain
-    _pending_v8_coros.append(coro)
-    return _V8DummyTask(coro)
+        full_name = ''
+    if any(p in full_name for p in _V8_FIRE_AND_FORGET_PATTERNS):
+        _pending_v8_coros.append(coro)
+        return _V8DummyTask(coro)
+    # Default: real scheduler — preserves long-running loops + unknown spawns.
+    if context is not None:
+        return _v8_orig_create_task(coro, name=name, context=context)
+    return _v8_orig_create_task(coro, name=name)
 
 
 class _V8DummyTask:
@@ -1068,30 +1083,25 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     asyncio.create_task = _v8_det_create_task
 
     # ─── NO-OP loop.call_later (NO-LIES 2026-05-12) ─────────────────────
-    # ez_manage.py:13305 schedules a wall-clock-delayed callback. In backtest
-    # sim time advances 180s/bar but real clock barely moves — the 4.0s
-    # delayed callback fires at non-deterministic points relative to sim bars.
-    # Replace with a no-op factory. (The callback verifies a reduction's
-    # fields are set, which our backtest sets synchronously anyway.)
-    _orig_get_event_loop = asyncio.get_event_loop
-    def _noop_call_later(*a, **kw):
-        class _NoopHandle:
-            def cancel(self): return False
-            def cancelled(self): return False
-            def when(self): return 0.0
-        return _NoopHandle()
-    def _patched_get_event_loop():
-        loop = _orig_get_event_loop()
-        # Wrap call_later only on the active loop, idempotently
-        if getattr(loop, '_v8_call_later_patched', False) is False:
-            try:
-                loop._v8_orig_call_later = loop.call_later
-                loop.call_later = _noop_call_later
-                loop._v8_call_later_patched = True
-            except Exception:
-                pass
-        return loop
-    asyncio.get_event_loop = _patched_get_event_loop
+    # ez_manage.py:13305 schedules a wall-clock-delayed callback (4s).
+    # Wall-clock delays don't match sim-time; would fire mid-bar non-deterministically.
+    # Patch is best-effort on the currently-running loop. uvloop / immutable
+    # event loops are tolerated — the single live call site is a file verifier
+    # that backtest doesn't care about.
+    try:
+        _v8_running_loop = asyncio.get_event_loop()
+        def _noop_call_later(*a, **kw):
+            class _NoopHandle:
+                def cancel(self): return False
+                def cancelled(self): return False
+                def when(self): return 0.0
+            return _NoopHandle()
+        try:
+            _v8_running_loop.call_later = _noop_call_later
+        except (AttributeError, TypeError):
+            pass
+    except Exception:
+        pass
 
 
     # --- Patch time in ALL trading modules ---

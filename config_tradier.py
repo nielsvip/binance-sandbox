@@ -1684,8 +1684,13 @@ class TradierConfig:
     #   frozen 3+5:  pool_sharpe=0.2802, trades=101, WR=58.4%, gain=+0.69%
     # The 4-day ablation that suggested 3+5 was sub-floor noise. Reverting to defaults
     # until a larger sample (full ≥100-stock × ≥1yr) confirms a different winner.
-    GOLDEN_RULE_HTF_MIN_TFS: int = 0  # GOLDEN_RULE entry gate (0=off). TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
-    GOLDEN_RULE_MIN_IND: int = 2  # Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
+    # 🚩 NEW BASELINE 2026-05-12 — GR_HTF entry signal (NOT filter) per user 2026-05-12.
+    # Wired in ez_manage.py:7135 via golden_rule_htf.score_entry_htf().
+    # Source: tradier_grtf7_hunt sweep — best result tfs=3 ind=6 → pool_sharpe +0.2587
+    # (3× baseline lift, 23 trades, dd=0% on 20-sym × 4mo, sub-floor [DIAGNOSTIC]).
+    # ROLLBACK: HTF_MIN_TFS=0 (was 0 — gate fully OFF).
+    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 🚩 NEW BASELINE was 0. ROLLBACK: 0. TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
+    GOLDEN_RULE_MIN_IND: int = 6      # 🚩 NEW BASELINE was 2. ROLLBACK: 2. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
