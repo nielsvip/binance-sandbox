@@ -9014,6 +9014,9 @@ class TradierTradeManager:
             except Exception:
                 ind = None
             if not ind:
+                if not is_long:
+                    logger.critical(f"🛑 [DG_0_NO_INDICATORS_SHORT_BLOCK] {position_key}: indicators unavailable — REFUSING SHORT (fail-closed, cannot verify direction). reason={reason}")
+                    return (True, "DG_NO_INDICATORS_SHORT_BLOCK")
                 return (False, "")
             px = float(current_price or 0)
             if px <= 0:
@@ -9046,12 +9049,23 @@ class TradierTradeManager:
             bias_4h = _bias(close_4h, open_4h)
             bias_1h = _bias(close_1h, open_1h)
             want = 1 if is_long else -1
-            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_D', True)) and bias_D != 0 and bias_D == -want:
-                logger.critical(f"🛑 [DG_3D_HTF_D_AGAINST] {position_key}: D bias={'bull' if bias_D>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
-                return (True, "DG_HTF_D_AGAINST")
-            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_4H', True)) and bias_4h != 0 and bias_4h == -want:
-                logger.critical(f"🛑 [DG_3H4_HTF_4H_AGAINST] {position_key}: 4h bias={'bull' if bias_4h>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
-                return (True, "DG_HTF_4H_AGAINST")
+            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_D', True)):
+                # For shorts: block if D is actively bullish (bias_D == 1) OR neutral/stale (bias_D == 0)
+                # Neutral = close_D ≈ open_D = stale pre-market data; "uncertain" must block shorts
+                # For longs: only block if D is actively bearish (bias_D == -1)
+                if (not is_long) and bias_D >= 0:
+                    logger.critical(f"🛑 [DG_3D_HTF_D_NOT_BEAR] {position_key}: D bias={'bull' if bias_D>0 else 'neutral/stale'} (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
+                    return (True, "DG_HTF_D_NOT_BEAR")
+                elif is_long and bias_D != 0 and bias_D == -want:
+                    logger.critical(f"🛑 [DG_3D_HTF_D_AGAINST] {position_key}: D bias={'bull' if bias_D>0 else 'bear'} but want bull entry — REFUSING. reason={reason}")
+                    return (True, "DG_HTF_D_AGAINST")
+            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_4H', True)):
+                if (not is_long) and bias_4h >= 0:
+                    logger.critical(f"🛑 [DG_3H4_HTF_4H_NOT_BEAR] {position_key}: 4h bias={'bull' if bias_4h>0 else 'neutral/stale'} (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
+                    return (True, "DG_HTF_4H_NOT_BEAR")
+                elif is_long and bias_4h != 0 and bias_4h == -want:
+                    logger.critical(f"🛑 [DG_3H4_HTF_4H_AGAINST] {position_key}: 4h bias={'bull' if bias_4h>0 else 'bear'} but want bull entry — REFUSING. reason={reason}")
+                    return (True, "DG_HTF_4H_AGAINST")
             if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_1H', False)) and bias_1h != 0 and bias_1h == -want:
                 logger.critical(f"🛑 [DG_3H1_HTF_1H_AGAINST] {position_key}: 1h bias={'bull' if bias_1h>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
                 return (True, "DG_HTF_1H_AGAINST")
@@ -9139,17 +9153,33 @@ class TradierTradeManager:
                 if _atr_1h > 0 and px > 0 and (_atr_1h / px) * 100.0 >= _atr_thr:
                     logger.critical(f"🛑 [DG_9_HIGH_VOL_FORCE_BLOCK] {position_key}: atr_1h/px={(_atr_1h/px)*100.0:.2f}% >= {_atr_thr:.2f}% — REFUSING force-open on volatile day. reason={reason}")
                     return (True, "DG_HIGH_VOL_FORCE_BLOCK")
-            # ── Control 10: WT_3M_FORCE_OPEN requires HTF confirm ──
-            if is_force_open and bool(getattr(config, 'DG_WT_3M_REQUIRE_HTF_CONFIRM', True)):
+            # ── Control 10: ALL short entries require at least one HTF TF confirming bear ──
+            # Extended from force-open-only to ALL short entries (2026-05-12: MU disaster repeat).
+            # At market open, bias_D/bias_4h are often 0 (stale = neutral). Neutral fails the
+            # "agree" test, so this blocks any short entry when HTF state is unknown.
+            if (not is_long) and bool(getattr(config, 'DG_WT_3M_REQUIRE_HTF_CONFIRM', True)):
                 _agree = False
                 if bias_D == want and bias_D != 0: _agree = True
                 if bias_4h == want and bias_4h != 0: _agree = True
                 if not _agree:
-                    logger.critical(f"🛑 [DG_10_WT3M_NO_HTF_CONFIRM] {position_key}: force-open requires D OR 4h agreement with side, got D={bias_D} 4h={bias_4h} want={want} — REFUSING. reason={reason}")
-                    return (True, "DG_WT3M_NO_HTF_CONFIRM")
+                    logger.critical(f"🛑 [DG_10_SHORT_NO_HTF_CONFIRM] {position_key}: short requires D OR 4h bearish, got D={bias_D} 4h={bias_4h} want={want} — REFUSING SHORT. reason={reason}")
+                    return (True, "DG_SHORT_NO_HTF_CONFIRM")
+            # ── Control 11: WT daily-level directional block for shorts ──
+            # If D-level WaveTrend is bullish (wt1_D > wt2_D), refuse to SHORT.
+            if not is_long:
+                _wt1_D = safe_fetch_float(ind.get('wt1_D', 0))
+                _wt2_D = safe_fetch_float(ind.get('wt2_D', 0))
+                if _wt1_D != 0 and _wt2_D != 0 and _wt1_D > _wt2_D:
+                    logger.critical(f"🛑 [DG_11_WT_D_BULL_SHORT_BLOCK] {position_key}: wt1_D={_wt1_D:.2f} > wt2_D={_wt2_D:.2f} (daily WT bullish) — REFUSING SHORT. reason={reason}")
+                    return (True, "DG_WT_D_BULL_SHORT_BLOCK")
+            _dg_day_ret_str = f"{(px - day_open) / day_open * 100.0:+.2f}%" if day_open > 0 else "n/a"
+            logger.info(f"[DG_PASS] {position_key}: disaster guard PASSED — side={position_side} day_ret={_dg_day_ret_str} bias_D={bias_D} bias_4h={bias_4h} rsi_15m={rsi_15m:.1f} rsi_1h={rsi_1h:.1f} reason={reason}")
             return (False, "")
         except Exception as _dg_err:
             logger.error(f"[DG_GUARD_ERR] {position_key}: {_dg_err}")
+            if position_side == 'SHORT':
+                logger.critical(f"🛑 [DG_ERR_SHORT_FAILCLOSED] {position_key}: disaster guard exception → fail-closed for SHORT. err={_dg_err}")
+                return (True, "DG_EXCEPTION_SHORT_FAILCLOSED")
             return (False, "")
 
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None) -> str:
