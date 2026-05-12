@@ -877,8 +877,11 @@ class Config:
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
-    R1_NEWBORN_WINDOW_MIN: float = 15.0            # active only first N min after open
+    R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
+    # Backtest DC stop loss sweep flags (crypto uses 3m TF):
+    DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_3m/dc_high4_3m recorded at entry
+    DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_3m/dc_high_3m (1-bar, wider)
     R1_TF: str = '3m'                              # sweep-testable
     # _DUPLICATE_OPEN_GUARD gain-based replacement (USER 2026-05-09):
     # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.

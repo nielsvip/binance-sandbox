@@ -1509,36 +1509,22 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
            bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', True)):
             try:
-                _r1_window = float(getattr(config, 'R1_NEWBORN_WINDOW_MIN', 15.0))
+                # Fixed stop price set at open/augment time — no time window.
+                _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                _r1_age_min = 0.0  # kept for log only
                 _r1_opened = getattr(position, 'opened_at', None)
-                _r1_age_min = 999.0
                 if isinstance(_r1_opened, datetime):
-                    _r1_actual_age = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
-                    # Pre-market BROKER_ORPHAN_ADOPTED positions have opened_at = adoption time,
-                    # not market open. By 13:30 ET they look 80+ min old → R1 never fires.
-                    # Fix: clamp age to mins-since-market-open so pre-market positions get
-                    # the full R1 window from 9:30 ET.
-                    _, _r1_mso = in_opening_buffer(min_minutes=9999)
-                    if _r1_mso >= 0:
-                        _r1_age_min = min(_r1_actual_age, _r1_mso)
-                    else:
-                        _r1_age_min = _r1_actual_age
-                if _r1_age_min <= _r1_window:
-                    _r1_use_4bar = bool(getattr(config, 'R1_USE_DC_4BAR', True))
-                    _r1_low_field = 'dc_low4_5m' if _r1_use_4bar else 'dc_low_5m'
-                    _r1_high_field = 'dc_high4_5m' if _r1_use_4bar else 'dc_high_5m'
-                    _r1_dc_low = safe_fetch_float(i.get(_r1_low_field), 0)
-                    _r1_dc_high = safe_fetch_float(i.get(_r1_high_field), 0)
+                    _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                if _r1_stop > 0:
                     _r1_breached = (
-                        (is_long and _r1_dc_low > 0 and current_price <= _r1_dc_low) or
-                        ((not is_long) and _r1_dc_high > 0 and current_price >= _r1_dc_high)
+                        (is_long and current_price <= _r1_stop) or
+                        ((not is_long) and current_price >= _r1_stop)
                     )
                     if _r1_breached:
                         _r1_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                         _r1_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
                         _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
-                        _r1_level = _r1_dc_low if is_long else _r1_dc_high
-                        logger.error(f"⛔ [R1_DC_LOW4_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.4f} {'<=' if is_long else '>='} {(_r1_low_field if is_long else _r1_high_field)}={_r1_level:.4f} entry={str(_r1_entry_sig)[:40]} → CLOSE")
+                        logger.error(f"⛔ [R1_DC_LOW4_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.4f} {'<=' if is_long else '>='} r1_stop={_r1_stop:.4f} entry={str(_r1_entry_sig)[:40]} → CLOSE")
                         # 2026-05-10 USER MANDATE: action-first. Try CLOSE; alert ONLY on
                         # unexplained failure. Min-notional / qty=0 / blacklist suppress.
                         _r1_failed = False
@@ -1627,6 +1613,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _wf_qty = max(_wf_size_usd / current_price, 1.0)
                         _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_wt1={_wf_wt1_3m:.1f}_wt2={_wf_wt2_3m:.1f}_px{current_price:.4f}"
                         logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if is_long else '<'} wt2_3m ({_wf_wt1_3m:.1f}{'>' if is_long else '<'}{_wf_wt2_3m:.1f}) → OPEN qty={_wf_qty:.2f}")
+                        _wf_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                        if _wf_stop > 0:
+                            position.r1_stop_price = _wf_stop
                         await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wf_reason, 80.0, override_qty=_wf_qty)
                         return f"WT_3M_FORCE_OPEN:{position_side}"
             except Exception as _wf_err:
@@ -1832,6 +1821,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             log_reason = aug_reason
                             logger.info(f"[{account_key}] 🟢 REVIEWING AUGMENT {symbol}: {aug_reason} Qty: {aug_qty}")
                             if market_open:
+                                _aug_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                                if _aug_stop > 0:
+                                    position.r1_stop_price = _aug_stop
                                 await queue_trade_action( order_queue, trade_manager, position_key, "AUGMENT",   aug_reason, aug_conf, override_qty=aug_qty )
                                 action_taken = True
                         else:
@@ -14324,6 +14316,9 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
             logger.debug(f"[HIGH_GAIN_AUGMENT] {position_key}: Calculated quantity <= 0")
             return
         reason = f"High_Gain_Augment_{gain:.1f}%_Vol_{i.get('rel_vol_5m', 1.0):.1f}x"
+        _hga_stop = safe_fetch_float(i.get('dc_low4_5m' if position_side == 'LONG' else 'dc_high4_5m'), 0.0)
+        if _hga_stop > 0 and position:
+            position.r1_stop_price = _hga_stop
         await queue_trade_action( order_queue, trade_manager, position_key,   "AUGMENT", reason, 80.0, override_qty=final_qty  )
         logger.info(f"[HIGH_GAIN_AUGMENT] {position_key}: Queued augmentation, gain={gain:.2f}%, qty={final_qty}")
         

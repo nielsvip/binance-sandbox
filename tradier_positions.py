@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiofiles
 import pandas as pd
+import pytz
 import redis.asyncio as redis
 from dateutil.parser import isoparse
 
@@ -325,6 +326,7 @@ class TradierPosition:
     mark_price_last_updated: Optional[datetime] = None    
     price_fetch_count: int = 0
     trade_wing: str = "swing"           # "swing" or "scalp"
+    r1_stop_price: float = 0.0
     # positionAmt: float = field(init=False)
     # entry_price: float = field(init=False)
     # current_price: float = field(init=False)
@@ -468,6 +470,18 @@ class RedisPositionManager:
             return False
 
 
+
+
+def _is_trading_hours() -> bool:
+    """True only during regular US market hours: 9:30–16:00 ET, weekdays."""
+    from datetime import time as _dt_time
+    try:
+        now_et = datetime.now(pytz.timezone("America/New_York"))
+    except Exception:
+        now_et = datetime.now(timezone.utc)
+    if now_et.weekday() >= 5:
+        return False
+    return _dt_time(9, 30) <= now_et.time() <= _dt_time(16, 0)
 
 
 class TradierPositionManager:
@@ -1291,8 +1305,11 @@ class TradierPositionManager:
         print(f"[{self.account_key}] Starting API sync loop...")
         while True:
             try:
+                if not _is_trading_hours():
+                    await asyncio.sleep(30)
+                    continue
                 await self.fetch_positions_from_api()
-                await asyncio.sleep(15) 
+                await asyncio.sleep(15)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -2524,9 +2541,12 @@ class TradierPositionManager:
         if self.account_key == "trc": offset = 10
         while self.running:
             try:
+                if not _is_trading_hours():
+                    await asyncio.sleep(30)
+                    continue
                 await self.process_account_update()
-                await asyncio.sleep(5) 
-            except asyncio.CancelledError: 
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"[{self.account_key}] Update Loop Error: {e}")

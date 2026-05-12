@@ -1639,6 +1639,7 @@ class Position:
     entry_price_before_sba: float = 0.0  # BACKTEST_CHANGE_145: original entry before any SBA
     is_hedge: bool = False
     hedge_for: Optional[str] = None
+    r1_stop_price: float = 0.0
 
     def __setattr__(self, name, value):
         if name in _POSITION_SERVICE_ONLY_FIELDS and hasattr(self, name):

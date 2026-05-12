@@ -1642,6 +1642,24 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             else:
                 _sym_only = pk.split(':', 1)[1].rsplit('_', 1)[0] if ':' in pk else sym
                 _live_pnl["open_positions"][pk] = {"vwap": px, "qty": qty, "side": ps or ('LONG' if pk.endswith('_LONG') else 'SHORT'), "entry_ts": _sim_ts[0], "entry_reason": _entry_reason_short, "symbol": _sym_only}
+            # Record fixed DC stop price on position at time of open/augment
+            if _live_pos_obj:
+                _is_long_open = pk.endswith('_LONG')
+                _dc_stop_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                _dc_stop_mode = getattr(config, 'mode', 'crypto') if hasattr(config, 'mode') else os.environ.get('V8_MODE', 'crypto')
+                if str(_dc_stop_mode).lower() == 'tradier':
+                    _dc_stop_val = float(_dc_stop_ind.get('dc_low4_5m' if _is_long_open else 'dc_high4_5m') or 0)
+                    if _dc_stop_val == 0:
+                        _dc_stop_val = float(_dc_stop_ind.get('dc_low_5m' if _is_long_open else 'dc_high_5m') or 0)
+                else:
+                    _dc_stop_val = float(_dc_stop_ind.get('dc_low4_3m' if _is_long_open else 'dc_high4_3m') or 0)
+                    if _dc_stop_val == 0:
+                        _dc_stop_val = float(_dc_stop_ind.get('dc_low_3m' if _is_long_open else 'dc_high_3m') or 0)
+                if _dc_stop_val > 0:
+                    try:
+                        _live_pos_obj.r1_stop_price = _dc_stop_val
+                    except Exception:
+                        pass
         elif is_red and pk in _live_pnl["open_positions"]:
             _pos = _live_pnl["open_positions"][pk]
             _is_long = _pos["side"] == "LONG"

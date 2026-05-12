@@ -583,9 +583,12 @@ class TradierConfig:
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = False
     # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # name kept for parity; tradier uses 5m TF
-    R1_NEWBORN_WINDOW_MIN: float = 15.0
+    R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_5m. False=dc_low_5m.
     R1_TF: str = '5m'                              # tradier base TF
+    # Backtest DC stop loss sweep flags (tradier uses 5m TF):
+    DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_5m/dc_high4_5m recorded at entry
+    DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_5m/dc_high_5m (1-bar, wider)
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     DUP_GUARD_USE_GAIN_GATE: bool = True
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).

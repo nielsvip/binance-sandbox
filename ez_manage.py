@@ -20036,6 +20036,9 @@ async def _process_single_override_check(trade_manager, account_key: str, positi
                             _tiny_usd = float(getattr(config, 'TRADEABLE_KEYS_MANDATORY_SIZE_USD', 9.0)) or float(getattr(config, 'START_POSITION_SIZE', 9.0))
                             _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
                             logger.warning(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}")
+                            _r1s_tkm = safe_fetch_float(_ind_z.get('dc_low4_3m' if _is_long_z else 'dc_high4_3m'), 0.0)
+                            if _r1s_tkm > 0 and position:
+                                position.r1_stop_price = _r1s_tkm
                             await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _reason_z, 75.0)
                         # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN — runs in parallel
                         # to the DC trigger above. Any tradeable_key with wt1_3m > wt2_3m (LONG)
@@ -20050,6 +20053,9 @@ async def _process_single_override_check(trade_manager, account_key: str, positi
                                 _wf_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 9.0)) or float(getattr(config, 'START_POSITION_SIZE', 9.0))
                                 _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if _is_long_z else 'SHORT'}_wt1={_wt1_3m_z:.1f}_wt2={_wt2_3m_z:.1f}_px{_px_z:.6f}"
                                 logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if _is_long_z else '<'} wt2_3m ({_wt1_3m_z:.1f}{'>' if _is_long_z else '<'}{_wt2_3m_z:.1f}) → OPEN ~${_wf_usd:.0f}")
+                                _r1s_wf = safe_fetch_float(_ind_z.get('dc_low4_3m' if _is_long_z else 'dc_high4_3m'), 0.0)
+                                if _r1s_wf > 0 and position:
+                                    position.r1_stop_price = _r1s_wf
                                 await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _wf_reason, 80.0)
             except Exception as _tkm_e:
                 logger.debug(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}")
@@ -20419,6 +20425,9 @@ async def override_check_uptrend_positions(trade_manager: MultiAccountTradeManag
                         needed_qty = (required_position_size - position_value) / current_price
                         if needed_qty <= 0: continue
                         base_conviction = 70.0
+                        _r1s_ov = safe_fetch_float(i.get('dc_low4_3m' if is_long else 'dc_high4_3m'), 0.0)
+                        if _r1s_ov > 0 and position:
+                            position.r1_stop_price = _r1s_ov
                         await queue_trade_action(order_queue, trade_manager, position_key, 'AUGMENT' if position_value > config.MIN_POSITION_SIZE else 'OPEN', f'OVERRIDE_OPEN_qty_{needed_qty}_{"LONG" if is_long else "SHORT"}_tup3m={t_up_3m}_tup15m={t_up_15m}_k_3mm={k_3m:.1f}_d_3mm={d_3m:.1f}_ha3m={ha_3m}_perc_sma1={perc_from_sma_1*100:.2f}%_perc_sma15={perc_from_sma_15*100:.2f}%_required=${required_position_size:.2f}_x{required_multiplier:.2f}', base_conviction)
                         logger.warning(f"[OVERRIDE_CHECK] {symbol} {account_key} {position_side}: NEW_POSITION_NEEDED")
             except Exception as e:
@@ -21015,40 +21024,31 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
     # ═══════════════════════════════════════════════════════════════════════════
     # R1 — DC_LOW4_3M EMERGENCY CLOSE (USER 2026-05-09).
-    # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured DC
-    # channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL log
-    # naming the entry signal so bad entry paths can be disabled.
-    # Knobs (sweep-testable): R1_USE_DC_4BAR (4-bar vs 1-bar), R1_NEWBORN_WINDOW_MIN.
+    # Fixed stop price set at open/augment time (dc_low4_3m LONG / dc_high4_3m SHORT).
+    # No time window — fires whenever current_price breaches the recorded stop level.
+    # Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL log naming the entry signal.
     # ═══════════════════════════════════════════════════════════════════════════
     if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
        bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', True)):
         try:
-            _r1_window = float(getattr(config, 'R1_NEWBORN_WINDOW_MIN', 15.0))
+            _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+            _r1_age_min = 0.0
             _r1_opened = getattr(position, 'opened_at', None)
-            _r1_age_min = 999.0
             if isinstance(_r1_opened, datetime):
                 _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
-            if _r1_age_min <= _r1_window:
-                _r1_ind = await ii(trade_manager, symbol)
-                if _r1_ind:
-                    _r1_use_4bar = bool(getattr(config, 'R1_USE_DC_4BAR', True))
-                    _r1_low_field = 'dc_low4_3m' if _r1_use_4bar else 'dc_low_3m'
-                    _r1_high_field = 'dc_high4_3m' if _r1_use_4bar else 'dc_high_3m'
-                    _r1_dc_low = safe_fetch_float(_r1_ind.get(_r1_low_field), 0)
-                    _r1_dc_high = safe_fetch_float(_r1_ind.get(_r1_high_field), 0)
-                    _r1_is_long = (position_side == 'LONG')
-                    _r1_breached = (
-                        (_r1_is_long and _r1_dc_low > 0 and current_price <= _r1_dc_low) or
-                        ((not _r1_is_long) and _r1_dc_high > 0 and current_price >= _r1_dc_high)
-                    )
-                    if _r1_breached:
+            if _r1_stop > 0:
+                _r1_is_long = (position_side == 'LONG')
+                _r1_breached = (
+                    (_r1_is_long and current_price <= _r1_stop) or
+                    ((not _r1_is_long) and current_price >= _r1_stop)
+                )
+                if _r1_breached:
                         _r1_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                         _r1_close_side = 'SELL' if _r1_is_long else 'BUY'
                         _r1_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                         _r1_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
                         _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
-                        _r1_level = _r1_dc_low if _r1_is_long else _r1_dc_high
-                        logger.error(f"⛔ [R1_DC_LOW4_3M_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m (<={_r1_window}m) price={current_price:.6f} {'<=' if _r1_is_long else '>='} {_r1_low_field if _r1_is_long else _r1_high_field}={_r1_level:.6f} entry={_r1_entry_sig[:40]} → CLOSE")
+                        logger.error(f"⛔ [R1_DC_LOW4_3M_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.6f} {'<=' if _r1_is_long else '>='} r1_stop={_r1_stop:.6f} entry={_r1_entry_sig[:40]} → CLOSE")
                         # 2026-05-10 USER MANDATE: action-first. Try CLOSE; alert ONLY if it
                         # fails for an unexplained reason. Min-notional / qty=0 / blacklist /
                         # already-closed are valid silent failures.
