@@ -1154,6 +1154,14 @@ class TradierConfig:
     #     applying new BASELINE for forward-test alignment between vec and live.
     # ═══════════════════════════════════════════════════════════════════════════
     WT_DC_ENTRY_THRESHOLD: float = 45  # 🚩 NEW BASELINE 2026-05-12 (was 0). ROLLBACK: set to 0.
+    # 🚩 NEW BASELINE 2026-05-12 — 3 additional gates for tradier WT_DC_ENTRY path.
+    # Wired in tradier_manage.py:2027-2068. Source: vec_sweep dc45_h1_s40_grOFF.
+    # ROLLBACK each to disabled value (commented inline).
+    HTF_ALIGN_REQUIRED_TRADIER: int = 1     # NEW. Min # of {1h,4h,D} that must align WT-direction. ROLLBACK: 0
+    COMBINED_STOCH_GATE_TRADIER: float = 40.0  # NEW. LONG blocked if k5m >= this; SHORT blocked if k5m <= 100-this. ROLLBACK: 100.0
+    GR_HTF_GATE_ENABLED: bool = False       # NEW. Adds GR HTF alignment gate (uses wt_bull_alignment/wt_bear_alignment). ROLLBACK: False (no change — gate stays off until validated)
+    GR_HTF_REQUIRE_BULL: int = 1            # Used only when GR_HTF_GATE_ENABLED=True
+    GR_HTF_REQUIRE_BEAR: int = 1            # Used only when GR_HTF_GATE_ENABLED=True
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage

@@ -40,6 +40,26 @@ import numpy as np
 from test_rate_guard import RateGuard
 
 # ═══════════════════════════════════════════════════════════════
+# STEP -1: Deterministic execution (NO-LIES 2026-05-12)
+# ═══════════════════════════════════════════════════════════════
+# Python uses a random PYTHONHASHSEED each invocation → set() iteration
+# order varies across runs → same inputs produce different trades. Sweep
+# results become un-comparable. Re-exec ourselves with PYTHONHASHSEED=0
+# if it isn't already set. Also seed Python random + numpy random for any
+# downstream code that uses them.
+if os.environ.get("PYTHONHASHSEED") != "0" and os.environ.get("V8_HASHSEED_LOCKED") != "1":
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.environ["V8_HASHSEED_LOCKED"] = "1"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+import random as _v8_random
+_v8_random.seed(0)
+try:
+    import numpy as _v8_np_seed
+    _v8_np_seed.random.seed(0)
+except Exception:
+    pass
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 0: Set dummy env vars BEFORE any import touches AccountConfig
 # ═══════════════════════════════════════════════════════════════
 _DUMMY_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
@@ -884,12 +904,195 @@ _executed_trades: List[Dict] = []
 
 
 # ═══════════════════════════════════════════════════════════════
+# STEP 4b: Deterministic task scheduling (NO-LIES — 2026-05-12)
+# ═══════════════════════════════════════════════════════════════
+# Live code uses asyncio.create_task(...) heavily for fire-and-forget side
+# effects (redis.set, persist_hedge_record, stop_manager.manage, etc.). The
+# task-execution ORDER under the asyncio scheduler is not deterministic across
+# Python invocations: same inputs → 41/46/41 trades on back-to-back runs. This
+# kills sweep credibility — every "improvement" is masked by run-to-run noise.
+#
+# Strategy: in apply_patches(), monkey-patch asyncio.create_task to enqueue
+# coroutines into a FIFO list rather than handing them to the scheduler. The
+# simulation loop then drains the list after each bar via drain_pending_v8_tasks(),
+# awaiting each coroutine in insertion order. Long-running tasks (queue
+# processor, monitor loops, keepalives, _maintain_*) are detected by name and
+# pass through to the real create_task — they need to remain alive across bars.
+#
+# Side benefits:
+#   * Eliminates 'coroutine never awaited' warnings (fire-and-forget coros now
+#     get drained deterministically each bar).
+#   * call_later() callbacks (single live use at ez_manage.py:13305) are
+#     no-op'd — wall-clock delays don't match sim-time and would otherwise
+#     fire mid-bar non-deterministically.
+_pending_v8_coros: List = []
+# Long-running task name patterns — keep on real scheduler so they survive bars
+_V8_LONG_RUNNING_TASK_PATTERNS = (
+    'process_orders', '_loop', 'scan_loop', 'monitor_loop', 'monitor_hedge',
+    'breathing_hedge_scan', 'obligatory_hedge_or_close_loop',
+    'priority_exit_scan', 'quick_exit_monitor', 'quick_entry_monitor',
+    'bulk_entry_scan', 'pair_flatten_stuck', 'quick_scalp_monitor',
+    'sla_miss_enforcer', 'position_watchdog', 'scalp_v3_scan',
+    '_maintain_', '_keepalive', '_hot_path', '_cold_data',
+    '_loader_loop', '_last_events_refresh_loop',
+    '_aggressive_indicator_health_check', '_intervention_queue_loop',
+    '_save_all_accounts', '_cleanuplocal_locks',
+)
+_v8_orig_create_task = None  # captured in apply_patches
+
+
+def _v8_det_create_task(coro, *, name=None, context=None):
+    """Backtest deterministic create_task replacement.
+    Fire-and-forget coros queue into _pending_v8_coros for FIFO drain.
+    Long-running loops pass through to the real scheduler."""
+    try:
+        coro_name = ''
+        cr_code = getattr(coro, 'cr_code', None)
+        if cr_code is not None:
+            coro_name = getattr(cr_code, 'co_name', '') or ''
+        if not coro_name:
+            coro_name = getattr(coro, '__qualname__', '') or getattr(coro, '__name__', '') or ''
+    except Exception:
+        coro_name = ''
+    if any(p in coro_name for p in _V8_LONG_RUNNING_TASK_PATTERNS):
+        if context is not None:
+            return _v8_orig_create_task(coro, name=name, context=context)
+        return _v8_orig_create_task(coro, name=name)
+    # Fire-and-forget — queue for deterministic drain
+    _pending_v8_coros.append(coro)
+    return _V8DummyTask(coro)
+
+
+class _V8DummyTask:
+    """Stand-in for asyncio.Task returned by _v8_det_create_task.
+    Callers that store/await the returned task get a Future-like object that
+    yields once it has been drained. We mark it done immediately because the
+    coro is guaranteed to be drained before the NEXT await in the sim loop
+    (drain happens at the end of each bar)."""
+    __slots__ = ('_coro', '_done', '_result', '_exception')
+
+    def __init__(self, coro):
+        self._coro = coro
+        self._done = False
+        self._result = None
+        self._exception = None
+
+    def done(self):
+        return self._done
+
+    def cancel(self, *a, **k):
+        return False
+
+    def cancelled(self):
+        return False
+
+    def result(self):
+        return self._result
+
+    def exception(self):
+        return self._exception
+
+    def add_done_callback(self, *a, **k):
+        pass
+
+    def remove_done_callback(self, *a, **k):
+        return 0
+
+    def get_loop(self):
+        try:
+            return asyncio.get_event_loop()
+        except Exception:
+            return None
+
+    def __await__(self):
+        # If the task hasn't been drained yet, drain inline now.
+        if not self._done:
+            if self._coro in _pending_v8_coros:
+                try:
+                    _pending_v8_coros.remove(self._coro)
+                except ValueError:
+                    pass
+                try:
+                    yield from self._coro.__await__()
+                    self._done = True
+                except Exception as _e:
+                    self._exception = _e
+                    self._done = True
+        return self._result
+
+
+async def drain_pending_v8_tasks():
+    """Drain ALL queued fire-and-forget coroutines in FIFO insertion order.
+    Recursive: coroutines that schedule more coroutines get those drained too.
+    Safe to call from anywhere in the sim loop — replaces ad-hoc
+    `await asyncio.sleep(0)` drains which only yield ONE loop tick."""
+    # Bounded loop to prevent runaway recursion if some tail-coro keeps spawning
+    _max_passes = 64
+    _pass = 0
+    while _pending_v8_coros and _pass < _max_passes:
+        _pass += 1
+        # Snapshot to preserve FIFO across nested spawns
+        _batch = list(_pending_v8_coros)
+        _pending_v8_coros.clear()
+        for _coro in _batch:
+            try:
+                await _coro
+            except Exception as _e:
+                # Swallow — fire-and-forget side effects (redis writes,
+                # persist_hedge_record, etc.) must not crash the sim loop.
+                if _pass <= 2:
+                    v8_logger.debug(f"[V8_DET_TASK] drain ex: {type(_e).__name__}: {_e}")
+    if _pending_v8_coros:
+        v8_logger.warning(f"[V8_DET_TASK] drain capped at {_max_passes} passes; {len(_pending_v8_coros)} coros remain")
+        _pending_v8_coros.clear()
+
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 5: Apply I/O patches BEFORE running main init
 # ═══════════════════════════════════════════════════════════════
 def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     """Apply ONLY I/O patches. No trade logic changes."""
-    global _executed_trades
+    global _executed_trades, _v8_orig_create_task
     _executed_trades = []
+    # Reset pending-coro list — apply_patches is called once per run.
+    _pending_v8_coros.clear()
+
+    # ─── DETERMINISTIC ASYNCIO PATCHES (NO-LIES 2026-05-12) ─────────────
+    # Replace asyncio.create_task with FIFO-queueing wrapper so fire-and-forget
+    # coroutines (redis writes, persist_hedge_record, stop_manager.manage, etc.)
+    # execute in deterministic insertion order during drain_pending_v8_tasks().
+    # Long-running loops (process_orders, _monitor_*, _maintain_*) bypass the
+    # queue and remain on the real scheduler — see _V8_LONG_RUNNING_TASK_PATTERNS.
+    if _v8_orig_create_task is None:
+        _v8_orig_create_task = asyncio.create_task
+    asyncio.create_task = _v8_det_create_task
+
+    # ─── NO-OP loop.call_later (NO-LIES 2026-05-12) ─────────────────────
+    # ez_manage.py:13305 schedules a wall-clock-delayed callback. In backtest
+    # sim time advances 180s/bar but real clock barely moves — the 4.0s
+    # delayed callback fires at non-deterministic points relative to sim bars.
+    # Replace with a no-op factory. (The callback verifies a reduction's
+    # fields are set, which our backtest sets synchronously anyway.)
+    _orig_get_event_loop = asyncio.get_event_loop
+    def _noop_call_later(*a, **kw):
+        class _NoopHandle:
+            def cancel(self): return False
+            def cancelled(self): return False
+            def when(self): return 0.0
+        return _NoopHandle()
+    def _patched_get_event_loop():
+        loop = _orig_get_event_loop()
+        # Wrap call_later only on the active loop, idempotently
+        if getattr(loop, '_v8_call_later_patched', False) is False:
+            try:
+                loop._v8_orig_call_later = loop.call_later
+                loop.call_later = _noop_call_later
+                loop._v8_call_later_patched = True
+            except Exception:
+                pass
+        return loop
+    asyncio.get_event_loop = _patched_get_event_loop
+
 
     # --- Patch time in ALL trading modules ---
     sim_time = _SimTime()
@@ -3288,8 +3491,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         if step < 10 or step % 5000 == 0:
                             v8_logger.error(f'[V8_GR_ERR] {_gr_pk}: {_gr_err}')
 
-        # Drain async tasks (order queue, cooldown writes, etc)
-        await asyncio.sleep(0)
+        # Drain async tasks (order queue, cooldown writes, etc).
+        # NO-LIES 2026-05-12: replaced `await asyncio.sleep(0)` (one-tick yield,
+        # non-deterministic ordering) with deterministic FIFO drain. See
+        # _v8_det_create_task / drain_pending_v8_tasks() for design.
+        await drain_pending_v8_tasks()
+        await asyncio.sleep(0)  # one extra tick for the OrderQueue.process_orders long-running task
 
         # Progress — fires on EITHER step count OR wall-clock 60s elapsed (visibility for silent-death debug 2026-05-01).
         _wallclock_now = _real_time_module.time()
@@ -3338,8 +3545,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         or V8_USE_VEC_NEWBORN_PROTECT or V8_USE_VEC_HEDGE_SCAN_GATES
     ):
         _vs = _V8_VEC_STATS
-        v8_logger.info(
-            f"[V8_VEC_STATS] noloss={_vs['noloss_blocks']}/{_vs['noloss_calls']} "
+        print(
+            f"V8_VEC_STATS: noloss={_vs['noloss_blocks']}/{_vs['noloss_calls']} "
             f"augment={_vs['augment_blocks']}/{_vs['augment_calls']} "
             f"brake={_vs['brake_blocks']}/{_vs['brake_calls']} "
             f"stale={_vs['stale_blocks']}/{_vs['stale_calls']} "
@@ -3349,7 +3556,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             f"circuit_sharpe={_vs['circuit_sharpe_blocks']}/{_vs['circuit_sharpe_calls']} "
             f"tradeable_state={_vs['tradeable_state_blocks']}/{_vs['tradeable_state_calls']} "
             f"quarantine={_vs['quarantine_blocks']}/{_vs['quarantine_calls']} "
-            f"hedge_scan={_vs['hedge_scan_blocks']}/{_vs['hedge_scan_calls']}"
+            f"hedge_scan={_vs['hedge_scan_blocks']}/{_vs['hedge_scan_calls']}",
+            flush=True,
         )
     # ═══ NO-LIES RULE #2 — MARK-TO-MARKET OPEN POSITIONS AT FINAL BAR ═══
     # CLAUDE.md: "Open losing positions MUST be marked-to-market at the final bar
@@ -5324,6 +5532,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception as _v8_rebal_err:
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_SENTIMENT_REBAL_ERR] step={step}: {_v8_rebal_err}")
+        # NO-LIES 2026-05-12: deterministic drain replaces single-tick yield.
+        await drain_pending_v8_tasks()
         await asyncio.sleep(0)
         if hasattr(manager, 'delta_tracker') and manager.delta_tracker:
             _dt_wt_fields = ["wt1", "wt2", "wt_score", "wt_velocity", "wt_acceleration", "wt_percentile", "wt_zscore"]

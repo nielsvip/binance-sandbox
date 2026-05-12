@@ -2024,7 +2024,50 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _wt2_D = float((_entry_ind or {}).get('wt2_D', 0) or 0)
                         _D_against = (is_long and _wt1_D < _wt2_D) or ((not is_long) and _wt1_D > _wt2_D)
                         if _D_against: _htf_block = True
-                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block:
+                    # ═══════════════════════════════════════════════════════════
+                    # 🚩 NEW BASELINE 2026-05-12 — 3 additional WT_DC_ENTRY gates
+                    # Source: vec_sweep winner dc45_h1_s40_grOFF
+                    # ───────────────────────────────────────────────────────────
+                    # ROLLBACK: set each config knob to its disabled value:
+                    #   HTF_ALIGN_REQUIRED_TRADIER = 0  (currently 1)
+                    #   COMBINED_STOCH_GATE_TRADIER = 100  (currently 40)
+                    #   GR_HTF_GATE_ENABLED = False  (currently False, no change)
+                    # Each gate sets a BLOCK flag that joins the final check below.
+                    # ═══════════════════════════════════════════════════════════
+                    _htf_align_block = False
+                    _stoch_gate_block = False
+                    _gr_htf_block = False
+                    _htf_align_req = int(getattr(config, 'HTF_ALIGN_REQUIRED_TRADIER', 0))
+                    if _htf_align_req > 0:
+                        _htf_count = 0
+                        for _htf_tf in ('1h', '4h', 'D'):
+                            _wt1_h = float((_entry_ind or {}).get(f'wt1_{_htf_tf}', 0) or 0)
+                            _wt2_h = float((_entry_ind or {}).get(f'wt2_{_htf_tf}', 0) or 0)
+                            if is_long and _wt1_h > _wt2_h:
+                                _htf_count += 1
+                            elif (not is_long) and _wt1_h < _wt2_h:
+                                _htf_count += 1
+                        if _htf_count < _htf_align_req:
+                            _htf_align_block = True
+                    _stoch_gate_thr = float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
+                    if _stoch_gate_thr < 100.0:
+                        _k5m_g = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                        if is_long and _k5m_g >= _stoch_gate_thr:
+                            _stoch_gate_block = True
+                        elif (not is_long) and _k5m_g <= (100.0 - _stoch_gate_thr):
+                            _stoch_gate_block = True
+                    _gr_htf_enabled = bool(getattr(config, 'GR_HTF_GATE_ENABLED', False))
+                    if _gr_htf_enabled:
+                        _gr_req_bull = int(getattr(config, 'GR_HTF_REQUIRE_BULL', 1))
+                        _gr_req_bear = int(getattr(config, 'GR_HTF_REQUIRE_BEAR', 1))
+                        _gr_bull = int((_entry_ind or {}).get('wt_bull_alignment', 0) or 0)
+                        _gr_bear = int((_entry_ind or {}).get('wt_bear_alignment', 0) or 0)
+                        if is_long and _gr_bull < _gr_req_bull:
+                            _gr_htf_block = True
+                        elif (not is_long) and _gr_bear < _gr_req_bear:
+                            _gr_htf_block = True
+                    # ═══ END NEW BASELINE GATES ═══
+                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block:
                         _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
