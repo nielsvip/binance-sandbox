@@ -115,6 +115,60 @@ try:
     from vec_paths.golden_rule_htf_vote import evaluate_gr_htf_vec
 except ImportError:
     evaluate_gr_htf_vec = None
+try:
+    from vec_paths.exit_r1_r2 import (
+        check_r1_emergency_exit,
+        check_r2_wt_vel_slow_exit,
+    )
+except ImportError:
+    check_r1_emergency_exit = None
+    check_r2_wt_vel_slow_exit = None
+try:
+    from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
+except ImportError:
+    check_wt_crossunder_final_exit = None
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Adapters: bridge v8_vec_sweep's npz dict / SymState to vec_paths store/pos_state API
+# ════════════════════════════════════════════════════════════════════════════════
+
+class _NPZStoreAdapter:
+    """Wraps npz dict so vec_paths check_* functions can call store.f(key, idx)."""
+    __slots__ = ("_npz", "_close", "_ts")
+    def __init__(self, npz: Dict[str, Any], close: np.ndarray, ts: np.ndarray):
+        self._npz = npz; self._close = close; self._ts = ts
+    def f(self, key: str, idx: int, default: float = 0.0) -> float:
+        arr = self._npz.get(key)
+        if arr is None or idx >= len(arr): return default
+        try: return float(arr[idx])
+        except Exception: return default
+    def price(self, idx: int) -> float:
+        return float(self._close[idx])
+    @property
+    def timestamps(self) -> np.ndarray: return self._ts
+
+
+class _PosStateAdapter:
+    """Wraps SymState so vec_paths check_* functions see pos_state.side/gain_pct/etc.
+    gain_pct MUST be updated each bar: pos_adapter.gain_pct = gain."""
+    __slots__ = ("_state", "gain_pct")
+    def __init__(self, state: "SymState"):
+        self._state = state
+        self.gain_pct: float = 0.0
+    @property
+    def open(self) -> bool: return self._state.qty > 0.0001
+    @property
+    def side(self) -> str: return "LONG" if self._state.is_long else "SHORT"
+    @property
+    def max_gain_pct(self) -> float: return self._state.max_gain
+    @property
+    def entry_price(self) -> float: return self._state.entry_price
+    @property
+    def entry_ts(self) -> float: return self._state.opened_at
+    @property
+    def qty(self) -> float:
+        return self._state.qty if self._state.is_long else -self._state.qty
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -232,6 +286,24 @@ class SweepConfig:
     # ── GR multiplier exit sweep flags ────────────────────────────────────────
     GR_EXIT_ENABLED: bool = False        # exit when GR against-score >= threshold AND wt1_3m against
     GR_EXIT_MULT_THRESHOLD: int = 9      # 9/12/15 tested via CLI override
+    # ── R1 DC emergency exit ──────────────────────────────────────────────────
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
+    R1_NEWBORN_WINDOW_MIN: float = 15.0
+    R1_USE_DC_4BAR: bool = True
+    R1_TF: str = ""          # auto: "3m" crypto / "5m" tradier
+    # ── R2 WT velocity slow exit ──────────────────────────────────────────────
+    WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
+    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10
+    WT_VEL_DECEL_RATIO: float = 0.5
+    WT_VEL_USE_DECEL_RATIO_ONLY: bool = True
+    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1
+    R2_PEAK_MIN_PCT: float = 0.5
+    R2_TF_LIST: Optional[List[str]] = None   # None = auto per mode
+    # ── WT crossunder final exit ──────────────────────────────────────────────
+    WT_CROSSUNDER_FINAL_ENABLED: bool = True
+    WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS_ENABLED: bool = False
+    WT_CROSSUNDER_FINAL_NOLOSS_BYPASS: bool = False
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -398,6 +470,8 @@ def simulate_one_symbol(
 
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
+    _store = _NPZStoreAdapter(npz, close, ts)
+    _pos = _PosStateAdapter(state)
     events: List[TradeEvent] = []
     trade_returns: List[float] = []  # per-trade % gain (for pool_sharpe)
 
@@ -460,13 +534,32 @@ def simulate_one_symbol(
         gain = _gain_pct(state.entry_price, mark, is_long)
         if gain > state.max_gain:
             state.max_gain = gain
+        _pos.gain_pct = gain
         age_s = bar_ts - state.opened_at
 
         # ─── EXIT GATES (indicator-only first, then state-aware) ────────
         exit_id = EXIT_NONE
         exit_reason = ""
 
+        # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
+        if check_r1_emergency_exit is not None and state.qty > 0.0001:
+            _r1 = check_r1_emergency_exit(_store, i, _pos, mode, config)
+            if _r1 is not None:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_r1["reason"], pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                _pos.gain_pct = 0.0
+                continue
+
         # DC_STOP: fixed stop price recorded at entry — bypasses noloss (R1 spec)
+        # NOTE: This is a SWEEP-ONLY approximation (DC_FIXED_STOP). Not in live.
+        # Use R1_DC_LOW4_3M_EMERGENCY_ENABLED above for live-parity.
         if (config.DC_LOW4_STOP_ENABLED or config.DC_LOW_STOP_ENABLED) and state.r1_stop_price > 0:
             _dc_breached = (is_long and mark <= state.r1_stop_price) or ((not is_long) and mark >= state.r1_stop_price)
             if _dc_breached:
@@ -520,6 +613,30 @@ def simulate_one_symbol(
         if exit_id == EXIT_NONE and exit_gates["e3_structure"][i]:
             exit_id = EXIT_E3_STRUCTURE
             exit_reason = "E_3_STRUCTURE"
+
+        # WT_CROSSUNDER_FINAL (stateless indicator check)
+        if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
+            _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
+            if _wtcf is not None:
+                exit_id = 91
+                exit_reason = _wtcf["reason"]
+
+        # R2 WT VELOCITY SLOW (near-breakeven slowdown — matches live R2_WT_VEL_SLOW)
+        if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001:
+            _r2 = check_r2_wt_vel_slow_exit(_store, i, _pos, mode, config)
+            if _r2 is not None:
+                # R2 bypasses noloss gate — execute close directly
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_r2["reason"], pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_completed_ts = bar_ts
+                _pos.gain_pct = 0.0
+                continue
 
         if exit_id != EXIT_NONE:
             # CLOSE — gate through noloss if at a loss. We call the vec noloss
