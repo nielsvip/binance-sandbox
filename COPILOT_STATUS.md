@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-13 15:34:27 UTC
+# Copilot Status — 2026-05-13 16:37:44 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:26:36
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:27:27
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:27:57
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:28:39
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:30:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-13T15:30:03
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:31:28
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-05-13T15:31:28
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T15:33:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-13T15:33:03
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:23:44
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:25:45
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:27:47
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:29:48
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:31:49
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-13T16:31:49
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:33:51
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-13T16:33:51
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:35:52
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-13T16:35:52
 
 ## Missed Trades (trader comparison)
 
@@ -27,30 +27,29 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 9 | **Reentered:** 0
+**Held:** 11 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **TTD** SHORT (tradier) peak +8.2%, now +0.4%
-- HELD: **ACN** SHORT (tradier) peak +7.1%, now +0.0%
-- HELD: **NVDA** LONG (tradier) peak +4.4%, now +2.0%
-- HELD: **NXE** SHORT (tradier) peak +3.1%, now +-2.3%
+- HELD: **ACN** SHORT (tradier) peak +9.5%, now +3.6%
+- HELD: **USO** LONG (tradier) peak +7.5%, now +6.5%
+- HELD: **UUUU** SHORT (tradier) peak +7.5%, now +6.3%
+- HELD: **SLV** LONG (tradier) peak +7.2%, now +5.1%
+- HELD: **TTD** SHORT (tradier) peak +6.9%, now +0.8%
+- HELD: **WDAY** SHORT (tradier) peak +6.6%, now +6.3%
+- HELD: **MU** LONG (tradier) peak +6.5%, now +1.0%
+- HELD: **MP** SHORT (tradier) peak +5.6%, now +5.2%
+- HELD: **ARM** LONG (tradier) peak +4.2%, now +3.8%
+- HELD: **GOOGL** LONG (tradier) peak +3.8%, now +3.6%
 
-- WATCHING: **USO** LONG (tradier) peaked +8.3%, exited 9m ago
-- WATCHING: **SNDK** LONG (tradier) peaked +5.3%, exited 15m ago
-- WATCHING: **FIVN** LONG (tradier) peaked +5.1%, exited 9m ago
-- WATCHING: **WDAY** SHORT (tradier) peaked +4.9%, exited 9m ago
-- WATCHING: **ADBE** SHORT (tradier) peaked +4.9%, exited 9m ago
-- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.6%, exited 1m ago
-- WATCHING: **LDOS** SHORT (tradier) peaked +3.6%, exited 9m ago
-- WATCHING: **LEXX** LONG (tradier) peaked +3.4%, exited 15m ago
-- WATCHING: **USTCUSDT** SHORT (crypto) peaked +3.2%, exited 1m ago
+- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.6%, exited 2m ago
+- WATCHING: **USTCUSDT** SHORT (crypto) peaked +3.2%, exited 2m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
 - [HIGH] ez_manage.py for flz is NOT running
-- [CRITICAL] Local Redis (port 6379) is NOT responding
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
