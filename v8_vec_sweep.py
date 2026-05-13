@@ -147,6 +147,10 @@ try:
 except ImportError:
     check_profit_take_reduce = None
     check_strong_reduce_k = None
+try:
+    from vec_paths.delta_engine import check_delta_entry
+except ImportError:
+    check_delta_entry = None
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -248,7 +252,7 @@ class SweepConfig:
     DC_HOPELESS_EXIT_MIN_AGE_S: float = 900.0
     WT_EXHAUST_EXIT_ENABLED: bool = True
     WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False
-    WT_PERCENTILE_EXIT_ENABLED: bool = True
+    WT_PERCENTILE_EXIT_ENABLED: bool = False
     WT_PERCENTILE_EXIT_OB_D: float = 90.0
     WT_PERCENTILE_EXIT_OB_4H: float = 75.0
     WT_PERCENTILE_EXIT_OS_D: float = 10.0
@@ -264,13 +268,13 @@ class SweepConfig:
         "HEDGE_FAILED", "STRUCTURAL_RANGE_SHIFT", "WT_3M_FORCE_OPEN",
     )
     OBLIGATORY_HEDGE_ENABLED: bool = True
-    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.25
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5
     OBLIGATORY_HEDGE_PCT: float = 1.0
     OBLIGATORY_HEDGE_WT_USE_1M: bool = False
     OBLIGATORY_HEDGE_WT_USE_3M: bool = True
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True
-    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2
+    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0
     HEDGE_MODE: bool = True
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = True
@@ -279,13 +283,13 @@ class SweepConfig:
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True
     HEDGE_COMPLETED_LOCKOUT_SECONDS: float = 60.0
     # ── augment / dup guard ───────────────────────────────────────────────
-    DUP_GUARD_USE_GAIN_GATE: bool = True
+    DUP_GUARD_USE_GAIN_GATE: bool = False
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     PULLBACK_AUGMENT_ENABLED: bool = True
     PULLBACK_AUGMENT_REVERSAL_MIN: float = 1.0
     HARD_AUGMENT_LOCK_SECONDS: float = 900.0
     HARD_REDUCE_LOCK_SECONDS: float = 60.0
-    AUGMENTATION_COOLDOWN_SECONDS: float = 600.0
+    AUGMENTATION_COOLDOWN_SECONDS: float = 540.0
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
@@ -307,9 +311,9 @@ class SweepConfig:
     QUARANTINE_BYPASS_HEDGE: bool = True
     QUARANTINE_BYPASS_REENTRY_ZERO_POS: bool = True
     # ── stale mark ────────────────────────────────────────────────────────
-    EXECUTE_NOW_MAX_MARK_AGE_S: float = 120.0
+    EXECUTE_NOW_MAX_MARK_AGE_S: float = 60.0
     # ── ratio sizing (kept as knob; backtest reads as multiplier) ─────────
-    RATIO_MULTIPLIER: float = 3.0
+    RATIO_MULTIPLIER: float = 4.0
     # ── DC stop loss sweep flags ──────────────────────────────────────────
     DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_<TF> recorded at entry
     DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_<TF> (1-bar)
@@ -358,7 +362,7 @@ class SweepConfig:
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
-    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10
     # ── peak giveback / BE erosion exits ─────────────────────────────────────
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False   # default OFF (user disabled 2026-05-11)
@@ -369,7 +373,7 @@ class SweepConfig:
     PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = -0.5
     MIN_HOLD_MINUTES_CRYPTO: float = 30.0
     TRADIER_MIN_HOLD_MINUTES: float = 240.0
-    BREAKEVEN_GRACE_MINUTES: float = 15.0
+    BREAKEVEN_GRACE_MINUTES: float = 5.0
     BE_EROSION_ENABLED: bool = False                   # default OFF
     BE_EROSION_MIN_PEAK_PCT: float = 0.5
     BE_EROSION_FLOOR_PCT: float = 0.0
@@ -387,12 +391,25 @@ class SweepConfig:
     K1M_EXTREME_REVERSE_ENABLED: bool = False          # default OFF
     # ── Hedge engine (sweep model) ───────────────────────────────────────────
     HEDGE_SCAN_ENABLED: bool = True         # master switch for sweep hedge model
-    HEDGE_MIN_LOSS_PCT: float = -0.25       # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
+    HEDGE_MIN_LOSS_PCT: float = -0.5        # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
     HEDGE_QTY_PCT: float = 1.0              # hedge qty as fraction of main qty
     HEDGE_CLOSE_ON_WT3M_FLIP: bool = True   # close hedge when wt1_3m turns back
     GR_HEDGE_SCORE_FLOOR: int = 6           # GR against-score floor for hedge trigger (0=disabled)
     GR_HEDGE_REQUIRE_WT3M: bool = True      # always require wt1_3m against for hedge
     HEDGE_TRIGGER_REQUIRE_15M_OR_1H: bool = True  # require 15m or 1h WT alignment (can be overridden by GR)
+    # ── IN_GAIN_TREND exit ────────────────────────────────────────────────────
+    IN_GAIN_TREND_EXIT_ENABLED: bool = True
+    IN_GAIN_TREND_BIG_WINNER_PCT: float = 10.0    # gain threshold for HTF tier
+    IN_GAIN_TREND_MED_WINNER_PCT: float = 5.0     # gain threshold for 15m tier
+    IN_GAIN_TREND_MIN_GAIN: float = 2.0           # minimum gain to even check
+    # ── DELTA_ENGINE entries ──────────────────────────────────────────────────
+    DELTA_ENGINE_ENABLED: bool = False          # default OFF (matches live default)
+    DELTA_ENTRY_ENABLED: bool = False
+    DELTA_ENTRY_MIN_TF: int = 2
+    DELTA_ENTRY_Z_THRESHOLD: float = 1.5
+    DELTA_SPEED_SMOOTH: int = 5
+    DELTA_TF_Z_THRESHOLD: float = 1.5
+    DELTA_HTF_GATE: str = "none"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -596,7 +613,11 @@ def simulate_one_symbol(
                 _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
                 if _gr_cooldown_ok:
                     _gr_result = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
-            if not (fire_block or wt_open_ok or (_gr_result is not None)):
+            # DELTA_ENGINE entry check (fourth trigger when flat)
+            _delta_result = None
+            if check_delta_entry is not None and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED:
+                _delta_result = check_delta_entry(_store, i, side, mode, config)
+            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None)):
                 continue
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
@@ -610,7 +631,9 @@ def simulate_one_symbol(
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
-            if _gr_result is not None and not fire_block and not wt_open_ok:
+            if _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None:
+                reason = _delta_result["reason"]
+            elif _gr_result is not None and not fire_block and not wt_open_ok:
                 reason = _gr_result["reason"]
             elif fire_block:
                 block_id = int(reentry["block_id"][i])
@@ -681,6 +704,7 @@ def simulate_one_symbol(
                     state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                     state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                     state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                     _pos.reset_ppl(); _pos.gain_pct = 0.0
                     continue
 
@@ -772,6 +796,7 @@ def simulate_one_symbol(
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                 state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 _pos.gain_pct = 0.0
                 continue
@@ -794,6 +819,7 @@ def simulate_one_symbol(
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                 state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 continue
 
@@ -845,6 +871,7 @@ def simulate_one_symbol(
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                 state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts
                 _pos.gain_pct = 0.0; _pos.reset_ppl()
                 continue
@@ -861,9 +888,43 @@ def simulate_one_symbol(
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                 state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts
                 _pos.gain_pct = 0.0; _pos.reset_ppl()
                 continue
+
+        # IN_GAIN_TREND_EXIT (profit harvesting on strong winners — mirrors live ez_manage logic)
+        # ha_1h/ha_15m in NPZ are int8: 1=green, -1=red (NOT strings)
+        if exit_id == EXIT_NONE and config.IN_GAIN_TREND_EXIT_ENABLED and gain > float(config.IN_GAIN_TREND_MIN_GAIN):
+            _igt_fired = False
+            _igt_reason = ""
+            if gain >= float(config.IN_GAIN_TREND_BIG_WINNER_PCT):
+                # BIG_WINNER_HTF: stoch_k_1h < stoch_d_1h AND ha_1h == -1/red (LONG)
+                #                 stoch_k_1h > stoch_d_1h AND ha_1h == 1/green (SHORT)
+                _k1h = float(_store.f("stoch_k_1h", i, 50.0))
+                _d1h = float(_store.f("stoch_d_1h", i, 50.0))
+                _ha1h = int(_store.f("ha_1h", i, 0))
+                if is_long and _k1h < _d1h and _ha1h == -1:
+                    _igt_fired = True
+                    _igt_reason = f"IN_GAIN_TREND_EXIT_BIG_WINNER_HTF_g{gain:.1f}"
+                elif (not is_long) and _k1h > _d1h and _ha1h == 1:
+                    _igt_fired = True
+                    _igt_reason = f"IN_GAIN_TREND_EXIT_BIG_WINNER_HTF_g{gain:.1f}"
+            elif gain >= float(config.IN_GAIN_TREND_MED_WINNER_PCT):
+                # MED_WINNER_15M: ha_15m == -1/red AND stoch_k_15m < stoch_d_15m (LONG)
+                #                 ha_15m == 1/green AND stoch_k_15m > stoch_d_15m (SHORT)
+                _k15 = float(_store.f("stoch_k_15m", i, 50.0))
+                _d15 = float(_store.f("stoch_d_15m", i, 50.0))
+                _ha15 = int(_store.f("ha_15m", i, 0))
+                if is_long and _ha15 == -1 and _k15 < _d15:
+                    _igt_fired = True
+                    _igt_reason = f"IN_GAIN_TREND_EXIT_MED_WINNER_15M_g{gain:.1f}"
+                elif (not is_long) and _ha15 == 1 and _k15 > _d15:
+                    _igt_fired = True
+                    _igt_reason = f"IN_GAIN_TREND_EXIT_MED_WINNER_15M_g{gain:.1f}"
+            if _igt_fired:
+                exit_id = 94
+                exit_reason = _igt_reason
 
         # WT_CROSSUNDER_FINAL (stateless indicator check)
         if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
@@ -885,6 +946,7 @@ def simulate_one_symbol(
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
                 state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts
                 _pos.gain_pct = 0.0
                 continue
@@ -928,6 +990,8 @@ def simulate_one_symbol(
             state.max_gain = 0.0
             state.last_reduce_ts = bar_ts
             state.hedge_active = False
+            state.hedge_qty = 0.0
+            state.hedge_entry_price = 0.0
             state.hedge_completed_ts = bar_ts
             continue
 
@@ -1001,6 +1065,18 @@ def simulate_one_symbol(
         )
         events.append(ev)
         trade_returns.append(pnl_pct)
+
+    # ─── MTM HEDGE — open hedge at simulation end MUST be MtM'd (NO-LIES) ──
+    if state.hedge_active and state.hedge_qty > 0 and state.hedge_entry_price > 0:
+        final_mark = float(close[-1])
+        if is_long:
+            hedge_pnl = (state.hedge_entry_price - final_mark) / state.hedge_entry_price * 100.0
+        else:
+            hedge_pnl = (final_mark - state.hedge_entry_price) / state.hedge_entry_price * 100.0
+        ev = TradeEvent(ts=float(ts[-1]), type="HEDGE_CLOSE", qty=state.hedge_qty, price=final_mark,
+            value=state.hedge_qty * final_mark, reason="MTM_FINAL_HEDGE_NOLIES", pnl_pct=hedge_pnl)
+        events.append(ev)
+        trade_returns.append(hedge_pnl)
 
     return events, trade_returns, n
 

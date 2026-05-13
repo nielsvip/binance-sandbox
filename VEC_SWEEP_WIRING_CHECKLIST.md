@@ -114,7 +114,7 @@ Status: ✅ DONE 2026-05-13 — 6 fires in smoke test (WT_CROSSOVER_FINAL_3m_*)
 ## TIER 3 — New vectorization needed (no current vec module)
 
 ### T3-A: IN_GAIN_TREND_EXIT
-Status: 🔲 Not started | **49 fires/account/day**
+Status: ✅ DONE 2026-05-13 — exit_id=94, uses stoch_k/d_1h + ha_1h(int8) BIG tier, stoch_k/d_15m + ha_15m(int8) MED tier. 0 fires in short smoke (expected, max gain only 4.7% in window).
 
 **What**: No vec module exists. Need to build `vec_paths/in_gain_trend.py`.  
 Live source: grep `IN_GAIN_TREND_EXIT` in ez_manage.py to find the logic.
@@ -125,8 +125,9 @@ Live source: grep `IN_GAIN_TREND_EXIT` in ez_manage.py to find the logic.
 - [ ] Wire into v8_vec_sweep exit cascade
 - [ ] Compile + smoke test
 
-### T3-B: Hedge Engine
-Status: 🔲 Not started | **~2,300 hedge opens/account** — #1 live volume driver
+### T3-B: Hedge Engine + GR trigger
+Status: ✅ DONE 2026-05-13 — 824 HEDGE_OPEN/CLOSE pairs in smoke test, all balanced + in pool_sharpe
+**GR trigger**: wt1_3m against AND (15m/1h OR GR_against_score >= GR_HEDGE_SCORE_FLOOR=6). Reason includes gr-score tag e.g. `HEDGE_PROTECT_SHORT_LOSS_g-0.65_GR_15m1h_gr16`
 
 **What**: 60-70% of live AUGMENT/REDUCE actions are hedge-related. Currently 0% modeled.  
 `vec_paths/hedge_engine.py` + `vec_paths/hedge_scan_gates.py` have the scaffolding.
@@ -140,7 +141,7 @@ Status: 🔲 Not started | **~2,300 hedge opens/account** — #1 live volume dri
 - [ ] Wire into v8_vec_sweep
 
 ### T3-C: DELTA_ENGINE entries/exits
-Status: 🔲 Not started | **Medium live frequency**
+Status: ✅ DONE 2026-05-13 — wired as 4th entry trigger in FLAT branch, default OFF (DELTA_ENGINE_ENABLED=False). check_delta_entry takes (store, bar_idx, side, mode, cfg).
 
 - [ ] Read vec_paths/delta_engine.py: check_delta_entry, compute_delta_speeds interfaces
 - [ ] Add SweepConfig DELTA_ENGINE fields
@@ -179,6 +180,11 @@ Status: 🔲 Not started | **Medium live frequency**
 - `E_3_USE_WT_STRUCTURE_EXIT_MODE` (int modes) — live uses single mode
 - [ ] If sweep winner uses these → must add corresponding knobs + code to ez_manage.py before applying to live
 - [ ] Document in sweep result headers which knobs are sweep-only
+
+---
+
+## Config Sync
+Status: 🔄 Agent running (a9cc282c85a1f1abd) — comparing all SweepConfig defaults vs live config.py
 
 ---
 
