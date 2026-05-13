@@ -3787,9 +3787,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         if _vote_min > 0:
                             from golden_rule_htf import score_entry_htf as _gr_score_entry_x
                             _gr_mode_x = "tradier" if mode == "tradier" else "crypto"
-                            # When GR_TOTAL_VOTE_SCORE_MIN > 0, score_entry_htf internally switches to
-                            # vote-sum mode and `passes` reflects vote >= threshold.
-                            _vote_passes, _vote_n, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, 1, 1, _gr_p)
+                            _gr_vote_min_tfs = int(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_MIN_TFS', 1))
+                            _gr_vote_min_ind = int(getattr(ez_manage.config, 'GOLDEN_RULE_MIN_IND', 1))
+                            # vote-sum mode: score_entry_htf internally uses GR_TOTAL_VOTE_SCORE_MIN threshold
+                            _vote_passes, _vote_n, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, _gr_vote_min_tfs, _gr_vote_min_ind, _gr_p)
                             _vote_signal_fire = bool(_vote_passes)
                     except Exception as _gr_vote_err:
                         if step < 5:

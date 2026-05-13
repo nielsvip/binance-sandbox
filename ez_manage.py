@@ -37952,12 +37952,13 @@ async def process_position(
 
                 _grde_exit_is_long = position_side == "LONG"
                 _grde_exit_min_ind = int(getattr(config, "GOLDEN_RULE_MIN_IND", 1))
+                _grde_exit_min_tfs = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 1))
                 # Score opposite-direction alignment to determine exit signal
                 _grde_exit_pass, _grde_exit_n_tfs, _grde_exit_detail = _gr_htf_exit_fn(
                     _grde_exit_ind,
                     not _grde_exit_is_long,
                     "crypto",
-                    min_tfs=1,
+                    min_tfs=_grde_exit_min_tfs,
                     min_ind=_grde_exit_min_ind,
                     current_price=current_price,
                 )
