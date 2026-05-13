@@ -4,6 +4,7 @@
 # file before starting any parameter sweep. TIER_1 first, skip DEAD/FIXED.
 # ═══════════════════════════════════════════════════════════════════════
 import asyncio
+import json
 import os
 import platform
 import ssl
@@ -15,7 +16,7 @@ from weakref import WeakSet
 
 import aiofiles
 import certifi
-import json
+
 
 @dataclass(eq=False)
 class Config:
@@ -1145,7 +1146,7 @@ class Config:
     # Set MIN_TFS=0 to use total-vote-only gate (no per-TF floor).
     WT_3M_FORCE_OPEN_GR_GATE_ENABLED: bool = True
     WT_3M_FORCE_OPEN_GR_VOTE_MIN: int = 15      # total vote floor; range 15-20. 0 = gate off.
-    WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 0        # 0 = disabled; ≥3 → require this many TFs to pass MIN_IND_PER_TF (needs testing)
+    WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 3       # 0 = disabled; ≥3 → require this many TFs to pass MIN_IND_PER_TF (needs testing)
     WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF: int = 5 # per-TF indicator floor when MIN_TFS > 0
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

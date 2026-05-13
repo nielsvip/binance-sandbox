@@ -1545,7 +1545,7 @@ def run_gr_dcbb_sweep(
                 "avg_gain_trade": round(acc_gain / trades, 4) if trades > 0 else 0.0,
                 "gain_per_yr": round(acc_gain / n_years, 2),
                 "gain_sym_yr": round(acc_gain / max(1, n_syms) / n_years, 4),
-                "trades": trades, "max_dd_pct": 0.0,
+                "trades": trades, "max_dd_pct": round(_max_dd_pct(rets), 4) if rets else 0.0,
                 "n_syms": n_syms, "years": round(n_years, 3),
             }
             if writer is None:
