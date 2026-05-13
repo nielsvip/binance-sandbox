@@ -376,11 +376,10 @@ def simulate_one_symbol(
     _dc4_stop_short = np.nan_to_num(npz.get(f"dc_high4_{_dc_stop_tf}", np.zeros(n)).astype(np.float32))
     _dc1_stop_long  = np.nan_to_num(npz.get(f"dc_low_{_dc_stop_tf}",   np.zeros(n)).astype(np.float32))
     _dc1_stop_short = np.nan_to_num(npz.get(f"dc_high_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
-    # WT 3m direction-aligned (for OPEN on empty per WT_3M_FORCE_OPEN spec)
-    if is_long:
-        wt_3m_aligned = wt1_3m > wt2_3m
-    else:
-        wt_3m_aligned = wt1_3m < wt2_3m
+    # WT force-open: 3m PLUS (15m OR 1h) aligned — matches live spec
+    wt_15m_aligned = (wt1_15m > wt2_15m) if is_long else (wt1_15m < wt2_15m)
+    wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
+    wt_3m_aligned  = ((wt1_3m > wt2_3m) if is_long else (wt1_3m < wt2_3m)) & (wt_15m_aligned | wt_1h_aligned)
 
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
