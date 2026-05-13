@@ -127,6 +127,26 @@ try:
     from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
 except ImportError:
     check_wt_crossunder_final_exit = None
+try:
+    from vec_paths.partial_profit_lock_v2 import check_ppl_step1, check_ppl_step2, check_ppl_step3
+except ImportError:
+    check_ppl_step1 = None
+    check_ppl_step2 = None
+    check_ppl_step3 = None
+try:
+    from vec_paths.golden_rule_enforce import check_golden_rule_enforce
+except ImportError:
+    check_golden_rule_enforce = None
+try:
+    from vec_paths.peak_giveback_be_erosion import check_peak_giveback_exit, check_be_erosion_exit
+except ImportError:
+    check_peak_giveback_exit = None
+    check_be_erosion_exit = None
+try:
+    from vec_paths.reduce_paths import check_profit_take_reduce, check_strong_reduce_k
+except ImportError:
+    check_profit_take_reduce = None
+    check_strong_reduce_k = None
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -151,11 +171,17 @@ class _NPZStoreAdapter:
 
 class _PosStateAdapter:
     """Wraps SymState so vec_paths check_* functions see pos_state.side/gain_pct/etc.
+    PPL mutable fields (ppl_fired etc.) live HERE, not on SymState.
     gain_pct MUST be updated each bar: pos_adapter.gain_pct = gain."""
-    __slots__ = ("_state", "gain_pct")
+    __slots__ = ("_state", "gain_pct", "ppl_fired", "ppl_first_exit_price",
+                 "ppl_stop_level", "ppl_stop_upgraded")
     def __init__(self, state: "SymState"):
         self._state = state
         self.gain_pct: float = 0.0
+        self.ppl_fired: bool = False
+        self.ppl_first_exit_price: float = 0.0
+        self.ppl_stop_level: float = 0.0
+        self.ppl_stop_upgraded: bool = False
     @property
     def open(self) -> bool: return self._state.qty > 0.0001
     @property
@@ -169,6 +195,11 @@ class _PosStateAdapter:
     @property
     def qty(self) -> float:
         return self._state.qty if self._state.is_long else -self._state.qty
+    def reset_ppl(self):
+        self.ppl_fired = False
+        self.ppl_first_exit_price = 0.0
+        self.ppl_stop_level = 0.0
+        self.ppl_stop_upgraded = False
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -304,6 +335,56 @@ class SweepConfig:
     WT_CROSSUNDER_FINAL_ENABLED: bool = True
     WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS_ENABLED: bool = False
     WT_CROSSUNDER_FINAL_NOLOSS_BYPASS: bool = False
+    # ── GOLDEN_RULE entries ───────────────────────────────────────────────────
+    GOLDEN_RULE_ENABLED: bool = True
+    GOLDEN_RULE_BASE_USD: float = 5.0
+    GOLDEN_RULE_COOLDOWN_S: float = 600.0
+    GOLDEN_RULE_DC_15M_ENABLED: bool = True
+    GOLDEN_RULE_BB_15M_ENABLED: bool = True
+    GOLDEN_RULE_DC_1H_ENABLED: bool = True
+    GOLDEN_RULE_BB_1H_ENABLED: bool = True
+    GOLDEN_RULE_DC_4H_ENABLED: bool = True
+    GOLDEN_RULE_BB_4H_ENABLED: bool = True
+    GOLDEN_RULE_DC_D_ENABLED: bool = True
+    GOLDEN_RULE_BB_D_ENABLED: bool = True
+    GOLDEN_RULE_MULT_15M: float = 1.0
+    GOLDEN_RULE_MULT_1H: float = 1.5
+    GOLDEN_RULE_MULT_4H: float = 2.0
+    GOLDEN_RULE_MULT_D: float = 3.0
+    GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
+    GOLDEN_RULE_MIN_IND: int = 1
+    GOLDEN_RULE_HTF_MIN_TFS: int = 0
+    # ── Partial Profit Lock (PPL) ────────────────────────────────────────────
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02
+    # ── peak giveback / BE erosion exits ─────────────────────────────────────
+    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True
+    PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False   # default OFF (user disabled 2026-05-11)
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False      # OFF since 2026-04-27
+    PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN: bool = True
+    PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = -0.5
+    MIN_HOLD_MINUTES_CRYPTO: float = 30.0
+    TRADIER_MIN_HOLD_MINUTES: float = 240.0
+    BREAKEVEN_GRACE_MINUTES: float = 15.0
+    BE_EROSION_ENABLED: bool = False                   # default OFF
+    BE_EROSION_MIN_PEAK_PCT: float = 0.5
+    BE_EROSION_FLOOR_PCT: float = 0.0
+    BE_EROSION_HOLD_MIN_MIN: float = 15.0
+    # ── profit-take reduce paths ──────────────────────────────────────────────
+    PROFIT_TAKE_REDUCE_ENABLED: bool = False           # default OFF
+    PROFIT_TAKE_GAIN_PCT: float = 2.0
+    PROFIT_TAKE_REDUCE_FRAC: float = 0.5
+    STRONG_REDUCE_K_ENABLED: bool = False              # default OFF
+    SRK_K15M_LONG_MIN: float = 80.0
+    SRK_K1H_LONG_MAX: float = 30.0
+    SRK_K15M_SHORT_MAX: float = 20.0
+    SRK_K1H_SHORT_MIN: float = 70.0
+    SRK_REDUCE_FRAC: float = 0.5
+    K1M_EXTREME_REVERSE_ENABLED: bool = False          # default OFF
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -397,6 +478,7 @@ class SymState:
     intent_lock_stamp: float = 0.0
     last_open_attempt_ts: float = 0.0
     r1_stop_price: float = 0.0
+    gr_last_fire_ts: float = 0.0    # GOLDEN_RULE cooldown tracking
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -488,10 +570,16 @@ def simulate_one_symbol(
 
         # ─── FLAT: consider OPEN ──────────────────────────────────────────
         if state.qty <= 0.0001:
-            # OPEN gate: WT_3M direction + reentry-fire OR force-open
+            # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
             wt_open_ok = bool(wt_3m_aligned[i])
-            if not (fire_block or wt_open_ok):
+            # GOLDEN_RULE entry check (third trigger when flat)
+            _gr_result = None
+            if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED:
+                _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
+                if _gr_cooldown_ok:
+                    _gr_result = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
+            if not (fire_block or wt_open_ok or (_gr_result is not None)):
                 continue
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
@@ -505,8 +593,13 @@ def simulate_one_symbol(
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
-            block_id = int(reentry["block_id"][i]) if fire_block else 0
-            reason = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN") if fire_block else "WT_3M_FORCE_OPEN"
+            if _gr_result is not None and not fire_block and not wt_open_ok:
+                reason = _gr_result["reason"]
+            elif fire_block:
+                block_id = int(reentry["block_id"][i])
+                reason = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN")
+            else:
+                reason = "WT_3M_FORCE_OPEN"
             ev = TradeEvent(
                 ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
                 value=new_qty * mark, reason=reason,
@@ -519,6 +612,9 @@ def simulate_one_symbol(
             state.augmented_count = 0
             state.max_gain = 0.0
             state.last_open_attempt_ts = bar_ts
+            _pos.reset_ppl()
+            if _gr_result is not None:
+                state.gr_last_fire_ts = bar_ts
             # Record DC stop price at entry time
             if config.DC_LOW4_STOP_ENABLED:
                 _s = float(_dc4_stop_long[i] if is_long else _dc4_stop_short[i])
@@ -536,6 +632,70 @@ def simulate_one_symbol(
             state.max_gain = gain
         _pos.gain_pct = gain
         age_s = bar_ts - state.opened_at
+
+        # ─── PARTIAL PROFIT LOCK (PPL) — fires as REDUCE, then protects remainder ─
+        if check_ppl_step1 is not None and config.PARTIAL_PROFIT_LOCK_ENABLED:
+            _ppl1 = check_ppl_step1(_store, i, _pos, config)
+            if _ppl1 is not None:
+                reduce_qty = state.qty * float(_ppl1.get("frac", config.PARTIAL_PROFIT_LOCK_FRAC))
+                if reduce_qty > 0:
+                    ev = TradeEvent(ts=bar_ts, type="REDUCE", qty=reduce_qty, price=mark,
+                        value=reduce_qty * mark, reason=_ppl1["reason"], pnl_pct=gain)
+                    events.append(ev)
+                    trade_returns.append(gain * float(_ppl1.get("frac", config.PARTIAL_PROFIT_LOCK_FRAC)))
+                    state.qty -= reduce_qty
+                    _pos.ppl_fired = True
+                    _pos.ppl_first_exit_price = mark
+                    _pos.ppl_stop_level = float(_ppl1.get("stop_level", state.entry_price))
+                    state.last_reduce_ts = bar_ts
+            elif check_ppl_step2 is not None and _pos.ppl_fired and not _pos.ppl_stop_upgraded:
+                _ppl2 = check_ppl_step2(_store, i, _pos, config)
+                if _ppl2 is not None:
+                    _pos.ppl_stop_level = float(_ppl2.get("new_stop", _pos.ppl_stop_level))
+                    _pos.ppl_stop_upgraded = True
+            if check_ppl_step3 is not None and _pos.ppl_fired and state.qty > 0.0001:
+                _ppl3 = check_ppl_step3(_store, i, _pos, config)
+                if _ppl3 is not None:
+                    pnl_pct = gain
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_ppl3["reason"], pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    _pos.reset_ppl(); _pos.gain_pct = 0.0
+                    continue
+
+        # ─── PROFIT_TAKE REDUCE (partial close at profit target) ────────
+        if check_profit_take_reduce is not None and config.PROFIT_TAKE_REDUCE_ENABLED and state.qty > 0.0001:
+            _ptr = check_profit_take_reduce(_store, i, _pos, mode, config)
+            if _ptr is not None:
+                frac = float(_ptr.get("frac", 0.5))
+                reduce_qty = state.qty * frac
+                if reduce_qty > 0:
+                    ev = TradeEvent(ts=bar_ts, type="REDUCE", qty=reduce_qty, price=mark,
+                        value=reduce_qty * mark, reason=_ptr["reason"], pnl_pct=gain)
+                    events.append(ev)
+                    trade_returns.append(gain * frac)
+                    state.qty -= reduce_qty
+                    state.last_reduce_ts = bar_ts
+                    _pos.ppl_fired = True  # prevent repeat fire within same position
+
+        # ─── STRONG REDUCE K (stoch-based partial close) ─────────────────
+        if check_strong_reduce_k is not None and config.STRONG_REDUCE_K_ENABLED and state.qty > 0.0001:
+            _srk = check_strong_reduce_k(_store, i, _pos, mode, config)
+            if _srk is not None:
+                if not _srk.get("require_profit", False) or gain >= 0:
+                    frac = float(_srk.get("frac", 0.5))
+                    reduce_qty = state.qty * frac
+                    if reduce_qty > 0:
+                        ev = TradeEvent(ts=bar_ts, type="REDUCE", qty=reduce_qty, price=mark,
+                            value=reduce_qty * mark, reason=_srk["reason"], pnl_pct=gain)
+                        events.append(ev)
+                        trade_returns.append(gain * frac)
+                        state.qty -= reduce_qty
+                        state.last_reduce_ts = bar_ts
 
         # ─── EXIT GATES (indicator-only first, then state-aware) ────────
         exit_id = EXIT_NONE
@@ -613,6 +773,38 @@ def simulate_one_symbol(
         if exit_id == EXIT_NONE and exit_gates["e3_structure"][i]:
             exit_id = EXIT_E3_STRUCTURE
             exit_reason = "E_3_STRUCTURE"
+
+        # PEAK_GIVEBACK exit (gain decaying from peak — full close, bypasses noloss)
+        if exit_id == EXIT_NONE and check_peak_giveback_exit is not None and state.qty > 0.0001:
+            _pgb = check_peak_giveback_exit(_store, i, _pos, mode, config)
+            if _pgb is not None:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_pgb, pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_completed_ts = bar_ts
+                _pos.gain_pct = 0.0; _pos.reset_ppl()
+                continue
+
+        # BE_EROSION exit (gain eroded to loss after being profitable — bypasses noloss)
+        if exit_id == EXIT_NONE and check_be_erosion_exit is not None and state.qty > 0.0001:
+            _beg = check_be_erosion_exit(_store, i, _pos, mode, config)
+            if _beg is not None:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_beg, pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_completed_ts = bar_ts
+                _pos.gain_pct = 0.0; _pos.reset_ppl()
+                continue
 
         # WT_CROSSUNDER_FINAL (stateless indicator check)
         if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
@@ -718,6 +910,26 @@ def simulate_one_symbol(
             state.entry_price = new_entry
             state.augmented_count += 1
             state.last_augment_ts = bar_ts
+
+        # GOLDEN_RULE augment while holding
+        if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:
+            _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
+            if _gr_cooldown_ok:
+                _gr_aug = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
+                if _gr_aug is not None and _gr_aug.get("action") == "AUGMENT":
+                    aug_mult = float(_gr_aug.get("mult", 1.0))
+                    aug_qty = (config.START_POSITION_SIZE * aug_mult) / mark
+                    if aug_qty > 0:
+                        denom = state.qty + aug_qty
+                        new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
+                        ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=aug_qty, price=mark,
+                            value=aug_qty * mark, reason=_gr_aug["reason"])
+                        events.append(ev)
+                        state.qty = denom
+                        state.entry_price = new_entry
+                        state.augmented_count += 1
+                        state.last_augment_ts = bar_ts
+                        state.gr_last_fire_ts = bar_ts
 
     # ─── MtM-FINAL-BAR (NO-LIES RULE 2: open losers MUST be appended) ──────
     if state.qty > 0.0001:

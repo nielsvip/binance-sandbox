@@ -35246,14 +35246,28 @@ async def _process_single_override_check(
                             )
                             if _r1s_tkm > 0 and position:
                                 position.r1_stop_price = _r1s_tkm
-                            await queue_trade_action(
-                                order_queue,
-                                trade_manager,
-                                position_key,
-                                "OPEN",
-                                _reason_z,
-                                75.0,
-                            )
+                            if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                pass
+                            else:
+                                _fo_tkm_gr_ok = True
+                                _fo_tkm_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 12))
+                                if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and _fo_tkm_gr_min > 0:
+                                    try:
+                                        from golden_rule_htf import _ind_score as _grf_score_tkm
+                                        _fo_tkm_votes = sum(_grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0] for _tf in ("3m", "15m", "1h", "4h", "D"))
+                                        if _fo_tkm_votes < _fo_tkm_gr_min:
+                                            _fo_tkm_gr_ok = False
+                                    except Exception:
+                                        pass
+                                if _fo_tkm_gr_ok:
+                                    await queue_trade_action(
+                                        order_queue,
+                                        trade_manager,
+                                        position_key,
+                                        "OPEN",
+                                        _reason_z,
+                                        75.0,
+                                    )
                         # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN — runs in parallel
                         # to the DC trigger above. Any tradeable_key with wt1_3m > wt2_3m (LONG)
                         # / wt1_3m < wt2_3m (SHORT) MUST have a position. Reopen after every close.
@@ -35281,14 +35295,28 @@ async def _process_single_override_check(
                                 )
                                 if _r1s_wf > 0 and position:
                                     position.r1_stop_price = _r1s_wf
-                                await queue_trade_action(
-                                    order_queue,
-                                    trade_manager,
-                                    position_key,
-                                    "OPEN",
-                                    _wf_reason,
-                                    80.0,
-                                )
+                                if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
+                                    pass
+                                else:
+                                    _fo_wf_gr_ok = True
+                                    _fo_wf_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 12))
+                                    if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and _fo_wf_gr_min > 0:
+                                        try:
+                                            from golden_rule_htf import _ind_score as _grf_score_wf
+                                            _fo_wf_votes = sum(_grf_score_wf(_ind_z, _tf, _is_long_z, _px_z)[0] for _tf in ("3m", "15m", "1h", "4h", "D"))
+                                            if _fo_wf_votes < _fo_wf_gr_min:
+                                                _fo_wf_gr_ok = False
+                                        except Exception:
+                                            pass
+                                    if _fo_wf_gr_ok:
+                                        await queue_trade_action(
+                                            order_queue,
+                                            trade_manager,
+                                            position_key,
+                                            "OPEN",
+                                            _wf_reason,
+                                            80.0,
+                                        )
             except Exception as _tkm_e:
                 logger.debug(
                     f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}"

@@ -27,7 +27,7 @@ the gap: `_NPZStoreAdapter` and `_PosStateAdapter` (see Agent A task below).
 ## TIER 1 — Already-coded vec modules, just need wiring into v8_vec_sweep
 
 ### T1-A: R1 + R2 Exits (replace DC_STOP proxy) — `vec_paths/exit_r1_r2.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13
 
 **What**: Replace the sweep's `DC_LOW4_STOP_ENABLED` fixed-stop-at-entry block (lines 449–486)
 with proper `check_r1_emergency_exit` (monitoring-based, matches live).  
@@ -46,7 +46,7 @@ Add `check_r2_wt_vel_slow_exit` to the exit cascade.
 - [ ] Smoke test: `python v8_vec_sweep.py --mode crypto --symbols BTC --start 2026-04-01 --max-bars 5000 --no-history`
 
 ### T1-B: Partial Profit Lock (PPL) — `vec_paths/partial_profit_lock_v2.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13
 
 **What**: Add 3-step PPL as REDUCE events in holding branch. Already in backtest_v8_engine
 (lines 3435–3479) but missing from v8_vec_sweep entirely.
@@ -61,7 +61,7 @@ Status: 🔲 Not started
 - [ ] Compile + smoke test
 
 ### T1-C: GOLDEN_RULE Entries — `vec_paths/golden_rule_enforce.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13 — 133 fires in 3-sym smoke test (123×1.0x + 10×1.5x)
 
 **What**: GOLDEN_RULE_*_mult*_INTERVENTION fires 20+ times/account/day in live. The
 `check_golden_rule_enforce` function is a stateless per-bar approximation. Add it to the
@@ -79,7 +79,7 @@ FLAT branch alongside the existing reentry block check.
 ## TIER 2 — Existing modules, medium wiring effort
 
 ### T2-A: Peak Giveback + BE Erosion — `vec_paths/peak_giveback_be_erosion.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13 (default OFF; enable via PEAK_GIVEBACK_DROP_TRIGGER_ENABLED / BE_EROSION_EXIT_ENABLED)
 
 **What**: `QUICK_BANDAID_OFF` + `BREAK_EVEN_GUARD_EXIT` patterns. 16+ fires/account.
 
@@ -89,7 +89,7 @@ Status: 🔲 Not started
 - [ ] Compile + smoke test
 
 ### T2-B: Reduce Paths (partial TP) — `vec_paths/reduce_paths.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13 (default OFF; enable via PROFIT_TAKE_REDUCE_ENABLED / STRONG_REDUCE_K_ENABLED)
 
 **What**: `QUICK_CYCLE_TP_STOCH_AGAINST` (16+/acct), `QUICK_REDUCE_NO_PROFIT` (31/acct),
 `QUICK_PROFIT_PROTECT` (5+/acct). Currently sweep models no REDUCE events at all.
@@ -100,7 +100,7 @@ Status: 🔲 Not started
 - [ ] Compile + smoke test
 
 ### T2-C: WT Crossunder Final — `vec_paths/wt_crossunder_final.py`
-Status: 🔲 Not started
+Status: ✅ DONE 2026-05-13 — 6 fires in smoke test (WT_CROSSOVER_FINAL_3m_*)
 
 **What**: `WT_CROSSUNDER_FINAL` exits — fires on decisive crossunder against position.
 
