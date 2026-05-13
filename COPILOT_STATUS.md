@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-13 06:46:23 UTC
+# Copilot Status — 2026-05-13 07:01:50 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:40:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T06:41:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:41:12
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:42:14
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T06:43:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:43:16
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:44:18
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T06:45:09
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:45:19
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:46:21
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:55:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:56:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T06:57:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:57:41
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:58:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T06:59:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T06:59:45
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T07:00:47
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T07:01:38
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-13T07:01:48
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-6.0%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-5.8%
 - HELD: **USO** LONG (tradier) peak +8.1%, now +0.6%
 - HELD: **SLV** LONG (tradier) peak +7.2%, now +2.1%
 - HELD: **UUUU** SHORT (tradier) peak +5.4%, now +4.9%
