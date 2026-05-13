@@ -385,6 +385,14 @@ class SweepConfig:
     SRK_K1H_SHORT_MIN: float = 70.0
     SRK_REDUCE_FRAC: float = 0.5
     K1M_EXTREME_REVERSE_ENABLED: bool = False          # default OFF
+    # ── Hedge engine (sweep model) ───────────────────────────────────────────
+    HEDGE_SCAN_ENABLED: bool = True         # master switch for sweep hedge model
+    HEDGE_MIN_LOSS_PCT: float = -0.25       # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
+    HEDGE_QTY_PCT: float = 1.0              # hedge qty as fraction of main qty
+    HEDGE_CLOSE_ON_WT3M_FLIP: bool = True   # close hedge when wt1_3m turns back
+    GR_HEDGE_SCORE_FLOOR: int = 6           # GR against-score floor for hedge trigger (0=disabled)
+    GR_HEDGE_REQUIRE_WT3M: bool = True      # always require wt1_3m against for hedge
+    HEDGE_TRIGGER_REQUIRE_15M_OR_1H: bool = True  # require 15m or 1h WT alignment (can be overridden by GR)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -474,6 +482,10 @@ class SymState:
     max_gain: float = 0.0
     hedge_active: bool = False
     hedge_completed_ts: float = 0.0
+    hedge_qty: float = 0.0            # qty of hedge position
+    hedge_entry_price: float = 0.0    # price hedge opened at
+    hedge_opened_at: float = 0.0      # timestamp hedge opened
+    hedge_gain_at_open: float = 0.0   # main position gain when hedge opened
     ppl_fired: bool = False
     intent_lock_stamp: float = 0.0
     last_open_attempt_ts: float = 0.0
@@ -541,11 +553,16 @@ def simulate_one_symbol(
     wt_15m_aligned = (wt1_15m > wt2_15m) if is_long else (wt1_15m < wt2_15m)
     wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
     wt_3m_aligned  = ((wt1_3m > wt2_3m) if is_long else (wt1_3m < wt2_3m)) & (wt_15m_aligned | wt_1h_aligned)
-    # wt1_3m against the trade (required by GR exit)
+    # wt1_3m against the trade (required by GR exit and hedge trigger)
     _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
+    # WT against for hedge trigger (15m and 1h)
+    wt_15m_against = (wt1_15m < wt2_15m) if is_long else (wt1_15m > wt2_15m)
+    wt_1h_against  = (wt1_1h  < wt2_1h)  if is_long else (wt1_1h  > wt2_1h)
     # GR against-score: sum of all indicators on all HTF TFs in direction AGAINST trade
+    # Computed when GR_EXIT_ENABLED OR GR_HEDGE_SCORE_FLOOR > 0 (hedge trigger)
     _gr_against_count: Optional[np.ndarray] = None
-    if config.GR_EXIT_ENABLED and evaluate_gr_htf_vec is not None:
+    _need_gr_against = (config.GR_EXIT_ENABLED or int(config.GR_HEDGE_SCORE_FLOOR) > 0)
+    if _need_gr_against and evaluate_gr_htf_vec is not None:
         _, _gr_against_count = evaluate_gr_htf_vec(
             npz, is_long=(not is_long), mode=mode, vote_min=1, n=n
         )
@@ -696,6 +713,48 @@ def simulate_one_symbol(
                         trade_returns.append(gain * frac)
                         state.qty -= reduce_qty
                         state.last_reduce_ts = bar_ts
+
+        # ─── HEDGE OPEN ────────────────────────────────────────────────────
+        if (config.HEDGE_SCAN_ENABLED and state.qty > 0.0001 and not state.hedge_active
+                and (bar_ts - state.hedge_completed_ts) >= float(config.HEDGE_COMPLETED_LOCKOUT_SECONDS)
+                and gain < float(config.HEDGE_MIN_LOSS_PCT)
+                and bool(_wt3m_against[i])):
+            _gr_ok = (_gr_against_count is not None
+                      and int(config.GR_HEDGE_SCORE_FLOOR) > 0
+                      and int(_gr_against_count[i]) >= int(config.GR_HEDGE_SCORE_FLOOR))
+            _15m1h_ok = bool(wt_15m_against[i]) or bool(wt_1h_against[i])
+            if _15m1h_ok or _gr_ok:
+                hedge_qty = state.qty * float(config.HEDGE_QTY_PCT)
+                _gr_tag = f"_gr{int(_gr_against_count[i])}" if _gr_ok and _gr_against_count is not None else ""
+                reason = (f"HEDGE_PROTECT_{'SHORT' if is_long else 'LONG'}_LOSS_g{gain:.2f}"
+                         f"{'_GR' if _gr_ok else ''}{'_15m1h' if _15m1h_ok else ''}{_gr_tag}")
+                ev = TradeEvent(ts=bar_ts, type="HEDGE_OPEN", qty=hedge_qty, price=mark,
+                    value=hedge_qty * mark, reason=reason)
+                events.append(ev)
+                state.hedge_active = True
+                state.hedge_qty = hedge_qty
+                state.hedge_entry_price = mark
+                state.hedge_opened_at = bar_ts
+                state.hedge_gain_at_open = gain
+
+        # ─── HEDGE CLOSE ───────────────────────────────────────────────────
+        if state.hedge_active and state.hedge_qty > 0 and state.hedge_entry_price > 0:
+            wt3m_back_in_favor = not bool(_wt3m_against[i])
+            if wt3m_back_in_favor or gain >= 0.0:
+                if is_long:
+                    hedge_pnl = (state.hedge_entry_price - mark) / state.hedge_entry_price * 100.0
+                else:
+                    hedge_pnl = (mark - state.hedge_entry_price) / state.hedge_entry_price * 100.0
+                close_reason = f"HEDGE_CLOSE_WT{'_RECOVERED' if gain >= 0.0 else ''}_pnl{hedge_pnl:.2f}"
+                ev = TradeEvent(ts=bar_ts, type="HEDGE_CLOSE", qty=state.hedge_qty, price=mark,
+                    value=state.hedge_qty * mark, reason=close_reason, pnl_pct=hedge_pnl)
+                events.append(ev)
+                trade_returns.append(hedge_pnl)
+                state.hedge_active = False
+                state.hedge_qty = 0.0
+                state.hedge_entry_price = 0.0
+                state.hedge_opened_at = 0.0
+                state.hedge_completed_ts = bar_ts
 
         # ─── EXIT GATES (indicator-only first, then state-aware) ────────
         exit_id = EXIT_NONE
