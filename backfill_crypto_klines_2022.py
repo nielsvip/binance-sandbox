@@ -88,8 +88,9 @@ async def backfill_symbol(symbol: str, interval: str, base_dir: Path,
         return 0
 
     label = f"{symbol}" + (f" (fetch as {fetch_symbol})" if fetch_symbol != symbol else "")
-    print(f"  {label} {interval}: backfilling from {earliest_ts.date()} backwards to {BACKFILL_STOP_DATE.date()}")
+    print(f"  {label} {interval}: backfilling from {earliest_ts.date()} backwards to {BACKFILL_STOP_DATE.date()}", flush=True)
     page = 0
+    raw = []
     while earliest_ts > BACKFILL_STOP_DATE:
         params = {
             "symbol": fetch_symbol,
@@ -98,20 +99,34 @@ async def backfill_symbol(symbol: str, interval: str, base_dir: Path,
             "endTime": int(earliest_ts.timestamp() * 1000) - 1,
         }
         page += 1
+        raw = []
+        status_code = None
         try:
             async with semaphore:
                 async with session.get(FAPI_URL, params=params,
                                        timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    status_code = resp.status
                     if resp.status == 429:
-                        print(f"    {symbol} rate-limited, sleeping 5s")
-                        await asyncio.sleep(5)
-                        continue
-                    if resp.status != 200:
-                        print(f"    {symbol} HTTP {resp.status}, stopping")
-                        break
-                    raw = await resp.json()
+                        print(f"    {symbol} 429 rate-limit, sleeping 30s", flush=True)
+                    elif resp.status == 418:
+                        print(f"    {symbol} 418 IP ban, sleeping 60s then retry", flush=True)
+                    elif resp.status != 200:
+                        print(f"    {symbol} HTTP {resp.status}, stopping", flush=True)
+                    else:
+                        raw = await resp.json()
         except Exception as e:
-            print(f"    {symbol} error: {e}, stopping")
+            print(f"    {symbol} error: {e}, stopping", flush=True)
+            break
+
+        if status_code == 429:
+            await asyncio.sleep(30)
+            page -= 1
+            continue
+        if status_code == 418:
+            await asyncio.sleep(60)
+            page -= 1
+            continue
+        if status_code is not None and status_code != 200:
             break
 
         if not raw:
@@ -137,7 +152,7 @@ async def backfill_symbol(symbol: str, interval: str, base_dir: Path,
 
         if earliest_ts <= BACKFILL_STOP_DATE:
             break
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(1.5)  # 1.5s between pages → ~40 req/min, well under Binance limit
 
     print(f"  {symbol} {interval}: total +{total_added} bars added")
     return total_added

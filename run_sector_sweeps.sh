@@ -18,6 +18,7 @@ SECTORS_FILE="$WORKDIR/sectors_tradier.json"
 START_DATE="2023-05-13"
 TIER="tradier_param_hunt"
 WORKERS=1
+TIMEOUT=1800  # 30 min per variant — needed for 20-30 symbol sectors
 LOG_DIR="$HOME/logs"
 
 mkdir -p "$LOG_DIR"
@@ -99,6 +100,7 @@ launch_sector() {
         --symbols "$syms" \
         --start "$START_DATE" \
         --workers "$WORKERS" \
+        --timeout "$TIMEOUT" \
         > "$logfile" 2>&1 < /dev/null &
 
     local pid=$!
