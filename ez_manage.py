@@ -17049,46 +17049,47 @@ class MultiAccountTradeManager:
         # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
         # Below threshold → BLOCKED. Time-cooldown retained as fallback when
         # DUP_GUARD_USE_GAIN_GATE=False.
+        # WT_3M_FORCE_OPEN / TRADEABLE_KEYS_MANDATORY bypass entirely — pre-check
+        # in the main loop guards cooldown; these are mandatory-foothold signals.
         if is_augment:
-            _wt3m_force_open = "WT_3M_FORCE_OPEN" in (reason or "").upper() and bool(
-                getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True)
-            )
-            if (
-                bool(getattr(config, "DUP_GUARD_USE_GAIN_GATE", True))
-                and not _wt3m_force_open
-            ):
-                _dg_min_gain = float(getattr(config, "MIN_GAIN", 3.0))
-                _dg_mult = float(getattr(config, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))
-                _dg_thr = _dg_min_gain * _dg_mult
-                if not position:
-                    position = await self.get_position(position_key)
-                _dg_gain = (
-                    safe_fetch_float(getattr(position, "gain", 0), 0.0)
-                    if position
-                    else 0.0
-                )
-                _dg_pos_amt = (
-                    abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
-                    if position
-                    else 0.0
-                )
-                _dg_pos_val = _dg_pos_amt * current_price if current_price > 0 else 0.0
-                _dg_min_pos_val = float(getattr(config, "MIN_POSITION_SIZE", 1.0))
-                if _dg_pos_val > _dg_min_pos_val and _dg_gain <= _dg_thr:
-                    logger.critical(
-                        f"🚫 [DUP_GUARD_GAIN] {position_key}: BLOCKED — gain={_dg_gain:.2f}% <= {_dg_thr:.2f}% (=0.5*MIN_GAIN). action={action} reason={(reason or '')[:50]}"
+            _wt3m_force_open = (
+                "WT_3M_FORCE_OPEN" in (reason or "").upper()
+                or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper()
+            ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+            if not _wt3m_force_open:
+                if bool(getattr(config, "DUP_GUARD_USE_GAIN_GATE", True)):
+                    _dg_min_gain = float(getattr(config, "MIN_GAIN", 3.0))
+                    _dg_mult = float(getattr(config, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))
+                    _dg_thr = _dg_min_gain * _dg_mult
+                    if not position:
+                        position = await self.get_position(position_key)
+                    _dg_gain = (
+                        safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                        if position
+                        else 0.0
                     )
-                    return (
-                        f"BLOCKED_DUP_GUARD_GAIN_{_dg_gain:.2f}pct_lt_{_dg_thr:.2f}pct"
+                    _dg_pos_amt = (
+                        abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
+                        if position
+                        else 0.0
                     )
-            else:
-                _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
-                _last_open_ts = _recent_opens.get(position_key, 0)
-                if time.time() - _last_open_ts < _dup_cooldown:
-                    logger.critical(
-                        f"🚫 [DUPLICATE_OPEN_GUARD_TIME] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}"
-                    )
-                    return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
+                    _dg_pos_val = _dg_pos_amt * current_price if current_price > 0 else 0.0
+                    _dg_min_pos_val = float(getattr(config, "MIN_POSITION_SIZE", 1.0))
+                    if _dg_pos_val > _dg_min_pos_val and _dg_gain <= _dg_thr:
+                        logger.critical(
+                            f"🚫 [DUP_GUARD_GAIN] {position_key}: BLOCKED — gain={_dg_gain:.2f}% <= {_dg_thr:.2f}% (=0.5*MIN_GAIN). action={action} reason={(reason or '')[:50]}"
+                        )
+                        return (
+                            f"BLOCKED_DUP_GUARD_GAIN_{_dg_gain:.2f}pct_lt_{_dg_thr:.2f}pct"
+                        )
+                else:
+                    _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
+                    _last_open_ts = _recent_opens.get(position_key, 0)
+                    if time.time() - _last_open_ts < _dup_cooldown:
+                        logger.critical(
+                            f"🚫 [DUPLICATE_OPEN_GUARD_TIME] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}"
+                        )
+                        return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
         # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. NO EXCEPTIONS. Not hedge. Not reentry. Not anything.
         # ONLY pass when position is at foothold size (near-zero) — any entry type allowed then.
         if is_augment:
@@ -18577,11 +18578,17 @@ class MultiAccountTradeManager:
             _tp_entry_ok, _tp_entry_reason = trading_policy.check_entry_vetting(
                 i, current_price, is_long
             )
+            _reason_up_eta = (reason or "").upper()
+            _is_force_open_eta = (
+                "WT_3M_FORCE_OPEN" in _reason_up_eta
+                or "TRADEABLE_KEYS_MANDATORY" in _reason_up_eta
+            ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             if (
                 not _tp_entry_ok
                 and "HEDGE" not in action
                 and "QUICK" not in action
-                and "REENTRY" not in reason.upper()
+                and "REENTRY" not in _reason_up_eta
+                and not _is_force_open_eta
             ):
                 logger.warning(f"[ENTRY_VET] {position_key}: BLOCKED — reason={_tp_entry_reason} action={action} r={(reason or '')[:60]}")
                 return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
@@ -18595,6 +18602,7 @@ class MultiAccountTradeManager:
                 and "HEDGE" not in action
                 and not _is_scalp_v3
                 and not _is_reentry_bypass
+                and not _is_force_open_eta
             ):
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and (
@@ -23634,14 +23642,15 @@ class MultiAccountTradeManager:
             _has_existing_position = _existing_amt > self.min_qty.get(
                 symbol or "", 0.0001
             )
-        # ═══ HARD AUGMENT LOCK — 900s cooldown on ALL position-increase actions ═══
+        # ═══ HARD AUGMENT LOCK — 900s cooldown on position-INCREASE actions ═══
         # 2026-05-09 USER MANDATE: applies to OPEN, AUGMENT, REENTER alike — no
         # REENTRY exemption (`_is_reentry_exec_now` removed from bypass). The
         # `_gain_ok` bypass (gain >= MIN_GAIN) survives so a profitable position
         # can still be added to without waiting; that's not the over-trading vector.
-        # Cooldown also fires on TRUE OPEN on empty positions (no _has_existing_position
-        # gate) so two opens on the same (sym,side) within 900s = blocked second.
-        if _is_aug and position_key:
+        # 2026-05-13: gated on _has_existing_position — for positionAmt=0 (fresh OPEN),
+        # gain is 0 by definition so gain>3% check is nonsensical; PREFLIGHT_INTENT_LOCK
+        # (60s) already guards fill-propagation races on empty positions.
+        if _is_aug and position_key and _has_existing_position:
             _min_gain = getattr(config, "MIN_GAIN", 1.2)
             _gain_ok = (_pos_gain >= _min_gain) if _has_existing_position else False
             _last_aug_ts = _AUGMENT_LOCK.get(position_key, 0)
@@ -45356,7 +45365,8 @@ async def _reentry_daemon_subprocess_watchdog(config) -> None:
                 f"[REENTRY_DAEMON] pid={proc.pid} exited rc={rc} — restarting in 5s"
             )
         except Exception as _e:
-            logger.error(f"[REENTRY_DAEMON] spawn error: {_e}")
+            if str(_e):
+                logger.error(f"[REENTRY_DAEMON] spawn error: {_e}", exc_info=True)
         finally:
             try:
                 log_f.close()

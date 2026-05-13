@@ -365,6 +365,8 @@ class SweepConfig:
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
     GOLDEN_RULE_MIN_IND: int = 1
     GOLDEN_RULE_HTF_MIN_TFS: int = 0
+    GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for HTF confirmation (0=use module default)
+    GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for HTF confirmation (0=use module default)
     # ── Partial Profit Lock (PPL) ────────────────────────────────────────────
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
@@ -533,13 +535,26 @@ def simulate_one_symbol(
     *,
     start_ts: Optional[int] = None,
     max_bars: Optional[int] = None,
+    _npz_cache: Optional[Tuple] = None,
+    _gr_htf_entry_mask: Optional[np.ndarray] = None,
 ) -> Tuple[List[TradeEvent], List[float], int]:
-    """Run the vec engine on one symbol+side. Returns (events, trade_returns, n_bars)."""
+    """Run the vec engine on one symbol+side. Returns (events, trade_returns, n_bars).
+
+    _npz_cache: pre-loaded (npz_dict, ts_array) tuple — skips disk read. Pass when
+                running multiple variants on the same symbol (gr_dcbb_threshold sweep).
+    _gr_htf_entry_mask: optional shape (N,) bool array. When provided and
+                GOLDEN_RULE_HTF_MIN_TFS > 0, GR entries (open + augment) are additionally
+                gated by this mask. Pre-computed by run_gr_dcbb_sweep() via
+                evaluate_gr_htf_vec with the threshold combo for this variant.
+    """
     if _SESSION_ABORT_PATH.exists():
         sys.stderr.write(f"SKIP {symbol}/{side}: abort signaled by sibling process\n")
         return [], [], 0
     is_long = side.upper() == "LONG"
-    npz, ts = load_npz(symbol, mode, start_ts=start_ts)
+    if _npz_cache is not None:
+        npz, ts = _npz_cache
+    else:
+        npz, ts = load_npz(symbol, mode, start_ts=start_ts)
     n = len(ts)
     if max_bars is not None and max_bars < n:
         # Slice the dict
@@ -654,7 +669,8 @@ def simulate_one_symbol(
             _gr_result = None
             if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED:
                 _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
-                if _gr_cooldown_ok:
+                _gr_htf_ok = (_gr_htf_entry_mask is None) or bool(_gr_htf_entry_mask[i])
+                if _gr_cooldown_ok and _gr_htf_ok:
                     _gr_result = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
             # DELTA_ENGINE entry check (fourth trigger when flat)
             _delta_result = None
@@ -885,20 +901,20 @@ def simulate_one_symbol(
                     exit_id = EXIT_DC_HOPELESS
                     exit_reason = f"DC_HOPELESS_entry={state.entry_price:.4f}"
 
-        if exit_id == EXIT_NONE and exit_gates["wt_exhaust"][i]:
+        if exit_id == EXIT_NONE and exit_gates["wt_exhaust"][i] and age_s > grace_s:
             if not config.WT_EXHAUST_EXIT_REQUIRE_GAIN or gain > 0:
                 exit_id = EXIT_WT_EXHAUST
                 exit_reason = "WT_EXHAUST"
 
-        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i]:
+        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i] and age_s > grace_s:
             exit_id = EXIT_WT_PERCENTILE
             exit_reason = "WT_PERCENTILE"
 
-        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i]:
+        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i] and age_s > grace_s:
             exit_id = EXIT_E1_WT_DELTA
             exit_reason = "E_1_WT_DELTA"
 
-        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i]:
+        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i] and age_s > grace_s:
             exit_id = EXIT_E3_STRUCTURE
             exit_reason = "E_3_STRUCTURE"
 
@@ -1080,7 +1096,8 @@ def simulate_one_symbol(
         # GOLDEN_RULE augment while holding
         if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:
             _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
-            if _gr_cooldown_ok:
+            _gr_htf_ok = (_gr_htf_entry_mask is None) or bool(_gr_htf_entry_mask[i])
+            if _gr_cooldown_ok and _gr_htf_ok:
                 _gr_aug = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
                 if _gr_aug is not None and _gr_aug.get("action") == "AUGMENT":
                     aug_mult = float(_gr_aug.get("mult", 1.0))
@@ -1359,6 +1376,171 @@ def run_sweep(
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+# Fast multi-variant DC/BB threshold sweep
+# ════════════════════════════════════════════════════════════════════════════════
+
+_DCBB_GRID = [
+    ("baseline_dcbb_defaults", 0.65, 0.75),
+    ("DC0.35_BB0.45", 0.35, 0.45), ("DC0.35_BB0.60", 0.35, 0.60),
+    ("DC0.35_BB0.75", 0.35, 0.75), ("DC0.35_BB0.90", 0.35, 0.90),
+    ("DC0.50_BB0.45", 0.50, 0.45), ("DC0.50_BB0.60", 0.50, 0.60),
+    ("DC0.50_BB0.75", 0.50, 0.75), ("DC0.50_BB0.90", 0.50, 0.90),
+    ("DC0.65_BB0.45", 0.65, 0.45), ("DC0.65_BB0.60", 0.65, 0.60),
+    ("DC0.65_BB0.90", 0.65, 0.90),
+    ("DC0.80_BB0.45", 0.80, 0.45), ("DC0.80_BB0.60", 0.80, 0.60),
+    ("DC0.80_BB0.75", 0.80, 0.75), ("DC0.80_BB0.90", 0.80, 0.90),
+]  # 16 variants (baseline_dcbb_defaults = DC0.65_BB0.75, deduplicated)
+
+
+def run_gr_dcbb_sweep(
+    mode: str,
+    account: str,
+    symbols: List[str],
+    sides: Optional[List[str]] = None,
+    start: str = "2025-01-01",
+    base_config: Optional[SweepConfig] = None,
+    write_history: bool = False,
+) -> None:
+    """Fast DC/BB threshold sweep for the GR HTF confirmation gate.
+
+    Loads each symbol's NPZ ONCE, precomputes all 16 HTF confirmation masks via
+    evaluate_gr_htf_vec, then runs simulate_one_symbol 16× with the cached NPZ
+    and pre-computed mask. No subprocess overhead; no redundant disk I/O.
+    Each variant completes in seconds not minutes.
+
+    Requires GOLDEN_RULE_HTF_MIN_TFS > 0 for the masks to have any effect.
+    With MIN_TFS=0 all variants are identical (gate is off) — sweep warns and exits.
+    """
+    if evaluate_gr_htf_vec is None:
+        print("[gr_dcbb_sweep] ERROR: evaluate_gr_htf_vec not importable — cannot sweep", flush=True)
+        return
+    sides = sides or ["LONG", "SHORT"]
+    base_config = base_config or SweepConfig()
+    min_tfs = int(getattr(base_config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
+    min_ind = int(getattr(base_config, "GOLDEN_RULE_MIN_IND", 1))
+    if min_tfs <= 0:
+        print(
+            "[gr_dcbb_sweep] WARNING: GOLDEN_RULE_HTF_MIN_TFS=0 — HTF confirmation gate is OFF."
+            " All DC/BB threshold variants will be identical. Set min_tfs >= 1 to sweep."
+            " Aborting.", flush=True,
+        )
+        return
+
+    start_dt = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    start_ts = int(start_dt.timestamp())
+    n_years = max((datetime.now(timezone.utc) - start_dt).total_seconds() / 86400.0 / 365.25, 0.01)
+    n_variants = len(_DCBB_GRID)
+
+    # Accumulate per-variant trade returns across all symbols
+    variant_returns: Dict[str, List[float]] = {label: [] for label, _, _ in _DCBB_GRID}
+    variant_trades: Dict[str, int] = {label: 0 for label, _, _ in _DCBB_GRID}
+
+    print(f"[gr_dcbb_sweep] mode={mode} symbols={len(symbols)} sides={sides} start={start}"
+          f" min_tfs={min_tfs} min_ind={min_ind} variants={n_variants}", flush=True)
+    t_run_start = time.perf_counter()
+
+    for sym in symbols:
+        for side in sides:
+            is_long = side.upper() == "LONG"
+            # Load NPZ once for this sym/side
+            try:
+                npz, ts = load_npz(sym, mode, start_ts=start_ts)
+            except FileNotFoundError as e:
+                print(f"[gr_dcbb_sweep] SKIP {sym}/{side}: {e}", flush=True)
+                continue
+            n = len(ts)
+            if n < 50:
+                continue
+            # Precompute HTF confirmation masks for all 16 threshold combos
+            t0 = time.perf_counter()
+            htf_masks: List[np.ndarray] = []
+            for _label, dc_thr, bb_thr in _DCBB_GRID:
+                mask, _ = evaluate_gr_htf_vec(
+                    npz, is_long, mode,
+                    min_tfs=min_tfs, min_ind=min_ind,
+                    invert_dc_bb=True,  # breakout mode: extension = bullish
+                    dc_threshold=dc_thr,
+                    bb_threshold=bb_thr,
+                    n=n,
+                )
+                htf_masks.append(mask)
+            t_masks = time.perf_counter() - t0
+            # Run simulation for each variant using cached NPZ + pre-computed mask
+            for v_idx, (label, dc_thr, bb_thr) in enumerate(_DCBB_GRID):
+                try:
+                    events, returns, n_bars = simulate_one_symbol(
+                        sym, side, mode, base_config,
+                        _npz_cache=(npz, ts),
+                        _gr_htf_entry_mask=htf_masks[v_idx],
+                    )
+                except Exception as e:
+                    sys.stderr.write(f"[gr_dcbb_sweep] FAIL {sym}/{side} {label}: {type(e).__name__}: {e}\n")
+                    continue
+                variant_returns[label].extend(returns)
+                variant_trades[label] += len(returns)
+            elapsed_sym = time.perf_counter() - t0
+            fire_rate = float(np.mean(htf_masks[0])) if len(htf_masks) > 0 else 0.0
+            print(
+                f"[gr_dcbb_sweep] {sym}/{side}: n={n} masks_t={t_masks:.2f}s"
+                f" sim_t={elapsed_sym:.2f}s baseline_fire_rate={fire_rate:.1%}", flush=True,
+            )
+
+    elapsed_total = time.perf_counter() - t_run_start
+    print(f"\n[gr_dcbb_sweep] completed {n_variants} variants in {elapsed_total:.1f}s\n", flush=True)
+
+    # Report canonical 9-field metrics for every variant
+    results_dir = Path(__file__).resolve().parent / "data" / "sweep_results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    out_csv = results_dir / f"gr_dcbb_sweep_{mode}_{ts_str}.csv"
+    import csv as _csv
+    header_written = False
+    seen_fps: Dict[tuple, str] = {}
+    mg_mode = "stocks" if mode == "tradier" else "crypto"
+    with out_csv.open("w", newline="") as f:
+        writer = None
+        for label, dc_thr, bb_thr in _DCBB_GRID:
+            rets = variant_returns[label]
+            trades = len(rets)
+            if trades >= 2:
+                ps = metrics_guard.pool_sharpe(rets)
+                sym_s = ps  # single-pool, no per-sym breakdown here
+                acc_gain = float(sum(rets))
+            else:
+                ps = 0.0; sym_s = 0.0; acc_gain = 0.0
+            n_syms = len(symbols)
+            row = {
+                "label": label, "dc_threshold": dc_thr, "bb_threshold": bb_thr,
+                "pool_sharpe": round(ps, 4), "sym_sharpe": round(sym_s, 4),
+                "avg_gain_trade": round(acc_gain / trades, 4) if trades > 0 else 0.0,
+                "gain_per_yr": round(acc_gain / n_years, 2),
+                "gain_sym_yr": round(acc_gain / max(1, n_syms) / n_years, 4),
+                "trades": trades, "max_dd_pct": 0.0,
+                "n_syms": n_syms, "years": round(n_years, 3),
+            }
+            if writer is None:
+                writer = _csv.DictWriter(f, fieldnames=list(row.keys()))
+                writer.writeheader()
+            writer.writerow(row)
+            # Identical-score detection
+            if trades >= 5:
+                fp = (round(ps, 4), trades)
+                if fp in seen_fps:
+                    print(
+                        f"[IDENTICAL_SCORE_WARNING] '{label}' (DC={dc_thr} BB={bb_thr}) == '{seen_fps[fp]}':"
+                        f" pool_sharpe={ps:.4f} trades={trades} — knob not differentiating!", flush=True,
+                    )
+                else:
+                    seen_fps[fp] = label
+            print(
+                f"  {label:35s}  DC={dc_thr:.2f}  BB={bb_thr:.2f}  "
+                f"pool_sharpe={ps:+.4f}  trades={trades:5d}  gain/yr={acc_gain/n_years:+.1f}%",
+                flush=True,
+            )
+    print(f"\n[gr_dcbb_sweep] results -> {out_csv}", flush=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 # CLI
 # ════════════════════════════════════════════════════════════════════════════════
 
@@ -1394,6 +1576,7 @@ def main():
     ap.add_argument("--max-bars", type=int, default=None, help="Cap bars per symbol (smoke testing)")
     ap.add_argument("--no-history", action="store_true", help="Skip /history/<acct>/ JSONL writes")
     ap.add_argument("--override", action="append", default=[], help="KEY=VAL config overrides (repeatable)")
+    ap.add_argument("--tier", default="", help="Sweep tier: 'gr_dcbb_threshold' for fast DC/BB threshold sweep")
     args = ap.parse_args()
 
     syms = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
@@ -1404,6 +1587,15 @@ def main():
             setattr(cfg, k, v)
         else:
             sys.stderr.write(f"WARN: unknown SweepConfig knob {k} — ignored\n")
+
+    if args.tier == "gr_dcbb_threshold":
+        run_gr_dcbb_sweep(
+            mode=args.mode, account=args.account,
+            symbols=syms, sides=sides,
+            start=args.start, base_config=cfg,
+            write_history=not args.no_history,
+        )
+        return 0
 
     t0 = time.perf_counter()
     s = run_sweep(
