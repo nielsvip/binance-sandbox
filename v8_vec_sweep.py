@@ -236,6 +236,7 @@ class SweepConfig:
     MIN_GAIN: float = 3.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     COMMISSION_BUFFER_PCT: float = 0.10
+    ROUND_TRIP_COST_PCT: float = 0.10  # bid-ask spread + slippage; deducted from every trade return
     WT_HTF_DISCOUNT_ENABLED: bool = True
     # ── reentry blocks ────────────────────────────────────────────────────
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
@@ -1139,6 +1140,11 @@ def simulate_one_symbol(
             value=state.hedge_qty * final_mark, reason="MTM_FINAL_HEDGE_NOLIES", pnl_pct=hedge_pnl)
         events.append(ev)
         trade_returns.append(hedge_pnl)
+
+    # Deduct round-trip spread/slippage from every trade return (NO-LIES: gross ≠ net)
+    _rt_cost = float(getattr(config, "ROUND_TRIP_COST_PCT", 0.10))
+    if _rt_cost != 0.0:
+        trade_returns = [r - _rt_cost for r in trade_returns]
 
     return events, trade_returns, n
 
