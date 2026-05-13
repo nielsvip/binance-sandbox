@@ -161,11 +161,16 @@ def _run_gate(
     GR_TOTAL_VOTE_SCORE_MIN == 0 and min_tfs > 0, use legacy logic.
     """
     # === NEW total-vote-score gate ===
+    # Mode-aware config read: tradier overrides land on tradier_manage.config, not config.
     try:
-        import config as _cfg_mod
-        _vote_min = int(getattr(_cfg_mod, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
-        _dc_thr = float(getattr(_cfg_mod, 'GR_DC_EXTENDED_LONG', 0) or 0)
-        _bb_thr = float(getattr(_cfg_mod, 'GR_BB_EXTENDED_LONG', 0) or 0)
+        if mode == "tradier":
+            import tradier_manage as _tm_src
+            _cfg_obj = _tm_src.config
+        else:
+            import config as _cfg_obj
+        _vote_min = int(getattr(_cfg_obj, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
+        _dc_thr = float(getattr(_cfg_obj, 'GR_DC_EXTENDED_LONG', 0) or 0)
+        _bb_thr = float(getattr(_cfg_obj, 'GR_BB_EXTENDED_LONG', 0) or 0)
     except Exception:
         _vote_min = 0
         _dc_thr = 0.0

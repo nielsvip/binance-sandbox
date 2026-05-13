@@ -1359,7 +1359,7 @@ class Config:
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False                 # USER 2026-05-11: was True → False. Live data: 5,848 HEDGE_FAILED_FALLBACK_CLOSE in 24h (31.8% of all closes) because 1h hadn't flipped when 3m did. Superseded by HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H below.
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = True           # USER 2026-05-11 LATEST: hedge OPEN requires wt1_3m against AND (wt1_15m against OR wt1_1h against). Catches sharp 3m+15m moves the 1h-lag couldn't, while keeping 2-TF confirmation. Close still uses wt_3m alone (HEDGE_CLOSE_MODE='wt_3m').
     HEDGE_TRIGGER_GR_SCORE_ENABLED: bool = True                      # USER 2026-05-13: add GR HTF vote score as 3rd confirmation path. Hedge fires when wt1_3m AND (15m OR 1h OR gr_against_score >= GR_HEDGE_SCORE_FLOOR). Reduces churn from WT-only timing noise.
-    GR_HEDGE_SCORE_FLOOR: int = 6                                     # min GR vote-count to trigger hedge without 15m/1h WT confirmation. Score = HTF TF×indicator votes against position. Crypto 5TFs×7ind=35 max; 6 ≈ "2 TFs with 3 indicators each".
+    GR_HEDGE_SCORE_FLOOR: int = 15                                    # min GR total-vote-score to trigger hedge without 15m/1h WT confirmation. Score = SUM of per-TF raw indicator votes against (0-35 range: 5 crypto TFs × 7 ind). 15 ≈ "3 TFs fully against (5×3) or 2 TFs with 7-8 each". User mandate: keep 15-20 or fires every bar.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
     # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION

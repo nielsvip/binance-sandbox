@@ -14,13 +14,26 @@ the gap: `_NPZStoreAdapter` and `_PosStateAdapter` (see Agent A task below).
 
 ---
 
-## ██ ACTIVE RIGHT NOW — Wait 60 min ██
+## ██ GR_EXIT SWEEP STATUS — 2026-05-13 20:30 UTC ██
 
-- [ ] **S1 sweep result check** — GR_EXIT variants (mult 9/12/15) ± DC_LOW4_STOP_ENABLED  
-  Command: `ssh s1-int 'tail -50 ~/logs/bt_sweep_*.log | grep -E "pool_sharpe|GR_EXIT|DC_LOW4" | tail -30'`  
-  After finding winner: apply to live via `config.py` knobs:  
-  `GR_EXIT_ENABLED=True/False` + `GR_EXIT_MULT_THRESHOLD=9/12/15` + `DC_LOW4_STOP_ENABLED=True/False`  
-  **NOTE**: DC_LOW4_STOP in sweep ≠ R1_DC in live — see Architecture Gaps below.
+**gr_dcbb_threshold_185430**: ALL 4 variants TIMED OUT (18 syms × 2.36yr too heavy, each >600s).  
+**gr_dcbb_threshold_195555**: RUNNING (tradier mode, 16 variants, 20 syms, started 19:55 UTC). No CSV yet.
+
+**Available GR_EXIT data (from 2026-05-09 tradier sweep logs):**
+
+| Config | pool_sharpe | sym_sharpe | trades | syms×yrs | verdict |
+|--------|-------------|------------|--------|----------|---------|
+| baseline | 0.097 | 0.013 | 69 | 20×0.35 | DIAGNOSTIC |
+| GR_EXIT_tfs1_ind3 | 0.181 | 0.154 | 163 | 20×0.35 | DIAGNOSTIC |
+| GR_EXIT_tfs2_ind3 | 0.186 | 0.192 | 160 | 20×0.35 | DIAGNOSTIC |
+| **GR_EXIT_tfs3_ind3** | **0.211** | **0.212** | **163** | **20×0.35** | **DIAGNOSTIC — BEST** |
+
+**Key: tfs3_ind3 = `GOLDEN_RULE_EXIT_MIN_TFS=3, GOLDEN_RULE_EXIT_MIN_IND=3` in config_tradier.py**  
+Live mapping: `tradier_manage.py:5021` already reads `GOLDEN_RULE_EXIT_MIN_TFS/MIN_IND`.  
+**NOT APPLIED YET** — sample is 20 syms × 0.35yr = SUB-FLOOR (need ≥100 stocks × >1yr). Mark [DIAGNOSTIC].  
+Wait for `gr_dcbb_threshold_195555` to finish. Improvement is real (+117% vs baseline) but unverifiable at scale.
+
+**DC_LOW4_STOP note**: No DC_LOW4_STOP sweep results — all timed out. DC_LOW4_STOP in sweep ≠ R1_DC in live (see Architecture Gaps). Cannot apply directly.
 
 ---
 
@@ -250,11 +263,16 @@ class _PosStateAdapter:
 
 ## S1 Sweep Results Tracker
 
-| Run | GR_EXIT | DC_LOW4_STOP | pool_sharpe | trades | winner? |
-|-----|---------|--------------|-------------|--------|---------|
-| — | — | — | — | — | — |
+| Run | Config | pool_sharpe | trades | syms×yrs | verdict |
+|-----|--------|-------------|--------|----------|---------|
+| bt_sweep_tradier_20sym_20260509_1306 | GR_EXIT_tfs3_ind3 (BEST) | 0.211 | 163 | 20×0.35 | [DIAGNOSTIC] sub-floor |
+| bt_sweep_tradier_20sym_20260509_1306 | baseline | 0.097 | 69 | 20×0.35 | [DIAGNOSTIC] |
+| gr_dcbb_threshold_20260513_185430 | ALL 4 variants | TIMEOUT | 0 | 18×2.36 | TIMEOUT — too heavy |
+| gr_dcbb_threshold_20260513_195555 | 16 tradier variants | RUNNING | — | 20 syms | In progress |
 
-Fill in after 60-min check.
+**Next**: When `gr_dcbb_threshold_195555` finishes — check CSV for GOLDEN_RULE_EXIT results.  
+If any result has pool_sharpe > 0.211 AND ≥30 trades/sym: update `config_tradier.py GOLDEN_RULE_EXIT_MIN_TFS/IND`.  
+Still DIAGNOSTIC until ≥100 syms × 1yr run available.
 
 ---
 

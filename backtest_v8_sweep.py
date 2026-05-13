@@ -1925,6 +1925,14 @@ def main():
     # stocks; everything else maps to crypto.
     mg_mode = "stocks" if args.mode == "tradier" else "crypto"
 
+    # Identical-score detection: maps fingerprint → first label that produced it.
+    # Fingerprint = (pool_sharpe_4dp, sym_sharpe_4dp, closes) for ok results with
+    # closes >= 5 (avoids false positives from zero-trade/timeout variants sharing
+    # all-zeros). Duplicates indicate a broken knob (override not reaching the engine).
+    _seen_fingerprints: dict = {}
+    _faulty_pairs: list = []
+    _requeue_tasks: list = []
+
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(run_one_variant, t): t[0] for t in tasks}
         for fut in as_completed(futures):
@@ -1954,6 +1962,27 @@ def main():
                 elif baseline_sharpe is not None:
                     delta_s = f" Δ={s_pool - baseline_sharpe:+.3f}"
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} pool_sharpe={s_pool:+.3f}{delta_s} sym_sharpe={res['sym_sharpe']:+.3f} gain={res['gain_pct']:+.2f}% closes={res['closes']} wr={row['win_rate']}% dd={row['max_dd_pct']:.2f}% n_syms={row['n_syms']} years={row['years']:.2f} {res['elapsed_s']:.0f}s")
+                # ── Identical-score detection ──
+                # Only fingerprint variants with real trades (closes>=5) so zero-trade
+                # timeouts don't all look "identical" and trigger false positives.
+                _closes = int(res.get("closes", 0) or 0)
+                if _closes >= 5:
+                    _fp = (round(float(s_pool), 4), round(float(res.get("sym_sharpe", 0) or 0), 4), _closes)
+                    if _fp in _seen_fingerprints:
+                        _prev_label = _seen_fingerprints[_fp]
+                        _faulty_pairs.append((_prev_label, label, _fp))
+                        # Find the original task tuple so we can re-queue it.
+                        _requeue_task = next((t for t in tasks if t[0] == label), None)
+                        if _requeue_task is not None:
+                            _requeue_tasks.append(_requeue_task)
+                        print(
+                            f"\n[IDENTICAL_SCORE_WARNING] ⚠️  variant '{label}' produced IDENTICAL metrics to"
+                            f" '{_prev_label}' (pool_sharpe={_fp[0]}, sym_sharpe={_fp[1]}, closes={_fp[2]})."
+                            f"\n[IDENTICAL_SCORE_WARNING]    Override knob likely NOT reaching the engine."
+                            f" This variant is FAULTY — re-queued for diagnosis + rerun after main matrix.\n"
+                        )
+                    else:
+                        _seen_fingerprints[_fp] = label
             elif res.get("status") == "killed_low_sharpe":
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} KILLED live_sharpe={res.get('live_sharpe')} after {res.get('elapsed_s'):.0f}s reason={res.get('reason', '')}")
             else:
@@ -1963,6 +1992,43 @@ def main():
 
     elapsed_total = time.time() - t_start
     print(f"\n[sweep] done in {elapsed_total:.0f}s ({elapsed_total/60:.1f}m)  out={out_path}")
+
+    # ── Re-queue faulty identical-score variants ──
+    if _faulty_pairs:
+        print(f"\n[IDENTICAL_SCORE_SUMMARY] {len(_faulty_pairs)} faulty pair(s) detected:")
+        for _p, _n, _fp in _faulty_pairs:
+            print(f"  '{_p}' == '{_n}'  fingerprint={_fp}")
+        print(
+            "[IDENTICAL_SCORE_SUMMARY] Root causes to investigate:"
+            "\n  1. Override key name mismatch (knob name in grid vs config attribute name)"
+            "\n  2. Config module not reloaded between variants (stale import cache)"
+            "\n  3. Mode mismatch: tradier overrides go to tradier_manage.config, not config"
+            "\n  4. Override file not written / not read by engine subprocess"
+        )
+    if _requeue_tasks:
+        print(f"\n[REQUEUE] Re-running {len(_requeue_tasks)} faulty variant(s) after main matrix...")
+        requeue_out = out_path.with_name(out_path.stem + "_requeue.csv")
+        requeue_header_written = False
+        for _rtask in _requeue_tasks:
+            _rlabel = _rtask[0]
+            print(f"[REQUEUE]   running '{_rlabel}'...")
+            try:
+                _rres = run_one_variant(_rtask)
+            except Exception as _re:
+                _rres = {"label": _rlabel, "status": "ERROR", "rc": -1, "elapsed_s": 0,
+                         "reason": f"requeue_error:{type(_re).__name__}:{str(_re)[:200]}", "overrides": {}}
+            _rrow = _result_to_canonical_row(_rres, args.mode, args.start, args.symbols)
+            try:
+                write_csv_row(requeue_out, _rrow, requeue_header_written, mode_arg=mg_mode)
+            except metrics_guard.FakeMetricRefused:
+                pass
+            requeue_header_written = True
+            if _rres.get("status") == "ok":
+                _rs = _rres.get("pool_sharpe", 0)
+                print(f"[REQUEUE]   '{_rlabel}' pool_sharpe={_rs:+.3f} closes={_rres.get('closes')}")
+            else:
+                print(f"[REQUEUE]   '{_rlabel}' STATUS={_rres.get('status')} reason={_rres.get('reason', '')!r}")
+        print(f"[REQUEUE] requeue results -> {requeue_out}")
 
     # Best-of summary using canonical pool_sharpe column.
     try:

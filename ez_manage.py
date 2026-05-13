@@ -24344,20 +24344,20 @@ class MultiAccountTradeManager:
                                         )
                                         # USER 2026-05-13: GR multiplier score as alternative to 15m/1h WT confirmation.
                                         # Reduces churn: only hedges fire when structure actually against position.
-                                        # GR score = number of HTF TF×indicator votes aligned AGAINST the position.
+                                        # GR score = SUM of per-TF raw indicator votes against position (0-35 range:
+                                        #   5 TFs × 7 indicators). Floor 15-20 is meaningful per user mandate.
+                                        #   NOT confirmed-TF count (0-5) which would fire on almost every bar.
                                         # Fires when: 3m against AND (15m OR 1h OR gr_against_score >= floor)
                                         _oh_gr_against_score = 0
-                                        _oh_gr_floor = int(getattr(config, "GR_HEDGE_SCORE_FLOOR", 6))
+                                        _oh_gr_floor = int(getattr(config, "GR_HEDGE_SCORE_FLOOR", 15))
                                         _oh_gr_enabled = bool(getattr(config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", True))
                                         if _oh_gr_enabled and _oh_gr_floor > 0 and _oh_ind:
                                             try:
-                                                from golden_rule_htf import score_exit_htf as _gr_hedge_score_fn
-                                                _, _oh_gr_against_score, _ = _gr_hedge_score_fn(
-                                                    _oh_ind,
-                                                    _is_long,
-                                                    mode="crypto",
-                                                    min_tfs=1,
-                                                    min_ind=1,
+                                                from golden_rule_htf import _ind_score as _gr_ind_fn
+                                                _gr_tfs = ("3m", "15m", "1h", "4h", "D")
+                                                _oh_gr_against_score = sum(
+                                                    _gr_ind_fn(_oh_ind, _tf, not _is_long, 0.0)[0]
+                                                    for _tf in _gr_tfs
                                                 )
                                             except Exception:
                                                 _oh_gr_against_score = 0
