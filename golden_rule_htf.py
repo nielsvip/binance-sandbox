@@ -8,10 +8,20 @@ each show at least MIN_IND bullish (or bearish for shorts/exits) indicators.
   1. WT   — wt1 > wt2 (bullish) / wt1 < wt2 (bearish)
   2. RSI  — rsi > 50 (bullish) / rsi < 50 (bearish)  [short-TF signal]
   3. MFI  — mfi > 50 (bullish) / mfi < 50 (bearish)  [long-TF signal]
-  4. DC   — dc_position < 0.65 (not extended, room to run) / > 0.35
-  5. BB   — bb_pct_b < 0.75 (not at top of band) / > 0.25
+  4. DC   — room-to-run mode: dc_pos < 0.65 (not extended) / > 0.35
+            breakout mode:    dc_pos >= 0.65 (extended/breaking out) / <= 0.35
+  5. BB   — room-to-run mode: bb_pct_b < 0.75 (not at top of band) / > 0.25
+            breakout mode:    bb_pct_b >= 0.75 (above upper band) / <= 0.25
   6. RVOL — relative_volume > 1.0 (above-avg volume = conviction, both dirs)
   7. K    — stoch_k < 80 (not overbought, long) / stoch_k > 20 (not oversold, short)
+
+Two DC/BB semantic modes:
+  invert_dc_bb=False (default, room-to-run): DC/BB not extended = bullish.
+    Use for reentry, standard confirmation gates.
+  invert_dc_bb=True (breakout mode): DC/BB EXTENDED = bullish (price broke the channel/band).
+    Use for GOLDEN_RULE loop entries — GR fires ON breakouts, so extension confirms the signal.
+    Without this flag, all GR entries see DC/BB as "bearish" (extended), leaving only WT/RSI/MFI/RVOL/K
+    to satisfy MIN_IND — and since WT is already required by the GR trigger, MIN_TFS=1 ≡ MIN_TFS=2.
 
 TFs checked:
   crypto : 3m, 15m, 1h, 4h, D
@@ -20,8 +30,12 @@ TFs checked:
 Usage:
   from golden_rule_htf import score_entry_htf, score_exit_htf
 
+  # Standard (room-to-run):
   passes, n_tfs, detail = score_entry_htf(indicators, is_long, mode='tradier',
                                            min_tfs=2, min_ind=2)
+  # Breakout GR path:
+  passes, n_tfs, detail = score_entry_htf(indicators, is_long, mode='crypto',
+                                           min_tfs=2, min_ind=3, invert_dc_bb=True)
   if not passes:
       return "NO_ACTION", f"GOLDEN_RULE_HTF {detail}", 0.0, 0.0
 """
@@ -38,8 +52,12 @@ _BB_EXTENDED_LONG = 0.75
 _BB_EXTENDED_SHORT = 0.25
 
 
-def _ind_score(ind: dict, tf: str, is_long: bool, px: float) -> tuple[int, str]:
-    """Return (n_bullish_indicators, detail_str) for a single timeframe."""
+def _ind_score(ind: dict, tf: str, is_long: bool, px: float, invert_dc_bb: bool = False) -> tuple[int, str]:
+    """Return (n_bullish_indicators, detail_str) for a single timeframe.
+
+    invert_dc_bb=True: use breakout semantics for DC/BB (extension = bullish).
+    invert_dc_bb=False (default): use room-to-run semantics (not extended = bullish).
+    """
     score = 0
     parts = []
 
@@ -70,7 +88,10 @@ def _ind_score(ind: dict, tf: str, is_long: bool, px: float) -> tuple[int, str]:
         if dc_h > dc_l > 0 and ref_px > 0:
             dc_pos = (ref_px - dc_l) / (dc_h - dc_l)
     if dc_pos >= 0:
-        ok = dc_pos < _DC_EXTENDED_LONG if is_long else dc_pos > _DC_EXTENDED_SHORT
+        if invert_dc_bb:
+            ok = dc_pos >= _DC_EXTENDED_LONG if is_long else dc_pos <= _DC_EXTENDED_SHORT
+        else:
+            ok = dc_pos < _DC_EXTENDED_LONG if is_long else dc_pos > _DC_EXTENDED_SHORT
         score += int(ok)
         parts.append(f"DC{'✓' if ok else '✗'}{dc_pos:.2f}")
 
@@ -82,7 +103,10 @@ def _ind_score(ind: dict, tf: str, is_long: bool, px: float) -> tuple[int, str]:
         if bb_u > bb_l > 0 and ref_px > 0:
             bb_pctb = (ref_px - bb_l) / (bb_u - bb_l)
     if bb_pctb >= 0:
-        ok = bb_pctb < _BB_EXTENDED_LONG if is_long else bb_pctb > _BB_EXTENDED_SHORT
+        if invert_dc_bb:
+            ok = bb_pctb >= _BB_EXTENDED_LONG if is_long else bb_pctb <= _BB_EXTENDED_SHORT
+        else:
+            ok = bb_pctb < _BB_EXTENDED_LONG if is_long else bb_pctb > _BB_EXTENDED_SHORT
         score += int(ok)
         parts.append(f"BB{'✓' if ok else '✗'}{bb_pctb:.2f}")
 
@@ -108,6 +132,7 @@ def _run_gate(
     min_tfs: int,
     min_ind: int,
     px: float = 0.0,
+    invert_dc_bb: bool = False,
 ) -> tuple[bool, int, str]:
     """Core gate shared by entry and exit checks.
 
@@ -132,7 +157,7 @@ def _run_gate(
         total = 0
         parts = []
         for tf in tfs:
-            n, _ = _ind_score(ind, tf, is_long, px)
+            n, _ = _ind_score(ind, tf, is_long, px, invert_dc_bb)
             total += n
             parts.append(f"{tf}:{n}")
         passes = total >= _vote_min
@@ -143,7 +168,7 @@ def _run_gate(
     confirmed = 0
     parts = []
     for tf in tfs:
-        n, detail = _ind_score(ind, tf, is_long, px)
+        n, detail = _ind_score(ind, tf, is_long, px, invert_dc_bb)
         ok = n >= min_ind
         if ok:
             confirmed += 1
@@ -160,12 +185,17 @@ def score_entry_htf(
     min_tfs: int = 2,
     min_ind: int = 2,
     current_price: float = 0.0,
+    invert_dc_bb: bool = False,
 ) -> tuple[bool, int, str]:
     """
     Entry confirmation: requires MIN_TFS timeframes to each have MIN_IND bullish indicators.
     Returns (passes, n_confirmed_tfs, detail).
+
+    Set invert_dc_bb=True for GOLDEN_RULE breakout entries: DC/BB extension = bullish
+    (price broke the channel/band = confirms momentum). Without this, all GR breakout
+    entries see DC/BB as "bearish" (extended) so only WT counts, making MIN_TFS=1==MIN_TFS=5.
     """
-    return _run_gate(indicators, is_long, mode, min_tfs, min_ind, current_price)
+    return _run_gate(indicators, is_long, mode, min_tfs, min_ind, current_price, invert_dc_bb)
 
 
 def score_exit_htf(
@@ -175,9 +205,10 @@ def score_exit_htf(
     min_tfs: int = 2,
     min_ind: int = 2,
     current_price: float = 0.0,
+    invert_dc_bb: bool = False,
 ) -> tuple[bool, int, str]:
     """
     Exit confirmation: requires MIN_TFS timeframes to show BEARISH signals (opposite of position).
     Returns (should_exit, n_confirmed_tfs, detail).
     """
-    return _run_gate(indicators, not is_long, mode, min_tfs, min_ind, current_price)
+    return _run_gate(indicators, not is_long, mode, min_tfs, min_ind, current_price, invert_dc_bb)

@@ -4748,7 +4748,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _gr_ind_pt = manager.market_snapshot.get(str(symbol).upper(), {})
                     _gr_px_pt = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
                     _gr_is_long_pt = (str(position_side) == "LONG")
-                    _gr_ok_pt, _gr_tfs_pt, _ = _gr_score_entry_pt(_gr_ind_pt, _gr_is_long_pt, _gr_mode_pt, _gr_min_tfs_pt, _gr_min_ind_pt, _gr_px_pt)
+                    _gr_invert_pt = str(reason or '').startswith('GOLDEN_RULE')
+                    _gr_ok_pt, _gr_tfs_pt, _ = _gr_score_entry_pt(_gr_ind_pt, _gr_is_long_pt, _gr_mode_pt, _gr_min_tfs_pt, _gr_min_ind_pt, _gr_px_pt, invert_dc_bb=_gr_invert_pt)
                     if not _gr_ok_pt:
                         return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
                 except Exception:
@@ -5100,6 +5101,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return f"BLOCKED_LS_RATIO_SHORT_{_ratio_r:.2f}lt{_ls_min_r}"
                 # GOLDEN_RULE HTF gate — requires N timeframes each with M bullish indicators.
                 # min_tfs=0 means disabled (default). Wire GOLDEN_RULE_HTF_MIN_TFS≥1 to activate.
+                # invert_dc_bb=True for GR-sourced entries: DC/BB extension = bullish (breakout mode).
                 _gr_min_tfs_r = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
                 if _gr_min_tfs_r > 0:
                     try:
@@ -5109,7 +5111,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _gr_ind_r = manager.market_snapshot.get(str(symbol).upper(), {})
                         _gr_px_r = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
                         _gr_is_long_r = (str(position_side) == "LONG")
-                        _gr_ok_r, _gr_tfs_r, _gr_detail_r = _gr_score_entry(_gr_ind_r, _gr_is_long_r, _gr_mode_r, _gr_min_tfs_r, _gr_min_ind_r, _gr_px_r)
+                        _gr_invert_r = str(reason or '').startswith('GOLDEN_RULE')
+                        _gr_ok_r, _gr_tfs_r, _gr_detail_r = _gr_score_entry(_gr_ind_r, _gr_is_long_r, _gr_mode_r, _gr_min_tfs_r, _gr_min_ind_r, _gr_px_r, invert_dc_bb=_gr_invert_r)
                         if not _gr_ok_r:
                             return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_r}of{_gr_min_tfs_r}tfs_need{_gr_min_ind_r}ind"
                     except Exception as _gr_err_r:

@@ -10664,6 +10664,7 @@ class MultiAccountTradeManager:
                                         min_tfs=_gr_min_tfs,
                                         min_ind=_gr_min_ind,
                                         current_price=price,
+                                        invert_dc_bb=True,
                                     )
                                     if not _gr_pass:
                                         logger.warning(
