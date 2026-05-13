@@ -803,15 +803,16 @@ def simulate_one_symbol(
                 and (bar_ts - state.hedge_completed_ts) >= float(config.HEDGE_COMPLETED_LOCKOUT_SECONDS)
                 and gain < float(config.HEDGE_MIN_LOSS_PCT)
                 and bool(_wt3m_against[i])):
+            # USER 2026-05-13: hedge requires wt1_3m against + GR total-vote-score >= floor.
+            # 15m/1h WT alignment removed — GR score alone is the HTF confirmation gate.
+            _gr_score = int(_gr_against_count[i]) if _gr_against_count is not None else 0
             _gr_ok = (_gr_against_count is not None
                       and int(config.GR_HEDGE_SCORE_FLOOR) > 0
-                      and int(_gr_against_count[i]) >= int(config.GR_HEDGE_SCORE_FLOOR))
-            _15m1h_ok = bool(wt_15m_against[i]) or bool(wt_1h_against[i])
-            if _15m1h_ok or _gr_ok:
+                      and _gr_score >= int(config.GR_HEDGE_SCORE_FLOOR))
+            if _gr_ok:
                 hedge_qty = state.qty * float(config.HEDGE_QTY_PCT)
-                _gr_tag = f"_gr{int(_gr_against_count[i])}" if _gr_ok and _gr_against_count is not None else ""
                 reason = (f"HEDGE_PROTECT_{'SHORT' if is_long else 'LONG'}_LOSS_g{gain:.2f}"
-                         f"{'_GR' if _gr_ok else ''}{'_15m1h' if _15m1h_ok else ''}{_gr_tag}")
+                         f"_GR{_gr_score}")
                 ev = TradeEvent(ts=bar_ts, type="HEDGE_OPEN", qty=hedge_qty, price=mark,
                     value=hedge_qty * mark, reason=reason)
                 events.append(ev)

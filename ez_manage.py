@@ -24352,11 +24352,9 @@ class MultiAccountTradeManager:
                                             )
                                         )
                                         # USER 2026-05-13: GR multiplier score as alternative to 15m/1h WT confirmation.
-                                        # Reduces churn: only hedges fire when structure actually against position.
-                                        # GR score = SUM of per-TF raw indicator votes against position (0-35 range:
-                                        #   5 TFs × 7 indicators). Floor 15-20 is meaningful per user mandate.
-                                        #   NOT confirmed-TF count (0-5) which would fire on almost every bar.
-                                        # Fires when: 3m against AND (15m OR 1h OR gr_against_score >= floor)
+                                        # USER 2026-05-13: hedge now requires wt1_3m against + GR total-vote-score >= floor.
+                                        # GR score = SUM of per-TF raw indicator votes against (0-35: 5 TFs × 7 ind).
+                                        # Floor 15-20 requires real multi-TF opposition — replaces 15m/1h WT alignment.
                                         _oh_gr_against_score = 0
                                         _oh_gr_floor = int(getattr(config, "GR_HEDGE_SCORE_FLOOR", 15))
                                         _oh_gr_enabled = bool(getattr(config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", True))
@@ -24371,24 +24369,8 @@ class MultiAccountTradeManager:
                                             except Exception:
                                                 _oh_gr_against_score = 0
                                         _oh_gr_confirms = _oh_gr_enabled and _oh_gr_against_score >= _oh_gr_floor
-                                        if _oh_req_3m_15m_or_1h:
-                                            _oh_user_trigger = _oh_3m_against and (
-                                                _oh_15m_against or _oh_1h_against or _oh_gr_confirms
-                                            )
-                                            _oh_trigger_label = f"3m_AND_(15m_OR_1h_OR_GR{_oh_gr_against_score})" if _oh_gr_confirms else "3m_AND_(15m_OR_1h)"
-                                        elif _oh_req_3m_1h:
-                                            _oh_user_trigger = (
-                                                _oh_3m_against and (_oh_1h_against or _oh_gr_confirms)
-                                            )
-                                            _oh_trigger_label = f"3m_AND_(1h_OR_GR{_oh_gr_against_score})" if _oh_gr_confirms else "3m_AND_1h"
-                                        elif _oh_use_3m_alone:
-                                            _oh_user_trigger = _oh_3m_against
-                                            _oh_trigger_label = "3m_alone"
-                                        else:
-                                            _oh_user_trigger = _oh_15m_against or (
-                                                _oh_3m_against and (_oh_1h_against or _oh_gr_confirms)
-                                            )
-                                            _oh_trigger_label = f"15m_OR_(3m_AND_(1h_OR_GR{_oh_gr_against_score}))" if _oh_gr_confirms else "15m_OR_(3m_AND_1h)"
+                                        _oh_user_trigger = _oh_3m_against and _oh_gr_confirms
+                                        _oh_trigger_label = f"3m_AND_GR{_oh_gr_against_score}/{_oh_gr_floor}"
                                         if _oh_tfs_enabled > 0 and (
                                             _oh_wt_against >= _oh_req
                                             or _oh_user_trigger
