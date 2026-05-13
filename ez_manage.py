@@ -32181,11 +32181,12 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             from golden_rule_htf import score_entry_htf as _gr_htf_de_fn
 
             _grde_min_ind = int(getattr(_tm_cfg_grde, "GOLDEN_RULE_MIN_IND", 1))
+            _grde_min_tfs = int(getattr(_tm_cfg_grde, "GOLDEN_RULE_HTF_MIN_TFS", 1))
             _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_de_fn(
                 i,
                 is_long,
                 "crypto",
-                min_tfs=1,
+                min_tfs=_grde_min_tfs,
                 min_ind=_grde_min_ind,
                 current_price=current_price,
             )
