@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-13 16:56:08 UTC
+# Copilot Status — 2026-05-13 17:11:24 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:51:39
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:52:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:52:40
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:53:12
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:53:42
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:54:13
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:54:43
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:55:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-13T16:55:45
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-13T16:55:45
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:08:19
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-13T17:08:30
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:08:51
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:09:21
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-13T17:09:31
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:09:52
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:10:22
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-13T17:10:33
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:10:54
+- **STALE_INDICATORS** [tradier]  — 2026-05-13T17:11:24
 
 ## Missed Trades (trader comparison)
 
@@ -27,30 +27,29 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 11 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 13 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **ACN** SHORT (tradier) peak +9.7%, now +4.2%
-- HELD: **USO** LONG (tradier) peak +7.5%, now +6.7%
-- HELD: **UUUU** SHORT (tradier) peak +7.5%, now +6.9%
-- HELD: **SLV** LONG (tradier) peak +7.2%, now +4.5%
-- HELD: **TTD** SHORT (tradier) peak +6.9%, now +0.6%
-- HELD: **WDAY** SHORT (tradier) peak +6.6%, now +6.4%
-- HELD: **MP** SHORT (tradier) peak +6.1%, now +5.8%
-- HELD: **LDOS** SHORT (tradier) peak +4.8%, now +3.1%
-- HELD: **ARM** LONG (tradier) peak +4.2%, now +3.3%
-- HELD: **GOOGL** LONG (tradier) peak +3.9%, now +3.9%
+- HELD: **ACN** SHORT (tradier) peak +9.9%, now +4.4%
+- HELD: **MSTR** LONG (tradier) peak +9.5%, now +-2.9%
+- HELD: **UUUU** SHORT (tradier) peak +7.7%, now +7.6%
+- HELD: **USO** LONG (tradier) peak +7.5%, now +6.6%
+- HELD: **SLV** LONG (tradier) peak +7.2%, now +5.0%
+- HELD: **TTD** SHORT (tradier) peak +6.9%, now +0.4%
+- HELD: **WDAY** SHORT (tradier) peak +6.6%, now +6.2%
+- HELD: **MU** LONG (tradier) peak +6.5%, now +1.0%
+- HELD: **MP** SHORT (tradier) peak +6.1%, now +5.1%
+- HELD: **LDOS** SHORT (tradier) peak +5.0%, now +2.7%
 
-- WATCHING: **XVGUSDT** SHORT (crypto) peaked +7.1%, exited 0m ago
-- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.6%, exited 0m ago
-- WATCHING: **USTCUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
+- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.6%, exited 1m ago
+- WATCHING: **USTCUSDT** SHORT (crypto) peaked +3.2%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 14
-- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
-- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 17
 - [HIGH] ez_manage.py for flz is NOT running
 - [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
