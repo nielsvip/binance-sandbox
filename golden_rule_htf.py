@@ -52,11 +52,21 @@ _BB_EXTENDED_LONG = 0.75
 _BB_EXTENDED_SHORT = 0.25
 
 
-def _ind_score(ind: dict, tf: str, is_long: bool, px: float, invert_dc_bb: bool = False) -> tuple[int, str]:
+def _ind_score(
+    ind: dict,
+    tf: str,
+    is_long: bool,
+    px: float,
+    invert_dc_bb: bool = False,
+    dc_threshold: float = 0.0,
+    bb_threshold: float = 0.0,
+) -> tuple[int, str]:
     """Return (n_bullish_indicators, detail_str) for a single timeframe.
 
     invert_dc_bb=True: use breakout semantics for DC/BB (extension = bullish).
     invert_dc_bb=False (default): use room-to-run semantics (not extended = bullish).
+    dc_threshold / bb_threshold: override module-level _DC/_BB_EXTENDED constants (0 = use default).
+    Short thresholds are derived as 1 - long_threshold (symmetric channel).
     """
     score = 0
     parts = []
@@ -87,11 +97,13 @@ def _ind_score(ind: dict, tf: str, is_long: bool, px: float, invert_dc_bb: bool 
         ref_px = px or float(ind.get(f"close_{tf}") or 0)
         if dc_h > dc_l > 0 and ref_px > 0:
             dc_pos = (ref_px - dc_l) / (dc_h - dc_l)
+    _dc_l = dc_threshold if dc_threshold > 0 else _DC_EXTENDED_LONG
+    _dc_s = 1.0 - _dc_l
     if dc_pos >= 0:
         if invert_dc_bb:
-            ok = dc_pos >= _DC_EXTENDED_LONG if is_long else dc_pos <= _DC_EXTENDED_SHORT
+            ok = dc_pos >= _dc_l if is_long else dc_pos <= _dc_s
         else:
-            ok = dc_pos < _DC_EXTENDED_LONG if is_long else dc_pos > _DC_EXTENDED_SHORT
+            ok = dc_pos < _dc_l if is_long else dc_pos > _dc_s
         score += int(ok)
         parts.append(f"DC{'✓' if ok else '✗'}{dc_pos:.2f}")
 
@@ -102,11 +114,13 @@ def _ind_score(ind: dict, tf: str, is_long: bool, px: float, invert_dc_bb: bool 
         ref_px = px or float(ind.get(f"close_{tf}") or 0)
         if bb_u > bb_l > 0 and ref_px > 0:
             bb_pctb = (ref_px - bb_l) / (bb_u - bb_l)
+    _bb_l = bb_threshold if bb_threshold > 0 else _BB_EXTENDED_LONG
+    _bb_s = 1.0 - _bb_l
     if bb_pctb >= 0:
         if invert_dc_bb:
-            ok = bb_pctb >= _BB_EXTENDED_LONG if is_long else bb_pctb <= _BB_EXTENDED_SHORT
+            ok = bb_pctb >= _bb_l if is_long else bb_pctb <= _bb_s
         else:
-            ok = bb_pctb < _BB_EXTENDED_LONG if is_long else bb_pctb > _BB_EXTENDED_SHORT
+            ok = bb_pctb < _bb_l if is_long else bb_pctb > _bb_s
         score += int(ok)
         parts.append(f"BB{'✓' if ok else '✗'}{bb_pctb:.2f}")
 
@@ -150,14 +164,18 @@ def _run_gate(
     try:
         import config as _cfg_mod
         _vote_min = int(getattr(_cfg_mod, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
+        _dc_thr = float(getattr(_cfg_mod, 'GR_DC_EXTENDED_LONG', 0) or 0)
+        _bb_thr = float(getattr(_cfg_mod, 'GR_BB_EXTENDED_LONG', 0) or 0)
     except Exception:
         _vote_min = 0
+        _dc_thr = 0.0
+        _bb_thr = 0.0
     tfs = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
     if _vote_min > 0:
         total = 0
         parts = []
         for tf in tfs:
-            n, _ = _ind_score(ind, tf, is_long, px, invert_dc_bb)
+            n, _ = _ind_score(ind, tf, is_long, px, invert_dc_bb, _dc_thr, _bb_thr)
             total += n
             parts.append(f"{tf}:{n}")
         passes = total >= _vote_min
@@ -168,7 +186,7 @@ def _run_gate(
     confirmed = 0
     parts = []
     for tf in tfs:
-        n, detail = _ind_score(ind, tf, is_long, px, invert_dc_bb)
+        n, detail = _ind_score(ind, tf, is_long, px, invert_dc_bb, _dc_thr, _bb_thr)
         ok = n >= min_ind
         if ok:
             confirmed += 1

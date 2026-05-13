@@ -1988,6 +1988,8 @@ class Config:
     # Range: 1 (loosest, 1 vote anywhere) ... 35 (5 TFs × 7 indicators all agreeing — tightest possible for crypto).
     # When 0: falls back to legacy MIN_TFS × MIN_IND binary gate above.
     GR_TOTAL_VOTE_SCORE_MIN: int = 0
+    GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.35/0.50/0.65/0.80
+    GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.45/0.60/0.75/0.90
     # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate)
     # Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND (computed by golden_rule_htf.score_entry_htf)
     # ENTRY: flat position + score >= SCORE_MIN → OPEN at START_POSITION_SIZE.

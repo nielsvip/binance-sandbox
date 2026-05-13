@@ -1691,6 +1691,8 @@ class TradierConfig:
     # ROLLBACK: HTF_MIN_TFS=0 (was 0 — gate fully OFF).
     GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 🚩 NEW BASELINE was 0. ROLLBACK: 0. TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
     GOLDEN_RULE_MIN_IND: int = 6      # 🚩 NEW BASELINE was 2. ROLLBACK: 2. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
+    GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.35/0.50/0.65/0.80
+    GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.45/0.60/0.75/0.90
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
     # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate, mirrors config.py)

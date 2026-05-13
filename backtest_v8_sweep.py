@@ -1450,8 +1450,36 @@ def grid_gr_vote_score():
     return combos
 
 
+def grid_gr_dcbb_threshold():
+    """2026-05-13: Sweep DC and BB extension thresholds used in GR breakout mode.
+
+    After fixing the invert_dc_bb semantic inversion, DC/BB thresholds are now the
+    key tuning knob: lower threshold = more bars count as "extended" = more GR entries
+    pass the gate. Higher threshold = stricter breakout confirmation required.
+
+    DC_EXTENDED_LONG: fraction of DC channel that counts as "extended" for LONGS.
+      0.35 = loose (top 65%+ qualifies), 0.80 = strict (only top 20%).
+    BB_EXTENDED_LONG: BB pct-b threshold for LONGS. Symmetric (SHORT = 1 - LONG).
+
+    Grid: 4 DC × 4 BB = 16 variants + 1 baseline (defaults 0.65/0.75) = 17 total.
+    Lock MIN_TFS/MIN_IND at current baseline values from config (tradier: 3/6, crypto: 0/1).
+    Run on same symbol set as tradier_param_hunt (20 stocks) or system_combo (8 crypto).
+    """
+    combos = [("baseline_dcbb_defaults", {"GR_DC_EXTENDED_LONG": 0.65, "GR_BB_EXTENDED_LONG": 0.75})]
+    for dc in [0.35, 0.50, 0.65, 0.80]:
+        for bb in [0.45, 0.60, 0.75, 0.90]:
+            if dc == 0.65 and bb == 0.75:
+                continue  # already covered by baseline above
+            combos.append((f"DC{dc:.2f}_BB{bb:.2f}", {
+                "GR_DC_EXTENDED_LONG": dc,
+                "GR_BB_EXTENDED_LONG": bb,
+            }))
+    return combos
+
+
 TIER_MAP = {
     "gr_vote_score": grid_gr_vote_score,
+    "gr_dcbb_threshold": grid_gr_dcbb_threshold,
     "canonical_audit_full": grid_canonical_audit_full,
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
