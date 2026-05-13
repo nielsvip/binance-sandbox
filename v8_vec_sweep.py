@@ -213,6 +213,12 @@ KLINES_STOCK_DIR = REPO_ROOT / "klines_cache_backtest" / "tradier"
 SWEEP_RESULTS_DIR = REPO_ROOT / "data" / "sweep_results"
 HISTORY_DIR = REPO_ROOT / "data" / "history"
 
+# Session-scoped abort + fingerprint files — used to stop sibling processes on
+# duplicate/invalid results. Set VEC_SESSION env var to share across a sweep batch.
+_VEC_SESSION = os.getenv("VEC_SESSION", str(os.getpid()))
+_SESSION_ABORT_PATH = Path(f"/tmp/vec_sweep_abort_{_VEC_SESSION}")
+_SESSION_FP_PATH = Path(f"/tmp/vec_sweep_fingerprints_{_VEC_SESSION}.json")
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # SweepConfig — sane defaults for every knob the vec functions read via getattr
@@ -319,8 +325,9 @@ class SweepConfig:
     DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_<TF> (1-bar)
     DC_STOP_TF: str = ""                 # override TF (empty = auto: "3m" crypto / "5m" tradier)
     # ── GR multiplier exit sweep flags ────────────────────────────────────────
-    GR_EXIT_ENABLED: bool = False        # exit when GR against-score >= threshold AND wt1_3m against
-    GR_EXIT_MULT_THRESHOLD: int = 9      # 9/12/15 tested via CLI override
+    GR_EXIT_ENABLED: bool = False        # exit when GR votes ≥ MIN_TFS TFs × MIN_IND each AND wt1_3m against
+    GR_EXIT_MIN_TFS: int = 3             # TFs that must each reach GR_EXIT_MIN_IND (default 3×3=9)
+    GR_EXIT_MIN_IND: int = 3             # indicators per TF that must agree against trade
     # ── R1 DC emergency exit ──────────────────────────────────────────────────
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
     R1_NEWBORN_WINDOW_MIN: float = 15.0
@@ -528,6 +535,9 @@ def simulate_one_symbol(
     max_bars: Optional[int] = None,
 ) -> Tuple[List[TradeEvent], List[float], int]:
     """Run the vec engine on one symbol+side. Returns (events, trade_returns, n_bars)."""
+    if _SESSION_ABORT_PATH.exists():
+        sys.stderr.write(f"SKIP {symbol}/{side}: abort signaled by sibling process\n")
+        return [], [], 0
     is_long = side.upper() == "LONG"
     npz, ts = load_npz(symbol, mode, start_ts=start_ts)
     n = len(ts)
@@ -575,14 +585,47 @@ def simulate_one_symbol(
     # WT against for hedge trigger (15m and 1h)
     wt_15m_against = (wt1_15m < wt2_15m) if is_long else (wt1_15m > wt2_15m)
     wt_1h_against  = (wt1_1h  < wt2_1h)  if is_long else (wt1_1h  > wt2_1h)
-    # GR against-score: sum of all indicators on all HTF TFs in direction AGAINST trade
-    # Computed when GR_EXIT_ENABLED OR GR_HEDGE_SCORE_FLOOR > 0 (hedge trigger)
+    # GR against-score (vote_min=total-count) — used by GR_HEDGE_SCORE_FLOOR only
     _gr_against_count: Optional[np.ndarray] = None
-    _need_gr_against = (config.GR_EXIT_ENABLED or int(config.GR_HEDGE_SCORE_FLOOR) > 0)
-    if _need_gr_against and evaluate_gr_htf_vec is not None:
+    if int(config.GR_HEDGE_SCORE_FLOOR) > 0 and evaluate_gr_htf_vec is not None:
         _, _gr_against_count = evaluate_gr_htf_vec(
             npz, is_long=(not is_long), mode=mode, vote_min=1, n=n
         )
+    # GR exit gate (legacy min_tfs × min_ind mode) — fires when ≥ MIN_TFS TFs each
+    # have ≥ MIN_IND indicators agreeing AGAINST the trade AND wt1_3m is also against.
+    # This is the CORRECT interpretation of "#TF × #ind threshold": threshold 3×3=9
+    # means 3 TFs each showing 3 indicators in opposition — a genuinely meaningful filter.
+    _gr_exit_passes: Optional[np.ndarray] = None
+    if config.GR_EXIT_ENABLED and evaluate_gr_htf_vec is not None:
+        _gr_exit_passes, _gr_exit_tfs = evaluate_gr_htf_vec(
+            npz, is_long=(not is_long), mode=mode,
+            min_tfs=int(config.GR_EXIT_MIN_TFS),
+            min_ind=int(config.GR_EXIT_MIN_IND),
+            vote_min=0, n=n,
+        )
+        # Validity check: degenerate threshold → exit THIS variant only (no shared abort).
+        # Shared abort (_SESSION_ABORT_PATH) is reserved for IDENTICAL RESULT detection only.
+        _fire_rate = float(np.mean(_gr_exit_passes))
+        if _fire_rate > 0.90:
+            sys.stderr.write(
+                f"GR_EXIT_ABORT {symbol}/{side}: gate fires on {_fire_rate:.1%} of bars "
+                f"(GR_EXIT_MIN_TFS={config.GR_EXIT_MIN_TFS} GR_EXIT_MIN_IND={config.GR_EXIT_MIN_IND}) "
+                f"— threshold too loose, would produce identical results to any lower setting. "
+                f"Raise MIN_TFS or MIN_IND. Stopping this variant only.\n"
+            )
+            return [], [], n
+        elif _fire_rate > 0.70:
+            sys.stderr.write(
+                f"GR_EXIT_WARN {symbol}/{side}: gate fires on {_fire_rate:.1%} of bars "
+                f"(MIN_TFS={config.GR_EXIT_MIN_TFS} MIN_IND={config.GR_EXIT_MIN_IND}) — "
+                f"threshold may be too loose for meaningful differentiation\n"
+            )
+        elif _fire_rate < 0.02:
+            sys.stderr.write(
+                f"GR_EXIT_WARN {symbol}/{side}: gate fires on only {_fire_rate:.1%} of bars "
+                f"(MIN_TFS={config.GR_EXIT_MIN_TFS} MIN_IND={config.GR_EXIT_MIN_IND}) — "
+                f"threshold very strict, gate barely fires\n"
+            )
 
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
@@ -824,10 +867,10 @@ def simulate_one_symbol(
                 continue
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
-        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_against_count is not None:
-            if bool(_wt3m_against[i]) and int(_gr_against_count[i]) >= int(config.GR_EXIT_MULT_THRESHOLD):
+        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_exit_passes is not None:
+            if bool(_wt3m_against[i]) and bool(_gr_exit_passes[i]):
                 exit_id = 99
-                exit_reason = f"GR_EXIT_mult={int(_gr_against_count[i])}_thr={int(config.GR_EXIT_MULT_THRESHOLD)}"
+                exit_reason = f"GR_EXIT_{config.GR_EXIT_MIN_TFS}tf_x_{config.GR_EXIT_MIN_IND}ind"
 
         # WT_4H_VEL_EXIT (needs profit + age; vec gave us full mask)
         if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= comm_buf:
@@ -1262,6 +1305,33 @@ def run_sweep(
         canonical_line = metrics_guard.format_standard_set(std, mode=mode)
     except metrics_guard.FakeMetricRefused as e:
         canonical_line = f"[METRICS_REFUSED] {e}"
+
+    # ─── Identical-result guard — detect broken thresholds ASAP ─────────────────
+    if config.GR_EXIT_ENABLED and std["trades"] > 0:
+        _fp = {"trades": int(std["trades"]), "sharpe_3dp": round(std["pool_sharpe"], 3)}
+        _variant_key = f"tfs{config.GR_EXIT_MIN_TFS}_ind{config.GR_EXIT_MIN_IND}"
+        if _SESSION_FP_PATH.exists():
+            try:
+                _fps = json.loads(_SESSION_FP_PATH.read_text())
+                for _prev_key, _prev_fp in _fps.items():
+                    if _prev_fp == _fp and _prev_key != _variant_key:
+                        _dup_msg = (
+                            f"[IDENTICAL_RESULT_DETECTED] {_variant_key} matches {_prev_key}: "
+                            f"trades={_fp['trades']} sharpe={_fp['sharpe_3dp']} — "
+                            f"GR thresholds are in a degenerate range (both fire at same rate). "
+                            f"Stop and widen the threshold gap."
+                        )
+                        print(_dup_msg, flush=True)
+                        _SESSION_ABORT_PATH.write_text(_dup_msg)
+                        break
+            except Exception:
+                pass
+        try:
+            _fps = json.loads(_SESSION_FP_PATH.read_text()) if _SESSION_FP_PATH.exists() else {}
+            _fps[_variant_key] = _fp
+            _SESSION_FP_PATH.write_text(json.dumps(_fps))
+        except Exception:
+            pass
 
     summary = {
         "ts_run": ts_run,
