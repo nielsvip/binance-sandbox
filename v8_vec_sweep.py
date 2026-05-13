@@ -111,6 +111,10 @@ try:
     from vec_paths.emergency_brake import BrakeLookup
 except ImportError:
     BrakeLookup = None
+try:
+    from vec_paths.golden_rule_htf_vote import evaluate_gr_htf_vec
+except ImportError:
+    evaluate_gr_htf_vec = None
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -225,6 +229,9 @@ class SweepConfig:
     DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_<TF> recorded at entry
     DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_<TF> (1-bar)
     DC_STOP_TF: str = ""                 # override TF (empty = auto: "3m" crypto / "5m" tradier)
+    # ── GR multiplier exit sweep flags ────────────────────────────────────────
+    GR_EXIT_ENABLED: bool = False        # exit when GR against-score >= threshold AND wt1_3m against
+    GR_EXIT_MULT_THRESHOLD: int = 9      # 9/12/15 tested via CLI override
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -380,6 +387,14 @@ def simulate_one_symbol(
     wt_15m_aligned = (wt1_15m > wt2_15m) if is_long else (wt1_15m < wt2_15m)
     wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
     wt_3m_aligned  = ((wt1_3m > wt2_3m) if is_long else (wt1_3m < wt2_3m)) & (wt_15m_aligned | wt_1h_aligned)
+    # wt1_3m against the trade (required by GR exit)
+    _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
+    # GR against-score: sum of all indicators on all HTF TFs in direction AGAINST trade
+    _gr_against_count: Optional[np.ndarray] = None
+    if config.GR_EXIT_ENABLED and evaluate_gr_htf_vec is not None:
+        _, _gr_against_count = evaluate_gr_htf_vec(
+            npz, is_long=(not is_long), mode=mode, vote_min=1, n=n
+        )
 
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
@@ -470,8 +485,14 @@ def simulate_one_symbol(
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 continue
 
+        # GR multiplier exit: against-score >= threshold AND wt1_3m against
+        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_against_count is not None:
+            if bool(_wt3m_against[i]) and int(_gr_against_count[i]) >= int(config.GR_EXIT_MULT_THRESHOLD):
+                exit_id = 99
+                exit_reason = f"GR_EXIT_mult={int(_gr_against_count[i])}_thr={int(config.GR_EXIT_MULT_THRESHOLD)}"
+
         # WT_4H_VEL_EXIT (needs profit + age; vec gave us full mask)
-        if exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= comm_buf:
+        if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= comm_buf:
             exit_id = EXIT_WT_4H_VEL
             exit_reason = f"WT_4H_VEL_g={gain:.2f}%"
 
