@@ -24837,17 +24837,17 @@ class MultiAccountTradeManager:
                 f"[EXEC_TRACE] {position_key}: STEP3_ROUTE is_aug={is_augment} is_red={_is_reduce} amt={current_real_amt:.6f} action={action}"
             )
             if is_augment:
-                if account_key == "flz" and symbol not in [
-                    "BTCUSDC",
-                    "BTCDOMUSDT",
-                    "BNBUSDC",
-                    "ETHUSDC",
-                    "SOLUSDC",
-                    "XRPUSDC",
-                    "DOGEUSDC",
-                    "ZECUSDC",
-                ]:
-                    return "WRONG SYMBOL FOR FLZ"
+                # if account_key == "flz" and symbol not in [
+                #     "BTCUSDC",
+                #     "BTCDOMUSDT",
+                #     "BNBUSDC",
+                #     "ETHUSDC",
+                #     "SOLUSDC",
+                #     "XRPUSDC",
+                #     "DOGEUSDC",
+                #     "ZECUSDC",
+                # ]:
+                #     return "WRONG SYMBOL FOR FLZ"
                 if (
                     ("OPEN" in action or "OPEN" in reason)
                     and current_real_amt > 2 * config.MIN_POSITION_SIZE / current_price
