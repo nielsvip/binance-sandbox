@@ -6911,6 +6911,9 @@ class MultiAccountTradeManager:
         # handle_augmentation/handle_reduction match WS-confirmed fill qty against this ring
         # to attribute the correct reason instead of reading a clobbered Redis decision: key.
         self._recent_order_reasons: dict = {}
+        # Finandy circuit-breaker: tracks when Finandy is broken (data:[] responses).
+        # Set to now+300s on each FINANDY_EMPTY. When broken, reduces fall back to place_maker_order.
+        self._finandy_broken_until: float = 0.0
 
     async def _attempt_json_repair(self, content: str) -> Optional[str]:
         if not content or not isinstance(content, str):
@@ -25108,11 +25111,18 @@ class MultiAccountTradeManager:
                 )
                 if _safety_close:
                     _force_webhook_reduces = False
+                _finandy_circuit_open = time.time() < getattr(self, "_finandy_broken_until", 0.0)
+                if _finandy_circuit_open:
+                    _force_webhook_reduces = False
+                    logger.info(
+                        f"[FINANDY_CIRCUIT_BYPASS] {position_key}: Finandy broken circuit open — using place_maker_order for reduce"
+                    )
                 if (
                     _is_profitable_exit
                     or _is_scalp_v3_reason
                     or is_hedge
                     or _safety_close
+                    or _finandy_circuit_open
                 ) and not _force_webhook_reduces:
                     logger.info(
                         f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)"
@@ -26617,6 +26627,10 @@ class MultiAccountTradeManager:
                 if _finandy_empty:
                     logger.critical(
                         f"⚠️ [WEBHOOK_FINANDY_EMPTY] {position_key}: success:true but data:[] — Finandy did NOT place a Binance order. Cancelling leftover orders + clearing lock."
+                    )
+                    self._finandy_broken_until = time.time() + 300.0
+                    logger.warning(
+                        f"[FINANDY_CIRCUIT_OPEN] Finandy broken — reduces will use place_maker_order for 300s (until {time.strftime('%H:%M:%S', time.localtime(self._finandy_broken_until))})"
                     )
                 # Verify position actually changed (5s window for the fill)
                 _post_verified = await verify_trade_via_websocket(
