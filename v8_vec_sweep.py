@@ -39,6 +39,7 @@ import math
 import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1392,6 +1393,54 @@ _DCBB_GRID = [
 ]  # 16 variants (baseline_dcbb_defaults = DC0.65_BB0.75, deduplicated)
 
 
+def _dcbb_worker(args_tuple):
+    """Worker function for parallel gr_dcbb sweep — processes one (sym, side) pair.
+    Returns {variant_label: [trade_returns]} dict, or {} on skip/error.
+    Runs in a subprocess so imports must be self-contained (evaluate_gr_htf_vec + simulate_one_symbol
+    are module-level imports that survive pickling of this function reference).
+    """
+    sym, side, mode, base_config, start_ts, min_tfs, min_ind = args_tuple
+    result: Dict[str, List[float]] = {}
+    try:
+        npz, ts = load_npz(sym, mode, start_ts=start_ts)
+    except Exception as e:
+        sys.stderr.write(f"[dcbb_worker] SKIP {sym}/{side}: {type(e).__name__}: {e}\n")
+        return result
+    n = len(ts)
+    if n < 50:
+        return result
+    is_long = side.upper() == "LONG"
+    if evaluate_gr_htf_vec is None:
+        sys.stderr.write(f"[dcbb_worker] evaluate_gr_htf_vec not available\n")
+        return result
+    # Precompute all 16 HTF confirmation masks
+    htf_masks: List[np.ndarray] = []
+    for _label, dc_thr, bb_thr in _DCBB_GRID:
+        mask, _ = evaluate_gr_htf_vec(
+            npz, is_long, mode,
+            min_tfs=min_tfs, min_ind=min_ind,
+            invert_dc_bb=True,
+            dc_threshold=dc_thr, bb_threshold=bb_thr,
+            n=n,
+        )
+        htf_masks.append(mask)
+    # Run 16 simulations using cached NPZ
+    for v_idx, (label, _dc, _bb) in enumerate(_DCBB_GRID):
+        try:
+            _events, returns, _n = simulate_one_symbol(
+                sym, side, mode, base_config,
+                _npz_cache=(npz, ts),
+                _gr_htf_entry_mask=htf_masks[v_idx],
+            )
+        except Exception as e:
+            sys.stderr.write(f"[dcbb_worker] FAIL {sym}/{side} {label}: {type(e).__name__}: {e}\n")
+            continue
+        result[label] = returns
+    t_elapsed = time.perf_counter()
+    sys.stderr.write(f"[dcbb_worker] done {sym}/{side}: n={n} variants=16\n")
+    return result
+
+
 def run_gr_dcbb_sweep(
     mode: str,
     account: str,
@@ -1400,13 +1449,13 @@ def run_gr_dcbb_sweep(
     start: str = "2025-01-01",
     base_config: Optional[SweepConfig] = None,
     write_history: bool = False,
+    workers: int = 4,
 ) -> None:
     """Fast DC/BB threshold sweep for the GR HTF confirmation gate.
 
     Loads each symbol's NPZ ONCE, precomputes all 16 HTF confirmation masks via
     evaluate_gr_htf_vec, then runs simulate_one_symbol 16× with the cached NPZ
-    and pre-computed mask. No subprocess overhead; no redundant disk I/O.
-    Each variant completes in seconds not minutes.
+    and pre-computed mask. Symbols processed in parallel (workers= controls pool size).
 
     Requires GOLDEN_RULE_HTF_MIN_TFS > 0 for the masks to have any effect.
     With MIN_TFS=0 all variants are identical (gate is off) — sweep warns and exits.
@@ -1430,63 +1479,43 @@ def run_gr_dcbb_sweep(
     start_ts = int(start_dt.timestamp())
     n_years = max((datetime.now(timezone.utc) - start_dt).total_seconds() / 86400.0 / 365.25, 0.01)
     n_variants = len(_DCBB_GRID)
+    n_tasks = len(symbols) * len(sides)
 
     # Accumulate per-variant trade returns across all symbols
     variant_returns: Dict[str, List[float]] = {label: [] for label, _, _ in _DCBB_GRID}
-    variant_trades: Dict[str, int] = {label: 0 for label, _, _ in _DCBB_GRID}
 
-    print(f"[gr_dcbb_sweep] mode={mode} symbols={len(symbols)} sides={sides} start={start}"
-          f" min_tfs={min_tfs} min_ind={min_ind} variants={n_variants}", flush=True)
+    print(
+        f"[gr_dcbb_sweep] mode={mode} symbols={len(symbols)} sides={sides} start={start}"
+        f" min_tfs={min_tfs} min_ind={min_ind} variants={n_variants} workers={workers}"
+        f" tasks={n_tasks}",
+        flush=True,
+    )
     t_run_start = time.perf_counter()
 
-    for sym in symbols:
-        for side in sides:
-            is_long = side.upper() == "LONG"
-            # Load NPZ once for this sym/side
+    # Build task list: (sym, side, mode, base_config, start_ts, min_tfs, min_ind)
+    tasks = [
+        (sym, side, mode, base_config, start_ts, min_tfs, min_ind)
+        for sym in symbols
+        for side in sides
+    ]
+    completed = 0
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_dcbb_worker, t): (t[0], t[1]) for t in tasks}
+        for fut in as_completed(futures):
+            sym_key, side_key = futures[fut]
+            completed += 1
             try:
-                npz, ts = load_npz(sym, mode, start_ts=start_ts)
-            except FileNotFoundError as e:
-                print(f"[gr_dcbb_sweep] SKIP {sym}/{side}: {e}", flush=True)
+                sym_result = fut.result()
+            except Exception as e:
+                print(f"[gr_dcbb_sweep] [{completed}/{n_tasks}] {sym_key}/{side_key} WORKER_ERROR: {e}", flush=True)
                 continue
-            n = len(ts)
-            if n < 50:
-                continue
-            # Precompute HTF confirmation masks for all 16 threshold combos
-            t0 = time.perf_counter()
-            htf_masks: List[np.ndarray] = []
-            for _label, dc_thr, bb_thr in _DCBB_GRID:
-                mask, _ = evaluate_gr_htf_vec(
-                    npz, is_long, mode,
-                    min_tfs=min_tfs, min_ind=min_ind,
-                    invert_dc_bb=True,  # breakout mode: extension = bullish
-                    dc_threshold=dc_thr,
-                    bb_threshold=bb_thr,
-                    n=n,
-                )
-                htf_masks.append(mask)
-            t_masks = time.perf_counter() - t0
-            # Run simulation for each variant using cached NPZ + pre-computed mask
-            for v_idx, (label, dc_thr, bb_thr) in enumerate(_DCBB_GRID):
-                try:
-                    events, returns, n_bars = simulate_one_symbol(
-                        sym, side, mode, base_config,
-                        _npz_cache=(npz, ts),
-                        _gr_htf_entry_mask=htf_masks[v_idx],
-                    )
-                except Exception as e:
-                    sys.stderr.write(f"[gr_dcbb_sweep] FAIL {sym}/{side} {label}: {type(e).__name__}: {e}\n")
-                    continue
-                variant_returns[label].extend(returns)
-                variant_trades[label] += len(returns)
-            elapsed_sym = time.perf_counter() - t0
-            fire_rate = float(np.mean(htf_masks[0])) if len(htf_masks) > 0 else 0.0
-            print(
-                f"[gr_dcbb_sweep] {sym}/{side}: n={n} masks_t={t_masks:.2f}s"
-                f" sim_t={elapsed_sym:.2f}s baseline_fire_rate={fire_rate:.1%}", flush=True,
-            )
+            for label, ret_list in sym_result.items():
+                variant_returns[label].extend(ret_list)
+            n_trades_here = sum(len(v) for v in sym_result.values())
+            print(f"[gr_dcbb_sweep] [{completed}/{n_tasks}] {sym_key}/{side_key} done — variants={len(sym_result)} trades_all_variants={n_trades_here}", flush=True)
 
     elapsed_total = time.perf_counter() - t_run_start
-    print(f"\n[gr_dcbb_sweep] completed {n_variants} variants in {elapsed_total:.1f}s\n", flush=True)
+    print(f"\n[gr_dcbb_sweep] all {n_tasks} tasks done in {elapsed_total:.1f}s — reporting {n_variants} variants\n", flush=True)
 
     # Report canonical 9-field metrics for every variant
     results_dir = Path(__file__).resolve().parent / "data" / "sweep_results"
@@ -1594,6 +1623,7 @@ def main():
             symbols=syms, sides=sides,
             start=args.start, base_config=cfg,
             write_history=not args.no_history,
+            workers=args.workers,
         )
         return 0
 
