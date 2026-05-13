@@ -1138,6 +1138,15 @@ class Config:
     WT_3M_FORCE_OPEN_ENABLED: bool = True
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # bypass HARD_AUGMENT_LOCK + DUP_GUARD on this reason
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
+    # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
+    # Total votes = sum of bullish indicators across 5 TFs (3m/15m/1h/4h/D), max 35.
+    # MIN_TFS x MIN_IND_PER_TF: when MIN_TFS > 0, also require that many TFs to each
+    # have >= MIN_IND_PER_TF indicators agree (3x5 = 3 TFs with 5+ indicators each).
+    # Set MIN_TFS=0 to use total-vote-only gate (no per-TF floor).
+    WT_3M_FORCE_OPEN_GR_GATE_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_GR_VOTE_MIN: int = 15      # total vote floor; range 15-20. 0 = gate off.
+    WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 0        # 0 = disabled; ≥3 → require this many TFs to pass MIN_IND_PER_TF (needs testing)
+    WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF: int = 5 # per-TF indicator floor when MIN_TFS > 0
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

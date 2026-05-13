@@ -35261,13 +35261,20 @@ async def _process_single_override_check(
                                 pass
                             else:
                                 _fo_tkm_gr_ok = True
-                                _fo_tkm_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 12))
-                                if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and _fo_tkm_gr_min > 0:
+                                _fo_tkm_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 15))
+                                _fo_tkm_min_tfs = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_TFS", 0))
+                                _fo_tkm_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
+                                if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_tkm_gr_min > 0 or _fo_tkm_min_tfs > 0):
                                     try:
                                         from golden_rule_htf import _ind_score as _grf_score_tkm
-                                        _fo_tkm_votes = sum(_grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0] for _tf in ("3m", "15m", "1h", "4h", "D"))
-                                        if _fo_tkm_votes < _fo_tkm_gr_min:
+                                        _fo_tkm_tf_scores = [(_tf, _grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
+                                        _fo_tkm_votes = sum(s for _, s in _fo_tkm_tf_scores)
+                                        if _fo_tkm_gr_min > 0 and _fo_tkm_votes < _fo_tkm_gr_min:
                                             _fo_tkm_gr_ok = False
+                                        if _fo_tkm_gr_ok and _fo_tkm_min_tfs > 0:
+                                            _fo_tkm_tfs_ok = sum(1 for _, s in _fo_tkm_tf_scores if s >= _fo_tkm_min_ind)
+                                            if _fo_tkm_tfs_ok < _fo_tkm_min_tfs:
+                                                _fo_tkm_gr_ok = False
                                     except Exception:
                                         pass
                                 if _fo_tkm_gr_ok:
@@ -35310,13 +35317,20 @@ async def _process_single_override_check(
                                     pass
                                 else:
                                     _fo_wf_gr_ok = True
-                                    _fo_wf_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 12))
-                                    if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and _fo_wf_gr_min > 0:
+                                    _fo_wf_gr_min = int(getattr(config, "WT_3M_FORCE_OPEN_GR_VOTE_MIN", 15))
+                                    _fo_wf_min_tfs = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_TFS", 0))
+                                    _fo_wf_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
+                                    if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_wf_gr_min > 0 or _fo_wf_min_tfs > 0):
                                         try:
                                             from golden_rule_htf import _ind_score as _grf_score_wf
-                                            _fo_wf_votes = sum(_grf_score_wf(_ind_z, _tf, _is_long_z, _px_z)[0] for _tf in ("3m", "15m", "1h", "4h", "D"))
-                                            if _fo_wf_votes < _fo_wf_gr_min:
+                                            _fo_wf_tf_scores = [(_tf, _grf_score_wf(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
+                                            _fo_wf_votes = sum(s for _, s in _fo_wf_tf_scores)
+                                            if _fo_wf_gr_min > 0 and _fo_wf_votes < _fo_wf_gr_min:
                                                 _fo_wf_gr_ok = False
+                                            if _fo_wf_gr_ok and _fo_wf_min_tfs > 0:
+                                                _fo_wf_tfs_ok = sum(1 for _, s in _fo_wf_tf_scores if s >= _fo_wf_min_ind)
+                                                if _fo_wf_tfs_ok < _fo_wf_min_tfs:
+                                                    _fo_wf_gr_ok = False
                                         except Exception:
                                             pass
                                     if _fo_wf_gr_ok:
