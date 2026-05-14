@@ -143,7 +143,7 @@ def _write_csv_row(mode: str, tier: str, label: str, overrides: dict, metrics: d
         "avg_gain_trade": round(metrics.get("avg_gain_trade", 0.0), 4),
         "gain_per_yr": round(metrics.get("gain_per_yr", 0.0), 2),
         "gain_sym_yr": round(metrics.get("gain_sym_yr", 0.0), 4),
-        "trades": metrics.get("trades", 0),
+        "trades": metrics.get("n_trades", metrics.get("trades", 0)),
         "max_dd_pct": round(metrics.get("max_dd_pct", 0.0), 4),
         "n_syms": metrics.get("n_syms", 0),
         "years": round(metrics.get("years", 0.0), 3),
@@ -201,7 +201,7 @@ def run_matrix(
                     )
                     elapsed = time.perf_counter() - t0
                     ps = metrics.get("pool_sharpe", 0.0)
-                    trades = metrics.get("trades", 0)
+                    trades = metrics.get("n_trades", metrics.get("trades", 0))
                     gain = metrics.get("gain_per_yr", 0.0)
                     print(
                         f"[vec_matrix] ✓ {tier_name}/{label}"
