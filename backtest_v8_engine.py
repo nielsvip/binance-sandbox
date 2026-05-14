@@ -1287,6 +1287,8 @@ async def drain_pending_v8_tasks():
         for _coro in _batch:
             try:
                 await _coro
+            except asyncio.CancelledError:
+                pass  # Swallow — backtest tasks are fire-and-forget; CancelledError is BaseException in 3.11+
             except Exception as _e:
                 # Swallow — fire-and-forget side effects (redis writes,
                 # persist_hedge_record, etc.) must not crash the sim loop.
@@ -3130,9 +3132,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Clear Redis debounce keys
         if hasattr(trade_manager, 'redis_manager') and trade_manager.redis_manager:
             try:
-                for _rconn in (trade_manager.redis_manager.connections or {}).values():
-                    if _rconn and hasattr(_rconn, '_data'):
-                        _rconn._data = {k: v for k, v in getattr(_rconn, '_data', {}).items() if not k.startswith('debounce_exec:')}
+                _rm = trade_manager.redis_manager
+                if hasattr(_rm, 'data'):
+                    # InMemoryRedis — no TTL support; clear debounce keys directly from .data
+                    _rm.data = {k: v for k, v in _rm.data.items() if not k.startswith('debounce_exec:')}
+                else:
+                    for _rconn in (getattr(_rm, 'connections', None) or {}).values():
+                        if _rconn and hasattr(_rconn, '_data'):
+                            _rconn._data = {k: v for k, v in getattr(_rconn, '_data', {}).items() if not k.startswith('debounce_exec:')}
             except Exception:
                 pass
         # Clear tracker check times so exit/entry checks run every bar
