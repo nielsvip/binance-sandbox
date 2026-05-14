@@ -5217,6 +5217,25 @@ class StockStrategy:
             except Exception as _grde_exit_err:
                 logger.warning(f"[GR_HTF_DIRECT_EXIT_ERR] {symbol}: {_grde_exit_err}")
         # ═══ END GR_HTF_DIRECT_EXIT ═══
+        # ═══ P2-D: REENTRY_BREAKOUT structural stop (default OFF) ═══
+        # If a reentry was tagged with _reentry_breakout_level (the DC level it broke through),
+        # close immediately if price crosses back through that level (position is invalidated).
+        # Bypasses UNIVERSAL_NOLOSS_GATE via reason string 'REENTRY_BREAKOUT' (added to SRS bypass check).
+        if not _is_opts_check and getattr(config, 'REENTRY_BREAKOUT_ENABLED', False):
+            try:
+                _rb_level = getattr(position, '_reentry_breakout_level', None)
+                if _rb_level is not None:
+                    _rb_level = float(_rb_level)
+                    if _rb_level > 0:
+                        if is_long and current_price < _rb_level * (1 - 0.001):
+                            logger.warning(f"[REENTRY_BREAKOUT_STOP] {symbol} L: price {current_price:.4f} < level {_rb_level:.4f} × 0.999 — structural stop (breakout invalidated)")
+                            return True, f"REENTRY_BREAKOUT_FALLBACK_TO_LEVEL_px{current_price:.4f}<lvl{_rb_level:.4f}_g{gain:.2f}%", qty
+                        elif not is_long and current_price > _rb_level * (1 + 0.001):
+                            logger.warning(f"[REENTRY_BREAKOUT_STOP] {symbol} S: price {current_price:.4f} > level {_rb_level:.4f} × 1.001 — structural stop (breakout invalidated)")
+                            return True, f"REENTRY_BREAKOUT_FALLBACK_TO_LEVEL_px{current_price:.4f}>lvl{_rb_level:.4f}_g{gain:.2f}%", qty
+            except Exception as _rb_err:
+                logger.debug(f"[REENTRY_BREAKOUT_STOP] {symbol}: {_rb_err}")
+        # ═══ END P2-D REENTRY_BREAKOUT structural stop ═══
         # ==================================================================
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py
@@ -9461,7 +9480,7 @@ class TradierTradeManager:
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
             if is_reduce and not is_hedge:
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
-                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper())
+                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper() or 'REENTRY_BREAKOUT' in str(reason or '').upper())
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
@@ -14875,7 +14894,13 @@ class StockDaytradeWing:
                     dc_high_1h_ant = safe_fetch_float(data.get('dc_high_1h_ant', dc_high_1h))
                     if dc_high_1h <= dc_high_1h_ant: continue
                 stop = safe_fetch_float(data.get(f'dc_basis_{tf}', dc_low))
-                signals.append({'side': 'LONG', 'tf': tf, 'size_mult': size_mult, 'stop': stop, 'reason': f'DC_BREAK_HIGH_{tf.upper()}'})
+                dc_basis_val = safe_fetch_float(data.get(f'dc_basis_{tf}', 0))
+                _sig_mult = size_mult
+                _dc_break_phase = 0
+                if getattr(config, 'DC_BREAK_GR_MULT_ENABLED', False):
+                    _sig_mult = float(getattr(config, 'DC_BREAK_GR_MULT_BREAKOUT', 0.1))
+                    _dc_break_phase = 1
+                signals.append({'side': 'LONG', 'tf': tf, 'size_mult': _sig_mult, 'stop': stop, 'reason': f'DC_BREAK_HIGH_{tf.upper()}', 'dc_break_phase': _dc_break_phase, 'dc_basis': dc_basis_val})
             if dc_low_x or below:
                 if stoch_filter and k_15m < k_exh_short: continue
                 if require_expansion:
@@ -14883,7 +14908,13 @@ class StockDaytradeWing:
                     dc_low_1h_ant = safe_fetch_float(data.get('dc_low_1h_ant', dc_low_1h))
                     if dc_low_1h >= dc_low_1h_ant: continue
                 stop = safe_fetch_float(data.get(f'dc_basis_{tf}', dc_high))
-                signals.append({'side': 'SHORT', 'tf': tf, 'size_mult': size_mult, 'stop': stop, 'reason': f'DC_BREAK_LOW_{tf.upper()}'})
+                dc_basis_val = safe_fetch_float(data.get(f'dc_basis_{tf}', 0))
+                _sig_mult = size_mult
+                _dc_break_phase = 0
+                if getattr(config, 'DC_BREAK_GR_MULT_ENABLED', False):
+                    _sig_mult = float(getattr(config, 'DC_BREAK_GR_MULT_BREAKOUT', 0.1))
+                    _dc_break_phase = 1
+                signals.append({'side': 'SHORT', 'tf': tf, 'size_mult': _sig_mult, 'stop': stop, 'reason': f'DC_BREAK_LOW_{tf.upper()}', 'dc_break_phase': _dc_break_phase, 'dc_basis': dc_basis_val})
         return signals
     async def _scan_dc_entries(self, snapshot: dict):
         acc = self.account_key
@@ -14934,6 +14965,14 @@ class StockDaytradeWing:
                     pos.entry_price = price
                     pos.opened_at = datetime.now(timezone.utc)
                     logger.info(f"[DAYTRADE_ENTRY_PRICE] {pk}: Set entry_price={price:.2f} immediately")
+                # P2-C: store dc_break_phase and dc_basis for GR Phase 2 detection
+                if getattr(config, 'DC_BREAK_GR_MULT_ENABLED', False) and best.get('dc_break_phase', 0) == 1:
+                    try:
+                        pos._dc_break_phase = 1
+                        pos._dc_basis = float(best.get('dc_basis', 0))
+                        logger.info(f"[DC_BREAK_GR] {pk}: Phase 1 entry, dc_basis={pos._dc_basis:.4f}")
+                    except Exception:
+                        pass
                 await self.trade_manager.position_manager.save_all_positions()
             if side == 'LONG': allow_long = False
             else: allow_short = False
@@ -14976,6 +15015,33 @@ class StockDaytradeWing:
                     if dc_basis_5m > 0 and gain_pct >= noloss_min:
                         if (is_long and price < dc_basis_5m) or (not is_long and price > dc_basis_5m):
                             should_exit = True; exit_reason = f"DT_BASIS_CROSS {gain_pct:.2%}"
+            # P2-C: GR Phase 2 augment — if Phase 1 entry and price retest dc_basis + WT confirm
+            if (not should_exit and getattr(config, 'DC_BREAK_GR_MULT_ENABLED', False)
+                    and getattr(pos, '_dc_break_phase', 0) == 1):
+                try:
+                    _p2_basis = float(getattr(pos, '_dc_basis', 0))
+                    _p2_tol = float(getattr(config, 'DC_BREAK_GR_RETEST_TOLERANCE_PCT', 0.3)) / 100.0
+                    _p2_sym_data = snapshot.get(pos.symbol.upper(), {}) or {}
+                    _p2_wt1_3m = safe_fetch_float(_p2_sym_data.get('wt1_3m', _p2_sym_data.get('wt1_5m', 0)))
+                    _p2_wt2_3m = safe_fetch_float(_p2_sym_data.get('wt2_3m', _p2_sym_data.get('wt2_5m', 0)))
+                    _p2_wt_confirm = (_p2_wt1_3m > _p2_wt2_3m) if is_long else (_p2_wt1_3m < _p2_wt2_3m)
+                    if _p2_basis > 0 and _p2_wt_confirm:
+                        _p2_at_basis = (is_long and abs(price - _p2_basis) / _p2_basis <= _p2_tol and price >= _p2_basis * (1 - _p2_tol)) or (not is_long and abs(price - _p2_basis) / _p2_basis <= _p2_tol and price <= _p2_basis * (1 + _p2_tol))
+                        if _p2_at_basis:
+                            _p2_mult = float(getattr(config, 'DC_BREAK_GR_MULT_RETEST', 3.0))
+                            _p2_start = getattr(config, 'DC_DAYTRADE_START_SIZE', 600.0) * _p2_mult
+                            _p2_max = getattr(config, 'DC_DAYTRADE_MAX_POSITION_SIZE', 2000.0)
+                            _p2_qty = max(1, int(min(_p2_start, _p2_max) / price))
+                            _p2_api = "buy" if is_long else "sell_short"
+                            _p2_reason = f"DC_BREAK_GR_RETEST_basis{_p2_basis:.2f}_mult{_p2_mult:.1f}x"
+                            logger.info(f"[DC_BREAK_GR] {pk}: Phase 2 augment {_p2_qty}@{price:.2f} basis={_p2_basis:.2f} wt={_p2_wt1_3m:.1f}/{_p2_wt2_3m:.1f}")
+                            await self.trade_manager.execute_trade_action(acc, pk, pos.symbol, _p2_qty, price, _p2_api, pos.position_side, f"dt_p2_{int(time.time())}", action="AUGMENT", reason=_p2_reason, override_qty=_p2_qty)
+                            try:
+                                pos._dc_break_phase = 2
+                            except Exception:
+                                pass
+                except Exception as _p2_err:
+                    logger.debug(f"[DC_BREAK_GR_P2] {pk}: {_p2_err}")
             if should_exit:
                 logger.info(f"📊 [DAYTRADE] EXIT {pos.symbol} ({pos.position_side}): {exit_reason}")
                 api_side = "sell" if is_long else "buy_to_cover"

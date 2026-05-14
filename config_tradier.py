@@ -531,6 +531,13 @@ class TradierConfig:
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3      # 2026-04-27 EMERGENCY: was 0.5 — close 50% sooner, lock profits before reversal. User: "get out quicker".
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5  # 2026-04-27 EMERGENCY: was 0.75 — upgrade stop to first_exit price ASAP after partial.
+    # P2-G: PPL sweep test — vary close and arm thresholds with commission-aware testing
+    # Sweep range: close=[0.1,0.2,0.3,0.5,0.75], arm=[0.3,0.5,0.75,1.0]
+    # NOTE: at 0.1% close trigger, round-trip commission ~0.12% makes trade economically borderline
+    PARTIAL_PROFIT_LOCK_SWEEP_ENABLED: bool = False  # use sweep params instead of live params (backtest only)
+    PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT: float = 0.3   # sweep variant of GAIN_PCT (default = live default)
+    PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT: float = 0.5    # sweep variant of ARM_PCT
+    PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT: float = 0.05    # per-leg slippage for sweep (0.05% × 2 sides + 0.01% commission ≈ 0.12% round-trip)
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
@@ -821,6 +828,8 @@ class TradierConfig:
     TRADIER_REENTRY_HARDCOOL_MIN: float = 30.0  # 2026-04-26 NEW: was hardcoded at tradier_manage.py:5392. Default 30 preserves prior behavior. Sweep candidate values: 5/10/15/30. Lower → more reentry surface (helps reentry_rate=3.7% problem) but risk of churn the 30-min was originally protecting against.
     TRADIER_REENTRY_ANTI_CHURN_ENABLED: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — ANTI_CHURN_exit_score gate was blocking reentries when wt_dc still indicated exit. Default OFF.
     TRADIER_REENTRY_RZ_BLOCK_ENABLED: bool = False    # 2026-05-10 USER MANDATE: REENTRY guaranteed — RZ_BLOCK_REENTRY_LONG_AT_TOP / SHORT_AT_BOTTOM gate was blocking reentries via DELTA zone. Default OFF.
+    # P2-D: REENTRY_BREAKOUT — re-enter after DC break, structural stop if price falls back through breakout level
+    REENTRY_BREAKOUT_ENABLED: bool = False  # P2-D: exit if price crosses back through the DC level that triggered the reentry
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
     MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
@@ -1704,6 +1713,11 @@ class TradierConfig:
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score for double-size entry. ROLLBACK: 1000.0
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
     GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0
+    # P2-C: DC_BREAK entries routed through GR Phase 1/2 sizing (default OFF)
+    DC_BREAK_GR_MULT_ENABLED: bool = False          # P2-C: route DC_BREAK entries through GR Phase 1/2 sizing
+    DC_BREAK_GR_MULT_BREAKOUT: float = 0.1          # Phase 1: tiny entry on DC break
+    DC_BREAK_GR_MULT_RETEST: float = 3.0            # Phase 2: large entry on dc_basis retest + WT confirm
+    DC_BREAK_GR_RETEST_TOLERANCE_PCT: float = 0.3   # dc_basis within this % = retest zone
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols
