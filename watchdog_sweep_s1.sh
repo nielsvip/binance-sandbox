@@ -134,3 +134,30 @@ if [ "$NP" -lt 1 ]; then
     sleep 2
     echo "[$TS] post-relaunch rate_filter_promoter procs=$(count_crypto_promoter)" >> "$LOG"
 fi
+
+# -- Part 5: sweep_coordinator — 24/7 prioritized queue runner (vectorized mode) --
+# Runs backtest_v8_engine with V8_USE_VEC_ALL=1 through the test queue.
+# Separate from the ablation sweeps above; uses same memory guard so only
+# launches when both ablation engines are idle (no double-OOM).
+count_coordinator() {
+    ps aux | grep "[s]weep_coordinator" | grep python | wc -l | tr -d '[:space:]'
+}
+NCOORD=$(count_coordinator)
+if [ "$NCOORD" -lt 1 ] && [ "$NC" -lt 1 ] && [ "$NT" -lt 1 ]; then
+    echo "[$TS] sweep_coordinator dead and both ablation sweeps idle — relaunching coordinator" >> "$LOG"
+    TS2=$(date +%Y%m%d_%H%M)
+    cd "$DIR"
+    # Crypto coordinator: start=2022-01-01 (bear+bull required per CLAUDE.md)
+    nohup "$PYTHON" sweep_coordinator.py \
+        --mode crypto --account ang \
+        --start 2022-01-01 \
+        --symbols "$CORE4_CRYPTO" \
+        --mem-throttle 85 \
+        > ~/logs/sweep_coordinator_crypto_${TS2}.log 2>&1 < /dev/null & disown
+    sleep 5
+    echo "[$TS] post-relaunch coordinator procs=$(count_coordinator)" >> "$LOG"
+elif [ "$NCOORD" -gt 0 ]; then
+    echo "[$TS] sweep_coordinator running (procs=$NCOORD) -- ok" >> "$LOG"
+else
+    echo "[$TS] sweep_coordinator idle (ablation sweeps busy: crypto=$NC tradier=$NT)" >> "$LOG"
+fi
