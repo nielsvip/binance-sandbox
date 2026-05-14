@@ -39853,7 +39853,8 @@ async def process_position(
             if _ex_exit:
                 _ex_g = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _req_gain = getattr(config, "WT_EXHAUST_EXIT_REQUIRE_GAIN", False)
-                if not _req_gain or _ex_g > 0:
+                _ex_min_gain = float(getattr(config, "WT_EXHAUST_EXIT_MIN_GAIN_PCT", 0.0))
+                if (not _req_gain or _ex_g > 0) and _ex_g >= _ex_min_gain:
                     logger.warning(
                         f"[WT_EXHAUST_EXIT] {position_key}: 4h={_mom_4h} 1h={_mom_1h} 15m={_mom_15m} g={_ex_g:.2f}%"
                     )

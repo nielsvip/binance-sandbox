@@ -2322,6 +2322,7 @@ class Config:
     # Requires 4h EXHAUST confirmed by 1h or 15m (prevents premature exit on single TF)
     WT_EXHAUST_EXIT_ENABLED: bool = True
     WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False     # True = only exit on EXHAUST if gain > 0
+    WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.5      # Only fire WT_EXHAUST after position peaked ≥ this. Prevents firing at tiny gains (0.1%) in backtest where 4h state repeats every 15m bar — same as R2_PEAK_MIN_PCT so the two gates don't compete.
     # EXIT: PERCENTILE OB/OS — close LONG when D+4h both overbought, SHORT when oversold
     WT_PERCENTILE_EXIT_ENABLED: bool = False        # OFF: in strong rally D WT stays elevated, exits too early
     WT_PERCENTILE_EXIT_OB_D: float = 90.0          # D percentile > this → exit LONG
