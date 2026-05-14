@@ -39319,7 +39319,7 @@ async def process_position(
                         logger.critical(
                             f"⚡ [MICRO_SCALP_USDC_CLOSE] {position_key}: gain={_ms_gain:.3f}% < prev={_ms_prev:.3f}% (threshold={_ms_threshold}%) — execute_now close"
                         )
-                        _ms_result = await self.execute_now(
+                        _ms_result = await trade_manager.execute_now(
                             position_key,
                             account_key,
                             symbol,
@@ -39377,7 +39377,7 @@ async def process_position(
                             logger.critical(
                                 f"⚡ [MICRO_SCALP_USDC_REOPEN] {position_key}: price {current_price:.6f} re-crossed exit {_ms_exit_px:.6f} ({_ms_orig_side}) — execute_now open qty={_ms_orig_qty:.6f}"
                             )
-                            _ms_result = await self.execute_now(
+                            _ms_result = await trade_manager.execute_now(
                                 position_key,
                                 account_key,
                                 symbol,
