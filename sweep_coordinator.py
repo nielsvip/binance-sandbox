@@ -74,7 +74,7 @@ FLAWS_PATH = COORD_DIR / "flaws.json"
 PY_BIN = sys.executable
 
 # Classification thresholds
-HANG_TIMEOUT_S = 1800          # 30 min max per run
+HANG_TIMEOUT_S = 21600         # 6 hours — start=2022 + 4 USDC syms takes ~3.7h per variant
 USELESS_POOL_SHARPE = 0.3      # below → USELESS (Discard/Noise tier)
 DIAGNOSTIC_POOL_SHARPE = 0.5   # below → DIAGNOSTIC (sub-floor)
 PROMOTE_POOL_SHARPE = 1.0      # above → add to promotions.json
