@@ -412,6 +412,7 @@ def _v8_vec_short_circuit(
     pos_entry = 0.0
     pos_max_gain = 0.0
     pos_initial_qty = 0.0
+    pos_augmented_count = 0.0
     pos_last_aug_t = float(last_augment_ts or 0.0)
     pos_opened = None
     if pos_obj is not None:
@@ -421,6 +422,7 @@ def _v8_vec_short_circuit(
             pos_entry = float(getattr(pos_obj, 'entry_price', 0) or 0)
             pos_max_gain = float(getattr(pos_obj, 'max_gain', 0) or 0)
             pos_initial_qty = float(getattr(pos_obj, 'initial_quantity', 0) or 0)
+            pos_augmented_count = float(getattr(pos_obj, 'augmented_count', 0) or 0)
             pos_opened = getattr(pos_obj, 'last_augmentation_time', None) or getattr(pos_obj, 'opened_at', None)
             if pos_last_aug_t == 0.0:
                 _lat = getattr(pos_obj, 'last_augmentation_time', None)
@@ -557,7 +559,7 @@ def _v8_vec_short_circuit(
                 proposed_qty=float(qty or 0),
                 config=cfg,
                 last_augmentation_time=pos_last_aug_t if pos_last_aug_t > 0 else None,
-                augmented_count=0.0,
+                augmented_count=pos_augmented_count,
                 initial_quantity=pos_initial_qty,
                 max_gain=pos_max_gain,
                 now_ts=float(sim_ts or 0),
@@ -880,9 +882,92 @@ def _v8_shadow_validate_eta(scalar_outcome, *, action, position_key, reason, qty
             _v8_shadow_bump("open_intent_size_gates", False, {})
     except Exception as _e:
         _v8_shadow_log_divergence("open_intent_size_gates_ERROR", {"err": str(_e), **common_ctx})
-    # ─── Gate 3: newborn_protect (15-min grace after a fresh open) ──
-    # Skipped here: needs per-position open_ts which the engine doesn't surface
-    # uniformly; covered by the dedicated parity tests at tools/test_newborn_*.
+    # ─── Gate 3: augment_eligibility (DUP_GUARD + LOSING_POSITION + AUGMENT_LEVEL) ──
+    # 2026-05-14: expanded from 2→10 gates to find all divergence sources.
+    try:
+        v_blk3, v_reason3, _, _ = evaluate_augment_eligibility_core(
+            action=action,
+            position_amt=float(position_amt or 0),
+            real_gain=float(gain or 0),
+            entry_price=0.0,
+            mark_price=float(px or 0),
+            proposed_qty=float(qty or 0),
+            config=cfg,
+            last_augmentation_time=float(last_augment_ts) if last_augment_ts else None,
+            augmented_count=0.0,
+            now_ts=float(now_ts or 0),
+            is_hedge=bool(is_hedge),
+            reason=reason or '',
+        )
+        if v_blk3 and not engine_blocked:
+            _v8_shadow_bump("augment_eligibility", True, {**common_ctx, "vec_reason": v_reason3})
+        else:
+            _v8_shadow_bump("augment_eligibility", False, {})
+    except Exception as _e:
+        _v8_shadow_log_divergence("augment_eligibility_ERROR", {"err": str(_e), **common_ctx})
+    # ─── Gate 4: noloss_gate (OBLIGATORY_HEDGE + UNIVERSAL_NOLOSS) — reduce only ──
+    if is_reduce:
+        try:
+            from vec_paths.noloss_obligatory_hedge import evaluate_noloss_gate_core, NOLOSS_ACTION_HOLD
+            _nl_act, _nl_reason, _, _ = evaluate_noloss_gate_core(
+                indicators={},
+                is_long=position_key.endswith('_LONG') if position_key else True,
+                real_gain_pct=float(gain or 0),
+                positionAmt=float(position_amt or 0),
+                mark_price=float(px or 0),
+                reason=reason or '',
+                config=cfg,
+                account_key='',
+                is_hedge=bool(is_hedge),
+                is_reduce=True,
+            )
+            if _nl_act == NOLOSS_ACTION_HOLD and not engine_blocked:
+                _v8_shadow_bump("noloss_gate", True, {**common_ctx, "vec_reason": _nl_reason})
+            else:
+                _v8_shadow_bump("noloss_gate", False, {})
+        except Exception as _e:
+            _v8_shadow_log_divergence("noloss_gate_ERROR", {"err": str(_e), **common_ctx})
+    # ─── Gate 5: protect_balance_overtrade ──
+    try:
+        _pb_blk, _pb_reason, _ = evaluate_protect_balance_overtrade_core(
+            action=action,
+            position_key=position_key or '',
+            account_key='',
+            positions_dict={},
+            balance_sentinel_path=None,
+            decisions_events=None,
+            now_ts=int(now_ts or 0),
+            config=cfg,
+            reason=reason or '',
+            is_full_close=False,
+            is_hedge=bool(is_hedge),
+        )
+        if _pb_blk and not engine_blocked:
+            _v8_shadow_bump("protect_balance_overtrade", True, {**common_ctx, "vec_reason": _pb_reason})
+        else:
+            _v8_shadow_bump("protect_balance_overtrade", False, {})
+    except Exception as _e:
+        _v8_shadow_log_divergence("protect_balance_overtrade_ERROR", {"err": str(_e), **common_ctx})
+    # ─── Gate 6: circuit_sharpe_gates (non-reduce only) ──
+    if not is_reduce:
+        try:
+            _cs_blk, _cs_reason, _ = evaluate_circuit_sharpe_gates_core(
+                action=action,
+                position_key=position_key or '',
+                now_ts=float(now_ts or 0),
+                hour_of_day_sharpe=float('nan'),
+                regime_score=float('nan'),
+                volume_score=float('nan'),
+                last_circuit_open_ts=0.0,
+                position_amt=float(position_amt or 0),
+                config=cfg,
+            )
+            if _cs_blk and not engine_blocked:
+                _v8_shadow_bump("circuit_sharpe_gates", True, {**common_ctx, "vec_reason": _cs_reason})
+            else:
+                _v8_shadow_bump("circuit_sharpe_gates", False, {})
+        except Exception as _e:
+            _v8_shadow_log_divergence("circuit_sharpe_gates_ERROR", {"err": str(_e), **common_ctx})
 
 def _v8_shadow_summary() -> str:
     if not V8_VEC_SHADOW_VALIDATE:
@@ -2354,7 +2439,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # gain >= MIN_GAIN. Per today's user mandate also fires on TRUE OPEN on empty.
         # ═══════════════════════════════════════════════════════════════════════════
         if is_aug_action:
-            _al_min_sec = int(getattr(config, '_AUGMENT_LOCK_MIN_SECONDS', 900))
+            _al_min_sec = int(getattr(config, 'HARD_AUGMENT_LOCK_SECONDS', getattr(config, '_AUGMENT_LOCK_MIN_SECONDS', 900)))
             _al_pos = trade_manager.positions.get(pk)
             _al_gain = float(getattr(_al_pos, 'gain', 0) or 0) if _al_pos else 0.0
             _al_pos_amt = abs(float(getattr(_al_pos, 'positionAmt', 0) or 0)) if _al_pos else 0.0
