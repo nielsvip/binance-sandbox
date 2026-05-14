@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-14 21:55:56 UTC
+# Copilot Status — 2026-05-14 22:10:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-14T21:55:14
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T21:55:14
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T21:55:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T22:03:30
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T22:05:34
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T22:05:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T22:05:34
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T22:07:43
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T22:07:43
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T22:07:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T22:09:46
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T22:09:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T22:09:46
 
 ## Missed Trades (trader comparison)
 
@@ -33,15 +40,15 @@ _None_
 - HELD: **NVDA** LONG (tradier) peak +4.4%, now +3.3%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +0.3%
 
-- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.1%, exited 1m ago
+- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.1%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 10
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 50
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
