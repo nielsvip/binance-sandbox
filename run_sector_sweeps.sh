@@ -16,9 +16,9 @@ PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 WORKDIR=/home/niels/binance-sandbox
 SECTORS_FILE="$WORKDIR/sectors_tradier.json"
 START_DATE="2023-05-13"
-TIER="tradier_param_hunt"
+TIER="tradier_sector_baseline"
 WORKERS=1
-TIMEOUT=1800  # 30 min per variant — needed for 20-30 symbol sectors
+TIMEOUT=3600  # 60 min — baseline for 20-30 syms × 2-3yr takes ~30-40 min
 LOG_DIR="$HOME/logs"
 
 mkdir -p "$LOG_DIR"

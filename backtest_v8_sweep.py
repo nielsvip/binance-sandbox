@@ -590,6 +590,15 @@ def grid_indicator_audit_v2():
     ]
 
 
+def grid_tradier_sector_baseline():
+    """2026-05-13: single baseline-only run for sector comparison sweeps.
+    Use this tier when comparing sectors (tech_ai_chips, energy_oil_gas, etc.)
+    to get the baseline pool_sharpe quickly without running all 113 param variants.
+    Each sector has 20-29 symbols × 2-3 years → baseline takes ~30-40 min.
+    Run with --timeout 3600 to avoid timeout."""
+    return [("baseline", {})]
+
+
 def grid_tradier_param_hunt():
     """2026-05-08: full real-engine tradier knob hunt with WT_DC_ENTRY_THRESHOLD sweep.
     Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
@@ -1492,6 +1501,7 @@ TIER_MAP = {
     "indicator_audit": grid_indicator_audit,
     "indicator_audit_v2": grid_indicator_audit_v2,
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
+    "tradier_sector_baseline": grid_tradier_sector_baseline,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
