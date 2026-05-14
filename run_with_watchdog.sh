@@ -282,8 +282,20 @@ run_script() {
                 rss_over_count=$((rss_over_count + 1))
                 if [[ "$rss_over_count" -ge 4 ]]; then
                     log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB sustained for ${rss_over_count} samples (~$((rss_over_count * 5))s). Graceful restart before jetsam fires."
+                    # 2026-05-14: SIGTERM grace bumped 5s→30s. Live evidence: every "exit 137"
+                    # in the OOM_CYCLE detector was preceded by THIS log line ~5s earlier — i.e.
+                    # the watchdog's own SIGKILL was firing because ez_manage's shutdown handler
+                    # (signal_handler at ez_manage.py:46004 → shutdown_event.set() → background
+                    # tasks unwind, position state flushes to JSON/Redis) takes longer than 5s.
+                    # 30s lets the graceful path actually complete → exit 143 (clean) instead of
+                    # 137 (kill). The ang log on 06:06:43 showed "SHUTDOWN & CLEANUP SEQUENCE
+                    # INITIATED" with positions still being processed 3s later — SIGKILL came
+                    # mid-flush. Workers fin (4h42m, 258MB) + flz (4h41m, 516MB) are long-term
+                    # stable, so this isn't a runaway leak — it's workload-scaled RSS pressure
+                    # on the larger accounts (inf 91pos, men 50pos, ang ~70pos) hitting the
+                    # 1.5/2.2GB ceiling and the watchdog killing too aggressively.
                     kill -TERM "$script_pid" 2>/dev/null || true
-                    sleep 5
+                    sleep 30
                     kill -KILL "$script_pid" 2>/dev/null || true
                     break
                 fi
@@ -300,8 +312,9 @@ run_script() {
             local _pl=$(mac_pressure_level)
             if [[ -n "$rss_kb" && "$_pl" -ge 4 && "$rss_kb" -gt $((MAX_RSS_KB * 7 / 10)) ]]; then
                 log "🚨 PRESSURE_EVAC: pressure_level=${_pl} (≥4 critical) rss=${rss_kb}KB > 70% of ${MAX_RSS_KB}KB. Graceful evac before jetsam SIGKILLs us."
+                # 2026-05-14: 5s→30s grace for the same reason as preemptive recycle above.
                 kill -TERM "$script_pid" 2>/dev/null || true
-                sleep 5
+                sleep 30
                 kill -KILL "$script_pid" 2>/dev/null || true
                 break
             fi
