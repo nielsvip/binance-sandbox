@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-14 06:53:30 UTC
+# Copilot Status — 2026-05-14 07:09:21 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:38:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:41:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:43:05
-- **STALE_INDICATORS** [tradier]  — 2026-05-14T06:45:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:45:12
-- **STALE_INDICATORS** [tradier]  — 2026-05-14T06:47:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:47:18
-- **STALE_INDICATORS** [tradier]  — 2026-05-14T06:49:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:49:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T06:51:34
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:03:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T07:04:11
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:04:44
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:05:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T07:06:18
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:06:51
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:07:57
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T07:08:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T07:08:28
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T07:09:00
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 15 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 15 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +8.2%, now +7.7%
 - HELD: **ACN** SHORT (tradier) peak +8.0%, now +2.4%
@@ -40,7 +40,6 @@ _None_
 - HELD: **TTD** SHORT (tradier) peak +5.1%, now +-0.6%
 - HELD: **ARM** LONG (tradier) peak +4.8%, now +2.3%
 
-- WATCHING: **MSTR** LONG (tradier) peaked +9.5%, exited 0m ago
 - WATCHING: **MU** LONG (tradier) peaked +6.5%, exited 0m ago
 - WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.6%, exited 0m ago
 
@@ -49,8 +48,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (13min)
-- [HIGH] ez_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (14min)
+- [MEDIUM] tradier_positions.py running but log stale (28min)
+- [HIGH] ez_rankings.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (29min)
+- [HIGH] ez_manage.py for ang is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (30min)
