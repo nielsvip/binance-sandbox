@@ -22716,6 +22716,35 @@ class MultiAccountTradeManager:
                         _stale_age_s = (
                             datetime.now(timezone.utc) - _stale_ts
                         ).total_seconds()
+                    # [FIX-A] Proactive cache refresh — update mark_price_last_updated from
+                    # ANY valid price_cache entry before the stale gate fires.  price_cache_3
+                    # is rsynced from S1 and may have timestamps 60-120 s old (rsync lag +
+                    # 60 s in-memory reload interval) even though the data IS fresh enough.
+                    # Accepting any valid price here eliminates the REST-API dependency.
+                    if _stale_age_s > 0:
+                        _ps_sym = getattr(_stale_pos, "symbol", None) or symbol
+                        _ps_alt = (_ps_sym.replace("USDC", "USDT") if _ps_sym and _ps_sym.endswith("USDC") else None)
+                        _proactive_done = False
+                        for _ppc in (self.price_cache, getattr(self, "price_cache_2", {}), getattr(self, "price_cache_3", {})):
+                            if not isinstance(_ppc, dict) or _proactive_done:
+                                continue
+                            for _plkup in filter(None, [_ps_sym, _ps_alt]):
+                                _pce = _ppc.get(_plkup)
+                                if not isinstance(_pce, dict):
+                                    continue
+                                _pcp = safe_fetch_float(_pce.get("price"), 0.0)
+                                if _pcp > 0:
+                                    _stale_pos.mark_price = _pcp
+                                    _stale_pos.mark_price_last_updated = datetime.now(timezone.utc)
+                                    _stale_age_s = 0.0
+                                    _proactive_done = True
+                                    break
+                    # [FIX-B] Flat-position skip — positionAmt≈0 means no existing gain
+                    # to miscalculate; the stale price guard is irrelevant for pure OPENs.
+                    if _stale_age_s > _stale_max_age:
+                        _flat_amt = abs(float(getattr(_stale_pos, "positionAmt", 1.0) or 1.0))
+                        if _flat_amt < 0.001:
+                            _stale_age_s = 0.0
                     if _stale_age_s > _stale_max_age:
                         # Try one Redis refresh before refusing.
                         _stale_sym = getattr(_stale_pos, "symbol", None) or symbol
@@ -22753,12 +22782,24 @@ class MultiAccountTradeManager:
                                         with suppress(Exception):
                                             _cts = ensure_tz(isoparse(_cts_raw))
                                     _cage = (_now_ref - _cts).total_seconds() if _cts else 999
-                                    if _cage < 60:
+                                    # [FIX-C] Accept ANY valid cached price regardless of age.
+                                    # Old gate (_cage < 60) rejected price_cache_3 entries that
+                                    # were 60-120 s old due to rsync+reload lag, forcing a REST
+                                    # call that fails under IP churn.  Even a 5-min-old price
+                                    # gives correct gain direction; only hours-stale prices caused
+                                    # the original -45% → +37% misread this guard was built for.
+                                    if _cp > 0:
                                         _ref_price = _cp
-                                        logger.debug(
-                                            f"[STALE_MARK_PRICE_REFRESH] {position_key}:"
-                                            f" cache={_lkup} price={_cp:.4f} cache_age={_cage:.1f}s"
-                                        )
+                                        if _cage > 180:
+                                            logger.warning(
+                                                f"[STALE_MARK_PRICE_REFRESH] {position_key}:"
+                                                f" cache={_lkup} price={_cp:.4f} cache_age={_cage:.1f}s (old but accepted)"
+                                            )
+                                        else:
+                                            logger.debug(
+                                                f"[STALE_MARK_PRICE_REFRESH] {position_key}:"
+                                                f" cache={_lkup} price={_cp:.4f} cache_age={_cage:.1f}s"
+                                            )
                                         break
                                 if _ref_price > 0:
                                     break

@@ -1517,9 +1517,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _r1_live_key = 'dc_low4_5m' if is_long else 'dc_high4_5m'
                     _r1_stop_live = safe_fetch_float(i.get(_r1_live_key), 0.0)
                     if _r1_stop_live > 0:
-                        _r1_stop = _r1_stop_live
-                        position.r1_stop_price = _r1_stop_live  # persist so next bar uses same level
-                        logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised from live {_r1_live_key}={_r1_stop_live:.4f}")
+                        _r1_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0), 0.0)
+                        _r1_max_loss = float(getattr(config, 'R1_MAX_LOSS_PCT', 5.0)) / 100.0
+                        if _r1_entry_px > 0:
+                            # Cap: never allow stop worse than entry ± R1_MAX_LOSS_PCT.
+                            # Prevents re-initialisation to an already-moved level after restart/re-adoption.
+                            _r1_stop = max(_r1_stop_live, _r1_entry_px * (1.0 - _r1_max_loss)) if is_long else min(_r1_stop_live, _r1_entry_px * (1.0 + _r1_max_loss))
+                        else:
+                            _r1_stop = _r1_stop_live
+                        position.r1_stop_price = _r1_stop
+                        logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop={_r1_stop:.4f} (live_{_r1_live_key}={_r1_stop_live:.4f} entry={_r1_entry_px:.4f} cap={_r1_max_loss*100:.1f}%)")
                 _r1_age_min = 0.0  # kept for log only
                 _r1_opened = getattr(position, 'opened_at', None)
                 if isinstance(_r1_opened, datetime):
@@ -1832,7 +1839,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             if market_open:
                                 _aug_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
                                 if _aug_stop > 0:
-                                    position.r1_stop_price = _aug_stop
+                                    _cur_r1_aug = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                                    if _cur_r1_aug <= 0 or (is_long and _aug_stop > _cur_r1_aug) or (not is_long and _aug_stop < _cur_r1_aug):
+                                        position.r1_stop_price = _aug_stop
                                 await queue_trade_action( order_queue, trade_manager, position_key, "AUGMENT",   aug_reason, aug_conf, override_qty=aug_qty )
                                 action_taken = True
                         else:
