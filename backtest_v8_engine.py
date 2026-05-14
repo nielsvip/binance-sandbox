@@ -265,6 +265,7 @@ V8_USE_VEC_QUARANTINE_STRATEGY = os.environ.get("V8_USE_VEC_QUARANTINE_STRATEGY"
 # logged to /tmp/v8_vec_divergences.jsonl. Safe to leave on in CI / sweeps.
 V8_VEC_SHADOW_VALIDATE         = os.environ.get("V8_VEC_SHADOW_VALIDATE",         "0") == "1"
 V8_USE_VEC_ALL                 = os.environ.get("V8_USE_VEC_ALL",                 "0") == "1"
+V8_BACKTEST_END_DATE           = os.environ.get("V8_BACKTEST_END_DATE",            "")  # YYYY-MM-DD; if set, simulation stops at this date
 if V8_USE_VEC_ALL:
     V8_USE_VEC_NOLOSS_GATE = V8_USE_VEC_AUGMENT_GATE = V8_USE_VEC_EMERGENCY_BRAKE = True
     V8_USE_VEC_HEDGE_SCAN_GATES = V8_USE_VEC_STALE_MARK = True
@@ -3013,10 +3014,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Collect all timestamps
     all_ts = set()
     start_ts_filter = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
+    _end_date_str = V8_BACKTEST_END_DATE
+    end_ts_filter = int(datetime.strptime(_end_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if _end_date_str else 0
     for sym, store in stores.items():
         for t in store.timestamps:
             t_int = int(t)
-            if t_int >= start_ts_filter:
+            if t_int >= start_ts_filter and (not end_ts_filter or t_int <= end_ts_filter):
                 all_ts.add(t_int)
     sorted_ts = sorted(all_ts)
     v8_logger.info(f"Simulation: {len(sorted_ts)} bars, {len(stores)} symbols")
@@ -5925,7 +5928,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     tm_mod.wt_dc_score_entry = _v8_satoshit_wt_dc_score_entry
     v8_logger.info(f"[V8] SATOSHIT wt_dc_score_entry wrapper installed (boost=+15 when SATOSHIT fires)")
     start_ts_filter = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
-    all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter))
+    _end_date_str_tr = V8_BACKTEST_END_DATE
+    end_ts_filter_tr = int(datetime.strptime(_end_date_str_tr, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if _end_date_str_tr else 0
+    all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter and (not end_ts_filter_tr or int(t) <= end_ts_filter_tr)))
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")
     t0 = _real_time_module.time()
     report_every = 200 if _SWEEP_MODE else max(1, len(all_ts) // 20)

@@ -10504,6 +10504,8 @@ class MultiAccountTradeManager:
                     for sym in list(candidate_syms):
                         for is_long in (True, False):
                             pkey = f"{ak}:{sym}_{'LONG' if is_long else 'SHORT'}"
+                            if pkey not in self.tradeable_keys:
+                                continue
                             # cooldown
                             if (
                                 time.time() - self._golden_last_trigger.get(pkey, 0)
@@ -10738,7 +10740,7 @@ class MultiAccountTradeManager:
                             action = "OPEN" if cur_amt == 0 else "AUGMENT"
                             side = "BUY" if is_long else "SELL"
                             pside = "LONG" if is_long else "SHORT"
-                            reason_str = f"GOLDEN_RULE_{'LONG' if is_long else 'SHORT'}_mult{mult}_INTERVENTION"
+                            reason_str = f"GOLDEN_RULE_{'LONG' if is_long else 'SHORT'}_mult{mult}"
                             # 2026-05-09 NAMEERROR FIX: dc_h_15m was never defined (typo for dc_h_1h).
                             # Show the actually-defined directional level (high for LONG, low for SHORT).
                             _gr_lvl = (
@@ -25899,6 +25901,9 @@ class MultiAccountTradeManager:
                             _f.unlink()
                             continue
                         _pk = f"{account_key}:{_sym}_{_side}"
+                        if _pk not in self.tradeable_keys:
+                            logger.warning(f"[CROSS_ACCT_SCAN] {_pk} NOT in tradeable_keys — skipping cross-account hedge")
+                            continue
                         _acc_pos = self.positions_by_account.get(account_key, {})
                         if _pk not in _acc_pos:
                             continue
