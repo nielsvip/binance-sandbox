@@ -2401,22 +2401,26 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             )
             if _vec_blk_c:
                 return _vec_reason_c
-            # 2026-05-12 FIX 3 — reentry price-cross cooldown (mirrors ez_reentry_daemon).
-            # Only applies to REENTRY action — blocks until price crosses one of the
-            # configured cross conditions OR the lock is older than the daemon's min-gap.
-            if (act or '').upper() == 'REENTRY':
-                try:
-                    _rx_blk, _rx_reason = _v8_reentry_cooldown_check(
-                        pk=pk, position_side=ps, mark_price=px,
-                        last_reduce_ts=_vec_reduce_lock_c,
-                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
-                        indicators=_vec_ind_c, cfg=config,
-                        state_dict=trade_manager.__dict__,
-                    )
-                    if _rx_blk:
-                        return _rx_reason
-                except Exception:
-                    pass
+        # ═══════════════════════════════════════════════════════════════════════════
+        # REENTRY price-cross cooldown (mirrors ez_reentry_daemon) — always-on.
+        # Was previously inside the vec block; moved out so scalar baseline also
+        # enforces the live reentry gate (price must cross SMA/DC/K before reentry).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if (act or '').upper() == 'REENTRY':
+            try:
+                _rx_reduce_lock = (trade_manager.__dict__.get('_bt_reduce_lock') or {}).get(pk, 0.0)
+                _rx_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                _rx_blk, _rx_reason = _v8_reentry_cooldown_check(
+                    pk=pk, position_side=ps, mark_price=px,
+                    last_reduce_ts=_rx_reduce_lock,
+                    now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                    indicators=_rx_ind, cfg=config,
+                    state_dict=trade_manager.__dict__,
+                )
+                if _rx_blk:
+                    return _rx_reason
+            except Exception:
+                pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — DUP_GUARD_GAIN — mirror ez_manage.py:10970-10988
         # Live blocks AUGMENT below 0.5*MIN_GAIN (=1.5%). v8 was emitting 870 AUGMENT
@@ -4730,20 +4734,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             )
             if _vec_blk_t:
                 return _vec_reason_t
-            # 2026-05-12 FIX 3 — reentry price-cross cooldown (tradier eta).
-            if (act or '').upper() == 'REENTRY':
-                try:
-                    _rx_blk_t, _rx_reason_t = _v8_reentry_cooldown_check(
-                        pk=position_key, position_side=position_side, mark_price=px,
-                        last_reduce_ts=_vec_reduce_lock_t,
-                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
-                        indicators=_vec_ind_t, cfg=_vec_cfg_t,
-                        state_dict=manager.__dict__,
-                    )
-                    if _rx_blk_t:
-                        return _rx_reason_t
-                except Exception:
-                    pass
+        # REENTRY price-cross cooldown (mirrors ez_reentry_daemon) — always-on tradier.
+        if (act or '').upper() == 'REENTRY':
+            try:
+                _rx_cfg_t = getattr(tm_mod, 'config', None) or config
+                _rx_reduce_lock_t = (manager.__dict__.get('_bt_reduce_lock') or {}).get(position_key, 0.0)
+                _rx_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                _rx_blk_t, _rx_reason_t = _v8_reentry_cooldown_check(
+                    pk=position_key, position_side=position_side, mark_price=px,
+                    last_reduce_ts=_rx_reduce_lock_t,
+                    now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                    indicators=_rx_ind_t, cfg=_rx_cfg_t,
+                    state_dict=manager.__dict__,
+                )
+                if _rx_blk_t:
+                    return _rx_reason_t
+            except Exception:
+                pass
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
         if (not is_reduce) and (not is_hedge):
             _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
@@ -5426,20 +5433,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             )
             if _vec_blk_en:
                 return _vec_reason_en
-            # 2026-05-12 FIX 3 — reentry price-cross cooldown (tradier exec_now).
-            if (_vec_act_en or '').upper() == 'REENTRY':
-                try:
-                    _rx_blk_e, _rx_reason_e = _v8_reentry_cooldown_check(
-                        pk=position_key, position_side=position_side, mark_price=float(px or 0),
-                        last_reduce_ts=_vec_reduce_lock_en,
-                        now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
-                        indicators=_vec_ind_en, cfg=_vec_cfg_en,
-                        state_dict=manager.__dict__,
-                    )
-                    if _rx_blk_e:
-                        return _rx_reason_e
-                except Exception:
-                    pass
+        # REENTRY price-cross cooldown (tradier exec_now) — always-on.
+        if (action or '').upper() == 'REENTRY':
+            try:
+                _rx_cfg_en = getattr(tm_mod, 'config', None) or config
+                _rx_reduce_lock_en = (manager.__dict__.get('_bt_reduce_lock') or {}).get(position_key, 0.0)
+                _rx_ind_en = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                _rx_blk_e, _rx_reason_e = _v8_reentry_cooldown_check(
+                    pk=position_key, position_side=position_side, mark_price=float(px or 0),
+                    last_reduce_ts=_rx_reduce_lock_en,
+                    now_ts=float(_sim_ts[0]) if _sim_ts else 0.0,
+                    indicators=_rx_ind_en, cfg=_rx_cfg_en,
+                    state_dict=manager.__dict__,
+                )
+                if _rx_blk_e:
+                    return _rx_reason_e
+            except Exception:
+                pass
         # ═══════════════════════════════════════════════════════════════════════════
         # DISC-6: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:13998
         # Live execute_now blocks any close at loss unless reason bypasses the gate.
