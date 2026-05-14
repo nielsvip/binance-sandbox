@@ -18,8 +18,8 @@ LOG_DIR="$HOME/logs"
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 # ---------------------------------------------------------------------------
-# Kill any competing backtest_v8_engine or sweep_coordinator (they cause OOM).
-# Uses pgrep -af python (matches conda python binary) to avoid self-match.
+# Kill any competing backtest_v8_engine/precompute/coordinator/vec_matrix_runner.
+# vec_matrix_runner --mode crypto uses 3-4 GB and causes OOM with sector sweeps.
 # ---------------------------------------------------------------------------
 kill_competing_engines() {
     local pids
@@ -29,7 +29,17 @@ kill_competing_engines() {
     if [[ -n "$pids" ]]; then
         log "  Killing competing engines/coordinator: $pids"
         echo "$pids" | xargs kill -9 2>/dev/null
-        sleep 5
+        sleep 3
+    fi
+    # Kill vec_matrix_runner crypto (3+ GB RAM, causes OOM alongside sector engines)
+    local vec_pids
+    vec_pids=$(pgrep -af "vec_matrix_runner.*crypto" 2>/dev/null \
+               | grep -v "$$\|grep\|bash -c\|rerun_failed" \
+               | awk '{print $1}')
+    if [[ -n "$vec_pids" ]]; then
+        log "  Killing vec_matrix_runner crypto: $vec_pids"
+        echo "$vec_pids" | xargs kill -9 2>/dev/null
+        sleep 3
     fi
 }
 
