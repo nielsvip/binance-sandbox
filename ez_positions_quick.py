@@ -150,6 +150,7 @@ from utils import (
     safe_fetch_float,
 )
 from wt_dc_delta import DeltaTracker
+from golden_rule_htf import score_entry_htf as _score_gr_htf
 
 try:
     import resource
@@ -5091,8 +5092,25 @@ class HedgeEngine:
             if notional < 5.0: continue
             is_long = position_key.endswith('_LONG')
             pnl_pct = ((mark_price - entry_price) / entry_price * 100) if is_long else ((entry_price - mark_price) / entry_price * 100)
-            # Gate: must be losing (or HEDGE_ALL_POSITIONS for all positions)
-            if not _hedge_all and pnl_pct >= _oh_min_loss: continue
+            # [GR_PROACTIVE_HEDGE] Compute GR against-score BEFORE gain gate so we can fire on
+            # profitable positions. User mandate 2026-05-14: "hedge as soon as GR against is 3x5+".
+            # 3x5 = 3 timeframes each showing ≥5 indicators against the position direction (0-35 scale).
+            _gr_hedge_trigger = False
+            _gr_hedge_score_detail = ""
+            if bool(getattr(self.config, 'HEDGE_TRIGGER_GR_SCORE_ENABLED', False)):
+                try:
+                    _gr_sym_lkup = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
+                    _gr_raw_ind = self.data_manager._cold_data.get(_gr_sym_lkup, {}) if self.data_manager else {}
+                    if _gr_raw_ind:
+                        _gr_passes, _gr_n_tfs, _gr_det = _score_gr_htf(_gr_raw_ind, not is_long, 'crypto', min_tfs=3, min_ind=5)
+                        if _gr_passes:
+                            _gr_hedge_trigger = True
+                            _gr_hedge_score_detail = _gr_det
+                            logger.warning(f"🚨 [GR_PROACTIVE_HEDGE_TRIGGER] {position_key}: GR against tfs={_gr_n_tfs}/3 ({_gr_det}) — proactive hedge, gain={pnl_pct:.2f}%")
+                except Exception as _gr_ex:
+                    logger.debug(f"[GR_PROACTIVE_HEDGE_ERR] {position_key}: {_gr_ex}")
+            # Gate: must be losing (or HEDGE_ALL_POSITIONS for all positions, or GR proactive trigger)
+            if not _hedge_all and pnl_pct >= _oh_min_loss and not _gr_hedge_trigger: continue
             # ═══ 2026-04-26 USER RULE — gain must be ACTIVELY DETERIORATING (sweep-testable) ═══
             # Prevents "wrong moment" hedge: a position that's flat-lining at -0.3% does not need a hedge.
             # Only hedge when gain is dropping (cur < prev - delta_pp). Knob: HEDGE_DETERIORATING_GAIN_DELTA_PP.
@@ -5218,9 +5236,12 @@ class HedgeEngine:
             else:
                 _wt_against_origin = _15m_against or (_3m_against and _1h_against)
                 _trigger_label = "15m_OR_3m_AND_1h"
-            if not _wt_against_origin:
+            if not _wt_against_origin and not _gr_hedge_trigger:
                 continue
-            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} mode={_trigger_label} → hedge trigger")
+            if _gr_hedge_trigger and not _wt_against_origin:
+                logger.warning(f"[GR_PROACTIVE_HEDGE_WT_BYPASS] {position_key}: GR bypass WT gate (3m={_3m_against} 15m={_15m_against} 1h={_1h_against}) gr={_gr_hedge_score_detail}")
+            else:
+                logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} mode={_trigger_label} → hedge trigger")
             # Check if already hedged (same-symbol position exists)
             losing_side = 'LONG' if is_long else 'SHORT'
             hedge_side = 'SHORT' if is_long else 'LONG'

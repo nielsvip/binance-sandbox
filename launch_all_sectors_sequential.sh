@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # launch_all_sectors_sequential.sh
-# Waits for NPZ regen to finish, then runs all stock sectors + all crypto sectors
-# ONE AT A TIME to avoid OOM (each backtest_v8_engine peaks ~10.8GB).
+# Waits for NPZ regen AND any competing backtest_v8_engine to finish,
+# then runs all stock sectors + all crypto sectors ONE AT A TIME.
 #
-# Stock:  9 sectors × ~30-60 min each = ~4-8 hours total
-# Crypto: 7 sectors × ~20-40 min each = ~2-4 hours total
-# Run interleaved: 1 stock, 1 crypto, 1 stock, 1 crypto, ...
+# Fixes vs v1: proper engine-wait guard (avoids OOM from concurrent sweeps),
+#              V8_USE_VEC_ALL=1 V8_SWEEP_MODE=1 V8_RATE_GUARD_DISABLED=1 for speed.
 #
 # Usage (run on S1):
 #   nohup bash launch_all_sectors_sequential.sh > ~/logs/sector_launcher.log 2>&1 < /dev/null &
@@ -41,15 +40,41 @@ CRYPTO_SECTORS=(
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 # ---------------------------------------------------------------------------
-# Wait for NPZ regen to finish
+# Kill any competing backtest_v8_engine or sweep_coordinator (they cause OOM)
 # ---------------------------------------------------------------------------
-wait_for_npz_regen() {
-    log "Checking for running NPZ regen..."
-    while pgrep -f "backtest_v8_precompute" > /dev/null 2>&1; do
-        log "  NPZ regen still running — sleeping 60s..."
-        sleep 60
+kill_competing_engines() {
+    local pids
+    pids=$(pgrep -af "backtest_v8_engine|backtest_v8_precompute|sweep_coordinator" 2>/dev/null \
+           | grep -v "$$\|grep\|bash -c\|launch_all" \
+           | awk '{print $1}')
+    if [[ -n "$pids" ]]; then
+        log "  Killing competing engines: $pids"
+        echo "$pids" | xargs kill -9 2>/dev/null
+        sleep 5
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Wait for any remaining competing engines (uses pgrep -af, avoids self-match)
+# ---------------------------------------------------------------------------
+wait_for_clear_engines() {
+    local waited=0
+    while true; do
+        local running
+        running=$(pgrep -af "backtest_v8_engine|backtest_v8_precompute" 2>/dev/null \
+                  | grep -v "$$\|grep\|bash -c\|launch_all" | wc -l)
+        if [[ "$running" -eq 0 ]]; then
+            break
+        fi
+        if [[ $waited -eq 0 ]]; then
+            log "  Waiting for $running competing engine(s) to finish..."
+        fi
+        sleep 30
+        waited=$((waited + 30))
     done
-    log "NPZ regen complete (or not running). Proceeding."
+    if [[ $waited -gt 0 ]]; then
+        log "  Engines cleared after ${waited}s — proceeding."
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -86,10 +111,15 @@ print(','.join(d[sector]), end='')
     TS=$(date +%Y%m%d_%H%M%S)
     local logfile="$LOG_DIR/${mode}_sector_sweep_${sector}_${TS}.log"
 
+    # Kill competing engines then wait for clear
+    kill_competing_engines
+    wait_for_clear_engines
+
     log ">>> START $mode/$sector ($count syms, start=$start_date)"
 
     cd "$WORKDIR" || { log "ERROR: cannot cd to $WORKDIR"; return; }
 
+    V8_USE_VEC_ALL=1 V8_SWEEP_MODE=1 V8_RATE_GUARD_DISABLED=1 \
     "$PYTHON" backtest_v8_sweep.py \
         --mode "$mode" \
         --tier "$tier" \
@@ -107,23 +137,16 @@ print(','.join(d[sector]), end='')
 }
 
 # ---------------------------------------------------------------------------
-# Main: wait for regen, then interleave stock + crypto sectors
+# Main: interleave stock + crypto sectors
 # ---------------------------------------------------------------------------
-log "=== Sector Sweep Launcher starting ==="
-wait_for_npz_regen
-
-log "Launching all sectors sequentially (interleaved stock + crypto)..."
-
-STOCK_DONE=0
-CRYPTO_DONE=0
-STOCK_LEN=${#STOCK_SECTORS[@]}
-CRYPTO_LEN=${#CRYPTO_SECTORS[@]}
+log "=== Sector Sweep Launcher v2 starting ==="
 
 STOCK_IDX=0
 CRYPTO_IDX=0
+STOCK_LEN=${#STOCK_SECTORS[@]}
+CRYPTO_LEN=${#CRYPTO_SECTORS[@]}
 
 while [[ $STOCK_IDX -lt $STOCK_LEN || $CRYPTO_IDX -lt $CRYPTO_LEN ]]; do
-    # Run one stock sector
     if [[ $STOCK_IDX -lt $STOCK_LEN ]]; then
         run_sector \
             tradier \
@@ -135,7 +158,6 @@ while [[ $STOCK_IDX -lt $STOCK_LEN || $CRYPTO_IDX -lt $CRYPTO_LEN ]]; do
         STOCK_IDX=$((STOCK_IDX + 1))
     fi
 
-    # Run one crypto sector
     if [[ $CRYPTO_IDX -lt $CRYPTO_LEN ]]; then
         run_sector \
             crypto \
