@@ -13980,11 +13980,13 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _hbf_override = _hbf_enabled and _pos_max_g_be >= _hbf_min_peak
                         if _htf_veto_active and not _hbf_override:
                             logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
+                        elif _hbf_enabled and _pos_max_g_be < _hbf_min_peak:
+                            logger.info(f"🛡️[BREAKEVEN_PEAK_GATE] {position_key}: max_gain={_pos_max_g_be:.2f}% < {_hbf_min_peak:.1f}% — position hasn't peaked, waiting for R2/PPL window")
                         else:
                             if _hbf_override and _htf_veto_active:
                                 logger.critical(f"🔥[HARD_BREAKEVEN_FLOOR] {position_key}: max_gain={_pos_max_g_be:.2f}% ≥ {_hbf_min_peak:.1f}% — OVERRIDING HTF veto, gain={current_gain:.2f}% ⚠️ DO NOT DISABLE")
                             hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
-                            logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% — taking near-breakeven exit (profit-gated)")
+                            logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% max_peak={_pos_max_g_be:.2f}% — taking near-breakeven exit")
                     elif _pos_age_min >= _be_grace and current_gain < 0:
                         logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED, holding for technical exit")
                 if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
