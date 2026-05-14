@@ -43439,6 +43439,69 @@ async def periodic_lock_cleanup(trade_manager):
         await asyncio.sleep(30)
 
 
+_AUX_STATE_DICT_ATTRS = (
+    "partial_profit_lock_state",
+    "reentry_invalidated",
+    "recent_augmentations",
+    "position_last_processed",
+    "stop_breach_tracker",
+    "log_cooldowns",
+    "_indicator_refresh_timestamps",
+    "_aug_webhook_sent",
+    "dc_cross_alerts",
+    "recent_signal_reasons",
+    "last_forced_refresh",
+    "maker_price_retry_count",
+    "pending_reentries",
+    "last_signal_tracker",
+    "high_gain_augmented",
+    "direct_high_gain",
+    "last_reentry_dict",
+    "webhook_signal_time",
+    "recently_processed_signals",
+    "last_master_check",
+    "_position_update_timestamps",
+    "_ws_update_timestamps",
+    "last_monitored_positions",
+)
+
+
+async def periodic_aux_state_cleanup(trade_manager):
+    while True:
+        try:
+            await asyncio.sleep(60)
+            positions = getattr(trade_manager, "positions", None) or {}
+            valid_pks = set(positions.keys())
+            pruned_total = 0
+            dicts_touched = 0
+            size_report = []
+            for attr in _AUX_STATE_DICT_ATTRS:
+                d = getattr(trade_manager, attr, None)
+                if not isinstance(d, dict):
+                    continue
+                pre_len = len(d)
+                if pre_len == 0:
+                    continue
+                doomed = []
+                for k in list(d.keys()):
+                    if not isinstance(k, str):
+                        continue
+                    if ":" not in k or "_" not in k.split(":", 1)[-1]:
+                        continue
+                    if k not in valid_pks:
+                        doomed.append(k)
+                for k in doomed:
+                    d.pop(k, None)
+                if doomed:
+                    pruned_total += len(doomed)
+                    dicts_touched += 1
+                size_report.append(f"{attr}={pre_len - len(doomed)}")
+            if pruned_total or len(size_report) > 0:
+                logger.info(f"[AUX_STATE_CLEANUP] pruned={pruned_total} touched={dicts_touched}/{len(_AUX_STATE_DICT_ATTRS)} valid_pks={len(valid_pks)} sizes: {' '.join(size_report)}")
+        except Exception as e:
+            logger.error(f"[AUX_STATE_CLEANUP] error: {e}", exc_info=True)
+
+
 def generate_unique_id(position_key, side, reason=""):
     unique_id = uuid.uuid4().hex[:8]  # short random
     return f"{position_key}:{side}:{reason}:{unique_id}"
@@ -47487,6 +47550,9 @@ async def main():
             )
             background_tasks.append(
                 asyncio.create_task(periodic_lock_cleanup(trade_manager))
+            )
+            background_tasks.append(
+                asyncio.create_task(periodic_aux_state_cleanup(trade_manager))
             )
             background_tasks.append(asyncio.create_task(periodic_heartbeat_update()))
             background_tasks.append(
