@@ -599,6 +599,15 @@ def grid_tradier_sector_baseline():
     return [("baseline", {})]
 
 
+def grid_crypto_sector_baseline():
+    """2026-05-14: single baseline-only run for crypto sector comparison sweeps.
+    Use this tier when comparing crypto sectors (mega_l1, defi_oracle, gaming_nft, etc.)
+    to get the baseline pool_sharpe with start=2022-01-01 (bull + bear market).
+    Each sector has 6-12 symbols × 4 years → baseline takes ~20-40 min.
+    Run with --timeout 3600 --start 2022-01-01."""
+    return [("baseline", {})]
+
+
 def grid_tradier_param_hunt():
     """2026-05-08: full real-engine tradier knob hunt with WT_DC_ENTRY_THRESHOLD sweep.
     Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
@@ -1502,6 +1511,7 @@ TIER_MAP = {
     "indicator_audit_v2": grid_indicator_audit_v2,
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_sector_baseline": grid_tradier_sector_baseline,
+    "crypto_sector_baseline": grid_crypto_sector_baseline,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,

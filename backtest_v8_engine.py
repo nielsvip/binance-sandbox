@@ -2400,6 +2400,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 last_reduce_ts=_vec_reduce_lock_c, last_open_ts=_vec_open_attempt_c,
             )
             if _vec_blk_c:
+                # Lock-bypass fix: update state locks so subsequent bars still respect
+                # the 900s HARD_AUGMENT_LOCK / HARD_REDUCE cooldown. Without this, a
+                # vec-blocked augment never sets _bt_augment_lock, bypassing the scalar
+                # cooldown on the next bar attempt (causes AUGMENT_GATE +30, NOLOSS +16).
+                _vb_now_c = float(_sim_ts[0]) if _sim_ts else 0.0
+                if is_aug_action:
+                    trade_manager.__dict__.setdefault('_bt_augment_lock', {})[pk] = _vb_now_c
+                    trade_manager.__dict__.setdefault('_bt_open_attempt', {})[pk] = _vb_now_c
+                elif is_red and not is_hedge:
+                    trade_manager.__dict__.setdefault('_bt_reduce_lock', {})[pk] = _vb_now_c
                 return _vec_reason_c
         # ═══════════════════════════════════════════════════════════════════════════
         # REENTRY price-cross cooldown (mirrors ez_reentry_daemon) — always-on.
@@ -4733,6 +4743,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 last_reduce_ts=_vec_reduce_lock_t, last_open_ts=_vec_open_attempt_t,
             )
             if _vec_blk_t:
+                _vb_now_t = float(_sim_ts[0]) if _sim_ts else 0.0
+                _vb_is_aug_t = (not is_reduce) and (not is_hedge)
+                if _vb_is_aug_t:
+                    manager.__dict__.setdefault('_bt_augment_lock', {})[position_key] = _vb_now_t
+                    manager.__dict__.setdefault('_bt_open_attempt', {})[position_key] = _vb_now_t
+                elif is_reduce and not is_hedge:
+                    manager.__dict__.setdefault('_bt_reduce_lock', {})[position_key] = _vb_now_t
                 return _vec_reason_t
         # REENTRY price-cross cooldown (mirrors ez_reentry_daemon) — always-on tradier.
         if (act or '').upper() == 'REENTRY':
@@ -5432,6 +5449,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 last_reduce_ts=_vec_reduce_lock_en, last_open_ts=_vec_open_attempt_en,
             )
             if _vec_blk_en:
+                _vb_now_en = float(_sim_ts[0]) if _sim_ts else 0.0
+                _vb_is_aug_en = (not is_reduce) and (not _vec_is_hedge_en)
+                if _vb_is_aug_en:
+                    manager.__dict__.setdefault('_bt_augment_lock', {})[position_key] = _vb_now_en
+                    manager.__dict__.setdefault('_bt_open_attempt', {})[position_key] = _vb_now_en
+                elif is_reduce and not _vec_is_hedge_en:
+                    manager.__dict__.setdefault('_bt_reduce_lock', {})[position_key] = _vb_now_en
                 return _vec_reason_en
         # REENTRY price-cross cooldown (tradier exec_now) — always-on.
         if (action or '').upper() == 'REENTRY':
