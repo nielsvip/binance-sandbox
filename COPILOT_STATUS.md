@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-14 20:40:25 UTC
+# Copilot Status — 2026-05-14 20:54:56 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T20:39:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:39:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:41:38
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T20:43:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:43:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:45:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:47:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:49:58
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T20:52:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:52:05
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-14T20:54:13
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T20:54:13
 
 ## Missed Trades (trader comparison)
 
@@ -32,16 +40,16 @@ _None_
 - HELD: **NVDA** LONG (tradier) peak +4.4%, now +2.9%
 - HELD: **GOOGL** LONG (tradier) peak +4.0%, now +3.8%
 
-- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.1%, exited 1m ago
-- WATCHING: **DAR** LONG (tradier) peaked +4.0%, exited 1m ago
+- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.1%, exited 0m ago
+- WATCHING: **DAR** LONG (tradier) peaked +4.0%, exited 15m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 7
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (34min)
+**Issues (last 1h):** 30
+- [HIGH] ez_prices.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (46min)
+- [MEDIUM] tradier_positions.py running but log stale (47min)
+- [MEDIUM] tradier_positions.py running but log stale (48min)
+- [MEDIUM] tradier_positions.py running but log stale (49min)
