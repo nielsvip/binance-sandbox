@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-14 05:20:21 UTC
+# Copilot Status — 2026-05-14 05:35:39 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:16:53
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:16:53
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:17:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:17:57
-- **STALE_INDICATORS** [tradier]  — 2026-05-14T05:18:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T05:18:28
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:19:03
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:19:03
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:20:09
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:20:09
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-14T05:33:01
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:33:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T05:33:22
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:34:05
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-14T05:34:05
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:34:05
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-14T05:35:08
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-14T05:35:08
+- **STALE_INDICATORS** [tradier]  — 2026-05-14T05:35:29
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-14T05:35:29
 
 ## Missed Trades (trader comparison)
 
@@ -45,8 +45,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_manage.py for inf is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (38min)
-- [MEDIUM] tradier_positions.py running but log stale (39min)
-- [MEDIUM] tradier_positions.py running but log stale (40min)
-- [MEDIUM] tradier_positions.py running but log stale (41min)
+- [HIGH] ez_rankings.py is NOT running
+- [HIGH] ez_indicators.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
+- [LOW] tradier_indicators.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running

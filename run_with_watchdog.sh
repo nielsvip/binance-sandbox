@@ -212,7 +212,8 @@ run_script() {
     fi
     local script_pid=$!
     CHILD_PID=$script_pid
-    
+    local rss_over_count=0
+
     # Monitor the script
     while kill -0 "$script_pid" 2>/dev/null; do
         sleep 5
@@ -278,11 +279,16 @@ run_script() {
                 MAX_RSS_KB=2306867  # ~2.2GB for inf (91 open positions @ ~17MB ea + 200MB base)
             fi
             if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
-                log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB. Graceful restart before jetsam fires."
-                kill -TERM "$script_pid" 2>/dev/null || true
-                sleep 5
-                kill -KILL "$script_pid" 2>/dev/null || true
-                break
+                rss_over_count=$((rss_over_count + 1))
+                if [[ "$rss_over_count" -ge 4 ]]; then
+                    log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB sustained for ${rss_over_count} samples (~$((rss_over_count * 5))s). Graceful restart before jetsam fires."
+                    kill -TERM "$script_pid" 2>/dev/null || true
+                    sleep 5
+                    kill -KILL "$script_pid" 2>/dev/null || true
+                    break
+                fi
+            else
+                rss_over_count=0
             fi
             # 2026-05-09: Pressure-aware evacuation. Per-process RSS ceilings only catch
             # leaks/scaling. Whole-system jetsam waves (e.g. 5 workers SIGKILLed simultaneously
