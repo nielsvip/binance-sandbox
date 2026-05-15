@@ -421,6 +421,12 @@ class SweepConfig:
     DELTA_SPEED_SMOOTH: int = 5
     DELTA_TF_Z_THRESHOLD: float = 1.5
     DELTA_HTF_GATE: str = "none"
+    # ── WT_15M_BOUNCE_OPEN — fresh 15m cross within BB + 4h/1h HTF in favor ─────
+    WT_15M_BOUNCE_OPEN_ENABLED: bool = False
+    WT_15M_BOUNCE_MAX_BARS_AGO: int = 2       # bars since 15m cross (2 bars = 30min)
+    WT_15M_BOUNCE_BB_MIN: float = 0.05        # bb_pct_b lower bound (within BB)
+    WT_15M_BOUNCE_BB_MAX: float = 0.95        # bb_pct_b upper bound (within BB)
+    WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -644,6 +650,32 @@ def simulate_one_symbol(
                 f"threshold very strict, gate barely fires\n"
             )
 
+    # WT_15M_BOUNCE_OPEN — vectorized precompute (2026-05-14 root-cause fix).
+    # 15m bounce was REENTRY-only in live code; this adds it as an OPEN trigger.
+    # All conditions evaluated across the full bar array here → one bool lookup per bar.
+    _b15_open_mask = np.zeros(n, dtype=bool)
+    if config.WT_15M_BOUNCE_OPEN_ENABLED:
+        _b15_bars_ago = np.nan_to_num(
+            npz.get('wt_cross_bars_ago_15m', np.full(n, 999, dtype=np.float32))
+        ).astype(np.float32)
+        _b15_rising_15m = npz.get('wt_cross_rising_15m', np.zeros(n, dtype=np.int8)).astype(bool)
+        _b15_bb = np.nan_to_num(
+            npz.get('bb_pct_b_15m', np.full(n, 0.5, dtype=np.float32))
+        ).astype(np.float32)
+        _b15_rising_4h = npz.get('wt_cross_rising_4h', np.zeros(n, dtype=np.int8)).astype(bool)
+        _b15_rising_1h = npz.get('wt_cross_rising_1h', np.zeros(n, dtype=np.int8)).astype(bool)
+        _b15_fresh = (_b15_bars_ago <= config.WT_15M_BOUNCE_MAX_BARS_AGO) & (_b15_bars_ago > 0)
+        _b15_bb_ok = (_b15_bb >= config.WT_15M_BOUNCE_BB_MIN) & (_b15_bb <= config.WT_15M_BOUNCE_BB_MAX)
+        if is_long:
+            _b15_dir_ok = _b15_rising_15m
+            _b15_htf_ok = (_b15_rising_4h & _b15_rising_1h) if config.WT_15M_BOUNCE_REQUIRE_BOTH_HTF \
+                else (_b15_rising_4h | _b15_rising_1h)
+        else:
+            _b15_dir_ok = ~_b15_rising_15m
+            _b15_htf_ok = (~_b15_rising_4h & ~_b15_rising_1h) if config.WT_15M_BOUNCE_REQUIRE_BOTH_HTF \
+                else (~_b15_rising_4h | ~_b15_rising_1h)
+        _b15_open_mask = _b15_fresh & _b15_bb_ok & _b15_dir_ok & _b15_htf_ok
+
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
     _store = _NPZStoreAdapter(npz, close, ts)
@@ -678,7 +710,9 @@ def simulate_one_symbol(
             _delta_result = None
             if check_delta_entry is not None and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED:
                 _delta_result = check_delta_entry(_store, i, side, mode, config)
-            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None)):
+            # WT_15M_BOUNCE_OPEN — fifth trigger (precomputed mask, O(1) per bar)
+            _b15_ok = bool(_b15_open_mask[i])
+            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
                 continue
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
@@ -692,10 +726,14 @@ def simulate_one_symbol(
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
-            if _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None:
+            if _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None and not _b15_ok:
                 reason = _delta_result["reason"]
-            elif _gr_result is not None and not fire_block and not wt_open_ok:
+            elif _gr_result is not None and not fire_block and not wt_open_ok and not _b15_ok:
                 reason = _gr_result["reason"]
+            elif _b15_ok and not fire_block and not wt_open_ok and _gr_result is None and _delta_result is None:
+                _b15_bars_val = int(_b15_bars_ago[i]) if config.WT_15M_BOUNCE_OPEN_ENABLED else 0
+                _b15_bb_val = float(_b15_bb[i]) if config.WT_15M_BOUNCE_OPEN_ENABLED else 0.0
+                reason = f"WT_15M_BOUNCE_OPEN_bars={_b15_bars_val}_bb={_b15_bb_val:.2f}"
             elif fire_block:
                 block_id = int(reentry["block_id"][i])
                 reason = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN")
