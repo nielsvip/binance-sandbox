@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-15 16:34:12 UTC
+# Copilot Status — 2026-05-15 16:44:35 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:NEM_LONG — 2026-05-15T16:32:49
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T16:33:21
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T16:33:21
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-05-15T16:33:21
-- **BIG_LOSER** [tradier] trc:NEM_LONG — 2026-05-15T16:33:21
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T16:33:51
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T16:33:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T16:33:51
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-05-15T16:33:51
-- **BIG_LOSER** [tradier] trc:NEM_LONG — 2026-05-15T16:33:51
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T16:43:43
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T16:43:43
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-05-15T16:43:43
+- **BIG_LOSER** [tradier] trc:NEM_LONG — 2026-05-15T16:43:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T16:44:13
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T16:44:13
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T16:44:13
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-05-15T16:44:13
+- **BIG_LOSER** [tradier] trc:NEM_LONG — 2026-05-15T16:44:13
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-15T16:44:14
 
 ## Missed Trades (trader comparison)
 
@@ -27,22 +27,24 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 14 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 13 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-4.4%
-- HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.0%
-- HELD: **USO** LONG (tradier) peak +8.6%, now +0.5%
-- HELD: **TRGP** LONG (tradier) peak +7.2%, now +2.9%
-- HELD: **ARM** LONG (tradier) peak +5.7%, now +-3.4%
-- HELD: **SLV** LONG (tradier) peak +5.6%, now +-9.9%
-- HELD: **NVDA** LONG (tradier) peak +4.4%, now +-0.1%
-- HELD: **ACN** SHORT (tradier) peak +4.4%, now +-2.1%
+- HELD: **UUUU** SHORT (tradier) peak +16.2%, now +1.9%
+- HELD: **USO** LONG (tradier) peak +8.6%, now +8.1%
+- HELD: **TRGP** LONG (tradier) peak +7.2%, now +3.0%
+- HELD: **ARM** LONG (tradier) peak +5.7%, now +-3.0%
+- HELD: **SLV** LONG (tradier) peak +5.6%, now +-10.0%
+- HELD: **NVDA** LONG (tradier) peak +4.4%, now +-0.0%
+- HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.8%
 - HELD: **LEXX** LONG (tradier) peak +3.9%, now +-6.1%
-- HELD: **CIBR** LONG (tradier) peak +3.4%, now +3.4%
+- HELD: **FIVN** LONG (tradier) peak +3.5%, now +3.2%
 
-- WATCHING: **TRBUSDT** SHORT (crypto) peaked +4.0%, exited 137m ago
+- WATCHING: **TRBUSDT** SHORT (crypto) peaked +4.0%, exited 148m ago
 - WATCHING: **DAR** LONG (tradier) peaked +4.0%, exited 0m ago
 - WATCHING: **STORJUSDT** SHORT (crypto) peaked +3.8%, exited 0m ago
+- WATCHING: **WDAY** SHORT (tradier) peaked +3.1%, exited 7m ago
+- WATCHING: **WDAY** LONG (tradier) peaked +3.1%, exited 2m ago
 - WATCHING: **INXUSDT** SHORT (crypto) peaked +3.0%, exited 0m ago
 
 ## Supervisor
