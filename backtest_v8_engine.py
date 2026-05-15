@@ -4367,6 +4367,67 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 3:
                     v8_logger.warning(f"[DBG] check_entry error: {e}")
 
+        # WT_15M_BOUNCE_OPEN — initial OPEN on fresh 15m WT cross within BB + 4h/1h in favor.
+        # ROOT-CAUSE FIX (2026-05-14): 15m bounce is REENTRY-only in live code (B02/B04 in epq).
+        # This backtest path validates the signal before unlocking ez_manage.py for live deployment.
+        # Signal fires when ALL of:
+        #   (1) wt1_15m recently crossed (wt_cross_bars_ago_15m <= max_bars) in trade direction
+        #   (2) price within Bollinger Bands (bb_pct_b_15m in [BB_MIN, BB_MAX])
+        #   (3) 4h OR 1h WT state still in favor (wt_cross_rising_4h / _1h for LONG; inverted for SHORT)
+        # Config (all via V8_OVERRIDE_FILE, default OFF):
+        #   WT_15M_BOUNCE_OPEN_ENABLED, WT_15M_BOUNCE_MAX_BARS_AGO (default 2),
+        #   WT_15M_BOUNCE_BB_MIN/MAX (0.05/0.95), WT_15M_BOUNCE_REQUIRE_BOTH_HTF (False=OR).
+        if getattr(config, 'WT_15M_BOUNCE_OPEN_ENABLED', False):
+            _b15_max_bars = int(getattr(config, 'WT_15M_BOUNCE_MAX_BARS_AGO', 2))
+            _b15_bb_min = float(getattr(config, 'WT_15M_BOUNCE_BB_MIN', 0.05))
+            _b15_bb_max = float(getattr(config, 'WT_15M_BOUNCE_BB_MAX', 0.95))
+            _b15_req_both_htf = bool(getattr(config, 'WT_15M_BOUNCE_REQUIRE_BOTH_HTF', False))
+            for _b15_sym in list(stores.keys()):
+                _b15_ind = indicator_cache.get(_b15_sym, {})
+                _b15_bars_15m = int(_b15_ind.get('wt_cross_bars_ago_15m', 999) or 999)
+                if _b15_bars_15m > _b15_max_bars:
+                    continue
+                _b15_bb = float(_b15_ind.get('bb_pct_b_15m', 0.5) or 0.5)
+                if not (_b15_bb_min <= _b15_bb <= _b15_bb_max):
+                    continue
+                _b15_rising_15m = bool(_b15_ind.get('wt_cross_rising_15m', False))
+                _b15_rising_4h = bool(_b15_ind.get('wt_cross_rising_4h', False))
+                _b15_rising_1h = bool(_b15_ind.get('wt_cross_rising_1h', False))
+                _b15_price = float(price_cache.get(_b15_sym, 0) or 0)
+                if _b15_price <= 0:
+                    continue
+                for _b15_is_long in (True, False):
+                    _b15_pk = f"{account_key}:{_b15_sym}_{'LONG' if _b15_is_long else 'SHORT'}"
+                    _b15_pos = trade_manager.positions.get(_b15_pk)
+                    if _b15_pos and abs(getattr(_b15_pos, 'positionAmt', 0)) >= 0.001:
+                        continue
+                    if _b15_is_long:
+                        if not _b15_rising_15m:
+                            continue
+                        _b15_htf_ok = (_b15_rising_4h and _b15_rising_1h) if _b15_req_both_htf \
+                            else (_b15_rising_4h or _b15_rising_1h)
+                    else:
+                        if _b15_rising_15m:
+                            continue
+                        _b15_htf_ok = (not _b15_rising_4h and not _b15_rising_1h) if _b15_req_both_htf \
+                            else (not _b15_rising_4h or not _b15_rising_1h)
+                    if not _b15_htf_ok:
+                        continue
+                    _b15_qty = float(getattr(config, 'START_POSITION_SIZE', 1.0)) / _b15_price
+                    if _b15_qty <= 0:
+                        continue
+                    try:
+                        await trade_manager.execute_trade_action(
+                            account_key=account_key, position_key=_b15_pk, symbol=_b15_sym,
+                            quantity=_b15_qty, current_price=_b15_price,
+                            side='BUY' if _b15_is_long else 'SELL',
+                            position_side='LONG' if _b15_is_long else 'SHORT',
+                            action='OPEN',
+                            reason=f'WT_15M_BOUNCE_OPEN_bars={_b15_bars_15m}_bb={_b15_bb:.2f}',
+                            is_full_close=False, is_hedge=False)
+                    except Exception:
+                        pass
+
         # GOLDEN RULE ENFORCEMENT (real backtest) — 2026-05-06
         # Mirrors live _golden_rule_loop in ez_manage.py (ang/inf always-long mandate).
         # For every symbol: wt1_3m > wt2_3m AND (price > dc_high_15m OR price > bb_upper_15m)

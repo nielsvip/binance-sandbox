@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-15 00:59:11 UTC
+# Copilot Status — 2026-05-15 01:14:44 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T00:51:25
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T00:53:30
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T00:53:30
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T00:53:30
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T00:55:34
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T00:55:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T00:55:34
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T00:57:41
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T00:57:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T00:57:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T01:08:10
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T01:10:14
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T01:10:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T01:10:14
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T01:12:18
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T01:12:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T01:12:18
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T01:14:23
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T01:14:23
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T01:14:23
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 15 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 15 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.5%
 - HELD: **UUUU** SHORT (tradier) peak +11.6%, now +11.5%
@@ -39,8 +39,6 @@ _None_
 - HELD: **USO** LONG (tradier) peak +4.8%, now +4.8%
 - HELD: **NVDA** LONG (tradier) peak +4.4%, now +3.3%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +0.3%
-
-- WATCHING: **ARPAUSDT** LONG (crypto) peaked +4.1%, exited 0m ago
 
 ## Supervisor
 
