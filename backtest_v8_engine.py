@@ -2118,6 +2118,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Create the REAL MultiAccountTradeManager
     trade_manager = ez_manage.MultiAccountTradeManager(accounts, symbols, use_dummy_lock=True)
     trade_manager._allowed_accounts = frozenset([account_key])
+    # P3-#4: CircuitBreaker stub — real SmartCircuitBreaker needs live price history not in NPZ
+    if not hasattr(trade_manager, 'circuit_breaker'):
+        class _CBStub:
+            def should_halt(self, *a, **kw): return False
+            def record_loss(self, *a, **kw): pass
+            enabled = False
+        trade_manager.circuit_breaker = _CBStub()
 
     # OrderQueue + monitor (REAL)
     order_monitor = ez_manage.OrderExecutionMonitor(trade_manager)
@@ -3336,6 +3343,25 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _ls_ratio_max = float(getattr(config, 'RATIO_MULTIPLIER', 3.0))
             if _ls_count_ratio > _ls_ratio_max or ((_pool_short_count > 0) and _ls_count_ratio < 1.0 / _ls_ratio_max):
                 v8_logger.debug(f"[LS_RATIO] step={step} L={_pool_long_count} S={_pool_short_count} ratio={_ls_count_ratio:.2f} (max={_ls_ratio_max:.1f})")
+        # RATIO gate — block entries that worsen imbalance beyond RATIO_MULTIPLIER
+        # Active when V8_USE_LS_RATIO_GATE=1
+        if os.environ.get("V8_USE_LS_RATIO_GATE", "0") == "1":
+            _ls_ratio_max = float(getattr(config, 'RATIO_MULTIPLIER', 3.0))
+            if _pool_long_count > 0 and _pool_short_count > 0:
+                _ls_ratio_now = _pool_long_count / _pool_short_count
+                if _ls_ratio_now > _ls_ratio_max:
+                    _ls_block_side = 'LONG'
+                elif _ls_ratio_now < 1.0 / _ls_ratio_max:
+                    _ls_block_side = 'SHORT'
+                else:
+                    _ls_block_side = None
+                if _ls_block_side:
+                    if not hasattr(trade_manager, '_ls_ratio_block'):
+                        trade_manager._ls_ratio_block = {}
+                    trade_manager._ls_ratio_block[account_key] = _ls_block_side
+            elif _pool_long_count == 0 or _pool_short_count == 0:
+                if hasattr(trade_manager, '_ls_ratio_block'):
+                    trade_manager._ls_ratio_block.pop(account_key, None)
 
         # Update mark_price + gain on ALL open positions (critical for gate checks)
         for pk, pos in trade_manager.positions.items():
@@ -3384,41 +3410,50 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         if step < 10 or step % 1000 == 0:
                             v8_logger.error(f"[RIDICULOUS_LOSS_BACKTEST_ERR] {_rl_pk}: {_rl_err}")
         # ═══════════════════════════════════════════════════════════════════════════
-        # DISC-7b: RIDICULOUS_HOLD_GUARD age-based — mirror ez_manage.py:38309
-        # Closes positions held > RIDICULOUS_HOLD_HOURS when gain >= 0 (REQUIRE_GAIN_NONNEG=True).
-        # Uses opened_at datetime vs _sim_dt to compute age in hours.
-        # 2026-05-14 PARITY MODE gated.
+        # DISC-7b: RIDICULOUS_HOLD_GUARD age-based — revised 2026-05-14 per user mandate:
+        #   gain >= 0: NEVER close on age alone — technicals (WT/DC) or DISC-GR15 handle exit.
+        #   gain < 0 + age > RIDICULOUS_HOLD_HOURS + GR score >=15 against: flag hedge needed.
+        #   (DISC-7 loss floor still catches gain <= RIDICULOUS_LOSS_PCT via separate loop above.)
         # ═══════════════════════════════════════════════════════════════════════════
         if os.environ.get("V8_PARITY_MODE") != "1" and bool(getattr(config, 'RIDICULOUS_HOLD_GUARD_ENABLED', True)):
             _rh_hours = float(getattr(config, 'RIDICULOUS_HOLD_HOURS', 720.0))
-            _rh_require_nonneg = bool(getattr(config, 'RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG', True))
+            _rh_gr_score_thr = float(getattr(config, 'GR_HTF_DIRECT_EXIT_SCORE', 15.5))
+            _rh_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
+            _rh_min_tfs = int(getattr(config, 'GOLDEN_RULE_HTF_MIN_TFS', 1))
             for _rh_pk, _rh_pos in list(trade_manager.positions.items()):
                 if abs(getattr(_rh_pos, 'positionAmt', 0)) < 0.0001:
                     continue
                 _rh_gain = float(getattr(_rh_pos, 'gain', 0) or 0)
-                if _rh_require_nonneg and _rh_gain < 0:
-                    continue
+                if _rh_gain >= 0:
+                    continue  # profitable — hold until technicals or DISC-GR15, never age-close
                 _rh_opened = getattr(_rh_pos, 'opened_at', None)
                 if not isinstance(_rh_opened, datetime):
                     continue
                 _rh_age_hours = (_sim_dt - _rh_opened).total_seconds() / 3600.0
                 if _rh_age_hours < _rh_hours:
                     continue
+                # Losing position past age threshold — check GR score against it
                 _rh_sym = getattr(_rh_pos, 'symbol', '') or (_rh_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _rh_pk else _rh_pk[:-5] if _rh_pk.endswith('_LONG') else _rh_pk[:-6])
-                _rh_px = price_cache.get(_rh_sym, 0)
-                if _rh_px <= 0:
+                _rh_ind = indicator_cache.get(_rh_sym, {})
+                if not _rh_ind:
                     continue
                 _rh_is_long = _rh_pk.endswith('_LONG')
-                _rh_side = 'SELL' if _rh_is_long else 'BUY'
-                _rh_ps = 'LONG' if _rh_is_long else 'SHORT'
-                _rh_qty = abs(float(getattr(_rh_pos, 'positionAmt', 0)))
-                _rh_why = f'RIDICULOUS_HOLD_GUARD_backtest_age{_rh_age_hours:.1f}h_g{_rh_gain:.2f}%'
-                v8_logger.info(f"[RIDICULOUS_HOLD_GUARD_BACKTEST] {_rh_pk}: age={_rh_age_hours:.1f}h > {_rh_hours}h, gain={_rh_gain:.2f}%, force-closing")
+                _rh_gr_score = 0
                 try:
-                    await trade_manager.execute_trade_action(account_key=account_key, position_key=_rh_pk, symbol=_rh_sym, quantity=_rh_qty, current_price=_rh_px, side=_rh_side, position_side=_rh_ps, action='CLOSE', reason=_rh_why, is_full_close=True, is_hedge=False)
-                except Exception as _rh_err:
-                    if step < 10 or step % 1000 == 0:
-                        v8_logger.error(f"[RIDICULOUS_HOLD_GUARD_BACKTEST_ERR] {_rh_pk}: {_rh_err}")
+                    from golden_rule_htf import score_entry_htf as _rh_score_fn
+                    _rh_pass, _rh_n_tfs, _ = _rh_score_fn(_rh_ind, not _rh_is_long, mode, min_tfs=_rh_min_tfs, min_ind=_rh_min_ind, current_price=price_cache.get(_rh_sym, 0))
+                    _rh_gr_score = _rh_n_tfs * _rh_min_ind
+                except Exception:
+                    pass
+                if _rh_gr_score < _rh_gr_score_thr:
+                    continue  # GR not strongly against yet — OBLIGATORY_HEDGE and DISC-8 will handle when ready
+                # GR >=15 against a losing position past hold cap → ensure hedge is queued
+                _rh_already_hedged = _rh_pk in getattr(trade_manager, 'active_hedges', {})
+                if not _rh_already_hedged:
+                    v8_logger.info(f"[RIDICULOUS_HOLD_HEDGE_NEEDED] {_rh_pk}: age={_rh_age_hours:.1f}h gain={_rh_gain:.2f}% gr_score={_rh_gr_score:.1f} — hedge required, signalling DISC-8")
+                    if not hasattr(trade_manager, '_rh_hedge_priority'):
+                        trade_manager._rh_hedge_priority = set()
+                    trade_manager._rh_hedge_priority.add(_rh_pk)
 
         # ═══════════════════════════════════════════════════════════════════════════
         # DISC-8: UNDERWATER_HEDGE_OR_CLOSE — mirror ez_manage.py:20664
@@ -3545,6 +3580,92 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     pass
 
         # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-STALL: STALL_SUB — close profitable stalled positions (P1-A)
+        # Active when V8_USE_VEC_ALL=1 and STALL_SUB_ENABLED=True (default False).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if os.environ.get("V8_USE_VEC_ALL", "0") == "1" and bool(getattr(config, 'STALL_SUB_ENABLED', False)):
+            try:
+                from vec_paths.stall_sub import check_stall_sub_exit as _stall_check
+                for _stall_pk, _stall_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_stall_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _stall_result = _stall_check(None, step, _stall_pos, mode, config)
+                    if _stall_result:
+                        _stall_sym = getattr(_stall_pos, 'symbol', '') or (_stall_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _stall_pk else _stall_pk[:-5] if _stall_pk.endswith('_LONG') else _stall_pk[:-6])
+                        _stall_px = price_cache.get(_stall_sym, 0)
+                        if _stall_px <= 0:
+                            continue
+                        _stall_is_long = _stall_pk.endswith('_LONG')
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_stall_pk, symbol=_stall_sym, quantity=abs(float(getattr(_stall_pos, 'positionAmt', 0))), current_price=_stall_px, side='SELL' if _stall_is_long else 'BUY', position_side='LONG' if _stall_is_long else 'SHORT', action='CLOSE', reason=_stall_result['reason'], is_full_close=True, is_hedge=False)
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-BE_EROSION: BREAKEVEN_GAIN_EROSION — close positions that eroded to zero (P1-B)
+        # Active when V8_USE_VEC_ALL=1 and BREAKEVEN_GAIN_EROSION_ENABLED=True (default False).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if os.environ.get("V8_USE_VEC_ALL", "0") == "1" and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', False)):
+            try:
+                from vec_paths.breakeven_gain_erosion import check_breakeven_gain_erosion as _be_check
+                for _be_pk, _be_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_be_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _be_result = _be_check(None, step, _be_pos, mode, config)
+                    if _be_result:
+                        _be_sym = getattr(_be_pos, 'symbol', '') or (_be_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _be_pk else _be_pk[:-5] if _be_pk.endswith('_LONG') else _be_pk[:-6])
+                        _be_px = price_cache.get(_be_sym, 0)
+                        if _be_px <= 0:
+                            continue
+                        _be_is_long = _be_pk.endswith('_LONG')
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_be_pk, symbol=_be_sym, quantity=abs(float(getattr(_be_pos, 'positionAmt', 0))), current_price=_be_px, side='SELL' if _be_is_long else 'BUY', position_side='LONG' if _be_is_long else 'SHORT', action='CLOSE', reason=_be_result['reason'], is_full_close=True, is_hedge=False)
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-SENTIMENT: SENTIMENT_FADE — tradier-only reduce on RSI proxy signal (P2-E)
+        # Active when V8_USE_VEC_ALL=1 and SENTIMENT_FADE_PROXY_ENABLED=True (default False).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if mode == "tradier" and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and bool(getattr(config, 'SENTIMENT_FADE_PROXY_ENABLED', False)):
+            try:
+                from vec_paths.sentiment_fade import check_sentiment_fade as _sent_check
+                for _sent_pk, _sent_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_sent_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _sent_result = _sent_check(None, step, _sent_pos, mode, config)
+                    if _sent_result:
+                        _sent_sym = getattr(_sent_pos, 'symbol', '') or (_sent_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _sent_pk else _sent_pk[:-5] if _sent_pk.endswith('_LONG') else _sent_pk[:-6])
+                        _sent_px = price_cache.get(_sent_sym, 0)
+                        if _sent_px <= 0:
+                            continue
+                        _sent_is_long = _sent_pk.endswith('_LONG')
+                        _sent_qty = abs(float(getattr(_sent_pos, 'positionAmt', 0))) * 0.5
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_sent_pk, symbol=_sent_sym, quantity=_sent_qty, current_price=_sent_px, side='SELL' if _sent_is_long else 'BUY', position_side='LONG' if _sent_is_long else 'SHORT', action='REDUCE', reason=_sent_result['reason'], is_full_close=False, is_hedge=False)
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-ATR_TRAIL: ATR trailing stop sweep test (P2-B)
+        # Active when V8_USE_VEC_ALL=1 and ATR_TRAIL_SWEEP_ENABLED=True (default False).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if os.environ.get("V8_USE_VEC_ALL", "0") == "1" and bool(getattr(config, 'ATR_TRAIL_SWEEP_ENABLED', False)):
+            try:
+                from vec_paths.atr_trail import update_atr_trail_level as _atr_update, check_atr_trail_stop as _atr_check
+                for _atr_pk, _atr_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_atr_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _atr_update(_atr_pos, step, None, mode, config)
+                    _atr_result = _atr_check(None, step, _atr_pos, mode, config)
+                    if _atr_result:
+                        _atr_sym = getattr(_atr_pos, 'symbol', '') or (_atr_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _atr_pk else _atr_pk[:-5] if _atr_pk.endswith('_LONG') else _atr_pk[:-6])
+                        _atr_px = price_cache.get(_atr_sym, 0)
+                        if _atr_px <= 0:
+                            continue
+                        _atr_is_long = _atr_pk.endswith('_LONG')
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_atr_pk, symbol=_atr_sym, quantity=abs(float(getattr(_atr_pos, 'positionAmt', 0))), current_price=_atr_px, side='SELL' if _atr_is_long else 'BUY', position_side='LONG' if _atr_is_long else 'SHORT', action='CLOSE', reason=_atr_result['reason'], is_full_close=True, is_hedge=False)
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
         # DISC-4: OBLIGATORY_HEDGE — mirror ez_manage.py:14380 (updated 2026-05-12)
         # When UNIVERSAL_NOLOSS_GATE blocks a close, live fires a hedge if:
         #   gain <= OBLIGATORY_HEDGE_MIN_LOSS_PCT (-0.25% default)
@@ -3633,6 +3754,51 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     except Exception as _oh_err:
                         if step < 10 or step % 1000 == 0:
                             v8_logger.error(f"[OBLIGATORY_HEDGE_BACKTEST_ERR] {_oh_pk}: {_oh_err}")
+
+        # P3-DC_BREACH: DC_BREACH_REDUCE — reduce losing positions that breach 15m DC channel
+        # Mirrors ez_manage.py:27002-27224 monitor_dc_breach_reduce() (hedged + unhedged paths).
+        # Fires AFTER DISC-4 (OBLIGATORY_HEDGE) so hedges are already managed first.
+        # Gated by V8_USE_VEC_ALL=1 and DC_BREACH_REDUCE_ENABLED (default False).
+        if V8_VEC_PARITY_AVAILABLE and os.environ.get("V8_USE_VEC_ALL", "0") == "1":
+            try:
+                from vec_paths.dc_breach_reduce import check_dc_breach_reduce as _dcbr_check
+                for _dcbr_pk, _dcbr_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_dcbr_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    if float(getattr(_dcbr_pos, 'gain', 0) or 0) >= 0:
+                        continue
+                    _dcbr_sym = (getattr(_dcbr_pos, 'symbol', '') or
+                                 (_dcbr_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _dcbr_pk
+                                  else (_dcbr_pk[:-5] if _dcbr_pk.endswith('_LONG') else _dcbr_pk[:-6])))
+                    _dcbr_ind = indicator_cache.get(_dcbr_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    _dcbr_result = _dcbr_check(_dcbr_ind, None, _dcbr_pos, mode, config)
+                    if _dcbr_result:
+                        _dcbr_qty = abs(float(getattr(_dcbr_pos, 'positionAmt', 0))) * 0.5
+                        _dcbr_is_long = _dcbr_pk.endswith('_LONG')
+                        _dcbr_px = float(_dcbr_ind.get('current_price', 0) or 0)
+                        if _dcbr_qty > 0 and _dcbr_px > 0:
+                            try:
+                                await trade_manager.execute_trade_action(
+                                    account_key=account_key,
+                                    position_key=_dcbr_pk,
+                                    symbol=_dcbr_sym,
+                                    quantity=_dcbr_qty,
+                                    current_price=_dcbr_px,
+                                    side='SELL' if _dcbr_is_long else 'BUY',
+                                    position_side='LONG' if _dcbr_is_long else 'SHORT',
+                                    action='REDUCE',
+                                    reason=_dcbr_result['reason'],
+                                    is_hedge=False,
+                                )
+                                v8_logger.warning(f"[P3_DC_BREACH_REDUCE] {_dcbr_pk}: gain={getattr(_dcbr_pos, 'gain', 0):.2f}% — {_dcbr_result['reason']}")
+                            except Exception as _dcbr_exec_e:
+                                if step < 10 or step % 1000 == 0:
+                                    v8_logger.error(f"[P3_DC_BREACH_REDUCE_ERR] {_dcbr_pk}: {_dcbr_exec_e}")
+            except ImportError:
+                pass
+            except Exception as _dcbr_outer_e:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[P3_DC_BREACH_REDUCE_OUTER_ERR] step={step}: {_dcbr_outer_e}")
 
         # Clear reduce cooldowns per bar (each bar = 3-15 min in real time)
         if hasattr(ez_manage, '_recent_reduces'):
@@ -3965,6 +4131,33 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     pass
                 _vsg_filtered.append(_vsg_pk)
             entry_pks = _vsg_filtered
+        # RATIO gate check — skip imbalanced entries (P3-#1 extends P2-F)
+        if os.environ.get("V8_USE_LS_RATIO_GATE", "0") == "1":
+            _ls_blocked = getattr(trade_manager, '_ls_ratio_block', {}).get(account_key)
+            if _ls_blocked:
+                entry_pks = [pk for pk in entry_pks if not (
+                    (_ls_blocked == 'LONG' and pk.endswith('_LONG')) or
+                    (_ls_blocked == 'SHORT' and pk.endswith('_SHORT'))
+                )]
+        # ENTRY: BB_RECOVERY_ENTRY — failed BB breakout/breakdown entry signal (P2-A)
+        # Active when V8_USE_VEC_ALL=1 and BB_RECOVERY_ENTRY_ENABLED[_TRADIER]=True (default False).
+        if os.environ.get("V8_USE_VEC_ALL", "0") == "1":
+            _bbr_enabled = getattr(config, 'BB_RECOVERY_ENTRY_ENABLED_TRADIER' if mode == 'tradier' else 'BB_RECOVERY_ENTRY_ENABLED', False)
+            if _bbr_enabled:
+                try:
+                    from vec_paths.bb_recovery_entry import check_bb_recovery_entry as _bbr_check
+                    _bbr_result = _bbr_check(None, step, mode, config)
+                    if _bbr_result:
+                        _bbr_side = _bbr_result['side']
+                        _bbr_sym = symbol if 'symbol' in dir() else account_key.split(':')[-1] if ':' in account_key else ''
+                        if _bbr_sym:
+                            _bbr_px = price_cache.get(_bbr_sym, 0)
+                            _bbr_pk = f"{account_key}:{_bbr_sym}_{_bbr_side}" if ':' not in _bbr_sym else f"{_bbr_sym}_{_bbr_side}"
+                            _bbr_qty = float(getattr(config, 'START_POSITION_SIZE', 1.0))
+                            if _bbr_px > 0 and _bbr_qty > 0:
+                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_bbr_pk, symbol=_bbr_sym, quantity=_bbr_qty, current_price=_bbr_px, side='BUY' if _bbr_side == 'LONG' else 'SELL', position_side=_bbr_side, action='OPEN', reason=_bbr_result['reason'], is_full_close=False, is_hedge=False)
+                except Exception:
+                    pass
         if entry_pks:
             try:
                 await ez_positions_quick.check_entry_candidates_for_account(
