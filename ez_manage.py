@@ -6463,6 +6463,8 @@ class SmartCircuitBreaker:
                 entry = self._entries[pk]
                 tag = entry["tag"]
                 self._bad_entries.append((time.time(), tag, pk, diag))
+                if len(self._bad_entries) > 200:
+                    self._bad_entries = self._bad_entries[-200:]
                 logger.critical(f"🛑 [CIRCUIT_BREAKER] {pk}: {diag}")
                 try:
                     import json as _j

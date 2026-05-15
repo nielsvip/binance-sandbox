@@ -90,9 +90,19 @@ class IndicatorStore:
     Reconstructs and decodes all integer-encoded string fields so the
     live trading code sees the same string values as production Redis."""
 
-    def __init__(self, path: str):
-        data = np.load(path, allow_pickle=True)
-        self.arrays = {k: data[k] for k in data.files}
+    def __init__(self, path: str, start_idx: int = 0):
+        data = np.load(path, allow_pickle=True, mmap_mode='r')
+        n_ts_full = len(data.get("timestamps", []))
+        if start_idx > 0 and n_ts_full > start_idx:
+            self.arrays = {}
+            for k in data.files:
+                arr = data[k]
+                if arr.ndim >= 1 and arr.shape[0] == n_ts_full:
+                    self.arrays[k] = np.array(arr[start_idx:])
+                else:
+                    self.arrays[k] = np.array(arr)
+        else:
+            self.arrays = {k: np.array(data[k]) for k in data.files}
         data.close()
         self.timestamps = self.arrays.get("timestamps", np.array([]))
         self.n_bars = len(self.timestamps)

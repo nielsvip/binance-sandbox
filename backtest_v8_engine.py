@@ -1640,25 +1640,24 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
             if mode == "tradier" and _is_crypto_sym(sym):
                 n_skipped_mode += 1
                 continue
+        _start_idx = 0
+        if start_ts:
+            try:
+                _pre = np.load(str(npz_path), mmap_mode='r', allow_pickle=True)
+                _pre_ts = _pre["timestamps"]
+                if _pre_ts[-1] < start_ts:
+                    _pre.close()
+                    n_skipped_stale += 1
+                    continue
+                _start_idx = int(np.searchsorted(_pre_ts, start_ts))
+                _pre.close()
+            except Exception as _pre_e:
+                v8_logger.warning(f"[NPZ_PRE_FAIL] {sym}: {_pre_e}")
         try:
-            store = IndicatorStore(str(npz_path))
+            store = IndicatorStore(str(npz_path), start_idx=_start_idx)
         except Exception as _e:
             v8_logger.warning(f"[NPZ_LOAD_FAIL] {sym}: {type(_e).__name__}: {_e}")
             continue
-        if start_ts and store.timestamps[-1] < start_ts:
-            n_skipped_stale += 1
-            continue
-        if start_ts:
-            _idx = int(np.searchsorted(store.timestamps, start_ts))
-            if _idx > 0:
-                _n_ts = len(store.timestamps)
-                for _k in list(store.arrays):
-                    _arr = store.arrays[_k]
-                    if _arr.ndim >= 1 and _arr.shape[0] == _n_ts:
-                        store.arrays[_k] = _arr[_idx:]
-                store.timestamps = store.arrays["timestamps"]
-                store.n_bars = len(store.timestamps)
-                store.ts_to_idx = {int(_t): _i for _i, _t in enumerate(store.timestamps)}
         stores[sym] = store
     v8_logger.info(f"Loaded {len(stores)} symbols (skipped: mode={n_skipped_mode}, explicit={n_skipped_explicit}, stale={n_skipped_stale})")
     print(f"V8_INIT_HEARTBEAT: stores_loaded={len(stores)} skipped_mode={n_skipped_mode} skipped_stale={n_skipped_stale}", flush=True)
