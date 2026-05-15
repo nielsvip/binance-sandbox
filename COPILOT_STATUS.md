@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-15 22:36:36 UTC
+# Copilot Status — 2026-05-15 22:51:00 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,12 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T22:35:45
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T22:35:45
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T22:35:45
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-15T22:35:45
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-15T22:35:45
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-15T22:35:45
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-15T22:48:12
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-15T22:49:15
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-15T22:49:15
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-15T22:49:15
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T22:50:16
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T22:50:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T22:50:16
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-15T22:50:18
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-15T22:50:18
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-15T22:50:18
 
 ## Missed Trades (trader comparison)
 
@@ -36,15 +40,15 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **INXUSDT** SHORT (crypto) peaked +3.0%, exited 1m ago
+- WATCHING: **INXUSDT** SHORT (crypto) peaked +3.0%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 11
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 50
+- [LOW] tradier_prices.py is NOT running
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
