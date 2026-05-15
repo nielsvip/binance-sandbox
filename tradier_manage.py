@@ -1203,6 +1203,158 @@ async def _fire_fallback_close_trb(trade_manager, account_key, position_key, rea
     except Exception as _e:
         logger.error(f"[HEDGE_FAILED_FALLBACK_CLOSE_CRASH] {position_key}: {_e}", exc_info=True)
 
+_OVERNIGHT_ONE_SIDED_SECTORS = frozenset({
+    'energy_oil_gas',         # longs only — no shorts in symbols_trb_short
+    'base_metals_mining',     # shorts only — no longs in symbols_trb_long
+    'defense_aerospace',      # shorts only — no longs
+    'commodities_crypto_etf', # longs only — no shorts
+})
+
+async def overnight_gap_hedge_loop(trade_manager):
+    """Opens same-sector opposite-side hedges (50% notional) 15 min before market close
+    when |market_sentiment_score| > threshold, then closes them at 09:35 ET next morning.
+
+    Rationale: overnight gaps (close→open) carry most stock volatility. Same-sector hedge
+    provides approximate protection since same-symbol hedging is impossible on Tradier.
+
+    Only fires for: tech_ai_chips, precious_metals, uranium_nuclear, agriculture_fertilizer,
+    consumer_media. Skips one-sided sectors (no opposite-side mates available).
+    """
+    if not bool(getattr(config, 'OVERNIGHT_GAP_HEDGE_ENABLED', False)):
+        return
+    open_minutes = float(getattr(config, 'OVERNIGHT_GAP_HEDGE_OPEN_MINUTES', 15.0))
+    close_minutes = float(getattr(config, 'OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES', 5.0))
+    sentiment_threshold = float(getattr(config, 'OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD', 20.0))
+    size_frac = float(getattr(config, 'OVERNIGHT_GAP_HEDGE_SIZE_FRAC', 0.50))
+    _hedge_tracker: dict = {}
+    _hedges_fired_today = False
+    _hedges_closed_today = False
+    logger.warning(f"[OVERNIGHT_GAP_HEDGE] STARTED open={open_minutes}min_pre_close close={close_minutes}min_post_open threshold=±{sentiment_threshold} size={size_frac}")
+    while getattr(trade_manager, 'running', False):
+        try:
+            await asyncio.sleep(60)
+            try:
+                from zoneinfo import ZoneInfo
+                now_et = datetime.now(ZoneInfo("America/New_York"))
+            except ImportError:
+                import pytz
+                now_et = datetime.now(pytz.timezone("America/New_York"))
+            if now_et.weekday() >= 5:
+                continue
+            mins_to_close = _minutes_to_close()
+            mins_since_open = (now_et.hour * 60 + now_et.minute) - (9 * 60 + 30)
+            if 11 * 60 <= (now_et.hour * 60 + now_et.minute) < 12 * 60:
+                _hedges_fired_today = False
+                _hedges_closed_today = False
+            if close_minutes <= mins_since_open <= close_minutes + 5 and not _hedges_closed_today and _hedge_tracker:
+                logger.warning(f"[OVERNIGHT_GAP_HEDGE] MORNING CLOSE: closing {len(_hedge_tracker)} overnight hedges at 09:35 ET")
+                for _src_pk, _entry in list(_hedge_tracker.items()):
+                    _hedge_pk = _entry.get('hedge_pk')
+                    if not _hedge_pk:
+                        continue
+                    try:
+                        await queue_trade_action(
+                            trade_manager.order_queue, trade_manager, _hedge_pk, "CLOSE",
+                            f"OVERNIGHT_GAP_HEDGE_REMOVE_for_{_src_pk}", 100.0, override_qty=999999,
+                        )
+                        logger.warning(f"[OVERNIGHT_GAP_HEDGE] closed {_hedge_pk} for {_src_pk}")
+                    except Exception as _ce:
+                        logger.error(f"[OVERNIGHT_GAP_HEDGE_CLOSE_ERR] {_hedge_pk}: {_ce}", exc_info=True)
+                _hedge_tracker.clear()
+                _hedges_closed_today = True
+                continue
+            if not (0 < mins_to_close <= open_minutes) or _hedges_fired_today:
+                continue
+            sentiment_score = 0.0
+            for _cache_ind in (getattr(trade_manager, 'indicators_cache', None) or {}).values():
+                _s = _cache_ind.get('0market_sentiment_score', None)
+                if _s is not None:
+                    sentiment_score = float(_s)
+                    break
+            if abs(sentiment_score) <= sentiment_threshold:
+                logger.info(f"[OVERNIGHT_GAP_HEDGE] sentiment={sentiment_score:.1f} within ±{sentiment_threshold} — no hedge today")
+                _hedges_fired_today = True
+                continue
+            hedge_for_longs = sentiment_score < -sentiment_threshold
+            hedge_for_shorts = sentiment_score > sentiment_threshold
+            logger.warning(f"[OVERNIGHT_GAP_HEDGE] FIRING: sentiment={sentiment_score:.1f} → hedging {'LONGs→SHORT' if hedge_for_longs else 'SHORTs→LONG'}")
+            try:
+                from tradier_sector_ls_ratio import _load_sector_map, get_sector
+            except Exception as _ie:
+                logger.error(f"[OVERNIGHT_GAP_HEDGE] sector import failed: {_ie}")
+                _hedges_fired_today = True
+                continue
+            sector_map = _load_sector_map() or {}
+            try:
+                positions = trade_manager.position_manager.get_positions_by_account('trb') or {}
+            except Exception as _pe:
+                logger.error(f"[OVERNIGHT_GAP_HEDGE] positions fetch err: {_pe}")
+                _hedges_fired_today = True
+                continue
+            hedges_opened = 0
+            for pk, pos in list(positions.items()):
+                try:
+                    pa = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0))
+                    if pa <= 0 or pk in _hedge_tracker:
+                        continue
+                    is_long = pk.endswith('_LONG')
+                    if (is_long and not hedge_for_longs) or (not is_long and not hedge_for_shorts):
+                        continue
+                    symbol = pk.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
+                    sector = get_sector(symbol)
+                    if not sector or sector in _OVERNIGHT_ONE_SIDED_SECTORS:
+                        continue
+                    mate_side = 'SHORT' if is_long else 'LONG'
+                    chosen_mate = None
+                    chosen_mate_pk = None
+                    for mate in sector_map.get(sector, []):
+                        if not mate or mate == symbol:
+                            continue
+                        mate_pk = f"trb:{mate}_{mate_side}"
+                        if hasattr(trade_manager, 'tradeable_keys') and mate_pk not in trade_manager.tradeable_keys:
+                            continue
+                        existing = positions.get(mate_pk)
+                        if existing and abs(safe_fetch_float(getattr(existing, 'positionAmt', 0), 0)) > 0:
+                            continue
+                        chosen_mate = mate
+                        chosen_mate_pk = mate_pk
+                        break
+                    if not chosen_mate:
+                        logger.info(f"[OVERNIGHT_GAP_HEDGE] {pk}: no available {mate_side} mate in sector={sector}")
+                        continue
+                    loser_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0)
+                    if loser_mark <= 0:
+                        continue
+                    target_notional = pa * loser_mark * size_frac
+                    mate_ind = (getattr(trade_manager, 'indicators_cache', None) or {}).get(chosen_mate.upper(), {})
+                    mate_price = safe_fetch_float(mate_ind.get('current_price', 0), 0) or safe_fetch_float(mate_ind.get('close', 0), 0)
+                    if mate_price <= 0:
+                        logger.warning(f"[OVERNIGHT_GAP_HEDGE] {pk}: no price for mate {chosen_mate}")
+                        continue
+                    mate_qty = max(1, int(target_notional / mate_price))
+                    _reason = f"OVERNIGHT_GAP_HEDGE_for_{symbol}_sector={sector}_sent={sentiment_score:.0f}"
+                    logger.warning(f"[OVERNIGHT_GAP_HEDGE] opening {mate_side} {chosen_mate} qty={mate_qty} (~${target_notional:.0f}) for {pk} sector={sector}")
+                    _result = await queue_trade_action(
+                        trade_manager.order_queue, trade_manager, chosen_mate_pk, "OPEN",
+                        _reason, 84.0, override_qty=mate_qty,
+                    )
+                    if _result and (_result is True or (isinstance(_result, str) and _result.startswith('SUCCESS'))):
+                        _hedge_tracker[pk] = {'hedge_pk': chosen_mate_pk, 'opened_ts': time.time(), 'notional': target_notional}
+                        hedges_opened += 1
+                        logger.warning(f"✅ [OVERNIGHT_GAP_HEDGE] opened {chosen_mate_pk} for {pk}")
+                    else:
+                        logger.error(f"[OVERNIGHT_GAP_HEDGE] failed to open {chosen_mate_pk}: {_result}")
+                except Exception as _pe:
+                    logger.error(f"[OVERNIGHT_GAP_HEDGE_PER_POS] {pk}: {_pe}", exc_info=True)
+            _hedges_fired_today = True
+            logger.warning(f"[OVERNIGHT_GAP_HEDGE] DONE: {hedges_opened} hedges opened for tonight")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"[OVERNIGHT_GAP_HEDGE] loop error: {e}", exc_info=True)
+            await asyncio.sleep(30)
+
+
 async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key: str, position_keys=None, event_type=None, is_priority_add: bool = False, force: bool = False):
     current_account.set(account_key)
     now_ts = time.time()
@@ -9480,7 +9632,7 @@ class TradierTradeManager:
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
             if is_reduce and not is_hedge:
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
-                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper() or 'REENTRY_BREAKOUT' in str(reason or '').upper())
+                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper() or 'REENTRY_BREAKOUT' in str(reason or '').upper() or 'OVERNIGHT_GAP_HEDGE_REMOVE' in str(reason or '').upper())
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
@@ -13879,6 +14031,8 @@ class TradierTradeManager:
         self.background_tasks.append(asyncio.create_task(self.reentry_monitor_loop()))
         # 2026-05-09 USER MANDATE: trb obligatory sector hedge / fallback close. Approximate hedge — monitor.
         self.background_tasks.append(asyncio.create_task(obligatory_sector_hedge_or_close_loop(self)))
+        # 2026-05-15: overnight gap hedge — same-sector opposite-side before close (default OFF).
+        self.background_tasks.append(asyncio.create_task(overnight_gap_hedge_loop(self)))
         print(f"[START] {len(self.background_tasks)} background tasks launched. Entering trading loop...", flush=True)
         logger.info("☀️ ✅ Manager Running.")
         await self.trading_loop()

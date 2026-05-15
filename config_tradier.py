@@ -1968,6 +1968,16 @@ class TradierConfig:
     OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H: bool = True   # USER mandate: 5m AND 1h against (stocks 5m base TF)
     OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS: float = 90.0          # how often to scan stock losers
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                     # on hedge failure → close losing position
+    # ── OVERNIGHT GAP HEDGE (2026-05-15) ──
+    # Opens a same-sector opposite-side hedge 15 min before market close when sentiment is
+    # directional (|score| > threshold). Protects against overnight gaps. Closes at 09:35 ET.
+    # Only fires for sectors with both long+short mates (tech, precious_metals, uranium, ag, consumer).
+    # Skips: energy_oil_gas, base_metals_mining, defense_aerospace, commodities_crypto_etf (one-sided).
+    OVERNIGHT_GAP_HEDGE_ENABLED: bool = False
+    OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD: float = 20.0   # abs(market_sentiment_score) must exceed this
+    OVERNIGHT_GAP_HEDGE_SIZE_FRAC: float = 0.50             # 50% of original position notional
+    OVERNIGHT_GAP_HEDGE_OPEN_MINUTES: float = 15.0          # fire N min before 16:00 ET close (→ 15:45 ET)
+    OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES: float = 5.0          # close N min after 09:30 ET open (→ 09:35 ET)
     OI_DIVERGENCE_ENABLED: bool = False  # BACKTEST_CHANGE_143: OI divergence confirmation ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     OI_DIVERGENCE_PENALTY: int = 10  # BACKTEST_CHANGE_143: Score penalty for OI divergence ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners. ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
