@@ -50,74 +50,77 @@ count_crypto_promoter() {
     ps aux | grep "[r]ate_filter_promoter.*--mode crypto" | grep python | wc -l | tr -d '[:space:]'
 }
 
+count_coordinator() {
+    ps aux | grep "[s]weep_coordinator" | grep python | wc -l | tr -d '[:space:]'
+}
+count_coordinator_tradier() {
+    ps aux | grep "[s]weep_coordinator.*--mode tradier" | grep python | wc -l | tr -d '[:space:]'
+}
+
 NC=$(count_crypto_sweep)
 NT=$(count_tradier_sweep)
+NCOORD=$(count_coordinator)
 NEXT=$(cat "$STATE" 2>/dev/null || echo "tradier")
 
-# -- Part 1: crypto backtest_v8_sweep system_combo (4 USDC syms, 2026-01-01) --
-if [ "$NC" -lt 1 ]; then
-    if [ "$NT" -gt 0 ]; then
-        # Tradier is running — skip crypto (serialize, tradier priority)
-        echo "[$TS] crypto dead — tradier running (procs=$NT), deferring crypto to avoid OOM" >> "$LOG"
-    elif [ "$NEXT" = "crypto" ]; then
-        # Both dead AND it's crypto's turn
-        echo "[$TS] crypto system_combo dead — it's crypto's turn, relaunching (4 syms, 2026-01-01, timeout=5400)" >> "$LOG"
-        TS2=$(date +%Y%m%d_%H%M)
-        cd "$DIR"
-        nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
-            --mode crypto --account ang \
-            --start 2026-01-01 \
-            --symbols "$CORE4_CRYPTO" \
-            --tier system_combo \
-            --workers 1 \
-            --timeout 5400 \
-            --mem-throttle-pct 85 \
-            > ~/logs/bt_sweep_crypto_4sym_${TS2}.log 2>&1 < /dev/null & disown
-        sleep 5
-        echo "[$TS] post-relaunch crypto procs=$(count_crypto_sweep)" >> "$LOG"
-        echo "tradier" > "$STATE"  # tradier goes next after crypto finishes
-    else
-        # Both dead but it's tradier's turn — skip crypto, tradier section will launch tradier
-        echo "[$TS] crypto dead — tradier's turn (NEXT=$NEXT), waiting for tradier to run first" >> "$LOG"
-    fi
+# -- Parts 1+2: ablation sweeps skipped if coordinator is running (coordinator owns backtest_v8_engine) --
+if [ "$NCOORD" -gt 0 ]; then
+    echo "[$TS] sweep_coordinator running (procs=$NCOORD) — skipping ablation Parts 1+2" >> "$LOG"
 else
-    echo "[$TS] crypto sweep running (procs=$NC) -- ok" >> "$LOG"
-fi
-
-# -- Part 2: tradier backtest_v8_sweep tradier_param_hunt (20 stocks, 2026-01-01) --
-# Re-read NT (tradier count may have changed if Part 1 just launched crypto).
-# NC is NOT rechecked — using snapshot from top of script to avoid race window where
-# count_crypto_sweep returns 0 between engine variants (v17 fix, 2026-05-10).
-NT=$(count_tradier_sweep)
-NEXT=$(cat "$STATE" 2>/dev/null || echo "tradier")
-
-if [ "$NT" -lt 1 ]; then
-    if [ "$NC" -gt 0 ]; then
-        # Crypto is running — skip tradier (serialize)
-        echo "[$TS] tradier dead — crypto running (procs=$NC), deferring tradier to avoid OOM" >> "$LOG"
-    elif [ "$NEXT" = "tradier" ]; then
-        # Both dead AND it's tradier's turn
-        echo "[$TS] tradier tradier_grtf7_hunt_resume dead — relaunching (20 stocks, 2026-01-01, mem-throttle 70)" >> "$LOG"
-        TS2=$(date +%Y%m%d_%H%M)
-        cd "$DIR"
-        nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
-            --mode tradier --account trb \
-            --start 2026-01-01 \
-            --symbols "$CORE20_TRADIER" \
-            --tier tradier_grtf7_hunt_resume \
-            --workers 1 \
-            --timeout 5400 \
-            --mem-throttle-pct 85 \
-            > ~/logs/bt_sweep_tradier_grtf7_resume_${TS2}.log 2>&1 < /dev/null & disown
-        sleep 5
-        echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"
-        echo "crypto" > "$STATE"  # crypto goes next after tradier finishes
+    # -- Part 1: crypto backtest_v8_sweep system_combo (4 USDC syms, 2026-01-01) --
+    if [ "$NC" -lt 1 ]; then
+        if [ "$NT" -gt 0 ]; then
+            echo "[$TS] crypto dead — tradier running (procs=$NT), deferring crypto to avoid OOM" >> "$LOG"
+        elif [ "$NEXT" = "crypto" ]; then
+            echo "[$TS] crypto system_combo dead — it's crypto's turn, relaunching (4 syms, 2026-01-01, timeout=5400)" >> "$LOG"
+            TS2=$(date +%Y%m%d_%H%M)
+            cd "$DIR"
+            nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
+                --mode crypto --account ang \
+                --start 2026-01-01 \
+                --symbols "$CORE4_CRYPTO" \
+                --tier system_combo \
+                --workers 1 \
+                --timeout 5400 \
+                --mem-throttle-pct 85 \
+                > ~/logs/bt_sweep_crypto_4sym_${TS2}.log 2>&1 < /dev/null & disown
+            sleep 5
+            echo "[$TS] post-relaunch crypto procs=$(count_crypto_sweep)" >> "$LOG"
+            echo "tradier" > "$STATE"
+        else
+            echo "[$TS] crypto dead — tradier's turn (NEXT=$NEXT), waiting for tradier to run first" >> "$LOG"
+        fi
     else
-        # Both dead but it's crypto's turn — crypto section should have handled it
-        echo "[$TS] tradier dead — crypto's turn (NEXT=$NEXT), crypto section handles" >> "$LOG"
+        echo "[$TS] crypto sweep running (procs=$NC) -- ok" >> "$LOG"
     fi
-else
-    echo "[$TS] tradier sweep running (procs=$NT) -- ok" >> "$LOG"
+
+    # -- Part 2: tradier backtest_v8_sweep tradier_param_hunt (20 stocks, 2026-01-01) --
+    NT=$(count_tradier_sweep)
+    NEXT=$(cat "$STATE" 2>/dev/null || echo "tradier")
+    if [ "$NT" -lt 1 ]; then
+        if [ "$NC" -gt 0 ]; then
+            echo "[$TS] tradier dead — crypto running (procs=$NC), deferring tradier to avoid OOM" >> "$LOG"
+        elif [ "$NEXT" = "tradier" ]; then
+            echo "[$TS] tradier tradier_grtf7_hunt_resume dead — relaunching (20 stocks, 2026-01-01, mem-throttle 70)" >> "$LOG"
+            TS2=$(date +%Y%m%d_%H%M)
+            cd "$DIR"
+            nohup env V8_RATE_GUARD_DISABLED=1 V8_DISABLE_RELAXED_SRS=1 "$PYTHON" backtest_v8_sweep.py \
+                --mode tradier --account trb \
+                --start 2026-01-01 \
+                --symbols "$CORE20_TRADIER" \
+                --tier tradier_grtf7_hunt_resume \
+                --workers 1 \
+                --timeout 5400 \
+                --mem-throttle-pct 85 \
+                > ~/logs/bt_sweep_tradier_grtf7_resume_${TS2}.log 2>&1 < /dev/null & disown
+            sleep 5
+            echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"
+            echo "crypto" > "$STATE"
+        else
+            echo "[$TS] tradier dead — crypto's turn (NEXT=$NEXT), crypto section handles" >> "$LOG"
+        fi
+    else
+        echo "[$TS] tradier sweep running (procs=$NT) -- ok" >> "$LOG"
+    fi
 fi
 
 # -- Part 3: kill competing autonomous_search/canonical processes --
@@ -136,28 +139,52 @@ if [ "$NP" -lt 1 ]; then
 fi
 
 # -- Part 5: sweep_coordinator — 24/7 prioritized queue runner (vectorized mode) --
-# Runs backtest_v8_engine with V8_USE_VEC_ALL=1 through the test queue.
-# Separate from the ablation sweeps above; uses same memory guard so only
-# launches when both ablation engines are idle (no double-OOM).
-count_coordinator() {
-    ps aux | grep "[s]weep_coordinator" | grep python | wc -l | tr -d '[:space:]'
-}
+# Coordinator runs backtest_v8_engine directly (not backtest_v8_sweep).
+# When coordinator is running, Parts 1+2 ablation sweeps are skipped.
+# Two coordinators run: crypto (start=2022-01-01 bear+bull) + tradier (start=2024-01-01).
+# Each runs one engine at a time; combined peak ~15GB — safe on 31GB server.
 NCOORD=$(count_coordinator)
+NCOORD_T=$(count_coordinator_tradier)
 if [ "$NCOORD" -lt 1 ] && [ "$NC" -lt 1 ] && [ "$NT" -lt 1 ]; then
-    echo "[$TS] sweep_coordinator dead and both ablation sweeps idle — relaunching coordinator" >> "$LOG"
+    echo "[$TS] sweep_coordinator dead and ablation sweeps idle — relaunching crypto coordinator" >> "$LOG"
     TS2=$(date +%Y%m%d_%H%M)
     cd "$DIR"
-    # Crypto coordinator: start=2022-01-01 (bear+bull required per CLAUDE.md)
     nohup "$PYTHON" sweep_coordinator.py \
         --mode crypto --account ang \
         --start 2022-01-01 \
         --symbols "$CORE4_CRYPTO" \
-        --mem-throttle 85 \
+        --hang-timeout 120000 \
+        --mem-throttle 80 \
         > ~/logs/sweep_coordinator_crypto_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
-    echo "[$TS] post-relaunch coordinator procs=$(count_coordinator)" >> "$LOG"
+    NCOORD=$(count_coordinator)
+    echo "[$TS] post-relaunch coordinator procs=$NCOORD" >> "$LOG"
 elif [ "$NCOORD" -gt 0 ]; then
     echo "[$TS] sweep_coordinator running (procs=$NCOORD) -- ok" >> "$LOG"
 else
     echo "[$TS] sweep_coordinator idle (ablation sweeps busy: crypto=$NC tradier=$NT)" >> "$LOG"
+fi
+
+# -- Part 6: tradier sweep_coordinator (runs alongside crypto coordinator) --
+CORE7_TRADIER=AAPL,MSFT,NVDA,TSLA,META,AMD,AMZN
+if [ "$NCOORD_T" -lt 1 ] && [ "$NCOORD" -gt 0 ]; then
+    AVAIL_MB2=$(free -m | awk '/^Mem:/{print $7}')
+    if [ "$AVAIL_MB2" -gt 12000 ]; then
+        echo "[$TS] tradier coordinator dead (crypto running, mem ok ${AVAIL_MB2}MB) — relaunching tradier coordinator" >> "$LOG"
+        TS2=$(date +%Y%m%d_%H%M)
+        cd "$DIR"
+        nohup "$PYTHON" sweep_coordinator.py \
+            --mode tradier --account trb \
+            --start 2024-01-01 \
+            --symbols "$CORE7_TRADIER" \
+            --hang-timeout 120000 \
+            --mem-throttle 80 \
+            > ~/logs/sweep_coordinator_tradier_${TS2}.log 2>&1 < /dev/null & disown
+        sleep 5
+        echo "[$TS] post-relaunch tradier coordinator procs=$(count_coordinator_tradier)" >> "$LOG"
+    else
+        echo "[$TS] tradier coordinator skipped — low mem ${AVAIL_MB2}MB" >> "$LOG"
+    fi
+elif [ "$NCOORD_T" -gt 0 ]; then
+    echo "[$TS] tradier coordinator running (procs=$NCOORD_T) -- ok" >> "$LOG"
 fi

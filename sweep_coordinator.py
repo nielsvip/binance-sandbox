@@ -75,7 +75,7 @@ PY_BIN = sys.executable
 
 # Classification thresholds
 HANG_TIMEOUT_S = 7200          # 2h hard safety-net — SILENCE_TIMEOUT_S catches most failures faster
-SILENCE_TIMEOUT_S = 180        # kill engine if no stdout line for 180s (OOM-killed: pipe closes instantly; covers per-sym NPZ load)
+SILENCE_TIMEOUT_S = 1200       # kill engine if no stdout line for 1200s (20min covers 4-sym×4yr NPZ load; OOM pipe-close triggers this at next tick)
 USELESS_POOL_SHARPE = 0.4      # below → USELESS (Discard/Noise tier) — raised from 0.3 per user mandate
 DIAGNOSTIC_POOL_SHARPE = 0.5   # below → DIAGNOSTIC (sub-floor)
 PROMOTE_POOL_SHARPE = 1.0      # above → add to promotions.json
@@ -537,12 +537,15 @@ def main() -> None:
     ap.add_argument("--sleep-empty", type=int, default=120, help="Seconds to sleep when queue is empty")
     ap.add_argument("--mem-throttle", type=float, default=88.0, help="Pause if RAM%% exceeds this")
     ap.add_argument("--hang-timeout", type=int, default=0, help="Override HANG_TIMEOUT_S (0=use module default)")
+    ap.add_argument("--silence-timeout", type=int, default=0, help="Override SILENCE_TIMEOUT_S (0=use module default)")
     ap.add_argument("--status", action="store_true", help="Print stats and exit")
     args = ap.parse_args()
 
-    global HANG_TIMEOUT_S
+    global HANG_TIMEOUT_S, SILENCE_TIMEOUT_S
     if args.hang_timeout > 0:
         HANG_TIMEOUT_S = args.hang_timeout
+    if args.silence_timeout > 0:
+        SILENCE_TIMEOUT_S = args.silence_timeout
 
     COORD_DIR.mkdir(parents=True, exist_ok=True)
 
