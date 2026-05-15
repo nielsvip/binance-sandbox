@@ -3800,6 +3800,92 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[P3_DC_BREACH_REDUCE_OUTER_ERR] step={step}: {_dcbr_outer_e}")
 
+        # DISC-RATIO_REDUCE: portfolio L/S rebalance — mirrors ez_manage.py:28693 ratio_rebalance_loop()
+        # Fires when one side exceeds RATIO_MULTIPLIER×the other. Closes lowest-gain overweight positions.
+        # Gated by V8_USE_VEC_ALL=1 + RATIO_REBALANCE_ENABLED (default True from ratio_reduce.py).
+        if V8_VEC_PARITY_AVAILABLE and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and \
+                bool(getattr(config, 'RATIO_REBALANCE_ENABLED', True)):
+            try:
+                from vec_paths.ratio_reduce import select_ratio_reduce_targets as _rr_select
+                _rr_targets = _rr_select(trade_manager.positions, _pool_long_count, _pool_short_count, mode, config)
+                for _rr_pk in _rr_targets:
+                    _rr_pos = trade_manager.positions.get(_rr_pk)
+                    if not _rr_pos or abs(getattr(_rr_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _rr_sym = (getattr(_rr_pos, 'symbol', '') or
+                               (_rr_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _rr_pk
+                                else (_rr_pk[:-5] if _rr_pk.endswith('_LONG') else _rr_pk[:-6])))
+                    _rr_ind = indicator_cache.get(_rr_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    _rr_px = float(_rr_ind.get('current_price', 0) or 0)
+                    if _rr_px <= 0:
+                        continue
+                    _rr_is_long = _rr_pk.endswith('_LONG')
+                    _rr_gain = float(getattr(_rr_pos, 'gain', 0) or 0)
+                    _rr_qty = abs(float(getattr(_rr_pos, 'positionAmt', 0)))
+                    if _pool_short_count > 0:
+                        _rr_ratio = _pool_long_count / _pool_short_count
+                    elif _pool_long_count > 0:
+                        _rr_ratio = float(_pool_long_count)
+                    else:
+                        _rr_ratio = 0.0
+                    _rr_reason = (f"RATIO_REDUCE_{'LONG' if _rr_is_long else 'SHORT'}"
+                                  f"_L{_pool_long_count}_S{_pool_short_count}_ratio{_rr_ratio:.2f}")
+                    try:
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_rr_pk, symbol=_rr_sym, quantity=_rr_qty, current_price=_rr_px, side='SELL' if _rr_is_long else 'BUY', position_side='LONG' if _rr_is_long else 'SHORT', action='CLOSE', reason=_rr_reason, is_full_close=True, is_hedge=False)
+                        v8_logger.warning(f"[DISC-RATIO_REDUCE] {_rr_pk}: L={_pool_long_count} S={_pool_short_count} ratio={_rr_ratio:.2f} gain={_rr_gain:.2f}%")
+                    except Exception as _rr_exec_e:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[DISC-RATIO_REDUCE_ERR] {_rr_pk}: {_rr_exec_e}")
+            except ImportError:
+                pass
+            except Exception as _rr_outer_e:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[DISC-RATIO_REDUCE_OUTER_ERR] step={step}: {_rr_outer_e}")
+
+        # DISC-WT5OF5: NOLOSS_BYPASS_WT_5OF5 — bypass NOLOSS gate when all N WT TFs against position.
+        # Mirrors tradier_manage.py NOLOSS_BYPASS_WT_5OF5 block (default OFF).
+        # Uses indicator_cache directly (DISC blocks run in engine mode, no NPZStore available).
+        # Gated by V8_USE_VEC_ALL=1 + NOLOSS_BYPASS_WT_5OF5_ENABLED (default False).
+        if V8_VEC_PARITY_AVAILABLE and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and \
+                bool(getattr(config, 'NOLOSS_BYPASS_WT_5OF5_ENABLED', False)):
+            _wt5_min_tfs = max(1, min(5, int(getattr(config, 'WT5OF5_MIN_TFS', 5))))
+            _wt5_require_loser = bool(getattr(config, 'WT5OF5_REQUIRE_OPEN_LOSER', True))
+            _wt5_tfs = ['5m', '15m', '1h', '4h', 'D'] if mode == 'tradier' else ['3m', '15m', '1h', '4h', 'D']
+            for _wt5_pk, _wt5_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_wt5_pos, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _wt5_gain = float(getattr(_wt5_pos, 'gain', 0) or 0)
+                if _wt5_require_loser and _wt5_gain >= 0:
+                    continue
+                _wt5_sym = (getattr(_wt5_pos, 'symbol', '') or
+                            (_wt5_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _wt5_pk
+                             else (_wt5_pk[:-5] if _wt5_pk.endswith('_LONG') else _wt5_pk[:-6])))
+                _wt5_ind = indicator_cache.get(_wt5_sym, {}) if isinstance(indicator_cache, dict) else {}
+                if not _wt5_ind:
+                    continue
+                _wt5_is_long = _wt5_pk.endswith('_LONG')
+                _wt5_against = 0
+                for _wt5_tf in _wt5_tfs:
+                    _w1 = float(_wt5_ind.get(f'wt1_{_wt5_tf}', 0) or 0)
+                    _w2 = float(_wt5_ind.get(f'wt2_{_wt5_tf}', 0) or 0)
+                    if _w1 == 0 and _w2 == 0:
+                        continue
+                    if (_wt5_is_long and _w1 < _w2) or (not _wt5_is_long and _w1 > _w2):
+                        _wt5_against += 1
+                if _wt5_against < _wt5_min_tfs:
+                    continue
+                _wt5_side = 'LONG' if _wt5_is_long else 'SHORT'
+                _wt5_px = float(_wt5_ind.get('current_price', 0) or 0)
+                if _wt5_px <= 0:
+                    continue
+                _wt5_reason = f"NOLOSS_BYPASS_WT_5OF5_{_wt5_against}of5_tfs_against_{_wt5_side}_g{_wt5_gain:.3f}%"
+                try:
+                    await trade_manager.execute_trade_action(account_key=account_key, position_key=_wt5_pk, symbol=_wt5_sym, quantity=abs(float(getattr(_wt5_pos, 'positionAmt', 0))), current_price=_wt5_px, side='SELL' if _wt5_is_long else 'BUY', position_side=_wt5_side, action='CLOSE', reason=_wt5_reason, is_full_close=True, is_hedge=False)
+                    v8_logger.warning(f"[DISC-WT5OF5] {_wt5_pk}: {_wt5_against}/{_wt5_min_tfs} TFs against gain={_wt5_gain:.2f}%")
+                except Exception as _wt5_exec_e:
+                    if step < 10 or step % 1000 == 0:
+                        v8_logger.error(f"[DISC-WT5OF5_ERR] {_wt5_pk}: {_wt5_exec_e}")
+
         # Clear reduce cooldowns per bar (each bar = 3-15 min in real time)
         if hasattr(ez_manage, '_recent_reduces'):
             ez_manage._recent_reduces.clear()
