@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # rerun_stock_sectors_v4.sh  (originally rerun_tech_ai_chips_v4.sh)
 # Runs stock sectors that timed out in v3 in sub-groups of ≤10 syms.
-# Empirical rate: 8 syms < 3600s, 14-15 syms > 3600s → use ≤10 syms/group.
+# Empirical rate: 14 syms = 53 min (✓), 15 syms > 60 min (✗) → use ≤10 syms/group.
 #
-# Sectors (all timed out rc=-9 in v3):
+# Sectors (timed out rc=-9 in v3 — base_metals_mining rc=0 already, excluded):
 #   tech_ai_chips   (29 syms) → 10+10+9
 #   energy_oil_gas  (24 syms) → 8+8+8
 #   precious_metals (15 syms) → 8+7
-#   base_metals_mining (14 syms) → 7+7
 #
 # Usage (on S1, after v3 completes):
 #   nohup bash rerun_tech_ai_chips_v4.sh > ~/logs/sector_rerun_v4_$(date +%Y%m%d_%H%M%S).log 2>&1 < /dev/null &
@@ -127,14 +126,5 @@ run_sector_syms tradier precious_metals_b tradier_sector_baseline \
     "FNV,RGLD,PAAS,HL,AG,GLD,CDE" \
     2023-05-13 3600
 
-# base_metals_mining: 14 syms → 7+7
-run_sector_syms tradier base_metals_mining_a tradier_sector_baseline \
-    "CLF,NUE,STLD,CMC,RS,VALE,BHP" \
-    2023-05-13 3600
-
-run_sector_syms tradier base_metals_mining_b tradier_sector_baseline \
-    "RIO,TECK,SCCO,FCX,MP,LAC,ALB" \
-    2023-05-13 3600
-
-log "=== v4 complete: 10 sub-sector runs (tech 10+10+9, energy 8+8+8, precious 8+7, base_metals 7+7) ==="
+log "=== v4 complete: 8 sub-sector runs (tech 10+10+9, energy 8+8+8, precious 8+7) ==="
 log "Results in: $WORKDIR/data/sweep_results/"
