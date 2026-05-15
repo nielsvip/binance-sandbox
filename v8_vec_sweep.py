@@ -427,6 +427,26 @@ class SweepConfig:
     WT_15M_BOUNCE_BB_MIN: float = 0.05        # bb_pct_b lower bound (within BB)
     WT_15M_BOUNCE_BB_MAX: float = 0.95        # bb_pct_b upper bound (within BB)
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
+    # ── STRUCTURAL-PATTERN GATES (2026-05-15) — default OFF, sweep-A/B before live ──
+    # A1: SPY > 200SMA top-level regime gate (Faber/Antonacci/Clenow/Connors universal)
+    SPY_REGIME_GATE_ENABLED: bool = False
+    SPY_REGIME_BLOCK_LONGS_BELOW: bool = True   # block longs when SPY_close_D < SPY_sma200_D
+    SPY_REGIME_BLOCK_SHORTS_ABOVE: bool = False  # block shorts when SPY > 200SMA (opt-in)
+    # A3: ATR-parity sizing (Clenow/Dunn/Mulvaney/AQR universal). Replaces base_qty sizing.
+    SIZING_MODE: str = "DEFAULT"                # DEFAULT | ATR_PARITY
+    TARGET_RISK_PER_TRADE_PCT: float = 0.20     # % of equity risked per trade (0.20% = aggressive)
+    ATR_PARITY_EQUITY_BASE_USD: float = 35000.0 # nominal sleeve capital (50% of $70k trb+trc)
+    ATR_PARITY_USE_DAILY: bool = True           # True=atr_D (audited-winner standard), False=atr_base_tf
+    ATR_PARITY_QTY_CAP_MULT: float = 5.0        # cap qty at 5× DEFAULT (prevents runaway low-vol sizes)
+    # A4: Daily-decision TF gate (Minervini/Clenow/Faber/Antonacci universal).
+    # When DAILY, entry/exit decisions fire only on the LAST base-TF bar of each trading day.
+    DECISION_TF_MODE: str = "BASE"              # BASE | DAILY
+    # B2: Connors mean-reversion overlay — when stock > 200SMA AND connors_rsi_D < threshold,
+    # take long with 5-day SMA exit. Standalone entry trigger (6th OPEN trigger when flat).
+    CONNORS_RSI2_OVERLAY_ENABLED: bool = False
+    CONNORS_RSI2_THRESHOLD: float = 10.0        # connors_rsi composite (NPZ field connors_rsi_D)
+    CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True
+    CONNORS_RSI2_EXIT_BARS: int = 5             # time-based exit (5 trading days)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -675,6 +695,71 @@ def simulate_one_symbol(
             _b15_htf_ok = (~_b15_rising_4h & ~_b15_rising_1h) if config.WT_15M_BOUNCE_REQUIRE_BOTH_HTF \
                 else (~_b15_rising_4h | ~_b15_rising_1h)
         _b15_open_mask = _b15_fresh & _b15_bb_ok & _b15_dir_ok & _b15_htf_ok
+
+    # ─── STRUCTURAL GATES PRECOMPUTE (2026-05-15) ─────────────────────────────
+    # A1: SPY > 200SMA regime mask (aligned to this symbol's ts).
+    _spy_long_ok = np.ones(n, dtype=bool)
+    _spy_short_ok = np.ones(n, dtype=bool)
+    if config.SPY_REGIME_GATE_ENABLED and mode == "tradier":
+        try:
+            _spy_npz, _spy_ts = load_npz("SPY", mode, start_ts=int(ts[0]))
+            _spy_close_d = _spy_npz.get("close_D")
+            _spy_sma200_d = _spy_npz.get("sma_200_D")
+            if _spy_close_d is not None and _spy_sma200_d is not None:
+                _spy_above = np.nan_to_num(_spy_close_d, nan=0.0) > np.nan_to_num(_spy_sma200_d, nan=1e9)
+                if len(_spy_above) == n:
+                    _aligned = _spy_above
+                else:
+                    _idx = np.searchsorted(_spy_ts, ts, side="right") - 1
+                    _idx = np.clip(_idx, 0, len(_spy_above) - 1)
+                    _aligned = _spy_above[_idx]
+                if config.SPY_REGIME_BLOCK_LONGS_BELOW:
+                    _spy_long_ok = _aligned
+                if config.SPY_REGIME_BLOCK_SHORTS_ABOVE:
+                    _spy_short_ok = ~_aligned
+        except Exception as _e:
+            sys.stderr.write(f"SPY_REGIME_GATE: could not load SPY NPZ ({_e}); gate disabled this run\n")
+
+    # A4: Daily-decision-TF mask — fire entry/exit only at last base-TF bar of trading day.
+    _daily_decision_mask = np.ones(n, dtype=bool)
+    if str(config.DECISION_TF_MODE).upper() == "DAILY":
+        # Compute UTC day-of-year for each bar; mark transitions (last bar of each day).
+        _doy = (ts // 86400).astype(np.int64)
+        _is_last_of_day = np.zeros(n, dtype=bool)
+        if n > 1:
+            _is_last_of_day[:-1] = _doy[:-1] != _doy[1:]
+            _is_last_of_day[-1] = True  # treat final bar as last of its day
+        _daily_decision_mask = _is_last_of_day
+
+    # B2: Connors RSI-2 overlay — long when close > 200SMA AND connors_rsi_D < threshold.
+    # Currently long-only (per Connors literature). Short side passes through unchanged.
+    _connors_open_mask = np.zeros(n, dtype=bool)
+    _connors_exit_mask = np.zeros(n, dtype=bool)
+    if config.CONNORS_RSI2_OVERLAY_ENABLED and is_long and mode == "tradier":
+        _crsi_d = np.nan_to_num(npz.get("connors_rsi_D", np.full(n, 50.0, dtype=np.float32)), nan=50.0).astype(np.float32)
+        _sma200_d = np.nan_to_num(npz.get("sma_200_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _close_d = np.nan_to_num(npz.get("close_D", close), nan=0.0).astype(np.float32)
+        _above_200 = (_close_d > _sma200_d) if config.CONNORS_RSI2_REQUIRE_ABOVE_200SMA else np.ones(n, dtype=bool)
+        _oversold = _crsi_d < float(config.CONNORS_RSI2_THRESHOLD)
+        _connors_open_mask = _above_200 & _oversold
+        # Exit signal: close > 5-bar SMA on daily (use shifted close_D mean as proxy).
+        _bars5 = max(1, int(config.CONNORS_RSI2_EXIT_BARS))
+        try:
+            _close_5d_avg = np.convolve(_close_d, np.ones(_bars5, dtype=np.float32) / _bars5, mode="same")
+            _connors_exit_mask = _close_d > _close_5d_avg
+        except Exception:
+            _connors_exit_mask = np.zeros(n, dtype=bool)
+
+    # A3: ATR-parity sizing array — precompute qty per bar (overrides default at OPEN).
+    _atr_parity_qty = np.zeros(n, dtype=np.float32)
+    if str(config.SIZING_MODE).upper() == "ATR_PARITY":
+        _atr_field = "atr_D" if config.ATR_PARITY_USE_DAILY else (f"atr_{('5m' if mode == 'tradier' else '3m')}")
+        _atr_series = np.nan_to_num(npz.get(_atr_field, np.full(n, 0.01, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _target_dollar_risk = (float(config.TARGET_RISK_PER_TRADE_PCT) / 100.0) * float(config.ATR_PARITY_EQUITY_BASE_USD)
+        # qty = $-risk / $-per-share-risk-where-$-per-share = ATR_$
+        # Avoid divide-by-zero: clip ATR floor to 0.5% of price.
+        _atr_safe = np.maximum(_atr_series, np.maximum(close * 0.005, 1e-6))
+        _atr_parity_qty = _target_dollar_risk / _atr_safe
 
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
