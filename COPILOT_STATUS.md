@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-15 03:44:28 UTC
+# Copilot Status — 2026-05-15 03:59:33 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T03:41:10
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T03:41:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:41:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-15T03:41:12
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-15T03:42:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-15T03:43:16
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T03:43:16
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:43:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-15T03:43:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-15T03:44:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:51:28
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T03:53:32
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T03:53:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:53:32
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T03:55:35
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T03:55:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:55:35
+- **STALE_INDICATORS** [tradier]  — 2026-05-15T03:57:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-15T03:57:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-15T03:57:39
 
 ## Missed Trades (trader comparison)
 
@@ -45,8 +45,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
