@@ -4158,17 +4158,34 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if _ds_breached:
                     _ds_amt = abs(float(getattr(_ds_pos, 'positionAmt', 0)))
                     _ds_side = 'SELL' if _ds_is_long else 'BUY'
-                    try:
-                        await trade_manager.execute_now(
-                            position_key=_ds_pk, account_key=account_key, symbol=_ds_sym,
-                            original_positionAmt=_ds_amt, side=_ds_side,
-                            position_side='LONG' if _ds_is_long else 'SHORT',
-                            quantity=_ds_amt, old_price=_ds_px,
-                            unique_id=f"DC_STOP_{int(_sim_ts[0])}",
-                            reason=f"DC_STOP_BREACH_px{_ds_px:.6f}_stop{_ds_stop:.6f}",
-                            is_full_close=True, action='CLOSE')
-                    except Exception:
-                        pass
+                    _ds_gr_hedge_on = getattr(config, 'DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED', False)
+                    _ds_did_hedge = False
+                    if _ds_gr_hedge_on:
+                        try:
+                            from golden_rule_htf import score_entry_htf as _ds_gr_fn
+                            _ds_gr_min_tfs = int(getattr(config, 'DC4_STOP_GR_SCORE_MIN_TFS', 3))
+                            _ds_gr_min_ind = int(getattr(config, 'DC4_STOP_GR_SCORE_MIN_IND', 5))
+                            _ds_gr_passes, _ds_gr_n, _ds_gr_detail = _ds_gr_fn(
+                                _ds_ind, not _ds_is_long, str(_dc_stop_mode).lower(),
+                                _ds_gr_min_tfs, _ds_gr_min_ind, _ds_px)
+                            if _ds_gr_passes:
+                                await hedge_engine.scan_and_hedge_losers(account_key)
+                                _ds_did_hedge = True
+                                v8_logger.warning(f"[DC4_STOP_GR_HEDGE] {_ds_pk}: DC4 breach but GR={_ds_gr_n}tfs>={_ds_gr_min_tfs} against — HEDGE not stop. {_ds_gr_detail}")
+                        except Exception as _ds_ge:
+                            v8_logger.debug(f"[DC4_STOP_GR_ERR] {_ds_pk}: {_ds_ge}")
+                    if not _ds_did_hedge:
+                        try:
+                            await trade_manager.execute_now(
+                                position_key=_ds_pk, account_key=account_key, symbol=_ds_sym,
+                                original_positionAmt=_ds_amt, side=_ds_side,
+                                position_side='LONG' if _ds_is_long else 'SHORT',
+                                quantity=_ds_amt, old_price=_ds_px,
+                                unique_id=f"DC_STOP_{int(_sim_ts[0])}",
+                                reason=f"DC_STOP_BREACH_px{_ds_px:.6f}_stop{_ds_stop:.6f}",
+                                is_full_close=True, action='CLOSE')
+                        except Exception:
+                            pass
 
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()

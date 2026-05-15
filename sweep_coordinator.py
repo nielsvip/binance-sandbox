@@ -74,8 +74,9 @@ FLAWS_PATH = COORD_DIR / "flaws.json"
 PY_BIN = sys.executable
 
 # Classification thresholds
-HANG_TIMEOUT_S = 21600         # 6 hours — start=2022 + 4 USDC syms takes ~3.7h per variant
-USELESS_POOL_SHARPE = 0.3      # below → USELESS (Discard/Noise tier)
+HANG_TIMEOUT_S = 120000        # 33h safety-net — 4 syms × 4yr takes ~30h; calibrated 2026-05-15
+SILENCE_TIMEOUT_S = 90         # kill engine if no stdout line for this many seconds (OOM-killed pipes close instantly)
+USELESS_POOL_SHARPE = 0.4      # below → USELESS (Discard/Noise tier) — raised from 0.3 per user mandate
 DIAGNOSTIC_POOL_SHARPE = 0.5   # below → DIAGNOSTIC (sub-floor)
 PROMOTE_POOL_SHARPE = 1.0      # above → add to promotions.json
 SAMPLE_FLOOR_TRADES = 30       # below → DIAGNOSTIC regardless of Sharpe
@@ -271,17 +272,39 @@ def _run_one(
     IN_PROGRESS_PATH.write_text(json.dumps({"test_id": label, "hash": h, "started_utc": datetime.now(timezone.utc).isoformat()}))
 
     try:
+        import queue as _q_mod
         proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         def _read_stderr():
             for ln in proc.stderr:
                 stderr_lines.append(ln.rstrip())
 
-        t_err = threading.Thread(target=_read_stderr, daemon=True)
-        t_err.start()
+        _stdout_q: _q_mod.Queue = _q_mod.Queue()
 
-        for line in proc.stdout:
-            line = line.rstrip()
+        def _read_stdout():
+            try:
+                for ln in proc.stdout:
+                    _stdout_q.put(ln.rstrip())
+            except Exception:
+                pass
+            finally:
+                _stdout_q.put(None)
+
+        t_err = threading.Thread(target=_read_stderr, daemon=True)
+        t_out = threading.Thread(target=_read_stdout, daemon=True)
+        t_err.start()
+        t_out.start()
+
+        while True:
+            try:
+                line = _stdout_q.get(timeout=SILENCE_TIMEOUT_S)
+            except _q_mod.Empty:
+                print(f"[coord] ⚡ {label} silent {SILENCE_TIMEOUT_S}s — killing engine", flush=True)
+                proc.kill()
+                killed = True
+                break
+            if line is None:
+                break
             stdout_tail.append(line)
             if len(stdout_tail) > 40:
                 stdout_tail.pop(0)
@@ -321,6 +344,7 @@ def _run_one(
                 break
         proc.wait(timeout=30)
         t_err.join(timeout=5)
+        t_out.join(timeout=5)
     except Exception as e:
         killed = True
         print(f"[coord] subprocess error for {label}: {e}", flush=True)

@@ -883,6 +883,12 @@ class Config:
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):
     DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_3m/dc_high4_3m recorded at entry
     DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_3m/dc_high_3m (1-bar, wider)
+    # 2026-05-15 USER: when DC4 stop would close, check GR score against position.
+    # If GR ≥ DC4_STOP_GR_SCORE_MIN_TFS TFs × DC4_STOP_GR_SCORE_MIN_IND ind (default 3×5=15),
+    # hedge instead of close. Sweep variant: DC4_GR_HEDGE_ON.
+    DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED: bool = False
+    DC4_STOP_GR_SCORE_MIN_TFS: int = 3
+    DC4_STOP_GR_SCORE_MIN_IND: int = 5
     R1_TF: str = '3m'                              # sweep-testable
     # _DUPLICATE_OPEN_GUARD gain-based replacement (USER 2026-05-09):
     # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.

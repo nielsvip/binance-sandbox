@@ -644,6 +644,11 @@ def grid_tradier_param_hunt():
     combos.insert(1, ("DC_LOW4_STOP_ON",  {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False}))
     combos.insert(2, ("DC_LOW_STOP_ON",   {"DC_LOW4_STOP_ENABLED": False, "DC_LOW_STOP_ENABLED": True}))
     combos.insert(3, ("DC_BOTH_STOPS_ON", {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": True}))
+    # ── PRIORITY 0b: DC4 stop vs GR-hedge comparison (2026-05-15 USER) ──
+    # When DC4 breaches AND GR ≥ 3TFs×5ind strongly against position → hedge instead of stop.
+    combos.insert(4, ("DC4_GR_HEDGE_ON",  {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,  "DC4_STOP_GR_SCORE_MIN_TFS": 3, "DC4_STOP_GR_SCORE_MIN_IND": 5}))
+    combos.insert(5, ("DC4_GR_HEDGE_LOOSE", {"DC_LOW4_STOP_ENABLED": True, "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,  "DC4_STOP_GR_SCORE_MIN_TFS": 2, "DC4_STOP_GR_SCORE_MIN_IND": 3}))
+    combos.insert(6, ("DC4_ALWAYS_HEDGE", {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,  "DC4_STOP_GR_SCORE_MIN_TFS": 1, "DC4_STOP_GR_SCORE_MIN_IND": 1}))
     # ── PRIORITY 1: WT_DC_ENTRY_THRESHOLD sweep — THE main entry gate (default=75) ──
     # Start at 0 (diagnostic), then find the real optimum.
     for thr in [0, 24, 35, 50, 65, 75]:
@@ -1202,6 +1207,10 @@ def grid_system_combo():
     out.insert(1, ("DC_LOW4_STOP_ON",  {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False}))
     out.insert(2, ("DC_LOW_STOP_ON",   {"DC_LOW4_STOP_ENABLED": False, "DC_LOW_STOP_ENABLED": True}))
     out.insert(3, ("DC_BOTH_STOPS_ON", {"DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": True}))
+    # ── PRIORITY 0b: DC4 stop vs GR-hedge comparison (2026-05-15 USER) ──
+    out.insert(4, ("DC4_GR_HEDGE_ON",    {"DC_LOW4_STOP_ENABLED": True, "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True, "DC4_STOP_GR_SCORE_MIN_TFS": 3, "DC4_STOP_GR_SCORE_MIN_IND": 5}))
+    out.insert(5, ("DC4_GR_HEDGE_LOOSE", {"DC_LOW4_STOP_ENABLED": True, "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True, "DC4_STOP_GR_SCORE_MIN_TFS": 2, "DC4_STOP_GR_SCORE_MIN_IND": 3}))
+    out.insert(6, ("DC4_ALWAYS_HEDGE",   {"DC_LOW4_STOP_ENABLED": True, "DC_LOW_STOP_ENABLED": False, "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True, "DC4_STOP_GR_SCORE_MIN_TFS": 1, "DC4_STOP_GR_SCORE_MIN_IND": 1}))
 
     # 1. Entry score threshold — primary trade-frequency vs quality gate
     for v in (16, 18, 20, 22, 24, 26, 28):
