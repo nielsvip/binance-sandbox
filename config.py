@@ -1131,7 +1131,14 @@ class Config:
         # Per CLAUDE.md exit-rules: "exit signal when >=18 (against the trade) → close even at a loss."
         # ROLLBACK: remove this line + set GR_HTF_DIRECT_EXIT_ENABLED=False in config.
         'GR_HTF_DIRECT_EXIT',
+        # 2026-05-15 USER: daemon reentry premise failed (price crossed back past exit level) → close.
+        'DAEMON_REENTRY_STALE_EXIT',
     ])
+    # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
+    DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = True
+    # 2026-05-15 USER: when a DAEMON_PRICE_CROSS_REENTRY position's premise fails (price
+    # crosses back above/below the encoded exit_price), close immediately bypassing NOLOSS.
+    DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = True
     # 2026-05-10 USER NON-NEGOTIABLE: every tradeable_key with wt1_3m > wt2_3m (LONG) /
     # wt1_3m < wt2_3m (SHORT) must always have a position open. If flat, OPEN immediately;
     # reopen after every close. Reentry/hedge gates may NOT block this. The reason

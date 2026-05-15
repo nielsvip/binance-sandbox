@@ -37652,6 +37652,61 @@ async def process_position(
         except Exception as _r1_outer:
             logger.debug(f"[R1_DC_LOW4_3M] {position_key} probe err: {_r1_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
+    # R1b — DAEMON_REENTRY_STALE EXIT (2026-05-15 USER).
+    # When a DAEMON_PRICE_CROSS_REENTRY position's premise fails — price crosses
+    # back ABOVE exit_price for SHORT (or BELOW for LONG) — close immediately.
+    # The exit_price is parsed from the position's augment_reason string.
+    # Bypasses NOLOSS gate via DAEMON_REENTRY_STALE_EXIT bypass reason.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "DAEMON_REENTRY_STALE_EXIT_ENABLED", True))
+    ):
+        try:
+            import re as _re_r1b
+            _r1b_blob = (
+                str(getattr(position, "augment_reason", "") or "")
+                + " "
+                + str(getattr(position, "last_signal", "") or "")
+            ).upper()
+            if "DAEMON_PRICE_CROSS_REENTRY" in _r1b_blob:
+                _r1b_m = _re_r1b.search(r"EXIT(\d+\.\d+)", _r1b_blob)
+                if _r1b_m:
+                    _r1b_exit_px = float(_r1b_m.group(1))
+                    _r1b_is_long = position_side == "LONG"
+                    _r1b_stale = (not _r1b_is_long and current_price > _r1b_exit_px) or (
+                        _r1b_is_long and current_price < _r1b_exit_px
+                    )
+                    if _r1b_stale:
+                        _r1b_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                        _r1b_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                        _r1b_close_side = "BUY" if not _r1b_is_long else "SELL"
+                        logger.error(
+                            f"⛔ [R1b_DAEMON_REENTRY_STALE] {position_key}: g={_r1b_gain:.2f}% price={current_price:.6f} {'>' if not _r1b_is_long else '<'} exit_px={_r1b_exit_px:.6f} — reentry premise failed, closing"
+                        )
+                        _r1b_result = await trade_manager.execute_now(
+                            position_key=position_key,
+                            account_key=account_key,
+                            symbol=symbol,
+                            original_positionAmt=_r1b_amt,
+                            side=_r1b_close_side,
+                            position_side=position_side,
+                            quantity=_r1b_amt,
+                            old_price=current_price,
+                            unique_id=f"R1b_DAEMON_STALE_{int(time.time())}",
+                            reason=f"DAEMON_REENTRY_STALE_EXIT_g{_r1b_gain:.2f}_exit_px_{_r1b_exit_px:.6f}_cur_{current_price:.6f}",
+                            is_full_close=True,
+                            action="CLOSE",
+                        )
+                        if isinstance(_r1b_result, str) and not any(
+                            x in _r1b_result.upper() for x in ("BLOCK", "SKIP", "REJECT")
+                        ):
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:R1b_DAEMON_REENTRY_STALE_CLOSED"
+        except Exception as _r1b_outer:
+            logger.debug(f"[R1b_DAEMON_REENTRY_STALE] {position_key} probe err: {_r1b_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-08, tightened 2026-05-09).
     # Trigger (per TF in R2_TF_LIST):
     #   floor <= gain < band  (default 0.01 .. 0.50 — "approaching 0 from above"), AND
@@ -45567,6 +45622,16 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                         _ind_for_tier = await ii(trade_manager, cmd["symbol"])
                         _is_long_tier = cmd["position_side"] == "LONG"
                         _cur_px_tier = float(cmd.get("current_price", 0.0))
+                        if (not _is_long_tier) and getattr(cfg, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", True):
+                            _wt1_3m_q = safe_fetch_float(_ind_for_tier.get("wt1_3m"), 0.0) if _ind_for_tier else 0.0
+                            _wt2_3m_q = safe_fetch_float(_ind_for_tier.get("wt2_3m"), 0.0) if _ind_for_tier else 0.0
+                            _k3m_q = safe_fetch_float(_ind_for_tier.get("stoch_k_3m"), 0.0) if _ind_for_tier else 0.0
+                            _short_xunder = _wt1_3m_q < _wt2_3m_q
+                            _short_k3m_ok = _k3m_q > 60.0
+                            if not (_short_xunder and _short_k3m_ok):
+                                cmd_file.rename(done_dir / f"skip_short_no_wt_xunder_k{_k3m_q:.0f}_{cmd_file.name}")
+                                logger.info(f"[REENTRY_QUEUE] BLOCKED SHORT {pk}: wt_3m_xunder={_short_xunder} (wt1={_wt1_3m_q:.2f} wt2={_wt2_3m_q:.2f}) k_3m={_k3m_q:.1f}>60={_short_k3m_ok}")
+                                continue
                         _sma200_15m = (
                             safe_fetch_float(_ind_for_tier.get("sma_200_15m"), 0.0)
                             if _ind_for_tier
