@@ -45549,12 +45549,15 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
     base_path = Path(getattr(cfg, "BASE_PATH", "/Users/niels/Documents/binance"))
     queue_base = base_path / "data" / "reentry_queue"
     queue_base.mkdir(parents=True, exist_ok=True)
+    _consumer_fired: Dict[str, float] = {}
+    _consumer_min_gap_s = 90.0
     logger.info(
         f"[REENTRY_QUEUE] consumer started — interval={interval}s queue={queue_base}"
     )
     while True:
         try:
             now = time.time()
+            _fired_this_tick: set = set()
             allowed = set(getattr(trade_manager, "_allowed_accounts", None) or [])
             if not allowed:
                 acct = getattr(trade_manager, "account_key", None)
@@ -45612,6 +45615,15 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                                 continue
                         except Exception:
                             pass
+                        if pk in _fired_this_tick:
+                            cmd_file.rename(done_dir / f"dup_same_tick_{cmd_file.name}")
+                            logger.warning(f"[REENTRY_QUEUE] DUP_SAME_TICK {pk} — already fired this tick, skipping")
+                            continue
+                        _last_consumer_fire = _consumer_fired.get(pk, 0.0)
+                        if now - _last_consumer_fire < _consumer_min_gap_s:
+                            cmd_file.rename(done_dir / f"dup_gap_{int(now - _last_consumer_fire)}s_{cmd_file.name}")
+                            logger.warning(f"[REENTRY_QUEUE] DUP_GAP {pk} — fired {now - _last_consumer_fire:.0f}s ago (min={_consumer_min_gap_s}s), skipping")
+                            continue
                         # USER 2026-05-10 (refined) — size tiers, ii() has full HTF indicators:
                         #   150% — PRE-SMA bounce: cur_px has NOT yet crossed sma_200_15m AND
                         #          (k_15m bouncing OR wt_15m bouncing) in our direction.
@@ -45733,6 +45745,8 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                             action="REENTRY",
                         )
                         cmd_file.rename(done_dir / f"done_{cmd_file.name}")
+                        _fired_this_tick.add(pk)
+                        _consumer_fired[pk] = now
                         logger.warning(
                             f"[REENTRY_QUEUE_TIER_FIRED] {pk}: tier={_tier_tag} qty_base={cmd['quantity']:.4f} × {_tier_frac} = {_qty_tiered:.4f} — REENTRY queued"
                         )

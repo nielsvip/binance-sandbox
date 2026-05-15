@@ -3633,8 +3633,8 @@ MINERVINI_MIN_SCORE             = 5          # int 0-6 (5 = all 5 SEPA condition
 CLENOW_GATE_ENABLED             = False
 CLENOW_GATE_MIN_SCORE           = 30.0       # slope_ann × R² (renamed from CLENOW_MIN_SCORE — collided with existing tradier Clenow strategy param)
 
-# --- Weekly WT gate (2026-05-15) ---
-WT_W_REQUIRED_CRYPTO            = False      # Require wt1_W > wt2_W (long) / wt1_W < wt2_W (short) before any entry.
+# --- Weekly WT exit gate (2026-05-15) ---
+WT_W_EXIT_ENABLED               = False      # Exit when weekly WaveTrend crosses against position (wt1_W crosses wt2_W).
 
 # --- 52w-high proximity gate (avoid topping out) ---
 PROXIMITY_TOP_GATE_ENABLED      = False
