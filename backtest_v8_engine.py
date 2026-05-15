@@ -2556,15 +2556,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 elif 'CLENOW' in _v8ns_veto: _v8ns_counters['clenow_block'] += 1
                 elif 'PROXIMITY_TOP' in _v8ns_veto: _v8ns_counters['proximity_top_block'] += 1
                 return _v8ns_veto
-            # W WT gate (2026-05-15): require Weekly WaveTrend alignment before any crypto entry.
-            if bool(getattr(config, 'WT_W_REQUIRED_CRYPTO', False)):
-                _wt1_W_c = float(_v8ns_ind.get('wt1_W') or 0)
-                _wt2_W_c = float(_v8ns_ind.get('wt2_W') or 0)
-                if _wt1_W_c != 0 or _wt2_W_c != 0:
-                    if _v8ns_is_long and _wt1_W_c <= _wt2_W_c:
-                        return f"BLOCKED_WT_W_REQUIRED_LONG_wt1={_wt1_W_c:.1f}_wt2={_wt2_W_c:.1f}"
-                    elif (not _v8ns_is_long) and _wt1_W_c >= _wt2_W_c:
-                        return f"BLOCKED_WT_W_REQUIRED_SHORT_wt1={_wt1_W_c:.1f}_wt2={_wt2_W_c:.1f}"
             # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE_ENTRY (informational tag for crypto eta).
             # In v8_quick this is OR-additive to base_sig; here, real check_entry_candidates already
             # produced the candidate. We tag the reason and count alignment for sweep diagnostics.
@@ -3144,6 +3135,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
     _bt_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
     _bt_rg = None if _bt_rg_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.crypto.{account_key}")
+    _w_exit_prev = {}  # sym → bool: was wt1_W > wt2_W last bar (for cross detection)
 
     for step, ts in enumerate(sorted_ts):
         _sim_ts[0] = float(ts)
@@ -3894,6 +3886,46 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 except Exception as _wt5_exec_e:
                     if step < 10 or step % 1000 == 0:
                         v8_logger.error(f"[DISC-WT5OF5_ERR] {_wt5_pk}: {_wt5_exec_e}")
+
+        # DISC-W_EXIT: exit when weekly WaveTrend crosses against position (2026-05-15)
+        # Long exits when wt1_W crosses below wt2_W; short exits when crosses above.
+        # Cross = prev bar was opposite sign; fail-open when both wt values are 0.
+        if bool(getattr(config, 'WT_W_EXIT_ENABLED', False)):
+            for _we_pk, _we_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_we_pos, 'positionAmt', 0) or 0) < 0.0001:
+                    continue
+                _we_sym = (getattr(_we_pos, 'symbol', '') or
+                           (_we_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _we_pk
+                            else (_we_pk[:-5] if _we_pk.endswith('_LONG') else _we_pk[:-6])))
+                _we_ind = indicator_cache.get(_we_sym, {}) if isinstance(indicator_cache, dict) else {}
+                if not _we_ind:
+                    continue
+                _we_wt1 = float(_we_ind.get('wt1_W', 0) or 0)
+                _we_wt2 = float(_we_ind.get('wt2_W', 0) or 0)
+                if _we_wt1 == 0 and _we_wt2 == 0:
+                    continue
+                _we_now_bull = _we_wt1 > _we_wt2
+                _we_prev_bull = _w_exit_prev.get(_we_sym)
+                _w_exit_prev[_we_sym] = _we_now_bull
+                if _we_prev_bull is None:
+                    continue
+                _we_is_long = _we_pk.endswith('_LONG')
+                _we_cross = (_we_is_long and _we_prev_bull and not _we_now_bull) or \
+                            (not _we_is_long and not _we_prev_bull and _we_now_bull)
+                if not _we_cross:
+                    continue
+                _we_gain = float(getattr(_we_pos, 'gain', 0) or 0)
+                _we_px = float(_we_ind.get('current_price', 0) or 0)
+                if _we_px <= 0:
+                    continue
+                _we_side = 'LONG' if _we_is_long else 'SHORT'
+                _we_reason = f"WT_W_CROSS_EXIT_{_we_side}_wt1={_we_wt1:.1f}_wt2={_we_wt2:.1f}_g{_we_gain:.3f}%"
+                try:
+                    await trade_manager.execute_trade_action(account_key=account_key, position_key=_we_pk, symbol=_we_sym, quantity=abs(float(getattr(_we_pos, 'positionAmt', 0))), current_price=_we_px, side='SELL' if _we_is_long else 'BUY', position_side=_we_side, action='CLOSE', reason=_we_reason, is_full_close=True, is_hedge=False)
+                    v8_logger.info(f"[DISC-W_EXIT] {_we_pk}: W cross exit gain={_we_gain:.2f}%")
+                except Exception as _we_err:
+                    if step < 10 or step % 1000 == 0:
+                        v8_logger.error(f"[DISC-W_EXIT_ERR] {_we_pk}: {_we_err}")
 
         # DISC-HAIKU_WINNER: winner pyramid + giveback-reduce — numeric portion of HaikuOverseer.manage_winners()
         # Mirrors ez_manage.py:46331 manage_winners():
@@ -5486,16 +5518,6 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
                 except Exception:
                     pass
-        # W WT gate (2026-05-15): require Weekly WaveTrend alignment before any tradier entry.
-        if (not is_reduce) and bool(getattr(tm_mod.config, 'WT_W_REQUIRED_TRADIER', False)):
-            _w_ind_pt = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
-            _wt1_W_pt = float(_w_ind_pt.get('wt1_W') or 0)
-            _wt2_W_pt = float(_w_ind_pt.get('wt2_W') or 0)
-            if _wt1_W_pt != 0 or _wt2_W_pt != 0:
-                if str(position_side) == 'LONG' and _wt1_W_pt <= _wt2_W_pt:
-                    return f"BLOCKED_WT_W_REQUIRED_LONG_wt1={_wt1_W_pt:.1f}_wt2={_wt2_W_pt:.1f}"
-                elif str(position_side) == 'SHORT' and _wt1_W_pt >= _wt2_W_pt:
-                    return f"BLOCKED_WT_W_REQUIRED_SHORT_wt1={_wt1_W_pt:.1f}_wt2={_wt2_W_pt:.1f}"
         # ── NEWBORN_PROTECT (15-min grace) — mirror ez_manage.py:14210-14262 ──
         # evaluate_newborn_protect_core is imported at the top of the file but was
         # never called here, so the engine never blocked close attempts on freshly
@@ -6600,6 +6622,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _last_heartbeat_t = _real_time_module.time()
     _bt_rg_t_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
     _bt_rg_t = None if _bt_rg_t_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.tradier.{account_key}")
+    _w_exit_prev_t = {}  # sym → bool: was wt1_W > wt2_W last bar (for cross detection)
     for step, ts in enumerate(all_ts):
         _sim_ts[0] = float(ts)
         if _SWEEP_MODE:
@@ -6916,6 +6939,43 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception as _v8_rebal_err:
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_SENTIMENT_REBAL_ERR] step={step}: {_v8_rebal_err}")
+        # DISC-W_EXIT (tradier): exit when weekly WaveTrend crosses against position (2026-05-15)
+        if bool(getattr(tm_mod.config, 'WT_W_EXIT_ENABLED', False)):
+            for _we_pk, _we_pos in list(manager.positions.items()):
+                if abs(getattr(_we_pos, 'positionAmt', 0) or 0) < 0.0001:
+                    continue
+                _we_sym = (getattr(_we_pos, 'symbol', '') or
+                           (_we_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _we_pk
+                            else (_we_pk[:-5] if _we_pk.endswith('_LONG') else _we_pk[:-6])))
+                _we_ind_t = indicator_cache.get(_we_sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                if not _we_ind_t:
+                    continue
+                _we_wt1 = float(_we_ind_t.get('wt1_W', 0) or 0)
+                _we_wt2 = float(_we_ind_t.get('wt2_W', 0) or 0)
+                if _we_wt1 == 0 and _we_wt2 == 0:
+                    continue
+                _we_now_bull = _we_wt1 > _we_wt2
+                _we_prev_bull = _w_exit_prev_t.get(_we_sym)
+                _w_exit_prev_t[_we_sym] = _we_now_bull
+                if _we_prev_bull is None:
+                    continue
+                _we_is_long = _we_pk.endswith('_LONG')
+                _we_cross = (_we_is_long and _we_prev_bull and not _we_now_bull) or \
+                            (not _we_is_long and not _we_prev_bull and _we_now_bull)
+                if not _we_cross:
+                    continue
+                _we_gain = float(getattr(_we_pos, 'gain', 0) or 0)
+                _we_px = float(_we_ind_t.get('current_price', 0) or 0)
+                if _we_px <= 0:
+                    continue
+                _we_side = 'LONG' if _we_is_long else 'SHORT'
+                _we_reason = f"WT_W_CROSS_EXIT_{_we_side}_wt1={_we_wt1:.1f}_wt2={_we_wt2:.1f}_g{_we_gain:.3f}%"
+                try:
+                    await manager.execute_trade_action(account_key=account_key, position_key=_we_pk, symbol=_we_sym, quantity=abs(float(getattr(_we_pos, 'positionAmt', 0))), current_price=_we_px, side='SELL' if _we_is_long else 'BUY', position_side=_we_side, action='CLOSE', reason=_we_reason, is_full_close=True, is_hedge=False)
+                    v8_logger.info(f"[DISC-W_EXIT_T] {_we_pk}: W cross exit gain={_we_gain:.2f}%")
+                except Exception as _we_err_t:
+                    if step < 10 or step % 1000 == 0:
+                        v8_logger.error(f"[DISC-W_EXIT_T_ERR] {_we_pk}: {_we_err_t}")
         # NO-LIES 2026-05-12: deterministic drain replaces single-tick yield.
         await drain_pending_v8_tasks()
         await asyncio.sleep(0)
