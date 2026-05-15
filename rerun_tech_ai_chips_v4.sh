@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# rerun_tech_ai_chips_v4.sh
-# Runs sectors that timed out in v3 (too many syms for 3600s) in smaller sub-groups.
-# Rate: ~2.5-3 min/sym for tradier 3yr → max ~20 syms per group for safe margin.
+# rerun_stock_sectors_v4.sh  (originally rerun_tech_ai_chips_v4.sh)
+# Runs stock sectors that timed out in v3 in sub-groups of ≤10 syms.
+# Empirical rate: 8 syms < 3600s, 14-15 syms > 3600s → use ≤10 syms/group.
 #
-# Sectors:
-#   tech_ai_chips (29 syms) → 10+10+9
-#   energy_oil_gas (24 syms) → 12+12
+# Sectors (all timed out rc=-9 in v3):
+#   tech_ai_chips   (29 syms) → 10+10+9
+#   energy_oil_gas  (24 syms) → 8+8+8
+#   precious_metals (15 syms) → 8+7
+#   base_metals_mining (14 syms) → 7+7
 #
 # Usage (on S1, after v3 completes):
 #   nohup bash rerun_tech_ai_chips_v4.sh > ~/logs/sector_rerun_v4_$(date +%Y%m%d_%H%M%S).log 2>&1 < /dev/null &
@@ -88,9 +90,9 @@ run_sector_syms() {
     sleep 30
 }
 
-log "=== v4 (split large stock sectors) starting ==="
+log "=== v4 (split all timed-out stock sectors, ≤10 syms/group) starting ==="
 
-# tech_ai_chips: 29 syms → split 10+10+9 (~25 min each)
+# tech_ai_chips: 29 syms → 10+10+9
 run_sector_syms tradier tech_ai_chips_a tradier_sector_baseline \
     "NVDA,AMD,AVGO,MU,INTC,LRCX,TXN,ARM,PLTR,CRWD" \
     2023-05-13 3600
@@ -103,14 +105,36 @@ run_sector_syms tradier tech_ai_chips_c tradier_sector_baseline \
     "OLED,SNDK,RBLX,ASTS,CRWV,MSTR,GOOGL,ROBO,BOTZ" \
     2023-05-13 3600
 
-# energy_oil_gas: 24 syms → split 12+12 (~30 min each)
+# energy_oil_gas: 24 syms → 8+8+8 (12-sym groups also timeout)
 run_sector_syms tradier energy_oil_gas_a tradier_sector_baseline \
-    "COP,EOG,DVN,FANG,CRK,EQT,AR,RRC,CHRD,PR,CTRA,LNG" \
+    "COP,EOG,DVN,FANG,CRK,EQT,AR,RRC" \
     2023-05-13 3600
 
 run_sector_syms tradier energy_oil_gas_b tradier_sector_baseline \
-    "OKE,TRGP,EPD,MPC,VLO,PSX,PBF,DINO,XOP,USO,BNO,COPX" \
+    "CHRD,PR,CTRA,LNG,OKE,TRGP,EPD,MPC" \
     2023-05-13 3600
 
-log "=== v4 complete: 5 sub-sector runs (tech_ai_chips 10+10+9, energy_oil_gas 12+12) ==="
+run_sector_syms tradier energy_oil_gas_c tradier_sector_baseline \
+    "VLO,PSX,PBF,DINO,XOP,USO,BNO,COPX" \
+    2023-05-13 3600
+
+# precious_metals: 15 syms → 8+7
+run_sector_syms tradier precious_metals_a tradier_sector_baseline \
+    "NEM,GDX,WPM,AEM,AU,AGI,EGO,KGC" \
+    2023-05-13 3600
+
+run_sector_syms tradier precious_metals_b tradier_sector_baseline \
+    "FNV,RGLD,PAAS,HL,AG,GLD,CDE" \
+    2023-05-13 3600
+
+# base_metals_mining: 14 syms → 7+7
+run_sector_syms tradier base_metals_mining_a tradier_sector_baseline \
+    "CLF,NUE,STLD,CMC,RS,VALE,BHP" \
+    2023-05-13 3600
+
+run_sector_syms tradier base_metals_mining_b tradier_sector_baseline \
+    "RIO,TECK,SCCO,FCX,MP,LAC,ALB" \
+    2023-05-13 3600
+
+log "=== v4 complete: 10 sub-sector runs (tech 10+10+9, energy 8+8+8, precious 8+7, base_metals 7+7) ==="
 log "Results in: $WORKDIR/data/sweep_results/"

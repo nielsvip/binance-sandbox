@@ -699,6 +699,25 @@ def grid_tradier_param_hunt():
     # ── ABLATION: reentry params ──
     for k_max in [40.0, 80.0, 100.0]:
         combos.append((f"reentry_k{int(k_max)}", {"REENTRY_RALLY_K15M_MAX": k_max}))
+
+    # ── HAIKU_WINNER: winner pyramid + giveback-reduce (tradier, 2026-05-15) ──
+    # Mirrors HaikuOverseer.manage_winners() numeric logic — augment 10% on gain>thr,
+    # reduce back when gain slips below red_thr. V8_USE_VEC_ALL=1 already set by coordinator.
+    combos.append(("HAIKU_WINNER_on",    {"HAIKU_WINNER_ENABLED": True}))
+    combos.append(("HAIKU_WINNER_aug2",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 2.0}))
+    combos.append(("HAIKU_WINNER_aug4",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 4.0}))
+    combos.append(("HAIKU_WINNER_aug5",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 5.0}))
+    combos.append(("HAIKU_WINNER_red1p5",{"HAIKU_WINNER_ENABLED": True, "HAIKU_REDUCE_GAIN_THRESHOLD": 1.5}))
+    combos.append(("HAIKU_WINNER_frac5", {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.05}))
+    combos.append(("HAIKU_WINNER_frac20",{"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.20}))
+    # ── HAIKU_ENTRY_GATE: block overbought LONG (K>max_k) and oversold SHORT (K<min_k) ──
+    combos.append(("HAIKU_GATE_85_15",  {"HAIKU_ENTRY_GATE_ENABLED": True}))
+    combos.append(("HAIKU_GATE_80_20",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+    combos.append(("HAIKU_GATE_75_25",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 75.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 25.0}))
+    # ── HAIKU combo: both winner pyramid + entry gate ──
+    combos.append(("HAIKU_BOTH_on",     {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True}))
+    combos.append(("HAIKU_BOTH_tight",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+
     return combos
 
 
@@ -1303,6 +1322,24 @@ def grid_system_combo():
         out.append((f"NOLOSS_BYPASS_{n}OF5", {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
                                                 "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": n}))
 
+    # 29. HAIKU_WINNER: winner pyramid + giveback-reduce (crypto, 2026-05-15)
+    # Mirrors HaikuOverseer.manage_winners() numeric path — augment AUGMENT_FRACTION on gain>thr,
+    # reduce back when gain slips below REDUCE_GAIN_THRESHOLD. V8_USE_VEC_ALL=1 already set by coordinator.
+    out.append(("HAIKU_WINNER_on",    {"HAIKU_WINNER_ENABLED": True}))
+    out.append(("HAIKU_WINNER_aug2",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 2.0}))
+    out.append(("HAIKU_WINNER_aug4",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 4.0}))
+    out.append(("HAIKU_WINNER_aug5",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 5.0}))
+    out.append(("HAIKU_WINNER_red1p5",{"HAIKU_WINNER_ENABLED": True, "HAIKU_REDUCE_GAIN_THRESHOLD": 1.5}))
+    out.append(("HAIKU_WINNER_frac5", {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.05}))
+    out.append(("HAIKU_WINNER_frac20",{"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.20}))
+    # 30. HAIKU_ENTRY_GATE: block overbought LONG (K_15m>max_k) and oversold SHORT (K_15m<min_k)
+    out.append(("HAIKU_GATE_85_15",  {"HAIKU_ENTRY_GATE_ENABLED": True}))
+    out.append(("HAIKU_GATE_80_20",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+    out.append(("HAIKU_GATE_75_25",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 75.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 25.0}))
+    # 31. HAIKU combo: both winner pyramid + entry gate
+    out.append(("HAIKU_BOTH_on",     {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True}))
+    out.append(("HAIKU_BOTH_tight",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+
     return out
 
 
@@ -1495,6 +1532,59 @@ def grid_gr_dcbb_threshold():
     return combos
 
 
+def grid_haiku_sweep():
+    """2026-05-15: Focused HAIKU_OVERSEER numeric-path ablation.
+
+    Tests two distinct sub-systems of HaikuOverseer (AI reversal path excluded —
+    non-deterministic in backtest):
+
+    A. HAIKU_WINNER — winner pyramid + giveback-reduce (manage_winners() logic):
+       When gain > HAIKU_AUGMENT_GAIN_THRESHOLD (default 3%), augment
+       HAIKU_AUGMENT_FRACTION (10%) of position. When gain slips back below
+       HAIKU_REDUCE_GAIN_THRESHOLD (2.5%), reduce by the augmented qty.
+       Test: does pyramiding winners improve pool_sharpe AND avg_gain_trade?
+
+    B. HAIKU_ENTRY_GATE — stoch overbought/oversold block (build_judgement_prompt rules 1-2):
+       Block LONG entries when K_15m > HAIKU_ENTRY_GATE_LONG_MAX_K (85).
+       Block SHORT entries when K_15m < HAIKU_ENTRY_GATE_SHORT_MIN_K (15).
+       Test: does filtering overbought entries improve entry quality without killing trade rate?
+
+    Valid for both crypto (--mode crypto) and tradier (--mode tradier).
+    V8_USE_VEC_ALL=1 activates DISC-HAIKU_WINNER and HAIKU_ENTRY_GATE in engine.
+    All variants default OFF — baseline is unmodified behavior.
+    """
+    combos = [("baseline", {})]
+
+    # A. HAIKU_WINNER — augment threshold sweep
+    combos.append(("HAIKU_WINNER_on",    {"HAIKU_WINNER_ENABLED": True}))
+    combos.append(("HAIKU_WINNER_aug2",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 2.0}))
+    combos.append(("HAIKU_WINNER_aug4",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 4.0}))
+    combos.append(("HAIKU_WINNER_aug5",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 5.0}))
+    # A2. reduce threshold — how long to let winner run before cutting back
+    combos.append(("HAIKU_WINNER_red1p5",{"HAIKU_WINNER_ENABLED": True, "HAIKU_REDUCE_GAIN_THRESHOLD": 1.5}))
+    combos.append(("HAIKU_WINNER_red2p0",{"HAIKU_WINNER_ENABLED": True, "HAIKU_REDUCE_GAIN_THRESHOLD": 2.0}))
+    # A3. augment fraction — how aggressively to pyramid
+    combos.append(("HAIKU_WINNER_frac5", {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.05}))
+    combos.append(("HAIKU_WINNER_frac20",{"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_FRACTION": 0.20}))
+    # A4. tight pyramid: low threshold + large fraction
+    combos.append(("HAIKU_WINNER_tight", {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 2.0, "HAIKU_AUGMENT_FRACTION": 0.20}))
+    # A5. wide pyramid: high threshold + small fraction (only truly great winners get augmented)
+    combos.append(("HAIKU_WINNER_wide",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 5.0, "HAIKU_AUGMENT_FRACTION": 0.05}))
+
+    # B. HAIKU_ENTRY_GATE — stoch overbought/oversold block
+    combos.append(("HAIKU_GATE_85_15",  {"HAIKU_ENTRY_GATE_ENABLED": True}))
+    combos.append(("HAIKU_GATE_80_20",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+    combos.append(("HAIKU_GATE_75_25",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 75.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 25.0}))
+    combos.append(("HAIKU_GATE_70_30",  {"HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 70.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 30.0}))
+
+    # C. Combos: winner pyramid + entry gate together
+    combos.append(("HAIKU_BOTH_on",     {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True}))
+    combos.append(("HAIKU_BOTH_tight",  {"HAIKU_WINNER_ENABLED": True, "HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+    combos.append(("HAIKU_BOTH_wide",   {"HAIKU_WINNER_ENABLED": True, "HAIKU_AUGMENT_GAIN_THRESHOLD": 5.0, "HAIKU_ENTRY_GATE_ENABLED": True, "HAIKU_ENTRY_GATE_LONG_MAX_K": 80.0, "HAIKU_ENTRY_GATE_SHORT_MIN_K": 20.0}))
+
+    return combos
+
+
 TIER_MAP = {
     "gr_vote_score": grid_gr_vote_score,
     "gr_dcbb_threshold": grid_gr_dcbb_threshold,
@@ -1512,6 +1602,7 @@ TIER_MAP = {
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_sector_baseline": grid_tradier_sector_baseline,
     "crypto_sector_baseline": grid_crypto_sector_baseline,
+    "haiku_sweep": grid_haiku_sweep,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
