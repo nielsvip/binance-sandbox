@@ -608,6 +608,24 @@ def grid_crypto_sector_baseline():
     return [("baseline", {})]
 
 
+def grid_tradier_sector_w_confirm():
+    """2026-05-15: W WT confirmation tier for stock sector sweeps.
+    Requires Weekly WaveTrend direction alignment (wt1_W > wt2_W for longs, wt1_W < wt2_W for shorts)
+    as a mandatory gate before any entry. Filters out counter-Weekly-trend trades.
+    Tests whether holding only in W WT direction dramatically improves sector Sharpe vs baseline.
+    Use with same ≤10 sym/group splits as tradier_sector_baseline."""
+    return [("w_confirm", {"WT_W_REQUIRED_TRADIER": True})]
+
+
+def grid_crypto_sector_w_confirm():
+    """2026-05-15: W WT confirmation tier for crypto sector sweeps.
+    Requires Weekly WaveTrend direction alignment (wt1_W > wt2_W for longs, wt1_W < wt2_W for shorts)
+    as a mandatory gate before any crypto entry. Crypto trades 24/7 but W WT still captures the
+    dominant multi-week trend direction.
+    Use with same ≤4 sym/group splits as crypto_sector_baseline."""
+    return [("w_confirm", {"WT_W_REQUIRED_CRYPTO": True})]
+
+
 def grid_tradier_param_hunt():
     """2026-05-08: full real-engine tradier knob hunt with WT_DC_ENTRY_THRESHOLD sweep.
     Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
@@ -1602,6 +1620,8 @@ TIER_MAP = {
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_sector_baseline": grid_tradier_sector_baseline,
     "crypto_sector_baseline": grid_crypto_sector_baseline,
+    "tradier_sector_w_confirm": grid_tradier_sector_w_confirm,
+    "crypto_sector_w_confirm": grid_crypto_sector_w_confirm,
     "haiku_sweep": grid_haiku_sweep,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,

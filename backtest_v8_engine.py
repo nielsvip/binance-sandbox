@@ -2556,6 +2556,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 elif 'CLENOW' in _v8ns_veto: _v8ns_counters['clenow_block'] += 1
                 elif 'PROXIMITY_TOP' in _v8ns_veto: _v8ns_counters['proximity_top_block'] += 1
                 return _v8ns_veto
+            # W WT gate (2026-05-15): require Weekly WaveTrend alignment before any crypto entry.
+            if bool(getattr(config, 'WT_W_REQUIRED_CRYPTO', False)):
+                _wt1_W_c = float(_v8ns_ind.get('wt1_W') or 0)
+                _wt2_W_c = float(_v8ns_ind.get('wt2_W') or 0)
+                if _wt1_W_c != 0 or _wt2_W_c != 0:
+                    if _v8ns_is_long and _wt1_W_c <= _wt2_W_c:
+                        return f"BLOCKED_WT_W_REQUIRED_LONG_wt1={_wt1_W_c:.1f}_wt2={_wt2_W_c:.1f}"
+                    elif (not _v8ns_is_long) and _wt1_W_c >= _wt2_W_c:
+                        return f"BLOCKED_WT_W_REQUIRED_SHORT_wt1={_wt1_W_c:.1f}_wt2={_wt2_W_c:.1f}"
             # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE_ENTRY (informational tag for crypto eta).
             # In v8_quick this is OR-additive to base_sig; here, real check_entry_candidates already
             # produced the candidate. We tag the reason and count alignment for sweep diagnostics.
@@ -5477,6 +5486,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
                 except Exception:
                     pass
+        # W WT gate (2026-05-15): require Weekly WaveTrend alignment before any tradier entry.
+        if (not is_reduce) and bool(getattr(tm_mod.config, 'WT_W_REQUIRED_TRADIER', False)):
+            _w_ind_pt = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _wt1_W_pt = float(_w_ind_pt.get('wt1_W') or 0)
+            _wt2_W_pt = float(_w_ind_pt.get('wt2_W') or 0)
+            if _wt1_W_pt != 0 or _wt2_W_pt != 0:
+                if str(position_side) == 'LONG' and _wt1_W_pt <= _wt2_W_pt:
+                    return f"BLOCKED_WT_W_REQUIRED_LONG_wt1={_wt1_W_pt:.1f}_wt2={_wt2_W_pt:.1f}"
+                elif str(position_side) == 'SHORT' and _wt1_W_pt >= _wt2_W_pt:
+                    return f"BLOCKED_WT_W_REQUIRED_SHORT_wt1={_wt1_W_pt:.1f}_wt2={_wt2_W_pt:.1f}"
         # ── NEWBORN_PROTECT (15-min grace) — mirror ez_manage.py:14210-14262 ──
         # evaluate_newborn_protect_core is imported at the top of the file but was
         # never called here, so the engine never blocked close attempts on freshly
