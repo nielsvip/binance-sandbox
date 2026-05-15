@@ -4182,6 +4182,37 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if _egate is not None and _ts_int not in _egate:
                 _gate_filtered += 1
                 continue
+            # WT_BOTTOM_CROSS_GATE — only enter near fresh WT crosses (2026-05-14).
+            # DC hard stops on dc_low4_3m/5m mean bad-timed entries get stopped out immediately.
+            # Gate off by default; enabled via V8_OVERRIDE_FILE in sweep variants.
+            # Knobs: WT_BOTTOM_CROSS_GATE_ENABLED, WT_BOTTOM_MAX_BARS_AGO_BASE (3m crypto/5m tradier),
+            #        WT_BOTTOM_MAX_BARS_AGO_15M, WT_BOTTOM_REQUIRE_BOTH_TFS (AND vs OR logic).
+            if getattr(config, 'WT_BOTTOM_CROSS_GATE_ENABLED', False):
+                _wtb_ind = indicator_cache.get(_esym, {})
+                _wtb_is_long = _epk.endswith('_LONG')
+                _wtb_base_tf = '3m' if mode == 'crypto' else '5m'
+                _wtb_max_base = int(getattr(config, 'WT_BOTTOM_MAX_BARS_AGO_BASE', 5) or 0)
+                _wtb_max_15m = int(getattr(config, 'WT_BOTTOM_MAX_BARS_AGO_15M', 0) or 0)
+                _wtb_require_both = bool(getattr(config, 'WT_BOTTOM_REQUIRE_BOTH_TFS', False))
+                _wtb_bars_base = int(_wtb_ind.get(f'wt_cross_bars_ago_{_wtb_base_tf}', 999) or 999)
+                _wtb_rising_base = bool(_wtb_ind.get(f'wt_cross_rising_{_wtb_base_tf}', False))
+                _wtb_bars_15m = int(_wtb_ind.get('wt_cross_bars_ago_15m', 999) or 999)
+                _wtb_rising_15m = bool(_wtb_ind.get('wt_cross_rising_15m', False))
+                _wtb_fresh_base = (
+                    _wtb_max_base > 0 and _wtb_bars_base <= _wtb_max_base
+                    and (_wtb_rising_base if _wtb_is_long else not _wtb_rising_base)
+                )
+                _wtb_fresh_15m = (
+                    _wtb_max_15m > 0 and _wtb_bars_15m <= _wtb_max_15m
+                    and (_wtb_rising_15m if _wtb_is_long else not _wtb_rising_15m)
+                )
+                if _wtb_max_base > 0 or _wtb_max_15m > 0:
+                    if _wtb_require_both and _wtb_max_base > 0 and _wtb_max_15m > 0:
+                        _wtb_pass = _wtb_fresh_base and _wtb_fresh_15m
+                    else:
+                        _wtb_pass = _wtb_fresh_base or _wtb_fresh_15m
+                    if not _wtb_pass:
+                        continue
             entry_pks.append(_epk)
         if step < 3:
             v8_logger.info(f"[DBG] entry_pks={len(entry_pks)} all_position_keys={len(all_position_keys)} positions={len(trade_manager.positions)} gate_filtered={_gate_filtered}")
