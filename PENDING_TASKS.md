@@ -89,7 +89,7 @@ These 14 paths from PATH_AUDIT_FINAL.md are confirmed missing from the engine. L
 | 3 | STALL_MAX_CLOSES | 190 | ✅ DONE 2026-05-14 | DISC-STALL via `vec_paths/stall_sub.py` |
 | 4 | SmartCircuitBreaker (CB_HTF_EXHAUST) | <20 | ✅ DONE 2026-05-14 | `_CBStub` with `should_halt()=False` wired |
 | 5 | MARKET_SPIKE_REDUCE | <10 | ⏳ BLOCKED | No `market_sentiment_score` in NPZ — add to regen list |
-| 6 | HAIKU_OVERSEER | <5 | ⏳ DEFERRED | Separate agent process — XL effort, separate session |
+| 6 | HAIKU_OVERSEER | <5 | ✅ DONE 2026-05-15 | `vec_paths/haiku_winner.py`: DISC-HAIKU_WINNER (pyramid + reduce) + HAIKU_ENTRY_GATE. AI reversal not implemented (non-deterministic in backtest). |
 | 7 | DC_BREACH_REDUCE | ~30 est | ✅ DONE 2026-05-14 | Wired after DISC-4 (OBLIGATORY_HEDGE) |
 | 8 | DC_BREACH_REDUCE_UNHEDGED | ~15 est | ✅ DONE (via #7) | Same code path covers unhedged case |
 | 9 | VEC_STRATEGY_GATES (entry block) | shadow only | ✅ DONE 2026-05-14 | P0-B; active when `V8_USE_VEC_STRATEGY_GATES=1` |

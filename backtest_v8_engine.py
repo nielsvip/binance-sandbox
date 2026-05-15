@@ -3886,6 +3886,64 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     if step < 10 or step % 1000 == 0:
                         v8_logger.error(f"[DISC-WT5OF5_ERR] {_wt5_pk}: {_wt5_exec_e}")
 
+        # DISC-HAIKU_WINNER: winner pyramid + giveback-reduce — numeric portion of HaikuOverseer.manage_winners()
+        # Mirrors ez_manage.py:46331 manage_winners():
+        #   gain > HAIKU_AUGMENT_GAIN_THRESHOLD (3%) → augment HAIKU_AUGMENT_FRACTION (10%) of position.
+        #   gain drops < HAIKU_REDUCE_GAIN_THRESHOLD (2.5%) after augment → reduce by augmented qty.
+        #   gain recovers above threshold after reduce → re-augment same qty.
+        # AI reversal (scan_decisions/call_haiku) is NOT implemented — non-deterministic in backtest.
+        # Gated by V8_USE_VEC_ALL=1 + HAIKU_WINNER_ENABLED (default False).
+        if V8_VEC_PARITY_AVAILABLE and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and \
+                bool(getattr(config, 'HAIKU_WINNER_ENABLED', False)):
+            if not hasattr(trade_manager, '_haiku_state'):
+                trade_manager._haiku_state = {}
+            try:
+                from vec_paths.haiku_winner import _evaluate as _hw_eval
+                _hw_aug_thr = float(getattr(config, 'HAIKU_AUGMENT_GAIN_THRESHOLD', 3.0))
+                _hw_red_thr = float(getattr(config, 'HAIKU_REDUCE_GAIN_THRESHOLD', 2.5))
+                _hw_frac = float(getattr(config, 'HAIKU_AUGMENT_FRACTION', 0.10))
+                for _hw_pk, _hw_pos in list(trade_manager.positions.items()):
+                    _hw_amt = abs(float(getattr(_hw_pos, 'positionAmt', 0) or 0))
+                    if _hw_amt < 0.0001:
+                        continue
+                    _hw_ep = float(getattr(_hw_pos, 'entry_price', 0) or 0)
+                    if _hw_ep <= 0:
+                        continue
+                    _hw_sym = (getattr(_hw_pos, 'symbol', '') or
+                               (_hw_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _hw_pk
+                                else (_hw_pk[:-5] if _hw_pk.endswith('_LONG') else _hw_pk[:-6])))
+                    _hw_ind = indicator_cache.get(_hw_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    _hw_px = float(_hw_ind.get('current_price', 0) or 0)
+                    if _hw_px <= 0:
+                        continue
+                    _hw_is_long = _hw_pk.endswith('_LONG')
+                    _hw_gain = ((_hw_px - _hw_ep) / _hw_ep * 100.0) if _hw_is_long else ((_hw_ep - _hw_px) / _hw_ep * 100.0)
+                    _hw_st = trade_manager._haiku_state.get(_hw_pk, {'augmented_qty': 0.0, 'reduced': False})
+                    _hw_result = _hw_eval(_hw_gain, _hw_amt, _hw_px, _hw_aug_thr, _hw_red_thr, _hw_frac, _hw_is_long, _hw_st.get('augmented_qty', 0.0), _hw_st.get('reduced', False))
+                    if not _hw_result:
+                        continue
+                    _hw_action = _hw_result['action']
+                    _hw_qty = _hw_result['qty']
+                    _hw_reason = _hw_result['reason']
+                    try:
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_hw_pk, symbol=_hw_sym, quantity=_hw_qty, current_price=_hw_px, side=('SELL' if _hw_is_long else 'BUY') if _hw_action in ('REDUCE', 'CLOSE') else ('BUY' if _hw_is_long else 'SELL'), position_side='LONG' if _hw_is_long else 'SHORT', action=_hw_action, reason=_hw_reason, is_full_close=False, is_hedge=False)
+                        _hw_upd = _hw_result.get('haiku_state_update', {})
+                        if _hw_pk not in trade_manager._haiku_state:
+                            trade_manager._haiku_state[_hw_pk] = {'augmented_qty': 0.0, 'reduced': False}
+                        if 'augmented_qty_delta' in _hw_upd:
+                            trade_manager._haiku_state[_hw_pk]['augmented_qty'] += _hw_upd['augmented_qty_delta']
+                        if 'reduced' in _hw_upd:
+                            trade_manager._haiku_state[_hw_pk]['reduced'] = _hw_upd['reduced']
+                        v8_logger.warning(f"[DISC-HAIKU_WINNER] {_hw_pk}: {_hw_action} qty={_hw_qty:.4f} gain={_hw_gain:.2f}% — {_hw_reason}")
+                    except Exception as _hw_exec_e:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[DISC-HAIKU_WINNER_ERR] {_hw_pk}: {_hw_exec_e}")
+            except ImportError:
+                pass
+            except Exception as _hw_outer_e:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[DISC-HAIKU_WINNER_OUTER_ERR] step={step}: {_hw_outer_e}")
+
         # Clear reduce cooldowns per bar (each bar = 3-15 min in real time)
         if hasattr(ez_manage, '_recent_reduces'):
             ez_manage._recent_reduces.clear()
@@ -4256,6 +4314,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     (_ls_blocked == 'LONG' and pk.endswith('_LONG')) or
                     (_ls_blocked == 'SHORT' and pk.endswith('_SHORT'))
                 )]
+        # ENTRY: HAIKU_ENTRY_GATE — block overbought LONG entries (K_15m>85) and oversold SHORT entries (K_15m<15).
+        # Deterministic subset of HaikuOverseer.build_judgement_prompt() rules #1-2 — no API call needed.
+        # Gated by V8_USE_VEC_ALL=1 + HAIKU_ENTRY_GATE_ENABLED (default False).
+        if V8_VEC_PARITY_AVAILABLE and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and \
+                bool(getattr(config, 'HAIKU_ENTRY_GATE_ENABLED', False)) and entry_pks:
+            try:
+                from vec_paths.haiku_winner import check_haiku_entry_gate as _heg_check
+                _heg_max_k = float(getattr(config, 'HAIKU_ENTRY_GATE_LONG_MAX_K', 85.0))
+                _heg_min_k = float(getattr(config, 'HAIKU_ENTRY_GATE_SHORT_MIN_K', 15.0))
+                _heg_filtered = []
+                for _heg_pk in entry_pks:
+                    _heg_side = 'LONG' if _heg_pk.endswith('_LONG') else 'SHORT'
+                    _heg_sym = _heg_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _heg_pk else (_heg_pk[:-5] if _heg_pk.endswith('_LONG') else _heg_pk[:-6])
+                    _heg_ind = indicator_cache.get(_heg_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    if _heg_check(_heg_ind, _heg_side, mode, config):
+                        _heg_k = float(_heg_ind.get('k_15m', 50) or 50)
+                        v8_logger.debug(f"[HAIKU_ENTRY_GATE_BLOCK] {_heg_pk}: K_15m={_heg_k:.1f} blocked")
+                    else:
+                        _heg_filtered.append(_heg_pk)
+                entry_pks = _heg_filtered
+            except Exception:
+                pass
+
         # ENTRY: BB_RECOVERY_ENTRY — failed BB breakout/breakdown entry signal (P2-A)
         # Active when V8_USE_VEC_ALL=1 and BB_RECOVERY_ENTRY_ENABLED[_TRADIER]=True (default False).
         if os.environ.get("V8_USE_VEC_ALL", "0") == "1":

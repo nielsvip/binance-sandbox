@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # rerun_tech_ai_chips_v4.sh
-# Runs tech_ai_chips in 3 sub-groups of ≤10 syms.
-# Root cause: 29 syms × 3yr tradier > 3600s timeout even with no competitors.
-# Fix: split to 10+10+9, each run completes in ~20 min.
+# Runs sectors that timed out in v3 (too many syms for 3600s) in smaller sub-groups.
+# Rate: ~2.5-3 min/sym for tradier 3yr → max ~20 syms per group for safe margin.
 #
-# Usage (on S1):
+# Sectors:
+#   tech_ai_chips (29 syms) → 10+10+9
+#   energy_oil_gas (24 syms) → 12+12
+#
+# Usage (on S1, after v3 completes):
 #   nohup bash rerun_tech_ai_chips_v4.sh > ~/logs/sector_rerun_v4_$(date +%Y%m%d_%H%M%S).log 2>&1 < /dev/null &
 #
-# Created: 2026-05-14
+# Created: 2026-05-15
 
 PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 WORKDIR=/home/niels/binance-sandbox
@@ -85,10 +88,9 @@ run_sector_syms() {
     sleep 30
 }
 
-log "=== tech_ai_chips v4 (split 10+10+9) starting ==="
+log "=== v4 (split large stock sectors) starting ==="
 
-# tech_ai_chips: 29 syms → split 10+10+9
-# Previous runs timed out at 3600s; 10 syms should complete in ~20 min each.
+# tech_ai_chips: 29 syms → split 10+10+9 (~25 min each)
 run_sector_syms tradier tech_ai_chips_a tradier_sector_baseline \
     "NVDA,AMD,AVGO,MU,INTC,LRCX,TXN,ARM,PLTR,CRWD" \
     2023-05-13 3600
@@ -101,5 +103,14 @@ run_sector_syms tradier tech_ai_chips_c tradier_sector_baseline \
     "OLED,SNDK,RBLX,ASTS,CRWV,MSTR,GOOGL,ROBO,BOTZ" \
     2023-05-13 3600
 
-log "=== tech_ai_chips v4 complete: 3 sub-sector runs ==="
+# energy_oil_gas: 24 syms → split 12+12 (~30 min each)
+run_sector_syms tradier energy_oil_gas_a tradier_sector_baseline \
+    "COP,EOG,DVN,FANG,CRK,EQT,AR,RRC,CHRD,PR,CTRA,LNG" \
+    2023-05-13 3600
+
+run_sector_syms tradier energy_oil_gas_b tradier_sector_baseline \
+    "OKE,TRGP,EPD,MPC,VLO,PSX,PBF,DINO,XOP,USO,BNO,COPX" \
+    2023-05-13 3600
+
+log "=== v4 complete: 5 sub-sector runs (tech_ai_chips 10+10+9, energy_oil_gas 12+12) ==="
 log "Results in: $WORKDIR/data/sweep_results/"
