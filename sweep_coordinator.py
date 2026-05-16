@@ -137,7 +137,7 @@ def _cfg_hash(overrides: dict) -> str:
     canonical = json.dumps(overrides, sort_keys=True, separators=(",", ":"))
     return hashlib.md5(canonical.encode()).hexdigest()[:12]
 
-def _load_seen_hashes() -> set:
+def _load_seen_hashes(mode: str = "") -> set:
     seen: set = set()
     if not LEDGER_PATH.exists():
         return seen
@@ -145,6 +145,9 @@ def _load_seen_hashes() -> set:
         for line in f:
             try:
                 row = json.loads(line)
+                row_mode = row.get("mode", "")
+                if mode and row_mode and row_mode != mode:
+                    continue
                 h = row.get("cfg_hash")
                 if h:
                     seen.add(h)
@@ -400,13 +403,23 @@ def _run_one(
         }
         return row
 
+    def _grp(m, *names, default=0):
+        for name in names:
+            try:
+                v = m[name]
+                if v is not None:
+                    return v
+            except IndexError:
+                pass
+        return str(default)
+
     try:
         pool_sharpe = float(mx["pool_sharpe"])
-        sym_sharpe = float(mx.get("sym_sharpe", mx["pool_sharpe"]))
-        gain_pct = float(mx.get("gain_pct", mx.get("pnl", 0)))
-        trades = int(mx.get("closes", mx.get("trades", 0)))
-        wins = int(mx.get("wins", 0))
-        losses = int(mx.get("losses", 0))
+        sym_sharpe = float(mx["sym_sharpe"])
+        gain_pct = float(_grp(mx, "gain_pct", "pnl", default=0))
+        trades = int(_grp(mx, "closes", "trades", default=0))
+        wins = int(mx["wins"])
+        losses = int(mx["losses"])
     except Exception as e:
         row = {
             "test_id": label, "cfg_hash": h, "status": "PARSE_ERROR",
@@ -575,7 +588,7 @@ def main() -> None:
     last_flaw_write = 0.0
 
     while not _STOP.is_set():
-        seen = _load_seen_hashes()
+        seen = _load_seen_hashes(args.mode)
         queue = _build_priority_queue(args.mode, seen)
 
         if not queue:
