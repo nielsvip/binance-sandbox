@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 14:18:22 UTC
+# Copilot Status — 2026-05-16 14:33:54 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:14:01
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T14:15:04
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T14:16:05
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:16:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:16:05
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T14:16:08
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T14:17:10
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:18:11
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:18:11
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T14:18:11
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T14:26:27
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:26:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:26:27
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:28:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:28:32
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:30:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:30:36
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T14:32:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T14:32:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T14:32:39
 
 ## Missed Trades (trader comparison)
 
@@ -42,17 +42,17 @@ _None_
 
 - WATCHING: **APEUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **RUNEUSDT** LONG (crypto) peaked +3.9%, exited 0m ago
+- WATCHING: **BEATUSDT** SHORT (crypto) peaked +3.4%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
-- WATCHING: **BEATUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
