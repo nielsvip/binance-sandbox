@@ -4333,7 +4333,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Without this, the WT_3M_FORCE_OPEN_GR_* knobs are dead in backtest (sweeping
         # GR_MIN_TFS / MIN_IND_PER_TF returns identical results across variants — the
         # gate code never executes). Mirrors live producer B (zero-position branch).
-        if bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)) and entry_pks:
+        if bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)) and entry_pks and not os.environ.get('V8_SWEEP_MODE'):
             try:
                 from golden_rule_htf import _ind_score as _wt3m_score
                 _wt3m_size = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 25.0))

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 16:46:02 UTC
+# Copilot Status — 2026-05-16 17:01:25 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:43:37
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:43:37
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:44:39
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:44:39
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:44:39
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:45:40
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:45:40
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:45:41
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:45:41
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:45:41
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:59:08
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T17:00:09
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T17:00:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T17:00:09
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:00:11
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:00:11
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:00:11
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:01:15
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:01:15
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:01:15
 
 ## Missed Trades (trader comparison)
 
@@ -40,7 +40,7 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **INXUSDT** LONG (crypto) peaked +7.2%, exited 0m ago
+- WATCHING: **INXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
 - WATCHING: **BEATUSDT** SHORT (crypto) peaked +4.2%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
@@ -51,7 +51,7 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_positions.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
