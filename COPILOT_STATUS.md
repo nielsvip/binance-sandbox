@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 12:31:51 UTC
+# Copilot Status — 2026-05-16 12:47:16 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T12:23:14
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:24:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:24:15
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T12:24:16
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:26:20
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:26:20
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:28:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:28:24
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:30:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:30:28
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:38:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:38:44
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:40:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:40:47
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:42:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:42:53
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:44:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:44:57
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T12:47:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T12:47:04
 
 ## Missed Trades (trader comparison)
 
@@ -50,9 +50,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 47
+**Issues (last 1h):** 50
 - [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (19min)
-- [HIGH] ez_prices.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (35min)
+- [HIGH] ez_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (20min)
+- [MEDIUM] tradier_positions.py running but log stale (36min)
