@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 10:04:22 UTC
+# Copilot Status — 2026-05-16 10:14:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:58:41
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:58:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:58:41
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T09:58:52
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T10:00:44
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T10:00:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:00:44
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T10:02:48
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T10:02:48
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:02:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:06:55
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T10:08:59
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T10:08:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:08:59
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T10:11:02
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T10:11:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:11:02
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T10:13:06
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T10:13:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T10:13:06
 
 ## Missed Trades (trader comparison)
 
@@ -43,9 +43,9 @@ _None_
 - WATCHING: **STORJUSDT** SHORT (crypto) peaked +10.6%, exited 0m ago
 - WATCHING: **APEUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +4.6%, exited 0m ago
+- WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
+- WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
-- WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
-- WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor
 
