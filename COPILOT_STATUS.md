@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 16:05:23 UTC
+# Copilot Status — 2026-05-16 16:20:35 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:03:07
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T16:04:08
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:04:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:04:08
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:04:09
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:04:09
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:04:09
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:05:12
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:05:12
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:05:12
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:16:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:16:38
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:17:40
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:17:40
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:18:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:18:41
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:18:42
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:18:42
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:19:44
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:19:44
 
 ## Missed Trades (trader comparison)
 
@@ -40,7 +40,7 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **INXUSDT** LONG (crypto) peaked +5.8%, exited 0m ago
+- WATCHING: **INXUSDT** LONG (crypto) peaked +7.2%, exited 0m ago
 - WATCHING: **BEATUSDT** SHORT (crypto) peaked +4.2%, exited 0m ago
 - WATCHING: **RUNEUSDT** LONG (crypto) peaked +3.9%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
@@ -52,8 +52,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_prices.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
