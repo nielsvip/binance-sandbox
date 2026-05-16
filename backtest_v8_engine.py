@@ -4344,6 +4344,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _wt3m_tfs = ("3m", "15m", "1h", "4h", "D") if mode == 'crypto' else ("5m", "15m", "1h", "4h", "D")
                 _wt3m_fired = 0
                 for _wf_pk in list(entry_pks):
+                    # Only fire for ZERO-position keys — mirrors live "zero-position branch"
+                    _wf_pos_obj = trade_manager.positions.get(_wf_pk)
+                    if _wf_pos_obj and abs(float(getattr(_wf_pos_obj, 'positionAmt', 0) or 0)) > 0.0001:
+                        continue
                     _wf_is_long = _wf_pk.endswith('_LONG')
                     _wf_sym = _wf_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _wf_pk else _wf_pk.rsplit('_', 1)[0]
                     _wf_ind = indicator_cache.get(_wf_sym, {}) if isinstance(indicator_cache, dict) else {}
