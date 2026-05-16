@@ -113,7 +113,14 @@ V8_RESULT_TRADIER_RE = re.compile(
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
-V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*pool_sharpe=(?P<pool_sharpe>[-\d.]+)")
+V8_RESULT_LIVE_RE = re.compile(
+    r"V8_RESULT_LIVE:\s*pool_sharpe=(?P<pool_sharpe>[-\d.]+)"
+    r"(?:.*gain_pct=(?P<gain_pct>[-+\d.]+))?"
+    r"(?:.*pnl=(?P<pnl>[-+\d.]+))?"
+    r"(?:.*closes=(?P<closes>\d+))?"
+    r"(?:.*wins=(?P<wins>\d+))?"
+    r"(?:.*losses=(?P<losses>\d+))?"
+)
 V8_LIVE_CLOSES_RE = re.compile(r"V8_RESULT_LIVE:.*closes=(?P<closes>\d+)")
 V8_NEW_SWITCHES_RE = re.compile(r"V8_NEW_SWITCHES:.*dd_min=(?P<dd_min>[-\d.]+)")
 V8_INIT_RE = re.compile(
@@ -147,6 +154,9 @@ def _load_seen_hashes(mode: str = "") -> set:
                 row = json.loads(line)
                 row_mode = row.get("mode", "")
                 if mode and row_mode and row_mode != mode:
+                    continue
+                row_status = row.get("status", "")
+                if row_status in ("PARSE_ERROR", "NO_RESULT"):
                     continue
                 h = row.get("cfg_hash")
                 if h:
@@ -269,6 +279,10 @@ def _run_one(
     n_syms = None
     live_sharpe = None
     live_closes = 0
+    live_gain_pct = 0.0
+    live_wins = 0
+    live_losses = 0
+    live_match_line = None
     killed = False
     _kill_reason = "HANG_timeout"
     stdout_tail: list = []
@@ -339,6 +353,19 @@ def _run_one(
             if m:
                 try:
                     live_sharpe = float(m["pool_sharpe"])
+                    live_match_line = line
+                    try:
+                        live_gain_pct = float(m["gain_pct"] or m["pnl"] or 0)
+                    except Exception:
+                        pass
+                    try:
+                        live_wins = int(m["wins"] or 0)
+                    except Exception:
+                        pass
+                    try:
+                        live_losses = int(m["losses"] or 0)
+                    except Exception:
+                        pass
                 except Exception:
                     pass
             m = V8_LIVE_CLOSES_RE.search(line)
@@ -371,19 +398,43 @@ def _run_one(
         IN_PROGRESS_PATH.unlink()
 
     if killed:
-        row = {
-            "test_id": label,
-            "cfg_hash": h,
-            "status": "HANG",
-            "verdict": f"{_kill_reason}_{elapsed:.0f}s",
-            "elapsed_s": round(elapsed, 1),
-            "mode": mode,
-            "symbols": symbols,
-            "start": start,
-            "config_changes": overrides,
-            "source": item.get("_source", ""),
-            "ts_utc": datetime.now(timezone.utc).isoformat(),
-        }
+        if live_sharpe is not None and live_closes >= SAMPLE_FLOOR_TRADES:
+            live_trades = live_wins + live_losses if (live_wins + live_losses) > 0 else live_closes
+            print(f"[coord] ⚡ {label} HANG but live result captured — pool_sharpe={live_sharpe:.4f} closes={live_closes} [DIAGNOSTIC]", flush=True)
+            row = {
+                "test_id": label,
+                "cfg_hash": h,
+                "status": "DIAGNOSTIC",
+                "verdict": f"DIAGNOSTIC_live_partial_{_kill_reason}_{elapsed:.0f}s",
+                "pool_sharpe": round(live_sharpe, 4),
+                "sym_sharpe": round(live_sharpe, 4),
+                "gain_pct": round(live_gain_pct, 4),
+                "trades": live_trades,
+                "wins": live_wins,
+                "losses": live_losses,
+                "elapsed_s": round(elapsed, 1),
+                "mode": mode,
+                "symbols": symbols,
+                "start": start,
+                "config_changes": overrides,
+                "source": item.get("_source", ""),
+                "live_line": live_match_line,
+                "ts_utc": datetime.now(timezone.utc).isoformat(),
+            }
+        else:
+            row = {
+                "test_id": label,
+                "cfg_hash": h,
+                "status": "HANG",
+                "verdict": f"{_kill_reason}_{elapsed:.0f}s",
+                "elapsed_s": round(elapsed, 1),
+                "mode": mode,
+                "symbols": symbols,
+                "start": start,
+                "config_changes": overrides,
+                "source": item.get("_source", ""),
+                "ts_utc": datetime.now(timezone.utc).isoformat(),
+            }
         return row
 
     mx = match or match_tradier
