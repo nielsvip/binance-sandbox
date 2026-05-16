@@ -9228,7 +9228,19 @@ class TradierTradeManager:
         # 7. Final Execution
         final_shares = int(round(quantity))
         if final_shares < 1: return "QTY_ZERO_FINAL"
-        
+        if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'):
+            _gr_min_tfs_tr = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
+            if _gr_min_tfs_tr > 0:
+                try:
+                    from golden_rule_htf import score_entry_htf as _gr_score_entry_tr
+                    _gr_min_ind_tr = int(getattr(config, "GOLDEN_RULE_MIN_IND", 2))
+                    _gr_pass_tr, _gr_n_tfs_tr, _gr_detail_tr = _gr_score_entry_tr(i, is_long, "tradier", _gr_min_tfs_tr, _gr_min_ind_tr, current_price, True)
+                    if not _gr_pass_tr:
+                        logger.warning(f"[GOLDEN_RULE_CONSENSUS_BLOCK_ENTRY] {position_key} {'LONG' if is_long else 'SHORT'}: {_gr_detail_tr} — REFUSED ({reason})")
+                        return f"BLOCKED_GR_CONSENSUS_{_gr_n_tfs_tr}of{_gr_min_tfs_tr}tfs"
+                except Exception as _gr_tr_err:
+                    logger.error(f"[GOLDEN_RULE_SCORER_ENTRY_FAIL] {position_key}: {_gr_tr_err}")
+
         logger.info(f"[{position_key}] {action} EXECUTE: {final_shares} shares @ {current_price}")
         return await self.execute_now(position_key, account_key, symbol, abs(position.positionAmt), side, position_side, float(final_shares), current_price, unique_id, reason, is_full_close, action)
 

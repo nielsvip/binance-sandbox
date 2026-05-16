@@ -24480,13 +24480,26 @@ class MultiAccountTradeManager:
                                 )
                             )
                             if _hedge_outcome == "failed" and _fallback_enabled:
+                                # USER 2026-05-16 mandate (PHBUSDT $0.69/$0.14 account-wipe incident):
+                                # "if no hedge can be taken out for any reason the POSITION HAS TO CLOSE IMMEDIATELY"
+                                # Pre-fix this block left action/qty/is_full_close untouched, so a caller arriving with
+                                # action="REDUCE" + partial qty ended up doing a PARTIAL reduce only — the position
+                                # kept bleeding cycle after cycle. Now escalate to a true full close.
+                                _hf_pos = await self.get_position(position_key)
+                                _hf_pos_amt = abs(safe_float(getattr(_hf_pos, "positionAmt", 0))) if _hf_pos else abs(safe_float(original_positionAmt))
                                 logger.critical(
-                                    f"☠️ [HEDGE_FAILED_FALLBACK_CLOSE] {position_key}: gain={_real_gain:.2f}% — same-symbol hedge could not be opened, FALLING THROUGH to close (overrides NOLOSS via HEDGE_FAILED bypass)"
+                                    f"☠️ [HEDGE_FAILED_FALLBACK_CLOSE] {position_key}: gain={_real_gain:.2f}% — same-symbol hedge could not be opened, ESCALATING TO FULL CLOSE qty={_hf_pos_amt:.6f} (overrides NOLOSS via HEDGE_FAILED bypass)"
                                 )
-                                # Mutate reason so the technical-bypass list ('HEDGE_FAILED' substring) matches downstream paths.
                                 reason = f"HEDGE_FAILED_FALLBACK_CLOSE_g{_real_gain:.2f}%_orig:{(reason or '')[:60]}"
                                 reason_upper = reason.upper()
                                 _ung_bypass = True
+                                if _hf_pos_amt > 0:
+                                    action = "CLOSE"
+                                    quantity = _hf_pos_amt
+                                    original_positionAmt = _hf_pos_amt
+                                    is_full_close = True
+                                    is_reduce = True
+                                    side = "SELL" if position_side == "LONG" else "BUY"
                                 # Do NOT return here — let the function continue to place the close order.
                             else:
                                 if self.tracker_manager:

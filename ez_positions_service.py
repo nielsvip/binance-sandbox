@@ -7262,8 +7262,13 @@ class PositionService:
         if was_tiny_position:
             if position.last_signal == 'AUGMENT':
                 position.last_signal = 'OPEN'
-            if not position.opened_at:
-                position.opened_at = now
+            # USER 2026-05-16 mandate (PHBUSDT account-wipe incident): a position transitioning
+            # from amt≈0 to amt>0 IS a fresh open — ALWAYS reset opened_at to now. Pre-fix this
+            # only set opened_at when None, so a stale value from a prior closed cycle survived
+            # and made RIDICULOUS_HOLD_GUARD see age=1000+ hours on a fresh hedge, killing it
+            # 17 seconds after open. opened_at is in _POSITION_PROTECTED_FIELDS so cross-merge
+            # alone can't repair it — must explicitly stamp here.
+            position.opened_at = now
         else:
             try :
                 indicators_now = await self.get_indicators_for_symbol(position.symbol, force_refresh=True)

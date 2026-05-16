@@ -7821,7 +7821,7 @@ class FastDataManager:
         self.using_shared_memory = True
         self.trade_manager = trade_manager
         self.positions_service = positions_service or getattr(trade_manager, 'positions_service', None)
-        self.delta_tracker = DeltaTracker(cfg={"tf_weights": config.DELTA_TF_WEIGHTS, "entry_min_tf": config.DELTA_ENTRY_MIN_TF, "entry_speed_threshold": getattr(config, 'DELTA_ENTRY_SPEED_THRESHOLD', 0.5), "exit_speed_decay_pct": getattr(config, 'DELTA_EXIT_SPEED_DECAY_PCT', 50.0), "exit_min_tf_lost": config.DELTA_EXIT_MIN_TF_LOST, "exit_min_hold": config.DELTA_EXIT_MIN_HOLD, "pyramid_price_tolerance": config.DELTA_PYRAMID_PRICE_TOL, "pyramid_qty_mult": config.DELTA_PYRAMID_QTY_MULT, "pyramid_max": config.DELTA_PYRAMID_MAX, "rz_entry_enabled": config.RZ_ENTRY_ENABLED, "rz_exit_enabled": config.RZ_EXIT_ENABLED, "rz_top_bb": config.RZ_TOP_BB_THRESHOLD, "rz_bot_bb": config.RZ_BOT_BB_THRESHOLD, "rz_legs_min": config.RZ_LEGS_MIN, "rz_require_struct": config.RZ_REQUIRE_STRUCT, "rz_k_exit": config.RZ_K_EXIT, "rz_mfi_exit": config.RZ_MFI_EXIT, "rz_k_entry_max": config.RZ_K_ENTRY_MAX, "exit_dominant_tf": (getattr(config, 'DELTA_EXIT_TF', '15m') if getattr(config, 'DELTA_EXIT_DOM_TF_ENABLED', False) else "ANY")}) if config.DELTA_ENGINE_ENABLED else None
+        self.delta_tracker = DeltaTracker(cfg={"tf_weights": config.DELTA_TF_WEIGHTS, "entry_min_tf": config.DELTA_ENTRY_MIN_TF, "entry_speed_threshold": getattr(config, 'DELTA_ENTRY_SPEED_THRESHOLD', 0.5), "exit_speed_decay_pct": getattr(config, 'DELTA_EXIT_SPEED_DECAY_PCT', 50.0), "exit_min_tf_lost": config.DELTA_EXIT_MIN_TF_LOST, "exit_min_hold": config.DELTA_EXIT_MIN_HOLD, "pyramid_price_tolerance": config.DELTA_PYRAMID_PRICE_TOL, "pyramid_qty_mult": config.DELTA_PYRAMID_QTY_MULT, "pyramid_max": config.DELTA_PYRAMID_MAX, "rz_entry_enabled": config.RZ_ENTRY_ENABLED, "rz_exit_enabled": config.RZ_EXIT_ENABLED, "rz_top_bb": config.RZ_TOP_BB_THRESHOLD, "rz_bot_bb": config.RZ_BOT_BB_THRESHOLD, "rz_legs_min": config.RZ_LEGS_MIN, "rz_require_struct": config.RZ_REQUIRE_STRUCT, "rz_k_exit": config.RZ_K_EXIT, "rz_mfi_exit": config.RZ_MFI_EXIT, "rz_k_entry_max": config.RZ_K_ENTRY_MAX, "rz_baseline_bounce_short_enabled": getattr(config, "RZ_BASELINE_BOUNCE_SHORT_ENABLED", True), "exit_dominant_tf": (getattr(config, 'DELTA_EXIT_TF', '15m') if getattr(config, 'DELTA_EXIT_DOM_TF_ENABLED', False) else "ANY")}) if config.DELTA_ENGINE_ENABLED else None
         try:
             asyncio.get_running_loop()
             # 2026-05-09: REVIVED — DEDUP_STEP3/STEP4 commented these out 2026-04-14, claiming positions_service.indicators_snapshot was authoritative.
@@ -15614,7 +15614,17 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         if _reentry_tier == 'TIER2_FORCED': _t2_mult = 0.5
                         _t2_floor = config.START_POSITION_SIZE / current_price if current_price > 0 else qty
                         qty = max(_t2_floor, _min_qty_sym, _re_amount if _re_amount > 0 else 0)
-                        logger.info(f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} (SPS floor re_amt={_re_amount:.4f})")                    
+                        logger.info(f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} (SPS floor re_amt={_re_amount:.4f})")
+                    _gr_min_tfs_entry = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
+                    if _gr_min_tfs_entry > 0:
+                        try:
+                            _gr_min_ind_entry = int(getattr(config, "GOLDEN_RULE_MIN_IND", 2))
+                            _gr_pass_e, _gr_n_tfs_e, _gr_detail_e = _score_gr_htf(indicators, is_long, mode="crypto", min_tfs=_gr_min_tfs_entry, min_ind=_gr_min_ind_entry, current_price=current_price, invert_dc_bb=True)
+                            if not _gr_pass_e:
+                                logger.warning(f"[GOLDEN_RULE_CONSENSUS_BLOCK_ENTRY] {position_key} {'LONG' if is_long else 'SHORT'}: {_gr_detail_e} — REFUSED ({reason})")
+                                return
+                        except Exception as _gr_e_err:
+                            logger.error(f"[GOLDEN_RULE_SCORER_ENTRY_FAIL] {position_key}: {_gr_e_err}")
                     await tracker_manager.set_processing(position_key)
                     await tracker_manager.transition_to_exit(account_key, position_key, current_price, qty, status='PENDING_OPEN')
                     if "BREAKOUT_PLAY" in reason or "MOMENTUM_SCALP" in reason:

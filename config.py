@@ -1472,6 +1472,11 @@ class Config:
     DELTA_REENTRY_REQUIRE_NOT_EXITING: bool = True  # Delta must not be in exit state
     # === RED ZONE — structural level entry/exit using BB stdev + DC position + WT structure ===
     RZ_ENTRY_ENABLED: bool = True  # Use RED ZONE for entries (BASELINE cross, TOP breakout, BOTTOM rejection)
+    # USER 2026-05-16 kill switch (PHBUSDT $0.69/$0.14 account-wipe incident): the BASELINE_BOUNCE_SHORT
+    # variant fired against bullish 3m+15m flow with only 1h vel bearish + only one engine voting
+    # (+ENGINES(htf=0.70)), opened $49 SHORT, then hedge/exit cascade wiped both accounts. SHORT side
+    # of baseline-bounce DISABLED until sweep-validated. LONG side stays on. Gate site: wt_dc_delta.py.
+    RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False
     RZ_EXIT_ENABLED: bool = False  # 2026-04-19: premature exits dropped Sharpe 2.5→1.25 on 48-sym sweep. Was True.
     RZ_TOP_BB_THRESHOLD: float = 0.85  # bb_pct_b above this = TOP zone (sweep: 0.85/0.92/0.97)
     RZ_BOT_BB_THRESHOLD: float = 0.15  # bb_pct_b below this = BOTTOM zone (sweep: 0.15/0.08/0.03)

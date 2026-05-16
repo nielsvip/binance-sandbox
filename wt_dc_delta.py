@@ -885,7 +885,7 @@ class DeltaTracker:
                 _zs_tag = f"_zs1h={_zs_1h:.1f}" if abs(_zs_1h) > 1 else ""
                 sig.zone_reason = f"BASELINE_BOUNCE_LONG_touched={_touched_basis_tf}_bull={total_bull:.2f}_bear={total_bear:.2f}_v3m={_wt_vel_3m:.1f}_v15m={_wt_vel_15m:.1f}_v1h={_wt_vel_1h:.1f}_htf_mom4h={_wt_mom_4h}_k={_k_1h:.0f}_bb={_bb_1h:.2f}_dc={_dc_pos_1h:.2f}{_sig_tag}{_dc_tag}{_zs_tag}"
                 sig.entry_long = True
-            elif _rz_entry_enabled and _short_bounce:
+            elif _rz_entry_enabled and _short_bounce and cfg.get("rz_baseline_bounce_short_enabled", True):
                 sig.zone_action = "SELL"
                 _sig_tag = f"_sig={_wt_sig_bear}" if _wt_sig_bear > 0 else ""
                 _dc_tag = f"_dcxu={_dc_cross_dn}" if _dc_cross_dn > 0 else ""

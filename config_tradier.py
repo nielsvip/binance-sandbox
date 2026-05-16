@@ -2370,6 +2370,33 @@ class TradierConfig:
     _REGIME_OVERRIDES: ClassVar[Dict[str, Dict]] = {}  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     _REGIME_REDIS_CACHE: ClassVar[Dict[str, Dict]] = {}  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
 
+    # ════════════════════════════════════════════════════════════════════════════
+    # STRUCTURAL-PATTERN GATES (2026-05-16) — default OFF.
+    # Engineering plumbing only; live behavior unchanged until flags flipped TRUE.
+    # Test path: backtest_v8_engine.py reads these via V8_OVERRIDE_FILE or in-code.
+    # ════════════════════════════════════════════════════════════════════════════
+    # A1 — SPY > 200SMA top-level regime gate (Faber/Antonacci/Clenow/Connors universal).
+    SPY_REGIME_GATE_ENABLED_TRADIER: bool = False           # master flag for the gate
+    SPY_REGIME_BLOCK_LONGS_BELOW: bool = True               # block new LONG opens when SPY < 200SMA
+    SPY_REGIME_BLOCK_SHORTS_ABOVE: bool = False             # opt-in: block new SHORT opens when SPY > 200SMA
+    SPY_REGIME_SMA_BARS_DAILY: int = 200                    # daily SMA lookback
+    SPY_REGIME_SYMBOL: str = "SPY"                          # reference symbol; switch to "QQQ" or other if desired
+    # A3 — ATR-parity position sizing (Clenow/Dunn/Mulvaney/AQR universal).
+    SIZING_MODE_TRADIER: str = "DEFAULT"                    # DEFAULT (current MFI-momentum sizing) | ATR_PARITY
+    ATR_PARITY_TARGET_RISK_PCT: float = 0.20                # % of equity risked per trade (0.20 = aggressive)
+    ATR_PARITY_EQUITY_BASE_USD: float = 35000.0             # nominal sleeve capital (50% of $70k trb+trc)
+    ATR_PARITY_USE_DAILY: bool = True                       # True=atr_D (audited-winner standard), False=atr_5m
+    ATR_PARITY_QTY_CAP_MULT: float = 5.0                    # cap qty at 5× DEFAULT (prevents runaway low-vol sizes)
+    # B2 — Connors RSI-2 PRIORITY OVERRIDE (long-only mean-rev) — fires AHEAD of WT/DC when triggered.
+    # When close_D > sma_200_D AND connors_rsi_D < threshold, force a LONG entry even if WT misaligned.
+    # Exit when close_D > 5d-SMA(close_D) OR time-stop in CONNORS_RSI2_TIME_STOP_BARS bars.
+    CONNORS_RSI2_PRIORITY_OVERRIDE_ENABLED: bool = False
+    CONNORS_RSI2_THRESHOLD: float = 10.0                    # connors_rsi composite (NPZ field connors_rsi_D); <10 = oversold
+    CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True
+    CONNORS_RSI2_EXIT_SMA_BARS_DAILY: int = 5
+    CONNORS_RSI2_TIME_STOP_BARS_DAILY: int = 10             # max hold = 10 trading days
+    # ════════════════════════════════════════════════════════════════════════════
+
     def get_symbol_setting(self, account_key: str, position_key: str, setting_name: str):
         """Hot-path config lookup: regime override → global default.
         Checks in-process _REGIME_OVERRIDES first, then Redis cache (refreshed every 5s)."""

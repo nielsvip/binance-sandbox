@@ -74,8 +74,10 @@ FLAWS_PATH = COORD_DIR / "flaws.json"
 PY_BIN = sys.executable
 
 # Classification thresholds
-HANG_TIMEOUT_S = 7200          # 2h hard safety-net — SILENCE_TIMEOUT_S catches most failures faster
-SILENCE_TIMEOUT_S = 1200       # kill engine if no stdout line for 1200s (20min covers 4-sym×4yr NPZ load; OOM pipe-close triggers this at next tick)
+HANG_TIMEOUT_S = 7200          # 2h hard safety-net — phase-aware silence catches most failures faster
+PRE_SIM_SILENCE_S = 300        # max silence before "starting simulation" (NPZ load up to ~4 min)
+POST_SIM_SILENCE_S = 30        # max silence after simulation starts (V8_HEARTBEAT fires every 10s — 30s = clearly hung)
+SILENCE_TIMEOUT_S = PRE_SIM_SILENCE_S  # legacy alias; dynamic per phase inside run_test()
 USELESS_POOL_SHARPE = 0.4      # below → USELESS (Discard/Noise tier) — raised from 0.3 per user mandate
 DIAGNOSTIC_POOL_SHARPE = 0.5   # below → DIAGNOSTIC (sub-floor)
 PROMOTE_POOL_SHARPE = 1.0      # above → add to promotions.json
@@ -265,6 +267,7 @@ def _run_one(
     live_sharpe = None
     live_closes = 0
     killed = False
+    _kill_reason = "HANG_timeout"
     stdout_tail: list = []
     stderr_lines: list = []
 
@@ -295,19 +298,28 @@ def _run_one(
         t_err.start()
         t_out.start()
 
+        _sim_started = False
+        _silence_phase = "pre_sim"
+        _silence_limit = PRE_SIM_SILENCE_S
         while True:
             try:
-                line = _stdout_q.get(timeout=SILENCE_TIMEOUT_S)
+                line = _stdout_q.get(timeout=_silence_limit)
             except _q_mod.Empty:
-                print(f"[coord] ⚡ {label} silent {SILENCE_TIMEOUT_S}s — killing engine", flush=True)
+                print(f"[coord] ⚡ {label} silent {_silence_limit}s ({_silence_phase}) — killing engine", flush=True)
                 proc.kill()
                 killed = True
+                _kill_reason = f"SILENT_{_silence_phase}_{_silence_limit}s"
                 break
             if line is None:
                 break
             stdout_tail.append(line)
             if len(stdout_tail) > 40:
                 stdout_tail.pop(0)
+            if not _sim_started and "starting simulation" in line:
+                _sim_started = True
+                _silence_phase = "post_sim"
+                _silence_limit = POST_SIM_SILENCE_S
+                print(f"[coord] ↳ {label} simulation started — silence window tightened to {POST_SIM_SILENCE_S}s", flush=True)
             m = V8_INIT_RE.search(line)
             if m:
                 try:
@@ -341,12 +353,14 @@ def _run_one(
             if time.time() - t0 > HANG_TIMEOUT_S:
                 proc.kill()
                 killed = True
+                _kill_reason = "HANG_timeout"
                 break
         proc.wait(timeout=30)
         t_err.join(timeout=5)
         t_out.join(timeout=5)
     except Exception as e:
         killed = True
+        _kill_reason = f"subprocess_error"
         print(f"[coord] subprocess error for {label}: {e}", flush=True)
 
     elapsed = time.time() - t0
@@ -358,7 +372,7 @@ def _run_one(
             "test_id": label,
             "cfg_hash": h,
             "status": "HANG",
-            "verdict": f"HANG_timeout_{elapsed:.0f}s",
+            "verdict": f"{_kill_reason}_{elapsed:.0f}s",
             "elapsed_s": round(elapsed, 1),
             "mode": mode,
             "symbols": symbols,
