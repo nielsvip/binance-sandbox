@@ -760,8 +760,8 @@ class Config:
     #   2. RIDICULOUS_HOLD_HOURS — max underwater duration: position underwater this long → force-closed.
     # Fires in process_position BEFORE the standard UNDERWATER_HEDGE_OR_CLOSE logic.
     # Note: previous HARD_MAX_LOSS_PCT=-5% destroyed gains. -15% is the empirical "definitely dead" threshold.
-    RIDICULOUS_HOLD_GUARD_ENABLED: bool = True
-    RIDICULOUS_LOSS_PCT: float = -15.0    # absolute loss cap — never exceed this
+    RIDICULOUS_HOLD_GUARD_ENABLED: bool = False  # USER 2026-05-16: PHBUSDT $0.0751→$0.096 (-27%) demonstrated this fires LATE — by the time guard checked, position was -27% not -15%. Locks in worst-case loss. Per user's "ONLY 3 sanctioned loss-exit paths" mandate (R1/R2/HEDGE_FAILED), RIDICULOUS_LOSS is NOT sanctioned. Disabling both RIDICULOUS_HOLD (already neutered at 720h) and RIDICULOUS_LOSS.
+    RIDICULOUS_LOSS_PCT: float = -15.0    # absolute loss cap — only checked when GUARD_ENABLED above (now False)
     RIDICULOUS_HOLD_HOURS: float = 720.0  # USER 2026-05-11: was 48h → 720h (30 days). 64.1% of all closes in 24h were RIDICULOUS_HOLD time-caps closing losers at -12/-15/-17%. Not one of the 3 sanctioned loss-exit paths (R1/R2/HEDGE_FAILED). See also RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG below.
     RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG: bool = True  # USER 2026-05-11: HOLD-cap path may only flatten stale positions when gain >= 0 (clean-up winners that ran out of momentum). Losers get hedged via OBLIGATORY_HEDGE / R1 / R2 instead.
     # USER 2026-05-06 (1000LUNC -18% incident): when DC/BB Daily band breaks (UP or DOWN),

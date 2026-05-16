@@ -57,27 +57,297 @@ TF_CONFIG_STOCK = {
 BACKTEST_TFS = ["5m", "15m", "1h", "4h", "D"]
 
 # ---------------------------------------------------------------------------
-# Import indicator functions from the crypto precompute (same math)
+# === Locally-ported helpers from pre-v7 backtest_v8_precompute.py ===
+#
+# backtest_v8_precompute.py was rewritten in the 2026-04-03 v7 overhaul to use
+# one monolithic compute_tf_arrays() pulling tradier_indicators.* helpers.
+# That removed 17 of the named array-returning helpers the tradier precompute
+# file depends on. backtest_v8_precompute.py is LOCKED (LOCKED_FILES.md row 64),
+# so we can't re-add them upstream.
+#
+# All helpers below are verbatim recoveries from
+#   backups/before_v7_overhaul_precompute_202604032100.py   (Apr 3 22:04 snapshot)
+# i.e. the last pre-overhaul backup before v7 destroyed them. Same signatures,
+# same float32 array semantics, same min_periods/window defaults. Used by the
+# tradier compute_tf_indicators_stock() pipeline. Do NOT change behavior — these
+# match what the stocks NPZ schema expects.
+#
+# Why local (B4 strategy): tradier file is unlocked, precompute is locked,
+# crypto code path goes through compute_tf_arrays() so this duplication does
+# not affect crypto NPZ generation in any way.
 # ---------------------------------------------------------------------------
 sys.path.insert(0, str(BASE if IS_SERVER else Path("/Users/niels/Documents/binance")))
-from backtest_v8_precompute import (
-    setup_db as _setup_db_base, load_klines, resample_tf,
-    compute_rsi, compute_stoch_rsi, compute_atr, compute_donchian,
-    compute_heikin_ashi, compute_macd, compute_bb, compute_mfi,
-    compute_adx, compute_choppiness, compute_linreg_slope,
-    compute_hull_trend, compute_crossovers, compute_wt_intelligence,
-    map_htf_to_15m, inspect_symbol as _inspect_base,
-)
+# Only `load_klines` and `resample_tf` remain in the current precompute, but
+# their signatures changed (load_klines(path) vs the pre-v7
+# load_klines(symbol, tf, klines_dir); resample_tf swapped arg names). To keep
+# the tradier process_symbol() call sites unchanged, we re-port both as well.
 
-# ---------------------------------------------------------------------------
-# Local helper — compute_rel_volume was removed from backtest_v8_precompute.py
-# during the v7 overhaul (2026-04-03). Restored here for the tradier path so
-# fresh NPZ regeneration doesn't ImportError. Same signature/semantics as the
-# historical implementation (pandas Series in, length=20 rolling mean).
-# ---------------------------------------------------------------------------
+# Pre-v7 helper: setup_db is owned locally below (different DB schema for stocks).
+
+# Pre-v7 helper: load_klines(symbol, timeframe, klines_dir=None)
+def load_klines(symbol, timeframe, klines_dir=None):
+    """Load klines from JSON cache file. Returns DataFrame with DatetimeIndex."""
+    kd = klines_dir or KLINES_DIR
+    fname = f"{symbol}_{timeframe}.json"
+    fpath = Path(kd) / fname
+    if not fpath.exists():
+        return None
+    try:
+        with open(fpath) as f:
+            data = json.load(f)
+        if not data:
+            return None
+        df = pd.DataFrame(data)
+        for col in ["open", "high", "low", "close", "volume"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        try:
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], format="ISO8601", utc=True)
+        except (ValueError, TypeError):
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], format="mixed", utc=True)
+        df = df.sort_values("timestamp_dt").drop_duplicates("timestamp_dt").set_index("timestamp_dt")
+        df = df[["open", "high", "low", "close", "volume"]].dropna()
+        return df
+    except Exception as e:
+        log.warning(f"Failed loading {fpath}: {e}")
+        return None
+
+# Pre-v7 helper: resample_tf(df_15m, target_tf)
+def resample_tf(df_15m, target_tf):
+    """Resample 15m DataFrame to higher timeframe."""
+    rule = {"1h": "1h", "4h": "4h", "D": "1D", "W": "1W"}.get(target_tf)
+    if rule is None:
+        return None
+    agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    return df_15m.resample(rule).agg(agg).dropna()
+
+# Pre-v7 helper: compute_rsi
+def compute_rsi(close, length=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1.0 / length, min_periods=length, adjust=False).mean()
+    loss = (-delta).clip(lower=0).ewm(alpha=1.0 / length, min_periods=length, adjust=False).mean()
+    rs = gain / (loss + 1e-10)
+    return (100.0 - (100.0 / (1.0 + rs))).values.astype(np.float32)
+
+# Pre-v7 helper: compute_stoch_rsi
+def compute_stoch_rsi(close, stoch_len=14, k_smooth=7, d_smooth=7):
+    rsi = pd.Series(compute_rsi(close, stoch_len), index=close.index)
+    rsi_min = rsi.rolling(stoch_len, min_periods=1).min()
+    rsi_max = rsi.rolling(stoch_len, min_periods=1).max()
+    stoch = (rsi - rsi_min) / (rsi_max - rsi_min + 1e-10) * 100.0
+    k = stoch.rolling(k_smooth, min_periods=1).mean()
+    d = k.rolling(d_smooth, min_periods=1).mean()
+    return k.values.astype(np.float32), d.values.astype(np.float32)
+
+# Pre-v7 helper: compute_atr
+def compute_atr(high, low, close, length=14):
+    h, l, c_prev = high.values, low.values, np.roll(close.values, 1)
+    c_prev[0] = close.values[0]
+    tr = np.maximum(h - l, np.maximum(np.abs(h - c_prev), np.abs(l - c_prev)))
+    atr = pd.Series(tr).ewm(span=length, adjust=False).mean()
+    return atr.values.astype(np.float32)
+
+# Pre-v7 helper: compute_donchian
+def compute_donchian(high, low, close, window=20):
+    dc_h = high.rolling(window, min_periods=1).max().values.astype(np.float32)
+    dc_l = low.rolling(window, min_periods=1).min().values.astype(np.float32)
+    dc_b = ((dc_h + dc_l) / 2.0).astype(np.float32)
+    dc_pos = ((close.values - dc_l) / (dc_h - dc_l + 1e-10)).astype(np.float32)
+    dc_w = ((dc_h - dc_l) / (dc_l + 1e-10) * 100.0).astype(np.float32)
+    return dc_h, dc_l, dc_b, dc_pos, dc_w
+
+# Pre-v7 helper: compute_heikin_ashi
+def compute_heikin_ashi(open_, high, low, close):
+    n = len(close)
+    ha_c = ((open_.values + high.values + low.values + close.values) / 4.0).astype(np.float64)
+    ha_o = np.empty(n, dtype=np.float64)
+    ha_o[0] = (open_.values[0] + close.values[0]) / 2.0
+    for i in range(1, n):
+        ha_o[i] = (ha_o[i - 1] + ha_c[i - 1]) / 2.0
+    color = np.where(ha_c > ha_o, 1, np.where(ha_c < ha_o, -1, 0)).astype(np.int8)
+    streak = np.zeros(n, dtype=np.int16)
+    for i in range(1, n):
+        if color[i] == color[i - 1] and color[i] != 0:
+            streak[i] = streak[i - 1] + int(np.sign(color[i]))
+        elif color[i] != 0:
+            streak[i] = int(np.sign(color[i]))
+    return color, streak
+
+# Pre-v7 helper: compute_macd
+def compute_macd(close):
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = (ema12 - ema26).values.astype(np.float32)
+    signal = pd.Series(macd).ewm(span=9, adjust=False).mean().values.astype(np.float32)
+    hist = (macd - signal).astype(np.float32)
+    return macd, signal, hist
+
+# Pre-v7 helper: compute_bb
+def compute_bb(close, length=20, mult=2.0):
+    sma = close.rolling(length, min_periods=1).mean()
+    std = close.rolling(length, min_periods=1).std().fillna(0)
+    upper = (sma + mult * std).values.astype(np.float32)
+    lower = (sma - mult * std).values.astype(np.float32)
+    pct_b = ((close.values - lower) / (upper - lower + 1e-10)).astype(np.float32)
+    width = ((upper - lower) / ((upper + lower) / 2.0 + 1e-10) * 100.0).astype(np.float32)
+    return upper, lower, pct_b, width
+
+# Pre-v7 helper: compute_mfi
+def compute_mfi(high, low, close, volume, length=14):
+    tp = (high + low + close) / 3.0
+    mf = tp * volume
+    pos = mf.where(tp > tp.shift(1), 0.0).rolling(length, min_periods=1).sum()
+    neg = mf.where(tp <= tp.shift(1), 0.0).rolling(length, min_periods=1).sum()
+    return (100.0 - (100.0 / (1.0 + pos / (neg + 1e-10)))).values.astype(np.float32)
+
+# Pre-v7 helper: compute_adx
+def compute_adx(high, low, close, length=14):
+    atr_arr = compute_atr(high, low, close, length)
+    plus_dm = high.diff().clip(lower=0)
+    minus_dm = (-low.diff()).clip(lower=0)
+    plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+    minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+    plus_di = 100.0 * plus_dm.ewm(span=length, adjust=False).mean() / (pd.Series(atr_arr, index=high.index) + 1e-10)
+    minus_di = 100.0 * minus_dm.ewm(span=length, adjust=False).mean() / (pd.Series(atr_arr, index=high.index) + 1e-10)
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di + 1e-10)
+    return dx.ewm(span=length, adjust=False).mean().values.astype(np.float32)
+
+# Pre-v7 helper: compute_choppiness
+def compute_choppiness(high, low, close, length=14):
+    """Choppiness Index: 100 * LOG10(SUM(ATR,n) / (HH-LL)) / LOG10(n). Range 0-100. >61.8 = choppy, <38.2 = trending."""
+    atr = compute_atr(high, low, close, length)
+    atr_sum = pd.Series(atr, index=high.index).rolling(length, min_periods=1).sum()
+    hh = high.rolling(length, min_periods=1).max()
+    ll = low.rolling(length, min_periods=1).min()
+    hl_range = hh - ll + 1e-10
+    chop = 100.0 * np.log10(atr_sum / hl_range) / np.log10(length)
+    return chop.clip(0, 100).values.astype(np.float32)
+
+# Pre-v7 helper: compute_rel_volume (originally re-added by B4 2026-05-16)
 def compute_rel_volume(volume, length=20):
     avg = volume.rolling(length, min_periods=1).mean()
     return (volume / (avg + 1e-10)).values.astype(np.float32)
+
+# Pre-v7 helper: compute_linreg_slope
+def compute_linreg_slope(close, length=50):
+    """Rolling linear regression slope normalized by price."""
+    slopes = np.full(len(close), np.nan, dtype=np.float32)
+    vals = close.values
+    x = np.arange(length, dtype=np.float64)
+    x_mean = x.mean()
+    x_var = ((x - x_mean) ** 2).sum()
+    for i in range(length - 1, len(vals)):
+        y = vals[i - length + 1: i + 1].astype(np.float64)
+        slope = ((x - x_mean) * (y - y.mean())).sum() / (x_var + 1e-10)
+        slopes[i] = slope / (vals[i] + 1e-10) * 100.0
+    return slopes
+
+# Pre-v7 helper: compute_hull_trend
+def compute_hull_trend(close, short=9, long=21):
+    """Hull-based trend: t_up (short HMA > long HMA), tco/tcu (crossovers)."""
+    def _wma(s, n):
+        w = np.arange(1, n + 1, dtype=np.float64)
+        return s.rolling(n, min_periods=n).apply(lambda x: np.dot(x, w[-len(x):]) / w[-len(x):].sum(), raw=True)
+    def _hma(s, n):
+        half = _wma(s, max(1, n // 2))
+        full = _wma(s, n)
+        diff = 2.0 * half - full
+        sq = max(1, int(np.sqrt(n)))
+        return _wma(diff, sq)
+    hma_s = _hma(close, short)
+    hma_l = _hma(close, long)
+    t_up = (hma_s > hma_l).astype(np.int8).values
+    tco = np.zeros(len(close), dtype=np.int8)
+    tcu = np.zeros(len(close), dtype=np.int8)
+    for i in range(1, len(close)):
+        if t_up[i] == 1 and t_up[i - 1] == 0:
+            tco[i] = 1
+        elif t_up[i] == 0 and t_up[i - 1] == 1:
+            tcu[i] = 1
+    return t_up, tco, tcu
+
+# Pre-v7 helper: compute_wt_intelligence
+def compute_wt_intelligence(wt1, wt2, close, tf):
+    """Vectorized WT intelligence: cross, velocity, score, structure, percentile, zscore."""
+    n = len(wt1)
+    out = {}
+    score = (wt1 - wt2).astype(np.float32)
+    out[f"wt_score_{tf}"] = score
+    wt_diff = pd.Series(wt1 - wt2)
+    wt_diff_prev = wt_diff.shift(1).fillna(0)
+    bull_cross = ((wt_diff > 0) & (wt_diff_prev <= 0)).values
+    bear_cross = ((wt_diff < 0) & (wt_diff_prev >= 0)).values
+    cross_raw = np.where(bull_cross, 1, np.where(bear_cross, -1, 0)).astype(np.int8)
+    cross_state = pd.Series(cross_raw).replace(0, np.nan).ffill().fillna(0).astype(np.int8).values
+    out[f"wt_cross_{tf}"] = cross_state
+    out[f"wt_cross_bull_{tf}"] = bull_cross.astype(np.int8)
+    out[f"wt_cross_bear_{tf}"] = bear_cross.astype(np.int8)
+    wt_bullish = (wt1 > wt2).astype(np.int8)
+    out[f"wt_bullish_{tf}"] = wt_bullish
+    lag = min(3, n - 1)
+    vel = np.zeros(n, dtype=np.float32)
+    if lag > 0:
+        vel[lag:] = wt1[lag:] - wt1[:-lag]
+    out[f"wt_velocity_{tf}"] = vel
+    accel = np.zeros(n, dtype=np.float32)
+    if lag > 0:
+        accel[lag:] = vel[lag:] - vel[:-lag]
+    out[f"wt_acceleration_{tf}"] = accel
+    mom = np.zeros(n, dtype=np.int8)
+    mom[(vel > 1) & (accel > 0)] = 1
+    mom[(vel > 0) & (accel <= 0)] = 2
+    mom[(vel < -1) & (accel < 0)] = -1
+    mom[(vel < 0) & (accel >= 0)] = -2
+    out[f"wt_momentum_state_{tf}"] = mom
+    wt1_s = pd.Series(wt1)
+    pctile = wt1_s.rolling(200, min_periods=20).rank(pct=True).fillna(0.5).values.astype(np.float32) * 100.0
+    out[f"wt_percentile_{tf}"] = pctile
+    wt_mean = wt1_s.rolling(200, min_periods=20).mean().fillna(0).values
+    wt_std = wt1_s.rolling(200, min_periods=20).std().fillna(1).values
+    out[f"wt_zscore_{tf}"] = ((wt1 - wt_mean) / (wt_std + 1e-10)).astype(np.float32)
+    wt1_s_shifted = wt1_s.shift(1).fillna(wt1_s.iloc[0] if len(wt1_s) > 0 else 0)
+    is_peak = (wt1_s.shift(1) > wt1_s.shift(2)) & (wt1_s.shift(1) > wt1_s)
+    is_trough = (wt1_s.shift(1) < wt1_s.shift(2)) & (wt1_s.shift(1) < wt1_s)
+    peak_val = np.where(is_peak, wt1_s.shift(1), np.nan)
+    trough_val = np.where(is_trough, wt1_s.shift(1), np.nan)
+    peak_series = pd.Series(peak_val).ffill().fillna(0).values.astype(np.float32)
+    trough_series = pd.Series(trough_val).ffill().fillna(0).values.astype(np.float32)
+    prev_peak = pd.Series(peak_val).ffill().shift(1).ffill().fillna(0).values.astype(np.float32)
+    prev_trough = pd.Series(trough_val).ffill().shift(1).ffill().fillna(0).values.astype(np.float32)
+    out[f"wt_peak_{tf}"] = peak_series
+    out[f"wt_trough_{tf}"] = trough_series
+    peak_struct = np.zeros(n, dtype=np.int8)
+    peak_struct[peak_series > prev_peak] = 1
+    peak_struct[peak_series < prev_peak] = -1
+    out[f"wt_peak_structure_{tf}"] = peak_struct
+    trough_struct = np.zeros(n, dtype=np.int8)
+    trough_struct[trough_series > prev_trough] = 1
+    trough_struct[trough_series < prev_trough] = -1
+    out[f"wt_trough_structure_{tf}"] = trough_struct
+    return out
+
+# Pre-v7 helper: compute_crossovers
+def compute_crossovers(current, reference):
+    """Return (crossover, crossunder) boolean arrays."""
+    c = pd.Series(current)
+    r = pd.Series(reference)
+    co = ((c > r) & (c.shift(1) <= r.shift(1))).fillna(False).astype(np.int8).values
+    cu = ((c < r) & (c.shift(1) >= r.shift(1))).fillna(False).astype(np.int8).values
+    return co, cu
+
+# Pre-v7 helper: map_htf_to_15m
+def map_htf_to_15m(htf_arrays, htf_timestamps, ltf_timestamps):
+    """Map higher-TF indicator arrays to 15m bar indices using searchsorted."""
+    if len(htf_timestamps) == 0 or len(ltf_timestamps) == 0:
+        return {}
+    htf_ts = htf_timestamps.astype(np.int64)
+    ltf_ts = ltf_timestamps.astype(np.int64)
+    idx = np.searchsorted(htf_ts, ltf_ts, side="right") - 1
+    idx = np.clip(idx, 0, len(htf_ts) - 1)
+    mapped = {}
+    for key, arr in htf_arrays.items():
+        if len(arr) == len(htf_ts):
+            mapped[key] = arr[idx]
+    return mapped
 
 # ---------------------------------------------------------------------------
 # Database setup (separate DB for stocks)
@@ -518,17 +788,32 @@ def inspect_symbol(symbol, at_time=None, fields=None):
     if not npz_path.exists():
         print(f"No data for {symbol}. Run precompute first.")
         return
-    _inspect_base(symbol)
+    data = dict(np.load(str(npz_path), allow_pickle=True))
+    timestamps = data["timestamps"]
+    keys = sorted([k for k in data.keys() if k != "timestamps"])
+    if at_time is None and fields is None:
+        print(f"\n{symbol}: {len(timestamps)} bars, {len(keys)} indicator arrays")
+        print(f"  Time range: {datetime.fromtimestamp(timestamps[0], tz=timezone.utc)} to {datetime.fromtimestamp(timestamps[-1], tz=timezone.utc)}")
+        print(f"\n  Available indicators ({len(keys)}):")
+        by_tf = {}
+        for k in keys:
+            parts = k.rsplit("_", 1)
+            tf = parts[-1] if len(parts) > 1 and parts[-1] in ("5m", "15m", "1h", "4h", "D") else "other"
+            by_tf.setdefault(tf, []).append(k)
+        for tf in ["5m", "15m", "1h", "4h", "D", "other"]:
+            if tf in by_tf:
+                print(f"\n    [{tf}] ({len(by_tf[tf])} fields):")
+                for k in sorted(by_tf[tf]):
+                    print(f"      {k}")
+        return
     if at_time:
-        data = dict(np.load(str(npz_path), allow_pickle=True))
-        timestamps = data["timestamps"]
         dt = pd.Timestamp(at_time, tz="UTC")
         target_ts = int(dt.timestamp())
         idx = np.searchsorted(timestamps, target_ts)
         idx = min(idx, len(timestamps) - 1)
         actual_dt = datetime.fromtimestamp(timestamps[idx], tz=timezone.utc)
         print(f"\n{symbol} @ {actual_dt.isoformat()} (bar {idx}):")
-        show_fields = fields.split(",") if fields else sorted(k for k in data.keys() if k != "timestamps")
+        show_fields = fields.split(",") if fields else keys
         for k in sorted(show_fields):
             k = k.strip()
             if k in data and idx < len(data[k]):

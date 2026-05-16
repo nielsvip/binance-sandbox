@@ -447,6 +447,12 @@ class SweepConfig:
     CONNORS_RSI2_THRESHOLD: float = 10.0        # connors_rsi composite (NPZ field connors_rsi_D)
     CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = True
     CONNORS_RSI2_EXIT_BARS: int = 5             # time-based exit (5 trading days)
+    # SIDE-ASYMMETRIC SIZING (2026-05-16) — preserve short-side detection but cap downside in bull regimes.
+    # Default 1.0/1.0 → no behavior change. Bull-bias example: LONG=1.5 / SHORT=0.25
+    #   → longs get 1.5× capital, shorts get 0.25× (busted short loses 1/4 the dollars).
+    # Applied to OPEN base_qty BEFORE compute_trade_qty_vec; AUGMENTs inherit proportionally.
+    LONG_SIZE_MULT: float = 1.0
+    SHORT_SIZE_MULT: float = 1.0
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -819,6 +825,10 @@ def simulate_one_symbol(
                     _cap = float(config.ATR_PARITY_QTY_CAP_MULT) * float(config.START_POSITION_SIZE) / mark
                     _ap_qty = min(_ap_qty, _cap)
                     base_qty_arr = np.array([_ap_qty], dtype=np.float32)
+            # Side-asymmetric sizing — apply LONG/SHORT multiplier to base qty
+            _side_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else float(getattr(config, "SHORT_SIZE_MULT", 1.0))
+            if _side_mult != 1.0:
+                base_qty_arr = base_qty_arr * _side_mult
             qty_dict = compute_trade_qty_vec(
                 {k: v[i:i+1] for k, v in npz.items()},
                 base_qty_arr,

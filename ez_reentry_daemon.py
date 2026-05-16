@@ -351,16 +351,28 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
             continue
         positions = _get_positions_from_redis(redis_client, account_key)
         pos_amt = positions.get(pk, 0.0)
-        if pos_amt != 0.0:
+        # USER 2026-05-16 (PHBUSDT 33-qty-residual + price-cross-no-reentry incident):
+        # Daemon previously skipped if pos_amt != 0 — but RIDICULOUS_LOSS+WT_3M_FORCE_OPEN combo
+        # force-closes then auto-reopens at tiny size, leaving residual qty that BLOCKED reentry
+        # despite the "12 redundant paths" guarantee. Now: allow reentry as AUGMENT-TO-TARGET
+        # when residual < threshold * exit_amt. fire_qty = (exit_amt - pos_amt) to top up.
+        _partial_thresh = _cfg_float("EZ_REENTRY_PARTIAL_AUGMENT_THRESHOLD", 0.5)
+        _is_partial_augment = (pos_amt > 0 and exit_amt > 0 and pos_amt < _partial_thresh * exit_amt)
+        if pos_amt != 0.0 and not _is_partial_augment:
             continue
         # USER 2026-05-10 — daemon is signal-only. It detects price-cross and writes a
         # 100% candidate; ez_manage's _reentry_queue_consumer_loop reads it and applies
         # the user-spec size tiers (150% sma_200_15m bounce / 100% dc_high4_3m+exit_price /
         # 50% k_15m extreme) using ii() — HTF indicators (sma_200_15m, dc_high4_3m, k_15m)
         # are not in Redis hot_metrics, only available via ez_manage's bridge merge.
-        sizing_frac = 1.0
-        sizing_tag = "price_cross_pending_tier_eval"
-        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
+        if _is_partial_augment:
+            sizing_frac = 1.0
+            sizing_tag = f"price_cross_partial_augment_pos{pos_amt:.4f}_lt_thr{_partial_thresh:.2f}x{exit_amt:.4f}"
+            fire_qty = max(0.0, exit_amt - pos_amt)
+        else:
+            sizing_frac = 1.0
+            sizing_tag = "price_cross_pending_tier_eval"
+            fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
         if fire_qty <= 0:
             continue
         xr_tag = (exit_reason[:40] or "unk").replace(" ", "_")
