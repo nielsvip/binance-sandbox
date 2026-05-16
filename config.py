@@ -1159,7 +1159,10 @@ class Config:
         'DAEMON_REENTRY_STALE_EXIT',
     ])
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
-    DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = True
+    # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
+    # Per agent audit: True gate silently dropped every SHORT reentry below k_3m=60
+    # (inverse of "lower K is better" mandate). Set False to unblock SHORT reentry path.
+    DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = False
     # 2026-05-15 USER: when a DAEMON_PRICE_CROSS_REENTRY position's premise fails (price
     # crosses back above/below the encoded exit_price), close immediately bypassing NOLOSS.
     DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = True
@@ -1597,9 +1600,9 @@ class Config:
     RATIO_PNL_TARGET_LONG_MIN: float = 10.0  # clamp min target% when PnL divergent
     RATIO_PNL_TARGET_LONG_MAX: float = 90.0  # clamp max target% when PnL divergent
     RATIO_REBALANCE_COOLDOWN_NORMAL: float = 3600.0
-    RATIO_REBALANCE_COOLDOWN_CRASH: float = 300.0
-    RATIO_REBALANCE_COOLDOWN_EXTREME: float = 600.0
-    RATIO_REBALANCE_COOLDOWN_PNL_DIVERGENT: float = 120.0
+    RATIO_REBALANCE_COOLDOWN_CRASH: float = 1800.0
+    RATIO_REBALANCE_COOLDOWN_EXTREME: float = 3600.0
+    RATIO_REBALANCE_COOLDOWN_PNL_DIVERGENT: float = 1200.0
     RATIO_REBALANCE_SIZE_MULT: float = 4.0  # base mult vs START_POSITION_SIZE
     RATIO_REBALANCE_SIZE_SKEW_BOOST: float = 0.05  # extra mult per 1pp of skew above dead zone (0.05 = 5% per pp)
     RATIO_REBALANCE_SIZE_MAX_MULT: float = 10.0  # absolute cap on size mult

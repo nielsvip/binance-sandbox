@@ -1612,6 +1612,57 @@ def grid_haiku_sweep():
     return combos
 
 
+def grid_wt3m_min_gain_axis():
+    """Tier B: vary MIN_GAIN + DUP_GUARD multiplier — augment/reentry frequency axis."""
+    combos = [("baseline", {})]
+    for mg in [1.5, 2.0, 3.0, 4.0, 5.0]:
+        combos.append((f"MIN_GAIN_{mg}", {"MIN_GAIN": mg}))
+        combos.append((f"MIN_GAIN_{mg}_DUPmult05", {"MIN_GAIN": mg, "DUP_GUARD_GAIN_MULTIPLIER": 0.5}))
+        combos.append((f"MIN_GAIN_{mg}_DUPmult10", {"MIN_GAIN": mg, "DUP_GUARD_GAIN_MULTIPLIER": 1.0}))
+    return combos
+
+
+def grid_hedge_strictness_axis():
+    """Tier C: vary hedge close strictness — R6 trigger, OBLIGATORY_HEDGE_MIN_LOSS, lockout.
+    Tests whether returning to Apr-13 strictness (3-of-3 TF wt flip, 3600s lockout) helps."""
+    combos = [("baseline", {})]
+    combos.append(("hedge_lockout_3600",  {"HEDGE_COMPLETED_LOCKOUT_SECONDS": 3600}))
+    combos.append(("hedge_strict_wt_4",   {"HEDGE_STRICT_WT_ALL_TFS_ENABLED": True, "HEDGE_STRICT_WT_MIN_TFS_AGAINST": 4}))
+    combos.append(("hedge_strict_wt_5",   {"HEDGE_STRICT_WT_ALL_TFS_ENABLED": True, "HEDGE_STRICT_WT_MIN_TFS_AGAINST": 5}))
+    for loss in [-0.25, -0.5, -1.0, -2.0, -3.0]:
+        combos.append((f"OH_minloss_{loss}", {"OBLIGATORY_HEDGE_MIN_LOSS_PCT": loss}))
+    for pct in [0.5, 1.0, 1.5]:
+        combos.append((f"HSS_pct_{pct}", {"HEDGE_SAME_SYMBOL_PCT": pct}))
+    combos.append(("OH_disabled", {"OBLIGATORY_HEDGE_ENABLED": False}))
+    return combos
+
+
+def grid_exit_logic_axis():
+    """Tier D: vary R1 newborn window + R2 vel decel + DC-bar count.
+    Tests whether tightening the 3 sanctioned loss-exit paths reduces premature exits."""
+    combos = [("baseline", {})]
+    for mins in [5, 10, 15, 20, 30, 45]:
+        combos.append((f"R1_newborn_{mins}m", {"R1_NEWBORN_WINDOW_MIN": mins}))
+    combos.append(("R1_DC_1bar", {"R1_USE_DC_4BAR": False}))
+    combos.append(("R1_DC_4bar", {"R1_USE_DC_4BAR": True}))
+    for ratio in [0.3, 0.5, 0.7, 0.9]:
+        combos.append((f"R2_decel_{ratio}", {"WT_VEL_DECEL_RATIO": ratio}))
+    for band in [0.10, 0.25, 0.50, 1.0]:
+        combos.append((f"R2_band_{band}pct", {"WT_15M_VEL_SLOW_GAIN_BAND_PCT": band}))
+    return combos
+
+
+def grid_position_sizing_axis():
+    """Tier E: vary WT_3M_FORCE_OPEN_SIZE_USD + PYRAMID_MIN_GAIN + START_POSITION_SIZE."""
+    combos = [("baseline", {})]
+    for sz in [5, 9, 15, 25, 40, 60, 100]:
+        combos.append((f"force_open_{sz}", {"WT_3M_FORCE_OPEN_SIZE_USD": float(sz)}))
+        combos.append((f"start_{sz}",      {"START_POSITION_SIZE": float(sz)}))
+    for pmg in [0.5, 1.0, 1.5, 2.0, 3.0]:
+        combos.append((f"pyramid_mg_{pmg}", {"PYRAMID_MIN_GAIN_PCT": pmg}))
+    return combos
+
+
 def grid_wt3m_force_open_gr_tune():
     """2026-05-16 USER HANDS_OFF: sweep WT_3M_FORCE_OPEN GR-filter combos.
     Engine wire-up landed at backtest_v8_engine.py:4331 same session — knobs
@@ -1671,6 +1722,10 @@ TIER_MAP = {
     "dc4_stop_compare": grid_dc4_stop_compare,
     "gr_vote_score": grid_gr_vote_score,
     "wt3m_force_open_gr_tune": grid_wt3m_force_open_gr_tune,
+    "wt3m_min_gain_axis": grid_wt3m_min_gain_axis,
+    "hedge_strictness_axis": grid_hedge_strictness_axis,
+    "exit_logic_axis": grid_exit_logic_axis,
+    "position_sizing_axis": grid_position_sizing_axis,
     "gr_dcbb_threshold": grid_gr_dcbb_threshold,
     "canonical_audit_full": grid_canonical_audit_full,
     "hedge_one_by_one": grid_hedge_one_by_one,

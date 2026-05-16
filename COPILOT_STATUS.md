@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 19:34:16 UTC
+# Copilot Status — 2026-05-16 19:49:36 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T19:31:57
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:31:58
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:31:58
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:33:01
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:33:01
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T19:34:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T19:34:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T19:34:02
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:34:04
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:34:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T19:46:39
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:46:39
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:46:39
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:47:43
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:47:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T19:48:44
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T19:48:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T19:48:44
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T19:48:45
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T19:48:45
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 17 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -52,7 +52,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_manage.py for men is NOT running
