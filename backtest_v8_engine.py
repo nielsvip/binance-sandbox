@@ -1056,6 +1056,15 @@ class InMemoryRedis:
     def has_any_connection(self):
         return True
 
+    @property
+    def connections(self):
+        # ez_positions_quick.py uses redis_manager.connections.get("local") to
+        # fetch a client, then calls await client.get(key). Return self so those
+        # paths hit our in-memory store instead of silently failing to None and
+        # falling back to disk on every bar (which caused 10x slowdown + missing
+        # wt_/stoch indicator data → negative Sharpe).
+        return {"local": self, "gateway": self, "server": self}
+
     async def get(self, key):
         return self.data.get(key)
 
