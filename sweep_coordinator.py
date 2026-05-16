@@ -570,7 +570,7 @@ def main() -> None:
     print(f"[coord] starting — mode={args.mode} account={args.account} start={args.start}", flush=True)
     print(f"[coord] symbols={args.symbols}", flush=True)
     print(f"[coord] vectorized mode: V8_USE_VEC_ALL=1 (12 vec gates active)", flush=True)
-    print(f"[coord] hang_timeout={HANG_TIMEOUT_S}s  useless_threshold={USELESS_POOL_SHARPE}  promote_threshold={PROMOTE_POOL_SHARPE}", flush=True)
+    print(f"[coord] hang_timeout={HANG_TIMEOUT_S}s  silence_pre_sim={PRE_SIM_SILENCE_S}s  silence_post_sim={POST_SIM_SILENCE_S}s  useless_threshold={USELESS_POOL_SHARPE}  promote_threshold={PROMOTE_POOL_SHARPE}", flush=True)
 
     last_flaw_write = 0.0
 
