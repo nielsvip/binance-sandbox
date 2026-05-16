@@ -1647,7 +1647,28 @@ def grid_wt3m_force_open_gr_tune():
     return combos
 
 
+def grid_dc4_stop_compare():
+    """7-variant DC4-stop vs GR-hedge comparison. 2026-05-16."""
+    usdc_off = {"USDC_PREFERENCE_BLOCK_ENABLED": False}
+    return [
+        ("baseline",         {**usdc_off}),
+        ("DC_LOW4_STOP_ON",  {**usdc_off, "DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False}),
+        ("DC_LOW_STOP_ON",   {**usdc_off, "DC_LOW4_STOP_ENABLED": False, "DC_LOW_STOP_ENABLED": True}),
+        ("DC_BOTH_STOPS_ON", {**usdc_off, "DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": True}),
+        ("DC4_GR_HEDGE_ON",  {**usdc_off, "DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False,
+                              "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,
+                              "DC4_STOP_GR_SCORE_MIN_TFS": 3, "DC4_STOP_GR_SCORE_MIN_IND": 5}),
+        ("DC4_GR_HEDGE_LOOSE", {**usdc_off, "DC_LOW4_STOP_ENABLED": True, "DC_LOW_STOP_ENABLED": False,
+                                "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,
+                                "DC4_STOP_GR_SCORE_MIN_TFS": 2, "DC4_STOP_GR_SCORE_MIN_IND": 3}),
+        ("DC4_ALWAYS_HEDGE", {**usdc_off, "DC_LOW4_STOP_ENABLED": True,  "DC_LOW_STOP_ENABLED": False,
+                              "DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED": True,
+                              "DC4_STOP_GR_SCORE_MIN_TFS": 1, "DC4_STOP_GR_SCORE_MIN_IND": 1}),
+    ]
+
+
 TIER_MAP = {
+    "dc4_stop_compare": grid_dc4_stop_compare,
     "gr_vote_score": grid_gr_vote_score,
     "wt3m_force_open_gr_tune": grid_wt3m_force_open_gr_tune,
     "gr_dcbb_threshold": grid_gr_dcbb_threshold,

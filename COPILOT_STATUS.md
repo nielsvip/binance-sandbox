@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 17:01:25 UTC
+# Copilot Status — 2026-05-16 17:16:34 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T16:59:08
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T17:00:09
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T17:00:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T17:00:09
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:00:11
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:00:11
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:00:11
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:01:15
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:01:15
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:01:15
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:13:47
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:13:47
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T17:14:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T17:14:48
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:14:50
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:14:50
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:14:50
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T17:15:53
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T17:15:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T17:15:53
 
 ## Missed Trades (trader comparison)
 
@@ -40,7 +40,7 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **INXUSDT** LONG (crypto) peaked +8.6%, exited 0m ago
+- WATCHING: **INXUSDT** LONG (crypto) peaked +9.4%, exited 0m ago
 - WATCHING: **BEATUSDT** SHORT (crypto) peaked +4.2%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
@@ -52,7 +52,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
