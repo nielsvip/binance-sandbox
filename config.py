@@ -1163,6 +1163,9 @@ class Config:
         'GR_HTF_DIRECT_EXIT',
         # 2026-05-15 USER: daemon reentry premise failed (price crossed back past exit level) → close.
         'DAEMON_REENTRY_STALE_EXIT',
+        # 2026-05-16 BACKTEST SWEEP ONLY: DC4 stop research variable in backtest_v8_engine.py.
+        # This reason is NEVER emitted by live trading code — safe to bypass NOLOSS gate.
+        'DC_STOP_BREACH',
     ])
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
