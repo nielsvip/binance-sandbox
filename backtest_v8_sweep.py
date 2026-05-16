@@ -86,7 +86,15 @@ V8_RESULT_RE = re.compile(
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
-V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*pool_sharpe=(?P<pool_sharpe>[-\d.]+)")
+# Crypto live format: pool_sharpe=X gain_pct=X closes=X wins=X losses=X wr=X
+V8_RESULT_LIVE_RE = re.compile(
+    r"V8_RESULT_LIVE:.*"
+    r"pool_sharpe=(?P<pool_sharpe>[-\d.]+)\s+"
+    r"gain_pct=(?P<gain_pct>[-+\d.]+)\s+"
+    r"closes=(?P<closes>\d+)\s+"
+    r"wins=(?P<wins>\d+)\s+"
+    r"losses=(?P<losses>\d+)"
+)
 # Fallback _v8_result_from_trades format (also pool/sym/sharpe-alias):
 V8_RESULT_TRADIER_RE = re.compile(
     r"V8_RESULT:\s*"
@@ -1839,6 +1847,9 @@ def run_one_variant(args_tuple):
         match_tradier = None
         live_sharpe = None
         live_closes = 0
+        live_gain_pct = 0.0
+        live_wins = 0
+        live_losses = 0
         killed = False
         stdout_tail = []
         # 2026-05-09 capture-extras: n_syms (from V8_INIT_HEARTBEAT), n_skipped_stale,
@@ -1873,12 +1884,16 @@ def run_one_variant(args_tuple):
                 if m_live:
                     try:
                         live_sharpe = float(m_live["pool_sharpe"])
+                        live_gain_pct = float(m_live["gain_pct"])
+                        live_closes = int(m_live["closes"])
+                        live_wins = int(m_live["wins"])
+                        live_losses = int(m_live["losses"])
                     except Exception:
                         pass
-                m_live_simple = V8_RESULT_LIVE_SIMPLE_RE.search(line)
-                if m_live_simple:
+                elif V8_RESULT_LIVE_SIMPLE_RE.search(line):
+                    # Tradier simple format (no pool_sharpe): just update closes
                     try:
-                        live_closes = int(m_live_simple["closes"])
+                        live_closes = int(V8_RESULT_LIVE_SIMPLE_RE.search(line)["closes"])
                     except Exception:
                         pass
                 m_final = V8_RESULT_RE.search(line)
@@ -1942,9 +1957,17 @@ def run_one_variant(args_tuple):
         }
         if killed and not match and not match_tradier:
             status = "timeout" if elapsed > timeout_s else "killed_low_sharpe"
+            # Include canonical keys from intermediate live results so _write_csv_row
+            # records the real in-flight Sharpe/trades instead of zeros.
             return {
                 **common,
                 "status": status,
+                "pool_sharpe": live_sharpe or 0.0,
+                "sym_sharpe": 0.0,
+                "gain_pct": live_gain_pct,
+                "closes": live_closes,
+                "wins": live_wins,
+                "losses": live_losses,
                 "live_sharpe": live_sharpe,
                 "live_closes": live_closes,
             }
