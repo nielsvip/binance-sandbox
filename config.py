@@ -862,6 +862,24 @@ class Config:
     #       the entry too — never enter naked.
     GOLDEN_RULE_ENABLED: bool = True                       # SACRED — never disable
     LEGACY_GUARANTEED_REENTRY: bool = True                 # OBLIGATION — never disable
+    # 2026-05-16 wire-up: these were previously read via getattr(config, ..., default)
+    # in backtest_v8_engine.py:4497-4508 and vec_paths/golden_rule_enforce.py:88-99
+    # WITHOUT being defined as BotConfig fields — so JSON overrides silently dropped
+    # (the dataclass loader rejects unknown keys). Defaults below match the prior
+    # getattr defaults; behavior is identical until a sweep overrides them.
+    GOLDEN_RULE_BASE_USD: float = 5.0
+    GOLDEN_RULE_DC_15M_ENABLED: bool = True
+    GOLDEN_RULE_BB_15M_ENABLED: bool = True
+    GOLDEN_RULE_DC_1H_ENABLED: bool = True
+    GOLDEN_RULE_BB_1H_ENABLED: bool = True
+    GOLDEN_RULE_DC_4H_ENABLED: bool = True
+    GOLDEN_RULE_BB_4H_ENABLED: bool = True
+    GOLDEN_RULE_DC_D_ENABLED: bool = True
+    GOLDEN_RULE_BB_D_ENABLED: bool = True
+    GOLDEN_RULE_MULT_15M: float = 1.0
+    GOLDEN_RULE_MULT_1H: float = 1.5
+    GOLDEN_RULE_MULT_4H: float = 2.0
+    GOLDEN_RULE_MULT_D: float = 3.0
     # The GOLDEN_RULE entry consensus uses the EXISTING tested config keys
     # GOLDEN_RULE_HTF_MIN_TFS and GOLDEN_RULE_MIN_IND (defined at line ~1964
     # below) — same knobs that backtest_v8_engine.py and backtest_v8_sweep.py

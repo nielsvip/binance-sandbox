@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 05:47:36 UTC
+# Copilot Status — 2026-05-16 06:02:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T05:43:52
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T05:43:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T05:43:52
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T05:43:53
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T05:44:54
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T05:45:55
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T05:45:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T05:45:55
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T05:46:00
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T05:47:04
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T05:59:32
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T06:00:23
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T06:00:23
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T06:00:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T06:00:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T06:01:35
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T06:02:26
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T06:02:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T06:02:26
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-16T06:02:37
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -39,6 +39,8 @@ _None_
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
+
+- WATCHING: **STORJUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 
 ## Supervisor
 

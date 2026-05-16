@@ -19,7 +19,7 @@ echo "Out: $OUT_DIR" | tee -a "$MASTER_LOG"
 
 STOCK_SECTORS=(tech_ai_chips energy_oil_gas precious_metals base_metals_mining uranium_nuclear agriculture_fertilizer defense_aerospace consumer_media commodities_crypto_etf)
 VARIANTS=(
-"V0_baseline|"
+"V0_baseline|NONE"
 "V1_spy|SPY_REGIME_GATE_ENABLED=true"
 "V2_atr|SIZING_MODE=ATR_PARITY"
 "V3_dailytf|DECISION_TF_MODE=DAILY"
@@ -55,12 +55,26 @@ PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 WORKDIR=/home/niels/binance-sandbox
 OUT_DIR="$1"; VNAME="$2"; OVR="$3"; SECTOR="$4"; SYMS="$5"; START="$6"; TIMEOUT_S="$7"
 override_args=""
-if [[ -n "$OVR" ]]; then
+if [[ -n "$OVR" && "$OVR" != "NONE" ]]; then
     IFS=',' read -ra K <<< "$OVR"
     for kv in "${K[@]}"; do override_args="$override_args --override $kv"; done
 fi
 cell_log="$OUT_DIR/${VNAME}__${SECTOR}.log"
 cell_json="$OUT_DIR/${VNAME}__${SECTOR}.summary.json"
+# SKIP-IF-EXISTS: if a valid summary.json already exists with non-zero trades, skip.
+if [[ -f "$cell_json" ]]; then
+    existing_trades=$("$PYTHON" -c "
+import json
+try:
+    with open('$cell_json') as f: d=json.load(f)
+    t = int(d.get('trades') or 0)
+    print(t)
+except: print(0)" 2>/dev/null)
+    if [[ "${existing_trades:-0}" -gt 0 ]]; then
+        echo "SKIP $VNAME/$SECTOR (already have $existing_trades trades)"
+        exit 0
+    fi
+fi
 t0=$(date +%s)
 cd "$WORKDIR"
 timeout "$TIMEOUT_S" "$PYTHON" v8_vec_sweep.py \
