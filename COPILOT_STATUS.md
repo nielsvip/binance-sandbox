@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 09:18:13 UTC
+# Copilot Status — 2026-05-16 09:33:31 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T09:14:36
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:15:27
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:15:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:15:27
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T09:15:38
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T09:16:40
-- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:17:32
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:17:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:17:32
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T09:17:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:25:47
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:27:50
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:27:50
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:27:50
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:29:53
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:29:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:29:53
+- **STALE_INDICATORS** [tradier]  — 2026-05-16T09:31:57
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T09:31:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T09:31:57
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -40,10 +40,12 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **STORJUSDT** SHORT (crypto) peaked +10.1%, exited 0m ago
+- WATCHING: **STORJUSDT** SHORT (crypto) peaked +10.6%, exited 0m ago
 - WATCHING: **APEUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **ACEUSDT** SHORT (crypto) peaked +4.6%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
+- WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
+- WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.0%, exited 0m ago
 
 ## Supervisor
 
