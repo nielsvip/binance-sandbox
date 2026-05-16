@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 13:17:17 UTC
+# Copilot Status — 2026-05-16 13:32:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:11:59
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:12:01
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:13:04
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T13:14:06
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:14:06
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:14:09
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:15:11
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T13:16:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:16:12
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:17:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:24:28
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:24:29
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T13:26:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:26:31
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:26:33
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T13:28:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:28:35
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T13:30:38
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T13:30:38
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T13:31:41
 
 ## Missed Trades (trader comparison)
 
@@ -52,8 +52,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [HIGH] ez_manage.py for inf is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (19min)
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (20min)
