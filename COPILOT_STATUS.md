@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-16 16:20:35 UTC
+# Copilot Status — 2026-05-16 16:35:43 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:16:38
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:16:38
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:17:40
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:17:40
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:18:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:18:41
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:18:42
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:18:42
-- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:19:44
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:19:44
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:33:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:33:17
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:33:19
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:33:19
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:34:21
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:34:21
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-16T16:35:21
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-16T16:35:21
+- **BIG_LOSER** [crypto] ang:PHBUSDT_SHORT — 2026-05-16T16:35:22
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-16T16:35:22
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -42,7 +42,6 @@ _None_
 
 - WATCHING: **INXUSDT** LONG (crypto) peaked +7.2%, exited 0m ago
 - WATCHING: **BEATUSDT** SHORT (crypto) peaked +4.2%, exited 0m ago
-- WATCHING: **RUNEUSDT** LONG (crypto) peaked +3.9%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
@@ -52,8 +51,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
