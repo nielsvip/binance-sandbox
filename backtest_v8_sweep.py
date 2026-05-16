@@ -1612,8 +1612,44 @@ def grid_haiku_sweep():
     return combos
 
 
+def grid_wt3m_force_open_gr_tune():
+    """2026-05-16 USER HANDS_OFF: sweep WT_3M_FORCE_OPEN GR-filter combos.
+    Engine wire-up landed at backtest_v8_engine.py:4331 same session — knobs
+    now actually drive a branch. Goal: pool_sharpe > 0.5 AND gain_per_yr > 100%."""
+    combos = [("baseline", {})]
+    combos.append(("wt3m_gate_off",      {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": False,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 0,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 0}))
+    combos.append(("wt3m_3tf_4ind_v12",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 12,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 3,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 4}))
+    combos.append(("wt3m_3tf_5ind_v15",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 15,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 3,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 5}))
+    combos.append(("wt3m_3tf_6ind_v18",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 18,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 3,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 6}))
+    combos.append(("wt3m_4tf_4ind_v16",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 16,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 4,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 4}))
+    combos.append(("wt3m_4tf_5ind_v20",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 20,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 4,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 5}))
+    combos.append(("wt3m_4tf_6ind_v24",  {"WT_3M_FORCE_OPEN_GR_GATE_ENABLED": True,
+                                          "WT_3M_FORCE_OPEN_GR_VOTE_MIN": 24,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_TFS": 4,
+                                          "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF": 6}))
+    return combos
+
+
 TIER_MAP = {
     "gr_vote_score": grid_gr_vote_score,
+    "wt3m_force_open_gr_tune": grid_wt3m_force_open_gr_tune,
     "gr_dcbb_threshold": grid_gr_dcbb_threshold,
     "canonical_audit_full": grid_canonical_audit_full,
     "hedge_one_by_one": grid_hedge_one_by_one,

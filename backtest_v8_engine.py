@@ -4329,6 +4329,65 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     if not _wtb_pass:
                         continue
             entry_pks.append(_epk)
+        # WT_3M_FORCE_OPEN — mirror ez_manage.py:35343-35393 (2026-05-16 wire-up)
+        # Without this, the WT_3M_FORCE_OPEN_GR_* knobs are dead in backtest (sweeping
+        # GR_MIN_TFS / MIN_IND_PER_TF returns identical results across variants — the
+        # gate code never executes). Mirrors live producer B (zero-position branch).
+        if bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)) and entry_pks:
+            try:
+                from golden_rule_htf import _ind_score as _wt3m_score
+                _wt3m_size = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 25.0))
+                _wt3m_gate_on = bool(getattr(config, 'WT_3M_FORCE_OPEN_GR_GATE_ENABLED', True))
+                _wt3m_vote_min = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_VOTE_MIN', 15))
+                _wt3m_min_tfs = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_MIN_TFS', 0))
+                _wt3m_min_ind = int(getattr(config, 'WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF', 5))
+                _wt3m_tfs = ("3m", "15m", "1h", "4h", "D") if mode == 'crypto' else ("5m", "15m", "1h", "4h", "D")
+                _wt3m_fired = 0
+                for _wf_pk in list(entry_pks):
+                    _wf_is_long = _wf_pk.endswith('_LONG')
+                    _wf_sym = _wf_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _wf_pk else _wf_pk.rsplit('_', 1)[0]
+                    _wf_ind = indicator_cache.get(_wf_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    _wf_wt1 = float(_wf_ind.get('wt1_3m', _wf_ind.get('wt1_5m', 0)) or 0)
+                    _wf_wt2 = float(_wf_ind.get('wt2_3m', _wf_ind.get('wt2_5m', 0)) or 0)
+                    _wf_trig = (_wf_is_long and _wf_wt1 > _wf_wt2) or ((not _wf_is_long) and _wf_wt1 < _wf_wt2)
+                    if not _wf_trig:
+                        continue
+                    _wf_px = float(price_cache.get(_wf_sym, _wf_ind.get('current_price', 0)) or 0)
+                    if _wf_px <= 0:
+                        continue
+                    _wf_ok = True
+                    if _wt3m_gate_on and (_wt3m_vote_min > 0 or _wt3m_min_tfs > 0):
+                        try:
+                            _wf_scores = [(_tf, _wt3m_score(_wf_ind, _tf, _wf_is_long, _wf_px)[0]) for _tf in _wt3m_tfs]
+                            _wf_votes = sum(s for _, s in _wf_scores)
+                            if _wt3m_vote_min > 0 and _wf_votes < _wt3m_vote_min:
+                                _wf_ok = False
+                            if _wf_ok and _wt3m_min_tfs > 0:
+                                _wf_tfs_ok = sum(1 for _, s in _wf_scores if s >= _wt3m_min_ind)
+                                if _wf_tfs_ok < _wt3m_min_tfs:
+                                    _wf_ok = False
+                        except Exception:
+                            _wf_ok = False
+                    if not _wf_ok:
+                        continue
+                    _wf_qty = _wt3m_size / _wf_px
+                    _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if _wf_is_long else 'SHORT'}_wt1={_wf_wt1:.1f}_wt2={_wf_wt2:.1f}"
+                    try:
+                        await trade_manager.execute_trade_action(
+                            account_key=account_key, position_key=_wf_pk, symbol=_wf_sym,
+                            quantity=_wf_qty, current_price=_wf_px,
+                            side='BUY' if _wf_is_long else 'SELL',
+                            position_side='LONG' if _wf_is_long else 'SHORT',
+                            action='OPEN', reason=_wf_reason, is_full_close=False, is_hedge=False)
+                        _wt3m_fired += 1
+                    except Exception as _wf_err:
+                        if step < 10:
+                            v8_logger.error(f"[V8_WT3M_FORCE_OPEN_ERR] {_wf_pk}: {_wf_err}")
+                if step < 5 and _wt3m_fired > 0:
+                    v8_logger.info(f"[V8_WT3M_FORCE_OPEN] step={step} fired={_wt3m_fired} gate_on={_wt3m_gate_on} vote_min={_wt3m_vote_min} tfs={_wt3m_min_tfs}×{_wt3m_min_ind}")
+            except Exception as _wt3m_outer:
+                if step < 10:
+                    v8_logger.error(f"[V8_WT3M_FORCE_OPEN_OUTER_ERR] {_wt3m_outer}")
         if step < 3:
             v8_logger.info(f"[DBG] entry_pks={len(entry_pks)} all_position_keys={len(all_position_keys)} positions={len(trade_manager.positions)} gate_filtered={_gate_filtered}")
         # VEC_STRATEGY_GATES — P0-B wiring (2026-05-14)
@@ -6860,17 +6919,34 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _ds_breached_tr:
                     _ds_amt_tr = abs(float(getattr(_ds_pos_tr, 'positionAmt', 0)))
                     _ds_side_tr = 'SELL' if _ds_is_long_tr else 'BUY'
-                    try:
-                        await manager.execute_now(
-                            position_key=_ds_pk_tr, account_key=account_key, symbol=_ds_sym_tr,
-                            original_positionAmt=_ds_amt_tr, side=_ds_side_tr,
-                            position_side='LONG' if _ds_is_long_tr else 'SHORT',
-                            quantity=_ds_amt_tr, old_price=_ds_px_tr,
-                            unique_id=f"DC_STOP_TR_{int(step)}",
-                            reason=f"DC_STOP_BREACH_px{_ds_px_tr:.4f}_stop{_ds_stop_tr:.4f}",
-                            is_full_close=True, action='CLOSE')
-                    except Exception:
-                        pass
+                    _ds_gr_hedge_on_tr = getattr(config, 'DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED', False)
+                    _ds_did_hedge_tr = False
+                    if _ds_gr_hedge_on_tr:
+                        try:
+                            from golden_rule_htf import score_entry_htf as _ds_gr_fn_tr
+                            _ds_gr_min_tfs_tr = int(getattr(config, 'DC4_STOP_GR_SCORE_MIN_TFS', 3))
+                            _ds_gr_min_ind_tr = int(getattr(config, 'DC4_STOP_GR_SCORE_MIN_IND', 5))
+                            _ds_gr_passes_tr, _ds_gr_n_tr, _ds_gr_det_tr = _ds_gr_fn_tr(
+                                _ds_ind_tr, not _ds_is_long_tr, 'tradier',
+                                _ds_gr_min_tfs_tr, _ds_gr_min_ind_tr, _ds_px_tr)
+                            if _ds_gr_passes_tr:
+                                await hedge_engine.scan_and_hedge_losers(account_key)
+                                _ds_did_hedge_tr = True
+                                v8_logger.warning(f"[DC4_STOP_GR_HEDGE_TR] {_ds_pk_tr}: DC4 breach but GR={_ds_gr_n_tr}tfs>={_ds_gr_min_tfs_tr} against — HEDGE not stop. {_ds_gr_det_tr}")
+                        except Exception as _ds_ge_tr:
+                            v8_logger.debug(f"[DC4_STOP_GR_ERR_TR] {_ds_pk_tr}: {_ds_ge_tr}")
+                    if not _ds_did_hedge_tr:
+                        try:
+                            await manager.execute_now(
+                                position_key=_ds_pk_tr, account_key=account_key, symbol=_ds_sym_tr,
+                                original_positionAmt=_ds_amt_tr, side=_ds_side_tr,
+                                position_side='LONG' if _ds_is_long_tr else 'SHORT',
+                                quantity=_ds_amt_tr, old_price=_ds_px_tr,
+                                unique_id=f"DC_STOP_TR_{int(step)}",
+                                reason=f"DC_STOP_BREACH_px{_ds_px_tr:.4f}_stop{_ds_stop_tr:.4f}",
+                                is_full_close=True, action='CLOSE')
+                        except Exception:
+                            pass
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
         oq = manager.order_queue
         if hasattr(oq, '_orders'):

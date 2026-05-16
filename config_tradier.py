@@ -597,6 +597,9 @@ class TradierConfig:
     # Backtest DC stop loss sweep flags (tradier uses 5m TF):
     DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_5m/dc_high4_5m recorded at entry
     DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_5m/dc_high_5m (1-bar, wider)
+    DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED: bool = False  # hedge instead of stop if GR score >= min_tfs x min_ind against
+    DC4_STOP_GR_SCORE_MIN_TFS: int = 3
+    DC4_STOP_GR_SCORE_MIN_IND: int = 5
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     DUP_GUARD_USE_GAIN_GATE: bool = True
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
