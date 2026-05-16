@@ -781,6 +781,15 @@ def simulate_one_symbol(
 
         # ─── FLAT: consider OPEN ──────────────────────────────────────────
         if state.qty <= 0.0001:
+            # A1 SPY-regime gate: block side per gate config (default OFF for both sides)
+            if config.SPY_REGIME_GATE_ENABLED:
+                if is_long and not bool(_spy_long_ok[i]):
+                    continue
+                if (not is_long) and not bool(_spy_short_ok[i]):
+                    continue
+            # A4 Daily-decision-TF gate: only evaluate OPEN on last bar of trading day
+            if str(config.DECISION_TF_MODE).upper() == "DAILY" and not bool(_daily_decision_mask[i]):
+                continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
             wt_open_ok = bool(wt_3m_aligned[i])
@@ -797,10 +806,19 @@ def simulate_one_symbol(
                 _delta_result = check_delta_entry(_store, i, side, mode, config)
             # WT_15M_BOUNCE_OPEN — fifth trigger (precomputed mask, O(1) per bar)
             _b15_ok = bool(_b15_open_mask[i])
-            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
+            # B2 Connors RSI-2 overlay — sixth trigger (long-only)
+            _connors_ok = bool(_connors_open_mask[i])
+            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
                 continue
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
+            # A3 ATR-parity sizing override: replace base qty with ATR-parity qty
+            if str(config.SIZING_MODE).upper() == "ATR_PARITY":
+                _ap_qty = float(_atr_parity_qty[i])
+                if _ap_qty > 0:
+                    _cap = float(config.ATR_PARITY_QTY_CAP_MULT) * float(config.START_POSITION_SIZE) / mark
+                    _ap_qty = min(_ap_qty, _cap)
+                    base_qty_arr = np.array([_ap_qty], dtype=np.float32)
             qty_dict = compute_trade_qty_vec(
                 {k: v[i:i+1] for k, v in npz.items()},
                 base_qty_arr,
@@ -811,7 +829,10 @@ def simulate_one_symbol(
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
-            if _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None and not _b15_ok:
+            if _connors_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
+                _crsi_val = float(_crsi_d[i]) if config.CONNORS_RSI2_OVERLAY_ENABLED else 0.0
+                reason = f"CONNORS_RSI2_OVERLAY_crsi={_crsi_val:.1f}"
+            elif _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None and not _b15_ok:
                 reason = _delta_result["reason"]
             elif _gr_result is not None and not fire_block and not wt_open_ok and not _b15_ok:
                 reason = _gr_result["reason"]
