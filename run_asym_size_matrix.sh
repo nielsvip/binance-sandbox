@@ -32,7 +32,7 @@ run_cell() {
     local cell_json="$OUT_DIR/${vname}.summary.json"
     local t0=$(date +%s)
     cd "$WORKDIR"
-    timeout 1500 "$PYTHON" v8_vec_sweep.py \
+    timeout 3000 "$PYTHON" v8_vec_sweep.py \
         --mode tradier --account trb \
         --symbols "$TECH_SYMS" \
         --start "$START_DATE" \

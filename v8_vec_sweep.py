@@ -561,6 +561,15 @@ def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
     return (entry - mark) / entry * 100.0
 
 
+def _get_ltf_for_mode(mode: str) -> str:
+    """Per CLAUDE.md: crypto base TF = 3m, stocks base TF = 5m.
+    Tradier NPZs expose _5m fields (not _3m). Hardcoding ltf='3m' for tradier
+    causes position_evaluator npz.get(f'wt1_{ltf}') to miss → zero arrays →
+    silent 0-trade tradier vec sweeps. Always route ltf through this helper.
+    """
+    return "5m" if str(mode).lower() == "tradier" else "3m"
+
+
 def simulate_one_symbol(
     symbol: str,
     side: str,            # 'LONG' or 'SHORT'
@@ -605,10 +614,14 @@ def simulate_one_symbol(
     close = np.asarray(close, dtype=np.float32)
 
     # ─── PRECOMPUTE GATES IN BULK ────────────────────────────────────────────
+    # LTF must match mode: crypto=3m, tradier=5m (CLAUDE.md base-TF rule).
+    # Tradier NPZs do NOT have _3m fields — hardcoding 'ltf="3m"' here was the
+    # root cause of silent 0-trade tradier vec sweeps (see vec_sweep_tradier_audit.md).
+    _ltf = _get_ltf_for_mode(mode)
     # 1. Reentry blocks
-    reentry = evaluate_reentry_vec(npz, is_long, config, ltf="3m")
+    reentry = evaluate_reentry_vec(npz, is_long, config, ltf=_ltf)
     # 2. Exit gates (indicator-only)
-    exit_gates = evaluate_exit_gates_vec(npz, is_long, config, ltf="3m")
+    exit_gates = evaluate_exit_gates_vec(npz, is_long, config, ltf=_ltf)
     # 3. Pre-compute hedge cascade WT-against arrays (we'll call noloss vec
     #    per-need, but precompute reuses these too).
     wt1_3m = np.nan_to_num(npz.get("wt1_3m", np.zeros(n)).astype(np.float32))
