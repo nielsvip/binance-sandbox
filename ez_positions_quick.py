@@ -142,10 +142,12 @@ from utils import (
     force_usdc_in_list,
     get_current_environment,
     get_current_price,
+    hedge_side_for_origin,
     is_hedge_account,
     is_strict_no_loss_account,
     load_environment_from_gpg,
     parse_position_key,
+    primary_side_for_symbol,
     safe_datetime,
     safe_fetch_float,
 )
@@ -5347,11 +5349,10 @@ class HedgeEngine:
             pass
         # Hedge size: up to 200% of losing position value
         _max_hedge_ratio = 2.0  # Max 200% of losing value
-        target_ratio = 0.0
-        if pnl_pct < -2.0 or history_loss < -30: target_ratio = _max_hedge_ratio
-        elif pnl_pct < -1.0 or history_loss < -10: target_ratio = 1.5
-        elif pnl_pct < -0.6: target_ratio = 1.0
-        else: target_ratio = 0.5
+        # USER MANDATE 2026-05-16: hedges are ALWAYS 100% of origin. Pre-fix tiered 0.5/1.0/1.5/2.0
+        # based on pnl_pct/history_loss meant shallow-loss hedges undersized at 50% (e.g., a -0.4%
+        # position got a 50% hedge — undersized when the trade went deeper). One flat ratio now.
+        target_ratio = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
         if target_ratio == 0: return
         if real_hedge_qty > 0 and existing_hedge_value >= (losing_value * _max_hedge_ratio):
              logger.debug(f"[HEDGE_GUARD] {losing_key} already has hedge {hedge_key} with value ${existing_hedge_value:.2f} >= ${losing_value*_max_hedge_ratio:.2f} (cap 200%). Skipping.")
@@ -7236,7 +7237,14 @@ class HedgeEngine:
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
             logger.warning(f"🚫 [HEDGE_COMPLETED_LOCK] {origin_key}: hedge opened {int(time.time() - _hc_ts)}s ago, lockout={self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s — BLOCKED")
             return False
-        hedge_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
+        # USER 2026-05-16: when origin/hedge classification is ambiguous, consult side-membership files.
+        # The opposite-side convention still holds (origin LONG → hedge SHORT, etc.), but if origin_side
+        # does NOT match primary_side_for_symbol, log a warning — could indicate origin is itself a stale
+        # hedge from a prior cycle (would explain orphan-hedge incidents). Sizing always 100% of origin.
+        hedge_side, _origin_matches_primary = hedge_side_for_origin(account_key, symbol, origin_side)
+        if not _origin_matches_primary:
+            _primary_dbg = primary_side_for_symbol(account_key, symbol)
+            logger.warning(f"🔁 [HEDGE_ORIGIN_SIDE_MISMATCH] {origin_key}: origin_side={origin_side} but symbols_{account_key}_*.json primary={_primary_dbg} — origin may itself be a stale hedge. Proceeding with hedge_side={hedge_side} (opposite of origin).")
         # 2026-04-17 USER RULE: if origin is USDT AND USDC sibling exists → use USDC as hedge vehicle.
         # Zero commissions on USDC pairs. Hedge is temporary, so USDC savings compound quickly.
         hedge_symbol = symbol
@@ -7387,19 +7395,17 @@ class HedgeEngine:
                 _hp, _ = await self.data_manager.get_fresh_price(hedge_symbol)
                 if _hp > 0: current_price = _hp
             except Exception: pass
-        # SIZE MATCH: hedge = 150% of origin position DOLLAR VALUE (deep-loss hedge must fully cover + buffer)
+        # USER MANDATE 2026-05-16 (PHBUSDT account-wipe): hedges are ALWAYS 100% of origin
+        # notional. Pre-fix: target was 1.5× origin then clamped to min(1.5×origin, $25) — the
+        # $25 absolute cap meant a $49 SHORT got a $25 hedge target; downstream paths sized it
+        # even smaller ($6.94). Now: target = origin_val × HEDGE_MAX_PCT_OF_LOSER (default 1.0).
+        # Absolute cap from config (default 100k, effectively unbound).
         _origin_val = abs(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0)) * current_price
         if _origin_val < 1.0: return True
-        _target_val = _origin_val * 1.5
-        # 2026-04-26 USER RULE — hard cap. Trades move <1% per cycle, account is ~$1k. Hedges
-        # must NEVER exceed HEDGE_MAX_PCT_OF_LOSER × loser_notional or HEDGE_MAX_ABSOLUTE_USD.
-        # Triggered after ALTUSDT_LONG accumulated to $1013/12478% in tracker.
-        _hsize_max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.5))
-        _hsize_max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
-        _hsize_cap = min(_origin_val * _hsize_max_pct, _hsize_max_abs)
-        if _target_val > _hsize_cap:
-            logger.warning(f"🛑 [HEDGE_SAME_HARD_CAP] {hedge_key}: requested ${_target_val:.2f} > cap ${_hsize_cap:.2f} (origin=${_origin_val:.2f} × {_hsize_max_pct} or abs ${_hsize_max_abs}) — clamping")
-            _target_val = _hsize_cap
+        _hsize_max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        _hsize_max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 100000.0))
+        _target_val = min(_origin_val * _hsize_max_pct, _hsize_max_abs)
+        logger.warning(f"📐 [HEDGE_SAME_SIZE_100PCT] {hedge_key}: origin=${_origin_val:.2f} × pct={_hsize_max_pct:.2f} → target=${_target_val:.2f} (abs_cap=${_hsize_max_abs:.0f})")
         # 2026-04-26 USER RULE — STOP ACCUMULATION. Before firing a new hedge order, check the
         # existing hedge-side position. If it already covers ≥90% of target, REFUSE to fire another
         # order. Prevents the silent stacking that built ACHUSDT_LONG to 306k qty / $1995 even with

@@ -3158,31 +3158,45 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Clear per-bar cooldowns/debounces — in live these use wall clock,
         # in V8 multiple bars process per real second so cooldowns block everything.
         # Without this, exits never fire because HARD_REDUCE_LOCK and DEBOUNCE block them.
-        if hasattr(ez_manage, '_recent_reduces'):
-            ez_manage._recent_reduces.clear()
-        # Clear Redis debounce keys
-        if hasattr(trade_manager, 'redis_manager') and trade_manager.redis_manager:
+        # 2026-05-16 — BT_PRESERVE_DEBOUNCE_ACROSS_BARS (default False): when True,
+        # skip the per-bar wipe so cooldowns expire by simulated wall-clock. Address
+        # of A6 finding #1 (live_vs_backtest_tradier.md): BT fires WT_DC_ENTRY 150x
+        # / GR_HTF_DIRECT_ENTRY 618x per acct because wipe runs every 5min bar.
+        # Read from both config + config_tradier (config_tradier used for tradier
+        # path; this block in run_simulation_crypto but flag respected on either).
+        _bt_preserve_debounce = bool(getattr(config, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False))
+        if not _bt_preserve_debounce:
             try:
-                _rm = trade_manager.redis_manager
-                if hasattr(_rm, 'data'):
-                    # InMemoryRedis — no TTL support; clear debounce keys directly from .data
-                    _rm.data = {k: v for k, v in _rm.data.items() if not k.startswith('debounce_exec:')}
-                else:
-                    for _rconn in (getattr(_rm, 'connections', None) or {}).values():
-                        if _rconn and hasattr(_rconn, '_data'):
-                            _rconn._data = {k: v for k, v in getattr(_rconn, '_data', {}).items() if not k.startswith('debounce_exec:')}
+                import config_tradier as _ct_dbg
+                _bt_preserve_debounce = bool(getattr(_ct_dbg, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False)) or bool(getattr(_ct_dbg.TradierConfig, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False))
             except Exception:
                 pass
-        # Clear tracker check times so exit/entry checks run every bar
-        if hasattr(tracker_manager, 'last_check_times'):
-            tracker_manager.last_check_times.clear()
-        # 2026-05-09 USER MANDATE: augmented_positions persists across bars until
-        # position is reduced or closed (it's per-position state, not per-bar dedup).
-        # Removed clear() so live + backtest share same persistence semantics.
-        # if hasattr(trade_manager, 'augmented_positions'):
-        #     trade_manager.augmented_positions.clear()
-        if hasattr(trade_manager, '_dc_breakout_entry_cd'):
-            trade_manager._dc_breakout_entry_cd.clear()
+        if not _bt_preserve_debounce:
+            if hasattr(ez_manage, '_recent_reduces'):
+                ez_manage._recent_reduces.clear()
+            # Clear Redis debounce keys
+            if hasattr(trade_manager, 'redis_manager') and trade_manager.redis_manager:
+                try:
+                    _rm = trade_manager.redis_manager
+                    if hasattr(_rm, 'data'):
+                        # InMemoryRedis — no TTL support; clear debounce keys directly from .data
+                        _rm.data = {k: v for k, v in _rm.data.items() if not k.startswith('debounce_exec:')}
+                    else:
+                        for _rconn in (getattr(_rm, 'connections', None) or {}).values():
+                            if _rconn and hasattr(_rconn, '_data'):
+                                _rconn._data = {k: v for k, v in getattr(_rconn, '_data', {}).items() if not k.startswith('debounce_exec:')}
+                except Exception:
+                    pass
+            # Clear tracker check times so exit/entry checks run every bar
+            if hasattr(tracker_manager, 'last_check_times'):
+                tracker_manager.last_check_times.clear()
+            # 2026-05-09 USER MANDATE: augmented_positions persists across bars until
+            # position is reduced or closed (it's per-position state, not per-bar dedup).
+            # Removed clear() so live + backtest share same persistence semantics.
+            # if hasattr(trade_manager, 'augmented_positions'):
+            #     trade_manager.augmented_positions.clear()
+            if hasattr(trade_manager, '_dc_breakout_entry_cd'):
+                trade_manager._dc_breakout_entry_cd.clear()
 
         # FIX: Update mark_price + gain for ALL positions, INCLUDING EMPTY SHELLS.
         # Bug 2026-04-09: empty position shells retained STALE mark_price (sometimes from
@@ -3994,8 +4008,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     v8_logger.error(f"[DISC-HAIKU_WINNER_OUTER_ERR] step={step}: {_hw_outer_e}")
 
         # Clear reduce cooldowns per bar (each bar = 3-15 min in real time)
-        if hasattr(ez_manage, '_recent_reduces'):
-            ez_manage._recent_reduces.clear()
+        # 2026-05-16 — gated by BT_PRESERVE_DEBOUNCE_ACROSS_BARS (default False).
+        # See run_simulation_crypto for full rationale.
+        _bt_preserve_debounce_t = bool(getattr(config, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False))
+        if not _bt_preserve_debounce_t:
+            try:
+                import config_tradier as _ct_dbg_t
+                _bt_preserve_debounce_t = bool(getattr(_ct_dbg_t, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False)) or bool(getattr(_ct_dbg_t.TradierConfig, 'BT_PRESERVE_DEBOUNCE_ACROSS_BARS', False))
+            except Exception:
+                pass
+        if not _bt_preserve_debounce_t:
+            if hasattr(ez_manage, '_recent_reduces'):
+                ez_manage._recent_reduces.clear()
 
         # === PARTIAL_PROFIT_LOCK v2 inline (2026-04-21) — fires regardless of V8_SKIP_PROCESS_POSITION.
         # Step 1 (+0.5%): TP 50% REDUCE; stop_level = entry × (1 ± BE_buffer%). Close before BE.
@@ -5043,7 +5067,26 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # FIX 2026-04-14: ez_positions_quick.check_exit_candidates_for_account reads SRS
     # settings from its own config (config.Config), not tradier_manage.config. Cross-inject
     # all SRS + exit-related overrides so the switch actually affects the exit path.
-    _EPQ_CROSS_KEYS = {"STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF", "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", "SATOSHIT_ENTRY_FILTER"}
+    # 2026-05-16 A3 fix #5 (HTF_DIRECTION_GATE_ENABLED) + bundled tradier→crypto-config bridge.
+    # ez_positions_quick.config (the CRYPTO Config instance) is what _EPQ paths read at runtime;
+    # sweep overrides land on tm_mod.config (TradierConfig). Adding these keys to the cross-injector
+    # makes HTF_DIRECTION_GATE_ENABLED, MFI_ENTRY_ENABLED, TRADIER_ENTRY_SCORE_THRESHOLD,
+    # GR_HTF_GATE_ENABLED responsive to tradier sweep overrides. All gates default-OFF behind their
+    # _ENABLED/threshold values; mirroring is inert until sweep explicitly sets them.
+    _EPQ_CROSS_KEYS = {
+        "STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF",
+        "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW",
+        "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", "SATOSHIT_ENTRY_FILTER",
+        # A3 #5: HTF_DIRECTION_GATE family — live read at ez_positions_quick.py:12242
+        "HTF_DIRECTION_GATE_ENABLED",
+        "HTF_GATE_APPLY_TO_OPEN", "HTF_GATE_APPLY_TO_AUGMENT",
+        "HTF_GATE_BYPASS_RZ", "HTF_GATE_REQUIRED_TFS",
+        # A3 #2 (GR_HTF_GATE) + #7 (MFI) + #10 (ENTRY_SCORE): mirror to both configs so
+        # engine gate inserts below can read from either crypto or tradier instance.
+        "GR_HTF_GATE_ENABLED", "GR_HTF_REQUIRE_BULL", "GR_HTF_REQUIRE_BEAR",
+        "MFI_ENTRY_ENABLED", "MFI_LONG_THRESHOLD_D",
+        "TRADIER_ENTRY_SCORE_THRESHOLD", "ENTRY_SCORE_THRESHOLD",
+    }
     if _t_overrides:
         _epq_cfg = getattr(ez_positions_quick, 'config', None)
         if _epq_cfg:
@@ -5903,10 +5946,40 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and _reason:
                     if "DELTA_ENTRY" in _reason.upper() or "DELTA_SIGNAL" in _reason.upper():
                         return "BLOCKED_DELTA_ENTRY_DISABLED"
+                # 2026-05-16 A3 fix #2 — GR_HTF_GATE_ENABLED (default False).
+                # Mirrors live wiring at tradier_manage.py:2215-2225. Reads
+                # wt_bull_alignment / wt_bear_alignment from snapshot. Blocks LONG
+                # when alignment < REQUIRE_BULL (and mirror for SHORT). Default False —
+                # sweep-validated before promotion.
+                if account_key.startswith(("trb", "trc", "tra")):
+                    if bool(getattr(tm_mod.config, 'GR_HTF_GATE_ENABLED', False)):
+                        _gh_ind = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                        _gh_is_long = (str(position_side) == "LONG")
+                        _gh_bull = int((_gh_ind or {}).get('wt_bull_alignment', 0) or 0)
+                        _gh_bear = int((_gh_ind or {}).get('wt_bear_alignment', 0) or 0)
+                        _gh_req_bull = int(getattr(tm_mod.config, 'GR_HTF_REQUIRE_BULL', 1))
+                        _gh_req_bear = int(getattr(tm_mod.config, 'GR_HTF_REQUIRE_BEAR', 1))
+                        if _gh_is_long and _gh_bull < _gh_req_bull:
+                            return f"BLOCKED_GR_HTF_BULL_{_gh_bull}lt{_gh_req_bull}"
+                        if (not _gh_is_long) and _gh_bear < _gh_req_bear:
+                            return f"BLOCKED_GR_HTF_BEAR_{_gh_bear}lt{_gh_req_bear}"
+                # 2026-05-16 A3 fix #7 — MFI_ENTRY_ENABLED (default False).
+                # Mirrors live wiring at tradier_manage.py:10727-10730 (inside should_enter_long).
+                # When True, blocks LONG when mfi_D > MFI_LONG_THRESHOLD_D (default 20 — oversold proxy).
+                if account_key.startswith(("trb", "trc", "tra")):
+                    if bool(getattr(tm_mod.config, 'MFI_ENTRY_ENABLED', False)):
+                        _mfi_ind = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                        _mfi_is_long = (str(position_side) == "LONG")
+                        if _mfi_is_long:
+                            _mfi_d = float((_mfi_ind or {}).get('mfi_D', 50) or 50)
+                            _mfi_thr = float(getattr(tm_mod.config, 'MFI_LONG_THRESHOLD_D', 20.0))
+                            if _mfi_d > _mfi_thr:
+                                return f"BLOCKED_MFI_ENTRY_D_{_mfi_d:.0f}gt{_mfi_thr:.0f}"
                 _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) or 55)
                 # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE bonus lowers effective WT_DC threshold.
                 if _v8ns_sf_bonus_r > 0 and _wt_dc_thr > 0:
                     _wt_dc_thr = max(0.0, _wt_dc_thr - _v8ns_sf_bonus_r)
+                _wt_dc_score = None
                 if _wt_dc_thr > 0:
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
@@ -5918,6 +5991,29 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             return f"BLOCKED_WT_DC_ENTRY_THRESHOLD_{_wt_dc_score:.0f}_lt_{_wt_dc_thr:.0f}"
                     except Exception as _wt_dc_err:
                         v8_logger.warning(f"[V8_WT_DC_THR_ERR] {position_key}: {_wt_dc_err}")
+                # 2026-05-16 A3 fix #10 — TRADIER_ENTRY_SCORE_THRESHOLD (default 0 → inert).
+                # Mirrors live post-entry veto at tradier_manage.py:2300 (account_key != 'tra').
+                # Reuses _wt_dc_score above as the entry-confidence proxy (conceptually identical
+                # on tradier path). When ENTRY_SCORE_THRESHOLD > 0 and score below, refuse entry.
+                if account_key.startswith(("trb", "trc")) and not account_key.startswith("tra"):
+                    _es_thr = float(getattr(tm_mod.config, 'ENTRY_SCORE_THRESHOLD', 0) or 0)
+                    if _es_thr <= 0:
+                        _es_thr = float(getattr(tm_mod.config, 'TRADIER_ENTRY_SCORE_THRESHOLD', 0) or 0)
+                    if _es_thr > 0:
+                        _es_score = float(_wt_dc_score) if _wt_dc_score is not None else 0.0
+                        if _wt_dc_score is None:
+                            # Recompute if WT_DC_ENTRY_THRESHOLD was 0 (gate above skipped).
+                            try:
+                                from wt_dc_entry_scorer import score_entry as _es_score_fn
+                                _es_ind = manager.market_snapshot.get(str(symbol).upper(), {})
+                                _es_is_long = (str(position_side) == "LONG")
+                                _es_px = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
+                                _es_score, _ = _es_score_fn(_es_ind, _es_is_long, _es_px)
+                                _es_score = float(_es_score)
+                            except Exception:
+                                _es_score = 0.0
+                        if _es_score < _es_thr:
+                            return f"BLOCKED_ENTRY_SCORE_THRESHOLD_{_es_score:.0f}lt{_es_thr:.0f}"
                 if getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
                     try:
                         _srs_e_ind = manager.market_snapshot.get(str(symbol).upper(), {})

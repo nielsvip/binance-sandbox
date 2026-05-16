@@ -1392,8 +1392,19 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
-    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352)
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352). When DT_TARGET_ATR_ENABLED=True, recommended to raise to 0.015 as no-ATR fallback (see tradier_manage._manage_daytrade_positions DT_TARGET_ATR branch). Kept 0.005 for default-OFF parity.
+    # 2026-05-16: ATR-aware DT_TARGET kill-switch (DEFAULT OFF — sweep-validate before enable).
+    # When True: effective target = max(2 × atr_5m / entry, TARGET_PCT, noloss_min). Reason label
+    # switches to DT_TARGET_ATR when ATR-driven. When False: legacy max(TARGET_PCT, noloss_min)
+    # behavior preserved. Recommended pair when enabling: raise TRADIER_DC_DAYTRADE_TARGET_PCT to 0.015.
+    DT_TARGET_ATR_ENABLED: bool = False
     TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # REVERTED 2026-04-17: see DC_POSITION_ENTRY_THRESHOLD above.
+    # 2026-05-16: DC_TIER4_DC4H_AUG late-entry guard (DEFAULT OFF behind DC_TIER4_BAR_MATURITY_BLOCK_ENABLED).
+    # When True + threshold in (0,1): block tier-4 augment when current bar has consumed >threshold
+    # of daily ATR in the SAME direction as the augment. Symptom: 6 events in last 30d averaged
+    # -2.25%. Fail-open if open_D/atr_D missing. Tiers 1/2/3 untouched.
+    DC_TIER4_BAR_MATURITY_BLOCK_ENABLED: bool = False
+    DC_TIER4_BAR_MATURITY_BLOCK: float = 0.7
 
     # K-Zone — stochastic K-zone entry filter
     TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)
@@ -1436,6 +1447,12 @@ class TradierConfig:
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # K > this for normal short entry
     WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0  # 2026-04-27: hard k5m cap for WT_DC_ENTRY_THRESHOLD-path LONG entries (default inert at 100). Lower to 80 to block "buy at 5m top" e.g. NVDA k5m=95.
     WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0   # 2026-04-27: hard k5m floor for WT_DC_ENTRY_THRESHOLD-path SHORT entries (default inert at 0). Raise to 20 to block "short at 5m bottom".
+    # 2026-05-16: bar-maturity guard on WT_DC_ENTRY path (DEFAULT OFF behind WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED).
+    # When True + threshold in (0,1): block entries when current bar has consumed >threshold of
+    # its expected daily ATR in the SAME direction as the proposed signal. Symptom that prompted:
+    # WT_DC_ENTRY_80_D_bear averaging -7.14% on 4 trades. Fail-open if open_D/atr_D unavailable.
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
     TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long
     TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short
 
@@ -2296,6 +2313,7 @@ class TradierConfig:
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 22% needed restore. 5 = compromise. FIX 2026-03-29: was 1, killed real hedges.
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
+    GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = False  # 2026-05-16 DEFAULT OFF: when True, _handle_missing_positions uses ZERO_CONFIRMATION_THRESHOLD_API + handle_reduction() instead of THRESHOLD=1 direct zero. Fixes 697 phantom ghost-closes/30d on NVDA/GOOGL/GLD. Sweep-validate before enable.
 
     # ====================================================================
     # 2026-04-26 RESEARCH SCAN — SWEEP-ONLY OVERLAYS + STRATEGY GATES

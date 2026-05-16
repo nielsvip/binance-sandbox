@@ -1612,10 +1612,31 @@ class TradierPositionManager:
     #     return updated_keys_in_api
 
     async def _handle_missing_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
-        """Zero positions absent from Tradier API on first miss. Tradier returns ALL held positions — absence definitively means closed."""
+        """Handle positions absent from Tradier API response.
+
+        Two modes gated by config_tradier.GHOST_CLOSE_REQUIRE_CONFIRMATION (default False).
+
+        Mode A (flag=False, current/legacy behavior, default):
+          THRESHOLD=1, on first miss zero positionAmt directly. Preserved as default until
+          sweep validation of the safer path. NOTE: this is the path that misfired 697 times
+          in 30 days on NVDA/GOOGL/GLD per audit data/research_20260516/ghost_close_audit.md.
+
+        Mode B (flag=True, new safer behavior):
+          THRESHOLD = config_tradier.ZERO_CONFIRMATION_THRESHOLD_API (default 5).
+          Per-(account, position_key) absence counter tracked across calls; only routes
+          through handle_reduction() once count >= THRESHOLD. handle_reduction() preserves
+          sacred fields (entry_price, max_gain, opened_at) and is the canonical reduce path.
+          Caller in fetch_positions_from_api treats None from get_account_positions as
+          API failure and skips this entirely, so counter only increments on confirmed
+          broker absence.
+        """
         if not hasattr(self, '_api_absence_count'):
             self._api_absence_count = {}
-        THRESHOLD = 1
+        _require_confirmation = bool(getattr(config, 'GHOST_CLOSE_REQUIRE_CONFIRMATION', False))
+        if _require_confirmation:
+            THRESHOLD = int(getattr(config, 'ZERO_CONFIRMATION_THRESHOLD_API', 5) or 5)
+        else:
+            THRESHOLD = 1
         for pk, pos in list(account_positions.items()):
             if not pk.startswith(f"{account_key}:"):
                 continue
@@ -1628,11 +1649,32 @@ class TradierPositionManager:
                 continue
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
-            if count >= THRESHOLD:
-                _ghost_qty = float(getattr(pos, 'positionAmt', 0) or 0)
-                _ghost_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
-                _ghost_entry = float(getattr(pos, 'entry_price', 0) or 0)
-                _ghost_gain = float(getattr(pos, 'gain', 0) or 0)
+            if count < THRESHOLD:
+                logger.warning(f"[GHOST_ABSENT] {pk}: absent {count}x from Tradier API (threshold={THRESHOLD}, mode={'CONFIRM' if _require_confirmation else 'LEGACY_T1'}) — holding state, not zeroing yet")
+                continue
+            _ghost_qty = float(getattr(pos, 'positionAmt', 0) or 0)
+            _ghost_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
+            _ghost_entry = float(getattr(pos, 'entry_price', 0) or 0)
+            _ghost_gain = float(getattr(pos, 'gain', 0) or 0)
+            if _require_confirmation:
+                logger.warning(f"[GHOST_CLOSE_CONFIRMED] {pk}: absent {count}x ≥ THRESHOLD={THRESHOLD} — routing through handle_reduction() (full-close, preserves sacred fields)")
+                _reason = f"tradier_api_absence_{count}x_{THRESHOLD}_lastgain={_ghost_gain:.2f}%_entry={_ghost_entry:.2f}"
+                self._api_absence_count.pop(pk, None)
+                try:
+                    await self.handle_reduction(pos, pk, _ghost_qty, abs(_ghost_qty), abs(_ghost_qty), _ghost_price, _ghost_entry, reduction_source="api_absence_confirmed", reason=_reason)
+                except Exception as _red_err:
+                    logger.error(f"[GHOST_CLOSE_CONFIRMED] {pk}: handle_reduction raised: {_red_err} — falling back to direct zero")
+                    pos.positionAmt = 0.0
+                    pos.gain = 0.0
+                    pos.unrealized_pnl = 0.0
+                    pos.last_updated = now
+                    try: pos.cycle_peak_gain = 0.0
+                    except Exception: pass
+                    try:
+                        await self.append_to_position_history_file(pk, "GHOST_CLOSE", abs(_ghost_qty), _ghost_price, rich_context={"reason": _reason + "_fallback", "indicators": {}})
+                    except Exception as _hist_err:
+                        logger.error(f"[GHOST_CLOSE_CONFIRMED] {pk}: history write failed: {_hist_err}")
+            else:
                 logger.warning(f"[GHOST_ZERO] {pk}: absent {count}x from Tradier API — zeroing positionAmt (Tradier returns ALL held positions, absence = closed)")
                 pos.positionAmt = 0.0
                 pos.gain = 0.0

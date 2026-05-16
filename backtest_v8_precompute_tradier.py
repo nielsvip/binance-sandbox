@@ -64,10 +64,20 @@ from backtest_v8_precompute import (
     setup_db as _setup_db_base, load_klines, resample_tf,
     compute_rsi, compute_stoch_rsi, compute_atr, compute_donchian,
     compute_heikin_ashi, compute_macd, compute_bb, compute_mfi,
-    compute_adx, compute_choppiness, compute_rel_volume, compute_linreg_slope,
+    compute_adx, compute_choppiness, compute_linreg_slope,
     compute_hull_trend, compute_crossovers, compute_wt_intelligence,
     map_htf_to_15m, inspect_symbol as _inspect_base,
 )
+
+# ---------------------------------------------------------------------------
+# Local helper — compute_rel_volume was removed from backtest_v8_precompute.py
+# during the v7 overhaul (2026-04-03). Restored here for the tradier path so
+# fresh NPZ regeneration doesn't ImportError. Same signature/semantics as the
+# historical implementation (pandas Series in, length=20 rolling mean).
+# ---------------------------------------------------------------------------
+def compute_rel_volume(volume, length=20):
+    avg = volume.rolling(length, min_periods=1).mean()
+    return (volume / (avg + 1e-10)).values.astype(np.float32)
 
 # ---------------------------------------------------------------------------
 # Database setup (separate DB for stocks)

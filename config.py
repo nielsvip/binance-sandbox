@@ -572,8 +572,14 @@ class Config:
     # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
     # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
     # accumulated to $1013 / 12478% in tracker from pre-fix double-fires.
-    HEDGE_MAX_PCT_OF_LOSER: float = 1.0  # 2026-04-26 user rule: hedges NEVER exceed loser size
-    HEDGE_MAX_ABSOLUTE_USD: float = 25.0
+    # 2026-05-16 USER MANDATE (PHBUSDT $6.94-hedge-vs-$49-SHORT incident, accounts wiped):
+    # hedges are ALWAYS 100% of origin notional. PCT capped at 1.0× (no over-hedge). The $25
+    # absolute cap is RAISED to effectively unlimited so the percent cap is what binds — a $48
+    # SHORT now produces a $48 hedge, not $25. To distinguish original vs hedge when ambiguous,
+    # consult symbols_{acc}_long.json / symbols_{acc}_short.json — side present in that file =
+    # original; opposite side = hedge.
+    HEDGE_MAX_PCT_OF_LOSER: float = 1.0  # 100% of loser. NEVER exceed loser size.
+    HEDGE_MAX_ABSOLUTE_USD: float = 100000.0  # 2026-05-16: was $25 (over-tight). Now effectively unlimited; pct cap binds.
     # 2026-04-26 — refuse new hedge orders if existing hedge-side position already covers
     # >= this fraction of target. Stops accumulation across many cycles.
     HEDGE_ALREADY_COVERED_THRESHOLD: float = 0.9

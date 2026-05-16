@@ -312,19 +312,25 @@ class TradierAPIClient:
             logger.error(f"❌ Unexpected Error: {repr(e)}")
             return {}
 
-    async def get_account_positions(self, account_key: str = None) -> List[Dict]:
-        if not self._current_id: return []
+    async def get_account_positions(self, account_key: str = None) -> Optional[List[Dict]]:
+        # 2026-05-16 GHOST_CLOSE fix: return None on API failure / unparseable response;
+        # return [] ONLY on confirmed-empty broker. Caller (fetch_positions_from_api in
+        # tradier_positions.py) treats None as "do NOT touch local state" and [] as
+        # "broker truly empty — run absence logic". Previous behavior returned [] on both,
+        # contributing to 697 phantom ghost-closes in 30d on NVDA/GOOGL/GLD.
+        if not self._current_id: return None
         res = await self._request("GET", f"/accounts/{self._current_id}/positions", use_data_context=False)
-        if res and isinstance(res, dict):
-            if 'positions' in res:
-                inner = res['positions']
-                if inner == 'null' or inner is None: return []
-                if isinstance(inner, dict) and 'position' in inner:
-                    p = inner['position']
-                    return p if isinstance(p, list) else [p]
-                if isinstance(inner, list): return inner
-            if 'symbol' in res: return [res]
-        return []
+        if res is None or not isinstance(res, dict) or not res:
+            return None
+        if 'positions' in res:
+            inner = res['positions']
+            if inner == 'null' or inner is None: return []  # CONFIRMED empty broker
+            if isinstance(inner, dict) and 'position' in inner:
+                p = inner['position']
+                return p if isinstance(p, list) else [p]
+            if isinstance(inner, list): return inner
+        if 'symbol' in res: return [res]
+        return None  # Unparseable shape — treat as API failure, do not act
 
     async def get_account_balances(self, account_key: str = None) -> Dict:
         if not self._current_id: return {}

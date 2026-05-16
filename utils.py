@@ -1382,6 +1382,73 @@ def pk_symbol(position_key: str) -> str:
     return sym_side
 
 
+_SIDE_MEMBERSHIP_CACHE: Dict[str, Tuple[float, set]] = {}
+_SIDE_MEMBERSHIP_TTL_S: float = 30.0
+
+
+def _load_side_membership(account_key: str, side: str) -> set:
+    """Load symbols_{account}_{side}.json membership set with 30s TTL cache.
+    Returns empty set if file missing/unreadable. side ∈ {"long","short"}."""
+    side = side.lower()
+    if side not in ("long", "short"):
+        return set()
+    cache_key = f"{account_key}:{side}"
+    now = time.time()
+    cached = _SIDE_MEMBERSHIP_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < _SIDE_MEMBERSHIP_TTL_S:
+        return cached[1]
+    fpath = Path(__file__).resolve().parent / f"symbols_{account_key}_{side}.json"
+    members: set = set()
+    if fpath.exists():
+        try:
+            data = json.loads(fpath.read_text())
+            if isinstance(data, list):
+                members = {str(s).strip().upper() for s in data if isinstance(s, str)}
+            elif isinstance(data, dict):
+                members = {str(k).strip().upper() for k in data.keys()}
+        except Exception:
+            members = set()
+    _SIDE_MEMBERSHIP_CACHE[cache_key] = (now, members)
+    return members
+
+
+def primary_side_for_symbol(account_key: str, symbol: str) -> Optional[str]:
+    """USER 2026-05-16 mandate (PHBUSDT account-wipe): "when unclear which is the hedge check
+    symbols_{acc_key}_long/short". Given (account, symbol) returns the side ('LONG' or 'SHORT')
+    that the symbol is allow-listed on. Used to disambiguate origin-vs-hedge when both sides
+    have positions open. Returns None when membership is ambiguous (in both / in neither).
+
+    Rules:
+      symbol in symbols_{acc}_long.json AND not in _short → primary='LONG' (hedge = SHORT)
+      symbol in symbols_{acc}_short.json AND not in _long → primary='SHORT' (hedge = LONG)
+      both / neither → None (caller must fall back to opened_at / notional / explicit reason)
+    """
+    if not account_key or not symbol:
+        return None
+    sym_u = symbol.strip().upper()
+    long_members = _load_side_membership(account_key, "long")
+    short_members = _load_side_membership(account_key, "short")
+    in_long = sym_u in long_members
+    in_short = sym_u in short_members
+    if in_long and not in_short:
+        return "LONG"
+    if in_short and not in_long:
+        return "SHORT"
+    return None
+
+
+def hedge_side_for_origin(account_key: str, symbol: str, origin_side: str) -> Tuple[str, bool]:
+    """Returns (hedge_side, origin_matches_primary). hedge_side is always the opposite of origin
+    (same-symbol hedge convention). origin_matches_primary is True when origin_side matches
+    primary_side_for_symbol — caller can log a warning if False to flag potentially-backwards
+    origin/hedge classification (e.g., a SHORT that was actually born as a hedge for a LONG
+    that closed long ago)."""
+    hedge_side = "SHORT" if str(origin_side).upper() == "LONG" else "LONG"
+    primary = primary_side_for_symbol(account_key, symbol)
+    matches = (primary is None) or (primary == str(origin_side).upper())
+    return hedge_side, matches
+
+
 async def get_live_usdc_pairs(session: Optional[aiohttp.ClientSession] = None) -> set:
     """Hit Binance futures exchangeInfo for live USDC perpetuals. Cache 15min on disk.
     Fallback to hardcoded set only on API failure. Previous version was gutted and returned

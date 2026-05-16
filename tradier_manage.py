@@ -2223,7 +2223,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         elif (not is_long) and _gr_bear < _gr_req_bear:
                             _gr_htf_block = True
                     # ═══ END NEW BASELINE GATES ═══
-                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block:
+                    # ═══ 2026-05-16 — BAR_MATURITY guard (DEFAULT OFF behind WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED) ═══
+                    # WT_DC_ENTRY_80_D_bear was averaging -7.14% on 4 trades in 30d. Root
+                    # cause: WT/DC scorer fires LATE in a daily bar after most of the move
+                    # has already happened — entry is into exhaustion, not into a setup.
+                    # Block when bar has already consumed >70% of its expected daily ATR
+                    # in the SAME direction as the proposed signal. Skips block if open_D
+                    # or atr_D are unavailable (fail-open, preserves existing entries on
+                    # malformed data). Flag default False: legacy behavior preserved until
+                    # sweep-validated.
+                    _bar_maturity_block = False
+                    if bool(getattr(config, 'WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED', False)):
+                        _bm_thr = float(getattr(config, 'WT_DC_ENTRY_BAR_MATURITY_BLOCK', 0.7))
+                        if _bm_thr > 0.0 and _bm_thr < 1.0:
+                            _bm_open_d = float((_entry_ind or {}).get('open_D', 0) or 0)
+                            _bm_atr_d = float((_entry_ind or {}).get('atr_D', 0) or 0)
+                            if _bm_open_d > 0 and _bm_atr_d > 0:
+                                _bm_pos = abs(current_price - _bm_open_d) / max(_bm_atr_d, 1e-6)
+                                _bm_bar_up = (current_price > _bm_open_d)
+                                _bm_same_dir = (is_long and _bm_bar_up) or ((not is_long) and (not _bm_bar_up))
+                                if _bm_pos > _bm_thr and _bm_same_dir:
+                                    _bar_maturity_block = True
+                                    logger.info(f"[WT_DC_BAR_MATURITY_BLOCK] {symbol} {'L' if is_long else 'S'}: pos={_bm_pos:.2f}>thr={_bm_thr:.2f} bar_up={_bm_bar_up} px={current_price:.2f} open_D={_bm_open_d:.2f} atr_D={_bm_atr_d:.4f} score={_entry_score:.0f}")
+                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block and not _bar_maturity_block:
                         _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
@@ -6699,6 +6721,31 @@ class StockStrategy:
                 if dcl4h > 0 and current_price < dcl4h * (1 - buf): active_tier = 4
 
             if active_tier > 0:
+                # 2026-05-16 — DC_TIER4 LATE-ENTRY GUARD (DEFAULT OFF behind DC_TIER4_BAR_MATURITY_BLOCK_ENABLED)
+                # Live evidence (data/tradier/history/trc): 6 DC_TIER4_DC4H_AUG events in last
+                # 30d averaged -2.25%. Root cause is NOT a DUP_GUARD bypass — the existing
+                # MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0% gate above (line ~6658) is stricter than
+                # DUP_GUARD's 1.5% floor. Real cause: augmenting AT the top of the 4h breakout
+                # bar where most of the ATR has already been consumed. Position bleeds when
+                # the bar retraces from the breakout high.
+                # Guard: when active_tier==4 (DC4H), refuse the augment if current bar has
+                # consumed >70% of daily ATR in the direction of the augment. Tier 1/2/3
+                # untouched (lower-TF breakouts retest quickly). Mirrors Patch 2's
+                # bar-maturity logic for the entry-side equivalent. Fail-open on missing
+                # open_D / atr_D so we never silently kill all aug fires. Flag default False:
+                # legacy behavior preserved until sweep-validated.
+                if active_tier == 4 and bool(getattr(config, 'DC_TIER4_BAR_MATURITY_BLOCK_ENABLED', False)):
+                    _tier4_bm_thr = float(getattr(config, 'DC_TIER4_BAR_MATURITY_BLOCK', 0.7))
+                    if _tier4_bm_thr > 0.0 and _tier4_bm_thr < 1.0:
+                        _tier4_open_d = float(i.get('open_D', 0) or 0)
+                        _tier4_atr_d = float(i.get('atr_D', 0) or 0)
+                        if _tier4_open_d > 0 and _tier4_atr_d > 0:
+                            _tier4_pos = abs(current_price - _tier4_open_d) / max(_tier4_atr_d, 1e-6)
+                            _tier4_bar_up = (current_price > _tier4_open_d)
+                            _tier4_same_dir = (is_long and _tier4_bar_up) or ((not is_long) and (not _tier4_bar_up))
+                            if _tier4_pos > _tier4_bm_thr and _tier4_same_dir:
+                                logger.info(f"[DC_TIER4_BAR_MATURITY_BLOCK] {symbol} {'L' if is_long else 'S'}: pos={_tier4_pos:.2f}>thr={_tier4_bm_thr:.2f} bar_up={_tier4_bar_up} px={current_price:.2f} open_D={_tier4_open_d:.2f} atr_D={_tier4_atr_d:.4f} gain={gain:.2f}% — AUG REFUSED (late-entry)")
+                                return False, "", 0.0, 0.0
                 # CONCENTRATION CAP: Never let a single symbol exceed $15,000 — USO grew to $352K, IBIT to $119K
                 pk = getattr(position, 'position_key', '') or f"{getattr(position, 'account_key', 'trb')}:{symbol}_{'LONG' if is_long else 'SHORT'}"
                 _acct_key = pk.split(':')[0].upper() if ':' in pk else 'TRB'
@@ -15167,11 +15214,28 @@ class StockDaytradeWing:
                 ots = opened_at.timestamp() if hasattr(opened_at, 'timestamp') else float(opened_at)
                 age_min = (time.time() - ots) / 60.0
             should_exit, exit_reason = False, ""
+            # 2026-05-16: ATR-aware effective DT target (DEFAULT OFF behind DT_TARGET_ATR_ENABLED flag).
+            # Pull short-horizon ATR (5m primary, 15m fallback) from snapshot. Use 2× ATR / entry
+            # as target when ATR available — beats a fixed 0.5–1% target that often clips winners
+            # before they breathe. `target_pct` (config knob) is the no-ATR fallback. Reason label
+            # switches to DT_TARGET_ATR when ATR-driven so logs are grep-able. Flag default False:
+            # legacy fixed-target behavior preserved until sweep-validated.
+            _dt_atr_enabled = bool(getattr(config, 'DT_TARGET_ATR_ENABLED', False))
+            _effective_target = max(target_pct, noloss_min)
+            _atr_target_pct = 0.0
+            if _dt_atr_enabled:
+                _sym_data_t1 = snapshot.get(pos.symbol.upper(), {}) or {}
+                _atr_5m_t1 = safe_fetch_float(_sym_data_t1.get('atr_5m', 0))
+                _atr_15m_t1 = safe_fetch_float(_sym_data_t1.get('atr_15m', 0))
+                _atr_t1 = _atr_5m_t1 if _atr_5m_t1 > 0 else _atr_15m_t1
+                _atr_target_pct = (2.0 * _atr_t1 / entry) if (_atr_t1 > 0 and entry > 0) else 0.0
+                _effective_target = max(_atr_target_pct, target_pct, noloss_min)
             if gain_pct <= -stop_pct and gain_pct < -0.015:
                 logger.warning(f"📊 [DAYTRADE] DT_STOP BLOCKED by STRICT_NO_LOSS: {pos.symbol} gain={gain_pct:.2%} — NEVER close at a loss")
                 should_exit = False; exit_reason = ""
-            elif gain_pct >= max(target_pct, noloss_min):
-                should_exit = True; exit_reason = f"DT_TARGET {gain_pct:.2%}"
+            elif gain_pct >= _effective_target:
+                should_exit = True
+                exit_reason = f"DT_TARGET_ATR {gain_pct:.2%}" if (_dt_atr_enabled and _atr_target_pct > target_pct) else f"DT_TARGET {gain_pct:.2%}"
             elif age_min >= max_hold and gain_pct >= noloss_min:
                 should_exit = True; exit_reason = f"DT_TIMEOUT {age_min:.0f}m {gain_pct:.2%}"
             else:
