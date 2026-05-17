@@ -4,16 +4,20 @@ golden_rule_htf.py — Multi-timeframe indicator confirmation gate.
 The GOLDEN RULE: a trade signal only fires when at least MIN_TFS timeframes
 each show at least MIN_IND bullish (or bearish for shorts/exits) indicators.
 
-7 indicators checked per TF (up to 7, skipped gracefully if field missing):
-  1. WT   — wt1 > wt2 (bullish) / wt1 < wt2 (bearish)
-  2. RSI  — rsi > 50 (bullish) / rsi < 50 (bearish)  [short-TF signal]
-  3. MFI  — mfi > 50 (bullish) / mfi < 50 (bearish)  [long-TF signal]
-  4. DC   — room-to-run mode: dc_pos < 0.65 (not extended) / > 0.35
-            breakout mode:    dc_pos >= 0.65 (extended/breaking out) / <= 0.35
-  5. BB   — room-to-run mode: bb_pct_b < 0.75 (not at top of band) / > 0.25
-            breakout mode:    bb_pct_b >= 0.75 (above upper band) / <= 0.25
-  6. RVOL — relative_volume > 1.0 (above-avg volume = conviction, both dirs)
-  7. K    — stoch_k < 80 (not overbought, long) / stoch_k > 20 (not oversold, short)
+11 indicators checked per TF (skipped gracefully if field missing):
+  1. WT      — wt1 > wt2 (bullish) / wt1 < wt2 (bearish)
+  2. RSI     — rsi > 50 (bullish) / rsi < 50 (bearish)  [short-TF signal]
+  3. MFI     — mfi > 50 (bullish) / mfi < 50 (bearish)  [long-TF signal]
+  4. DC      — room-to-run mode: dc_pos < 0.65 (not extended) / > 0.35
+               breakout mode:    dc_pos >= 0.65 (extended/breaking out) / <= 0.35
+  5. BB      — room-to-run mode: bb_pct_b < 0.75 (not at top of band) / > 0.25
+               breakout mode:    bb_pct_b >= 0.75 (above upper band) / <= 0.25
+  6. RVOL    — relative_volume > 1.0 (above-avg volume = conviction, both dirs)
+  7. K       — stoch_k < 80 (not overbought, long) / stoch_k > 20 (not oversold, short)
+  8. ADX     — adx > 20 (trending environment, direction-agnostic — counts for both LONG/SHORT)  [2026-05-17 USER add]
+  9. MACD_H  — macd_hist > 0 (bullish) / macd_hist < 0 (bearish)                                [2026-05-17 USER add]
+ 10. HA      — ha_color > 0 (green = bullish) / ha_color < 0 (red = bearish)                    [2026-05-17 USER add]
+ 11. K>D     — stoch_k > stoch_d (bullish K-cross) / stoch_k < stoch_d (bearish)                [2026-05-17 USER add]
 
 Two DC/BB semantic modes:
   invert_dc_bb=False (default, room-to-run): DC/BB not extended = bullish.
@@ -24,8 +28,8 @@ Two DC/BB semantic modes:
     to satisfy MIN_IND — and since WT is already required by the GR trigger, MIN_TFS=1 ≡ MIN_TFS=2.
 
 TFs checked:
-  crypto : 3m, 15m, 1h, 4h, D
-  tradier: 5m, 15m, 1h, 4h, D, W  (W = weekly context for stocks)
+  crypto : 3m, 15m, 1h, 4h, D, W  (W added 2026-05-17 per USER mandate — was 5 TFs, now 6)
+  tradier: 5m, 15m, 1h, 4h, D, W
 
 Usage:
   from golden_rule_htf import score_entry_htf, score_exit_htf
@@ -43,7 +47,7 @@ Usage:
 from __future__ import annotations
 from typing import Any
 
-_CRYPTO_TFS = ["3m", "15m", "1h", "4h", "D"]
+_CRYPTO_TFS = ["3m", "15m", "1h", "4h", "D", "W"]  # 2026-05-17 USER: +W (was 5 TFs)
 _TRADIER_TFS = ["5m", "15m", "1h", "4h", "D", "W"]
 
 _DC_EXTENDED_LONG = 0.65
@@ -135,6 +139,45 @@ def _ind_score(
         ok = stk < 80.0 if is_long else stk > 20.0
         score += int(ok)
         parts.append(f"K{'✓' if ok else '✗'}{stk:.0f}")
+
+    # === USER 2026-05-17 expansion: ADX, MACD_HIST, HA, K-vs-D ===
+    adx = float(ind.get(f"adx_{tf}") if ind.get(f"adx_{tf}") is not None else -1)
+    if adx > 0:
+        ok = adx > 20.0
+        score += int(ok)
+        parts.append(f"ADX{'✓' if ok else '✗'}{adx:.0f}")
+
+    _mh_raw = ind.get(f"macd_hist_{tf}")
+    if _mh_raw is not None:
+        try:
+            mh = float(_mh_raw)
+            if mh != 0.0:
+                ok = mh > 0 if is_long else mh < 0
+                score += int(ok)
+                parts.append(f"MH{'✓' if ok else '✗'}{mh:.4f}")
+        except (TypeError, ValueError):
+            pass
+
+    _ha_raw = ind.get(f"ha_color_{tf}")
+    if _ha_raw is not None:
+        try:
+            ha = float(_ha_raw)
+            if ha != 0.0:
+                ok = ha > 0 if is_long else ha < 0
+                score += int(ok)
+                parts.append(f"HA{'✓' if ok else '✗'}{int(ha)}")
+        except (TypeError, ValueError):
+            _ha_s = str(_ha_raw).lower()
+            if _ha_s in ("green", "red"):
+                ok = (_ha_s == "green") if is_long else (_ha_s == "red")
+                score += int(ok)
+                parts.append(f"HA{'✓' if ok else '✗'}{_ha_s}")
+
+    std = float(ind.get(f"stoch_d_{tf}") if ind.get(f"stoch_d_{tf}") is not None else -1)
+    if std >= 0 and stk >= 0:
+        ok = stk > std if is_long else stk < std
+        score += int(ok)
+        parts.append(f"K>D{'✓' if ok else '✗'}{stk:.0f}/{std:.0f}")
 
     return score, "|".join(parts)
 

@@ -882,10 +882,13 @@ class Config:
     GOLDEN_RULE_BB_4H_ENABLED: bool = True
     GOLDEN_RULE_DC_D_ENABLED: bool = True
     GOLDEN_RULE_BB_D_ENABLED: bool = True
+    GOLDEN_RULE_DC_W_ENABLED: bool = True   # 2026-05-17 USER: +W
+    GOLDEN_RULE_BB_W_ENABLED: bool = True   # 2026-05-17 USER: +W
     GOLDEN_RULE_MULT_15M: float = 1.0
     GOLDEN_RULE_MULT_1H: float = 1.5
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
+    GOLDEN_RULE_MULT_W: float = 4.0         # 2026-05-17 USER: +W mult (cascade 1.0/1.5/2.0/3.0/4.0)
     # The GOLDEN_RULE entry consensus uses the EXISTING tested config keys
     # GOLDEN_RULE_HTF_MIN_TFS and GOLDEN_RULE_MIN_IND (defined at line ~1964
     # below) — same knobs that backtest_v8_engine.py and backtest_v8_sweep.py
@@ -2058,10 +2061,10 @@ class Config:
     # ROLLBACK entry: set GR_HTF_DIRECT_ENTRY_ENABLED=False (or raise SCORE_MIN to 1000.0).
     # ROLLBACK exit : set GR_HTF_DIRECT_EXIT_ENABLED=False (or raise EXIT_SCORE to 1000.0).
     GR_HTF_DIRECT_ENTRY_ENABLED: bool = True       # 🚩 Master entry switch. ROLLBACK: False
-    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0    # 🚩 Min score to fire OPEN (n_tfs × min_ind). ROLLBACK: 1000.0
-    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score at which entry size doubles. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 23.0    # 🚩 2026-05-17 USER: rescaled 12→23. New max = 6 TFs × 11 ind = 66 (was 5×7=35). Same selectivity ratio 34.3%.
+    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 34.0 # 🚩 2026-05-17 USER: rescaled 18→34 (same ratio 51.4%).
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
-    GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_EXIT_SCORE: float = 29.0          # 🚩 2026-05-17 USER: rescaled 15.5→29 (same ratio 44.3%). PRIOR 15.5 (for 35-max).
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger
