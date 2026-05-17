@@ -791,6 +791,13 @@ def simulate_one_symbol(
     comm_buf = float(config.COMMISSION_BUFFER_PCT)
     min_gain = float(config.MIN_GAIN)
     grace_s = float(config.NEWBORN_PROTECT_GRACE_SECONDS)
+    # Side-asymmetric sizing — applied as RETURN MULTIPLIER (treats SIZE_MULT as leverage).
+    # Without this, pool_sharpe is computed from per-trade % which is qty-independent —
+    # changing LONG_SIZE_MULT 1.0→3.0 has zero effect on metrics (bug repro 2026-05-17).
+    # By applying mult to pnl_pct at close-time, a 3x position produces 3x the equity return
+    # per trade — economically equivalent to "deploy 3x dollars at the same setup."
+    _side_return_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else \
+                        float(getattr(config, "SHORT_SIZE_MULT", 1.0))
 
     for i in range(n):
         bar_ts = float(ts[i])
@@ -1308,6 +1315,13 @@ def simulate_one_symbol(
         events.append(ev)
         trade_returns.append(hedge_pnl)
 
+    # Side-asymmetric sizing — scale ALL per-trade returns by side_return_mult so
+    # LONG_SIZE_MULT/SHORT_SIZE_MULT actually affect pool_sharpe/gain (otherwise the
+    # multipliers are no-ops on % metrics). Applied BEFORE round-trip cost so cost
+    # is still 1× per trade (spread doesn't scale with position size).
+    if _side_return_mult != 1.0:
+        trade_returns = [r * _side_return_mult for r in trade_returns]
+
     # Deduct round-trip spread/slippage from every trade return (NO-LIES: gross ≠ net)
     _rt_cost = float(getattr(config, "ROUND_TRIP_COST_PCT", 0.10))
     if _rt_cost != 0.0:
@@ -1355,13 +1369,26 @@ def write_history_jsonl(
 # ════════════════════════════════════════════════════════════════════════════════
 
 def _max_dd_pct(trade_returns: List[float]) -> float:
-    """Compute max drawdown from cumulative trade returns. Returns positive %."""
+    """Compute max equity drawdown from per-trade returns. Returns positive %, ∈ [0, 100].
+
+    Uses COMPOUND equity (cumprod of 1+r/100) — matches how a real account drawdown
+    is measured. Capped at 100% (full account wipe).
+
+    Previous bug (2026-05-17): used additive cumsum then (peak-cum) which produces
+    "summed percentage points" not equity drawdown. With 3,008 -0.4%-avg trades you'd
+    see DD=862% which is nonsensical (real DD ∈ [0,100%]).
+    """
     if not trade_returns:
         return 0.0
-    cum = np.cumsum(np.asarray(trade_returns, dtype=np.float64))
-    peak = np.maximum.accumulate(cum)
-    dd = peak - cum  # how far below peak
-    return float(dd.max()) if len(dd) else 0.0
+    # Equity curve as multiplicative chain. Treat each trade as a discrete bet on capital.
+    r = np.asarray(trade_returns, dtype=np.float64) / 100.0
+    # Clip extreme single-trade returns to avoid one outlier killing equity
+    r = np.clip(r, -0.99, 10.0)  # max -99% / +1000% per trade for stability
+    equity = np.cumprod(1.0 + r)
+    peak = np.maximum.accumulate(equity)
+    # DD as fraction below peak
+    dd = (peak - equity) / np.maximum(peak, 1e-9)
+    return float(min(100.0, dd.max() * 100.0)) if len(dd) else 0.0
 
 
 # ════════════════════════════════════════════════════════════════════════════════

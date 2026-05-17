@@ -581,8 +581,17 @@ EXIT_NAMES = {
 }
 
 # wt_momentum_state encoding (matches backtest_v8_harness._INT_DECODE)
-_MOM_EXHAUST_DOWN = -2
-_MOM_EXHAUST_UP = 2
+_MOM_EXHAUST_DOWN = -1
+_MOM_EXHAUST_UP = 1
+# CORRECT per backtest_v8_precompute.py:718-720:
+#   mom = 2  → score>0 AND vel>0   → IMPULSE_UP   (full bull momentum, NOT exhausting)
+#   mom = 1  → score>0 AND vel<=0  → EXHAUST_UP   (bull-but-decelerating, exit longs)
+#   mom = -2 → score<0 AND vel<0   → IMPULSE_DOWN
+#   mom = -1 → score<0 AND vel>=0  → EXHAUST_DOWN
+# Prior (e1a48d7b...) used 2/-2 which made wt_exhaust fire on IMPULSE bars (33% of all bars
+# on tradier NPZs), causing LONG positions to exit on the strongest bull bars and trade-count
+# explosion (3,008 trades / 5 syms / 2 sides / 2.13yr = 141 trades/sym-side/yr vs slow-engine
+# 6.5 trades/sym/yr reference). Fix verified 2026-05-17.
 # wt_structure encoding: -1=LH, 0=NEUTRAL, 1=HH
 
 
