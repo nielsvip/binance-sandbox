@@ -1212,7 +1212,7 @@ class Config:
     HTF_TREND_VETO_ENABLED: bool = True                  # veto opens against Daily trend (htf_trend_long/short). +0.47 Sharpe cited (QuantPedia D1H1). Phase-2 wires this into execute_now entry gate cluster.
     R3_HTF_FLIP_EXIT_ENABLED: bool = True                # Daily-close structural flip → CLOSE. Addresses 44% stuck-open + 49 RIDICULOUS_HOLD time-caps in 30d. Phase-2 wires in ez_manage R1/R2 cluster ~line 37800.
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True             # USER 2026-05-17: parallel 4h tier so positions don't sit adverse up to 24h waiting for Daily close.
-    BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # Rule A core (D/W breakout-then-retest). Default OFF until breakout_retest_armed state dict is implemented (Phase-3).
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = True           # Rule A core (D/W breakout-then-retest). 2026-05-17: ENABLED with SIMPLIFIED stateless implementation (dc_basis_D as retest anchor, not persistent breakout_retest_armed state dict — full state-dict version pending). Wired in ez_manage _process_single_override_check (elif after WT_3M_FORCE_OPEN) + tradier_manage process_position. Cited lift: +22 WR abs pts / +0.47 Sharpe.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7           # retest must fire within N days of arm
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30  # |close_3m - armed_level| / atr_D < this
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25      # volume_D > MULT * sma(volume_D, 20) required to arm

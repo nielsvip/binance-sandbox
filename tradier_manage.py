@@ -1829,6 +1829,52 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         return f"WT_3M_FORCE_OPEN:{position_side}"
             except Exception as _wf_err:
                 logger.debug(f"[WT_3M_FORCE_OPEN] {position_key}: {_wf_err}")
+        # ═══════════════════════════════════════════════════════════════════════
+        # RULE_A_RETEST — D/W Breakout-then-Retest entry FIRE (USER 2026-05-17, mirror of ez_manage).
+        # Source: data/research_20260516/PLAN.md §3.3. Cited +22 abs WR pts (Trading-Rush), +0.47 Sharpe (QuantPedia D1H1).
+        # SIMPLIFIED stateless form (full breakout_retest_armed state dict pending next session).
+        # ROLLBACK: BREAKOUT_RETEST_ARMED_ENABLED=False in config_tradier.py.
+        # ═══════════════════════════════════════════════════════════════════════
+        if (not has_position) and bool(getattr(config, 'BREAKOUT_RETEST_ARMED_ENABLED', False)):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
+                    _ra_w1_D = safe_fetch_float(i.get('wt1_D'), 0)
+                    _ra_w2_D = safe_fetch_float(i.get('wt2_D'), 0)
+                    _ra_w1_W = safe_fetch_float(i.get('wt1_W'), 0)
+                    _ra_w2_W = safe_fetch_float(i.get('wt2_W'), 0)
+                    _ra_dc_basis_D = safe_fetch_float(i.get('dc_basis_D'), 0)
+                    _ra_atr_D = safe_fetch_float(i.get('atr_D'), 0)
+                    _ra_w1_15m = safe_fetch_float(i.get('wt1_15m'), 0)
+                    _ra_w2_15m = safe_fetch_float(i.get('wt2_15m'), 0)
+                    _ra_w1_1h = safe_fetch_float(i.get('wt1_1h'), 0)
+                    _ra_w2_1h = safe_fetch_float(i.get('wt2_1h'), 0)
+                    _ra_k_3m = safe_fetch_float(i.get('stoch_k_3m') or i.get('k_3m'), 50)
+                    _ra_d_3m = safe_fetch_float(i.get('stoch_d_3m') or i.get('d_3m'), 50)
+                    _ra_k_3m_prev = safe_fetch_float(i.get('k_3m_prev') or i.get('stoch_k_3m_prev'), _ra_k_3m)
+                    _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0 and current_price > 0)
+                    if _ra_data_ok:
+                        _ra_retest_mult = float(getattr(config, 'BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT', 0.30))
+                        _ra_dist_atr = abs(current_price - _ra_dc_basis_D) / _ra_atr_D
+                        _ra_armed_long = (_ra_w1_D > _ra_w2_D and _ra_w1_W > _ra_w2_W and current_price > _ra_dc_basis_D)
+                        _ra_armed_short = (_ra_w1_D < _ra_w2_D and _ra_w1_W < _ra_w2_W and current_price < _ra_dc_basis_D)
+                        _ra_retest_band = _ra_dist_atr < _ra_retest_mult
+                        _ra_k3m_xup = (_ra_k_3m_prev < 30 and _ra_k_3m > _ra_d_3m and _ra_k_3m > _ra_k_3m_prev)
+                        _ra_k3m_xdn = (_ra_k_3m_prev > 70 and _ra_k_3m < _ra_d_3m and _ra_k_3m < _ra_k_3m_prev)
+                        _ra_15m_bull = (_ra_w1_15m > _ra_w2_15m)
+                        _ra_15m_bear = (_ra_w1_15m < _ra_w2_15m)
+                        _ra_1h_bull = (_ra_w1_1h > _ra_w2_1h)
+                        _ra_1h_bear = (_ra_w1_1h < _ra_w2_1h)
+                        _ra_fire_long = (is_long and _ra_armed_long and _ra_retest_band and _ra_k3m_xup and _ra_15m_bull and _ra_1h_bull)
+                        _ra_fire_short = ((not is_long) and _ra_armed_short and _ra_retest_band and _ra_k3m_xdn and _ra_15m_bear and _ra_1h_bear)
+                        if _ra_fire_long or _ra_fire_short:
+                            _ra_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 100.0)) or float(getattr(config, 'START_POSITION_SIZE', 100.0))
+                            _ra_qty = max(_ra_size_usd / current_price, 1.0)
+                            _ra_reason = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}_px{current_price:.4f}_dcBD{_ra_dc_basis_D:.4f}_dist{_ra_dist_atr:.2f}atr_k3m{_ra_k_3m:.0f}/{_ra_k_3m_prev:.0f}_w15={_ra_w1_15m:.1f}/{_ra_w2_15m:.1f}_w1h={_ra_w1_1h:.1f}/{_ra_w2_1h:.1f}_wD={_ra_w1_D:.1f}/{_ra_w2_D:.1f}_wW={_ra_w1_W:.1f}/{_ra_w2_W:.1f}"
+                            logger.warning(f"[RULE_A_RETEST] {position_key}: FIRE {('LONG' if is_long else 'SHORT')} qty={_ra_qty:.2f} {_ra_reason[:120]}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ra_reason, 80.0, override_qty=_ra_qty)
+                            return f"RULE_A_RETEST:{position_side}"
+            except Exception as _ra_err:
+                logger.debug(f"[RULE_A_RETEST] {position_key}: probe err — {_ra_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
         market_context = await trade_manager.get_market_context(symbol)
@@ -2509,19 +2555,57 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 log_rec = "BUDGET"; log_reason = sw_reason
                                 logger.info(f"[{account_key}] 💰 SWING BUDGET BLOCKED {symbol}: {sw_reason}")
                             elif market_open:
-                                _pre_r1_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
-                                if _pre_r1_stop > 0 and position:
-                                    _cur_r1_pre = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
-                                    if _cur_r1_pre <= 0 or (is_long and _pre_r1_stop > _cur_r1_pre) or (not is_long and _pre_r1_stop < _cur_r1_pre):
-                                        position.r1_stop_price = _pre_r1_stop
-                                # 2026-05-09 USER MANDATE: route reentry-flavored OPENs through guaranteed dispatcher.
-                                # Fresh (non-reentry) opens use the original single-shot dispatch.
-                                if 'REENTRY' in (reason or '').upper():
-                                    await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
-                                else:
-                                    await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
-                                trade_manager.strategy.circuit_breaker.record_entry(position_key, current_price, reason, indicators=indicators_raw)
-                                action_taken = True
+                                # ═══ 2026-05-17 CATALYST_VOLUME_GATE — DEFAULT OFF behind CATALYST_VOLUME_GATE_ENABLED ═══
+                                # Per strategy_plan.md §5.6 + audit_relvol_filters.md §3: O'Neil CAN-SLIM "N" +
+                                # Bulkowski failure-avoidance filter. Block new OPENs unless today's D-volume
+                                # ≥ CATALYST_VOLUME_RATIO × 50d avg AND price breaks D-Donchian-20 in entry direction.
+                                # Augments are exempt (we are inside the action_type == "OPEN" branch at ~2446).
+                                # Fail-CLOSED on missing data. Reason on block: BLOCKED_CATALYST_VOLUME_NO_BREAKOUT.
+                                _cvg_blocked = False
+                                if bool(getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', False)):
+                                    _cvg_ratio_min = float(getattr(config, 'CATALYST_VOLUME_RATIO', 1.5))
+                                    _cvg_vol_today = safe_fetch_float(i.get('volume_D', 0), 0.0)
+                                    _cvg_vol_50d_avg = safe_fetch_float(i.get('volume_D_50_sma', 0), 0.0)
+                                    _cvg_close_d = safe_fetch_float(i.get('close_D', 0), 0.0)
+                                    _cvg_dc_high_d = safe_fetch_float(i.get('dc_high_D', 0), 0.0)
+                                    _cvg_dc_low_d = safe_fetch_float(i.get('dc_low_D', 0), 0.0)
+                                    _cvg_pass = False
+                                    _cvg_detail = ""
+                                    if _cvg_vol_50d_avg <= 0 or _cvg_vol_today <= 0:
+                                        _cvg_detail = f"NODATA_vol={_cvg_vol_today:.0f}_avg={_cvg_vol_50d_avg:.0f}"
+                                    elif _cvg_vol_today < _cvg_ratio_min * _cvg_vol_50d_avg:
+                                        _cvg_detail = f"LOW_VOL_ratio={(_cvg_vol_today / _cvg_vol_50d_avg):.2f}x_need={_cvg_ratio_min:.2f}x"
+                                    else:
+                                        if is_long:
+                                            if _cvg_close_d > 0 and _cvg_dc_high_d > 0 and _cvg_close_d >= _cvg_dc_high_d:
+                                                _cvg_pass = True
+                                            else:
+                                                _cvg_detail = f"NO_DC_BREAK_L_close={_cvg_close_d:.2f}_dchigh={_cvg_dc_high_d:.2f}"
+                                        else:
+                                            if _cvg_close_d > 0 and _cvg_dc_low_d > 0 and _cvg_close_d <= _cvg_dc_low_d:
+                                                _cvg_pass = True
+                                            else:
+                                                _cvg_detail = f"NO_DC_BREAK_S_close={_cvg_close_d:.2f}_dclow={_cvg_dc_low_d:.2f}"
+                                    if not _cvg_pass:
+                                        _cvg_blocked = True
+                                        log_rec = "BLOCKED"
+                                        log_reason = f"BLOCKED_CATALYST_VOLUME_NO_BREAKOUT_{_cvg_detail[:80]}"
+                                        logger.info(f"[CATALYST_VOLUME_GATE_BLOCK] {account_key}:{symbol} {'L' if is_long else 'S'}: {_cvg_detail}")
+                                # ═══ END CATALYST_VOLUME_GATE ═══
+                                if not _cvg_blocked:
+                                    _pre_r1_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                                    if _pre_r1_stop > 0 and position:
+                                        _cur_r1_pre = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                                        if _cur_r1_pre <= 0 or (is_long and _pre_r1_stop > _cur_r1_pre) or (not is_long and _pre_r1_stop < _cur_r1_pre):
+                                            position.r1_stop_price = _pre_r1_stop
+                                    # 2026-05-09 USER MANDATE: route reentry-flavored OPENs through guaranteed dispatcher.
+                                    # Fresh (non-reentry) opens use the original single-shot dispatch.
+                                    if 'REENTRY' in (reason or '').upper():
+                                        await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                    else:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                    trade_manager.strategy.circuit_breaker.record_entry(position_key, current_price, reason, indicators=indicators_raw)
+                                    action_taken = True
             
                 else:
                     # Strategy returned NO_ACTION
@@ -9441,6 +9525,18 @@ class TradierTradeManager:
         # Never call this for REDUCE/CLOSE/HEDGE_CLOSE — exits must remain unobstructed.
         if not bool(getattr(config, 'DISASTER_GUARD_ENABLED', True)):
             return (False, "")
+        # ═══ 2026-05-17 PATCH A — PENNY STOCK LONG BLOCK (DEFAULT OFF behind PENNY_STOCK_LONG_BLOCK_ENABLED) ═══
+        # Live 30d evidence: LEXX LONG lost -8.33% (trc:404) and -5.65% (trb:425) on a $0.60 stock.
+        # Both were RATIO_BOOST_L(R=0.00) LONG entries on sub-$1 names. SHORTs unaffected (they
+        # historically work on penny names — the bias is LONG-buying-into-zero). Fail-closed before
+        # any other DG control: hard-reject LONG when last_price < PRICE_USD. Flag default False —
+        # sweep-validate before flip.
+        if bool(getattr(config, 'PENNY_STOCK_LONG_BLOCK_ENABLED', False)):
+            _penny_thr = float(getattr(config, 'PENNY_STOCK_LONG_BLOCK_PRICE_USD', 5.0))
+            _penny_px = float(current_price or 0)
+            if (position_side == 'LONG') and _penny_thr > 0.0 and _penny_px > 0.0 and _penny_px < _penny_thr:
+                logger.critical(f"🛑 [BLOCKED_PENNY_LONG] {position_key}: last_price=${_penny_px:.4f} < ${_penny_thr:.2f} threshold — REFUSING LONG (penny-stock long bleed pattern). reason={reason}")
+                return (True, f"BLOCKED_PENNY_LONG_{_penny_px:.4f}")
         try:
             is_long = (position_side == 'LONG')
             ind = None
@@ -15200,6 +15296,21 @@ class StockDaytradeWing:
                 if getattr(config, 'DC_BREAK_GR_MULT_ENABLED', False):
                     _sig_mult = float(getattr(config, 'DC_BREAK_GR_MULT_BREAKOUT', 0.1))
                     _dc_break_phase = 1
+                # ═══ 2026-05-17 PATCH B — DC_BREAK_LOW_15M SHORT requires HTF alignment ═══
+                # Live evidence: ASTS SHORT lost -5.70% (trb:423) on bare DC_BREAK_LOW_15M with no
+                # MTF or ratio confirmation. The same template wins when HTF bear-aligned (WDAY, TTD,
+                # MP all needed D+4h+1h cross BEAR). Block when proposed reason starts with
+                # DC_BREAK_LOW_15M AND wt_bear_alignment < threshold. Flag default False —
+                # sweep-validate before flip. Fail-open on missing alignment data.
+                _dc_bl_block = False
+                if bool(getattr(config, 'DC_BREAK_LOW_REQUIRE_HTF_ENABLED', False)) and tf == '15m':
+                    _dc_bl_min = int(getattr(config, 'DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS', 2))
+                    _dc_bl_align = int(data.get('wt_bear_alignment', -1) or -1)
+                    if _dc_bl_align >= 0 and _dc_bl_align < _dc_bl_min:
+                        _dc_bl_block = True
+                        logger.info(f"[BLOCKED_DC_BREAK_LOW_HTF] {symbol} SHORT tf={tf}: wt_bear_alignment={_dc_bl_align}<{_dc_bl_min} — REFUSING (reason=BLOCKED_DC_BREAK_LOW_HTF_{_dc_bl_align}lt{_dc_bl_min})")
+                if _dc_bl_block:
+                    continue
                 signals.append({'side': 'SHORT', 'tf': tf, 'size_mult': _sig_mult, 'stop': stop, 'reason': f'DC_BREAK_LOW_{tf.upper()}', 'dc_break_phase': _dc_break_phase, 'dc_basis': dc_basis_val})
         return signals
     async def _scan_dc_entries(self, snapshot: dict):

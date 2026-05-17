@@ -5027,6 +5027,20 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if _t_override_file and Path(_t_override_file).exists():
         with open(_t_override_file) as _tf:
             _t_overrides = json.load(_tf)
+        # 2026-05-17 A3 #6 HTF_MIN_TFS alias-mirror: phase4 sweeps emitted the short
+        # name (`HTF_MIN_TFS`) which nothing reads — engine reads `GOLDEN_RULE_HTF_MIN_TFS`.
+        # Mirror short→canonical BEFORE the generic setattr loop so the canonical
+        # attribute is applied through the same 4-level path (instance/class/dataclass).
+        # Inert when the alias is not in the override JSON; never overwrites an
+        # explicit canonical value already set in the same override.
+        _HTF_ALIASES = {
+            "HTF_MIN_TFS": "GOLDEN_RULE_HTF_MIN_TFS",
+            "MIN_IND": "GOLDEN_RULE_MIN_IND",
+        }
+        for _src, _dst in _HTF_ALIASES.items():
+            if _src in _t_overrides and _dst not in _t_overrides:
+                _t_overrides[_dst] = _t_overrides[_src]
+                v8_logger.info(f"[V8_HTF_ALIAS] {_src}={_t_overrides[_src]} → {_dst} mirrored (phase4 short-name alias)")
         _applied = 0
         _skipped = []
         for _tk, _tv in _t_overrides.items():

@@ -496,6 +496,11 @@ def compute_tf_indicators_stock(df, tf):
         ema20 = out[f"ema_20_{tf}"]
         out[f"ema_dist_{tf}"] = ((close.values - ema20) / (ema20 + 1e-10) * 100.0).astype(np.float32)
     out[f"relative_volume_{tf}"] = compute_rel_volume(volume)
+    # 2026-05-17 CATALYST_VOLUME_GATE — add 50-day SMA of D-volume for O'Neil-style breakout-volume gate
+    # (audit_relvol_filters.md §3, strategy_plan.md §5.6). Only meaningful at D timeframe. Float32 to match
+    # other NPZ volume fields. Engine reads via `i.get('volume_D_50_sma', 0)`; absent → 0 → gate fails-CLOSED.
+    if tf == "D":
+        out[f"volume_D_50_sma"] = volume.rolling(50, min_periods=1).mean().values.astype(np.float32)
     out[f"mfi_{tf}"] = compute_mfi(high, low, close, volume)
     if tf in ("1h", "4h", "D"):
         m, s, h = compute_macd(close)

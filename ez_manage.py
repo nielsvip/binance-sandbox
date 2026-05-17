@@ -35430,6 +35430,51 @@ async def _process_single_override_check(
                                             _wf_reason,
                                             80.0,
                                         )
+                        # ═══════════════════════════════════════════════════════════════════
+                        # RULE_A_RETEST — D/W Breakout-then-Retest entry FIRE trigger (USER 2026-05-17).
+                        # Source: data/research_20260516/PLAN.md §3.3 + research_summary.md §2.
+                        # Cited lift: +22 abs WR pts (Trading-Rush 100-breakout), +0.47 Sharpe (QuantPedia D1H1).
+                        # SIMPLIFIED stateless form (full breakout_retest_armed state dict pending next session).
+                        #   LONG ARM    : wt1_D > wt2_D AND wt1_W > wt2_W AND px > dc_basis_D
+                        #   LONG RETEST : |px - dc_basis_D| / atr_D < BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT
+                        #   LONG FIRE   : k_3m crossed up from <30 AND wt1_15m > wt2_15m AND wt1_1h > wt2_1h
+                        #   SHORT mirror.
+                        # ROLLBACK: BREAKOUT_RETEST_ARMED_ENABLED=False in config.py.
+                        # ═══════════════════════════════════════════════════════════════════
+                        elif bool(getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+                            _ra_w1_D = safe_fetch_float(_ind_z.get("wt1_D"), 0)
+                            _ra_w2_D = safe_fetch_float(_ind_z.get("wt2_D"), 0)
+                            _ra_w1_W = safe_fetch_float(_ind_z.get("wt1_W"), 0)
+                            _ra_w2_W = safe_fetch_float(_ind_z.get("wt2_W"), 0)
+                            _ra_dc_basis_D = safe_fetch_float(_ind_z.get("dc_basis_D"), 0)
+                            _ra_atr_D = safe_fetch_float(_ind_z.get("atr_D"), 0)
+                            _ra_w1_15m = safe_fetch_float(_ind_z.get("wt1_15m"), 0)
+                            _ra_w2_15m = safe_fetch_float(_ind_z.get("wt2_15m"), 0)
+                            _ra_w1_1h = safe_fetch_float(_ind_z.get("wt1_1h"), 0)
+                            _ra_w2_1h = safe_fetch_float(_ind_z.get("wt2_1h"), 0)
+                            _ra_k_3m = safe_fetch_float(_ind_z.get("stoch_k_3m") or _ind_z.get("k_3m"), 50)
+                            _ra_d_3m = safe_fetch_float(_ind_z.get("stoch_d_3m") or _ind_z.get("d_3m"), 50)
+                            _ra_k_3m_prev = safe_fetch_float(_ind_z.get("k_3m_prev") or _ind_z.get("stoch_k_3m_prev"), _ra_k_3m)
+                            _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0)
+                            if _ra_data_ok:
+                                _ra_retest_mult = float(getattr(config, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", 0.30))
+                                _ra_dist_atr = abs(_px_z - _ra_dc_basis_D) / _ra_atr_D if _ra_atr_D > 0 else 999.0
+                                _ra_armed_long = (_ra_w1_D > _ra_w2_D and _ra_w1_W > _ra_w2_W and _px_z > _ra_dc_basis_D)
+                                _ra_armed_short = (_ra_w1_D < _ra_w2_D and _ra_w1_W < _ra_w2_W and _px_z < _ra_dc_basis_D)
+                                _ra_retest_band = _ra_dist_atr < _ra_retest_mult
+                                _ra_k3m_xup = (_ra_k_3m_prev < 30 and _ra_k_3m > _ra_d_3m and _ra_k_3m > _ra_k_3m_prev)
+                                _ra_k3m_xdn = (_ra_k_3m_prev > 70 and _ra_k_3m < _ra_d_3m and _ra_k_3m < _ra_k_3m_prev)
+                                _ra_15m_bull = (_ra_w1_15m > _ra_w2_15m)
+                                _ra_15m_bear = (_ra_w1_15m < _ra_w2_15m)
+                                _ra_1h_bull = (_ra_w1_1h > _ra_w2_1h)
+                                _ra_1h_bear = (_ra_w1_1h < _ra_w2_1h)
+                                _ra_fire_long = (_is_long_z and _ra_armed_long and _ra_retest_band and _ra_k3m_xup and _ra_15m_bull and _ra_1h_bull)
+                                _ra_fire_short = (_is_short_z and _ra_armed_short and _ra_retest_band and _ra_k3m_xdn and _ra_15m_bear and _ra_1h_bear)
+                                if _ra_fire_long or _ra_fire_short:
+                                    _ra_reason = f"RULE_A_RETEST_{'LONG' if _is_long_z else 'SHORT'}_px{_px_z:.6f}_dcBD{_ra_dc_basis_D:.6f}_dist{_ra_dist_atr:.2f}atr_k3m{_ra_k_3m:.0f}/{_ra_k_3m_prev:.0f}_w15={_ra_w1_15m:.1f}/{_ra_w2_15m:.1f}_w1h={_ra_w1_1h:.1f}/{_ra_w2_1h:.1f}_wD={_ra_w1_D:.1f}/{_ra_w2_D:.1f}_wW={_ra_w1_W:.1f}/{_ra_w2_W:.1f}"
+                                    logger.warning(f"[RULE_A_RETEST] {position_key}: FIRE {('LONG' if _is_long_z else 'SHORT')} {_ra_reason[:120]}")
+                                    if time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _ra_reason, 80.0)
             except Exception as _tkm_e:
                 logger.debug(
                     f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}"

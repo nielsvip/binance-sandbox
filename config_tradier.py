@@ -1453,6 +1453,28 @@ class TradierConfig:
     # WT_DC_ENTRY_80_D_bear averaging -7.14% on 4 trades. Fail-open if open_D/atr_D unavailable.
     WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
     WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
+    # 2026-05-17 PATCH A: penny-stock LONG block (DEFAULT OFF behind PENNY_STOCK_LONG_BLOCK_ENABLED).
+    # Live 30d: LEXX LONG -8.33% (trc:404) + -5.65% (trb:425) on $0.60 stock via RATIO_BOOST_L.
+    # When True: REFUSE any LONG entry with last_price < PRICE_USD. SHORTs unaffected. Gate fires
+    # at top of _disaster_guard_for_entry (earliest entry-side site). Sweep-validate before flip.
+    PENNY_STOCK_LONG_BLOCK_ENABLED: bool = False
+    PENNY_STOCK_LONG_BLOCK_PRICE_USD: float = 5.0
+    # 2026-05-17 PATCH B: DC_BREAK_LOW_15M SHORT requires HTF bear alignment (DEFAULT OFF).
+    # Live evidence: ASTS SHORT -5.70% (trb:423) on bare DC_BREAK_LOW_15M no MTF/ratio confirm.
+    # When True: REFUSE SHORT signal from DC_BREAK on tf=15m when wt_bear_alignment < MIN_TFS.
+    # Fail-open on missing alignment data. Other DC_BREAK TFs (5m) untouched. LONG side untouched.
+    DC_BREAK_LOW_REQUIRE_HTF_ENABLED: bool = False
+    DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: int = 2
+    # 2026-05-17 CATALYST_VOLUME_GATE (strategy_plan.md §5.6, audit_relvol_filters.md §3) — DEFAULT OFF.
+    # Boolean entry filter for NEW OPENs only (not augments). Per O'Neil CAN-SLIM "N": breakout volume
+    # ≥ 1.5× 50-day average AND price closes above (LONG) / below (SHORT) D-Donchian-20. Per Bulkowski,
+    # this is a failure-AVOIDANCE filter not a return-amplification filter — failures triple without it.
+    # Reads NPZ field `volume_D_50_sma` (added 2026-05-17 in backtest_v8_precompute_tradier.py:498).
+    # Fail-CLOSED: missing data → blocks entry (reason BLOCKED_CATALYST_VOLUME_NO_BREAKOUT).
+    # NEW STRATEGY PROHIBITION (CLAUDE.md): cannot be enabled on live without sweep proof + paper days
+    # + explicit user approval. Sweep validation tier suggested: tradier_catalyst_gate (see apply report).
+    CATALYST_VOLUME_GATE_ENABLED: bool = False
+    CATALYST_VOLUME_RATIO: float = 1.5
     TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long
     TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short
 
@@ -2106,7 +2128,7 @@ class TradierConfig:
     HTF_TREND_VETO_ENABLED: bool = True
     R3_HTF_FLIP_EXIT_ENABLED: bool = True
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True
-    BREAKOUT_RETEST_ARMED_ENABLED: bool = False
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = True           # Rule A core. 2026-05-17 ENABLED with SIMPLIFIED stateless impl (mirror of crypto). Wired in tradier_manage process_position after WT_3M_FORCE_OPEN block.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25

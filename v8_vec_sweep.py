@@ -84,6 +84,17 @@ try:
     from vec_paths.cooldown_locks import evaluate_cooldown_locks_vec
 except ImportError:
     evaluate_cooldown_locks_vec = None
+
+# 2026-05-17 VEC_OVERTRADE_FIX — live-parity HARD_AUGMENT_LOCK + DUP_GUARD gate.
+# vec_paths/dup_guard.py:check_dup_guard_block() mirrors ez_manage.py:10970-10988
+# + 14062-14081 and is already used by backtest_v8_engine via _v8_vec_short_circuit.
+# vec_sweep was importing nothing from there → OPEN path fired on every wt_3m-aligned
+# bar with no post-CLOSE cooldown (root cause of 156k-trades-vs-slow-77 over-trade).
+try:
+    from vec_paths.dup_guard import check_dup_guard_block as _vec_check_dup_guard
+except ImportError:
+    _vec_check_dup_guard = None
+
 try:
     from vec_paths.protect_balance_overtrade import evaluate_protect_balance_overtrade_vec
 except ImportError:
@@ -291,7 +302,7 @@ class SweepConfig:
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True
     HEDGE_COMPLETED_LOCKOUT_SECONDS: float = 60.0
     # ── augment / dup guard ───────────────────────────────────────────────
-    DUP_GUARD_USE_GAIN_GATE: bool = False
+    DUP_GUARD_USE_GAIN_GATE: bool = True   # 2026-05-17 VEC_OVERTRADE_FIX: match live default
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     PULLBACK_AUGMENT_ENABLED: bool = True
     PULLBACK_AUGMENT_REVERSAL_MIN: float = 1.0
@@ -301,6 +312,31 @@ class SweepConfig:
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    # ── 2026-05-17 VEC_OVERTRADE_FIX (master kill flag) ──────────────────
+    # Vec engine was producing 156,601 trades on crypto BTC+ETH × 4.37yr while
+    # slow engine (backtest_v8_sweep.py) produces 77. Root cause: vec OPEN path
+    # (simulate_one_symbol L809-902) fires on every bar where `wt_3m_aligned[i]`
+    # is True, with NO post-CLOSE cooldown / HARD_AUGMENT_LOCK / DUP_GUARD_GAIN.
+    # Slow engine enforces all of these in backtest_v8_engine.py:2473-2486 +
+    # 2456-2467. When this flag is True (default), vec mirrors slow-engine
+    # semantics via vec_paths.dup_guard.check_dup_guard_block(). Set False ONLY
+    # to reproduce pre-fix over-trading behaviour for A/B comparison.
+    VEC_OVERTRADE_FIX_ENABLED: bool = True
+    # AUGMENT_LOCK_MIN_SECONDS — alias read by vec_paths/dup_guard.py:66
+    # (check_dup_guard_block reads AUGMENT_LOCK_MIN_SECONDS, slow engine reads
+    # HARD_AUGMENT_LOCK_SECONDS). Mirror live config.py default (900s = 15min).
+    AUGMENT_LOCK_MIN_SECONDS: float = 900.0
+    # ── 2026-05-17 VEC_NOLOSS_GATE (master kill flag) ─────────────────────
+    # First-honest-tradier sweep showed mtm_n=63 open losers (avg -22%) caught
+    # only at simulation end by MTM_FINAL_BAR_NOLIES_RULE2 — a CLAUDE.md sacred-rule
+    # violation ("WE HEDGE OR WE CLOSE — WE NEVER HOLD"). evaluate_noloss_gate_vec
+    # was IMPORTED at L55 but only consulted INSIDE `if exit_id != EXIT_NONE:`
+    # (L1254-1276); positions sitting in -22% with no exit trigger sailed past it.
+    # When True (default), every bar where state.qty>0 AND gain<comm_buf calls
+    # the noloss gate inline; HEDGE_FAILED_FALLBACK_CLOSE returns from gate
+    # close the position immediately, OBLIGATORY_HEDGE returns open a vec hedge.
+    # Set False to reproduce pre-fix MtM-only behaviour.
+    VEC_NOLOSS_GATE_ENABLED: bool = True
     # ── newborn protect ───────────────────────────────────────────────────
     NEWBORN_PROTECT_ENABLED: bool = True
     NEWBORN_PROTECT_GRACE_SECONDS: float = 900.0
@@ -805,6 +841,37 @@ def simulate_one_symbol(
         if mark <= 0 or not np.isfinite(mark):
             continue
 
+        # ─── 2026-05-17 VEC_OVERTRADE_FIX — POST-CLOSE COOLDOWN ──────────────
+        # Mirrors slow engine backtest_v8_engine.py:2473-2486 which gates every
+        # is_aug_action (including OPEN on empty) by HARD_AUGMENT_LOCK_SECONDS
+        # since the last position-increase event. Without this, vec re-opens on
+        # every wt_3m-aligned bar (~33% of bars on a typical 4-yr NPZ →
+        # 156k trades vs slow engine's 77).
+        #
+        # WT_3M_FORCE_OPEN bypass: when reason matches AND
+        # WT_3M_FORCE_OPEN_BYPASS_GATES is True (default), check_dup_guard_block
+        # returns None (no block). Slow engine has the same bypass in
+        # cooldown_locks.py:200-207. So we only block here when the bypass is
+        # explicitly disabled in the sweep config.
+        # When VEC_OVERTRADE_FIX_ENABLED is False, this block is a no-op.
+        if (
+            getattr(config, "VEC_OVERTRADE_FIX_ENABLED", True)
+            and _vec_check_dup_guard is not None
+            and state.qty <= 0.0001                   # only for OPEN-on-empty candidates
+            and state.last_augment_ts > 0             # need a prior fill as anchor
+        ):
+            # We don't know the OPEN reason yet (decided in the OPEN block below)
+            # so we use the default vec reason "WT_3M_FORCE_OPEN" — most permissive
+            # (bypass active when WT_3M_FORCE_OPEN_BYPASS_GATES=True).
+            _vof_block = _vec_check_dup_guard(
+                pos_state=state, ts_i=bar_ts, current_gain_pct=0.0, cfg=config,
+                pos_value_usd=0.0, action="OPEN", reason_hint="WT_3M_FORCE_OPEN",
+            )
+            if _vof_block is not None:
+                # Lock engaged → skip this bar entirely. No OPEN attempt,
+                # no exit checks (irrelevant — position is empty).
+                continue
+
         # ─── FLAT: consider OPEN ──────────────────────────────────────────
         if state.qty <= 0.0001:
             # A1 SPY-regime gate: block side per gate config (default OFF for both sides)
@@ -887,6 +954,14 @@ def simulate_one_symbol(
             state.augmented_count = 0
             state.max_gain = 0.0
             state.last_open_attempt_ts = bar_ts
+            # 2026-05-17 VEC_OVERTRADE_FIX — stamp last_augment_ts on OPEN as
+            # well as on AUGMENT (L1271 below). Slow engine sets
+            # `_bt_augment_lock[pk]` in execute_trade_action for every
+            # non-reduce non-hedge action (backtest_v8_engine.py:2486 post-pass,
+            # 2308 V8_DECISION_ONLY path). Without this stamp, the post-CLOSE
+            # cooldown above never engages — state.last_augment_ts stays 0.
+            if getattr(config, "VEC_OVERTRADE_FIX_ENABLED", True):
+                state.last_augment_ts = bar_ts
             _pos.reset_ppl()
             if _gr_result is not None:
                 state.gr_last_fire_ts = bar_ts
@@ -1078,7 +1153,7 @@ def simulate_one_symbol(
                     exit_id = EXIT_DC_HOPELESS
                     exit_reason = f"DC_HOPELESS_entry={state.entry_price:.4f}"
 
-        if exit_id == EXIT_NONE and exit_gates["wt_exhaust"][i] and age_s > grace_s:
+        if exit_id == EXIT_NONE and config.WT_EXHAUST_EXIT_ENABLED and exit_gates["wt_exhaust"][i] and age_s > grace_s:
             if not config.WT_EXHAUST_EXIT_REQUIRE_GAIN or gain > 0:
                 exit_id = EXIT_WT_EXHAUST
                 exit_reason = "WT_EXHAUST"
@@ -1187,6 +1262,67 @@ def simulate_one_symbol(
                 _pos.gain_pct = 0.0
                 continue
 
+        # ─── 2026-05-17 VEC_NOLOSS_GATE — per-bar HEDGE-OR-CLOSE for open losers ───
+        # CLAUDE.md sacred rule: "WE HEDGE OR WE CLOSE — WE NEVER HOLD."
+        # First-honest-tradier sweep had mtm_n=63 because positions sitting in
+        # -22% with NO exit-gate trigger waited for MTM_FINAL_BAR_NOLIES_RULE2.
+        # This block consults evaluate_noloss_gate_vec on EVERY bar where the
+        # position is open AND in real loss (gain < comm_buf) AND no exit_id
+        # is set (so it doesn't double-fire with the `if exit_id != EXIT_NONE:`
+        # block below). Honors OBLIGATORY_HEDGE (opens vec hedge) and
+        # HEDGE_FAILED_FALLBACK_CLOSE (closes position) per live semantics.
+        if (
+            getattr(config, "VEC_NOLOSS_GATE_ENABLED", True)
+            and exit_id == EXIT_NONE
+            and state.qty > 0.0001
+            and gain < comm_buf
+        ):
+            _vng = evaluate_noloss_gate_vec(
+                {k: v[i:i+1] for k, v in npz.items()},
+                is_long=is_long,
+                real_gain_pct=np.array([gain], dtype=np.float32),
+                positionAmt=np.array([state.qty if is_long else -state.qty], dtype=np.float32),
+                mark_price=np.array([mark], dtype=np.float32),
+                reason="VEC_BAR_EVAL",
+                config=config,
+                is_hedge=False,
+                is_reduce=True,
+                hedge_already_active=np.array([state.hedge_active], dtype=bool),
+                hedge_attempt_succeeded=np.array([False], dtype=bool),  # vec has no broker; assume hedge fails → fallback close
+            )
+            _vng_action = int(_vng["action_id"][0])
+            _vng_hedge_fire = bool(_vng["hedge_fire"][0])
+            _vng_hedge_qty = float(_vng["hedge_qty"][0])
+            # OBLIGATORY_HEDGE: open vec same-symbol hedge before considering close
+            if _vng_hedge_fire and not state.hedge_active and _vng_hedge_qty > 0.0:
+                _vh_reason = f"OBLIGATORY_HEDGE_VEC_g{gain:.2f}"
+                ev = TradeEvent(ts=bar_ts, type="HEDGE_OPEN", qty=_vng_hedge_qty, price=mark,
+                    value=_vng_hedge_qty * mark, reason=_vh_reason)
+                events.append(ev)
+                state.hedge_active = True
+                state.hedge_qty = _vng_hedge_qty
+                state.hedge_entry_price = mark
+                state.hedge_opened_at = bar_ts
+                state.hedge_gain_at_open = gain
+                # Hedge now active → gate would have returned HOLD anyway; defer close.
+                continue
+            # HEDGE_FAILED_FALLBACK_CLOSE: close at loss (sacred rule — never hold open loser)
+            if _vng_action == 2:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=f"HEDGE_FAILED_FALLBACK_CLOSE_g{gain:.2f}",
+                    pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts
+                _pos.gain_pct = 0.0
+                continue
+            # action_id 0 (HOLD) or 1 (ALLOW_REDUCE) → fall through to normal exit/augment flow
+
         if exit_id != EXIT_NONE:
             # CLOSE — gate through noloss if at a loss. We call the vec noloss
             # on a SINGLE-BAR slice to leverage parity-tested logic.
@@ -1269,6 +1405,28 @@ def simulate_one_symbol(
             state.entry_price = new_entry
             state.augmented_count += 1
             state.last_augment_ts = bar_ts
+
+        # ─── 2026-05-17 VEC_OVERTRADE_FIX — GR-AUGMENT HARD_AUGMENT_LOCK ─────
+        # Mirrors slow engine backtest_v8_engine.py:2473-2486. The reentry
+        # AUGMENT path immediately above already goes through
+        # evaluate_augment_eligibility_vec() (L1240) which has its own
+        # HARD_AUGMENT_LOCK check, but the GR-augment path BELOW does NOT —
+        # it would otherwise fire on every GR-cooldown-elapsed bar where GR
+        # votes pass, independent of the 900s aug lock.
+        if (
+            getattr(config, "VEC_OVERTRADE_FIX_ENABLED", True)
+            and _vec_check_dup_guard is not None
+            and check_golden_rule_enforce is not None
+            and config.GOLDEN_RULE_ENABLED
+            and state.qty > 0.0001
+        ):
+            _vof_gr_block = _vec_check_dup_guard(
+                pos_state=state, ts_i=bar_ts, current_gain_pct=gain, cfg=config,
+                pos_value_usd=state.qty * mark, action="AUGMENT",
+                reason_hint="GOLDEN_RULE_AUGMENT",
+            )
+            if _vof_gr_block is not None:
+                continue
 
         # GOLDEN_RULE augment while holding
         if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:
