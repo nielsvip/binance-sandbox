@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-17 07:50:22 UTC
+# Copilot Status — 2026-05-17 08:05:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T07:45:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T07:45:53
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T07:47:56
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T07:47:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T07:47:56
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T07:48:59
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T07:50:00
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T07:50:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T07:50:00
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T07:50:00
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T08:02:23
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T08:02:23
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T08:02:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T08:02:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T08:03:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T08:04:26
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T08:04:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T08:04:26
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T08:04:27
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T08:05:29
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -41,14 +41,15 @@ _None_
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
+- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
