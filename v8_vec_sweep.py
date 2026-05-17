@@ -163,6 +163,20 @@ try:
     from vec_paths.delta_engine import check_delta_entry
 except ImportError:
     check_delta_entry = None
+# TR_TREND_v1 — Daily-decision breakout-retest stock strategy (spec: data/research_20260516/strategy_plan.md §4)
+# Default-OFF per CLAUDE.md NEW STRATEGY PROHIBITION; sweep-validate before any live enable.
+try:
+    from vec_paths.tr_trend_v1 import (
+        build_tr_trend_v1_arrays,
+        evaluate_tr_trend_v1_entry,
+        evaluate_tr_trend_v1_exit,
+        compute_tr_trend_v1_full_unit_qty,
+    )
+except ImportError:
+    build_tr_trend_v1_arrays = None
+    evaluate_tr_trend_v1_entry = None
+    evaluate_tr_trend_v1_exit = None
+    compute_tr_trend_v1_full_unit_qty = None
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -489,6 +503,31 @@ class SweepConfig:
     # Applied to OPEN base_qty BEFORE compute_trade_qty_vec; AUGMENTs inherit proportionally.
     LONG_SIZE_MULT: float = 1.0
     SHORT_SIZE_MULT: float = 1.0
+    # ── TR_TREND_v1 (2026-05-17 build, spec §4) — DEFAULT-OFF NEW STRATEGY ────────
+    # When True, simulate_one_symbol uses ONLY the TR_TREND_v1 D-decision breakout-
+    # retest paths (legacy wt_3m / reentry / GR / DELTA / connors triggers disabled
+    # to test the pure strategy). Mandatory sweep proof before any live enable
+    # per CLAUDE.md NEW STRATEGY PROHIBITION.
+    TR_TREND_V1_ENABLED: bool = False
+    TR_TREND_V1_DC_LOOKBACK_D: int = 20
+    TR_TREND_V1_VOL_MULT: float = 1.5
+    TR_TREND_V1_VOL_SMA_LEN_D: int = 50
+    TR_TREND_V1_TT_NEAR_HIGH_PCT: float = 25.0
+    TR_TREND_V1_TT_MIN_PASS: int = 4
+    TR_TREND_V1_SMA50_LEN_D: int = 50
+    TR_TREND_V1_SMA200_LEN_D: int = 200
+    TR_TREND_V1_SMA200_SLOPE_LOOKBACK_D: int = 10
+    TR_TREND_V1_W52_BARS_D: int = 252
+    TR_TREND_V1_ATR_STOP_MULT: float = 2.0
+    TR_TREND_V1_RETEST_TOL_PCT: float = 0.5
+    TR_TREND_V1_RETEST_VOL_MAX_MULT: float = 0.7
+    TR_TREND_V1_RETEST_MAX_BARS_D: int = 5
+    TR_TREND_V1_TIME_STOP_BARS_D: int = 60
+    TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D: int = 30
+    TR_TREND_V1_SPY_REGIME_ENABLED: bool = True
+    TR_TREND_V1_SPY_SLOPE_LOOKBACK_D: int = 10
+    TR_TREND_V1_RISK_PCT: float = 0.5
+    TR_TREND_V1_ACCOUNT_USD: float = 35000.0
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -816,6 +855,32 @@ def simulate_one_symbol(
         _atr_safe = np.maximum(_atr_series, np.maximum(close * 0.005, 1e-6))
         _atr_parity_qty = _target_dollar_risk / _atr_safe
 
+    # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
+    # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
+    # then short-circuit the legacy OPEN / EXIT pipeline below. Hot loop only
+    # consults these arrays + per-symbol tr_state dict.
+    _tr_trend_arrays: Dict[str, Any] = {"enabled": False}
+    _tr_state: Dict[str, Any] = {}
+    if (
+        bool(getattr(config, "TR_TREND_V1_ENABLED", False))
+        and build_tr_trend_v1_arrays is not None
+    ):
+        _spy_npz_for_tr = None
+        _spy_ts_for_tr = None
+        if mode == "tradier" and bool(getattr(config, "TR_TREND_V1_SPY_REGIME_ENABLED", True)):
+            try:
+                _spy_npz_for_tr, _spy_ts_for_tr = load_npz("SPY", mode, start_ts=int(ts[0]))
+            except Exception as _e:
+                sys.stderr.write(f"TR_TREND_V1: could not load SPY NPZ ({_e}); regime gate disabled\n")
+        try:
+            _tr_trend_arrays = build_tr_trend_v1_arrays(
+                npz, mode, is_long, config,
+                spy_npz=_spy_npz_for_tr, spy_ts=_spy_ts_for_tr, base_ts=ts,
+            )
+        except Exception as _e:
+            sys.stderr.write(f"TR_TREND_V1 precompute failed {symbol}/{side}: {_e}\n")
+            _tr_trend_arrays = {"enabled": False}
+
     # ─── ITERATE BARS (hot loop — pure Python state mutation) ────────────────
     state = SymState(is_long=is_long)
     _store = _NPZStoreAdapter(npz, close, ts)
@@ -835,11 +900,93 @@ def simulate_one_symbol(
     _side_return_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else \
                         float(getattr(config, "SHORT_SIZE_MULT", 1.0))
 
+    _tr_v1_requested = bool(getattr(config, "TR_TREND_V1_ENABLED", False))
+    _tr_v1_active = _tr_v1_requested and bool(_tr_trend_arrays.get("enabled", False))
+    # If TR_TREND_v1 was requested but the symbol has insufficient D-bar history
+    # (build_tr_trend_v1_arrays returns enabled=False when n_d < 60), SKIP the
+    # symbol entirely rather than silently fall through to legacy entry triggers.
+    # This prevents thinly-traded names with <60 days of NPZ history from
+    # producing meaningless 700+ trade counts when the user wanted a pure
+    # daily-decision strategy test.
+    if _tr_v1_requested and not _tr_v1_active:
+        sys.stderr.write(
+            f"TR_TREND_V1 SKIP {symbol}/{side}: insufficient D-bar history "
+            f"(need >=60 D bars; got {len(_tr_trend_arrays.get('boundary_idx_in_base', []))})\n"
+        )
+        return [], [], n
+
     for i in range(n):
         bar_ts = float(ts[i])
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
             continue
+
+        # ─── TR_TREND_v1 short-circuit (2026-05-17 NEW STRATEGY) ─────────────
+        # When the daily-decision breakout-retest strategy is enabled, ALL legacy
+        # entry triggers (wt_3m / reentry / GR / DELTA / connors) are disabled.
+        # Only Path A (initial breakout, half unit) + Path B (retest add, second
+        # half) open positions; only TR_TREND_v1 structural exits close them
+        # (STOP_HIT / 50SMA_BREAK / DC_REVERSE / TIME_STOP). No micro-gain exits,
+        # no NO_LOSS gates. The 3% MIN_GAIN rule still applies via stop sizing
+        # (2 ATR = typically much wider than 3%, so positions get real room).
+        if _tr_v1_active and evaluate_tr_trend_v1_entry is not None:
+            # EXIT first — let stop/structural exits fire on the same bar as a new
+            # signal would (prevents one bar of double-position).
+            if state.qty > 0.0001 and evaluate_tr_trend_v1_exit is not None:
+                _trx = evaluate_tr_trend_v1_exit(
+                    _tr_trend_arrays, i, mark, _tr_state, is_long, config,
+                )
+                if _trx is not None:
+                    pnl_pct = _gain_pct(state.entry_price, mark, is_long)
+                    ev = TradeEvent(
+                        ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_trx["reason"], pnl_pct=pnl_pct,
+                    )
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _tr_state = {}  # reset per-position state
+                    continue
+            # OPEN / ADD
+            _trxe = evaluate_tr_trend_v1_entry(
+                _tr_trend_arrays, i, _tr_state, is_long, config,
+                pos_open=(state.qty > 0.0001), mark=mark,
+            )
+            if _trxe is not None:
+                _atr_d_here = float(_tr_trend_arrays["atr_d_base"][i])
+                full_unit = compute_tr_trend_v1_full_unit_qty(config, _atr_d_here, mark) if compute_tr_trend_v1_full_unit_qty else 0.0
+                qty_to_add = full_unit * float(_trxe.get("size_unit", 0.5))
+                if qty_to_add > 0:
+                    if _trxe["action"] == "ENTRY":
+                        ev = TradeEvent(
+                            ts=bar_ts, type="OPEN", qty=qty_to_add, price=mark,
+                            value=qty_to_add * mark, reason=_trxe["reason"],
+                        )
+                        events.append(ev)
+                        state.qty = qty_to_add
+                        state.entry_price = mark
+                        state.initial_qty = qty_to_add
+                        state.opened_at = bar_ts
+                        state.augmented_count = 0
+                        state.max_gain = 0.0
+                        state.last_augment_ts = bar_ts
+                    elif _trxe["action"] == "ADD":
+                        denom = state.qty + qty_to_add
+                        new_entry = (state.qty * state.entry_price + qty_to_add * mark) / denom if denom > 0 else mark
+                        ev = TradeEvent(
+                            ts=bar_ts, type="AUGMENT", qty=qty_to_add, price=mark,
+                            value=qty_to_add * mark, reason=_trxe["reason"],
+                        )
+                        events.append(ev)
+                        state.qty = denom
+                        state.entry_price = new_entry
+                        state.augmented_count += 1
+                        state.last_augment_ts = bar_ts
+            continue  # TR_TREND_v1 handles this bar fully — skip all legacy logic
 
         # ─── 2026-05-17 VEC_OVERTRADE_FIX — POST-CLOSE COOLDOWN ──────────────
         # Mirrors slow engine backtest_v8_engine.py:2473-2486 which gates every
