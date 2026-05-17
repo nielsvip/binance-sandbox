@@ -1941,6 +1941,8 @@ def _v8ns_dd_state_update(dd_state, total_equity_pct):
         peak = total_equity_pct
         dd_state['peak'] = peak
     dd_state['dd_pct'] = total_equity_pct - peak  # negative when underwater
+    if dd_state['dd_pct'] < dd_state.get('min_dd', 0.0):
+        dd_state['min_dd'] = dd_state['dd_pct']  # track worst (most negative) ever
 
 
 def _v8ns_tsmom_book_scalar(cfg_obj, open_positions_summary):
@@ -4747,7 +4749,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             # CANONICAL_METRICS.md: only pool_sharpe (= sharpe_per_trade in this engine) survives in user-facing logs.
             # sharpe_weekly + sharpe_annual are BANNED for display (they were the "feel-good" inflation that misled decisions for months).
             v8_logger.info(f"[V8_RESULT_LIVE] pool_sharpe={_sharpe_pt:.3f} (trades/yr={_tpy:.0f}) gain_pct={_gain_pct:+.2f}% gain_dollars={_gain_dol:+.2f} sum_trade_pcts={_sum_pct:+.2f}% closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} WR={_wr:.1f}%")
-            print(f"V8_RESULT_LIVE: pool_sharpe={_sharpe_pt:.3f} gain_pct={_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']} wr={_wr:.1f}", flush=True)
+            _live_dd = abs(_v8ns_dd_state.get('min_dd', 0.0))
+            print(f"V8_RESULT_LIVE: pool_sharpe={_sharpe_pt:.3f} gain_pct={_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']} wr={_wr:.1f} dd={_live_dd:.2f} step={step} total_steps={len(sorted_ts)}", flush=True)
             # Live PnL breakdown by close reason — every report interval
             v8_logger.info("[V8_PNL_BREAKDOWN] === BY CLOSE REASON ===")
             for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):

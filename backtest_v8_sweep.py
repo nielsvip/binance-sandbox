@@ -86,7 +86,7 @@ V8_RESULT_RE = re.compile(
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
-# Crypto live format: pool_sharpe=X gain_pct=X closes=X wins=X losses=X wr=X
+# Crypto live format: pool_sharpe=X gain_pct=X closes=X wins=X losses=X wr=X dd=X step=X total_steps=X
 V8_RESULT_LIVE_RE = re.compile(
     r"V8_RESULT_LIVE:.*"
     r"pool_sharpe=(?P<pool_sharpe>[-\d.]+)\s+"
@@ -94,6 +94,8 @@ V8_RESULT_LIVE_RE = re.compile(
     r"closes=(?P<closes>\d+)\s+"
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
+    r"(?:.*dd=(?P<dd>[\d.]+))?"
+    r"(?:.*step=(?P<step>\d+)\s+total_steps=(?P<total_steps>\d+))?"
 )
 # Fallback _v8_result_from_trades format (also pool/sym/sharpe-alias):
 V8_RESULT_TRADIER_RE = re.compile(
@@ -1850,6 +1852,9 @@ def run_one_variant(args_tuple):
         live_gain_pct = 0.0
         live_wins = 0
         live_losses = 0
+        live_dd = 0.0
+        live_step = 0
+        live_total_steps = 0
         killed = False
         stdout_tail = []
         # 2026-05-09 capture-extras: n_syms (from V8_INIT_HEARTBEAT), n_skipped_stale,
@@ -1888,6 +1893,11 @@ def run_one_variant(args_tuple):
                         live_closes = int(m_live["closes"])
                         live_wins = int(m_live["wins"])
                         live_losses = int(m_live["losses"])
+                        if m_live["dd"] is not None:
+                            live_dd = float(m_live["dd"])
+                        if m_live["step"] is not None and m_live["total_steps"] is not None:
+                            live_step = int(m_live["step"])
+                            live_total_steps = int(m_live["total_steps"])
                     except Exception:
                         pass
                 elif V8_RESULT_LIVE_SIMPLE_RE.search(line):
@@ -1952,13 +1962,13 @@ def run_one_variant(args_tuple):
             "n_syms_loaded": n_syms_loaded,
             "n_skipped_stale": n_skipped_stale,
             "n_skipped_mode": n_skipped_mode,
-            "max_dd_pct": max_dd_pct,
+            "max_dd_pct": live_dd if live_dd > 0 else max_dd_pct,
             "reason": reason_str,
+            "live_step": live_step,
+            "live_total_steps": live_total_steps,
         }
         if killed and not match and not match_tradier:
             status = "timeout" if elapsed > timeout_s else "killed_low_sharpe"
-            # Include canonical keys from intermediate live results so _write_csv_row
-            # records the real in-flight Sharpe/trades instead of zeros.
             return {
                 **common,
                 "status": status,
@@ -2054,7 +2064,16 @@ def _result_to_canonical_row(r: dict, mode_arg: str, start_date: str,
     if n_syms is None:
         # Fall back to count-of-symbols-from-args when init heartbeat wasn't seen.
         n_syms = len([s for s in symbols_arg.split(",") if s.strip()])
-    years = _years_from_start(start_date)
+    full_years = _years_from_start(start_date)
+    # Use actual simulated fraction when step info is available (partial/timed-out runs).
+    # Without this, gain_per_yr = gain_pct / 4.37yr is a ~10-20x understatement.
+    live_step = r.get("live_step", 0) or 0
+    live_total_steps = r.get("live_total_steps", 0) or 0
+    if live_step > 0 and live_total_steps > 0:
+        sim_years = (live_step / live_total_steps) * full_years
+    else:
+        sim_years = full_years
+    years = sim_years
     avg_gain_trade = (gain_pct / closes) if closes > 0 else 0.0
     gain_per_yr = (gain_pct / years) if years > 0 else 0.0
     gain_sym_yr = (gain_pct / max(1, n_syms) / years) if years > 0 else 0.0
