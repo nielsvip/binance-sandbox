@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-17 20:46:07 UTC
+# Copilot Status — 2026-05-17 21:01:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T20:42:12
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T20:43:03
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T20:43:03
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T20:43:03
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T20:43:13
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T20:44:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T20:45:06
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T20:45:06
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T20:45:06
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-17T20:45:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T20:55:20
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T20:57:22
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T20:57:22
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T20:57:22
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T20:59:25
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T20:59:25
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T20:59:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T21:01:28
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T21:01:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T21:01:28
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -40,7 +40,6 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **AIAUSDT** LONG (crypto) peaked +5.2%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
 
