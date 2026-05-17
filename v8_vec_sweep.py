@@ -1057,14 +1057,16 @@ def simulate_one_symbol(
                 try:
                     import stdev_macro as _sm_open
                     _sm_ind = {
-                        "macro_z_D": float(npz["macro_z_D"][i]) if "macro_z_D" in npz else 0.0,
-                        "macro_z_W": float(npz["macro_z_W"][i]) if "macro_z_W" in npz else 0.0,
-                        "macro_z_M": float(npz["macro_z_M"][i]) if "macro_z_M" in npz else 0.0,
+                        "bb_pct_b_D": float(npz["bb_pct_b_D"][i]) if "bb_pct_b_D" in npz else 0.5,
+                        "bb_pct_b_4h": float(npz["bb_pct_b_4h"][i]) if "bb_pct_b_4h" in npz else 0.5,
+                        "bb_pct_b_1h": float(npz["bb_pct_b_1h"][i]) if "bb_pct_b_1h" in npz else 0.5,
                     }
                     _sm_state_open = _sm_open.compute_stdev_macro_state(_sm_ind, config_obj=config)
                     _sm_side_open = "LONG" if is_long else "SHORT"
                     _sm_block, _sm_why = _sm_open.entry_veto(_sm_side_open, _sm_state_open, config)
                     if _sm_block:
+                        # Reason recorded indirectly via the gate (returns reason string); to surface in
+                        # ledger debug, we can stash a counter on _pos if needed. For now: skip cleanly.
                         continue
                 except Exception:
                     pass
@@ -1453,9 +1455,9 @@ def simulate_one_symbol(
             try:
                 import stdev_macro as _sm_r4
                 _r4_ind_vec = {
-                    "macro_z_D": float(npz["macro_z_D"][i]) if "macro_z_D" in npz else 0.0,
-                    "macro_z_W": float(npz["macro_z_W"][i]) if "macro_z_W" in npz else 0.0,
-                    "macro_z_M": float(npz["macro_z_M"][i]) if "macro_z_M" in npz else 0.0,
+                    "bb_pct_b_D": float(npz["bb_pct_b_D"][i]) if "bb_pct_b_D" in npz else 0.5,
+                    "bb_pct_b_4h": float(npz["bb_pct_b_4h"][i]) if "bb_pct_b_4h" in npz else 0.5,
+                    "bb_pct_b_1h": float(npz["bb_pct_b_1h"][i]) if "bb_pct_b_1h" in npz else 0.5,
                     "wt1_4h": float(npz["wt1_4h"][i]) if "wt1_4h" in npz else 0.0,
                     "wt2_4h": float(npz["wt2_4h"][i]) if "wt2_4h" in npz else 0.0,
                 }
@@ -1464,7 +1466,7 @@ def simulate_one_symbol(
                 _r4_close_vec, _r4_reason_vec = _sm_r4.r4_exit(_r4_side_vec, _r4_state_vec, _r4_ind_vec, config)
                 if _r4_close_vec:
                     pnl_pct = gain
-                    _r4_full_reason = f"{_r4_reason_vec}_zD={_r4_state_vec.get('macro_z_D', 0.0):.2f}_zW={_r4_state_vec.get('macro_z_W', 0.0):.2f}"
+                    _r4_full_reason = f"{_r4_reason_vec}_pctbD={_r4_state_vec.get('bb_pct_b_D', 0.5):.2f}_pctb4h={_r4_state_vec.get('bb_pct_b_4h', 0.5):.2f}"
                     ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
                         value=state.qty * mark, reason=_r4_full_reason, pnl_pct=pnl_pct)
                     events.append(ev)

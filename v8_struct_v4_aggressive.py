@@ -323,11 +323,23 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     entry_path_counts: Dict[str, int] = {}
     exit_path_counts: Dict[str, int] = {}
 
-    def _record_event(i, etype, qty, price, reason, value):
+    def _record_event(i, etype, qty, price, reason, value, extra_indicators=None):
         if return_events:
+            ind = {
+                "k15": round(float(k15[i]), 2),
+                "k1h": round(float(k1h[i]), 2),
+                "wt1_D": round(float(wt1_D[i]), 4),
+                "wt2_D": round(float(wt2_D[i]), 4),
+                "wt_D_diff": round(float(wt1_D[i] - wt2_D[i]), 4),
+                "rsi_D": round(float(rsi_D[i]), 2),
+                "atr15": round(float(atr_15[i]), 4),
+            }
+            if extra_indicators:
+                ind.update(extra_indicators)
             events.append({
                 "ts": float(ts[i]), "type": etype, "qty": float(qty),
                 "price": float(price), "value": float(value), "reason": reason,
+                "indicators": ind,
             })
 
     for i in range(50, n):
@@ -412,7 +424,10 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 capital += pnl_dollars
                 trade_returns.append(ret_pct)
                 exit_path_counts[exit_path] = exit_path_counts.get(exit_path, 0) + 1
-                _record_event(i, "CLOSE", pos_qty, px, exit_path, pos_qty * px)
+                _record_event(i, "CLOSE", pos_qty, px, exit_path, pos_qty * px,
+                              extra_indicators={"pnl_pct": round(ret_pct, 4),
+                                                 "bars_held": int(i - entry_bar),
+                                                 "entry_price": round(avg_entry_price, 4)})
                 pos_qty = 0.0
                 avg_entry_price = 0.0
                 entry_bar = -1
@@ -426,7 +441,10 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
         capital += capital_in_trade * (ret_pct / 100)
         trade_returns.append(ret_pct)
         exit_path_counts["MTM"] = exit_path_counts.get("MTM", 0) + 1
-        _record_event(n - 1, "CLOSE", pos_qty, mark, "MTM_FINAL", pos_qty * mark)
+        _record_event(n - 1, "CLOSE", pos_qty, mark, "MTM_FINAL", pos_qty * mark,
+                      extra_indicators={"pnl_pct": round(ret_pct, 4),
+                                        "bars_held": int(n - 1 - entry_bar),
+                                        "entry_price": round(avg_entry_price, 4)})
 
     # B&H multiplier
     bh_mult = float(close[-1]) / float(close[0]) if close[0] > 0 else 1.0

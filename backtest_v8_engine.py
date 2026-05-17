@@ -2007,7 +2007,7 @@ def _v8ns_check_entry_vetos(cfg_obj, indicators, is_long):
             _sm_side = "LONG" if is_long else "SHORT"
             _sm_block, _sm_reason = _sm_mod.entry_veto(_sm_side, _sm_state, cfg_obj)
             if _sm_block:
-                return False, f"BLOCKED_{_sm_reason}_zD={_sm_state.get('macro_z_D', 0.0):.2f}_zW={_sm_state.get('macro_z_W', 0.0):.2f}"
+                return False, f"BLOCKED_{_sm_reason}_pctbD={_sm_state.get('bb_pct_b_D', 0.5):.2f}_pctb4h={_sm_state.get('bb_pct_b_4h', 0.5):.2f}"
         except Exception:
             pass
     return True, ""
@@ -3727,8 +3727,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     if _r4_close:
                         _r4_gain = float(getattr(_r4_pos, 'gain', 0) or 0)
                         _r4_qty = abs(float(getattr(_r4_pos, 'positionAmt', 0)))
-                        _r4_why = f"{_r4_reason}_zD={_r4_state.get('macro_z_D', 0.0):.2f}_zW={_r4_state.get('macro_z_W', 0.0):.2f}_g{_r4_gain:.2f}%"
-                        v8_logger.info(f"[DISC-R4_STDEV] {_r4_pk}: state={_r4_state.get('macro_state')} zD={_r4_state.get('macro_z_D'):.2f} zW={_r4_state.get('macro_z_W'):.2f} gain={_r4_gain:.2f}% — CLOSE")
+                        _r4_why = f"{_r4_reason}_pctbD={_r4_state.get('bb_pct_b_D', 0.5):.2f}_pctb4h={_r4_state.get('bb_pct_b_4h', 0.5):.2f}_g{_r4_gain:.2f}%"
+                        v8_logger.info(f"[DISC-R4_STDEV] {_r4_pk}: state={_r4_state.get('macro_state')} pctbD={_r4_state.get('bb_pct_b_D'):.3f} pctb4h={_r4_state.get('bb_pct_b_4h'):.3f} gain={_r4_gain:.2f}% — CLOSE")
                         try:
                             await trade_manager.execute_trade_action(account_key=account_key, position_key=_r4_pk, symbol=_r4_sym, quantity=_r4_qty, current_price=_r4_px, side='SELL' if _r4_is_long else 'BUY', position_side=_r4_side, action='CLOSE', reason=_r4_why, is_full_close=True, is_hedge=False)
                         except Exception as _r4_cl_err:

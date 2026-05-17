@@ -1043,6 +1043,448 @@ def api_symbol_chart(sym: str):
     })
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# BACKTEST REGISTRY (rewritten 2026-05-17): per-symbol filtered backtest
+# index over data/canonical_trades/ + data/research_*/v8_vec_sweep_*_trades
+# ─────────────────────────────────────────────────────────────────────────
+
+CANON_TRADES_DIR = BASE_DIR / "data" / "canonical_trades"
+VEC_RESEARCH_DIRS = [BASE_DIR / "data" / "research_20260516"]
+KLINES_BT_DIR = BASE_DIR / "klines_cache_backtest"
+KLINES_LIVE_DIR = BASE_DIR / "klines_cache"
+
+_RUN_EPOCH_RE = re.compile(r"_(17\d{8})$")
+_RUN_VEC_FILE_RE = re.compile(r"^v8_vec_sweep_(\d+)_trades\.jsonl$")
+
+
+def _humanize_run_name(raw: str) -> str:
+    base = _RUN_EPOCH_RE.sub("", raw)
+    m_run = re.search(r"_run(\d+)$", base)
+    run_suffix = f" (run {m_run.group(1)})" if m_run else ""
+    if m_run:
+        base = base[:m_run.start()]
+    m_ver = re.search(r"_v(\d+)$", base)
+    ver_suffix = f" v{m_ver.group(1)}" if m_ver else ""
+    if m_ver:
+        base = base[:m_ver.start()]
+    name = base.replace("_", " ")
+    name = re.sub(r"(\d+)sym", r"\1-sym", name, flags=re.IGNORECASE)
+    repls = {
+        "canonical": "Canonical", "flz8": "FLZ-8", "dedv3": "ded-v3",
+        "best": "BEST", "loose": "LOOSE", "smoke": "smoke",
+        "baseline": "baseline", "tradier": "Tradier", "crypto": "Crypto",
+    }
+    out_tokens = []
+    for tok in name.split():
+        out_tokens.append(repls.get(tok.lower(), tok))
+    return (" ".join(out_tokens) + ver_suffix + run_suffix).strip()
+
+
+def _family_from_raw(raw: str) -> str:
+    base = _RUN_EPOCH_RE.sub("", raw)
+    base = re.sub(r"_run\d+$", "", base)
+    base = re.sub(r"_v\d+$", "", base)
+    return base
+
+
+def _date_from_raw(raw: str) -> Optional[datetime]:
+    m = _RUN_EPOCH_RE.search(raw)
+    if m:
+        try:
+            return datetime.fromtimestamp(int(m.group(1)), tz=timezone.utc)
+        except Exception:
+            return None
+    return None
+
+
+def discover_backtests() -> List[Dict[str, Any]]:
+    """Return list of backtest run records sorted newest-first.
+    Each record: {run_id, family, name, date, source, symbols, _symbols_map}.
+    Cached for _CACHE_TTL_SEC."""
+    cached = _cache_get("backtests")
+    if cached is not None:
+        return cached
+    out: List[Dict[str, Any]] = []
+    # 1. data/canonical_trades/<run>/<run>__<SYMBOL>.jsonl  (per-symbol files,
+    #    one closed-round per line — backtest_v8_engine canonical schema)
+    if CANON_TRADES_DIR.exists():
+        for run_dir in sorted(CANON_TRADES_DIR.iterdir()):
+            if not run_dir.is_dir():
+                continue
+            if run_dir.name.startswith("_"):
+                continue
+            jsonls = sorted(run_dir.glob("*.jsonl"))
+            if not jsonls:
+                continue
+            symbols_map: Dict[str, str] = {}
+            for jf in jsonls:
+                stem = jf.stem
+                if "__" in stem:
+                    sym = stem.rsplit("__", 1)[1].upper()
+                    symbols_map[sym] = str(jf.relative_to(BASE_DIR))
+            if not symbols_map:
+                continue
+            run_date = _date_from_raw(run_dir.name) or datetime.fromtimestamp(
+                run_dir.stat().st_mtime, tz=timezone.utc)
+            out.append({
+                "run_id": f"canon::{run_dir.name}",
+                "family": _family_from_raw(run_dir.name),
+                "name": _humanize_run_name(run_dir.name),
+                "date": run_date,
+                "source": "canonical_engine",
+                "symbols": sorted(symbols_map.keys()),
+                "_symbols_map": symbols_map,
+            })
+    # 2. data/research_*/v8_vec_sweep_<epoch>_trades.jsonl  (mixed-symbol
+    #    OPEN/CLOSE event stream — v8_vec_sweep engine schema)
+    for vec_dir in VEC_RESEARCH_DIRS:
+        if not vec_dir.exists():
+            continue
+        for jf in sorted(vec_dir.glob("v8_vec_sweep_*_trades.jsonl")):
+            m = _RUN_VEC_FILE_RE.match(jf.name)
+            if not m:
+                continue
+            epoch = int(m.group(1))
+            symbols = set()
+            try:
+                with jf.open() as fh:
+                    for i, line in enumerate(fh):
+                        if i >= 8000:
+                            break
+                        try:
+                            r = json.loads(line)
+                            sym = (r.get("symbol") or "").upper()
+                            if sym:
+                                symbols.add(sym)
+                        except Exception:
+                            pass
+            except Exception:
+                continue
+            if not symbols:
+                continue
+            run_date = datetime.fromtimestamp(epoch, tz=timezone.utc)
+            out.append({
+                "run_id": f"vec::{epoch}",
+                "family": "v8_vec_sweep",
+                "name": f"V8 Vec Sweep · {run_date.strftime('%Y-%m-%d %H:%M')} (#{str(epoch)[-4:]})",
+                "date": run_date,
+                "source": "vec_engine",
+                "symbols": sorted(symbols),
+                "_symbols_map": {sym: str(jf.relative_to(BASE_DIR)) for sym in symbols},
+            })
+    out.sort(key=lambda r: r["date"], reverse=True)
+    _cache_set("backtests", out)
+    return out
+
+
+def _load_run_symbol_trades(run_id: str, symbol: str) -> List[Dict[str, Any]]:
+    """Return normalized closed-trade list for (run, symbol)."""
+    runs = discover_backtests()
+    rec = next((r for r in runs if r["run_id"] == run_id), None)
+    if not rec:
+        return []
+    sym_u = symbol.upper()
+    rel = rec["_symbols_map"].get(sym_u)
+    if not rel:
+        return []
+    p = BASE_DIR / rel
+    out: List[Dict[str, Any]] = []
+    if run_id.startswith("canon::"):
+        try:
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    r = json.loads(line)
+                except Exception:
+                    continue
+                if (r.get("symbol") or "").upper() != sym_u:
+                    continue
+                ets = int(r.get("entry_ts") or 0)
+                xts = int(r.get("exit_ts") or 0)
+                if ets == 0 or xts == 0:
+                    continue
+                out.append({
+                    "entry_ts": ets, "exit_ts": xts,
+                    "side": r.get("side", ""),
+                    "entry_price": float(r.get("entry_price") or 0),
+                    "exit_price": float(r.get("exit_price") or 0),
+                    "pnl_pct": float(r.get("pnl_pct") or 0),
+                    "duration_min": max(0, (xts - ets) // 60),
+                    "entry_reason": (r.get("entry_reason") or "")[:80],
+                    "exit_reason": (r.get("exit_reason") or "")[:80],
+                })
+        except Exception:
+            pass
+    elif run_id.startswith("vec::"):
+        # OPEN / CLOSE event pairing per (sym, side)
+        open_state: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        try:
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    r = json.loads(line)
+                except Exception:
+                    continue
+                if (r.get("symbol") or "").upper() != sym_u:
+                    continue
+                side = (r.get("side") or "").upper()
+                action = (r.get("type") or r.get("action") or "").upper()
+                ts_raw = r.get("ts") or r.get("entry_ts") or r.get("exit_ts") or 0
+                if isinstance(ts_raw, str):
+                    try:
+                        ts = int(datetime.fromisoformat(
+                            ts_raw.replace("Z", "+00:00")).timestamp())
+                    except Exception:
+                        ts = 0
+                else:
+                    try:
+                        ts = int(float(ts_raw))
+                    except Exception:
+                        ts = 0
+                key = (sym_u, side)
+                if action in ("OPEN", "ENTRY"):
+                    open_state[key] = {
+                        "entry_ts": ts,
+                        "entry_price": float(r.get("price") or 0),
+                        "side": side,
+                        "entry_reason": (r.get("reason") or "")[:80],
+                    }
+                elif action in ("CLOSE", "EXIT"):
+                    o = open_state.pop(key, None)
+                    if not o:
+                        continue
+                    exit_price = float(r.get("price") or 0)
+                    if not o["entry_price"] or not exit_price:
+                        continue
+                    if side == "LONG":
+                        pnl = (exit_price - o["entry_price"]) / o["entry_price"] * 100.0
+                    else:
+                        pnl = (o["entry_price"] - exit_price) / o["entry_price"] * 100.0
+                    if r.get("pnl_pct") is not None:
+                        try:
+                            pnl = float(r["pnl_pct"])
+                        except Exception:
+                            pass
+                    out.append({
+                        "entry_ts": o["entry_ts"], "exit_ts": ts,
+                        "side": side,
+                        "entry_price": o["entry_price"], "exit_price": exit_price,
+                        "pnl_pct": pnl,
+                        "duration_min": max(0, (ts - o["entry_ts"]) // 60),
+                        "entry_reason": o["entry_reason"],
+                        "exit_reason": (r.get("reason") or "")[:80],
+                    })
+        except Exception:
+            pass
+    out.sort(key=lambda t: t["entry_ts"])
+    return out
+
+
+def _bh_baseline_pct(symbol: str, start_ts: int, end_ts: int) -> Optional[float]:
+    if start_ts >= end_ts:
+        return None
+    sym_u = symbol.upper()
+    candidates = [sym_u]
+    if sym_u.endswith("USDC"):
+        candidates.append(sym_u[:-4] + "USDT")
+    for cache_dir in (KLINES_BT_DIR, KLINES_LIVE_DIR):
+        if not cache_dir.exists():
+            continue
+        for cand in candidates:
+            p = cache_dir / f"{cand}_15m.json"
+            if not p.exists():
+                continue
+            try:
+                data = json.loads(p.read_text())
+            except Exception:
+                continue
+            if not isinstance(data, list) or not data:
+                continue
+            first_close = None
+            last_close = None
+            for bar in data:
+                ts_raw = bar.get("timestamp") or bar.get("ts")
+                try:
+                    if isinstance(ts_raw, str):
+                        bts = int(datetime.fromisoformat(
+                            ts_raw.replace("Z", "+00:00")).timestamp())
+                    else:
+                        bts = int(float(ts_raw))
+                except Exception:
+                    continue
+                close = float(bar.get("close") or 0)
+                if not close:
+                    continue
+                if bts >= start_ts and first_close is None:
+                    first_close = close
+                if bts <= end_ts:
+                    last_close = close
+                elif bts > end_ts:
+                    break
+            if first_close and last_close and first_close > 0:
+                return (last_close - first_close) / first_close * 100.0
+    return None
+
+
+def _summarize_trades(trades: List[Dict[str, Any]], symbol: str) -> Dict[str, Any]:
+    if not trades:
+        return {"trades": 0, "wr_pct": 0.0, "total_gain_pct": 0.0,
+                "gain_per_mo": 0.0, "max_dd_pct": 0.0, "pool_sharpe": 0.0,
+                "bh_pct": None, "first_ts": 0, "last_ts": 0, "years": 0.0,
+                "avg_gain_trade": 0.0, "wins": 0, "losses": 0}
+    pnls = [float(t.get("pnl_pct") or 0) for t in trades]
+    wins = sum(1 for p in pnls if p > 0)
+    losses = sum(1 for p in pnls if p <= 0)
+    total = sum(pnls)
+    first_ts = int(trades[0].get("entry_ts") or 0)
+    last_ts = int(trades[-1].get("exit_ts") or 0)
+    span_s = max(1, last_ts - first_ts)
+    years = span_s / (86400.0 * 365.25)
+    months = max(0.01, years * 12.0)
+    gain_mo = total / months
+    cum = 0.0
+    peak = -1e18
+    max_dd = 0.0
+    for p in pnls:
+        cum += p
+        if cum > peak:
+            peak = cum
+        if peak - cum > max_dd:
+            max_dd = peak - cum
+    ps = metrics_guard.pool_sharpe(pnls)
+    bh = _bh_baseline_pct(symbol, first_ts, last_ts)
+    return {
+        "trades": len(pnls),
+        "wins": wins,
+        "losses": losses,
+        "wr_pct": round(100.0 * wins / max(1, len(pnls)), 2),
+        "total_gain_pct": round(total, 3),
+        "avg_gain_trade": round(total / max(1, len(pnls)), 4),
+        "gain_per_mo": round(gain_mo, 3),
+        "max_dd_pct": round(max_dd, 3),
+        "pool_sharpe": round(float(ps), 4),
+        "bh_pct": (round(bh, 3) if bh is not None else None),
+        "first_ts": first_ts, "last_ts": last_ts,
+        "years": round(years, 3),
+    }
+
+
+@app.route("/api/families")
+def api_families():
+    runs = discover_backtests()
+    fams: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    all_syms = set()
+    for r in runs:
+        fams[r["family"]].append({
+            "run_id": r["run_id"],
+            "name": r["name"],
+            "date": r["date"].isoformat() if r["date"] else None,
+            "source": r["source"],
+            "n_syms": len(r["symbols"]),
+            "symbols": r["symbols"],
+        })
+        all_syms.update(r["symbols"])
+    fam_list = [{"family": f, "human": _humanize_run_name(f),
+                 "n_runs": len(rs), "runs": rs}
+                for f, rs in sorted(fams.items())]
+    return jsonify({
+        "families": fam_list,
+        "all_symbols": sorted(all_syms),
+        "n_runs_total": len(runs),
+        "generated_utc": _now_iso(),
+    })
+
+
+@app.route("/api/sym_backtests/<sym>")
+def api_sym_backtests(sym: str):
+    """All backtest runs that contain trades for this symbol, sorted."""
+    sym_u = sym.upper()
+    sort = request.args.get("sort", "sharpe")
+    runs = discover_backtests()
+    out: List[Dict[str, Any]] = []
+    for r in runs:
+        if sym_u not in r["_symbols_map"]:
+            continue
+        trades = _load_run_symbol_trades(r["run_id"], sym_u)
+        s = _summarize_trades(trades, sym_u)
+        if s["trades"] == 0:
+            continue
+        out.append({
+            "run_id": r["run_id"], "name": r["name"], "family": r["family"],
+            "date": r["date"].isoformat() if r["date"] else None,
+            "source": r["source"],
+            **s,
+        })
+    if sort == "gain_mo":
+        out.sort(key=lambda x: x["gain_per_mo"], reverse=True)
+    else:
+        out.sort(key=lambda x: x["pool_sharpe"], reverse=True)
+    return jsonify({"symbol": sym_u, "n_runs": len(out), "sort": sort,
+                    "runs": out, "generated_utc": _now_iso()})
+
+
+@app.route("/api/sym_backtest_trades/<path:run_id>/<sym>")
+def api_sym_backtest_trades(run_id: str, sym: str):
+    """Per-trade list for (run, symbol) + summary + live overlay-able series."""
+    sym_u = sym.upper()
+    trades = _load_run_symbol_trades(run_id, sym_u)
+    s = _summarize_trades(trades, sym_u)
+    runs = discover_backtests()
+    rec = next((r for r in runs if r["run_id"] == run_id), None)
+    return jsonify({
+        "symbol": sym_u,
+        "run_id": run_id,
+        "run_name": rec["name"] if rec else run_id,
+        "run_family": rec["family"] if rec else "?",
+        "run_date": (rec["date"].isoformat() if rec and rec["date"] else None),
+        "run_source": rec["source"] if rec else "?",
+        "summary": s,
+        "trades": trades,
+        "generated_utc": _now_iso(),
+    })
+
+
+@app.route("/api/sym_live_trades/<sym>")
+def api_sym_live_trades(sym: str):
+    """Live trades for a symbol filtered by account (or all if not given).
+    Used as overlay over the backtest chart."""
+    sym_u = sym.upper()
+    account = request.args.get("account") or None
+    accounts = [account] if account in ALL_ACCOUNTS else ALL_ACCOUNTS
+    out: List[Dict[str, Any]] = []
+    for acct in accounts:
+        try:
+            events = _load_account_history(acct)
+            closed = _reconstruct_trades(events)
+            for t in closed:
+                if (t.get("symbol") or "").upper() != sym_u:
+                    continue
+                out.append({
+                    "account": acct,
+                    "entry_ts": int(t.get("entry_ts") or 0),
+                    "exit_ts": int(t.get("exit_ts") or 0),
+                    "side": t.get("side", ""),
+                    "entry_price": float(t.get("entry_price") or 0),
+                    "exit_price": float(t.get("exit_price") or 0),
+                    "pnl_pct": float(t.get("pnl_pct") or 0),
+                    "duration_sec": int(t.get("duration_sec") or 0),
+                    "exit_reason": (t.get("exit_reason") or "")[:80],
+                })
+        except Exception:
+            continue
+    out.sort(key=lambda x: x["entry_ts"])
+    return jsonify({
+        "symbol": sym_u,
+        "account_filter": account or "ALL",
+        "n_trades": len(out),
+        "trades": out,
+        "accounts_available": ALL_ACCOUNTS,
+        "generated_utc": _now_iso(),
+    })
+
+
 def _kill_port(port: int):
     """Kill any process listening on port (best-effort, like trade_analytics does)."""
     import subprocess
