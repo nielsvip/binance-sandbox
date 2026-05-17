@@ -85,6 +85,62 @@ SAMPLE_FLOOR_TRADES = 30       # below → DIAGNOSTIC regardless of Sharpe
 
 PRIORITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "GENERATED": 4}
 
+# 2026-05-17 — Vec-aware knob guard.
+# After 6 distinct cfg_hashes converged on pool_sharpe=0.1619/trades=86 because
+# coordinator runs with V8_USE_VEC_ALL=1 (vec engine) but the flipped knobs
+# were only read in the slow engine path. Load the curated vec-aware knob set
+# and refuse to run any arm whose flipped knobs are NOT in this set.
+# File maintained by `python3 -c "from sweep_coordinator import _refresh_vec_aware_set; _refresh_vec_aware_set()"`.
+_VEC_AWARE_FILE = Path("/home/niels/binance-sandbox/data/vec_aware_knobs.txt")
+_VEC_AWARE_CONTEXT = {"USDC_PREFERENCE_BLOCK_ENABLED"}  # ignored: coordinator/runner context flags
+
+def _load_vec_aware_knobs() -> set:
+    if not _VEC_AWARE_FILE.exists():
+        return set()
+    return {ln.strip() for ln in _VEC_AWARE_FILE.read_text().splitlines() if ln.strip() and not ln.startswith("#")}
+
+def _arm_is_vec_aware(overrides: dict, vec_aware: set) -> tuple[bool, list]:
+    flipped = set((overrides or {}).keys()) - _VEC_AWARE_CONTEXT
+    if not flipped:
+        return True, []  # control/baseline arm — no flips, always vec-safe
+    non_vec = sorted(flipped - vec_aware)
+    return (len(non_vec) == 0), non_vec
+
+# 2026-05-17 — Duplicate-result failsafe. After 6 distinct configs produced
+# the byte-identical (pool_sharpe, trades, wins, losses) tuple, we add a
+# post-run check: if the result matches a prior arm's signature, write a
+# FLAW row and never run any other PENDING arm with the same dead-knob set.
+def _result_signature(row: dict) -> tuple:
+    ps = row.get("pool_sharpe")
+    if ps is None:
+        return None
+    return (
+        round(float(ps), 4),
+        int(row.get("trades", 0) or 0),
+        int(row.get("wins", 0) or 0),
+        int(row.get("losses", 0) or 0),
+        str(row.get("mode", "")),
+        str(row.get("symbols", "")),
+        str(row.get("start", "")),
+    )
+
+def _load_seen_signatures() -> dict:
+    seen = {}
+    if not LEDGER_PATH.exists():
+        return seen
+    with open(LEDGER_PATH) as fh:
+        for line in fh:
+            try:
+                e = __import__("json").loads(line)
+            except Exception:
+                continue
+            sig = _result_signature(e)
+            if sig is None:
+                continue
+            seen.setdefault(sig, []).append((e.get("test_id"), e.get("cfg_hash"), tuple(sorted((e.get("config_changes") or {}).keys()))))
+    return seen
+
+
 # Env flags that activate vectorized gate modules in backtest_v8_engine
 VEC_ENV = {
     "V8_USE_VEC_ALL": "1",       # routes 12 gate decisions through vec_paths modules
@@ -637,6 +693,10 @@ def main() -> None:
     print(f"[coord] hang_timeout={HANG_TIMEOUT_S}s  silence_pre_sim={PRE_SIM_SILENCE_S}s  silence_post_sim={POST_SIM_SILENCE_S}s  useless_threshold={USELESS_POOL_SHARPE}  promote_threshold={PROMOTE_POOL_SHARPE}", flush=True)
 
     last_flaw_write = 0.0
+    vec_aware = _load_vec_aware_knobs()
+    print(f"[coord] vec_aware_knobs loaded: {len(vec_aware)} (from {_VEC_AWARE_FILE})", flush=True)
+    seen_signatures = _load_seen_signatures()
+    print(f"[coord] result signatures from prior ledger: {len(seen_signatures)}", flush=True)
 
     while not _STOP.is_set():
         seen = _load_seen_hashes(args.mode)
@@ -655,6 +715,28 @@ def main() -> None:
         h = item["_hash"]
         overrides = item.get("config_changes", item.get("overrides", {}))
         priority = item.get("priority", "MEDIUM")
+        # ──────────────────────────────────────────────────────────────────
+        # 2026-05-17 DEAD-KNOB GUARD — refuse to run an arm whose flipped
+        # knobs aren't in the vec-aware set. V8_USE_VEC_ALL=1 routes through
+        # vec_paths/* which only reads vec-aware knobs; flipping non-vec
+        # knobs produces baseline-identical results (6-arm cluster wasted
+        # 7.5h of compute 2026-05-17). The guard fails-open if vec_aware is
+        # empty (file missing) — so coordinator still works if list isn't
+        # provisioned.
+        # ──────────────────────────────────────────────────────────────────
+        vec_ok, non_vec_keys = (True, [])
+        if vec_aware:
+            vec_ok, non_vec_keys = _arm_is_vec_aware(overrides, vec_aware)
+        if not vec_ok:
+            print(f"[coord] ⊗ {label} [{priority}] hash={h} BLOCKED non_vec_keys={non_vec_keys}", flush=True)
+            _append_ledger({
+                "test_id": label, "cfg_hash": h, "status": "BLOCKED_NON_VEC_KNOBS",
+                "verdict": f"BLOCKED_non_vec_keys={','.join(non_vec_keys)}",
+                "non_vec_keys": non_vec_keys, "config_changes": overrides,
+                "mode": args.mode, "elapsed_s": 0.0,
+                "ts_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            })
+            continue
         print(f"[coord] ▶ {label} [{priority}] hash={h} overrides={list(overrides.keys())}", flush=True)
 
         _wait_for_memory(args.mem_throttle)
@@ -664,6 +746,24 @@ def main() -> None:
             start=args.start, symbols=args.symbols,
             capital=args.capital, npz_dir=args.npz_dir,
         )
+
+        # 2026-05-17 DUPLICATE-RESULT DETECTION — post-run failsafe. If the
+        # result tuple matches a previously-completed run with a DIFFERENT
+        # cfg_hash, tag the verdict and surface to flaws log. Don't block
+        # the current run (already done), but the operator sees the pattern.
+        _row_sig = _result_signature(row)
+        if _row_sig is not None:
+            prior = seen_signatures.get(_row_sig, [])
+            distinct = [(tid, ch, keys) for tid, ch, keys in prior if ch != row.get("cfg_hash") and tid != row.get("test_id")]
+            if distinct:
+                prior_label = distinct[0][0]
+                prior_keys = distinct[0][2]
+                cur_keys = tuple(sorted((overrides or {}).keys()))
+                row["verdict"] = f"DUPLICATE_OF_{prior_label}_" + (row.get("verdict") or "")
+                row["duplicate_of"] = prior_label
+                row["duplicate_diff_keys"] = sorted(set(cur_keys) ^ set(prior_keys))
+                print(f"[coord] ⚠ DUPLICATE_RESULT {label} → matches {prior_label} (signature={_row_sig})", flush=True)
+            seen_signatures.setdefault(_row_sig, []).append((row.get("test_id"), row.get("cfg_hash"), tuple(sorted((overrides or {}).keys()))))
 
         _append_ledger(row)
 
