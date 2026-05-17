@@ -1392,12 +1392,12 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
-    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352). When DT_TARGET_ATR_ENABLED=True, recommended to raise to 0.015 as no-ATR fallback (see tradier_manage._manage_daytrade_positions DT_TARGET_ATR branch). Kept 0.005 for default-OFF parity.
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.015       # 2026-05-17 raised 0.005 -> 0.015 alongside DT_TARGET_ATR_ENABLED=True flip. 0.5% target was clipping winners (MU LONG +1.58% on a setup that ran +11.84% more, 33 fires in 30d). 1.5% is the floor when ATR is missing.
     # 2026-05-16: ATR-aware DT_TARGET kill-switch (DEFAULT OFF — sweep-validate before enable).
     # When True: effective target = max(2 × atr_5m / entry, TARGET_PCT, noloss_min). Reason label
     # switches to DT_TARGET_ATR when ATR-driven. When False: legacy max(TARGET_PCT, noloss_min)
     # behavior preserved. Recommended pair when enabling: raise TRADIER_DC_DAYTRADE_TARGET_PCT to 0.015.
-    DT_TARGET_ATR_ENABLED: bool = False
+    DT_TARGET_ATR_ENABLED: bool = True   # 2026-05-17 FLIPPED TRUE: bleed-stop. Live evidence shows DT_TARGET at 0.5% clipped winners (MU LONG +1.58% exit on a setup that ran +11.84% more) 33x in 30d. Effective target now = max(2*atr_5m/entry, TARGET_PCT, noloss_min); exits never get worse, only later. Pair: TRADIER_DC_DAYTRADE_TARGET_PCT raised 0.005 -> 0.015.
     TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # REVERTED 2026-04-17: see DC_POSITION_ENTRY_THRESHOLD above.
     # 2026-05-16: DC_TIER4_DC4H_AUG late-entry guard (DEFAULT OFF behind DC_TIER4_BAR_MATURITY_BLOCK_ENABLED).
     # When True + threshold in (0,1): block tier-4 augment when current bar has consumed >threshold
