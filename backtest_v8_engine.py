@@ -2003,7 +2003,7 @@ def _v8ns_check_entry_vetos(cfg_obj, indicators, is_long):
     if bool(_v8ns_get(cfg_obj, 'STDEV_MACRO_ENTRY_VETO_ENABLED', False)):
         try:
             import stdev_macro as _sm_mod
-            _sm_state = _sm_mod.compute_stdev_macro_state(indicators)
+            _sm_state = _sm_mod.compute_stdev_macro_state(indicators, config_obj=cfg_obj)
             _sm_side = "LONG" if is_long else "SHORT"
             _sm_block, _sm_reason = _sm_mod.entry_veto(_sm_side, _sm_state, cfg_obj)
             if _sm_block:
@@ -3722,7 +3722,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         continue
                     _r4_is_long = _r4_pk.endswith('_LONG')
                     _r4_side = 'LONG' if _r4_is_long else 'SHORT'
-                    _r4_state = _r4_sm.compute_stdev_macro_state(_r4_ind)
+                    _r4_state = _r4_sm.compute_stdev_macro_state(_r4_ind, config_obj=config)
                     _r4_close, _r4_reason = _r4_sm.r4_exit(_r4_side, _r4_state, _r4_ind, config)
                     if _r4_close:
                         _r4_gain = float(getattr(_r4_pos, 'gain', 0) or 0)
@@ -3824,7 +3824,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if bool(getattr(config, 'STDEV_MACRO_HEDGE_BOOST_ENABLED', False)):
                     try:
                         import stdev_macro as _ohm_sm
-                        _ohm_state = _ohm_sm.compute_stdev_macro_state(_oh_ind)
+                        _ohm_state = _ohm_sm.compute_stdev_macro_state(_oh_ind, config_obj=config)
                         _ohm_side = 'LONG' if _oh_is_long else 'SHORT'
                         _ohm_fire, _ohm_reason = _ohm_sm.hedge_trigger_boost(_ohm_side, _ohm_state, config)
                         if _ohm_fire:

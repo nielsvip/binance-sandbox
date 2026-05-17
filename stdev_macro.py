@@ -41,18 +41,18 @@ def compute_z_scalar(log_close: float, mean: float, std: float) -> float:
     return (log_close - mean) / std
 
 
-def derive_state(z_d: float, z_w: float) -> str:
+def derive_state(z_d: float, z_w: float, strong: float = STRONG_THRESHOLD, moderate: float = MODERATE_THRESHOLD) -> str:
     if not math.isfinite(z_d):
         z_d = 0.0
     if not math.isfinite(z_w):
         z_w = 0.0
-    top_any = z_d > MODERATE_THRESHOLD or z_w > MODERATE_THRESHOLD
-    bot_any = z_d < -MODERATE_THRESHOLD or z_w < -MODERATE_THRESHOLD
+    top_any = z_d > moderate or z_w > moderate
+    bot_any = z_d < -moderate or z_w < -moderate
     if top_any and bot_any:
         return STATE_MID
-    if z_d > STRONG_THRESHOLD and z_w > MODERATE_THRESHOLD:
+    if z_d > strong and z_w > moderate:
         return STATE_STRONG_TOP
-    if z_d < -STRONG_THRESHOLD and z_w < -MODERATE_THRESHOLD:
+    if z_d < -strong and z_w < -moderate:
         return STATE_STRONG_BOT
     if top_any:
         return STATE_TOP
@@ -61,16 +61,20 @@ def derive_state(z_d: float, z_w: float) -> str:
     return STATE_MID
 
 
-def compute_stdev_macro_state(indicators: dict[str, Any]) -> dict[str, Any]:
+def compute_stdev_macro_state(indicators: dict[str, Any], config_obj=None) -> dict[str, Any]:
     """Read precomputed macro_z_{D,W,M} from indicators and derive state.
 
     indicators is the per-bar dict the engine and live system both assemble.
     Missing fields fail-open: state = MID, never blocks anything.
+    Thresholds read from config_obj (when supplied) so sweeps can vary them
+    via STDEV_MACRO_STRONG_THRESHOLD / STDEV_MACRO_MODERATE_THRESHOLD overrides.
     """
     z_d = _to_float(indicators.get("macro_z_D"))
     z_w = _to_float(indicators.get("macro_z_W"))
     z_m = _to_float(indicators.get("macro_z_M"))
-    state = derive_state(z_d, z_w)
+    strong = float(getattr(config_obj, "STDEV_MACRO_STRONG_THRESHOLD", STRONG_THRESHOLD)) if config_obj is not None else STRONG_THRESHOLD
+    moderate = float(getattr(config_obj, "STDEV_MACRO_MODERATE_THRESHOLD", MODERATE_THRESHOLD)) if config_obj is not None else MODERATE_THRESHOLD
+    state = derive_state(z_d, z_w, strong=strong, moderate=moderate)
     return {
         "macro_z_D": z_d,
         "macro_z_W": z_w,
@@ -102,6 +106,7 @@ def entry_veto(side: str, state_dict: dict, config_obj) -> tuple[bool, str]:
     Returns (block, reason). block=False means do nothing (fail open).
     Additive: never blocks based on BB. Never blocks when data missing.
     """
+    _ = compute_stdev_macro_state  # type-hint only
     if not getattr(config_obj, "STDEV_MACRO_ENTRY_VETO_ENABLED", False):
         return False, ""
     if not state_dict.get("data_present"):

@@ -1061,7 +1061,7 @@ def simulate_one_symbol(
                         "macro_z_W": float(npz["macro_z_W"][i]) if "macro_z_W" in npz else 0.0,
                         "macro_z_M": float(npz["macro_z_M"][i]) if "macro_z_M" in npz else 0.0,
                     }
-                    _sm_state_open = _sm_open.compute_stdev_macro_state(_sm_ind)
+                    _sm_state_open = _sm_open.compute_stdev_macro_state(_sm_ind, config_obj=config)
                     _sm_side_open = "LONG" if is_long else "SHORT"
                     _sm_block, _sm_why = _sm_open.entry_veto(_sm_side_open, _sm_state_open, config)
                     if _sm_block:
@@ -1459,7 +1459,7 @@ def simulate_one_symbol(
                     "wt1_4h": float(npz["wt1_4h"][i]) if "wt1_4h" in npz else 0.0,
                     "wt2_4h": float(npz["wt2_4h"][i]) if "wt2_4h" in npz else 0.0,
                 }
-                _r4_state_vec = _sm_r4.compute_stdev_macro_state(_r4_ind_vec)
+                _r4_state_vec = _sm_r4.compute_stdev_macro_state(_r4_ind_vec, config_obj=config)
                 _r4_side_vec = "LONG" if is_long else "SHORT"
                 _r4_close_vec, _r4_reason_vec = _sm_r4.r4_exit(_r4_side_vec, _r4_state_vec, _r4_ind_vec, config)
                 if _r4_close_vec:

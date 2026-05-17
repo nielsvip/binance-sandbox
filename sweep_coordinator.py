@@ -694,11 +694,20 @@ def main() -> None:
 
     last_flaw_write = 0.0
     vec_aware = _load_vec_aware_knobs()
+    _vec_mtime = _VEC_AWARE_FILE.stat().st_mtime if _VEC_AWARE_FILE.exists() else 0.0
     print(f"[coord] vec_aware_knobs loaded: {len(vec_aware)} (from {_VEC_AWARE_FILE})", flush=True)
     seen_signatures = _load_seen_signatures()
     print(f"[coord] result signatures from prior ledger: {len(seen_signatures)}", flush=True)
 
     while not _STOP.is_set():
+        # Hot-reload vec-aware set if the file changed on disk (so newly wired
+        # gates become valid without restarting the coordinator).
+        if _VEC_AWARE_FILE.exists():
+            cur_mtime = _VEC_AWARE_FILE.stat().st_mtime
+            if cur_mtime > _vec_mtime:
+                vec_aware = _load_vec_aware_knobs()
+                _vec_mtime = cur_mtime
+                print(f"[coord] vec_aware_knobs reloaded: {len(vec_aware)}", flush=True)
         seen = _load_seen_hashes(args.mode)
         queue = _build_priority_queue(args.mode, seen)
 
