@@ -1199,8 +1199,13 @@ class Config:
     # have >= MIN_IND_PER_TF indicators agree (3x5 = 3 TFs with 5+ indicators each).
     # Set MIN_TFS=0 to use total-vote-only gate (no per-TF floor).
     WT_3M_FORCE_OPEN_GR_GATE_ENABLED: bool = True
-    WT_3M_FORCE_OPEN_GR_VOTE_MIN: int = 15      # total vote floor; range 15-20. 0 = gate off.
-    WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 3       # 0 = disabled; ≥3 → require this many TFs to pass MIN_IND_PER_TF (needs testing)
+    # 2026-05-17 TIGHTENED per vec_top_combo_validator winners (56 syms × 1.25yr):
+    # Top-25 winners (ps>0.5, trades>1k) are 25-of-25 LONG-side, all use 4-condition combos
+    # with HTF (4h/D) WT confirm + K-extreme-low entry. Was VOTE_MIN=15/TFS=3/IND=5.
+    # Now VOTE_MIN=20/TFS=4/IND=5 → require 4-TF agreement (matches top combo pattern).
+    # Rollback: flip back to 15/3/5 + restart ez_manage_<acct> procs.
+    WT_3M_FORCE_OPEN_GR_VOTE_MIN: int = 20      # was 15. Aligned with top combo Sharpe 1.18
+    WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 4       # was 3. Forces 4-TF confirmation
     WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF: int = 5 # per-TF indicator floor when MIN_TFS > 0
     # ═══════════════════════════════════════════════════════════════════
     # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
@@ -1221,6 +1226,8 @@ class Config:
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03    # crowded shorts → contrarian LONG (literature default, user-confirmed 2026-05-17)
     FUNDING_EXTREME_SHORT_THRESHOLD_PCT: float = 0.05    # crowded longs → contrarian SHORT (BitMEX-historic threshold)
     RULE_NAME_TAGGING_ENABLED: bool = True               # write rule_name=RULE_A|B|C|LEGACY into history JSONL at every OPEN. Pure observability.
+    HEDGE_HTF_VETO_ENABLED: bool = True                  # 2026-05-17: block OBLIGATORY_HEDGE if Daily WT hasn't flipped to support hedge direction. For LONG position the hedge is SHORT (requires wt1_D < wt2_D), for SHORT position the hedge is LONG (requires wt1_D > wt2_D). Source: data/research_20260516/PLAN.md §3.7. Live data showed hedge entries dominating opens (58-82% per acct) and QUICK_HEDGE_PROTECT_LONG_LOSS averaging -0.49%. ROLLBACK: set False.
+    BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False  # 2026-05-17: future feature — replace stateless dc_basis_D anchor with persistent breakout_retest_armed[symbol][side] state dict (arm on dc_high_D[prev_D] cross + volume confirm, fire on retest within 7d). Wired in ez_manage MultiAccountTradeManager state dicts. Default OFF — needs code in next session, sweep variant queued for forward validation.
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

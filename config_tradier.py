@@ -2137,6 +2137,8 @@ class TradierConfig:
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03
     FUNDING_EXTREME_SHORT_THRESHOLD_PCT: float = 0.05
     RULE_NAME_TAGGING_ENABLED: bool = True
+    HEDGE_HTF_VETO_ENABLED: bool = False                 # 2026-05-17: tradier has no same-symbol hedge mechanism (per memory feedback_hedge_reentry_unblock_20260510 "Stocks have NO same-symbol hedge"); flag exists for config-symmetry only. ROLLBACK: irrelevant on tradier.
+    BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False
     # ═══════════════════════════════════════════════════════════════════
     # DISASTER_GUARD — 10 controls vs MU-style shorts-on-winners.
     # Triggered after 2026-05-11 MU incident: $12k MU short opened while

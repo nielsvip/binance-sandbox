@@ -24442,6 +24442,26 @@ class MultiAccountTradeManager:
                                         _oh_gr_confirms = _oh_gr_enabled and _oh_gr_against_score >= _oh_gr_floor
                                         _oh_user_trigger = _oh_3m_against and _oh_gr_confirms
                                         _oh_trigger_label = f"3m_AND_GR{_oh_gr_against_score}/{_oh_gr_floor}"
+                                        # ═══════════════════════════════════════════════════════════════════
+                                        # HEDGE_HTF_VETO — Daily WT must confirm reversal before hedge opens.
+                                        # 2026-05-17 USER mandate (PLAN.md §3.7). Live data: hedge entries 58-82%
+                                        # of opens; QUICK_HEDGE_PROTECT_LONG_LOSS avg -0.49% (43 trades 30d).
+                                        # For LONG pos: hedge is SHORT → require wt1_D < wt2_D.
+                                        # For SHORT pos: hedge is LONG → require wt1_D > wt2_D.
+                                        # Fails open if D-data missing. ROLLBACK: HEDGE_HTF_VETO_ENABLED=False.
+                                        # ═══════════════════════════════════════════════════════════════════
+                                        if _oh_user_trigger and bool(getattr(config, "HEDGE_HTF_VETO_ENABLED", False)):
+                                            _hhv_w1_D = safe_fetch_float(_oh_ind.get("wt1_D"), 0)
+                                            _hhv_w2_D = safe_fetch_float(_oh_ind.get("wt2_D"), 0)
+                                            _hhv_data_ok = abs(_hhv_w1_D) > 1e-9 and abs(_hhv_w2_D) > 1e-9
+                                            if _hhv_data_ok:
+                                                _hhv_aligned = (_is_long and _hhv_w1_D < _hhv_w2_D) or ((not _is_long) and _hhv_w1_D > _hhv_w2_D)
+                                                if not _hhv_aligned:
+                                                    logger.warning(
+                                                        f"[HEDGE_HTF_VETO] {position_key}: BLOCKED hedge open — Daily WT not yet confirming reversal (wt1_D={_hhv_w1_D:.2f} wt2_D={_hhv_w2_D:.2f} pos_long={_is_long})"
+                                                    )
+                                                    _oh_user_trigger = False
+                                                    _oh_trigger_label = f"{_oh_trigger_label}_HTF_VETOED"
                                         if _oh_tfs_enabled > 0 and (
                                             _oh_wt_against >= _oh_req
                                             or _oh_user_trigger

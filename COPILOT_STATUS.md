@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-17 04:21:59 UTC
+# Copilot Status — 2026-05-17 04:37:39 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:15:25
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:17:29
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:17:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:17:29
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:19:33
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:19:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:19:33
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:21:37
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:21:37
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:21:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:29:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:31:43
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:31:43
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:31:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:33:50
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:33:50
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:33:50
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T04:35:54
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T04:35:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T04:35:54
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 2 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -40,7 +40,6 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **SEIUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 - WATCHING: **IOSTUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor

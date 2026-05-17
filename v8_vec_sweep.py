@@ -1135,38 +1135,52 @@ def simulate_one_symbol(
                 continue
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
-        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_exit_passes is not None:
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency, requires gain >= MIN_GAIN.
+        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_exit_passes is not None and gain >= min_gain:
             if bool(_wt3m_against[i]) and bool(_gr_exit_passes[i]):
                 exit_id = 99
                 exit_reason = f"GR_EXIT_{config.GR_EXIT_MIN_TFS}tf_x_{config.GR_EXIT_MIN_IND}ind"
 
         # WT_4H_VEL_EXIT (needs profit + age; vec gave us full mask)
-        if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= comm_buf:
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: was `gain >= comm_buf` (0.10%) which closed
+        # at micro-gains, dragging avg_gain_trade to 0.37%. Now requires real gain
+        # (>= config.MIN_GAIN = 3.0%) before this non-emergency exit can fire.
+        if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= min_gain:
             exit_id = EXIT_WT_4H_VEL
             exit_reason = f"WT_4H_VEL_g={gain:.2f}%"
 
         # DC_HOPELESS_EXIT (state-aware: entry outside dc_4h channel)
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: in profit-zone (0 < gain < MIN_GAIN) skip;
+        # at real loss (gain < comm_buf) the common close block at L1326 routes
+        # through noloss_gate which handles loss decisions; at gain >= MIN_GAIN
+        # allow the harvest.
         if exit_id == EXIT_NONE and float(config.DC_HOPELESS_EXIT_ENABLED):
             dh = float(dc_h_4h[i]); dl = float(dc_l_4h[i])
             if dh > 0 and dl > 0 and age_s > float(config.DC_HOPELESS_EXIT_MIN_AGE_S):
                 if (is_long and state.entry_price > dh) or ((not is_long) and state.entry_price < dl):
-                    exit_id = EXIT_DC_HOPELESS
-                    exit_reason = f"DC_HOPELESS_entry={state.entry_price:.4f}"
+                    if gain >= min_gain or gain < comm_buf:
+                        exit_id = EXIT_DC_HOPELESS
+                        exit_reason = f"DC_HOPELESS_entry={state.entry_price:.4f}"
 
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: was `gain > 0` (allowed close at +0.1%);
+        # now requires gain >= MIN_GAIN to avoid micro-gain closes.
         if exit_id == EXIT_NONE and config.WT_EXHAUST_EXIT_ENABLED and exit_gates["wt_exhaust"][i] and age_s > grace_s:
-            if not config.WT_EXHAUST_EXIT_REQUIRE_GAIN or gain > 0:
+            if gain >= min_gain:
                 exit_id = EXIT_WT_EXHAUST
                 exit_reason = "WT_EXHAUST"
 
-        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i] and age_s > grace_s:
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: WT_PERCENTILE / E_1_WT_DELTA / E_3_STRUCTURE
+        # are non-emergency exits — gate behind gain >= MIN_GAIN to prevent
+        # micro-gain closes (R1/R2/HEDGE_FAILED handle the real loss paths).
+        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i] and age_s > grace_s and gain >= min_gain:
             exit_id = EXIT_WT_PERCENTILE
             exit_reason = "WT_PERCENTILE"
 
-        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i] and age_s > grace_s:
+        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i] and age_s > grace_s and gain >= min_gain:
             exit_id = EXIT_E1_WT_DELTA
             exit_reason = "E_1_WT_DELTA"
 
-        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i] and age_s > grace_s:
+        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i] and age_s > grace_s and gain >= min_gain:
             exit_id = EXIT_E3_STRUCTURE
             exit_reason = "E_3_STRUCTURE"
 
@@ -1206,7 +1220,9 @@ def simulate_one_symbol(
 
         # IN_GAIN_TREND_EXIT (profit harvesting on strong winners — mirrors live ez_manage logic)
         # ha_1h/ha_15m in NPZ are int8: 1=green, -1=red (NOT strings)
-        if exit_id == EXIT_NONE and config.IN_GAIN_TREND_EXIT_ENABLED and gain > float(config.IN_GAIN_TREND_MIN_GAIN):
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: floor at max(IN_GAIN_TREND_MIN_GAIN, MIN_GAIN)
+        # so this profit-harvest never closes below 3% real gain.
+        if exit_id == EXIT_NONE and config.IN_GAIN_TREND_EXIT_ENABLED and gain >= max(float(config.IN_GAIN_TREND_MIN_GAIN), min_gain):
             _igt_fired = False
             _igt_reason = ""
             if gain >= float(config.IN_GAIN_TREND_BIG_WINNER_PCT):
@@ -1238,11 +1254,14 @@ def simulate_one_symbol(
                 exit_reason = _igt_reason
 
         # WT_CROSSUNDER_FINAL (stateless indicator check)
+        # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency — only fire when
+        # gain >= MIN_GAIN (profit harvest) or at real loss (noloss_gate routes).
         if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
-            _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
-            if _wtcf is not None:
-                exit_id = 91
-                exit_reason = _wtcf["reason"]
+            if gain >= min_gain or gain < comm_buf:
+                _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
+                if _wtcf is not None:
+                    exit_id = 91
+                    exit_reason = _wtcf["reason"]
 
         # R2 WT VELOCITY SLOW (near-breakeven slowdown — matches live R2_WT_VEL_SLOW)
         if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001:
