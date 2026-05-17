@@ -30,6 +30,25 @@ SCRIPT="$1"
 shift
 ARGS=("$@")
 
+# ═══ TRADIER MARKET-HOURS GATE ═══
+# tradier_* scripts are not allowed to run outside Mon-Fri 09:30-16:00 ET.
+# Otherwise this wrapper will respawn them after we manually kill them on
+# weekends, and they consume CPU + spam supervisor with stale-log alerts.
+# Refuse to launch; exit cleanly so launchd/cron don't treat it as failure.
+case "$SCRIPT" in
+    tradier_manage.py|tradier_positions.py|tradier_prices.py|tradier_indicators.py|tradier_rankings.py|tradier_premarket_scanner.py|tradier_options_csp_monitor.py|tradier_options_analyzer.py|tradier_options_agent.py|tradier_hourly_reconfig.py|tradier_webhook_bridge.py)
+        DOW=$(TZ="America/New_York" date +%u)
+        ET_HOUR=$(TZ="America/New_York" date +%H)
+        ET_MIN=$(TZ="America/New_York" date +%M)
+        ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
+        if [ "$DOW" -gt 5 ] || [ "$ET_MINS" -lt 570 ] || [ "$ET_MINS" -gt 960 ]; then
+            mkdir -p "$LOGDIR"
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [TRADIER_MARKET_GATE] refusing to launch $SCRIPT ${ARGS[*]} — outside Mon-Fri 09:30-16:00 ET (dow=$DOW et_mins=$ET_MINS)" >> "$LOGDIR/tradier_market_gate.log"
+            exit 0
+        fi
+        ;;
+esac
+
 # ═══ SINGLETON GUARD: function called before every launch ═══
 FULL_CMD="$SCRIPT ${ARGS[*]}"
 MY_PID=$$

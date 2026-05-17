@@ -48,6 +48,204 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+# ────────────────────────────────────────────────────────────────────────────────
+# 2026-05-17 TR_TREND_V1 LIVE SHADOW ADAPTER (spec: vec_paths/tr_trend_v1.py +
+# strategy_plan.md §4 + tr_trend_v1_build_report.md). SHADOW-LOG ONLY — never
+# emits orders unless TR_TREND_V1_SHADOW_LOG_ONLY=False AND TR_TREND_V1_ENABLED=True.
+#
+# The vec module (vec_paths/tr_trend_v1.py) is array-driven (D-bar timeseries
+# from NPZ). Live indicators only expose POINT-IN-TIME D values (close_D,
+# high_D, atr_D, sma_200_D, dc_high_D, dc_low_D, volume_D), not rolling history.
+# This adapter mirrors the vec gate logic on scalars, persists per-symbol state
+# (pivot, stop, max_close, last_path_a_bar) in a module-level dict, and skips
+# gates whose data is unavailable live (vol-SMA-50, sma_50_D, full TT 4-of-5
+# with RS+slope) — logged as `gate=SKIPPED_NO_LIVE_DATA` for transparency.
+# ────────────────────────────────────────────────────────────────────────────────
+_TR_TREND_V1_STATE: Dict[str, Dict[str, Any]] = {}  # key = f"{account}:{symbol}_{side}"
+_TR_TREND_V1_LAST_D_CLOSE: Dict[str, float] = {}    # detect D-bar boundary on live by close_D change
+
+def _tr_trend_v1_state(key: str) -> Dict[str, Any]:
+    st = _TR_TREND_V1_STATE.get(key)
+    if st is None:
+        st = {
+            "last_path_a_pivot": 0.0,
+            "last_path_a_vol": 0.0,
+            "last_path_a_ts": 0.0,
+            "path_b_taken": False,
+            "entry_stop_price": 0.0,
+            "max_close_since_entry": 0.0,
+            "entry_ts": 0.0,
+            "last_new_high_ts": 0.0,
+        }
+        _TR_TREND_V1_STATE[key] = st
+    return st
+
+def _tr_trend_v1_is_d_boundary(symbol: str, close_d_now: float) -> bool:
+    """Detect a new D bar by close_D changing. First call always returns False
+    (we need a prior value to compare). close_d_now=0 → no D data → False."""
+    if close_d_now <= 0:
+        return False
+    prev = _TR_TREND_V1_LAST_D_CLOSE.get(symbol)
+    _TR_TREND_V1_LAST_D_CLOSE[symbol] = close_d_now
+    if prev is None:
+        return False
+    return abs(close_d_now - prev) > 1e-9
+
+def evaluate_tr_trend_v1_entry_live(symbol: str, account_key: str, position_side: str, indicators: dict, mark: float, has_position: bool, cfg) -> Optional[Dict[str, Any]]:
+    """Live shadow entry eval. Returns {action,path,pivot_price,stop_price,reason} or None.
+    Path A fires only on D-boundary bars (detected from close_D change) when not in position.
+    Path B fires within RETEST_MAX_BARS_D after Path A and adds 0.5 unit.
+    Vol-SMA-50 and full TT-4-of-5 are skipped live (logged as SKIPPED_NO_LIVE_DATA);
+    in shadow mode this OVER-fires vs. backtest. User reviews and tightens before flipping live."""
+    if not bool(getattr(cfg, 'TR_TREND_V1_ENABLED', False)):
+        return None
+    syms = tuple(getattr(cfg, 'TR_TREND_V1_SHADOW_SYMBOLS', ()) or ())
+    if symbol.upper() not in [s.upper() for s in syms]:
+        return None
+    if position_side != "LONG":  # initial shadow universe is LONG only per build report
+        return None
+    if not indicators:
+        return None
+    is_long = True
+    close_d = float(indicators.get('close_D', 0) or 0)
+    high_d = float(indicators.get('high_D', 0) or 0)
+    atr_d = float(indicators.get('atr_D', 0) or 0)
+    dc_high_d = float(indicators.get('dc_high_D', 0) or 0)
+    sma_200_d = float(indicators.get('sma_200_D', 0) or 0)
+    vol_d = float(indicators.get('volume_D', 0) or 0)
+    vol_sma50_d = float(indicators.get('volume_D_50_sma', 0) or 0)  # may be 0 live
+    if close_d <= 0 or dc_high_d <= 0 or atr_d <= 0:
+        return None
+    # Trigger ONLY on a new D-bar close (detected via close_D change).
+    is_d_boundary = _tr_trend_v1_is_d_boundary(symbol, close_d)
+    state_key = f"{account_key}:{symbol}_{position_side}"
+    st = _tr_trend_v1_state(state_key)
+    now_ts = time.time()
+    # Path A — initial breakout. Only when no position.
+    if not has_position and is_d_boundary:
+        # Donchian breakout: dc_high_D is the rolling 20-bar high INCLUDING today.
+        # Live test: close >= dc_high (close that drove the new high IS the breakout).
+        dc_breakout = close_d >= dc_high_d - 1e-9
+        # Trend template (LONG): close>sma200, sma200 slope positive (proxy: sma_200_D > prior
+        # sma_200_D — we don't have rolling sma200 series, so we use close>sma200 alone +
+        # log that slope/sma50 gates are SKIPPED_NO_LIVE_DATA).
+        tt_above_sma200 = (sma_200_d > 0 and close_d > sma_200_d)
+        # Volume gate: only enforce if vol_sma50 available; else log skip.
+        vol_mult_req = float(getattr(cfg, 'TR_TREND_V1_VOL_MULT', 1.5))
+        if vol_sma50_d > 0 and vol_d > 0:
+            vol_ratio = vol_d / vol_sma50_d
+            vol_ok = vol_ratio >= vol_mult_req
+            vol_tag = f"vol_ratio={vol_ratio:.2f}x_req={vol_mult_req:.2f}"
+        else:
+            vol_ok = True  # fail-OPEN in shadow (log skip)
+            vol_tag = "vol_gate=SKIPPED_NO_LIVE_DATA"
+        if dc_breakout and tt_above_sma200 and vol_ok:
+            atr_mult = float(getattr(cfg, 'TR_TREND_V1_ATR_STOP_MULT', 2.0))
+            pivot = close_d
+            stop_price = pivot - atr_mult * atr_d
+            st["last_path_a_pivot"] = pivot
+            st["last_path_a_vol"] = vol_d
+            st["last_path_a_ts"] = now_ts
+            st["path_b_taken"] = False
+            st["entry_stop_price"] = stop_price
+            st["max_close_since_entry"] = pivot
+            st["entry_ts"] = now_ts
+            st["last_new_high_ts"] = now_ts
+            reason = (f"TR_TREND_PATH_A_breakout_pivot{pivot:.2f}_stop{stop_price:.2f}_"
+                      f"close>dc_high20({close_d:.2f}>={dc_high_d:.2f})_close>sma200({close_d:.2f}>{sma_200_d:.2f})_"
+                      f"{vol_tag}_atr{atr_d:.4f}_gates_skipped=sma50_slope_TT4of5")
+            return {"action": "ENTRY", "path": "TR_TREND_PATH_A", "size_unit": 0.5, "pivot_price": pivot, "stop_price": stop_price, "reason": reason}
+        return None
+    # Path B — already in position, within retest window.
+    if has_position and not st.get("path_b_taken", False) and is_d_boundary:
+        last_a_ts = float(st.get("last_path_a_ts", 0.0))
+        if last_a_ts <= 0:
+            return None
+        max_bars = int(getattr(cfg, 'TR_TREND_V1_RETEST_MAX_BARS_D', 5))
+        # approx: D bar = 1 trading day ~ 86400s; allow a small buffer.
+        if (now_ts - last_a_ts) > (max_bars + 1) * 86400.0:
+            return None
+        pivot = float(st.get("last_path_a_pivot", 0.0))
+        if pivot <= 0:
+            return None
+        tol_pct = float(getattr(cfg, 'TR_TREND_V1_RETEST_TOL_PCT', 0.5))
+        retest_dist_pct = abs(mark - pivot) / pivot * 100.0
+        if retest_dist_pct > tol_pct:
+            return None
+        vol_max_mult = float(getattr(cfg, 'TR_TREND_V1_RETEST_VOL_MAX_MULT', 0.7))
+        vol_a = float(st.get("last_path_a_vol", 0.0))
+        if vol_a > 0 and vol_d > vol_a * vol_max_mult:
+            return None
+        if close_d < pivot:  # LONG retest requires close back above pivot
+            return None
+        st["path_b_taken"] = True
+        reason = f"TR_TREND_PATH_B_retest_dist{retest_dist_pct:.2f}%_volr{(vol_d / max(vol_a, 1e-9)):.2f}_pivot{pivot:.2f}_close{close_d:.2f}"
+        return {"action": "ADD", "path": "TR_TREND_PATH_B", "size_unit": 0.5, "reason": reason}
+    return None
+
+def evaluate_tr_trend_v1_exit_live(symbol: str, account_key: str, position_side: str, indicators: dict, mark: float, has_position: bool, cfg) -> Optional[Dict[str, Any]]:
+    """Live shadow exit eval. Returns {action,reason} or None. Paths:
+      1. STOP_HIT (every-bar)
+      2. 50SMA_BREAK on D close — uses ema_50_D as 50-SMA proxy (DailyHistoryManager
+         doesn't compute sma_50_D, only ema_50_D). Logged as proxy.
+      3. DC_REVERSE on D close (close < dc_low_D for LONG)
+      4. TIME_STOP_60D (approx via wall-clock since entry; D-bar count not available live)
+    Updates chandelier stop after +1 ATR profit."""
+    if not bool(getattr(cfg, 'TR_TREND_V1_ENABLED', False)):
+        return None
+    syms = tuple(getattr(cfg, 'TR_TREND_V1_SHADOW_SYMBOLS', ()) or ())
+    if symbol.upper() not in [s.upper() for s in syms]:
+        return None
+    if position_side != "LONG" or not has_position:
+        return None
+    state_key = f"{account_key}:{symbol}_{position_side}"
+    st = _TR_TREND_V1_STATE.get(state_key)
+    if not st or st.get("entry_ts", 0.0) <= 0:
+        return None  # nothing to exit — entry never fired in shadow
+    is_long = True
+    close_d = float(indicators.get('close_D', 0) or 0)
+    dc_low_d = float(indicators.get('dc_low_D', 0) or 0)
+    atr_d = float(indicators.get('atr_D', 0) or 0)
+    sma50_proxy = float(indicators.get('ema_50_D', 0) or 0)  # proxy
+    # Update chandelier max
+    if mark > float(st.get("max_close_since_entry", 0.0)):
+        st["max_close_since_entry"] = mark
+        st["last_new_high_ts"] = time.time()
+    # Chandelier trail
+    pivot = float(st.get("last_path_a_pivot", 0.0))
+    atr_mult = float(getattr(cfg, 'TR_TREND_V1_ATR_STOP_MULT', 2.0))
+    if pivot > 0 and atr_d > 0:
+        profit_in_atr = (mark - pivot) / atr_d
+        if profit_in_atr >= 1.0:
+            max_close = float(st.get("max_close_since_entry", mark))
+            trailed = max_close - atr_mult * atr_d
+            cur_stop = float(st.get("entry_stop_price", 0.0))
+            if trailed > cur_stop:
+                st["entry_stop_price"] = trailed
+    # Path 1: stop hit (every-bar)
+    stop_price = float(st.get("entry_stop_price", 0.0))
+    if stop_price > 0 and mark <= stop_price:
+        return {"action": "CLOSE", "reason": f"TR_TREND_STOP_HIT_px{mark:.2f}_stop{stop_price:.2f}"}
+    is_d_boundary = _tr_trend_v1_is_d_boundary(symbol, close_d) if close_d > 0 else False
+    if not is_d_boundary:
+        return None
+    # Path 2: 50-SMA break (proxy: ema_50_D)
+    if sma50_proxy > 0 and close_d < sma50_proxy:
+        return {"action": "CLOSE", "reason": f"TR_TREND_50SMA_BREAK_PROXY_close{close_d:.2f}_ema50d{sma50_proxy:.2f}"}
+    # Path 3: DC reverse
+    if dc_low_d > 0 and close_d < dc_low_d:
+        return {"action": "CLOSE", "reason": f"TR_TREND_DC_REVERSE_close{close_d:.2f}_dclow{dc_low_d:.2f}"}
+    # Path 4: time-stop (60D ≈ 60 trading days ≈ 60 * 86400s; no_high>30D ≈ 30*86400s)
+    entry_ts = float(st.get("entry_ts", 0.0))
+    last_new_high_ts = float(st.get("last_new_high_ts", entry_ts))
+    age_s = time.time() - entry_ts
+    no_high_s = time.time() - last_new_high_ts
+    time_stop_bars = int(getattr(cfg, 'TR_TREND_V1_TIME_STOP_BARS_D', 60))
+    no_high_bars = int(getattr(cfg, 'TR_TREND_V1_TIME_STOP_NO_HIGH_BARS_D', 30))
+    if age_s > time_stop_bars * 86400.0 and no_high_s > no_high_bars * 86400.0:
+        return {"action": "CLOSE", "reason": f"TR_TREND_TIME_STOP_age_d{age_s / 86400.0:.1f}_nohigh_d{no_high_s / 86400.0:.1f}"}
+    return None
+
 # 2026-05-06 ZECUSDC parabolic protection (mirrors ez_manage / ez_positions_quick patches).
 # Returns (parabolic_up, parabolic_dn, extreme_overbought, extreme_oversold) booleans.
 # Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
@@ -1653,6 +1851,32 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if force: logger.info(f"[{account_key}] SKIP {symbol}: Price is Zero.")
             return "NO_PRICE"
         is_long = (position_side == "LONG")
+        # ═══════════════════════════════════════════════════════════════════════
+        # TR_TREND_V1 SHADOW-LOG (2026-05-17). spec: vec_paths/tr_trend_v1.py +
+        # data/research_20260516/strategy_plan.md §4 + tr_trend_v1_build_report.md.
+        # Default OFF (config_tradier.TR_TREND_V1_ENABLED=False) → zero impact.
+        # When ENABLED=True: emits [TR_TREND_V1_SHADOW] entry/exit candidates for
+        # top-8 shadow syms (TRGP/SNDK/AVGO/GLD/PLTR/MU/CDE/SLV, LONG only).
+        # When TR_TREND_V1_SHADOW_LOG_ONLY=True (default) NO real orders fire.
+        # Wrapped in try so any adapter failure does NOT break R1/R2/existing flow.
+        # ═══════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'TR_TREND_V1_ENABLED', False)):
+            try:
+                _trv1_has_pos = bool(position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0)
+                _trv1_entry = evaluate_tr_trend_v1_entry_live(symbol, account_key, position_side, indicators_raw, current_price, _trv1_has_pos, config)
+                if _trv1_entry is not None:
+                    logger.info(f"[TR_TREND_V1_SHADOW] ENTRY_CANDIDATE acct={account_key} sym={symbol} side={position_side} path={_trv1_entry.get('path')} pivot={_trv1_entry.get('pivot_price', 0):.4f} stop={_trv1_entry.get('stop_price', 0):.4f} mark={current_price:.4f} reason={_trv1_entry.get('reason')}")
+                    if not bool(getattr(config, 'TR_TREND_V1_SHADOW_LOG_ONLY', True)):
+                        # FUTURE: route to queue_trade_action for real entry. SHADOW = log only.
+                        pass
+                _trv1_exit = evaluate_tr_trend_v1_exit_live(symbol, account_key, position_side, indicators_raw, current_price, _trv1_has_pos, config)
+                if _trv1_exit is not None:
+                    _trv1_gain = safe_fetch_float(getattr(position, 'gain', 0), 0) if position else 0.0
+                    logger.info(f"[TR_TREND_V1_SHADOW] EXIT_CANDIDATE acct={account_key} sym={symbol} side={position_side} mark={current_price:.4f} gain={_trv1_gain:.2f}% reason={_trv1_exit.get('reason')}")
+                    if not bool(getattr(config, 'TR_TREND_V1_SHADOW_LOG_ONLY', True)):
+                        pass
+            except Exception as _trv1_err:
+                logger.warning(f"[TR_TREND_V1_SHADOW] eval_error acct={account_key} sym={symbol} side={position_side}: {_trv1_err}")
         # ═══════════════════════════════════════════════════════════════════════
         # R1 — DC_LOW4 EMERGENCY CLOSE (USER 2026-05-09, stocks mirror).
         # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured

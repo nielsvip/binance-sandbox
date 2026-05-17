@@ -1475,6 +1475,14 @@ class TradierConfig:
     # + explicit user approval. Sweep validation tier suggested: tradier_catalyst_gate (see apply report).
     CATALYST_VOLUME_GATE_ENABLED: bool = False
     CATALYST_VOLUME_RATIO: float = 1.5
+    # 2026-05-17 TR_TREND_V1 (vec_paths/tr_trend_v1.py + strategy_plan.md §4 + tr_trend_v1_build_report.md).
+    # NEW STRATEGY PROHIBITION (CLAUDE.md): defaults OFF. Per-sym sharpe >1.0 validated on TRGP/SNDK across
+    # 115sym × 2.13yr vec sweep (8 syms >0.5, 58% net positive). Shadow-log only on top-8 syms first session;
+    # NO real orders fire while TR_TREND_V1_SHADOW_LOG_ONLY=True. User flips that flag after comparing
+    # paper signals against live decisions for 1+ session.
+    TR_TREND_V1_ENABLED: bool = False
+    TR_TREND_V1_SHADOW_LOG_ONLY: bool = True
+    TR_TREND_V1_SHADOW_SYMBOLS: tuple = ('TRGP', 'SNDK', 'AVGO', 'GLD', 'PLTR', 'MU', 'CDE', 'SLV')
     TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long
     TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short
 

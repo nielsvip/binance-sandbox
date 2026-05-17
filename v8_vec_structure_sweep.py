@@ -224,7 +224,10 @@ def v3_grid(mode: str) -> List[StructCell]:
     rt = "1h" if mode == "tradier" else "4h"
     cells: List[StructCell] = []
     for xw, rp, xf, cost in itertools.product(
-        (0, 20, 60, 120),       # 0 = old carried-struct exit; >0 = pivot-event window
+        # Pivot-event window — smaller than typical pivot inter-arrival so it
+        # detects SIMULTANEOUS flips, not "any recent flip" (which is ~always
+        # true for 5 series). xw=1 = current bar only; xw=10 = 2.5 hr cluster.
+        (0, 1, 3, 5, 10),
         (0, 200, 500, 1000),    # 0 = no regime filter; >0 = require streak
         (3, 4),
         (0.0, 0.10),
@@ -236,6 +239,28 @@ def v3_grid(mode: str) -> List[StructCell]:
             breakout_tf="D", retest_tf=rt, trigger_tf="15m",
             min_count=4, atr_retest_band=1.0, exit_flip_min=xf,
             side_mode="LONG_ONLY", cooldown_bars=30,
+            regime_persist_bars=rp, exit_recent_window_bars=xw,
+            round_trip_cost_pct=cost,
+        ))
+    return cells
+
+
+def v3_expansion_grid(mode: str) -> List[StructCell]:
+    """v3 expansion (2026-05-17 post-v3). Locks v3 best knob shape and
+    expands the region around the winning cells for the larger-sym run."""
+    rt = "1h" if mode == "tradier" else "4h"
+    cells: List[StructCell] = []
+    for xf, rp, xw, sm, cost in itertools.product(
+        (3, 4),
+        (500, 1000, 2000),
+        (1, 3),
+        ("LONG_ONLY", "BOTH"),
+        (0.0, 0.10),
+    ):
+        cells.append(StructCell(
+            breakout_tf="D", retest_tf=rt, trigger_tf="15m",
+            min_count=4, atr_retest_band=1.0, exit_flip_min=xf,
+            side_mode=sm, cooldown_bars=30,
             regime_persist_bars=rp, exit_recent_window_bars=xw,
             round_trip_cost_pct=cost,
         ))
@@ -491,6 +516,9 @@ def run_sweep(
         except FileNotFoundError as e:
             print(f"  [SKIP] {sym}: {e}", file=sys.stderr)
             continue
+        except Exception as e:
+            print(f"  [SKIP] {sym}: load failed: {type(e).__name__}: {e}", file=sys.stderr)
+            continue
         if "close" not in npz or np.asarray(npz["close"]).size < 500:
             print(f"  [SKIP] {sym}: insufficient bars", file=sys.stderr)
             continue
@@ -618,7 +646,7 @@ def main():
     ap.add_argument("--symbols", required=True,
                     help="Comma-separated. Crypto bare: BTC,ETH,SOL. Stocks: AAPL,MSFT.")
     ap.add_argument("--start", default="2022-01-01")
-    ap.add_argument("--grid", choices=("default", "smoke", "wide", "v2_focus", "v3"), default="default")
+    ap.add_argument("--grid", choices=("default", "smoke", "wide", "v2_focus", "v3", "v3_expansion"), default="default")
     ap.add_argument("--smoke", action="store_true",
                     help="Use 6-cell smoke grid (Mac small test).")
     ap.add_argument("--account", default="struct_sweep")
@@ -633,6 +661,8 @@ def main():
         grid = v2_focus_grid(args.mode)
     elif args.grid == "v3":
         grid = v3_grid(args.mode)
+    elif args.grid == "v3_expansion":
+        grid = v3_expansion_grid(args.mode)
     else:
         grid = default_grid(args.mode)
     print(f"[CFG] mode={args.mode} symbols={len(symbols)} start={args.start} cells={len(grid)}")

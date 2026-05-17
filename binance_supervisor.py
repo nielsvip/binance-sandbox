@@ -67,15 +67,39 @@ LOG_ROTATION_KEEP_DAYS = 14
 
 SERVERS = {
     "S1": {"host": "s1-int", "user": "niels"},
-    "S2": {"host": "s2-int", "user": "niels"},
+    # S2 destroyed 2026-05-08 (user shutdown). Do not probe — endless rc=255 noise.
 }
 
-# Local + remote sweep result dirs
+# Remote-only sweep result dirs. MacBook does not run sweeps (CLAUDE.md SWEEP-LIVENESS).
 SWEEP_DIRS = {
-    "local": str(BASE / "backtest_v8" / "sweeps"),
     "S1": "/home/niels/binance-sandbox/backtest_v8/sweeps",
-    "S2": "/home/niels/binance-sandbox/backtest_v8/sweeps",
 }
+SWEEP_ABANDONED_AGE_SECONDS = 86400  # >24h since last write = no active sweep, skip noise
+
+# Tradier alert window: Mon-Fri 09:30-16:00 ET (strict US market hours).
+# Outside this, tradier_manage is NOT ALLOWED to run, so a stale tradier log is
+# expected, not an emergency. Crypto checks remain 24/7.
+TRADIER_WINDOW_OPEN_MIN_ET = 570   # 09:30 ET
+TRADIER_WINDOW_CLOSE_MIN_ET = 960  # 16:00 ET
+
+
+def is_tradier_alert_window() -> bool:
+    """True when tradier_manage is expected to be running. Outside this, suppress
+    tradier-account alerts. Falls back to True (alert-as-before) only if no tz lib."""
+    try:
+        try:
+            from zoneinfo import ZoneInfo
+            et = ZoneInfo("America/New_York")
+        except Exception:
+            import pytz  # type: ignore
+            et = pytz.timezone("America/New_York")
+        now_et = datetime.now(et)
+        if now_et.weekday() >= 5:
+            return False
+        mins = now_et.hour * 60 + now_et.minute
+        return TRADIER_WINDOW_OPEN_MIN_ET <= mins <= TRADIER_WINDOW_CLOSE_MIN_ET
+    except Exception:
+        return True
 
 
 def _setup_logger():
@@ -319,38 +343,34 @@ def parse_load(out):
 
 
 def check_sweep_freshness(state):
+    """Alert when an actively-running remote sweep stalls.
+
+    Only flags files modified within the last SWEEP_ABANDONED_AGE_SECONDS — if the
+    most-recent CSV hasn't been touched in >24h, there's no active sweep to be
+    stalled, just historical data sitting on disk. Local MacBook is skipped (no
+    sweeps allowed there per CLAUDE.md SWEEP-LIVENESS mandate)."""
     now = time.time()
     findings = []
     for name, d in SWEEP_DIRS.items():
-        if name == "local":
-            p = Path(d)
-            if not p.exists():
+        cfg = SERVERS[name]
+        rc, out = ssh_read(
+            cfg["host"], cfg["user"],
+            f"ls -t {d}/v8_sweep_*.csv 2>/dev/null | head -1 | xargs -r stat -c '%Y %n'",
+            timeout=10,
+        )
+        if rc != 0 or not out.strip():
+            continue
+        try:
+            parts = out.strip().split(None, 1)
+            mtime = int(parts[0])
+            fname = parts[1] if len(parts) > 1 else "?"
+            age = now - mtime
+            if age > SWEEP_ABANDONED_AGE_SECONDS:
                 continue
-            csvs = sorted(p.glob("v8_sweep_*.csv"), key=lambda x: x.stat().st_mtime, reverse=True)
-            if not csvs:
-                continue
-            latest = csvs[0]
-            age = now - latest.stat().st_mtime
             if age > SWEEP_STALE_SECONDS:
-                findings.append({"loc": name, "file": latest.name, "age_s": round(age, 1)})
-        else:
-            cfg = SERVERS[name]
-            rc, out = ssh_read(
-                cfg["host"], cfg["user"],
-                f"ls -t {d}/v8_sweep_*.csv 2>/dev/null | head -1 | xargs -r stat -c '%Y %n'",
-                timeout=10,
-            )
-            if rc != 0 or not out.strip():
-                continue
-            try:
-                parts = out.strip().split(None, 1)
-                mtime = int(parts[0])
-                fname = parts[1] if len(parts) > 1 else "?"
-                age = now - mtime
-                if age > SWEEP_STALE_SECONDS:
-                    findings.append({"loc": name, "file": Path(fname).name, "age_s": round(age, 1)})
-            except Exception:
-                continue
+                findings.append({"loc": name, "file": Path(fname).name, "age_s": round(age, 1)})
+        except Exception:
+            continue
     return findings
 
 
@@ -516,11 +536,15 @@ def _log_line_age(line: str, now_epoch: float) -> float | None:
 
 
 def check_webhook_health(state: dict) -> None:
-    """Alert on WEBHOOK_FAIL bursts or Finandy IP-block 'access denied' events."""
+    """Alert on WEBHOOK_FAIL bursts or Finandy IP-block 'access denied' events.
+
+    Tradier accounts are only checked during the US market window — outside it,
+    tradier_manage is not allowed to run, so its log is expected to be stale."""
     now = time.time()
     log_dir = Path.home() / "logs"
-    accounts = [(f"ez_manage_{a}", a) for a in _CRYPTO_ACCTS] + \
-               [(f"tradier_manage_{a}", a) for a in _STOCK_ACCTS]
+    accounts = [(f"ez_manage_{a}", a) for a in _CRYPTO_ACCTS]
+    if is_tradier_alert_window():
+        accounts += [(f"tradier_manage_{a}", a) for a in _STOCK_ACCTS]
     total_recent_fails = 0
     access_denied_accts: list[str] = []
     for log_stem, acct in accounts:
@@ -568,7 +592,10 @@ def check_webhook_health(state: dict) -> None:
 
 
 def check_live_log_freshness(state: dict) -> None:
-    """Alert if a live trading log file has had no new writes for >5 min (worker dead/hung)."""
+    """Alert if a live trading log file has had no new writes for >5 min (worker dead/hung).
+
+    Tradier accounts are only checked during the US market window — outside it,
+    tradier_manage is not allowed to run, so its log is expected to be stale."""
     now = time.time()
     log_dir = Path.home() / "logs"
     stale: list[str] = []
@@ -579,13 +606,14 @@ def check_live_log_freshness(state: dict) -> None:
         age = now - lp.stat().st_mtime
         if age > LOG_STALE_SECONDS:
             stale.append(f"ez_manage[{acct}] +{int(age)}s")
-    for acct in _STOCK_ACCTS:
-        lp = log_dir / f"tradier_manage_{acct}.log"
-        if not lp.exists():
-            continue
-        age = now - lp.stat().st_mtime
-        if age > LOG_STALE_SECONDS:
-            stale.append(f"tradier[{acct}] +{int(age)}s")
+    if is_tradier_alert_window():
+        for acct in _STOCK_ACCTS:
+            lp = log_dir / f"tradier_manage_{acct}.log"
+            if not lp.exists():
+                continue
+            age = now - lp.stat().st_mtime
+            if age > LOG_STALE_SECONDS:
+                stale.append(f"tradier[{acct}] +{int(age)}s")
     if stale:
         key = "live_log_stale_alert_ts"
         if now - state.get(key, 0) >= 300:

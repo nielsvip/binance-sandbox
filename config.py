@@ -365,7 +365,8 @@ class Config:
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
     HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
-    HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # USER 2026-05-10: was 3600 (1h). Blocked re-hedge after wt_3m flip closed prior hedge → R3 fell through to HEDGE_FAILED close. 60s is debounce only.
+    # 2026-05-17 R6 ROLLBACK per user mandate: was 60. Hedge_monitor showed Apr 13 (WR 87%) → May (WR 6%) degradation; the 60s lockout caused re-hedge thrash. Restore 3600s Apr 13 value.
+    HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 3600  # ROLLED BACK 2026-05-17 (was 60)
     HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.
@@ -556,9 +557,11 @@ class Config:
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
     HEDGE_ALL_POSITIONS: bool = True   # 2026-05-10 USER MANDATE: if wt1_3m against trade → 100% same-symbol hedge. PERIOD. P/L irrelevant. Combined with HEDGE_TRIGGER_USE_WT_3M_ALONE=True + HEDGE_DETERIORATING_GAIN_ENABLED=False = scan_and_hedge_losers fires on wt1_3m flip alone, no loss precondition.
     # === 2026-04-17 HEDGE OVERHAUL — user directive: hedges close on wt_3m flip no matter the P/L ===
-    HEDGE_EXIT_BYPASS_NOLOSS: bool = True  # Hedge closes on wt1_3m flip regardless of gain. Bypasses STRICT_NO_LOSS lock.
+    # 2026-05-17 R6 ROLLBACK: was True. True = close hedge on 1-of-3 wt flip regardless of P/L (orphan-kill at loss). False = require 3-of-3 wt flip (Apr 13 working behavior).
+    HEDGE_EXIT_BYPASS_NOLOSS: bool = False  # ROLLED BACK 2026-05-17 (was True)
     HEDGE_EXIT_WT_TF: str = "3m"  # Which TF's WT flip triggers hedge close ("3m" per user rule).
-    HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True  # On hedge close, drop position_key from tradeable_keys.
+    # 2026-05-17 R6 ROLLBACK: was True. Dropping pk from tradeable_keys on hedge close → symbol couldn't be re-opened cleanly → cascading orphan-kill.
+    HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = False  # ROLLED BACK 2026-05-17 (was True)
     HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
     # === 2026-04-26 HEDGE SYMBOL-SELECTION GUARDS (sweep-testable) — user wants gain-deterioration as primary trigger, DC zones secondary ===
@@ -591,7 +594,8 @@ class Config:
     MICRO_SCALP_USDC_ACCOUNTS: list = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
-    HEDGE_DETERIORATING_GAIN_ENABLED: bool = False  # 2026-05-10 USER MANDATE: hedge fires on wt1_3m alone when in loss — NO deteriorating-gain prerequisite. SKY/BIO/IP/PARTI bled for days because flat-line losers never qualified as "deteriorating".
+    # 2026-05-17 R6 ROLLBACK: was False (fires on any wt-against). True = require deteriorating-gain prerequisite → fewer spurious hedges. May 28k/day hedges (WR 6%) vs Mar 1k/day (WR 87%).
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = True  # ROLLED BACK 2026-05-17 (was False)
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
     # 2026-04-27 USER (C98USDT incident): block hedge entries opening into adverse orderbook pressure.
     # ez_orderbook publishes ob_bid_ask_imb_10 (bid pressure / total). Block LONG hedge if imb < (1-bound), SHORT if imb > bound.
@@ -734,7 +738,8 @@ class Config:
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})
     # 'wt_3m_15m_htf2' / 'wt_3m_15m_htf3' (3m+15m+ALL HTF) / 'wt_dc_score' (use wt_dc_exit_scorer).
-    HEDGE_CLOSE_MODE: str = 'wt_3m'  # 2026-05-10 USER MANDATE: hedge closes on wt1_3m alone (not 3m+1h). Symmetric with wt_3m-alone open trigger.
+    # 2026-05-17 R6 ROLLBACK: was 'wt_3m'. 'wt_3m_and_1h' = require BOTH 3m AND 1h flip before close → fewer premature closes at loss.
+    HEDGE_CLOSE_MODE: str = 'wt_3m_and_1h'  # ROLLED BACK 2026-05-17 (was 'wt_3m')
     HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
     # === 2026-04-30 RESTORED HEDGE_BANDAID_OFF (the rule that's been here for 500 yrs) ===
     # User: "CLOSE the hedge when wt_15m goes against it. Then open again when it goes in favor.
@@ -959,7 +964,8 @@ class Config:
     # (3m+1h) which missed the 1000LUNCUSDT case where 15m was friendly to the
     # loser but 3m had already flipped against it. Trigger lives at
     # ez_positions_quick.py:5044-5048.
-    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True   # 2026-05-10 USER MANDATE: wt1_3m alone IS the open trigger ("stated 12004 times"). Overrides 2026-05-06 backtest revert. Symmetric with HEDGE_CLOSE_MODE='wt_3m'.
+    # 2026-05-17 R6 ROLLBACK: was True. False = require 3m AND 1h flip to open hedge → reduces over-eager hedge firing in noise.
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = False  # ROLLED BACK 2026-05-17 (was True)
     # 2026-05-10 misinterpretation safety: WT_3M_OPEN_GATE was added to refuse OPEN/AUGMENT/REENTRY when wt1_3m is against.
     # User clarified that's already-implicit behavior elsewhere — keep code as sweep knob, default OFF so it doesn't fire.
     WT_3M_OPEN_GATE_ENABLED: bool = False
@@ -980,7 +986,8 @@ class Config:
     # === 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs, not just velocity ===
     # _quick_hedge_rank rejects hedge candidates where < HEDGE_STRICT_WT_MIN_TFS_AGAINST of the 5 TFs (3m/15m/1h/4h/D) align against the proposed hedge direction.
     # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.
-    HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = False  # 2026-05-10 USER MANDATE: hedge picker uses wt1_3m alone — 4-of-5 consensus blocked hedges precisely when origin was bleeding into a strong rally.
+    # 2026-05-17 R6 ROLLBACK: was False. True = require 4-of-5 TF consensus before picking hedge candidate → fewer wrong-direction hedges in trending markets.
+    HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = True  # ROLLED BACK 2026-05-17 (was False)
     HEDGE_STRICT_WT_MIN_TFS_AGAINST: int = 4  # Out of 5: 3m/15m/1h/4h/D. 4 = strong consensus; raise to 5 for unanimous, lower to 3 to relax.
     # === 2026-04-26 SCALP_V3 exit-trigger toggles (sweep-testable) — user hypothesis: V3 closes too early on minor 3m bar wobbles ===
     # Disable any of these to A/B test which V3 exit family is most/least valuable.
