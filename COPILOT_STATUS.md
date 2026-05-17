@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-17 21:47:28 UTC
+# Copilot Status — 2026-05-17 22:23:48 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T21:40:28
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T21:42:30
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T21:42:30
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T21:42:30
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T21:44:33
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T21:44:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T21:44:33
-- **STALE_INDICATORS** [tradier]  — 2026-05-17T21:46:36
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T21:46:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T21:46:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T22:17:36
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T22:19:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T22:19:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T22:19:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T22:21:43
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T22:21:43
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T22:21:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-17T22:23:48
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-17T22:23:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-17T22:23:48
 
 ## Missed Trades (trader comparison)
 
@@ -37,7 +37,7 @@ _None_
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +0.8%
 - HELD: **TRGP** LONG (tradier) peak +7.2%, now +3.9%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
-- HELD: **ZECUSDC** LONG (crypto) peak +5.0%, now +3.3%
+- HELD: **ZECUSDC** LONG (crypto) peak +5.0%, now +2.7%
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
@@ -48,8 +48,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running

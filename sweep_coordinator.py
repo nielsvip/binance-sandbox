@@ -76,7 +76,7 @@ PY_BIN = sys.executable
 # Classification thresholds
 HANG_TIMEOUT_S = 7200          # 2h hard safety-net — phase-aware silence catches most failures faster
 PRE_SIM_SILENCE_S = 300        # max silence before "starting simulation" (NPZ load up to ~4 min)
-POST_SIM_SILENCE_S = 30        # max silence after simulation starts (V8_HEARTBEAT fires every 10s — 30s = clearly hung)
+POST_SIM_SILENCE_S = 180       # 2026-05-17 raised 30→180: end-of-sim finalization (trade-list write, Sharpe compute, vec_path teardown) blocks heartbeats >30s on multi-thousand-trade crypto runs. Every STDEV_MACRO2 crypto arm was killed at 30s, producing DIAGNOSTIC live_partial only. 180s gives finalization room while still catching real hangs in ~3min.
 SILENCE_TIMEOUT_S = PRE_SIM_SILENCE_S  # legacy alias; dynamic per phase inside run_test()
 USELESS_POOL_SHARPE = 0.4      # below → USELESS (Discard/Noise tier) — raised from 0.3 per user mandate
 DIAGNOSTIC_POOL_SHARPE = 0.5   # below → DIAGNOSTIC (sub-floor)
