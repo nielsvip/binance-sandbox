@@ -1757,6 +1757,52 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _wzg_err:
                 logger.debug(f"[R2_WT_VEL_SLOW] {position_key} err: {_wzg_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        # R3_HTF_FLIP — Daily-close + parallel 4h structural exit (USER 2026-05-17).
+        # Source: data/research_20260516/PLAN.md §3.6. Mirror of crypto block in ez_manage.
+        #   LONG closes when:
+        #     Daily tier: (current_price < dc_basis_D) OR (wt1_D < wt2_D AND wt1_W < wt2_W)
+        #     4h tier:    (current_price < ema_20_4h - atr_4h) AND wt1_4h < wt2_4h
+        #   SHORT mirror. Reasons R3_HTF_FLIP / R3_HTF_FLIP_4H are in LOSS_EXIT_TECHNICAL_BYPASS.
+        # ROLLBACK: R3_HTF_FLIP_EXIT_ENABLED=False (and/or _4H_TIER_ENABLED=False) in config_tradier.py.
+        # ═══════════════════════════════════════════════════════════════════════
+        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(getattr(config, 'R3_HTF_FLIP_EXIT_ENABLED', False))):
+            try:
+                _r3hf_w1_D = safe_fetch_float(i.get('wt1_D'), 0)
+                _r3hf_w2_D = safe_fetch_float(i.get('wt2_D'), 0)
+                _r3hf_w1_W = safe_fetch_float(i.get('wt1_W'), 0)
+                _r3hf_w2_W = safe_fetch_float(i.get('wt2_W'), 0)
+                _r3hf_dc_basis_D = safe_fetch_float(i.get('dc_basis_D'), 0)
+                _r3hf_atr_4h = safe_fetch_float(i.get('atr_4h'), 0)
+                _r3hf_ema_20_4h = safe_fetch_float(i.get('ema_20_4h'), 0)
+                _r3hf_w1_4h = safe_fetch_float(i.get('wt1_4h'), 0)
+                _r3hf_w2_4h = safe_fetch_float(i.get('wt2_4h'), 0)
+                _r3hf_fire = False
+                _r3hf_tier = None
+                _r3hf_detail = ""
+                if _r3hf_dc_basis_D > 0:
+                    _r3hf_dc_break = (is_long and current_price < _r3hf_dc_basis_D) or ((not is_long) and current_price > _r3hf_dc_basis_D)
+                    _r3hf_wt_flip = (is_long and _r3hf_w1_D < _r3hf_w2_D and _r3hf_w1_W < _r3hf_w2_W) or ((not is_long) and _r3hf_w1_D > _r3hf_w2_D and _r3hf_w1_W > _r3hf_w2_W)
+                    if _r3hf_dc_break or _r3hf_wt_flip:
+                        _r3hf_fire = True
+                        _r3hf_tier = "DAILY"
+                        _r3hf_detail = f"dc_break={_r3hf_dc_break}_wt_flip={_r3hf_wt_flip}_px={current_price:.4f}_dcBD={_r3hf_dc_basis_D:.4f}_w1D={_r3hf_w1_D:.2f}_w2D={_r3hf_w2_D:.2f}_w1W={_r3hf_w1_W:.2f}_w2W={_r3hf_w2_W:.2f}"
+                if (not _r3hf_fire) and bool(getattr(config, 'R3_HTF_FLIP_4H_TIER_ENABLED', False)):
+                    if _r3hf_ema_20_4h > 0 and _r3hf_atr_4h > 0:
+                        _r3hf_4h_long = is_long and current_price < (_r3hf_ema_20_4h - _r3hf_atr_4h) and _r3hf_w1_4h < _r3hf_w2_4h
+                        _r3hf_4h_short = (not is_long) and current_price > (_r3hf_ema_20_4h + _r3hf_atr_4h) and _r3hf_w1_4h > _r3hf_w2_4h
+                        if _r3hf_4h_long or _r3hf_4h_short:
+                            _r3hf_fire = True
+                            _r3hf_tier = "4H"
+                            _r3hf_detail = f"px={current_price:.4f}_ema4h={_r3hf_ema_20_4h:.4f}_atr4h={_r3hf_atr_4h:.4f}_w1_4h={_r3hf_w1_4h:.2f}_w2_4h={_r3hf_w2_4h:.2f}"
+                if _r3hf_fire:
+                    _r3hf_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    _r3hf_reason_tag = "R3_HTF_FLIP" if _r3hf_tier == "DAILY" else "R3_HTF_FLIP_4H"
+                    logger.error(f"⛔ [{_r3hf_reason_tag}] {position_key}: tier={_r3hf_tier} gain={_r3hf_gain:.2f}% {_r3hf_detail} → CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"{_r3hf_reason_tag}_{_r3hf_tier}_g{_r3hf_gain:.2f}%_{_r3hf_detail[:80]}", 100.0, override_qty=999999)
+                    return f"{_r3hf_reason_tag}_CLOSED:{_r3hf_tier}"
+            except Exception as _r3hf_err:
+                logger.debug(f"[R3_HTF_FLIP] {position_key} err: {_r3hf_err}")
+        # ═══════════════════════════════════════════════════════════════════════
         # WT_3M_FORCE_OPEN — USER NON-NEGOTIABLE 2026-05-10 (stocks).
         # Every symbol in symbols_trb_long/short must have a position whenever the
         # wt1_3m vs wt2_3m condition holds. Reopen after every close. Reentry /
@@ -9667,6 +9713,33 @@ class TradierTradeManager:
                         return f"BLOCKED_{_bp_tag}"
                 except Exception as _bp_err:
                     logger.error(f"[BROKER_PREFLIGHT_ERR] {position_key}: {_bp_err} — allowing (fail-open to not freeze trading)")
+
+            # ═══════════════════════════════════════════════════════════════════════
+            # HTF_TREND_VETO — Daily-trend gate on OPEN/AUGMENT (USER 2026-05-17, mirror of ez_manage).
+            # Source: data/research_20260516/PLAN.md §3.2. Cited +0.47 Sharpe lift.
+            # Complementary to DISASTER_GUARD (which checks D close-vs-prev bias):
+            # this checks WT momentum on D. ROLLBACK: HTF_TREND_VETO_ENABLED=False.
+            # ═══════════════════════════════════════════════════════════════════════
+            if (bool(getattr(config, 'HTF_TREND_VETO_ENABLED', False))
+                and is_entry_action
+                and not _is_exit_or_reduce
+                and 'HEDGE' not in (reason or '').upper()
+                and 'RULE_C' not in (reason or '').upper()):
+                try:
+                    _htfv_ind = await self.tradier_indicators.get_indicators(symbol) if getattr(self, 'tradier_indicators', None) else None
+                except Exception:
+                    _htfv_ind = None
+                if _htfv_ind:
+                    _htfv_wt1_D = safe_fetch_float(_htfv_ind.get('wt1_D'), 0)
+                    _htfv_wt2_D = safe_fetch_float(_htfv_ind.get('wt2_D'), 0)
+                    _htfv_data_ok = abs(_htfv_wt1_D) > 1e-9 and abs(_htfv_wt2_D) > 1e-9
+                    if _htfv_data_ok:
+                        _htfv_aligned = (is_long and _htfv_wt1_D > _htfv_wt2_D) or ((not is_long) and _htfv_wt1_D < _htfv_wt2_D)
+                        if not _htfv_aligned:
+                            logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_HTF_TREND_VETO_action={action}"
 
             # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
             # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.

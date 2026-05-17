@@ -18646,6 +18646,32 @@ class MultiAccountTradeManager:
                 logger.warning(
                     f"[DELTA_ENTRY] {position_key}: z={_de_z:.1f} tfs={_de_atfc} htf={_htf_gate}"
                 )
+            # ═══════════════════════════════════════════════════════════════════════════
+            # HTF_TREND_VETO — Daily-trend gate on OPEN/AUGMENT (USER 2026-05-17).
+            # Source: data/research_20260516/PLAN.md §3.2. Cited +0.47 Sharpe lift
+            # (QuantPedia D1H1 BTC trend-filter study).
+            #   LONG OPEN/AUGMENT blocked when wt1_D <= wt2_D.
+            #   SHORT OPEN/AUGMENT blocked when wt1_D >= wt2_D.
+            # Bypasses: HEDGE_* reasons (loss-protection not directional), RULE_C
+            # (orthogonal contrarian, flagged via rule_name=RULE_C when wired).
+            # ROLLBACK: HTF_TREND_VETO_ENABLED=False in config.py.
+            # ═══════════════════════════════════════════════════════════════════════════
+            if (
+                bool(getattr(config, "HTF_TREND_VETO_ENABLED", False))
+                and action in ("OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REVERSE", "REVERSE_AUGMENT")
+                and "HEDGE" not in (reason or "").upper()
+                and "RULE_C" not in (reason or "").upper()
+            ):
+                _htfv_wt1_D = _sf(i.get("wt1_D", 0), 0)
+                _htfv_wt2_D = _sf(i.get("wt2_D", 0), 0)
+                _htfv_data_ok = abs(_htfv_wt1_D) > 1e-9 and abs(_htfv_wt2_D) > 1e-9
+                if _htfv_data_ok:
+                    _htfv_aligned = (is_long and _htfv_wt1_D > _htfv_wt2_D) or ((not is_long) and _htfv_wt1_D < _htfv_wt2_D)
+                    if not _htfv_aligned:
+                        logger.warning(
+                            f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}"
+                        )
+                        return f"{position_key}_BLOCKED_HTF_TREND_VETO_action={action}"
             if (
                 action
                 in [
@@ -38046,6 +38072,90 @@ async def process_position(
                                 )
         except Exception as _r3_outer:
             logger.debug(f"[R3_HEDGE_INVARIANT] {position_key} probe err: {_r3_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # R3_HTF_FLIP — Daily-close + parallel 4h structural exit (USER 2026-05-17).
+    # Source: data/research_20260516/PLAN.md §3.6. Addresses 44% stuck-open / 49
+    # RIDICULOUS_HOLD time-caps observed in 30d Rule A scoring.
+    #   LONG closes when:
+    #     Daily tier: (current_price < dc_basis_D) OR (wt1_D < wt2_D AND wt1_W < wt2_W)
+    #     4h tier:    (current_price < ema_20_4h - atr_4h) AND wt1_4h < wt2_4h
+    #   SHORT mirror.
+    # Reasons R3_HTF_FLIP / R3_HTF_FLIP_4H are in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
+    # ROLLBACK: R3_HTF_FLIP_EXIT_ENABLED=False (and/or _4H_TIER_ENABLED=False) in config.py.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False))
+    ):
+        try:
+            _r3hf_ind = await ii(trade_manager, symbol)
+        except Exception:
+            _r3hf_ind = None
+        if _r3hf_ind:
+            try:
+                _r3hf_is_long = position_side == "LONG"
+                _r3hf_w1_D = safe_fetch_float(_r3hf_ind.get("wt1_D"), 0)
+                _r3hf_w2_D = safe_fetch_float(_r3hf_ind.get("wt2_D"), 0)
+                _r3hf_w1_W = safe_fetch_float(_r3hf_ind.get("wt1_W"), 0)
+                _r3hf_w2_W = safe_fetch_float(_r3hf_ind.get("wt2_W"), 0)
+                _r3hf_dc_basis_D = safe_fetch_float(_r3hf_ind.get("dc_basis_D"), 0)
+                _r3hf_atr_4h = safe_fetch_float(_r3hf_ind.get("atr_4h"), 0)
+                _r3hf_ema_20_4h = safe_fetch_float(_r3hf_ind.get("ema_20_4h"), 0)
+                _r3hf_w1_4h = safe_fetch_float(_r3hf_ind.get("wt1_4h"), 0)
+                _r3hf_w2_4h = safe_fetch_float(_r3hf_ind.get("wt2_4h"), 0)
+                _r3hf_fire = False
+                _r3hf_tier = None
+                _r3hf_detail = ""
+                if _r3hf_dc_basis_D > 0:
+                    _r3hf_dc_break = (_r3hf_is_long and current_price < _r3hf_dc_basis_D) or ((not _r3hf_is_long) and current_price > _r3hf_dc_basis_D)
+                    _r3hf_wt_flip = (_r3hf_is_long and _r3hf_w1_D < _r3hf_w2_D and _r3hf_w1_W < _r3hf_w2_W) or ((not _r3hf_is_long) and _r3hf_w1_D > _r3hf_w2_D and _r3hf_w1_W > _r3hf_w2_W)
+                    if _r3hf_dc_break or _r3hf_wt_flip:
+                        _r3hf_fire = True
+                        _r3hf_tier = "DAILY"
+                        _r3hf_detail = f"dc_break={_r3hf_dc_break}_wt_flip={_r3hf_wt_flip}_px={current_price:.6f}_dcBD={_r3hf_dc_basis_D:.6f}_w1D={_r3hf_w1_D:.2f}_w2D={_r3hf_w2_D:.2f}_w1W={_r3hf_w1_W:.2f}_w2W={_r3hf_w2_W:.2f}"
+                if (not _r3hf_fire) and bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
+                    if _r3hf_ema_20_4h > 0 and _r3hf_atr_4h > 0:
+                        _r3hf_4h_break_long = _r3hf_is_long and current_price < (_r3hf_ema_20_4h - _r3hf_atr_4h) and _r3hf_w1_4h < _r3hf_w2_4h
+                        _r3hf_4h_break_short = (not _r3hf_is_long) and current_price > (_r3hf_ema_20_4h + _r3hf_atr_4h) and _r3hf_w1_4h > _r3hf_w2_4h
+                        if _r3hf_4h_break_long or _r3hf_4h_break_short:
+                            _r3hf_fire = True
+                            _r3hf_tier = "4H"
+                            _r3hf_detail = f"px={current_price:.6f}_ema4h={_r3hf_ema_20_4h:.6f}_atr4h={_r3hf_atr_4h:.6f}_w1_4h={_r3hf_w1_4h:.2f}_w2_4h={_r3hf_w2_4h:.2f}"
+                if _r3hf_fire:
+                    _r3hf_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _r3hf_close_side = "SELL" if _r3hf_is_long else "BUY"
+                    _r3hf_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                    _r3hf_reason_tag = "R3_HTF_FLIP" if _r3hf_tier == "DAILY" else "R3_HTF_FLIP_4H"
+                    logger.error(
+                        f"⛔ [{_r3hf_reason_tag}] {position_key}: tier={_r3hf_tier} gain={_r3hf_gain:.2f}% {_r3hf_detail} → CLOSE"
+                    )
+                    try:
+                        await trade_manager.execute_now(
+                            position_key=position_key,
+                            account_key=account_key,
+                            symbol=symbol,
+                            original_positionAmt=_r3hf_amt,
+                            side=_r3hf_close_side,
+                            position_side=position_side,
+                            quantity=_r3hf_amt,
+                            old_price=current_price,
+                            unique_id=f"{_r3hf_reason_tag}_{int(time.time())}",
+                            reason=f"{_r3hf_reason_tag}_{_r3hf_tier}_g{_r3hf_gain:.2f}%_{_r3hf_detail[:80]}",
+                            is_full_close=True,
+                            action="CLOSE",
+                        )
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:{_r3hf_reason_tag}_CLOSED_{_r3hf_tier}"
+                    except Exception as _r3hf_exec_err:
+                        logger.error(
+                            f"⛔ [R3_HTF_FLIP_EXEC_ERR] {position_key}: {_r3hf_exec_err}"
+                        )
+            except Exception as _r3hf_outer:
+                logger.warning(
+                    f"[R3_HTF_FLIP_ERR] {position_key}: {_r3hf_outer}"
+                )
+    # ═══ END R3_HTF_FLIP ═══
     # ═══════════════════════════════════════════════════════════════════════════
     # 🚩 GR_HTF_DIRECT_EXIT — 2026-05-12 USER MANDATE (crypto)
     # Direct exit signal: if opposite-direction GR_HTF score >= GR_HTF_DIRECT_EXIT_SCORE → CLOSE.

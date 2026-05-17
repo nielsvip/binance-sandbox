@@ -1155,6 +1155,8 @@ class Config:
         'R1_DC_LOW4_3M_EMERGENCY',        # newborn-window dc4_3m breach → close
         'R2_WT_VEL_SLOW',                 # wt vel slowdown near 0 gain → close at small positive
         'WT_15M_VEL_SLOW',                # legacy alias for R2 (existing block at ez_manage:20696)
+        'R3_HTF_FLIP',                    # 2026-05-17 USER: Daily-close + parallel 4h structural flip → close. data/research_20260516/PLAN.md §3.6
+        'R3_HTF_FLIP_4H',                 # 2026-05-17 USER: 4h-tier of R3 (parallel to Daily so positions don't sit adverse up to 24h)
         'HEDGE_FAILED',                   # hedge couldn't be taken → fallback close at loss
         # 2026-05-10 USER NON-NEGOTIABLE MANDATE: every tradeable_key with wt1_3m vs wt2_3m
         # condition met must always have a position. Reopen after every close. See
@@ -1182,8 +1184,14 @@ class Config:
     # wt1_3m < wt2_3m (SHORT) must always have a position open. If flat, OPEN immediately;
     # reopen after every close. Reentry/hedge gates may NOT block this. The reason
     # 'WT_3M_FORCE_OPEN' bypasses HARD_AUGMENT_LOCK / DUP_GUARD / NOLOSS in execute_now.
-    WT_3M_FORCE_OPEN_ENABLED: bool = True
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # bypass HARD_AUGMENT_LOCK + DUP_GUARD on this reason
+    # 2026-05-17 USER MANDATE REVERSED → False. Source: data/research_20260516/PLAN.md.
+    # Research (Dobrynskaya 2021 SSRN 3913263, Wen 2022 SSRN 4080253): 3m crypto = reversal-
+    # dominated; Rule A scoring of 591 live trades 30d showed 84.5% NO_SETUP. Default = flat;
+    # entries only via existing paths (Rule A/B/C scaffolding follows). Sweep variants queued
+    # on S1: WT3MFO_OFF_CRYPTO, WT3MFO_ON_CRYPTO_CONTROL.
+    # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
+    WT_3M_FORCE_OPEN_ENABLED: bool = False
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
     # Total votes = sum of bullish indicators across 5 TFs (3m/15m/1h/4h/D), max 35.
@@ -1194,6 +1202,25 @@ class Config:
     WT_3M_FORCE_OPEN_GR_VOTE_MIN: int = 15      # total vote floor; range 15-20. 0 = gate off.
     WT_3M_FORCE_OPEN_GR_MIN_TFS: int = 3       # 0 = disabled; ≥3 → require this many TFs to pass MIN_IND_PER_TF (needs testing)
     WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF: int = 5 # per-TF indicator floor when MIN_TFS > 0
+    # ═══════════════════════════════════════════════════════════════════
+    # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
+    # Source: data/research_20260516/PLAN.md §§3.2-3.8 + research_summary.md.
+    # Replaces WT_3M_FORCE_OPEN reopen-on-every-cross mandate. Each rule is
+    # behind its own kill-switch. ROLLBACK = set the *_ENABLED flag False.
+    # Sweep variants queued on S1 sweep_coordinator/queue.json 2026-05-17.
+    # ═══════════════════════════════════════════════════════════════════
+    HTF_TREND_VETO_ENABLED: bool = True                  # veto opens against Daily trend (htf_trend_long/short). +0.47 Sharpe cited (QuantPedia D1H1). Phase-2 wires this into execute_now entry gate cluster.
+    R3_HTF_FLIP_EXIT_ENABLED: bool = True                # Daily-close structural flip → CLOSE. Addresses 44% stuck-open + 49 RIDICULOUS_HOLD time-caps in 30d. Phase-2 wires in ez_manage R1/R2 cluster ~line 37800.
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = True             # USER 2026-05-17: parallel 4h tier so positions don't sit adverse up to 24h waiting for Daily close.
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # Rule A core (D/W breakout-then-retest). Default OFF until breakout_retest_armed state dict is implemented (Phase-3).
+    BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7           # retest must fire within N days of arm
+    BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30  # |close_3m - armed_level| / atr_D < this
+    BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25      # volume_D > MULT * sma(volume_D, 20) required to arm
+    RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False     # Rule B (weekly trend + 4h pullback). Default OFF until helpers exist.
+    RULE_C_FUNDING_EXTREME_ENABLED: bool = False         # Rule C (funding-extreme mean-reversion). Default OFF until funding gate exists.
+    FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03    # crowded shorts → contrarian LONG (literature default, user-confirmed 2026-05-17)
+    FUNDING_EXTREME_SHORT_THRESHOLD_PCT: float = 0.05    # crowded longs → contrarian SHORT (BitMEX-historic threshold)
+    RULE_NAME_TAGGING_ENABLED: bool = True               # write rule_name=RULE_A|B|C|LEGACY into history JSONL at every OPEN. Pure observability.
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

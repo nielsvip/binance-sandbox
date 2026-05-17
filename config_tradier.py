@@ -2086,14 +2086,35 @@ class TradierConfig:
     RP_PROTECT_MIN_GAIN: float = 1.0
     NOLOSS_DC4H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: DC-based NOLOSS off. Same-sector hedge replaces it.
     NOLOSS_BB1H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: BB-based NOLOSS off (technical exits handle this).
-    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R3_HTF_FLIP_4H')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging. R3_HTF_FLIP / R3_HTF_FLIP_4H added 2026-05-17: Daily + parallel 4h structural close.
     # 2026-05-10 USER NON-NEGOTIABLE: every symbol in symbols_trb_long/short must have a
     # position open whenever wt1_3m vs wt2_3m condition holds. Reopen after every close.
     # Reentry / cooldown / NOLOSS gates may NOT block this. The reason 'WT_3M_FORCE_OPEN'
     # bypasses AUGMENTATION_COOLDOWN / TRADIER_REENTRY_ANTI_CHURN in tradier_manage.execute_now.
-    WT_3M_FORCE_OPEN_ENABLED: bool = True
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
+    # 2026-05-17 USER MANDATE REVERSED → False. Source: data/research_20260516/PLAN.md.
+    # MU SHORT $12k disaster 2026-05-11 directly attributed to WT_3M_FORCE_OPEN opening shorts
+    # against a +17.89% rally. Default = flat; entries only via existing paths (Rule A/B/C
+    # scaffolding follows). Sweep variants queued on S1: WT3MFO_OFF_TRADIER, WT3MFO_ON_TRADIER_CONTROL.
+    # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
+    WT_3M_FORCE_OPEN_ENABLED: bool = False
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False
     WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
+    # ═══════════════════════════════════════════════════════════════════
+    # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
+    # Mirrors config.py. R2_TF_LIST stays ('1h','4h','D') per CLAUDE.md stocks rule.
+    # ═══════════════════════════════════════════════════════════════════
+    HTF_TREND_VETO_ENABLED: bool = True
+    R3_HTF_FLIP_EXIT_ENABLED: bool = True
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = True
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False
+    BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
+    BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30
+    BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25
+    RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
+    RULE_C_FUNDING_EXTREME_ENABLED: bool = False      # stocks don't have funding rates — Rule C is crypto-only conceptually; leave flag for API consistency.
+    FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03
+    FUNDING_EXTREME_SHORT_THRESHOLD_PCT: float = 0.05
+    RULE_NAME_TAGGING_ENABLED: bool = True
     # ═══════════════════════════════════════════════════════════════════
     # DISASTER_GUARD — 10 controls vs MU-style shorts-on-winners.
     # Triggered after 2026-05-11 MU incident: $12k MU short opened while
