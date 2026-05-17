@@ -1157,6 +1157,8 @@ class Config:
         'WT_15M_VEL_SLOW',                # legacy alias for R2 (existing block at ez_manage:20696)
         'R3_HTF_FLIP',                    # 2026-05-17 USER: Daily-close + parallel 4h structural flip → close. data/research_20260516/PLAN.md §3.6
         'R3_HTF_FLIP_4H',                 # 2026-05-17 USER: 4h-tier of R3 (parallel to Daily so positions don't sit adverse up to 24h)
+        'R4_STDEV_MACRO_TOP',             # 2026-05-17 USER: long-window log-price z >+2.5σ on D AND W → close LONG (additive to BB; macro tops/bottoms). Default OFF.
+        'R4_STDEV_MACRO_BOT',             # 2026-05-17 USER: long-window log-price z <-2.5σ on D AND W → close SHORT. Default OFF.
         'HEDGE_FAILED',                   # hedge couldn't be taken → fallback close at loss
         # 2026-05-10 USER NON-NEGOTIABLE MANDATE: every tradeable_key with wt1_3m vs wt2_3m
         # condition met must always have a position. Reopen after every close. See
@@ -1228,6 +1230,27 @@ class Config:
     RULE_NAME_TAGGING_ENABLED: bool = True               # write rule_name=RULE_A|B|C|LEGACY into history JSONL at every OPEN. Pure observability.
     HEDGE_HTF_VETO_ENABLED: bool = True                  # 2026-05-17: block OBLIGATORY_HEDGE if Daily WT hasn't flipped to support hedge direction. For LONG position the hedge is SHORT (requires wt1_D < wt2_D), for SHORT position the hedge is LONG (requires wt1_D > wt2_D). Source: data/research_20260516/PLAN.md §3.7. Live data showed hedge entries dominating opens (58-82% per acct) and QUICK_HEDGE_PROTECT_LONG_LOSS averaging -0.49%. ROLLBACK: set False.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False  # 2026-05-17: future feature — replace stateless dc_basis_D anchor with persistent breakout_retest_armed[symbol][side] state dict (arm on dc_high_D[prev_D] cross + volume confirm, fire on retest within 7d). Wired in ez_manage MultiAccountTradeManager state dicts. Default OFF — needs code in next session, sweep variant queued for forward validation.
+    # ═══════════════════════════════════════════════════════════════════
+    # STDEV_MACRO — long-window log-price z-score on D/W/M (2026-05-17)
+    # User mandate: BB is for short-window breakouts (untouched). STDEV is for
+    # REAL macro tops/bottoms on D/W/M. Additive ONLY — never replaces, never
+    # silently overrides BB-breakout logic. All gates default OFF. See
+    # stdev_macro.py for fail-open semantics and vec_paths/stdev_macro_vec.py
+    # for the rolling-z math. Sweep arms queued on S1 sweep_coordinator.
+    # State definitions (from stdev_macro.derive_state):
+    #   STRONG_TOP: z_D > 2.5 AND z_W > 1.5
+    #   TOP:        z_D > 1.5 OR  z_W > 1.5 (and not also BOT)
+    #   STRONG_BOT: z_D < -2.5 AND z_W < -1.5
+    #   BOT:        z_D < -1.5 OR  z_W < -1.5 (and not also TOP)
+    #   MID:        else, OR conflicting (one TF top + other TF bot)
+    # ═══════════════════════════════════════════════════════════════════
+    STDEV_MACRO_ENTRY_VETO_ENABLED: bool = False         # block OPEN+AUGMENT when STRONG_TOP (LONG) / STRONG_BOT (SHORT). Fail-open on missing data.
+    STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False       # block AUGMENT only (not OPEN-on-empty) at TOP/BOT. BB breakouts from flat never blocked.
+    STDEV_MACRO_ENTRY_BOOST_ENABLED: bool = False        # size multiplier when entering AGAINST macro extreme (mean-revert). Never changes side.
+    STDEV_MACRO_ENTRY_BOOST_MULT: float = 1.3            # size ×1.3 LONG at STRONG_BOT, ×1.3 SHORT at STRONG_TOP
+    STDEV_MACRO_R4_EXIT_ENABLED: bool = False            # fire CLOSE on STRONG_TOP (LONG) / STRONG_BOT (SHORT) + LTF flip (wt_4h). Runs AFTER R1/R2/R3 — never preempts. Bypass reasons R4_STDEV_MACRO_TOP/BOT already added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
+    STDEV_MACRO_R4_REQUIRE_LTF_FLIP: bool = True         # require wt1_4h vs wt2_4h flip alongside macro extreme; False = fire on macro state alone (more trigger-happy)
+    STDEV_MACRO_HEDGE_BOOST_ENABLED: bool = False        # extra OBLIGATORY_HEDGE trigger when origin held against macro extreme. Additive to existing 3m/15m/1h triggers — never removes them.
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

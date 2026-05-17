@@ -128,11 +128,22 @@ class StructCell:
     side_mode: str = "BOTH"
     round_trip_cost_pct: float = 0.10
     cooldown_bars: int = 5
+    regime_persist_bars: int = 0
+    exit_recent_window_bars: int = 0
 
     def key(self) -> str:
+        suffix = ""
+        if self.regime_persist_bars > 0:
+            suffix += f"_rp{self.regime_persist_bars}"
+        if self.exit_recent_window_bars > 0:
+            suffix += f"_xw{self.exit_recent_window_bars}"
+        if self.cooldown_bars != 5:
+            suffix += f"_cd{self.cooldown_bars}"
+        if self.round_trip_cost_pct != 0.10:
+            suffix += f"_c{self.round_trip_cost_pct:g}"
         return (f"bk{self.breakout_tf}_rt{self.retest_tf}_tg{self.trigger_tf}"
                 f"_mc{self.min_count}_ab{self.atr_retest_band:g}"
-                f"_xf{self.exit_flip_min}_side{self.side_mode}")
+                f"_xf{self.exit_flip_min}_side{self.side_mode}{suffix}")
 
 
 def default_grid(mode: str) -> List[StructCell]:
@@ -174,6 +185,59 @@ def default_grid(mode: str) -> List[StructCell]:
         cells.append(StructCell(
             breakout_tf=bk, retest_tf=rt, trigger_tf=tg,
             min_count=mc, atr_retest_band=ab, exit_flip_min=xf, side_mode=sm,
+        ))
+    return cells
+
+
+def v2_focus_grid(mode: str) -> List[StructCell]:
+    """v2 focused grid (2026-05-17 post-v1). Locks winning combo from v1
+    (bk=D, rt=4h crypto / 1h stocks, tg=15m, mc=4, ab=1.0, LONG_ONLY) and
+    sweeps the two knobs that v1 said matter most: exit_flip_min (higher is
+    better) and cooldown_bars (5 was likely too aggressive). Also tests
+    gross alpha (commission=0)."""
+    rt = "1h" if mode == "tradier" else "4h"
+    cells: List[StructCell] = []
+    for xf, cd, cost, sm in itertools.product(
+        (3, 4, 5),
+        (5, 30, 100),
+        (0.0, 0.10),
+        ("LONG_ONLY", "BOTH"),
+    ):
+        cells.append(StructCell(
+            breakout_tf="D", retest_tf=rt, trigger_tf="15m",
+            min_count=4, atr_retest_band=1.0, exit_flip_min=xf,
+            side_mode=sm, cooldown_bars=cd, round_trip_cost_pct=cost,
+        ))
+    return cells
+
+
+def v3_grid(mode: str) -> List[StructCell]:
+    """v3 (2026-05-17 post-v2). Tests two architectural improvements:
+      1. exit_recent_window_bars > 0: exit fires only on NEW pivot events in
+         the last K trigger-TF bars (not the carried struct that stays armed
+         for hundreds of bars after a single bearish pivot).
+      2. regime_persist_bars > 0: breakout TF struct must HOLD at HH/LL for
+         N base-TF bars before entry arms — filters out fresh-pivot whipsaws.
+    Locks v2 winning combo: bk=D, rt=4h crypto / 1h stocks, tg=15m, mc=4,
+    ab=1.0, LONG_ONLY, cooldown=30. Cost both 0 and 0.10.
+    """
+    rt = "1h" if mode == "tradier" else "4h"
+    cells: List[StructCell] = []
+    for xw, rp, xf, cost in itertools.product(
+        (0, 20, 60, 120),       # 0 = old carried-struct exit; >0 = pivot-event window
+        (0, 200, 500, 1000),    # 0 = no regime filter; >0 = require streak
+        (3, 4),
+        (0.0, 0.10),
+    ):
+        # Skip the (0, 0) cell — that's already v2 best, not new info.
+        if xw == 0 and rp == 0:
+            continue
+        cells.append(StructCell(
+            breakout_tf="D", retest_tf=rt, trigger_tf="15m",
+            min_count=4, atr_retest_band=1.0, exit_flip_min=xf,
+            side_mode="LONG_ONLY", cooldown_bars=30,
+            regime_persist_bars=rp, exit_recent_window_bars=xw,
+            round_trip_cost_pct=cost,
         ))
     return cells
 
@@ -258,6 +322,8 @@ def simulate_struct_one_symbol(
         atr_retest_band=cell.atr_retest_band,
         exit_flip_min=cell.exit_flip_min,
         side_mode=cell.side_mode,
+        regime_persist_bars=cell.regime_persist_bars,
+        exit_recent_window_bars=cell.exit_recent_window_bars,
     )
     entry_long = fires["entry_long"]
     entry_short = fires["entry_short"]
@@ -552,7 +618,7 @@ def main():
     ap.add_argument("--symbols", required=True,
                     help="Comma-separated. Crypto bare: BTC,ETH,SOL. Stocks: AAPL,MSFT.")
     ap.add_argument("--start", default="2022-01-01")
-    ap.add_argument("--grid", choices=("default", "smoke", "wide"), default="default")
+    ap.add_argument("--grid", choices=("default", "smoke", "wide", "v2_focus", "v3"), default="default")
     ap.add_argument("--smoke", action="store_true",
                     help="Use 6-cell smoke grid (Mac small test).")
     ap.add_argument("--account", default="struct_sweep")
@@ -563,6 +629,10 @@ def main():
         grid = smoke_grid(args.mode)
     elif args.grid == "wide":
         grid = wide_grid(args.mode)
+    elif args.grid == "v2_focus":
+        grid = v2_focus_grid(args.mode)
+    elif args.grid == "v3":
+        grid = v3_grid(args.mode)
     else:
         grid = default_grid(args.mode)
     print(f"[CFG] mode={args.mode} symbols={len(symbols)} start={args.start} cells={len(grid)}")

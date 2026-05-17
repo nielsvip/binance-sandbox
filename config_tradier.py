@@ -2108,7 +2108,7 @@ class TradierConfig:
     RP_PROTECT_MIN_GAIN: float = 1.0
     NOLOSS_DC4H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: DC-based NOLOSS off. Same-sector hedge replaces it.
     NOLOSS_BB1H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: BB-based NOLOSS off (technical exits handle this).
-    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R3_HTF_FLIP_4H')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging. R3_HTF_FLIP / R3_HTF_FLIP_4H added 2026-05-17: Daily + parallel 4h structural close.
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R3_HTF_FLIP_4H', 'R4_STDEV_MACRO_TOP', 'R4_STDEV_MACRO_BOT')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging. R3_HTF_FLIP / R3_HTF_FLIP_4H added 2026-05-17: Daily + parallel 4h structural close. R4_STDEV_MACRO_TOP/BOT added 2026-05-17: long-window log-price z-score on D AND W extreme, default OFF.
     # 2026-05-10 USER NON-NEGOTIABLE: every symbol in symbols_trb_long/short must have a
     # position open whenever wt1_3m vs wt2_3m condition holds. Reopen after every close.
     # Reentry / cooldown / NOLOSS gates may NOT block this. The reason 'WT_3M_FORCE_OPEN'
@@ -2139,6 +2139,20 @@ class TradierConfig:
     RULE_NAME_TAGGING_ENABLED: bool = True
     HEDGE_HTF_VETO_ENABLED: bool = False                 # 2026-05-17: tradier has no same-symbol hedge mechanism (per memory feedback_hedge_reentry_unblock_20260510 "Stocks have NO same-symbol hedge"); flag exists for config-symmetry only. ROLLBACK: irrelevant on tradier.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False
+    # ═══════════════════════════════════════════════════════════════════
+    # STDEV_MACRO — long-window log-price z-score on D/W/M (2026-05-17)
+    # Mirrors config.py. BB stays for breakouts (untouched). STDEV adds a
+    # macro top/bottom layer (additive only). All gates default OFF; S1
+    # sweep arms validate before any live flip. HEDGE_BOOST flag exists
+    # for symmetry but tradier has no same-symbol hedge mechanism.
+    # ═══════════════════════════════════════════════════════════════════
+    STDEV_MACRO_ENTRY_VETO_ENABLED: bool = False
+    STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False
+    STDEV_MACRO_ENTRY_BOOST_ENABLED: bool = False
+    STDEV_MACRO_ENTRY_BOOST_MULT: float = 1.3
+    STDEV_MACRO_R4_EXIT_ENABLED: bool = False
+    STDEV_MACRO_R4_REQUIRE_LTF_FLIP: bool = True
+    STDEV_MACRO_HEDGE_BOOST_ENABLED: bool = False        # no-op on tradier (no same-sym hedge); flag for config symmetry only.
     # ═══════════════════════════════════════════════════════════════════
     # DISASTER_GUARD — 10 controls vs MU-style shorts-on-winners.
     # Triggered after 2026-05-11 MU incident: $12k MU short opened while

@@ -1050,6 +1050,24 @@ def simulate_one_symbol(
             _connors_ok = bool(_connors_open_mask[i])
             if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
                 continue
+            # STDEV_MACRO_ENTRY_VETO — block OPEN at macro extreme on same side.
+            # Additive to existing entry triggers (BB-breakout etc.) — never silently
+            # overrides them; refuses the entry with an explicit reason. Default OFF.
+            if bool(getattr(config, "STDEV_MACRO_ENTRY_VETO_ENABLED", False)):
+                try:
+                    import stdev_macro as _sm_open
+                    _sm_ind = {
+                        "macro_z_D": float(npz["macro_z_D"][i]) if "macro_z_D" in npz else 0.0,
+                        "macro_z_W": float(npz["macro_z_W"][i]) if "macro_z_W" in npz else 0.0,
+                        "macro_z_M": float(npz["macro_z_M"][i]) if "macro_z_M" in npz else 0.0,
+                    }
+                    _sm_state_open = _sm_open.compute_stdev_macro_state(_sm_ind)
+                    _sm_side_open = "LONG" if is_long else "SHORT"
+                    _sm_block, _sm_why = _sm_open.entry_veto(_sm_side_open, _sm_state_open, config)
+                    if _sm_block:
+                        continue
+                except Exception:
+                    pass
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
             # A3 ATR-parity sizing override: replace base qty with ATR-parity qty
@@ -1427,6 +1445,39 @@ def simulate_one_symbol(
                 state.hedge_completed_ts = bar_ts
                 _pos.gain_pct = 0.0
                 continue
+
+        # R4 STDEV_MACRO — long-window log-price z-score on D AND W extreme + LTF
+        # flip. Additive to R1/R2/R3 — runs AFTER R2. Default OFF behind
+        # STDEV_MACRO_R4_EXIT_ENABLED. Reason joins UNIVERSAL_NOLOSS_GATE_BYPASS.
+        if exit_id == EXIT_NONE and bool(getattr(config, "STDEV_MACRO_R4_EXIT_ENABLED", False)) and state.qty > 0.0001:
+            try:
+                import stdev_macro as _sm_r4
+                _r4_ind_vec = {
+                    "macro_z_D": float(npz["macro_z_D"][i]) if "macro_z_D" in npz else 0.0,
+                    "macro_z_W": float(npz["macro_z_W"][i]) if "macro_z_W" in npz else 0.0,
+                    "macro_z_M": float(npz["macro_z_M"][i]) if "macro_z_M" in npz else 0.0,
+                    "wt1_4h": float(npz["wt1_4h"][i]) if "wt1_4h" in npz else 0.0,
+                    "wt2_4h": float(npz["wt2_4h"][i]) if "wt2_4h" in npz else 0.0,
+                }
+                _r4_state_vec = _sm_r4.compute_stdev_macro_state(_r4_ind_vec)
+                _r4_side_vec = "LONG" if is_long else "SHORT"
+                _r4_close_vec, _r4_reason_vec = _sm_r4.r4_exit(_r4_side_vec, _r4_state_vec, _r4_ind_vec, config)
+                if _r4_close_vec:
+                    pnl_pct = gain
+                    _r4_full_reason = f"{_r4_reason_vec}_zD={_r4_state_vec.get('macro_z_D', 0.0):.2f}_zW={_r4_state_vec.get('macro_z_W', 0.0):.2f}"
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_r4_full_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _pos.gain_pct = 0.0
+                    continue
+            except Exception:
+                pass
 
         # ─── 2026-05-17 VEC_NOLOSS_GATE — per-bar HEDGE-OR-CLOSE for open losers ───
         # CLAUDE.md sacred rule: "WE HEDGE OR WE CLOSE — WE NEVER HOLD."

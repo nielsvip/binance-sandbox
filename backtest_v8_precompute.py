@@ -984,6 +984,19 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     # 7. bb_pct_<tf> alias for bb_pct_b_<tf> (engine reads both names). Aliasing avoids drift.
     if f"bb_pct_b_{tf}" in out:
         out[f"bb_pct_{tf}"] = out[f"bb_pct_b_{tf}"]
+    # 8. macro_z_<tf> — long-window log-price z-score on D/W/M ONLY (2026-05-17).
+    # Distinct from BB (short-window breakout envelope). Source of truth:
+    # vec_paths/stdev_macro_vec.rolling_log_zscore. Other TFs are not computed —
+    # short-window macro is meaningless. Fail-open semantics: engine reads
+    # i.get('macro_z_D', 0.0); when zero (warmup or absent), state stays MID
+    # and every STDEV_MACRO_* gate becomes a no-op.
+    if tf in ("D", "W", "M"):
+        from vec_paths.stdev_macro_vec import rolling_log_zscore, DEFAULT_WINDOWS
+        _macro_window = DEFAULT_WINDOWS[tf]
+        if n >= _macro_window:
+            out[f"macro_z_{tf}"] = rolling_log_zscore(close.values.astype(np.float64), _macro_window).astype(np.float32)
+        else:
+            out[f"macro_z_{tf}"] = np.zeros(n, dtype=np.float32)
     # Filter: only return arrays matching expected length n
     return {k: v for k, v in out.items() if isinstance(v, np.ndarray) and len(v) == n}
 

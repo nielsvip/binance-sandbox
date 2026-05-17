@@ -44,6 +44,7 @@ These fields MUST exist in every NPZ, identical timeframes regardless of base TF
 | `wt_cross_rising_{tf}` | 15m,1h,4h | bool | backtest_v8_engine.py:3753-3754,4546-4548; v8_vec_sweep.py:~105-110 |
 | `wt_cross_bars_ago_{tf}` | 15m | int | v8_vec_sweep.py:~100 |
 | `timestamp_{tf}` | 15m,1h,4h,D,W,M,5m,3m | int64 | backtest_v8_engine.py (implicit via index alignment) |
+| `macro_z_{tf}` | D(200-bar),W(52-bar),M(24-bar) | float32 | 2026-05-17: long-window log-price z-score, distinct from BB. Source: `vec_paths.stdev_macro_vec.rolling_log_zscore`. Consumed by `stdev_macro.compute_stdev_macro_state` → 5 default-OFF STDEV_MACRO_* gates in backtest_v8_engine + v8_vec_sweep. Fail-open: `i.get('macro_z_D', 0.0)` → MID state → all gates no-op. |
 
 ---
 

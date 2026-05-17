@@ -2000,6 +2000,16 @@ def _v8ns_check_entry_vetos(cfg_obj, indicators, is_long):
         drop = abs(_v8ns_get_indicator_field(indicators, 'pct_from_52w_high', 0.0))
         if drop > max_drop:
             return False, f"BLOCKED_PROXIMITY_TOP_drop={drop:.1f}pct_gt_{max_drop:.1f}pct"
+    if bool(_v8ns_get(cfg_obj, 'STDEV_MACRO_ENTRY_VETO_ENABLED', False)):
+        try:
+            import stdev_macro as _sm_mod
+            _sm_state = _sm_mod.compute_stdev_macro_state(indicators)
+            _sm_side = "LONG" if is_long else "SHORT"
+            _sm_block, _sm_reason = _sm_mod.entry_veto(_sm_side, _sm_state, cfg_obj)
+            if _sm_block:
+                return False, f"BLOCKED_{_sm_reason}_zD={_sm_state.get('macro_z_D', 0.0):.2f}_zW={_sm_state.get('macro_z_W', 0.0):.2f}"
+        except Exception:
+            pass
     return True, ""
 
 
@@ -3691,6 +3701,43 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 pass
 
         # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-R4_STDEV: R4_STDEV_MACRO_TOP/BOT — long-window log-price z exit (2026-05-17)
+        # BB is for short-window breakouts; this is for REAL macro tops/bottoms on D/W.
+        # Runs AFTER R1/R2/R3 (R3 wired in live; engine has DISC-GR15 as parallel HTF exit).
+        # Bypass reasons R4_STDEV_MACRO_TOP/BOT added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
+        # Default OFF behind STDEV_MACRO_R4_EXIT_ENABLED. Fail-open on missing macro_z fields.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'STDEV_MACRO_R4_EXIT_ENABLED', False)):
+            try:
+                import stdev_macro as _r4_sm
+                for _r4_pk, _r4_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_r4_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _r4_sym = getattr(_r4_pos, 'symbol', '') or (_r4_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _r4_pk else _r4_pk[:-5] if _r4_pk.endswith('_LONG') else _r4_pk[:-6])
+                    _r4_ind = indicator_cache.get(_r4_sym, {})
+                    if not _r4_ind:
+                        continue
+                    _r4_px = price_cache.get(_r4_sym, 0)
+                    if _r4_px <= 0:
+                        continue
+                    _r4_is_long = _r4_pk.endswith('_LONG')
+                    _r4_side = 'LONG' if _r4_is_long else 'SHORT'
+                    _r4_state = _r4_sm.compute_stdev_macro_state(_r4_ind)
+                    _r4_close, _r4_reason = _r4_sm.r4_exit(_r4_side, _r4_state, _r4_ind, config)
+                    if _r4_close:
+                        _r4_gain = float(getattr(_r4_pos, 'gain', 0) or 0)
+                        _r4_qty = abs(float(getattr(_r4_pos, 'positionAmt', 0)))
+                        _r4_why = f"{_r4_reason}_zD={_r4_state.get('macro_z_D', 0.0):.2f}_zW={_r4_state.get('macro_z_W', 0.0):.2f}_g{_r4_gain:.2f}%"
+                        v8_logger.info(f"[DISC-R4_STDEV] {_r4_pk}: state={_r4_state.get('macro_state')} zD={_r4_state.get('macro_z_D'):.2f} zW={_r4_state.get('macro_z_W'):.2f} gain={_r4_gain:.2f}% — CLOSE")
+                        try:
+                            await trade_manager.execute_trade_action(account_key=account_key, position_key=_r4_pk, symbol=_r4_sym, quantity=_r4_qty, current_price=_r4_px, side='SELL' if _r4_is_long else 'BUY', position_side=_r4_side, action='CLOSE', reason=_r4_why, is_full_close=True, is_hedge=False)
+                        except Exception as _r4_cl_err:
+                            if step < 10 or step % 1000 == 0:
+                                v8_logger.error(f"[DISC-R4_STDEV_ERR] {_r4_pk}: {_r4_cl_err}")
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
         # DISC-4: OBLIGATORY_HEDGE — mirror ez_manage.py:14380 (updated 2026-05-12)
         # When UNIVERSAL_NOLOSS_GATE blocks a close, live fires a hedge if:
         #   gain <= OBLIGATORY_HEDGE_MIN_LOSS_PCT (-0.25% default)
@@ -3771,7 +3818,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 else:
                     _oh_user_trigger = _oh_15m_against or (_oh_3m_against and _oh_1h_against)
                     _oh_trigger_label = "15m_OR_(3m_AND_1h)"
-                if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_bt_req or _oh_user_trigger):
+                # STDEV_MACRO_HEDGE_BOOST: additive trigger when origin held against macro extreme.
+                # Never removes existing 3m/15m/1h triggers — only adds an OR path. Default OFF.
+                _oh_macro_trigger = False
+                if bool(getattr(config, 'STDEV_MACRO_HEDGE_BOOST_ENABLED', False)):
+                    try:
+                        import stdev_macro as _ohm_sm
+                        _ohm_state = _ohm_sm.compute_stdev_macro_state(_oh_ind)
+                        _ohm_side = 'LONG' if _oh_is_long else 'SHORT'
+                        _ohm_fire, _ohm_reason = _ohm_sm.hedge_trigger_boost(_ohm_side, _ohm_state, config)
+                        if _ohm_fire:
+                            _oh_macro_trigger = True
+                            _oh_trigger_label = f"{_oh_trigger_label}_OR_{_ohm_reason}"
+                    except Exception:
+                        pass
+                if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_bt_req or _oh_user_trigger or _oh_macro_trigger):
                     _oh_bt_cd_dict[_oh_pk] = step
                     v8_logger.warning(f"[OBLIGATORY_HEDGE_BACKTEST] {_oh_pk}: gain={_oh_gain:.2f}% trigger={_oh_trigger_label} wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m={_oh_3m_against} 15m={_oh_15m_against} 1h={_oh_1h_against}) — scan_and_hedge_losers")
                     try:

@@ -530,6 +530,19 @@ def compute_tf_indicators_stock(df, tf):
     low_prev = np.roll(low.values, 1).astype(np.float32); low_prev[0] = low.values[0]
     out[f"high_{tf}_prev"] = high_prev
     out[f"low_{tf}_prev"] = low_prev
+    # macro_z_<tf> — long-window log-price z-score on D/W/M ONLY (2026-05-17).
+    # Distinct from BB (short-window breakout envelope). Mirror of crypto
+    # precompute (backtest_v8_precompute.py). Source of truth:
+    # vec_paths.stdev_macro_vec.rolling_log_zscore. Fail-open downstream:
+    # engine reads i.get('macro_z_D', 0.0) → MID → all gates no-op.
+    if tf in ("D", "W", "M"):
+        from vec_paths.stdev_macro_vec import rolling_log_zscore, DEFAULT_WINDOWS
+        _macro_window = DEFAULT_WINDOWS[tf]
+        n = len(close)
+        if n >= _macro_window:
+            out[f"macro_z_{tf}"] = rolling_log_zscore(close.values.astype(np.float64), _macro_window).astype(np.float32)
+        else:
+            out[f"macro_z_{tf}"] = np.zeros(n, dtype=np.float32)
     return out
 
 # ---------------------------------------------------------------------------
