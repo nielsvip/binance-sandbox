@@ -918,6 +918,13 @@ class Config:
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
+    # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — replaces RIDICULOUS_LOSS late-fire (PHBUSDT -27% lock-in).
+    # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
+    # Per-bar check: if current_price breaches frozen level AND gain<0 → CLOSE (FROZEN_ACT_STOP_FROZEN_BREACH).
+    # Or if gain ≤ FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO → CLOSE (FROZEN_ACT_STOP_ABSOLUTE_FLOOR). Active path mirroring stocks team's finding.
+    FROZEN_ACTIVATION_STOP_ENABLED: bool = True
+    FROZEN_ACTIVATION_TF: str = "4h"               # which TF's dc_low/high we freeze at entry (D / 4h)
+    FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO: float = -10.0  # crypto more volatile than stocks; loosen vs -8 default. Sweep range: -5/-8/-10/-15.
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):
     DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_3m/dc_high4_3m recorded at entry
@@ -1167,6 +1174,8 @@ class Config:
         'ALL_TF_AGAINST',                 # 2026-05-06 user mandate: all TFs against → close primary, hedge becomes main
         # 2026-05-09 USER MANDATE: only R1, R2, hedge-failed can close at loss.
         'R1_DC_LOW4_3M_EMERGENCY',        # newborn-window dc4_3m breach → close
+        'FROZEN_ACT_STOP_FROZEN_BREACH',  # 2026-05-18 USER: price < frozen_dc_low_4h@entry (LONG) / > frozen_dc_high_4h@entry (SHORT) AND gain<0 → close
+        'FROZEN_ACT_STOP_ABSOLUTE_FLOOR', # 2026-05-18 USER: gain ≤ FROZEN_ABSOLUTE_FLOOR_PCT_(CRYPTO|TRADIER) → close. Replaces RIDICULOUS_LOSS late-fire (which caught PHBUSDT at -27% not -15%). Active per-bar at entry-frozen activation TF level.
         'R2_WT_VEL_SLOW',                 # wt vel slowdown near 0 gain → close at small positive
         'WT_15M_VEL_SLOW',                # legacy alias for R2 (existing block at ez_manage:20696)
         'R3_HTF_FLIP',                    # 2026-05-17 USER: Daily-close + parallel 4h structural flip → close. data/research_20260516/PLAN.md §3.6

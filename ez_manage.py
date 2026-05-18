@@ -37820,6 +37820,83 @@ async def process_position(
         except Exception as _r1b_outer:
             logger.debug(f"[R1b_DAEMON_REENTRY_STALE] {position_key} probe err: {_r1b_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
+    # R1c — FROZEN_ACT_STOP (USER 2026-05-18) — replaces RIDICULOUS_LOSS late-fire.
+    # At first per-bar check after open, freeze the activation-TF dc level on the
+    # position. Subsequent bars: if price crosses frozen level AND in loss → CLOSE.
+    # Plus an absolute floor (-10% crypto / -8% stocks) caps gap-down catastrophes.
+    # Bypass reasons FROZEN_ACT_STOP_* are in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "FROZEN_ACTIVATION_STOP_ENABLED", True))
+    ):
+        try:
+            _fa_tf = str(getattr(config, "FROZEN_ACTIVATION_TF", "4h"))
+            _fa_floor_pct = float(getattr(config, "FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO", -10.0))
+            _fa_is_long = position_side == "LONG"
+            _fa_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+            # Lazy freeze: read current bar's dc level on first encounter, stash on position
+            _fa_frozen = getattr(position, "_frozen_dc_act", None)
+            if _fa_frozen is None:
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _fa_ind = _pp_shared_ind if _pp_shared_ind else None
+                if _fa_ind:
+                    _fa_field = f"dc_low_{_fa_tf}" if _fa_is_long else f"dc_high_{_fa_tf}"
+                    _fa_frozen_raw = _fa_ind.get(_fa_field)
+                    if _fa_frozen_raw not in (None, 0, 0.0):
+                        try:
+                            _fa_frozen = float(_fa_frozen_raw)
+                            setattr(position, "_frozen_dc_act", _fa_frozen)
+                        except (TypeError, ValueError):
+                            _fa_frozen = None
+            # Stop condition 1: absolute floor (always active — catches gap-downs)
+            _fa_floor_hit = _fa_gain <= _fa_floor_pct
+            # Stop condition 2: frozen-level breach AND in loss
+            _fa_breach = False
+            if _fa_frozen is not None:
+                _fa_breach = (
+                    (_fa_is_long and current_price < _fa_frozen)
+                    or (not _fa_is_long and current_price > _fa_frozen)
+                ) and _fa_gain < 0
+            if _fa_floor_hit or _fa_breach:
+                _fa_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _fa_close_side = "SELL" if _fa_is_long else "BUY"
+                _fa_reason_tag = "FROZEN_ACT_STOP_ABSOLUTE_FLOOR" if _fa_floor_hit else "FROZEN_ACT_STOP_FROZEN_BREACH"
+                _fa_reason = (
+                    f"{_fa_reason_tag}_g{_fa_gain:.2f}%_floor{_fa_floor_pct:.1f}%"
+                    if _fa_floor_hit
+                    else f"{_fa_reason_tag}_g{_fa_gain:.2f}%_frozen{_fa_tf}={_fa_frozen}_cur={current_price}"
+                )
+                logger.critical(
+                    f"⛔ [{_fa_reason_tag}] {position_key}: g={_fa_gain:.2f}% frozen_{_fa_tf}={_fa_frozen} cur={current_price:.6f} {'<' if _fa_is_long else '>'}={_fa_frozen} floor={_fa_floor_pct:.1f}% → CLOSE"
+                )
+                try:
+                    _fa_result = await trade_manager.execute_now(
+                        position_key=position_key,
+                        account_key=account_key,
+                        symbol=symbol,
+                        original_positionAmt=_fa_amt,
+                        side=_fa_close_side,
+                        position_side=position_side,
+                        quantity=_fa_amt,
+                        old_price=current_price,
+                        unique_id=f"{_fa_reason_tag}_{int(time.time())}",
+                        reason=_fa_reason,
+                        is_full_close=True,
+                        action="CLOSE",
+                    )
+                    if isinstance(_fa_result, str) and not any(
+                        x in _fa_result.upper() for x in ("BLOCK", "SKIP", "REJECT")
+                    ):
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:{_fa_reason_tag}_CLOSED"
+                except Exception as _fa_exec_err:
+                    logger.warning(f"[FROZEN_ACT_STOP_EXEC_ERR] {position_key}: {_fa_exec_err}")
+        except Exception as _fa_outer:
+            logger.debug(f"[FROZEN_ACT_STOP] {position_key} probe err: {_fa_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-08, tightened 2026-05-09).
     # Trigger (per TF in R2_TF_LIST):
     #   floor <= gain < band  (default 0.01 .. 0.50 — "approaching 0 from above"), AND

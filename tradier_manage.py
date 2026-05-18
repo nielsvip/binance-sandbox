@@ -1942,6 +1942,42 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _r1_err:
                 logger.debug(f"[R1_DC_LOW4] {position_key} err: {_r1_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        # R1c — FROZEN_ACT_STOP (USER 2026-05-18 stocks team finding).
+        # Frozen dc_low_4h@entry (LONG) / dc_high_4h@entry (SHORT) + -8% absolute floor.
+        # Worst stocks loss capped at -9% (vs -12.6% baseline). 4 stops/sym/yr.
+        # ═══════════════════════════════════════════════════════════════════════
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+           bool(getattr(config, 'FROZEN_ACTIVATION_STOP_ENABLED', True)):
+            try:
+                _fa_tf = str(getattr(config, 'FROZEN_ACTIVATION_TF', '4h'))
+                _fa_floor_pct = float(getattr(config, 'FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
+                _fa_is_long = position_side == 'LONG'
+                _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _fa_frozen = getattr(position, '_frozen_dc_act', None)
+                if _fa_frozen is None and i:
+                    _fa_field = f'dc_low_{_fa_tf}' if _fa_is_long else f'dc_high_{_fa_tf}'
+                    _fa_raw = i.get(_fa_field)
+                    if _fa_raw not in (None, 0, 0.0):
+                        try:
+                            _fa_frozen = float(_fa_raw)
+                            setattr(position, '_frozen_dc_act', _fa_frozen)
+                        except (TypeError, ValueError):
+                            _fa_frozen = None
+                _fa_floor_hit = _fa_gain <= _fa_floor_pct
+                _fa_breach = False
+                if _fa_frozen is not None:
+                    _fa_breach = ((_fa_is_long and current_price < _fa_frozen)
+                                  or (not _fa_is_long and current_price > _fa_frozen)) and _fa_gain < 0
+                if _fa_floor_hit or _fa_breach:
+                    _fa_tag = 'FROZEN_ACT_STOP_ABSOLUTE_FLOOR' if _fa_floor_hit else 'FROZEN_ACT_STOP_FROZEN_BREACH'
+                    _fa_reason = (f'{_fa_tag}_g{_fa_gain:.2f}%_floor{_fa_floor_pct:.1f}%' if _fa_floor_hit
+                                  else f'{_fa_tag}_g{_fa_gain:.2f}%_frozen{_fa_tf}={_fa_frozen}_cur={current_price}')
+                    logger.error(f"⛔ [{_fa_tag}] {position_key}: g={_fa_gain:.2f}% frozen_{_fa_tf}={_fa_frozen} cur={current_price:.4f} floor={_fa_floor_pct:.1f}% → CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", _fa_reason, 100.0, override_qty=999999)
+                    return f"{_fa_tag}_CLOSED"
+            except Exception as _fa_err:
+                logger.debug(f"[FROZEN_ACT_STOP] {position_key} err: {_fa_err}")
+        # ═══════════════════════════════════════════════════════════════════════
         # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-09, stocks mirror).
         # Stocks use HTFs (default 1h/4h/D) per user — markets closed most of day,
         # real moves happen on D/W. floor <= gain < band, |vel| < |vel_prev|*ratio.

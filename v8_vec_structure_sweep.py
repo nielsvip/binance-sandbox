@@ -69,7 +69,7 @@ def load_npz_slim(symbol: str, mode: str, start_ts: Optional[int] = None) -> Tup
         tfs = ("5m", "15m", "1h", "4h", "D")
     else:
         tfs = ("3m", "15m", "1h", "4h", "D", "W")
-    needed_per_tf = ("high", "low", "close", "wt1", "wt2", "stoch_k", "dc_high", "dc_low", "atr")
+    needed_per_tf = ("high", "low", "close", "wt1", "wt2", "stoch_k", "dc_high", "dc_low", "atr", "bb_lower")
     keep = {f"{f}_{tf}" for tf in tfs for f in needed_per_tf}
     keep.add("close")
     keep.add("timestamps")
