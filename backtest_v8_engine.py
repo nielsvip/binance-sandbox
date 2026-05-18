@@ -6914,6 +6914,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _bt_rg_t_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
     _bt_rg_t = None if _bt_rg_t_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.tradier.{account_key}")
     _w_exit_prev_t = {}  # sym → bool: was wt1_W > wt2_W last bar (for cross detection)
+    _dc4h_fstop_tr: dict = {}  # pk → frozen dc_low_4h level at first open bar
     for step, ts in enumerate(all_ts):
         _sim_ts[0] = float(ts)
         if _SWEEP_MODE:
@@ -7163,6 +7164,49 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                 is_full_close=True, action='CLOSE')
                         except Exception:
                             pass
+        # Frozen dc_low_4h stop + absolute loss floor (tradier only, DC_LOW_4H_FROZEN_STOP_ENABLED).
+        # Sets dc_low_4h/dc_high_4h at first bar position seen (frozen-at-entry).
+        # Fires if: long and px < frozen_level while in loss, OR gain < ABS_LOSS_FLOOR_PCT.
+        _dc4h_fstop_on = getattr(config, 'DC_LOW_4H_FROZEN_STOP_ENABLED', False)
+        _dc4h_abs_floor = float(getattr(config, 'DC_LOW_4H_ABS_LOSS_FLOOR_PCT', -8.0))
+        if _dc4h_fstop_on and manager.position_manager:
+            for _fsp_pk, _fsp_pos in list(manager.position_manager.positions.items()):
+                if abs(getattr(_fsp_pos, 'positionAmt', 0)) < 0.0001:
+                    _dc4h_fstop_tr.pop(_fsp_pk, None)
+                    continue
+                _fsp_sym = getattr(_fsp_pos, 'symbol', '') or _fsp_pk.split(':', 1)[-1].rsplit('_', 1)[0]
+                _fsp_ind = indicator_cache.get(_fsp_sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                _fsp_px = float(price_cache.get(_fsp_sym.upper(), 0) or _fsp_ind.get('current_price', 0) or 0)
+                if _fsp_px <= 0:
+                    continue
+                _fsp_is_long = _fsp_pk.endswith('_LONG')
+                if _fsp_pk not in _dc4h_fstop_tr:
+                    _fsp_freeze = float(_fsp_ind.get('dc_low_4h' if _fsp_is_long else 'dc_high_4h', 0) or 0)
+                    if _fsp_freeze > 0:
+                        _dc4h_fstop_tr[_fsp_pk] = _fsp_freeze
+                _fsp_level = _dc4h_fstop_tr.get(_fsp_pk, 0)
+                _fsp_ep = float(getattr(_fsp_pos, 'entry_price', 0) or 0)
+                if _fsp_ep <= 0 or _fsp_level <= 0:
+                    continue
+                _fsp_gain = ((_fsp_px - _fsp_ep) / _fsp_ep * 100.0) if _fsp_is_long else ((_fsp_ep - _fsp_px) / _fsp_ep * 100.0)
+                _fsp_fire = ((_fsp_is_long and _fsp_px < _fsp_level and _fsp_gain < 0) or
+                             (not _fsp_is_long and _fsp_px > _fsp_level and _fsp_gain < 0) or
+                             _fsp_gain < _dc4h_abs_floor)
+                if _fsp_fire:
+                    _dc4h_fstop_tr.pop(_fsp_pk, None)
+                    try:
+                        _fsp_amt = abs(float(getattr(_fsp_pos, 'positionAmt', 0)))
+                        await manager.execute_now(
+                            position_key=_fsp_pk, account_key=account_key, symbol=_fsp_sym,
+                            original_positionAmt=_fsp_amt,
+                            side='SELL' if _fsp_is_long else 'BUY',
+                            position_side='LONG' if _fsp_is_long else 'SHORT',
+                            quantity=_fsp_amt, old_price=_fsp_px,
+                            unique_id=f"DC4H_FSTOP_{int(step)}",
+                            reason=f"DC_STOP_BREACH_4H_FROZEN_px{_fsp_px:.4f}_level{_fsp_level:.4f}_gain{_fsp_gain:.2f}pct",
+                            is_full_close=True, action='CLOSE')
+                    except Exception:
+                        pass
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
         oq = manager.order_queue
         if hasattr(oq, '_orders'):

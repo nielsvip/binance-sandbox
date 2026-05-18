@@ -129,12 +129,19 @@ class AggressiveCfg:
     # X6: time stop (force close after N bars in trade if gain < threshold)
     exit_X6_time_stop_bars: int = 0           # 0 = disabled
     exit_X6_min_gain_pct: float = 5.0
+    # ─── HOLD / CHURN REDUCTION ───────────────────────────────────────────
+    min_hold_bars: int = 0                    # min bars before ANY exit (except X7 floor)
+    exit_X1_require_k1h_min: float = 0.0     # 0=off; >0 = require K_1h above this for X1
+    exit_X1_require_wt_bear_1h: bool = False  # require bear WT cross on 1h (not just 15m) for X1
+    exit_X5_min_hold_bars: int = 0            # X5 only fires after this many bars in trade
     # PYRAMID
     pyramid_enabled: bool = True
     pyramid_require_new_D_HH: bool = True
     pyramid_min_gain_since_last_pct: float = 3.0
     pyramid_tf: str = "D"             # which TF's new HH triggers pyramid: D, 4h, 1h, 15m
     pyramid_also_on_k1h_oversold: bool = False  # extra pyramid when K_1h<25 + WT_1h bull cross
+    pyramid_on_price_breakout: bool = False    # pyramid when price > highest close since entry
+    pyramid_price_breakout_min_gain: float = 1.0  # min % gain for price breakout pyramid
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -298,9 +305,18 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
         entry_G &= bull_mask
 
     # ── EXIT masks per path ───────────────────────────────────────────────
-    # X1: top catch
+    # X1: top catch (with optional 1h confirmation)
     bear_wt_15 = _bear_cross(wt1_15, wt2_15)
-    exit_X1 = (k15 > cfg.exit_X1_k15_min) & bear_wt_15 if cfg.exit_X1_topcatch_enabled else np.zeros(n, dtype=bool)
+    bear_wt_1h = _bear_cross(wt1_1h, wt2_1h)
+    if cfg.exit_X1_topcatch_enabled:
+        x1_mask = (k15 > cfg.exit_X1_k15_min) & bear_wt_15
+        if cfg.exit_X1_require_k1h_min > 0:
+            x1_mask &= (k1h > cfg.exit_X1_require_k1h_min)
+        if cfg.exit_X1_require_wt_bear_1h:
+            x1_mask &= bear_wt_1h
+        exit_X1 = x1_mask
+    else:
+        exit_X1 = np.zeros(n, dtype=bool)
     # X4
     exit_X4 = bear_wt_D if cfg.exit_X4_daily_bear_wt_enabled else np.zeros(n, dtype=bool)
     # X5: structural flip count on trigger TF
@@ -405,31 +421,48 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                     capital_in_trade += add_cap
                     pyramid_count += 1
                     _record_event(i, "AUGMENT", add_qty, px, f"PYRAMID_{pyramid_count}", add_cap)
+            # Try PYRAMID: price-breakout based (new HH since entry)
+            if (cfg.pyramid_enabled and cfg.pyramid_on_price_breakout
+                and pyramid_count < cfg.max_pyramid_levels
+                and px >= highest_close_in_trade * 1.001):
+                gain_since_entry = (px - avg_entry_price) / avg_entry_price * 100
+                if gain_since_entry >= cfg.pyramid_price_breakout_min_gain:
+                    add_cap = capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count)
+                    add_qty = add_cap / px
+                    new_qty = pos_qty + add_qty
+                    avg_entry_price = (avg_entry_price * pos_qty + px * add_qty) / new_qty
+                    pos_qty = new_qty
+                    capital_in_trade += add_cap
+                    pyramid_count += 1
+                    _record_event(i, "AUGMENT", add_qty, px, f"PYR_BREAKOUT_{pyramid_count}", add_cap)
             # Try EXITS in priority order
+            bars_in_trade = i - entry_bar
             exit_path = None
-            # X7: Technical stop — frozen dc_low_4h at entry + absolute floor
+            # X7: Technical stop — frozen dc_low_4h at entry + absolute floor (ALWAYS fires, ignores min_hold)
             if cfg.exit_X7_tech_stop_enabled:
                 cur_gain = (px - avg_entry_price) / avg_entry_price * 100
                 if cur_gain < 0:
                     if px < frozen_dc_stop or cur_gain < cfg.exit_X7_abs_floor_pct:
                         exit_path = "X7"
-            # Hard stop: X3 (legacy ATR-based)
+            # Hard stop: X3 (legacy ATR-based, also ignores min_hold)
             if exit_path is None and cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
                 stop_px = avg_entry_price - cfg.exit_X3_hardstop_atr_mult * atr_15[i]
                 if px < stop_px:
                     exit_path = "X3"
-            # Trailing: X2
-            if exit_path is None and cfg.exit_X2_trailing_pct > 0:
-                trail_px = highest_close_in_trade * (1 - cfg.exit_X2_trailing_pct / 100)
-                if px < trail_px and (px > avg_entry_price * 1.005 or pyramid_count > 0):
-                    # Only trail if we're in profit (avoid double-acting as hard stop)
-                    exit_path = "X2"
-            if exit_path is None and exit_X1[i]:
-                exit_path = "X1"
-            if exit_path is None and exit_X4[i]:
-                exit_path = "X4"
-            if exit_path is None and exit_X5[i]:
-                exit_path = "X5"
+            # Min hold gate — everything below requires min_hold_bars elapsed
+            if exit_path is None and bars_in_trade >= cfg.min_hold_bars:
+                # Trailing: X2
+                if cfg.exit_X2_trailing_pct > 0:
+                    trail_px = highest_close_in_trade * (1 - cfg.exit_X2_trailing_pct / 100)
+                    if px < trail_px and (px > avg_entry_price * 1.005 or pyramid_count > 0):
+                        exit_path = "X2"
+                if exit_path is None and exit_X1[i]:
+                    exit_path = "X1"
+                if exit_path is None and exit_X4[i]:
+                    exit_path = "X4"
+                if exit_path is None and exit_X5[i]:
+                    if cfg.exit_X5_min_hold_bars <= 0 or bars_in_trade >= cfg.exit_X5_min_hold_bars:
+                        exit_path = "X5"
             if exit_path is None and cfg.exit_X6_time_stop_bars > 0:
                 if (i - entry_bar) >= cfg.exit_X6_time_stop_bars:
                     gain = (px - avg_entry_price) / avg_entry_price * 100

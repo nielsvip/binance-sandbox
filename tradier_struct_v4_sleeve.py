@@ -1,8 +1,17 @@
 """tradier_struct_v4_sleeve.py — Standalone live-trading sleeve for struct_v4 (v3_no_stop).
 
 Built 2026-05-18. Independent of tradier_manage.py — runs as its own daemon,
-maintains its own state file (data/struct_v4_state.json), uses tradier_api
+maintains its own state file (data/struct_v4_state_<account>.json), uses tradier_api
 directly for reads + orders, and respects three halt flags.
+
+DUAL-ACCOUNT DEPLOYMENT (USER 2026-05-18):
+  --account trb  → LIVE-eligible (micro-sized); universe = symbols_trb_long ∪ symbols_trb_short
+  --account trc  → PAPER ONLY (never live);     universe = sectors_tradier.json union
+  A/B test: ranked (trb) vs unranked-all (trc) over 1–2 weeks.
+
+PAPER WINDOW (USER 2026-05-18):
+  Day 1, between 13:30–14:00 UTC, trb is FORCED to paper mode regardless of env.
+  After 14:00 UTC, trb honours STRUCT_V4_GO_LIVE. trc stays paper indefinitely.
 
 ═══════════════════════════════════════════════════════════════════════════════
 NO-LIES MANDATE ACKNOWLEDGEMENT (per CLAUDE.md)
@@ -16,18 +25,20 @@ Sample floor is met (≥100 stock syms — actually 91, below the 100-sym floor)
 but pool_sharpe is sub-floor. Per the NO MORE LIVE-SCRIPT IMPROVEMENTS UNTIL
 BACKTEST PROVEN mandate (2026-05-16), live use requires pool_sharpe > 1.0.
 
-This module DEFAULTS TO PAPER MODE. It will refuse to place real orders
-unless ALL of the following are true:
-    - env var STRUCT_V4_PAPER_MODE != "true"
-    - env var STRUCT_V4_GO_LIVE == "true" (explicit live opt-in)
+This module DEFAULTS TO PAPER MODE. It will refuse to place real orders unless:
+    - account == "trb" (trc never goes live)
+    - env STRUCT_V4_PAPER_MODE != "true"
+    - env STRUCT_V4_GO_LIVE == "true"
+    - current UTC time is NOT in the [13:30, 14:00) Day-1 paper window
     - file data/STRUCT_V4_HALT_ALL does NOT exist
     - file data/STRUCT_V4_HALT_ENTRIES does NOT exist (for entries only)
-
-The user explicitly authorised building this sleeve in PAPER mode for testing.
-Promotion to live trading remains a separate, explicit decision.
 ═══════════════════════════════════════════════════════════════════════════════
 
 STRATEGY SPEC (validated config: cfg_safer_v3_no_stop)
+    Entry gate (USER 2026-05-18): all entry candidates MUST pass
+        golden_rule_htf.score_entry_htf() ACTIVATION gate first. Activation =
+        breakout (bb_pctb≥0.75 OR dc_pos≥0.65) on at least one of [D,4h].
+        Without activation → no entry regardless of path.
     Entry paths (fire on FIRST armed, priority A→F):
         A: HTF structure breakout (D) + 1h retest + 15m HL alignment count ≥4
         B: K_15m<30 + K_1h<40 + WT bull cross 15m + reclaim pivot lo
@@ -79,26 +90,20 @@ from tradier_indicators import (  # noqa: E402
     atr_series,
     wavetrend,
 )
+from golden_rule_htf import score_entry_htf  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 
-ACCOUNT_KEY = "trb"  # CLAUDE.md mandate for tradier swing
 DATA_DIR = BASE_PATH / "data"
 DECISIONS_DIR = DATA_DIR / "decisions"
-STATE_FILE = DATA_DIR / "struct_v4_state.json"
-UNIVERSE_FILE = Path(os.getenv("STRUCT_V4_UNIVERSE_FILE",
-                                str(DATA_DIR / "struct_v4_universe.json")))
+NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 
-# Halt flag files
+# Halt flag files (shared across accounts — global kill-switches)
 HALT_ENTRIES_FLAG = DATA_DIR / "STRUCT_V4_HALT_ENTRIES"
 HALT_ALL_FLAG = DATA_DIR / "STRUCT_V4_HALT_ALL"
 PANIC_CLOSE_FLAG = DATA_DIR / "STRUCT_V4_PANIC_CLOSE_ALL"
-
-# Mode
-PAPER_MODE = os.getenv("STRUCT_V4_PAPER_MODE", "true").lower() == "true"
-GO_LIVE = os.getenv("STRUCT_V4_GO_LIVE", "false").lower() == "true"
 
 # Day-1 sizing
 POSITION_NOTIONAL_USD = float(os.getenv("STRUCT_V4_NOTIONAL", "500"))
@@ -109,6 +114,7 @@ MAX_TOTAL_DEPLOYED_USD = float(os.getenv("STRUCT_V4_MAX_DEPLOYED", "2500"))
 CYCLE_INTERVAL_SECONDS = int(os.getenv("STRUCT_V4_CYCLE_S", "300"))  # 5 min
 MARKET_OPEN_UTC = dt.time(13, 30)
 MARKET_CLOSE_UTC = dt.time(20, 0)
+PAPER_WINDOW_END_UTC = dt.time(14, 0)  # 30-min Day-1 paper window for trb
 
 # Strategy knobs (= cfg_safer_v3_no_stop)
 PATH_A_BREAKOUT_TF = "D"
@@ -147,6 +153,13 @@ KLINES_LOOKBACK_DAYS = 25       # 5m timesales (capped ~30d)
 DAILY_LOOKBACK_DAYS = 500       # daily history (≥200 bars for sma_200_D)
 WEEKLY_LOOKBACK_DAYS = 900      # weekly history
 
+# Golden rule HTF gate knobs (USER 2026-05-18 — used by score_entry_htf).
+# config_tradier.GOLDEN_RULE_REQUIRE_ACTIVATION=True forces the activation gate
+# in golden_rule_htf._check_activation() to require breakout on at least 1 of
+# [D, 4h] before any per-TF score is computed.
+GR_MIN_TFS = int(os.getenv("STRUCT_V4_GR_MIN_TFS", "2"))
+GR_MIN_IND = int(os.getenv("STRUCT_V4_GR_MIN_IND", "3"))
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING
 # ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +182,140 @@ if not logger.handlers:
                                            datefmt="%H:%M:%S"))
     logger.addHandler(stream)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RUNTIME ACCOUNT CONTEXT (set from CLI in main())
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AccountContext:
+    """Per-account runtime state. trb=live-eligible, trc=paper-forever."""
+
+    def __init__(self, account_key: str):
+        if account_key not in ("trb", "trc"):
+            raise ValueError(f"account must be 'trb' or 'trc', got {account_key!r}")
+        self.account_key = account_key
+        self.state_file = DATA_DIR / f"struct_v4_state_{account_key}.json"
+        self.universe_file = DATA_DIR / f"struct_v4_universe_{account_key}.json"
+        self.universe_label = ("trb_ranked_union" if account_key == "trb"
+                               else "trc_sectors_union")
+        self.refresh_paper_window()
+
+    def refresh_paper_window(self) -> None:
+        """Re-evaluate paper-mode state. Called at every cycle so trb can
+        flip from paper to live at 14:00 UTC without restart."""
+        env_paper = os.getenv("STRUCT_V4_PAPER_MODE", "true").lower() == "true"
+        env_go_live = os.getenv("STRUCT_V4_GO_LIVE", "false").lower() == "true"
+        if self.account_key == "trc":
+            # trc = unranked-all paper A/B leg. NEVER live.
+            self.paper_mode = True
+            self.go_live = False
+            self.paper_reason = "TRC_PAPER_FOREVER"
+            return
+        # trb — live-eligible. Day-1 paper window (13:30–14:00 UTC) forces paper.
+        now_utc = dt.datetime.now(dt.timezone.utc).time()
+        in_paper_window = MARKET_OPEN_UTC <= now_utc < PAPER_WINDOW_END_UTC
+        if in_paper_window:
+            self.paper_mode = True
+            self.go_live = False
+            self.paper_reason = "TRB_DAY1_PAPER_WINDOW_13_30_TO_14_00_UTC"
+        else:
+            self.paper_mode = env_paper
+            self.go_live = env_go_live
+            if env_paper:
+                self.paper_reason = "ENV_STRUCT_V4_PAPER_MODE=true"
+            elif not env_go_live:
+                self.paper_reason = "ENV_STRUCT_V4_GO_LIVE!=true"
+            else:
+                self.paper_reason = "LIVE_ENABLED"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UNIVERSE FILE GENERATION (USER 2026-05-18)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _available_npz_symbols() -> set:
+    """Return set of symbols (.npz stem upper-cased) on this machine.
+    Crypto perps (USDT/USDC) are filtered out so stock universes never
+    accidentally include them."""
+    if not NPZ_DIR.exists():
+        return set()
+    syms = set()
+    for p in NPZ_DIR.glob("*.npz"):
+        stem = p.stem
+        if "USDT" in stem or "USDC" in stem:
+            continue
+        syms.add(stem.upper())
+    return syms
+
+
+def generate_universe_files(force: bool = False) -> Dict[str, int]:
+    """Generate data/struct_v4_universe_{trb,trc}.json from source lists.
+    Idempotent unless force=True. Filters to symbols with NPZ on the running
+    machine. Returns counts by account."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    trb_file = DATA_DIR / "struct_v4_universe_trb.json"
+    trc_file = DATA_DIR / "struct_v4_universe_trc.json"
+    available = _available_npz_symbols()
+    out_counts: Dict[str, int] = {}
+
+    # trb: symbols_trb_long ∪ symbols_trb_short, NPZ-filtered
+    if force or not trb_file.exists():
+        try:
+            with (BASE_PATH / "symbols_trb_long.json").open() as f:
+                long_list = json.load(f)
+            with (BASE_PATH / "symbols_trb_short.json").open() as f:
+                short_list = json.load(f)
+        except Exception as e:
+            logger.error(f"trb universe source missing: {e}")
+            long_list, short_list = [], []
+        raw_union = sorted({s.upper() for s in (list(long_list) + list(short_list)) if s})
+        if available:
+            filtered = [s for s in raw_union if s in available]
+        else:
+            # No NPZ dir on this machine — skip filter so we don't ship an empty universe
+            filtered = raw_union
+        trb_file.write_text(json.dumps(filtered, indent=2))
+        out_counts["trb"] = len(filtered)
+        logger.info(f"Generated {trb_file.name}: {len(filtered)} syms "
+                    f"(from {len(raw_union)} raw union, "
+                    f"{len(available)} NPZ available)")
+    else:
+        try:
+            out_counts["trb"] = len(json.loads(trb_file.read_text()))
+        except Exception:
+            out_counts["trb"] = -1
+
+    # trc: union of all sectors in sectors_tradier.json, NPZ-filtered
+    if force or not trc_file.exists():
+        try:
+            with (BASE_PATH / "sectors_tradier.json").open() as f:
+                sectors = json.load(f)
+        except Exception as e:
+            logger.error(f"sectors_tradier.json missing: {e}")
+            sectors = {}
+        raw_union = sorted({
+            s.upper() for k, v in sectors.items()
+            if not k.startswith("_") and isinstance(v, list)
+            for s in v if s
+        })
+        if available:
+            filtered = [s for s in raw_union if s in available]
+        else:
+            filtered = raw_union
+        trc_file.write_text(json.dumps(filtered, indent=2))
+        out_counts["trc"] = len(filtered)
+        logger.info(f"Generated {trc_file.name}: {len(filtered)} syms "
+                    f"(from {len(raw_union)} raw sectors union, "
+                    f"{len(available)} NPZ available)")
+    else:
+        try:
+            out_counts["trc"] = len(json.loads(trc_file.read_text()))
+        except Exception:
+            out_counts["trc"] = -1
+
+    return out_counts
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HALT FLAG HANDLING (always FIRST in every cycle)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -182,34 +329,38 @@ def check_halt_flags() -> Dict[str, bool]:
     }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STATE PERSISTENCE
+# STATE PERSISTENCE (per-account)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_state() -> Dict[str, Any]:
-    if STATE_FILE.exists():
+def load_state(ctx: AccountContext) -> Dict[str, Any]:
+    if ctx.state_file.exists():
         try:
-            return json.loads(STATE_FILE.read_text())
+            return json.loads(ctx.state_file.read_text())
         except Exception as e:
-            logger.error(f"Failed to load state: {e}; starting empty")
-    return {"positions": {}, "last_cycle_utc": None, "version": 1}
+            logger.error(f"[{ctx.account_key}] Failed to load state: {e}; starting empty")
+    return {"positions": {}, "last_cycle_utc": None, "version": 1,
+            "account": ctx.account_key}
 
-def save_state(state: Dict[str, Any]) -> None:
-    tmp = STATE_FILE.with_suffix(".tmp")
+def save_state(ctx: AccountContext, state: Dict[str, Any]) -> None:
+    tmp = ctx.state_file.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2, default=str))
-    tmp.replace(STATE_FILE)
+    tmp.replace(ctx.state_file)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DECISION LOG
+# DECISION LOG (per-account, tagged with universe label)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def log_decision(record: Dict[str, Any]) -> None:
+def log_decision(ctx: AccountContext, record: Dict[str, Any]) -> None:
     DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
     date_str = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d")
-    path = DECISIONS_DIR / f"struct_v4_{date_str}.jsonl"
+    path = DECISIONS_DIR / f"struct_v4_{ctx.account_key}_{date_str}.jsonl"
     record = {**record}
     record.setdefault("ts", dt.datetime.now(dt.timezone.utc).isoformat())
-    record.setdefault("paper_mode", PAPER_MODE)
-    record.setdefault("go_live", GO_LIVE)
+    record.setdefault("account", ctx.account_key)
+    record.setdefault("universe", ctx.universe_label)
+    record.setdefault("paper_mode", ctx.paper_mode)
+    record.setdefault("go_live", ctx.go_live)
+    record.setdefault("paper_reason", ctx.paper_reason)
     with path.open("a") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
@@ -217,18 +368,21 @@ def log_decision(record: Dict[str, Any]) -> None:
 # UNIVERSE
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_universe() -> List[str]:
-    if not UNIVERSE_FILE.exists():
-        raise FileNotFoundError(f"Universe file missing: {UNIVERSE_FILE}")
-    raw = json.loads(UNIVERSE_FILE.read_text())
+def load_universe(ctx: AccountContext) -> List[str]:
+    if not ctx.universe_file.exists():
+        logger.info(f"[{ctx.account_key}] Universe file missing — auto-generating")
+        generate_universe_files(force=False)
+    if not ctx.universe_file.exists():
+        raise FileNotFoundError(f"Universe file missing after gen: {ctx.universe_file}")
+    raw = json.loads(ctx.universe_file.read_text())
     if isinstance(raw, list):
-        return raw
+        return [s.upper() for s in raw if s]
     if isinstance(raw, dict) and "symbols" in raw:
-        return list(raw["symbols"])
-    raise ValueError(f"Universe file shape unknown: {UNIVERSE_FILE}")
+        return [s.upper() for s in raw["symbols"] if s]
+    raise ValueError(f"Universe file shape unknown: {ctx.universe_file}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# KLINES — fetch via Tradier timesales + resample
+# KLINES — fetch via Tradier timesales (intraday) + history (daily/weekly)
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def fetch_5m_klines(api: TradierAPIClient, symbol: str,
@@ -236,7 +390,7 @@ async def fetch_5m_klines(api: TradierAPIClient, symbol: str,
     """Fetch 5min bars via Tradier timesales API. Returns df with index=ts UTC,
     cols=open,high,low,close,volume. Returns None on failure.
 
-    NOTE: Tradier timesales caps 5min/15min at ~30 days back. Use fetch_daily_klines
+    NOTE: Tradier timesales caps 5min/15min at ~30 days back. Use fetch_history_klines
     for long-window data.
     """
     now = dt.datetime.now(dt.timezone.utc)
@@ -357,6 +511,34 @@ def _donchian_low(low: pd.Series, length: int) -> Optional[float]:
         return None
     return float(low.rolling(length).min().iloc[-1])
 
+def _donchian_position(high: pd.Series, low: pd.Series, close: pd.Series,
+                       length: int) -> Optional[float]:
+    """Returns dc_position = (close - dc_low) / (dc_high - dc_low), 0..1."""
+    if len(close) < length:
+        return None
+    dh = float(high.rolling(length).max().iloc[-1])
+    dl = float(low.rolling(length).min().iloc[-1])
+    px = float(close.iloc[-1])
+    if dh > dl > 0:
+        return max(0.0, min(1.0, (px - dl) / (dh - dl)))
+    return None
+
+def _bb_pctb(close: pd.Series, length: int = 20, std_mult: float = 2.0
+             ) -> Optional[float]:
+    """Returns BB %B = (close - lower) / (upper - lower)."""
+    if len(close) < length:
+        return None
+    sma = close.rolling(length).mean().iloc[-1]
+    sd = close.rolling(length).std().iloc[-1]
+    if pd.isna(sma) or pd.isna(sd) or sd <= 0:
+        return None
+    upper = sma + std_mult * sd
+    lower = sma - std_mult * sd
+    px = float(close.iloc[-1])
+    if upper > lower:
+        return float((px - lower) / (upper - lower))
+    return None
+
 def compute_indicators(df_5m: pd.DataFrame,
                         df_D: Optional[pd.DataFrame] = None,
                         df_W: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
@@ -367,6 +549,9 @@ def compute_indicators(df_5m: pd.DataFrame,
     df_D, df_W: optional pre-fetched daily/weekly history. If None, falls back
                 to resampling df_5m (which only spans ~30d → insufficient for
                 sma_200_D and most HTF signals — D/W will be None in that case).
+
+    USER 2026-05-18: also emits bb_pct_b_<TF> and dc_position_<TF> for D/4h/1h/15m/5m
+    so golden_rule_htf.score_entry_htf() can read activation fields.
     """
     out: Dict[str, Any] = {}
     # Resample intraday from 5m base
@@ -458,22 +643,32 @@ def compute_indicators(df_5m: pd.DataFrame,
     atr15 = atr_series(df_15m, 14)
     if atr15 is not None and len(atr15.dropna()) >= 1:
         out["atr_15m"] = float(atr15.iloc[-1])
+
+    # === USER 2026-05-18 — activation fields for golden_rule_htf gate ===
+    # The activation gate reads bb_pct_b_<TF> + dc_position_<TF> for D and 4h
+    # (the GOLDEN_RULE_ACTIVATION_TF_LIST). Without these the gate fail-closes.
+    for tf_name, df_tf in (("5m", df_5m), ("15m", df_15m), ("1h", df_1h),
+                           ("4h", df_4h), ("D", df_D), ("W", df_W)):
+        if df_tf is None or len(df_tf) < 20:
+            continue
+        bb_val = _bb_pctb(df_tf["close"], length=20, std_mult=2.0)
+        dc_val = _donchian_position(df_tf["high"], df_tf["low"], df_tf["close"], 20)
+        if bb_val is not None:
+            out[f"bb_pct_b_{tf_name}"] = bb_val
+        if dc_val is not None:
+            out[f"dc_position_{tf_name}"] = dc_val
+
     # Path A (full structure detection) and X5 (LH/LL count) are heavy and use
     # vec_paths.structure_hh_hl. For the sleeve we approximate conservatively:
     # leave path_A_armed=False and exit_X5_armed=False unless we can compute.
-    # Try to compute structure via vec_paths if available.
     out["path_A_armed"] = False
     out["exit_X5_armed"] = False
     out["lh_ll_count_3bar_15m"] = 0
     try:
         sys.path.insert(0, str(BASE_PATH))
-        # Build minimal npz-like dict that compute_all_structure can read
-        # via the same field names the strategy uses
         npz_like: Dict[str, np.ndarray] = {}
         n_5m = len(df_5m)
         if n_5m >= 100:
-            # base index is 5m; we need close, high, low arrays for "price" series
-            # plus the TF-mapped resampled series
             close_5m = df_5m["close"].to_numpy(dtype=np.float64)
             high_5m = df_5m["high"].to_numpy(dtype=np.float64)
             low_5m = df_5m["low"].to_numpy(dtype=np.float64)
@@ -487,7 +682,6 @@ def compute_indicators(df_5m: pd.DataFrame,
                 for k in range(max(0, len(c15) - EXIT_X5_WINDOW_BARS), len(c15)):
                     if k < 2 or k >= len(c15) - 1:
                         continue
-                    # Lower-high pivot on close
                     if c15[k] < c15[k - 1] and c15[k - 1] > c15[k - 2]:
                         lh_ll += 1
                     if c15[k] < c15[k - 1] and c15[k - 1] < c15[k - 2]:
@@ -502,12 +696,46 @@ def compute_indicators(df_5m: pd.DataFrame,
 # DECISION LOGIC
 # ─────────────────────────────────────────────────────────────────────────────
 
-def evaluate_entry(ind: Dict[str, Any]) -> Tuple[Optional[str], List[str]]:
-    """Return (entry_path | None, reasons[]). Mirrors v8_struct_v4_aggressive."""
+def evaluate_entry(ind: Dict[str, Any]
+                   ) -> Tuple[Optional[str], List[str], Dict[str, Any]]:
+    """Return (entry_path | None, reasons[], gate_info).
+
+    USER 2026-05-18 PATCH: All entry candidates now MUST pass
+    golden_rule_htf.score_entry_htf() ACTIVATION gate before any path fires.
+    The activation gate (config_tradier.GOLDEN_RULE_REQUIRE_ACTIVATION=True)
+    requires at least one of [D, 4h] to show breakout
+    (bb_pctb≥0.75 OR dc_pos≥0.65). Without activation, the function
+    returns (False, 0, NO_ACTIVATION[...]) regardless of entry-TF score.
+    """
     reasons: List[str] = []
+    gate_info: Dict[str, Any] = {}
     if ind.get("current_price") is None:
-        return None, ["NO_PRICE"]
-    # HTF filter (applied to B/C/D/G)
+        return None, ["NO_PRICE"], gate_info
+
+    # === ACTIVATION GATE (mandatory) ===
+    try:
+        gr_passes, gr_n_tfs, gr_detail = score_entry_htf(
+            indicators=ind,
+            is_long=True,
+            mode="tradier",
+            min_tfs=GR_MIN_TFS,
+            min_ind=GR_MIN_IND,
+            current_price=float(ind.get("current_price") or 0),
+            invert_dc_bb=True,  # GR breakout semantics: extended = bullish
+        )
+    except Exception as e:
+        logger.warning(f"GR gate exception (fail-closed): {e}")
+        return None, [f"GR_GATE_EXCEPTION:{e}"], {"gr_passes": False, "gr_error": str(e)}
+
+    gate_info = {"gr_passes": gr_passes, "gr_n_tfs": gr_n_tfs,
+                 "gr_detail": gr_detail, "gr_min_tfs": GR_MIN_TFS,
+                 "gr_min_ind": GR_MIN_IND, "gr_invert_dc_bb": True}
+
+    if not gr_passes:
+        reasons.append(f"GR_GATE_BLOCKED:{gr_detail}")
+        return None, reasons, gate_info
+
+    # HTF filter (legacy v3_no_stop)
     htf_bull = True
     if HTF_TREND_FILTER_ENABLED:
         wt1_D = ind.get("wt1_D")
@@ -519,33 +747,34 @@ def evaluate_entry(ind: Dict[str, Any]) -> Tuple[Optional[str], List[str]]:
             htf_bull = htf_bull and (rsi_D is not None and rsi_D >= HTF_REQUIRE_RSI_D_MIN)
     # Path A: structure breakout — sleeve runs conservative; only fire if armed
     if ind.get("path_A_armed"):
-        return "A", ["path_A_struct_armed"]
+        return "A", ["path_A_struct_armed", f"GR_OK:{gr_detail}"], gate_info
     # Path B: oversold reversal
     if (ind.get("k_15m") is not None and ind["k_15m"] < PATH_B_K15_MAX
             and ind.get("k_1h") is not None and ind["k_1h"] < PATH_B_K1H_MAX
             and ind.get("bull_wt_15m") and htf_bull):
         return "B", [f"k15={ind['k_15m']:.1f}<{PATH_B_K15_MAX}",
                      f"k1h={ind['k_1h']:.1f}<{PATH_B_K1H_MAX}",
-                     "bull_wt_15m", "htf_bull"]
+                     "bull_wt_15m", "htf_bull", f"GR_OK:{gr_detail}"], gate_info
     # Path C: K_1h bull cross from oversold
     if (ind.get("bull_k_1h") and ind.get("k_1h") is not None
             and ind["k_1h"] < PATH_C_K1H_CROSS_BELOW and htf_bull):
         return "C", [f"bull_k_1h", f"k1h={ind['k_1h']:.1f}<{PATH_C_K1H_CROSS_BELOW}",
-                     "htf_bull"]
+                     "htf_bull", f"GR_OK:{gr_detail}"], gate_info
     # Path D: wt_D bull cross + rsi_D > 40
     if (ind.get("bull_wt_D") and ind.get("rsi_D") is not None
             and ind["rsi_D"] > PATH_D_RSI_D_MIN and htf_bull):
         return "D", ["bull_wt_D", f"rsi_D={ind['rsi_D']:.1f}>{PATH_D_RSI_D_MIN}",
-                     "htf_bull"]
+                     "htf_bull", f"GR_OK:{gr_detail}"], gate_info
     # Path E: sma_200 reclaim
     if (ind.get("bull_sma200_D") and ind.get("rsi_D") is not None
             and ind["rsi_D"] > PATH_E_RSI_D_MIN):
-        return "E", ["bull_sma200_D", f"rsi_D={ind['rsi_D']:.1f}>{PATH_E_RSI_D_MIN}"]
+        return "E", ["bull_sma200_D", f"rsi_D={ind['rsi_D']:.1f}>{PATH_E_RSI_D_MIN}",
+                     f"GR_OK:{gr_detail}"], gate_info
     # Path F: weekly bullish flip
     if ind.get("bull_wt_W"):
-        return "F", ["bull_wt_W"]
-    reasons.append("NO_ENTRY_SETUP")
-    return None, reasons
+        return "F", ["bull_wt_W", f"GR_OK:{gr_detail}"], gate_info
+    reasons.append("NO_ENTRY_SETUP_DESPITE_GR_OK")
+    return None, reasons, gate_info
 
 def evaluate_exit(ind: Dict[str, Any], position: Dict[str, Any]
                   ) -> Tuple[Optional[str], List[str]]:
@@ -564,7 +793,6 @@ def evaluate_exit(ind: Dict[str, Any], position: Dict[str, Any]
         try:
             opened_dt = pd.to_datetime(opened_at, utc=True)
             now = pd.Timestamp.now(tz="UTC")
-            # business-day delta (calendar-day OK for sleeve simplicity)
             held_days = (now - opened_dt).total_seconds() / 86400.0
             if held_days < MIN_HOLD_DAYS:
                 # Min-hold gates ALL exits except X7 absolute floor + panic
@@ -607,62 +835,69 @@ def evaluate_exit(ind: Dict[str, Any], position: Dict[str, Any]
 # ORDER PLACEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def place_buy_order(api: TradierAPIClient, symbol: str, qty: int,
-                           price: float) -> Dict[str, Any]:
+async def place_buy_order(api: TradierAPIClient, ctx: AccountContext,
+                          symbol: str, qty: int, price: float) -> Dict[str, Any]:
     """Limit buy at mid price. Returns API response or paper-mode stub."""
     log_entry = {
         "intent": "BUY", "symbol": symbol, "qty": qty,
-        "limit_price": price, "paper_mode": PAPER_MODE, "go_live": GO_LIVE,
+        "limit_price": price, "paper_mode": ctx.paper_mode,
+        "go_live": ctx.go_live, "account": ctx.account_key,
+        "paper_reason": ctx.paper_reason,
     }
-    if PAPER_MODE or not GO_LIVE:
+    if ctx.paper_mode or not ctx.go_live:
         log_entry["result"] = "PAPER_NOOP"
-        logger.info(f"[PAPER] BUY {symbol} qty={qty} @{price:.2f}")
+        logger.info(f"[{ctx.account_key}][PAPER] BUY {symbol} qty={qty} @{price:.2f} "
+                    f"reason={ctx.paper_reason}")
         return log_entry
     try:
-        res = await api.place_order(ACCOUNT_KEY, symbol, side="buy",
+        res = await api.place_order(ctx.account_key, symbol, side="buy",
                                      quantity=qty, order_type="limit",
                                      price=price, duration="day")
         log_entry["result"] = res
-        logger.info(f"[LIVE] BUY {symbol} qty={qty} @{price:.2f} resp={res}")
+        logger.info(f"[{ctx.account_key}][LIVE] BUY {symbol} qty={qty} @{price:.2f} resp={res}")
         return log_entry
     except Exception as e:
         log_entry["result"] = {"error": str(e)}
-        logger.error(f"[LIVE] BUY {symbol} EXCEPTION {e}")
+        logger.error(f"[{ctx.account_key}][LIVE] BUY {symbol} EXCEPTION {e}")
         return log_entry
 
-async def place_sell_order(api: TradierAPIClient, symbol: str, qty: int,
-                            market: bool = True) -> Dict[str, Any]:
+async def place_sell_order(api: TradierAPIClient, ctx: AccountContext,
+                           symbol: str, qty: int, market: bool = True
+                           ) -> Dict[str, Any]:
     log_entry = {
         "intent": "SELL", "symbol": symbol, "qty": qty,
         "order_type": "market" if market else "limit",
-        "paper_mode": PAPER_MODE, "go_live": GO_LIVE,
+        "paper_mode": ctx.paper_mode, "go_live": ctx.go_live,
+        "account": ctx.account_key, "paper_reason": ctx.paper_reason,
     }
-    if PAPER_MODE or not GO_LIVE:
+    if ctx.paper_mode or not ctx.go_live:
         log_entry["result"] = "PAPER_NOOP"
-        logger.info(f"[PAPER] SELL {symbol} qty={qty}")
+        logger.info(f"[{ctx.account_key}][PAPER] SELL {symbol} qty={qty} "
+                    f"reason={ctx.paper_reason}")
         return log_entry
     try:
-        res = await api.place_order(ACCOUNT_KEY, symbol, side="sell",
+        res = await api.place_order(ctx.account_key, symbol, side="sell",
                                      quantity=qty, order_type="market",
                                      duration="day")
         log_entry["result"] = res
-        logger.info(f"[LIVE] SELL {symbol} qty={qty} resp={res}")
+        logger.info(f"[{ctx.account_key}][LIVE] SELL {symbol} qty={qty} resp={res}")
         return log_entry
     except Exception as e:
         log_entry["result"] = {"error": str(e)}
-        logger.error(f"[LIVE] SELL {symbol} EXCEPTION {e}")
+        logger.error(f"[{ctx.account_key}][LIVE] SELL {symbol} EXCEPTION {e}")
         return log_entry
 
 # ─────────────────────────────────────────────────────────────────────────────
 # POSITION RECONCILIATION
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def fetch_live_positions(api: TradierAPIClient) -> Dict[str, Dict[str, Any]]:
+async def fetch_live_positions(api: TradierAPIClient, ctx: AccountContext
+                               ) -> Dict[str, Dict[str, Any]]:
     """Returns dict of {symbol: {qty, cost_basis, side}}. Empty {} only on
     confirmed-empty; None response = API failure, returns {}."""
-    raw = await api.get_account_positions(ACCOUNT_KEY)
+    raw = await api.get_account_positions(ctx.account_key)
     if raw is None:
-        logger.warning("Position fetch returned None (API failure)")
+        logger.warning(f"[{ctx.account_key}] Position fetch returned None (API failure)")
         return {}
     out: Dict[str, Dict[str, Any]] = {}
     for p in raw:
@@ -683,37 +918,39 @@ def is_market_hours() -> bool:
     now = dt.datetime.now(dt.timezone.utc).time()
     return MARKET_OPEN_UTC <= now <= MARKET_CLOSE_UTC
 
-async def run_one_cycle(api: TradierAPIClient, state: Dict[str, Any],
-                         universe: List[str], *, single_sym: Optional[str] = None
-                         ) -> Dict[str, Any]:
+async def run_one_cycle(api: TradierAPIClient, ctx: AccountContext,
+                        state: Dict[str, Any], universe: List[str], *,
+                        single_sym: Optional[str] = None) -> Dict[str, Any]:
     """Single pass over universe. Returns summary."""
+    ctx.refresh_paper_window()
     cycle_ts = dt.datetime.now(dt.timezone.utc).isoformat()
     # 1. HALT FLAGS — ALWAYS FIRST
     halt = check_halt_flags()
-    logger.info(f"Cycle start {cycle_ts} | halts={halt} | paper={PAPER_MODE} go_live={GO_LIVE}")
-    log_decision({"ts": cycle_ts, "event": "CYCLE_START",
-                  "halts": halt,
-                  "paper_mode": PAPER_MODE, "go_live": GO_LIVE,
-                  "universe_size": len(universe)})
+    logger.info(f"[{ctx.account_key}] Cycle start {cycle_ts} | halts={halt} | "
+                f"paper={ctx.paper_mode} go_live={ctx.go_live} "
+                f"reason={ctx.paper_reason}")
+    log_decision(ctx, {"ts": cycle_ts, "event": "CYCLE_START",
+                       "halts": halt,
+                       "universe_size": len(universe)})
     # 2. Panic close — close all sleeve positions at market
     if halt["panic_close"]:
-        logger.warning("PANIC_CLOSE_ALL flag detected — closing all sleeve positions")
-        live_pos = await fetch_live_positions(api)
+        logger.warning(f"[{ctx.account_key}] PANIC_CLOSE_ALL flag detected — closing all sleeve positions")
+        live_pos = await fetch_live_positions(api, ctx)
         for sym, p in list(state.get("positions", {}).items()):
             broker_qty = live_pos.get(sym, {}).get("qty", 0)
             if broker_qty > 0:
-                res = await place_sell_order(api, sym, int(broker_qty), market=True)
-                log_decision({"event": "PANIC_CLOSE", "symbol": sym,
-                              "qty": broker_qty, "order": res})
+                res = await place_sell_order(api, ctx, sym, int(broker_qty), market=True)
+                log_decision(ctx, {"event": "PANIC_CLOSE", "symbol": sym,
+                                   "qty": broker_qty, "order": res})
             state["positions"].pop(sym, None)
-        save_state(state)
+        save_state(ctx, state)
         return {"event": "PANIC_CLOSE_DONE"}
     # 3. Pull live positions for reconciliation
-    live_pos = await fetch_live_positions(api)
+    live_pos = await fetch_live_positions(api, ctx)
     sleeve_positions = state.get("positions", {})
     # 4. Per-symbol pass
     summary = {"checked": 0, "entries_fired": 0, "exits_fired": 0,
-               "skipped": 0, "errors": 0}
+               "skipped": 0, "errors": 0, "gr_blocked": 0}
     syms = [single_sym] if single_sym else universe
     for sym in syms:
         try:
@@ -721,8 +958,8 @@ async def run_one_cycle(api: TradierAPIClient, state: Dict[str, Any],
             df_5m = await fetch_5m_klines(api, sym, lookback_days=KLINES_LOOKBACK_DAYS)
             if df_5m is None or len(df_5m) < 100:
                 summary["skipped"] += 1
-                log_decision({"event": "SKIP_NO_DATA", "symbol": sym,
-                              "bars_5m": 0 if df_5m is None else len(df_5m)})
+                log_decision(ctx, {"event": "SKIP_NO_DATA", "symbol": sym,
+                                   "bars_5m": 0 if df_5m is None else len(df_5m)})
                 continue
             df_D = await fetch_history_klines(api, sym, interval="daily",
                                                lookback_days=DAILY_LOOKBACK_DAYS)
@@ -737,82 +974,89 @@ async def run_one_cycle(api: TradierAPIClient, state: Dict[str, Any],
                               "FLAT")
             if position_state == "BROKER_ONLY":
                 # Not our position — IGNORE (other strategies may hold)
-                log_decision({"event": "SKIP_BROKER_ONLY", "symbol": sym,
-                              "broker_qty": live_pos[sym]["qty"]})
+                log_decision(ctx, {"event": "SKIP_BROKER_ONLY", "symbol": sym,
+                                   "broker_qty": live_pos[sym]["qty"]})
                 continue
             if position_state == "SLEEVE_ONLY":
-                # State drift: sleeve thinks it has position, broker says no
-                log_decision({"event": "STATE_DRIFT_SLEEVE_ONLY", "symbol": sym,
-                              "sleeve": sleeve_positions[sym]})
-                sleeve_positions.pop(sym, None)
-                continue
+                # PAPER mode: broker never fills our orders, so a sleeve position
+                # without broker presence is the expected state. Treat as LONG
+                # so exits can still evaluate. LIVE mode: real state drift → drop.
+                if ctx.paper_mode:
+                    position_state = "LONG"
+                else:
+                    log_decision(ctx, {"event": "STATE_DRIFT_SLEEVE_ONLY", "symbol": sym,
+                                       "sleeve": sleeve_positions[sym]})
+                    sleeve_positions.pop(sym, None)
+                    continue
             # ── LONG: try exit ─────────────────────────────────────────
             if position_state == "LONG":
                 pos = sleeve_positions[sym]
-                # Update peak price
                 px = ind["current_price"]
                 if px and px > float(pos.get("peak_price", 0) or 0):
                     pos["peak_price"] = px
                 if halt["halt_all"]:
-                    log_decision({"event": "HALT_ALL_BLOCK_EXIT", "symbol": sym,
-                                  "position": pos})
+                    log_decision(ctx, {"event": "HALT_ALL_BLOCK_EXIT", "symbol": sym,
+                                       "position": pos})
                     continue
                 exit_path, exit_reasons = evaluate_exit(ind, pos)
                 snapshot = _ind_snapshot(ind)
                 if exit_path:
-                    qty = int(live_pos[sym]["qty"])
-                    order_res = await place_sell_order(api, sym, qty, market=True)
-                    log_decision({"event": "EXIT", "symbol": sym,
-                                  "position_state": position_state,
-                                  "exit_path": exit_path,
-                                  "reasons": exit_reasons,
-                                  "qty": qty,
-                                  "entry_price": pos.get("entry_price"),
-                                  "exit_price": px,
-                                  "peak_price": pos.get("peak_price"),
-                                  "indicators_snapshot": snapshot,
-                                  "order": order_res})
+                    qty = (int(live_pos[sym]["qty"]) if sym in live_pos
+                           else int(pos.get("qty", 0) or 0))
+                    order_res = await place_sell_order(api, ctx, sym, qty, market=True)
+                    log_decision(ctx, {"event": "EXIT", "symbol": sym,
+                                       "position_state": position_state,
+                                       "exit_path": exit_path,
+                                       "reasons": exit_reasons,
+                                       "qty": qty,
+                                       "entry_price": pos.get("entry_price"),
+                                       "exit_price": px,
+                                       "peak_price": pos.get("peak_price"),
+                                       "indicators_snapshot": snapshot,
+                                       "order": order_res})
                     sleeve_positions.pop(sym, None)
                     summary["exits_fired"] += 1
                 else:
-                    log_decision({"event": "HOLD", "symbol": sym,
-                                  "position_state": position_state,
-                                  "reasons": exit_reasons,
-                                  "entry_price": pos.get("entry_price"),
-                                  "current_price": px,
-                                  "peak_price": pos.get("peak_price"),
-                                  "indicators_snapshot": snapshot})
+                    log_decision(ctx, {"event": "HOLD", "symbol": sym,
+                                       "position_state": position_state,
+                                       "reasons": exit_reasons,
+                                       "entry_price": pos.get("entry_price"),
+                                       "current_price": px,
+                                       "peak_price": pos.get("peak_price"),
+                                       "indicators_snapshot": snapshot})
                 continue
             # ── FLAT: try entry ────────────────────────────────────────
             if position_state == "FLAT":
                 if halt["halt_entries"] or halt["halt_all"]:
-                    log_decision({"event": "HALT_BLOCK_ENTRY", "symbol": sym,
-                                  "halt": halt})
+                    log_decision(ctx, {"event": "HALT_BLOCK_ENTRY", "symbol": sym,
+                                       "halt": halt})
                     continue
                 # Capacity check
                 n_sleeve = len(sleeve_positions)
                 deployed = sum(float(p.get("cost_basis", 0) or 0)
                                 for p in sleeve_positions.values())
                 if n_sleeve >= MAX_CONCURRENT_POSITIONS:
-                    log_decision({"event": "BLOCK_MAX_POSITIONS", "symbol": sym,
-                                  "n_sleeve": n_sleeve,
-                                  "max": MAX_CONCURRENT_POSITIONS})
+                    log_decision(ctx, {"event": "BLOCK_MAX_POSITIONS", "symbol": sym,
+                                       "n_sleeve": n_sleeve,
+                                       "max": MAX_CONCURRENT_POSITIONS})
                     continue
                 if deployed + POSITION_NOTIONAL_USD > MAX_TOTAL_DEPLOYED_USD:
-                    log_decision({"event": "BLOCK_MAX_DEPLOYED", "symbol": sym,
-                                  "deployed_usd": deployed,
-                                  "notional": POSITION_NOTIONAL_USD,
-                                  "max": MAX_TOTAL_DEPLOYED_USD})
+                    log_decision(ctx, {"event": "BLOCK_MAX_DEPLOYED", "symbol": sym,
+                                       "deployed_usd": deployed,
+                                       "notional": POSITION_NOTIONAL_USD,
+                                       "max": MAX_TOTAL_DEPLOYED_USD})
                     continue
-                entry_path, entry_reasons = evaluate_entry(ind)
+                entry_path, entry_reasons, gate_info = evaluate_entry(ind)
                 snapshot = _ind_snapshot(ind)
+                if not gate_info.get("gr_passes", False):
+                    summary["gr_blocked"] += 1
                 if entry_path:
                     px = ind["current_price"]
                     if not px or px <= 0:
                         continue
                     qty = max(1, int(POSITION_NOTIONAL_USD / px))
                     cost = qty * px
-                    order_res = await place_buy_order(api, sym, qty, price=px)
+                    order_res = await place_buy_order(api, ctx, sym, qty, price=px)
                     sleeve_positions[sym] = {
                         "symbol": sym, "side": "LONG", "qty": qty,
                         "entry_price": px, "cost_basis": cost,
@@ -821,31 +1065,35 @@ async def run_one_cycle(api: TradierAPIClient, state: Dict[str, Any],
                         "entry_reasons": entry_reasons,
                         "opened_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                         "entry_bar_dc_low_1h_20": ind.get("dc_low_1h_20"),
-                        "paper_mode": PAPER_MODE,
+                        "paper_mode": ctx.paper_mode,
+                        "account": ctx.account_key,
+                        "universe": ctx.universe_label,
                     }
-                    log_decision({"event": "ENTRY", "symbol": sym,
-                                  "position_state": "FLAT",
-                                  "entry_path": entry_path,
-                                  "reasons": entry_reasons,
-                                  "qty": qty, "limit_price": px,
-                                  "cost_basis": cost,
-                                  "indicators_snapshot": snapshot,
-                                  "order": order_res})
+                    log_decision(ctx, {"event": "ENTRY", "symbol": sym,
+                                       "position_state": "FLAT",
+                                       "entry_path": entry_path,
+                                       "reasons": entry_reasons,
+                                       "gate_info": gate_info,
+                                       "qty": qty, "limit_price": px,
+                                       "cost_basis": cost,
+                                       "indicators_snapshot": snapshot,
+                                       "order": order_res})
                     summary["entries_fired"] += 1
                 else:
-                    log_decision({"event": "NO_ENTRY", "symbol": sym,
-                                  "position_state": "FLAT",
-                                  "reasons": entry_reasons,
-                                  "indicators_snapshot": snapshot})
+                    log_decision(ctx, {"event": "NO_ENTRY", "symbol": sym,
+                                       "position_state": "FLAT",
+                                       "reasons": entry_reasons,
+                                       "gate_info": gate_info,
+                                       "indicators_snapshot": snapshot})
         except Exception as e:
             summary["errors"] += 1
-            logger.exception(f"{sym}: cycle error: {e}")
-            log_decision({"event": "ERROR", "symbol": sym, "error": str(e)})
+            logger.exception(f"[{ctx.account_key}] {sym}: cycle error: {e}")
+            log_decision(ctx, {"event": "ERROR", "symbol": sym, "error": str(e)})
     state["positions"] = sleeve_positions
     state["last_cycle_utc"] = cycle_ts
-    save_state(state)
-    log_decision({"event": "CYCLE_END", "summary": summary})
-    logger.info(f"Cycle done: {summary}")
+    save_state(ctx, state)
+    log_decision(ctx, {"event": "CYCLE_END", "summary": summary})
+    logger.info(f"[{ctx.account_key}] Cycle done: {summary}")
     return summary
 
 def _ind_snapshot(ind: Dict[str, Any]) -> Dict[str, Any]:
@@ -857,6 +1105,8 @@ def _ind_snapshot(ind: Dict[str, Any]) -> Dict[str, Any]:
             "bull_k_1h", "bull_sma200_D", "bull_wt_W",
             "dc_low_1h_20", "atr_15m", "exit_X5_armed",
             "lh_ll_count_3bar_15m",
+            "bb_pct_b_D", "bb_pct_b_4h", "bb_pct_b_1h",
+            "dc_position_D", "dc_position_4h", "dc_position_1h",
             "last_bar_ts"]
     out = {}
     for k in keys:
@@ -873,38 +1123,39 @@ def _ind_snapshot(ind: Dict[str, Any]) -> Dict[str, Any]:
 # DAEMON
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def daemon_loop():
-    universe = load_universe()
-    logger.info(f"Universe loaded: {len(universe)} syms")
-    state = load_state()
+async def daemon_loop(ctx: AccountContext):
+    universe = load_universe(ctx)
+    logger.info(f"[{ctx.account_key}] Universe loaded: {len(universe)} syms "
+                f"({ctx.universe_label})")
+    state = load_state(ctx)
     cfg = TradierConfig()
-    api = TradierAPIClient(config=cfg, account_key=ACCOUNT_KEY)
+    api = TradierAPIClient(config=cfg, account_key=ctx.account_key)
     await api.connect()
     try:
         while True:
             if not is_market_hours():
-                logger.info("Outside market hours (13:30–20:00 UTC) — sleeping 5min")
+                logger.info(f"[{ctx.account_key}] Outside market hours (13:30–20:00 UTC) — sleeping 5min")
                 await asyncio.sleep(CYCLE_INTERVAL_SECONDS)
                 continue
             try:
-                await run_one_cycle(api, state, universe)
+                await run_one_cycle(api, ctx, state, universe)
             except Exception:
-                logger.exception("Cycle failed; sleeping then retrying")
+                logger.exception(f"[{ctx.account_key}] Cycle failed; sleeping then retrying")
             await asyncio.sleep(CYCLE_INTERVAL_SECONDS)
     finally:
         await api.close()
 
-async def single_cycle_test(symbol: Optional[str] = None):
+async def single_cycle_test(ctx: AccountContext, symbol: Optional[str] = None):
     """Run one cycle then exit. Used for paper-mode test."""
-    universe = load_universe()
+    universe = load_universe(ctx)
     if symbol:
         universe = [symbol] if symbol in universe else universe[:1]
-    state = load_state()
+    state = load_state(ctx)
     cfg = TradierConfig()
-    api = TradierAPIClient(config=cfg, account_key=ACCOUNT_KEY)
+    api = TradierAPIClient(config=cfg, account_key=ctx.account_key)
     await api.connect()
     try:
-        summary = await run_one_cycle(api, state, universe,
+        summary = await run_one_cycle(api, ctx, state, universe,
                                        single_sym=symbol if symbol else None)
         return summary
     finally:
@@ -915,30 +1166,58 @@ async def single_cycle_test(symbol: Optional[str] = None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Tradier struct_v4 sleeve "
+                                              "(dual-account: trb live / trc paper)")
+    ap.add_argument("--account", choices=["trb", "trc"], required=False,
+                     help="trb = live-eligible (ranked universe), "
+                          "trc = paper only (sectors_tradier union)")
     ap.add_argument("--test", action="store_true",
                      help="Run one cycle and exit (no daemon loop)")
     ap.add_argument("--symbol", default=None,
                      help="Test on a single symbol only (used with --test)")
     ap.add_argument("--daemon", action="store_true",
                      help="Run continuous daemon loop")
+    ap.add_argument("--gen-universe", action="store_true",
+                     help="(Re)generate universe files for both accounts and exit")
+    ap.add_argument("--force-gen", action="store_true",
+                     help="With --gen-universe: overwrite existing files")
     args = ap.parse_args()
-    banner = (f"STRUCT_V4 SLEEVE — paper={PAPER_MODE} go_live={GO_LIVE} | "
-              f"account={ACCOUNT_KEY} | notional=${POSITION_NOTIONAL_USD:.0f} | "
+
+    if args.gen_universe:
+        counts = generate_universe_files(force=args.force_gen)
+        print(json.dumps({"generated": counts,
+                          "files": [
+                              str(DATA_DIR / "struct_v4_universe_trb.json"),
+                              str(DATA_DIR / "struct_v4_universe_trc.json"),
+                          ]}, indent=2))
+        return
+
+    if not args.account:
+        ap.error("--account is required for --test/--daemon (use --gen-universe alone)")
+
+    # Always ensure universe files exist before running
+    generate_universe_files(force=False)
+
+    ctx = AccountContext(args.account)
+    banner = (f"STRUCT_V4 SLEEVE — account={ctx.account_key} "
+              f"({ctx.universe_label}) | paper={ctx.paper_mode} "
+              f"go_live={ctx.go_live} reason={ctx.paper_reason} | "
+              f"notional=${POSITION_NOTIONAL_USD:.0f} | "
               f"max_pos={MAX_CONCURRENT_POSITIONS} | "
-              f"max_deployed=${MAX_TOTAL_DEPLOYED_USD:.0f}")
+              f"max_deployed=${MAX_TOTAL_DEPLOYED_USD:.0f} | "
+              f"gr_min_tfs={GR_MIN_TFS} gr_min_ind={GR_MIN_IND}")
     logger.info(banner)
-    if not PAPER_MODE and not GO_LIVE:
-        logger.warning("STRUCT_V4_PAPER_MODE=false but STRUCT_V4_GO_LIVE!=true → "
+    if ctx.account_key == "trb" and not ctx.paper_mode and not ctx.go_live:
+        logger.warning("[trb] STRUCT_V4_PAPER_MODE=false but STRUCT_V4_GO_LIVE!=true → "
                        "no live orders will be placed. Set STRUCT_V4_GO_LIVE=true "
                        "to enable real trading (after explicit user sign-off).")
     if args.test:
-        result = asyncio.run(single_cycle_test(symbol=args.symbol))
-        logger.info(f"TEST RESULT: {result}")
+        result = asyncio.run(single_cycle_test(ctx, symbol=args.symbol))
+        logger.info(f"[{ctx.account_key}] TEST RESULT: {result}")
         print(json.dumps(result, indent=2, default=str))
         return
     if args.daemon:
-        asyncio.run(daemon_loop())
+        asyncio.run(daemon_loop(ctx))
         return
     ap.print_help()
 

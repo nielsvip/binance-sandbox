@@ -754,6 +754,23 @@ def grid_tradier_param_hunt():
     return combos
 
 
+def grid_tradier_4h_stop():
+    """2026-05-18: Frozen dc_low_4h stop + absolute loss floor sweep for stocks.
+    dc_low4_3m (crypto style) confirmed wrong for stocks — 4h Donchian is correct HTF stop.
+    DC_LOW_4H_FROZEN_STOP_ENABLED: captures dc_low_4h at first bar position seen (frozen at entry).
+    Fires when: long px < frozen_level while in loss, OR gain < ABS_LOSS_FLOOR_PCT.
+    5 variants: baseline, stop_only, stop+8pct_floor (best from inline analysis), floor_only, daily_stop.
+    Run on 20 core stocks × 2024-01-01 for fast initial signal; full 114-sym if ps>1.0."""
+    return [
+        ("baseline", {}),
+        ("DC4H_STOP_ONLY",       {"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -999.0}),
+        ("DC4H_STOP_8PCT_FLOOR", {"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
+        ("FLOOR_ONLY_8PCT",      {"DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
+        ("FLOOR_ONLY_12PCT",     {"DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
+        ("DC4H_STOP_12PCT_FLOOR",{"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
+    ]
+
+
 def grid_tradier_grtf7_hunt():
     """2026-05-09: standalone 7-indicator GOLDEN_RULE_HTF sweep.
     golden_rule_htf.py checks 7 indicators per TF: WT, RSI, MFI, DC, BB, RVOL, stoch_K.
@@ -1755,6 +1772,7 @@ TIER_MAP = {
     "crypto_sector_w_confirm": grid_crypto_sector_w_confirm,
     "haiku_sweep": grid_haiku_sweep,
     "tradier_param_hunt": grid_tradier_param_hunt,
+    "tradier_4h_stop": grid_tradier_4h_stop,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
     "gr_entry_exit_grid_tradier": grid_gr_entry_exit_grid_tradier,
