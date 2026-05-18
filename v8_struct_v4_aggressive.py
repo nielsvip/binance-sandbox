@@ -144,6 +144,9 @@ class AggressiveCfg:
     pyramid_also_on_k1h_oversold: bool = False  # extra pyramid when K_1h<25 + WT_1h bull cross
     pyramid_on_price_breakout: bool = False    # pyramid when price > highest close since entry
     pyramid_price_breakout_min_gain: float = 1.0  # min % gain for price breakout pyramid
+    # ─── ANTI-CHURN ──────────────────────────────────────────────────────
+    require_above_sma50_D: bool = False       # require close > SMA_50_D for ANY entry
+    x4_exit_extended_cooldown: int = 0        # after X4 exit, cooldown = max(normal, this); 0 = off
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -216,6 +219,7 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     wt2_W = _f(npz, "wt2_W", n)
     rsi_D = _f(npz, "rsi_D", n, 50.0)
     sma200_D = _f(npz, "sma_200_D", n)
+    sma50_D = _f(npz, "sma_50_D", n)
     atr_15 = _f(npz, "atr_15m", n, 0.0)
     # X7 technical stop indicators
     dc_low_4h = _f(npz, f"dc_low_{cfg.exit_X7_freeze_dc_tf}", n, 0.0)
@@ -306,6 +310,17 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
         entry_C &= bull_mask
         entry_D &= bull_mask
         entry_G &= bull_mask
+
+    # ── SMA50 regime filter — blocks ALL entries when price < SMA50_D ──
+    if cfg.require_above_sma50_D:
+        above_sma50 = close > sma50_D
+        entry_A &= above_sma50
+        entry_B &= above_sma50
+        entry_C &= above_sma50
+        entry_D &= above_sma50
+        entry_E &= above_sma50
+        entry_F &= above_sma50
+        entry_G &= above_sma50
 
     # ── EXIT masks per path ───────────────────────────────────────────────
     # X1: top catch (with optional 1h confirmation)
@@ -503,7 +518,10 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 avg_entry_price = 0.0
                 entry_bar = -1
                 capital_in_trade = 0.0
-                cooldown_until = i + cfg.cooldown_bars_after_exit
+                cd = cfg.cooldown_bars_after_exit
+                if exit_path == "X4" and cfg.x4_exit_extended_cooldown > 0:
+                    cd = max(cd, cfg.x4_exit_extended_cooldown)
+                cooldown_until = i + cd
 
     # MtM final open position
     if pos_qty > 0:

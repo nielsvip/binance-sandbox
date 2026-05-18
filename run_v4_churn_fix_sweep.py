@@ -176,6 +176,75 @@ def cfg_v18_floor6_trail8():
     c.exit_X2_require_profit = False
     return c
 
+def cfg_v19_sma50_filter():
+    """v14 + SMA50 regime filter. Only enter above SMA50_D."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.require_above_sma50_D = True
+    return c
+
+def cfg_v20_x4_long_cooldown():
+    """v14 + after X4 exit, cooldown = 200 bars (~16h). Prevents D→X4→D churn."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.x4_exit_extended_cooldown = 200
+    return c
+
+def cfg_v21_sma50_x4cd():
+    """v14 + SMA50 filter + X4 extended cooldown. Double anti-churn."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.require_above_sma50_D = True
+    c.x4_exit_extended_cooldown = 200
+    return c
+
+def cfg_v22_ultimate():
+    """Best of everything: SMA50 filter + X4 cooldown + 8% trail always + 1h pyramid."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.require_above_sma50_D = True
+    c.x4_exit_extended_cooldown = 200
+    c.exit_X2_trailing_pct = 8.0
+    c.exit_X2_require_profit = False
+    c.exit_X5_min_count = 5
+    return c
+
+def cfg_v23_hyper_pyramid():
+    """v14 but with 20 pyramid levels, 1.0 fraction, 0.5% breakout threshold."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.max_pyramid_levels = 20
+    c.pyramid_add_fraction = 1.0
+    c.pyramid_price_breakout_min_gain = 0.5
+    c.pyramid_min_gain_since_last_pct = 0.5
+    return c
+
+def cfg_v24_15m_pyramid():
+    """v14 but pyramid on 15m HH instead of 1h — more frequent adds."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.pyramid_tf = "15m"
+    c.max_pyramid_levels = 15
+    c.pyramid_min_gain_since_last_pct = 0.5
+    c.pyramid_price_breakout_min_gain = 0.5
+    return c
+
+def cfg_v25_wider_trail_more_pyr():
+    """v14 + wider trail (20%) + more pyramids. Let winners run AND compound harder."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X2_trailing_pct = 20.0
+    c.max_pyramid_levels = 15
+    c.pyramid_add_fraction = 1.0
+    c.pyramid_price_breakout_min_gain = 0.5
+    c.pyramid_min_gain_since_last_pct = 0.5
+    return c
+
+def cfg_v26_no_x5_no_x4():
+    """v14 + X5 disabled + X4 disabled. Only exits: X2 trail + X7 floor. Pure trend ride."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X5_structural_flip_enabled = False
+    c.exit_X4_daily_bear_wt_enabled = False
+    c.exit_X2_trailing_pct = 15.0
+    c.max_pyramid_levels = 15
+    c.pyramid_add_fraction = 1.0
+    c.pyramid_price_breakout_min_gain = 0.5
+    c.pyramid_min_gain_since_last_pct = 0.5
+    return c
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Runner
@@ -289,6 +358,14 @@ def main():
         "v16_v14_tight_trail_2h": cfg_v16_tight_trail_2h_hold(),
         "v17_v14_8pct_trail": cfg_v17_8pct_trail(),
         "v18_v14_floor6_trail8": cfg_v18_floor6_trail8(),
+        "v19_sma50_filter": cfg_v19_sma50_filter(),
+        "v20_x4_long_cooldown": cfg_v20_x4_long_cooldown(),
+        "v21_sma50_x4cd": cfg_v21_sma50_x4cd(),
+        "v22_ultimate": cfg_v22_ultimate(),
+        "v23_hyper_pyramid": cfg_v23_hyper_pyramid(),
+        "v24_15m_pyramid": cfg_v24_15m_pyramid(),
+        "v25_wide_trail_pyr": cfg_v25_wider_trail_more_pyr(),
+        "v26_trail_only_exit": cfg_v26_no_x5_no_x4(),
     }
 
     if args.variant != "all":
