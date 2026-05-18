@@ -101,9 +101,12 @@ class ShortCfg:
     pyramid_also_on_k1h_overbought: bool = True
     pyramid_on_price_breakdown: bool = True
     pyramid_price_breakdown_min_gain: float = 0.5
+    max_pyramid_capital_mult: float = 3.0     # cap total capital_in_trade at this × initial allocation
     # ─── ANTI-CHURN ──────────────────────────────────────────────────────
     require_below_sma50_D: bool = False
     x4_exit_extended_cooldown: int = 0
+    # ─── MULTI-TF DC STOP (for shorts: dc_high) ─────────────────────────
+    exit_X7_dc_tfs: str = "5m,1h"
 
 
 def _f(npz, key, n, default=0.0):
@@ -159,6 +162,12 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
     atr_15 = _f(npz, "atr_15m", n, 0.0)
     # X7: frozen dc_HIGH for short (price must stay below this)
     dc_high_4h = _f(npz, f"dc_high_{cfg.exit_X7_freeze_dc_tf}", n, 0.0)
+    dc_stop_tfs = {}
+    if cfg.exit_X7_dc_tfs:
+        for tf in cfg.exit_X7_dc_tfs.split(","):
+            tf = tf.strip()
+            if tf:
+                dc_stop_tfs[tf] = _f(npz, f"dc_high_{tf}", n, 0.0)
 
     # Bear crosses (entries for shorts)
     bear_wt_15 = _bear_cross(wt1_15, wt2_15)
@@ -281,13 +290,16 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
     capital = cfg.initial_capital
     pos_qty = 0.0
     avg_entry_price = 0.0
+    original_entry_price = 0.0
+    initial_capital_in_trade = 0.0
     entry_bar = -1
-    lowest_close_in_trade = 0.0   # tracks best case for shorts (lower = more profit)
-    highest_close_in_trade = 0.0  # tracks worst case (higher = more loss for shorts)
+    lowest_close_in_trade = 0.0
+    highest_close_in_trade = 0.0
     pyramid_count = 0
     capital_in_trade = 0.0
     cooldown_until = 0
-    frozen_dc_stop = 0.0  # dc_high frozen at entry — if price goes above, cover
+    frozen_dc_stop = 0.0
+    frozen_dc_stops = {}
     events: List[Dict] = []
     trade_returns: List[float] = []
     entry_path_counts: Dict[str, int] = {}
@@ -334,13 +346,21 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
                 entry_path = "G"
             if entry_path is not None:
                 capital_in_trade = capital * cfg.full_entry_fraction
+                initial_capital_in_trade = capital_in_trade
                 pos_qty = capital_in_trade / px
                 avg_entry_price = px
+                original_entry_price = px
                 entry_bar = i
                 highest_close_in_trade = px
                 lowest_close_in_trade = px
                 pyramid_count = 0
                 frozen_dc_stop = float(dc_high_4h[i]) if cfg.exit_X7_tech_stop_enabled else 0.0
+                frozen_dc_stops = {}
+                if cfg.exit_X7_tech_stop_enabled:
+                    for tf, arr in dc_stop_tfs.items():
+                        v = float(arr[i])
+                        if v > 0:
+                            frozen_dc_stops[tf] = v
                 entry_path_counts[entry_path] = entry_path_counts.get(entry_path, 0) + 1
                 _record_event(i, "OPEN", pos_qty, px, f"PATH_{entry_path}", capital_in_trade)
         else:
@@ -351,13 +371,14 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
                 highest_close_in_trade = px
 
             # PYRAMID: on new LL (price dropping further = more profit for shorts)
+            cap_room = initial_capital_in_trade * cfg.max_pyramid_capital_mult - capital_in_trade
             if (cfg.pyramid_enabled
                 and pyramid_count < cfg.max_pyramid_levels
+                and cap_room > 0
                 and new_pyramid_LL[i]):
-                # For shorts: gain = (entry - current) / entry
                 gain_since_entry = (avg_entry_price - px) / avg_entry_price * 100
                 if gain_since_entry >= cfg.pyramid_min_gain_since_last_pct:
-                    add_cap = capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count)
+                    add_cap = min(capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count), cap_room)
                     add_qty = add_cap / px
                     new_qty = pos_qty + add_qty
                     avg_entry_price = (avg_entry_price * pos_qty + px * add_qty) / new_qty
@@ -367,12 +388,14 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
                     _record_event(i, "AUGMENT", add_qty, px, f"PYRAMID_{pyramid_count}", add_cap)
 
             # PYRAMID: price-breakdown (new low since entry)
+            cap_room = initial_capital_in_trade * cfg.max_pyramid_capital_mult - capital_in_trade
             if (cfg.pyramid_enabled and cfg.pyramid_on_price_breakdown
                 and pyramid_count < cfg.max_pyramid_levels
+                and cap_room > 0
                 and px <= lowest_close_in_trade * 0.999):
                 gain_since_entry = (avg_entry_price - px) / avg_entry_price * 100
                 if gain_since_entry >= cfg.pyramid_price_breakdown_min_gain:
-                    add_cap = capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count)
+                    add_cap = min(capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count), cap_room)
                     add_qty = add_cap / px
                     new_qty = pos_qty + add_qty
                     avg_entry_price = (avg_entry_price * pos_qty + px * add_qty) / new_qty
@@ -384,13 +407,14 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
             # EXITS — for shorts, loss = price going UP
             bars_in_trade = i - entry_bar
             exit_path = None
-            # X7: Technical stop — frozen dc_HIGH + absolute ceiling (ALWAYS fires)
+            # X7: Technical stop — frozen DC multi-TF + abs ceiling from ORIGINAL entry (ALWAYS fires)
             if cfg.exit_X7_tech_stop_enabled:
-                cur_gain = (avg_entry_price - px) / avg_entry_price * 100  # negative when price above entry
-                if cur_gain < 0:  # losing money (price rallied)
+                gain_from_original = (original_entry_price - px) / original_entry_price * 100
+                if gain_from_original < 0:  # losing money (price rallied above original entry)
                     _hit_dc = (frozen_dc_stop > 0 and px > frozen_dc_stop)
-                    _hit_abs = (cur_gain < -cfg.exit_X7_abs_ceiling_pct)
-                    if _hit_dc or _hit_abs:
+                    _hit_abs = (gain_from_original < -cfg.exit_X7_abs_ceiling_pct)
+                    _hit_multi_dc = any(px > v for v in frozen_dc_stops.values())
+                    if _hit_dc or _hit_abs or _hit_multi_dc:
                         exit_path = "X7"
             # X3: hard stop ATR (price rallies against short)
             if exit_path is None and cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
@@ -431,8 +455,10 @@ def simulate_aggressive_short(symbol: str, mode: str, cfg: ShortCfg,
                                                 "entry_price": round(avg_entry_price, 4)})
                 pos_qty = 0.0
                 avg_entry_price = 0.0
+                original_entry_price = 0.0
                 entry_bar = -1
                 capital_in_trade = 0.0
+                initial_capital_in_trade = 0.0
                 cd = cfg.cooldown_bars_after_exit
                 if exit_path == "X4" and cfg.x4_exit_extended_cooldown > 0:
                     cd = max(cd, cfg.x4_exit_extended_cooldown)

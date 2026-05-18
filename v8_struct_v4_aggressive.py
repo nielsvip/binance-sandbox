@@ -144,9 +144,12 @@ class AggressiveCfg:
     pyramid_also_on_k1h_oversold: bool = False  # extra pyramid when K_1h<25 + WT_1h bull cross
     pyramid_on_price_breakout: bool = False    # pyramid when price > highest close since entry
     pyramid_price_breakout_min_gain: float = 1.0  # min % gain for price breakout pyramid
+    max_pyramid_capital_mult: float = 3.0     # cap total capital_in_trade at this × initial allocation
     # ─── ANTI-CHURN ──────────────────────────────────────────────────────
     require_above_sma50_D: bool = False       # require close > SMA_50_D for ANY entry
     x4_exit_extended_cooldown: int = 0        # after X4 exit, cooldown = max(normal, this); 0 = off
+    # ─── MULTI-TF DC STOP (from sweep: dc_low on 5m/1h best) ─────────
+    exit_X7_dc_tfs: str = "5m,1h"            # comma-sep TFs for DC frozen stop; empty = use single freeze_dc_tf
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -221,10 +224,15 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     sma200_D = _f(npz, "sma_200_D", n)
     sma50_D = _f(npz, "sma_50_D", n)
     atr_15 = _f(npz, "atr_15m", n, 0.0)
-    # X7 technical stop indicators
+    # X7 technical stop indicators — multi-TF DC stops
     dc_low_4h = _f(npz, f"dc_low_{cfg.exit_X7_freeze_dc_tf}", n, 0.0)
     bb_lower_arr = _f(npz, f"bb_lower_{cfg.exit_X7_freeze_bb_tf}", n, 0.0) if cfg.exit_X7_freeze_bb_tf else np.zeros(n)
-    wt1_1h_arr = wt1_1h  # alias for X7 confirmation
+    dc_stop_tfs = {}
+    if cfg.exit_X7_dc_tfs:
+        for tf in cfg.exit_X7_dc_tfs.split(","):
+            tf = tf.strip()
+            if tf:
+                dc_stop_tfs[tf] = _f(npz, f"dc_low_{tf}", n, 0.0)
 
     # Bull crosses
     bull_wt_15 = _bull_cross(wt1_15, wt2_15)
@@ -357,14 +365,17 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     bh_initial_cap = cfg.initial_capital
     pos_qty = 0.0
     avg_entry_price = 0.0
+    original_entry_price = 0.0
+    initial_capital_in_trade = 0.0
     entry_bar = -1
     highest_close_in_trade = 0.0
-    lowest_close_in_trade = 0.0  # for worst intra-trade DD
+    lowest_close_in_trade = 0.0
     pyramid_count = 0
     capital_in_trade = 0.0
     cooldown_until = 0
     frozen_dc_stop = 0.0
     frozen_bb_stop = 0.0
+    frozen_dc_stops = {}
     events: List[Dict] = []
     trade_returns: List[float] = []
     trade_worst_dd: List[float] = []  # worst intra-trade DD pct per trade (negative number)
@@ -415,14 +426,22 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 entry_path = "G"
             if entry_path is not None:
                 capital_in_trade = capital * cfg.full_entry_fraction
+                initial_capital_in_trade = capital_in_trade
                 pos_qty = capital_in_trade / px
                 avg_entry_price = px
+                original_entry_price = px
                 entry_bar = i
                 highest_close_in_trade = px
                 lowest_close_in_trade = px
                 pyramid_count = 0
                 frozen_dc_stop = float(dc_low_4h[i]) if cfg.exit_X7_tech_stop_enabled else 0.0
                 frozen_bb_stop = float(bb_lower_arr[i]) if (cfg.exit_X7_tech_stop_enabled and cfg.exit_X7_freeze_bb_tf) else 0.0
+                frozen_dc_stops = {}
+                if cfg.exit_X7_tech_stop_enabled:
+                    for tf, arr in dc_stop_tfs.items():
+                        v = float(arr[i])
+                        if v > 0:
+                            frozen_dc_stops[tf] = v
                 entry_path_counts[entry_path] = entry_path_counts.get(entry_path, 0) + 1
                 _record_event(i, "OPEN", pos_qty, px, f"PATH_{entry_path}", capital_in_trade)
         else:
@@ -432,13 +451,15 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
             if px < lowest_close_in_trade or lowest_close_in_trade == 0.0:
                 lowest_close_in_trade = px
             # Try PYRAMID first (still in long, new D HH)
+            cap_room = initial_capital_in_trade * cfg.max_pyramid_capital_mult - capital_in_trade
             if (cfg.pyramid_enabled
                 and pyramid_count < cfg.max_pyramid_levels
+                and cap_room > 0
                 and new_D_HH[i]
                 and (not cfg.pyramid_require_new_D_HH or new_D_HH[i])):
                 gain_since_entry = (px - avg_entry_price) / avg_entry_price * 100
                 if gain_since_entry >= cfg.pyramid_min_gain_since_last_pct:
-                    add_cap = capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count)
+                    add_cap = min(capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count), cap_room)
                     add_qty = add_cap / px
                     new_qty = pos_qty + add_qty
                     avg_entry_price = (avg_entry_price * pos_qty + px * add_qty) / new_qty
@@ -447,12 +468,14 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                     pyramid_count += 1
                     _record_event(i, "AUGMENT", add_qty, px, f"PYRAMID_{pyramid_count}", add_cap)
             # Try PYRAMID: price-breakout based (new HH since entry)
+            cap_room = initial_capital_in_trade * cfg.max_pyramid_capital_mult - capital_in_trade
             if (cfg.pyramid_enabled and cfg.pyramid_on_price_breakout
                 and pyramid_count < cfg.max_pyramid_levels
+                and cap_room > 0
                 and px >= highest_close_in_trade * 1.001):
                 gain_since_entry = (px - avg_entry_price) / avg_entry_price * 100
                 if gain_since_entry >= cfg.pyramid_price_breakout_min_gain:
-                    add_cap = capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count)
+                    add_cap = min(capital * cfg.pyramid_add_fraction * (0.7 ** pyramid_count), cap_room)
                     add_qty = add_cap / px
                     new_qty = pos_qty + add_qty
                     avg_entry_price = (avg_entry_price * pos_qty + px * add_qty) / new_qty
@@ -463,14 +486,15 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
             # Try EXITS in priority order
             bars_in_trade = i - entry_bar
             exit_path = None
-            # X7: Technical stop — frozen dc_low_<tf> + frozen bb_lower_<tf> + abs floor (ALWAYS fires, ignores min_hold)
+            # X7: Technical stop — frozen DC multi-TF + frozen bb + abs floor from ORIGINAL entry (ALWAYS fires)
             if cfg.exit_X7_tech_stop_enabled:
-                cur_gain = (px - avg_entry_price) / avg_entry_price * 100
-                if cur_gain < 0:
+                gain_from_original = (px - original_entry_price) / original_entry_price * 100
+                if gain_from_original < 0:
                     _hit_dc = (frozen_dc_stop > 0 and px < frozen_dc_stop)
                     _hit_bb = (frozen_bb_stop > 0 and px < frozen_bb_stop)
-                    _hit_abs = (cur_gain < cfg.exit_X7_abs_floor_pct)
-                    if _hit_dc or _hit_bb or _hit_abs:
+                    _hit_abs = (gain_from_original < cfg.exit_X7_abs_floor_pct)
+                    _hit_multi_dc = any(px < v for v in frozen_dc_stops.values())
+                    if _hit_dc or _hit_bb or _hit_abs or _hit_multi_dc:
                         exit_path = "X7"
             # Hard stop: X3 (legacy ATR-based, also ignores min_hold)
             if exit_path is None and cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
@@ -516,8 +540,10 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                                                  "entry_price": round(avg_entry_price, 4)})
                 pos_qty = 0.0
                 avg_entry_price = 0.0
+                original_entry_price = 0.0
                 entry_bar = -1
                 capital_in_trade = 0.0
+                initial_capital_in_trade = 0.0
                 cd = cfg.cooldown_bars_after_exit
                 if exit_path == "X4" and cfg.x4_exit_extended_cooldown > 0:
                     cd = max(cd, cfg.x4_exit_extended_cooldown)
