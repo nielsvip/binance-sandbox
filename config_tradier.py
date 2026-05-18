@@ -490,8 +490,14 @@ class TradierConfig:
     SMA200_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_T3 SMA200 distance gate for entries
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h
     # === MFI ENTRY FILTER (backtest) ===
-    MFI_ENTRY_ENABLED: bool = False  # BACKTEST_CHANGE_T4 MFI gate for entries (2026-05-18: was True — LIVE BUG blocked all LONG entries)
-    MFI_LONG_THRESHOLD_D: float = 20.0  # BACKTEST_CHANGE_T4 only long when daily MFI < 20 (oversold)
+    # 2026-05-18 18:30 FIXED (was LIVE BUG): old code blocked LONG when mfi_D > 20 with comment "not oversold"
+    # — but MFI_D normal range is 30-70 so this blocked ~95%+ of LONG entries. The "only long when MFI<20"
+    # oversold-confirm intent was wrong for a trend-following stocks system. Inverted to OVERBOUGHT FILTER:
+    # block LONG only when MFI_D > MFI_LONG_THRESHOLD_D (default 80 = overbought reversal expected).
+    # Gate logic in tradier_manage.py:11156-11160 reads `mfi_D > MFI_LONG_THRESHOLD_D` → with new threshold=80
+    # this now correctly blocks ~5-15% of LONG entries (overbought zone) rather than ~95%.
+    MFI_ENTRY_ENABLED: bool = True   # FIXED 2026-05-18: semantics inverted from "oversold-required" to "overbought-block"
+    MFI_LONG_THRESHOLD_D: float = 80.0  # block LONG when mfi_D > 80 (overbought reversal expected); was 20.0 (oversold-required, broken)
     # === WT CROSSUNDER SHORT (backtest) ===
     WT_CROSSUNDER_15M_SHORT: bool = True  # BACKTEST_CHANGE_T5 enable WT crossunder on 15m for short entries
     # === ALIGNMENT GATE (backtest) ===
@@ -1405,12 +1411,12 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
-    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.015       # 2026-05-17 raised 0.005 -> 0.015 alongside DT_TARGET_ATR_ENABLED=True flip. 0.5% target was clipping winners (MU LONG +1.58% on a setup that ran +11.84% more, 33 fires in 30d). 1.5% is the floor when ATR is missing.
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.
     # 2026-05-16: ATR-aware DT_TARGET kill-switch (DEFAULT OFF — sweep-validate before enable).
     # When True: effective target = max(2 × atr_5m / entry, TARGET_PCT, noloss_min). Reason label
     # switches to DT_TARGET_ATR when ATR-driven. When False: legacy max(TARGET_PCT, noloss_min)
     # behavior preserved. Recommended pair when enabling: raise TRADIER_DC_DAYTRADE_TARGET_PCT to 0.015.
-    DT_TARGET_ATR_ENABLED: bool = True   # 2026-05-17 FLIPPED TRUE: bleed-stop. Live evidence shows DT_TARGET at 0.5% clipped winners (MU LONG +1.58% exit on a setup that ran +11.84% more) 33x in 30d. Effective target now = max(2*atr_5m/entry, TARGET_PCT, noloss_min); exits never get worse, only later. Pair: TRADIER_DC_DAYTRADE_TARGET_PCT raised 0.005 -> 0.015.
+    DT_TARGET_ATR_ENABLED: bool = False  # REVERTED 2026-05-18 18:30 (was True since 2026-05-17). Flip had no sample-floor proof; isolated vec sweep queued.
     TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # REVERTED 2026-04-17: see DC_POSITION_ENTRY_THRESHOLD above.
     # 2026-05-16: DC_TIER4_DC4H_AUG late-entry guard (DEFAULT OFF behind DC_TIER4_BAR_MATURITY_BLOCK_ENABLED).
     # When True + threshold in (0,1): block tier-4 augment when current bar has consumed >threshold
@@ -2146,17 +2152,20 @@ class TradierConfig:
     # against a +17.89% rally. Default = flat; entries only via existing paths (Rule A/B/C
     # scaffolding follows). Sweep variants queued on S1: WT3MFO_OFF_TRADIER, WT3MFO_ON_TRADIER_CONTROL.
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
-    WT_3M_FORCE_OPEN_ENABLED: bool = False
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False
+    # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
+    # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
     WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
     # ═══════════════════════════════════════════════════════════════════
     # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
     # Mirrors config.py. R2_TF_LIST stays ('1h','4h','D') per CLAUDE.md stocks rule.
     # ═══════════════════════════════════════════════════════════════════
-    HTF_TREND_VETO_ENABLED: bool = True
-    R3_HTF_FLIP_EXIT_ENABLED: bool = True
-    R3_HTF_FLIP_4H_TIER_ENABLED: bool = True
-    BREAKOUT_RETEST_ARMED_ENABLED: bool = True           # Rule A core. 2026-05-17 ENABLED with SIMPLIFIED stateless impl (mirror of crypto). Wired in tradier_manage process_position after WT_3M_FORCE_OPEN block.
+    # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
+    HTF_TREND_VETO_ENABLED: bool = False                 # was True 2026-05-17; reverted — no sample-floor proof
+    R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = False            # was True 2026-05-17; reverted — no sample-floor proof
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25

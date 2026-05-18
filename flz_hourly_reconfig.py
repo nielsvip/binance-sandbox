@@ -53,7 +53,10 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np
 import metrics_guard as mg
-from v8_quick_engine import simulate, QuickConfig
+# 2026-05-18: redirected from BANNED v8_quick_engine (OPUS_VOMIT) to vec_engine_v1
+# via quick_engine_compat shim. Modern engine is sample-floor-honest + gated by
+# metrics_guard. Per-trade JSONL contract preserved (V8_TRADES_OUT_DIR side-channel).
+from quick_engine_compat import simulate, QuickConfig
 
 # Mode → NPZ filter. Crypto NPZs end in USDT/USDC; tradier NPZs are bare ticker.
 TRADIER_ACCOUNTS = ("trc", "trb")
@@ -409,7 +412,8 @@ def _worker_run_candidate(args_tuple) -> Dict:
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parent))
     import numpy as _np
-    from v8_quick_engine import simulate as _simulate, QuickConfig as _QC
+    # 2026-05-18: redirected from BANNED v8_quick_engine to vec_engine_v1 via shim.
+    from quick_engine_compat import simulate as _simulate, QuickConfig as _QC
 
     run_id = f"{sym}__{side}__{tag}"
     _os.environ["V8_TRADES_OUT_DIR"] = run_dir_str
@@ -750,41 +754,69 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
     tmp2.write_text(json.dumps(opinions, indent=2, default=str))
     tmp2.replace(opinions_path)
 
-    # Fix B 2026-05-18: also upsert into GLOBAL per_sym_active_config.json so crypto
-    # live (ez_positions_quick._get_per_sym_overrides at line ~1761) consumes daemon
-    # output. First-writer-wins matches user's account-order model: flz processes its
-    # tradeable_keys first, ang second (skips syms already in global), etc.
+    # 2026-05-18 USER MANDATE: chart-before-live gate. Replaces prior direct
+    # write-to-live path. We now stage candidates to _pending_per_sym_active_config.json
+    # and render per-(sym,side) interactive HTML for human review. Promotion to
+    # live per_sym_active_config.json is a separate user action via
+    # promote_pending_per_sym.py — never automatic.
     try:
-        if GLOBAL_PER_SYM_CFG_PATH.exists():
-            global_cfgs = json.loads(GLOBAL_PER_SYM_CFG_PATH.read_text())
-        else:
-            global_cfgs = {}
+        from _pending_review_chart import (
+            stash_trade_jsonl, render_pending_chart, write_manifest, upsert_pending_cfg,
+        )
     except Exception as _exc:
-        print(f"[hourly] global load WARN: {_exc} - starting fresh", flush=True)
-        global_cfgs = {}
+        print(f"[hourly] _pending_review_chart import FAILED: {_exc}", flush=True)
+        return 0
 
-    n_added = 0
-    n_skipped_present = 0
+    n_added, n_skipped_present, total = upsert_pending_cfg(
+        new_entries=active, source_daemon="flz_hourly_reconfig",
+        source_account=account, source_cycle=cycle_id,
+    )
+    print(f"[hourly] pending per_sym_active_config: +{n_added} new (sym,side) from {account}; {n_skipped_present} skipped (already pending); total={total}", flush=True)
+
+    # Render charts for the NEW pending entries only (skipped ones already have charts).
+    manifest_entries = []
+    n_charts = 0
+    n_chart_errors = 0
     for sym_side, decision in active.items():
-        if sym_side in global_cfgs:
-            n_skipped_present += 1
+        if sym_side not in opinions["syms"]:
             continue
-        tagged = dict(decision)
-        meta = dict(tagged.get("_meta", {}))
-        meta.update({
-            "source_account": account,
-            "source_cycle": cycle_id,
-            "source_ts_utc": datetime.now(timezone.utc).isoformat(),
-            "source_daemon": "flz_hourly_reconfig",
-        })
-        tagged["_meta"] = meta
-        global_cfgs[sym_side] = tagged
-        n_added += 1
-
-    tmp_g = GLOBAL_PER_SYM_CFG_PATH.with_suffix(".tmp")
-    tmp_g.write_text(json.dumps(global_cfgs, indent=2, default=str))
-    tmp_g.replace(GLOBAL_PER_SYM_CFG_PATH)
-    print(f"[hourly] global per_sym_active_config: +{n_added} new (sym,side) from {account}; {n_skipped_present} skipped (already present); total={len(global_cfgs)}", flush=True)
+        try:
+            sym_part, side_part = sym_side.rsplit("_", 1)
+        except ValueError:
+            continue
+        # Find the (sym, side) trade records: filter run_dir's JSONL files for this sym+winning_tag.
+        winning_tag = decision.get("winning_tag", "")
+        # Run JSONL pattern: {sym}__{side}__{tag}__{sym}.jsonl per _worker_run_candidate.
+        run_id_glob = f"{sym_part}__{side_part}__{winning_tag}__{sym_part}.jsonl"
+        jsonl_path = run_dir / run_id_glob
+        records = []
+        if jsonl_path.exists():
+            with jsonl_path.open() as _jf:
+                for _ln in _jf:
+                    try:
+                        _r = json.loads(_ln)
+                        if (_r.get("side") or "").upper() == side_part.upper():
+                            records.append(_r)
+                    except Exception:
+                        pass
+        if not records:
+            # No trades for this (sym, side, tag) — still register the pending
+            # entry so the user knows the daemon evaluated it.
+            manifest_entries.append((sym_part, side_part, "crypto",
+                                     Path(f"<no trades for {sym_side}>"), decision))
+            continue
+        stash_trade_jsonl(sym_part, side_part, records)
+        try:
+            html_path = render_pending_chart(sym_part, side_part, "crypto",
+                                             records, decision)
+            manifest_entries.append((sym_part, side_part, "crypto", html_path, decision))
+            n_charts += 1
+        except Exception as _exc:
+            n_chart_errors += 1
+            print(f"[hourly] chart render FAILED {sym_part} {side_part}: {_exc}", flush=True)
+    write_manifest(manifest_entries)
+    print(f"[hourly] pending charts rendered: {n_charts} ok, {n_chart_errors} errors. "
+          f"manifest: {(ROOT / 'data' / 'hourly_reconfig' / '_pending_review' / 'manifest.json')}", flush=True)
 
     # Summarize
     changes = [k for k, v in opinions["syms"].items() if v.get("changed")]

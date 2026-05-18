@@ -83,7 +83,35 @@ def cfg_safer() -> AggressiveCfg:
     )
 
 
-CFG_REGISTRY = {"clean": cfg_clean, "nuclear": cfg_nuclear, "safer": cfg_safer}
+def cfg_v24() -> AggressiveCfg:
+    """v24 — 15m PYRAMID sleeve (mirrors run_v24_full_sweep.cfg_v24).
+    User 2026-05-18: only sample-floor compliant DIAGNOSTIC in 4-day audit
+    (114 syms × 2.12y on tradier). Re-running with start=2022-01-01 to verify
+    on full 4yr history."""
+    return AggressiveCfg(
+        exit_X1_topcatch_enabled=False,
+        exit_X2_trailing_pct=12.0,
+        exit_X3_hardstop_atr_mult=0,
+        exit_X7_tech_stop_enabled=True,
+        exit_X7_freeze_dc_tf="4h",
+        exit_X7_abs_floor_pct=-8.0,
+        min_hold_bars=48,
+        exit_X5_min_hold_bars=48,
+        exit_X5_min_count=5,
+        cooldown_bars_after_exit=20,
+        max_pyramid_levels=15,
+        pyramid_add_fraction=0.8,
+        pyramid_tf="15m",
+        pyramid_min_gain_since_last_pct=0.5,
+        pyramid_on_price_breakout=True,
+        pyramid_price_breakout_min_gain=0.5,
+        pyramid_also_on_k1h_oversold=True,
+        htf_trend_filter_enabled=True,
+        path_G_momentum_continuation_enabled=True,
+    )
+
+
+CFG_REGISTRY = {"clean": cfg_clean, "nuclear": cfg_nuclear, "safer": cfg_safer, "v24": cfg_v24}
 
 
 def run_universe(mode: str, symbols: List[str], cfg: AggressiveCfg, start: str, label: str) -> Dict[str, Any]:

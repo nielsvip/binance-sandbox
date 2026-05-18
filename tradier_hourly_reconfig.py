@@ -30,7 +30,10 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np
 import metrics_guard as mg
-from v8_quick_engine import simulate, QuickConfig
+# 2026-05-18: redirected from BANNED v8_quick_engine (OPUS_VOMIT) to vec_engine_v1
+# via quick_engine_compat shim. Modern engine is sample-floor-honest + gated by
+# metrics_guard. Per-trade JSONL contract preserved (V8_TRADES_OUT_DIR side-channel).
+from quick_engine_compat import simulate, QuickConfig
 
 NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 CAND_DIR = ROOT / "data" / "hourly_reconfig" / "trb" / "_candidates"
@@ -379,42 +382,66 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path,
     with active_path.open("w") as f:
         json.dump(existing, f, indent=2)
 
-    # Fix B 2026-05-18: also upsert into GLOBAL per_sym_active_config.json so live
-    # tradier_manage._get_tradier_sym_cfg (lines 468-488) consumes daemon output
-    # via the shared per-(sym,side) override store. First-writer-wins: trb's
-    # tradeable_keys land before trc's, mirroring the user's account-order model.
+    # 2026-05-18 USER MANDATE: chart-before-live gate. Stage to
+    # _pending_per_sym_active_config.json + render per-(sym,side) HTML for review.
+    # Promotion to live per_sym_active_config.json is via promote_pending_per_sym.py.
     try:
-        if GLOBAL_PER_SYM_CFG_PATH.exists():
-            global_cfgs = json.loads(GLOBAL_PER_SYM_CFG_PATH.read_text())
-        else:
-            global_cfgs = {}
+        from _pending_review_chart import (
+            stash_trade_jsonl, render_pending_chart, write_manifest, upsert_pending_cfg,
+        )
     except Exception as _exc:
-        print(f"[{account}] global load WARN: {_exc} - starting fresh")
-        global_cfgs = {}
+        print(f"[{account}] _pending_review_chart import FAILED: {_exc}")
+        _prune_old_engine_runs(out_dir / "_engine_runs", keep=2)
+        elapsed = time.time() - t0
+        print(f"[{account}] done: {updated} updated, {len(existing)} total entries, {elapsed:.1f}s")
+        return
 
-    n_added = 0
-    n_skipped_present = 0
     cycle_id = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
-    for sym_side, decision in existing.items():
-        if sym_side in global_cfgs:
-            n_skipped_present += 1
-            continue
-        tagged = dict(decision)
-        meta = dict(tagged.get("_meta", {}))
-        meta.update({
-            "source_account": account,
-            "source_cycle": cycle_id,
-            "source_ts_utc": datetime.now(timezone.utc).isoformat(),
-            "source_daemon": "tradier_hourly_reconfig",
-        })
-        tagged["_meta"] = meta
-        global_cfgs[sym_side] = tagged
-        n_added += 1
+    n_added, n_skipped_present, total = upsert_pending_cfg(
+        new_entries=existing, source_daemon="tradier_hourly_reconfig",
+        source_account=account, source_cycle=cycle_id,
+    )
+    print(f"[{account}] pending per_sym_active_config: +{n_added} new (sym,side); {n_skipped_present} skipped (already pending); total={total}")
 
-    tmp_g = GLOBAL_PER_SYM_CFG_PATH.with_suffix(".tmp")
-    tmp_g.write_text(json.dumps(global_cfgs, indent=2, default=str))
-    tmp_g.replace(GLOBAL_PER_SYM_CFG_PATH)
-    print(f"[{account}] global per_sym_active_config: +{n_added} new (sym,side); {n_skipped_present} skipped (already present); total={len(global_cfgs)}")
+    # Render charts for ALL entries this cycle. We re-scan the engine run_root
+    # for each (sym, side, winning_tag) JSONL.
+    manifest_entries = []
+    n_charts = 0
+    n_chart_errors = 0
+    for sym_side, decision in existing.items():
+        try:
+            sym_part, side_part = sym_side.rsplit("_", 1)
+        except ValueError:
+            continue
+        winning_tag = decision.get("winning_tag", "")
+        # tradier daemon's run_id pattern from line ~283: f"reconf_{sym}_{tag}_{i:03d}"
+        sym_run_dir = run_root / sym_part
+        records = []
+        if sym_run_dir.exists():
+            for jp in sym_run_dir.glob(f"reconf_{sym_part}_{winning_tag}_*__{sym_part}.jsonl"):
+                with jp.open() as _jf:
+                    for _ln in _jf:
+                        try:
+                            _r = json.loads(_ln)
+                            if (_r.get("side") or "").upper() == side_part.upper():
+                                records.append(_r)
+                        except Exception:
+                            pass
+        if not records:
+            manifest_entries.append((sym_part, side_part, "tradier",
+                                     Path(f"<no trades for {sym_side}>"), decision))
+            continue
+        stash_trade_jsonl(sym_part, side_part, records)
+        try:
+            html_path = render_pending_chart(sym_part, side_part, "tradier",
+                                             records, decision)
+            manifest_entries.append((sym_part, side_part, "tradier", html_path, decision))
+            n_charts += 1
+        except Exception as _exc:
+            n_chart_errors += 1
+            print(f"[{account}] chart render FAILED {sym_part} {side_part}: {_exc}")
+    write_manifest(manifest_entries)
+    print(f"[{account}] pending charts rendered: {n_charts} ok, {n_chart_errors} errors.")
 
     _prune_old_engine_runs(out_dir / "_engine_runs", keep=2)
     elapsed = time.time() - t0

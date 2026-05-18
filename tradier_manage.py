@@ -11152,11 +11152,13 @@ class TradierTradeManager:
                             return False
                     except Exception as _lh_exc:
                         logger.debug(f"[LH_HL_FILTER][LONG] {symbol}: {type(_lh_exc).__name__} {_lh_exc} — skipped")
-            # BACKTEST_CHANGE_T4: MFI check on Daily
+            # BACKTEST_CHANGE_T4: MFI check on Daily — OVERBOUGHT FILTER (fixed 2026-05-18)
+            # Blocks LONG entries when mfi_D > threshold (default 80 = overbought zone, reversal expected).
+            # Prior semantics ("only LONG if mfi<20 oversold") blocked ~95% of opportunities — see config note.
             if getattr(config, 'MFI_ENTRY_ENABLED', False):
                 _mfi_d = float(indicators.get('mfi_D', 50) or 50)
-                if _mfi_d > getattr(config, 'MFI_LONG_THRESHOLD_D', 20.0):
-                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: MFI_D={_mfi_d:.1f} > {config.MFI_LONG_THRESHOLD_D} (not oversold)")
+                if _mfi_d > getattr(config, 'MFI_LONG_THRESHOLD_D', 80.0):
+                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: MFI_D={_mfi_d:.1f} > {config.MFI_LONG_THRESHOLD_D} (overbought)")
                     return False
             # BACKTEST_CHANGE_T8: alignment gate
             if getattr(config, 'ALIGNMENT_GATE_MIN', 0) > 0:

@@ -750,6 +750,48 @@ class VecConfig:
     HEDGE_MODE: bool = True
     STRICT_NO_LOSS: bool = False  # Eliminated — replaced by R1/R2/HEDGE
 
+    # ── 2026-05-18 hourly_reconfig cluster-knob STUBS ─────────
+    # These knobs are referenced by the NEW_KNOB_CLUSTERS in flz_hourly_reconfig
+    # and tradier_hourly_reconfig. Adding them here so setattr() succeeds without
+    # AttributeError — but most are NOT YET WIRED into VecEngine.simulate().
+    # The default value mirrors config.py / config_tradier.py at the moment of
+    # adding (verified 2026-05-18). When/if these get wired into the vec engine,
+    # remove the TODO_WIRE_ comment.
+    #
+    # Wiring status notes:
+    # - BREAKOUT_RETEST_ARMED_ENABLED: live in ez_manage/tradier_manage (Rule A
+    #   simplified stateless impl) — NOT wired in vec engine. Cluster runs identical
+    #   to baseline. TODO_WIRE_BREAKOUT_RETEST_ARMED.
+    # - DC_BB_D_BREAK_REVERSE_ENABLED: live default True. Cluster sets it False
+    #   to ablate. Not wired in vec engine. TODO_WIRE_DC_BB_D_BREAK_REVERSE.
+    # - HEDGE_HTF_VETO_ENABLED: live HEDGE_HTF_VETO_ENABLED=True (crypto).
+    #   No same-symbol hedge in vec — knob is a no-op here. TODO_WIRE_HEDGE_HTF_VETO.
+    # - HEDGE_MAX_ABSOLUTE_USD: vec engine has no USD sizing; pct-based only.
+    #   TODO_WIRE_HEDGE_MAX_ABSOLUTE_USD.
+    # - HTF_TREND_VETO_ENABLED: live default True (both modes). Veto opens against
+    #   Daily wt-trend. Not yet wired in vec. TODO_WIRE_HTF_TREND_VETO.
+    # - NOLOSS_BYPASS_WT_5OF5_*: live tradier True / crypto False. Wired in
+    #   tradier_manage process_position. Not wired in vec. TODO_WIRE_NOLOSS_BYPASS_WT_5OF5.
+    # - PARTIAL_PROFIT_LOCK_*_TRADIER: tradier-mode-specific defaults. The vec
+    #   engine uses non-_TRADIER fields uniformly; the cluster will simply re-set
+    #   the same logic with slightly different numbers. TODO_WIRE_TRADIER_PPL_SPLIT.
+    # - STDEV_MACRO_*: long-window log-price z-score gates (D/W/M). Not yet wired
+    #   in vec. TODO_WIRE_STDEV_MACRO.
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = True               # TODO_WIRE_BREAKOUT_RETEST_ARMED
+    DC_BB_D_BREAK_REVERSE_ENABLED: bool = True               # TODO_WIRE_DC_BB_D_BREAK_REVERSE
+    HEDGE_HTF_VETO_ENABLED: bool = True                      # TODO_WIRE_HEDGE_HTF_VETO
+    HEDGE_MAX_ABSOLUTE_USD: float = 100000.0                 # TODO_WIRE_HEDGE_MAX_ABSOLUTE_USD
+    HTF_TREND_VETO_ENABLED: bool = True                      # TODO_WIRE_HTF_TREND_VETO
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False              # TODO_WIRE_NOLOSS_BYPASS_WT_5OF5
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5                   # TODO_WIRE_NOLOSS_BYPASS_WT_5OF5
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3        # TODO_WIRE_TRADIER_PPL_SPLIT
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5    # TODO_WIRE_TRADIER_PPL_SPLIT
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02  # TODO_WIRE_TRADIER_PPL_SPLIT
+    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625          # TODO_WIRE_TRADIER_PPL_SPLIT
+    STDEV_MACRO_ENTRY_VETO_ENABLED: bool = False             # TODO_WIRE_STDEV_MACRO
+    STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False           # TODO_WIRE_STDEV_MACRO
+    STDEV_MACRO_R4_EXIT_ENABLED: bool = False                # TODO_WIRE_STDEV_MACRO
+
     def update_from_dict(self, d: Dict[str, Any]) -> "VecConfig":
         """Return a new VecConfig with fields from dict d applied."""
         import copy
@@ -1076,6 +1118,38 @@ class VecEngine:
         returns_by_sym: Dict[str, List[float]] = {sym: [] for sym in stores}
         sim_years = (float(all_ts_np[-1]) - float(all_ts_np[0])) / (365.25 * 86400)
 
+        # ── Trade-record side-channel (2026-05-18: quick_engine_compat support) ──
+        # When env V8_TRADES_OUT_DIR is set, every close site appends a record to
+        # _trade_log which is written as JSONL at end of simulate(). Mirrors the
+        # legacy OPUS_VOMIT (v8_quick_engine) recorder API so flz_hourly_reconfig
+        # and tradier_hourly_reconfig can keep using the same JSONL contract.
+        # Fields per record: symbol, side, entry_ts, exit_ts, entry_price,
+        # exit_price, pnl_pct, exit_reason, stream.
+        _trades_out_dir = os.environ.get("V8_TRADES_OUT_DIR", "")
+        _trades_run_id = os.environ.get("V8_TRADES_RUN_ID", "default")
+        _trade_log: Optional[List[Dict[str, Any]]] = [] if _trades_out_dir else None
+
+        def _emit_trade(_pos, _ts_i, _price_i, _pnl_pct, _reason, _stream="primary"):
+            if _trade_log is None:
+                return
+            try:
+                _trade_log.append({
+                    "symbol": _pos_sym_ref[0] if _pos_sym_ref else "",
+                    "side": getattr(_pos, "side", "") or "",
+                    "entry_ts": int(getattr(_pos, "entry_ts", 0) or 0),
+                    "exit_ts": int(_ts_i or 0),
+                    "entry_price": float(getattr(_pos, "entry_price", 0.0) or 0.0),
+                    "exit_price": float(_price_i or 0.0),
+                    "pnl_pct": float(_pnl_pct),
+                    "exit_reason": str(_reason or "VEC_CLOSE"),
+                    "stream": _stream,
+                })
+            except Exception:
+                pass
+
+        # Mutable holder so _emit_trade can see current symbol without a closure rebind.
+        _pos_sym_ref: List[str] = [""]
+
         # DD tracking (cumulative % across all trades)
         all_returns: List[float] = []
         peak_equity: float = 0.0
@@ -1211,6 +1285,7 @@ class VecEngine:
             ts_i = int(ts)
 
             for sym, store in stores.items():
+                _pos_sym_ref[0] = sym  # trade-record side-channel (2026-05-18)
                 # Fast bar index: use store_start_idx offset + enumerate position
                 # Since all stores share the same resolution, idx maps directly
                 bar_idx = store_start_idx[sym] + idx
@@ -1262,6 +1337,7 @@ class VecEngine:
                     if _r1_sig is not None:
                         pnl = pos.gain_pct
                         returns_by_sym[sym].append(pnl)
+                        _emit_trade(pos, ts_i, price, pnl, "R1_DC_LOW4_EMERGENCY")
                         all_returns.append(pnl)
                         running_gain += pnl
                         pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1278,6 +1354,7 @@ class VecEngine:
                     if _r2_sig is not None:
                         pnl = pos.gain_pct
                         returns_by_sym[sym].append(pnl)
+                        _emit_trade(pos, ts_i, price, pnl, "R2_WT_VEL_SLOW")
                         all_returns.append(pnl)
                         running_gain += pnl
                         pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1300,6 +1377,7 @@ class VecEngine:
                         if _wp_r2_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "WT_15M_VEL_SLOW_ZERO_GAIN")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1320,6 +1398,7 @@ class VecEngine:
                         if _pgb_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "PEAK_GIVEBACK")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1337,6 +1416,7 @@ class VecEngine:
                         if _be_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "BE_EROSION")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1366,6 +1446,7 @@ class VecEngine:
                         _frac = float(_rp_sig.get('frac', 0.5))
                         partial_pnl = _rp_gain * _frac
                         returns_by_sym[sym].append(partial_pnl)
+                        _emit_trade(_rp_pos, ts_i, price, partial_pnl, "REDUCE_PROFIT_TAKE")
                         all_returns.append(partial_pnl)
                         running_gain += partial_pnl
                         _rp_pos.qty *= (1.0 - _frac)
@@ -1388,6 +1469,7 @@ class VecEngine:
                         if _srs_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "STRUCTURAL_RANGE_SHIFT")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1408,6 +1490,7 @@ class VecEngine:
                                 frac = _ppl1["frac"]
                                 partial_gain = pos.gain_pct * frac
                                 returns_by_sym[sym].append(partial_gain)
+                                _emit_trade(pos, ts_i, price, partial_gain, "PPL_STEP1")
                                 all_returns.append(partial_gain)
                                 running_gain += partial_gain
                                 pos.qty *= (1.0 - frac)
@@ -1426,6 +1509,7 @@ class VecEngine:
                             if _ppl3 is not None:
                                 pnl = pos.gain_pct
                                 returns_by_sym[sym].append(pnl)
+                                _emit_trade(pos, ts_i, price, pnl, "PPL_STEP2")
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1445,6 +1529,7 @@ class VecEngine:
                             if _bbr_sig is not None:
                                 pnl = pos.gain_pct
                                 returns_by_sym[sym].append(pnl)
+                                _emit_trade(pos, ts_i, price, pnl, "PPL_STEP3")
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1469,6 +1554,7 @@ class VecEngine:
                         if _xu_sig is not None:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "WT_CROSSUNDER_FINAL")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1505,6 +1591,7 @@ class VecEngine:
                             continue
                     pnl = pos.gain_pct
                     returns_by_sym[sym].append(pnl)
+                    _emit_trade(pos, ts_i, price, pnl, "STOCH_REVERSE_EXIT")
                     all_returns.append(pnl)
                     running_gain += pnl
                     pos.open = False; pos.last_close_ts = ts_i
@@ -1526,6 +1613,7 @@ class VecEngine:
                             if against and (not cfg.UNIVERSAL_NOLOSS_GATE or pos.gain_pct >= 0):
                                 pnl = pos.gain_pct
                                 returns_by_sym[sym].append(pnl)
+                                _emit_trade(pos, ts_i, price, pnl, "DC_RECOVERY_EXIT")
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1543,6 +1631,7 @@ class VecEngine:
                         if vel_against and vel_decelerating and pos.gain_pct >= 0:
                             pnl = pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, "BB_RECOVERY_EXIT")
                             all_returns.append(pnl)
                             running_gain += pnl
                             pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
@@ -1564,6 +1653,7 @@ class VecEngine:
                         if _v2e_sig is not None:
                             pnl = _v2e_pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(_v2e_pos, ts_i, price, pnl, "SCALP_V2_EXIT")
                             all_returns.append(pnl)
                             running_gain += pnl
                             _v2e_pos.open = False; _v2e_pos.last_close_ts = ts_i; _v2e_pos.last_close_price = price
@@ -1586,6 +1676,7 @@ class VecEngine:
                         if _v3e_sig is not None:
                             pnl = _v3e_pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(_v3e_pos, ts_i, price, pnl, "SCALP_V3_EXIT")
                             all_returns.append(pnl)
                             running_gain += pnl
                             _v3e_pos.open = False; _v3e_pos.last_close_ts = ts_i; _v3e_pos.last_close_price = price
@@ -1607,6 +1698,7 @@ class VecEngine:
                                 if _ms_sig is not None:
                                     pnl = _ms_pos.gain_pct
                                     returns_by_sym[sym].append(pnl)
+                                    _emit_trade(_ms_pos, ts_i, price, pnl, "MICRO_SCALP_CLOSE")
                                     all_returns.append(pnl)
                                     running_gain += pnl
                                     _ms_exit_px = price
@@ -1823,6 +1915,7 @@ class VecEngine:
                             if _hg_fail_result is not None:
                                 pnl = _hg_loser.gain_pct
                                 returns_by_sym[sym].append(pnl)
+                                _emit_trade(_hg_loser, ts_i, price, pnl, "HEDGE_FAILED_FALLBACK")
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 _hg_loser.open = False
@@ -1840,6 +1933,7 @@ class VecEngine:
                         if _hc_result is not None:
                             pnl = _hc_pos.gain_pct
                             returns_by_sym[sym].append(pnl)
+                            _emit_trade(_hc_pos, ts_i, price, pnl, "HEDGE_CLOSE")
                             all_returns.append(pnl)
                             running_gain += pnl
                             _hc_pos.open = False
@@ -2407,9 +2501,11 @@ class VecEngine:
 
         # ── NOLIES rule 2: mark open positions to market ────
         for sym, store in stores.items():
+            _pos_sym_ref[0] = sym  # trade-record side-channel
             last_idx = store_start_idx[sym] + len(all_ts) - 1
             if last_idx >= store.n_bars:
                 last_idx = store.n_bars - 1
+            _mtm_ts = int(store.timestamps[last_idx]) if last_idx < store.n_bars else 0
             for pos in pos_states[sym].values():
                 if pos.open and pos.entry_price > 0:
                     final_price = store.price(last_idx)
@@ -2419,6 +2515,7 @@ class VecEngine:
                         else:
                             mtm_pnl = (pos.entry_price - final_price) / pos.entry_price * 100.0
                         returns_by_sym[sym].append(mtm_pnl)
+                        _emit_trade(pos, _mtm_ts, final_price, mtm_pnl, "MTM_END_OF_SIM")
                         all_returns.append(mtm_pnl)
                         running_gain += mtm_pnl
 
@@ -2478,6 +2575,28 @@ class VecEngine:
         except metrics_guard.FakeMetricRefused as e:
             result["verdict"] = f"METRICS_GUARD_REFUSED: {e}"
             result["pool_sharpe"] = 0.0
+
+        # ── Trade-record JSONL flush (2026-05-18: quick_engine_compat side-channel) ──
+        # When V8_TRADES_OUT_DIR is set, write one JSONL file per (run_id, symbol)
+        # mirroring the legacy OPUS_VOMIT layout: <out_dir>/<run_id>__<symbol>.jsonl.
+        # flz_hourly_reconfig and tradier_hourly_reconfig read these files by name.
+        if _trade_log:
+            try:
+                os.makedirs(_trades_out_dir, exist_ok=True)
+                # Group records by symbol
+                _by_sym: Dict[str, List[Dict[str, Any]]] = {}
+                for _rec in _trade_log:
+                    _sym_k = _rec.get("symbol", "") or ""
+                    _by_sym.setdefault(_sym_k, []).append(_rec)
+                for _sym_k, _recs in _by_sym.items():
+                    if not _sym_k:
+                        continue
+                    _out_path = Path(_trades_out_dir) / f"{_trades_run_id}__{_sym_k}.jsonl"
+                    with open(_out_path, "w") as _f:
+                        for _rec in _recs:
+                            _f.write(json.dumps(_rec) + "\n")
+            except Exception as _exc:
+                print(f"[vec_engine_v1] trade-log write error: {_exc}", flush=True)
 
         return result
 

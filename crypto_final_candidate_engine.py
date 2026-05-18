@@ -620,6 +620,36 @@ def run_universe(symbols, cfg: FinalCandidateCfg, start_date: str, label: str):
     summary["_per_sym_csv"] = str(per_sym_csv)
     summary["_summary_json"] = str(summary_json)
     summary["_rows"] = rows
+    # Canonical row through metrics_guard (NO-LIES MANDATE 2026-04-30)
+    try:
+        import metrics_guard
+        canon_csv = out_dir / f"crypto_final_candidate_{label}_{ts_label}.csv"
+        row_for_guard = {
+            "iter": f"crypto_final_{label}",
+            "pool_sharpe": summary["pool_sharpe"],
+            "sym_sharpe": summary["sym_sharpe"],
+            "avg_gain_trade": summary["avg_gain_trade"],
+            "gain_per_yr": summary["gain_per_yr"],
+            "gain_sym_yr": summary["gain_sym_yr"],
+            "max_dd_pct": summary["max_dd_pct"],
+            "trades": summary["trades"],
+            "n_syms": summary["n_syms"],
+            "years": round(summary["years"], 3),
+            "label": label,
+            "tier": metrics_guard.tier_name(summary["pool_sharpe"]),
+            "compound_geo": round(summary["compound_geo"], 4),
+            "beat_bh": summary["beat_bh"],
+            "cleared_4x": summary["cleared_4x"],
+            "x6_pct": round(summary["x6_pct"], 2),
+            "x7_pct": round(summary["x7_pct"], 2),
+        }
+        metrics_guard.write_sharpe_row(canon_csv, row_for_guard, mode="crypto", append=True)
+        summary["_canon_csv"] = str(canon_csv)
+        print(f"[CSV] canonical row → {canon_csv}")
+    except metrics_guard.FakeMetricRefused as e:
+        print(f"[REFUSED] metrics_guard: {e}")
+    except Exception as e:
+        print(f"[WARN] metrics_guard write failed: {e}")
     return summary
 
 

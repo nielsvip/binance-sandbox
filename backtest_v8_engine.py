@@ -6070,16 +6070,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             return f"BLOCKED_GR_HTF_BULL_{_gh_bull}lt{_gh_req_bull}"
                         if (not _gh_is_long) and _gh_bear < _gh_req_bear:
                             return f"BLOCKED_GR_HTF_BEAR_{_gh_bear}lt{_gh_req_bear}"
-                # 2026-05-16 A3 fix #7 — MFI_ENTRY_ENABLED (default False).
-                # Mirrors live wiring at tradier_manage.py:10727-10730 (inside should_enter_long).
-                # When True, blocks LONG when mfi_D > MFI_LONG_THRESHOLD_D (default 20 — oversold proxy).
+                # MFI_ENTRY_ENABLED — OVERBOUGHT FILTER (fixed 2026-05-18; prior semantics inverted/dead-gate).
+                # Mirrors live wiring at tradier_manage.py:11156-11162 (inside should_enter_long).
+                # Blocks LONG when mfi_D > MFI_LONG_THRESHOLD_D (default 80 — overbought zone, reversal expected).
                 if account_key.startswith(("trb", "trc", "tra")):
                     if bool(getattr(tm_mod.config, 'MFI_ENTRY_ENABLED', False)):
                         _mfi_ind = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                         _mfi_is_long = (str(position_side) == "LONG")
                         if _mfi_is_long:
                             _mfi_d = float((_mfi_ind or {}).get('mfi_D', 50) or 50)
-                            _mfi_thr = float(getattr(tm_mod.config, 'MFI_LONG_THRESHOLD_D', 20.0))
+                            _mfi_thr = float(getattr(tm_mod.config, 'MFI_LONG_THRESHOLD_D', 80.0))
                             if _mfi_d > _mfi_thr:
                                 return f"BLOCKED_MFI_ENTRY_D_{_mfi_d:.0f}gt{_mfi_thr:.0f}"
                 _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) or 55)

@@ -365,8 +365,8 @@ class Config:
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
     HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
-    # 2026-05-17 R6 ROLLBACK per user mandate: was 60. Hedge_monitor showed Apr 13 (WR 87%) → May (WR 6%) degradation; the 60s lockout caused re-hedge thrash. Restore 3600s Apr 13 value.
-    HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 3600  # ROLLED BACK 2026-05-17 (was 60)
+    # REVERTED 2026-05-18 18:30: 3600 had no sample-floor evidence (violates 2026-05-16 mandate). Restoring 2026-05-10 root-cause fix value 60. Isolated vec sweep queued.
+    HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # REVERTED 2026-05-18 18:30 (was 3600 since 2026-05-17, was 60 since 2026-05-10)
     HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.
@@ -1215,8 +1215,10 @@ class Config:
     # entries only via existing paths (Rule A/B/C scaffolding follows). Sweep variants queued
     # on S1: WT3MFO_OFF_CRYPTO, WT3MFO_ON_CRYPTO_CONTROL.
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
-    WT_3M_FORCE_OPEN_ENABLED: bool = False
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False
+    # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
+    # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
     # Total votes = sum of bullish indicators across 5 TFs (3m/15m/1h/4h/D), max 35.
@@ -1239,10 +1241,11 @@ class Config:
     # behind its own kill-switch. ROLLBACK = set the *_ENABLED flag False.
     # Sweep variants queued on S1 sweep_coordinator/queue.json 2026-05-17.
     # ═══════════════════════════════════════════════════════════════════
-    HTF_TREND_VETO_ENABLED: bool = True                  # veto opens against Daily trend (htf_trend_long/short). +0.47 Sharpe cited (QuantPedia D1H1). Phase-2 wires this into execute_now entry gate cluster.
-    R3_HTF_FLIP_EXIT_ENABLED: bool = True                # Daily-close structural flip → CLOSE. Addresses 44% stuck-open + 49 RIDICULOUS_HOLD time-caps in 30d. Phase-2 wires in ez_manage R1/R2 cluster ~line 37800.
-    R3_HTF_FLIP_4H_TIER_ENABLED: bool = True             # USER 2026-05-17: parallel 4h tier so positions don't sit adverse up to 24h waiting for Daily close.
-    BREAKOUT_RETEST_ARMED_ENABLED: bool = True           # Rule A core (D/W breakout-then-retest). 2026-05-17: ENABLED with SIMPLIFIED stateless implementation (dc_basis_D as retest anchor, not persistent breakout_retest_armed state dict — full state-dict version pending). Wired in ez_manage _process_single_override_check (elif after WT_3M_FORCE_OPEN) + tradier_manage process_position. Cited lift: +22 WR abs pts / +0.47 Sharpe.
+    # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
+    HTF_TREND_VETO_ENABLED: bool = False                 # was True 2026-05-17; reverted — no sample-floor proof
+    R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = False            # was True 2026-05-17; reverted — no sample-floor proof
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7           # retest must fire within N days of arm
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30  # |close_3m - armed_level| / atr_D < this
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25      # volume_D > MULT * sma(volume_D, 20) required to arm
