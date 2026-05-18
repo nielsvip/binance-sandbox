@@ -147,6 +147,36 @@ def cfg_v14_x1_off_hold_4h_pyr_aggressive():
     return c
 
 
+def cfg_v15_trail_always():
+    """v14 + trail fires at ANY drawdown from peak (not just in profit)."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X2_require_profit = False  # trail fires even when losing
+    return c
+
+def cfg_v16_tight_trail_2h_hold():
+    """v14 + 8% trail always + 2h hold (instead of 4h)."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X2_trailing_pct = 8.0
+    c.exit_X2_require_profit = False
+    c.min_hold_bars = 24  # 2h instead of 4h
+    c.exit_X5_min_hold_bars = 24
+    return c
+
+def cfg_v17_8pct_trail():
+    """v14 + 8% trail in-profit only (tighter trail, same hold)."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X2_trailing_pct = 8.0
+    return c
+
+def cfg_v18_floor6_trail8():
+    """v14 + -6% floor + 8% trail always. Strictest tail-risk control."""
+    c = cfg_v14_x1_off_hold_4h_pyr_aggressive()
+    c.exit_X7_abs_floor_pct = -6.0
+    c.exit_X2_trailing_pct = 8.0
+    c.exit_X2_require_profit = False
+    return c
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Runner
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -255,6 +285,10 @@ def main():
         "v12_no_x1_pyr_cooldown": cfg_v12_no_x1_pyramid_cooldown(),
         "v13_full_trend": cfg_v13_full_trend(),
         "v14_x1off_4h_aggr_pyr": cfg_v14_x1_off_hold_4h_pyr_aggressive(),
+        "v15_v14_trail_always": cfg_v15_trail_always(),
+        "v16_v14_tight_trail_2h": cfg_v16_tight_trail_2h_hold(),
+        "v17_v14_8pct_trail": cfg_v17_8pct_trail(),
+        "v18_v14_floor6_trail8": cfg_v18_floor6_trail8(),
     }
 
     if args.variant != "all":

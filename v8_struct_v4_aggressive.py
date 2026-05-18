@@ -114,12 +114,14 @@ class AggressiveCfg:
     exit_X1_k15_min: float = 80.0
     # X2: trailing stop from highest close in-trade
     exit_X2_trailing_pct: float = 5.0
+    exit_X2_require_profit: bool = True       # True = only trail when in profit; False = trail from peak always
     # X3: hard stop ATR-based (legacy — prefer X7 technical stop)
     exit_X3_hardstop_atr_mult: float = 2.0
-    # X7: technical stop — frozen dc_low_4h at entry + absolute floor
+    # X7: technical stop — frozen dc_low_<tf> at entry + absolute floor
     exit_X7_tech_stop_enabled: bool = False
-    exit_X7_freeze_dc_tf: str = "4h"     # freeze dc_low at this TF at entry
+    exit_X7_freeze_dc_tf: str = "4h"     # freeze dc_low at this TF at entry; "" or unknown TF disables DC check
     exit_X7_abs_floor_pct: float = -8.0  # absolute max loss % (emergency cap)
+    exit_X7_freeze_bb_tf: str = ""       # if set (e.g. "1h"), also freeze bb_lower_<tf> at entry; "" disables
     # X4: bearish D WT cross (HTF protection)
     exit_X4_daily_bear_wt_enabled: bool = True
     # X5: structural flip (v3 logic, simultaneous-flip on trigger TF)
@@ -217,6 +219,7 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     atr_15 = _f(npz, "atr_15m", n, 0.0)
     # X7 technical stop indicators
     dc_low_4h = _f(npz, f"dc_low_{cfg.exit_X7_freeze_dc_tf}", n, 0.0)
+    bb_lower_arr = _f(npz, f"bb_lower_{cfg.exit_X7_freeze_bb_tf}", n, 0.0) if cfg.exit_X7_freeze_bb_tf else np.zeros(n)
     wt1_1h_arr = wt1_1h  # alias for X7 confirmation
 
     # Bull crosses
@@ -341,12 +344,15 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     avg_entry_price = 0.0
     entry_bar = -1
     highest_close_in_trade = 0.0
+    lowest_close_in_trade = 0.0  # for worst intra-trade DD
     pyramid_count = 0
     capital_in_trade = 0.0
     cooldown_until = 0
     frozen_dc_stop = 0.0
+    frozen_bb_stop = 0.0
     events: List[Dict] = []
     trade_returns: List[float] = []
+    trade_worst_dd: List[float] = []  # worst intra-trade DD pct per trade (negative number)
     entry_path_counts: Dict[str, int] = {}
     exit_path_counts: Dict[str, int] = {}
 
@@ -398,14 +404,18 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 avg_entry_price = px
                 entry_bar = i
                 highest_close_in_trade = px
+                lowest_close_in_trade = px
                 pyramid_count = 0
                 frozen_dc_stop = float(dc_low_4h[i]) if cfg.exit_X7_tech_stop_enabled else 0.0
+                frozen_bb_stop = float(bb_lower_arr[i]) if (cfg.exit_X7_tech_stop_enabled and cfg.exit_X7_freeze_bb_tf) else 0.0
                 entry_path_counts[entry_path] = entry_path_counts.get(entry_path, 0) + 1
                 _record_event(i, "OPEN", pos_qty, px, f"PATH_{entry_path}", capital_in_trade)
         else:
-            # Update trailing high
+            # Update trailing high + lowest (for worst intra-trade DD tracking)
             if px > highest_close_in_trade:
                 highest_close_in_trade = px
+            if px < lowest_close_in_trade or lowest_close_in_trade == 0.0:
+                lowest_close_in_trade = px
             # Try PYRAMID first (still in long, new D HH)
             if (cfg.pyramid_enabled
                 and pyramid_count < cfg.max_pyramid_levels
@@ -438,11 +448,14 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
             # Try EXITS in priority order
             bars_in_trade = i - entry_bar
             exit_path = None
-            # X7: Technical stop — frozen dc_low_4h at entry + absolute floor (ALWAYS fires, ignores min_hold)
+            # X7: Technical stop — frozen dc_low_<tf> + frozen bb_lower_<tf> + abs floor (ALWAYS fires, ignores min_hold)
             if cfg.exit_X7_tech_stop_enabled:
                 cur_gain = (px - avg_entry_price) / avg_entry_price * 100
                 if cur_gain < 0:
-                    if px < frozen_dc_stop or cur_gain < cfg.exit_X7_abs_floor_pct:
+                    _hit_dc = (frozen_dc_stop > 0 and px < frozen_dc_stop)
+                    _hit_bb = (frozen_bb_stop > 0 and px < frozen_bb_stop)
+                    _hit_abs = (cur_gain < cfg.exit_X7_abs_floor_pct)
+                    if _hit_dc or _hit_bb or _hit_abs:
                         exit_path = "X7"
             # Hard stop: X3 (legacy ATR-based, also ignores min_hold)
             if exit_path is None and cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
@@ -454,8 +467,9 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 # Trailing: X2
                 if cfg.exit_X2_trailing_pct > 0:
                     trail_px = highest_close_in_trade * (1 - cfg.exit_X2_trailing_pct / 100)
-                    if px < trail_px and (px > avg_entry_price * 1.005 or pyramid_count > 0):
-                        exit_path = "X2"
+                    if px < trail_px:
+                        if not cfg.exit_X2_require_profit or px > avg_entry_price * 1.005 or pyramid_count > 0:
+                            exit_path = "X2"
                 if exit_path is None and exit_X1[i]:
                     exit_path = "X1"
                 if exit_path is None and exit_X4[i]:
@@ -474,6 +488,12 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 pnl_dollars = capital_in_trade * (ret_pct / 100)
                 capital += pnl_dollars
                 trade_returns.append(ret_pct)
+                # Worst intra-trade DD = (lowest_close - avg_entry_price) / avg_entry_price * 100
+                if avg_entry_price > 0 and lowest_close_in_trade > 0:
+                    worst_dd_pct = (lowest_close_in_trade - avg_entry_price) / avg_entry_price * 100
+                else:
+                    worst_dd_pct = 0.0
+                trade_worst_dd.append(worst_dd_pct)
                 exit_path_counts[exit_path] = exit_path_counts.get(exit_path, 0) + 1
                 _record_event(i, "CLOSE", pos_qty, px, exit_path, pos_qty * px,
                               extra_indicators={"pnl_pct": round(ret_pct, 4),
@@ -491,6 +511,11 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
         ret_pct = (mark - avg_entry_price) / avg_entry_price * 100 - cfg.round_trip_cost_pct
         capital += capital_in_trade * (ret_pct / 100)
         trade_returns.append(ret_pct)
+        if avg_entry_price > 0 and lowest_close_in_trade > 0:
+            worst_dd_pct = (lowest_close_in_trade - avg_entry_price) / avg_entry_price * 100
+        else:
+            worst_dd_pct = 0.0
+        trade_worst_dd.append(worst_dd_pct)
         exit_path_counts["MTM"] = exit_path_counts.get("MTM", 0) + 1
         _record_event(n - 1, "CLOSE", pos_qty, mark, "MTM_FINAL", pos_qty * mark,
                       extra_indicators={"pnl_pct": round(ret_pct, 4),
@@ -514,6 +539,7 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
         "entry_paths": entry_path_counts,
         "exit_paths": exit_path_counts,
         "trade_returns": trade_returns,
+        "trade_worst_dd": trade_worst_dd,
         "events": events,
     }
 
