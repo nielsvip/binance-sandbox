@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 00:51:26 UTC
+# Copilot Status — 2026-05-18 01:06:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:45:07
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T00:47:10
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T00:47:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:47:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T00:49:12
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T00:49:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:49:12
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T00:51:15
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T00:51:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:51:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:59:26
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:01:29
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:01:29
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:01:29
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:03:31
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:03:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:03:31
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:05:34
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:05:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:05:34
 
 ## Missed Trades (trader comparison)
 
@@ -44,15 +44,15 @@ _None_
 - WATCHING: **ZRXUSDT** SHORT (crypto) peaked +4.5%, exited 0m ago
 - WATCHING: **SNXUSDT** SHORT (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
-- WATCHING: **SNXUSDT** LONG (crypto) peaked +3.0%, exited 0m ago
+- WATCHING: **SNXUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
