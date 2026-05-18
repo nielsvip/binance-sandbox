@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 18:16:36 UTC
+# Copilot Status — 2026-05-18 18:32:31 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:14:27
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:14:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:14:57
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:15:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:15:32
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T18:16:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:16:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:16:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:16:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:16:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:29:53
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:30:25
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:30:25
+- **BIG_LOSER** [tradier] trb:MSTR_LONG — 2026-05-18T18:30:56
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:30:56
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:30:56
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:31:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:31:31
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T18:32:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T18:32:02
 
 ## Missed Trades (trader comparison)
 
@@ -40,14 +40,14 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 1m ago
+- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 2m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 24
-- [HIGH] ez_prices.py is NOT running
+**Issues (last 1h):** 42
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)

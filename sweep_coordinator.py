@@ -90,21 +90,37 @@ PRIORITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "GENERATED": 
 # coordinator runs with V8_USE_VEC_ALL=1 (vec engine) but the flipped knobs
 # were only read in the slow engine path. Load the curated vec-aware knob set
 # and refuse to run any arm whose flipped knobs are NOT in this set.
-# File maintained by `python3 -c "from sweep_coordinator import _refresh_vec_aware_set; _refresh_vec_aware_set()"`.
-_VEC_AWARE_FILE = Path("/home/niels/binance-sandbox/data/vec_aware_knobs.txt")
+# File maintained by `python3 tools/audit_vec_aware_knobs.py`.
+# 2026-05-18 — path now relative to BASE_PATH (works on Mac + S1).
+_VEC_AWARE_FILE = BASE_PATH / "data" / "vec_aware_knobs.txt"
+_ENGINE_ONLY_FILE = BASE_PATH / "data" / "engine_only_knobs.txt"
 _VEC_AWARE_CONTEXT = {"USDC_PREFERENCE_BLOCK_ENABLED"}  # ignored: coordinator/runner context flags
 
-def _load_vec_aware_knobs() -> set:
-    if not _VEC_AWARE_FILE.exists():
+def _load_knob_list(path: Path) -> set:
+    if not path.exists():
         return set()
-    return {ln.strip() for ln in _VEC_AWARE_FILE.read_text().splitlines() if ln.strip() and not ln.startswith("#")}
+    return {ln.strip() for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")}
 
-def _arm_is_vec_aware(overrides: dict, vec_aware: set) -> tuple[bool, list]:
+def _load_vec_aware_knobs() -> set:
+    return _load_knob_list(_VEC_AWARE_FILE)
+
+def _load_engine_only_knobs() -> set:
+    return _load_knob_list(_ENGINE_ONLY_FILE)
+
+def _arm_is_vec_aware(overrides: dict, vec_aware: set, engine_only: set | None = None) -> tuple[bool, list, list]:
+    """Returns (vec_safe, non_vec_keys, engine_only_keys).
+
+    - non_vec_keys: flipped keys NOT in vec_aware (and not context) — refuse.
+    - engine_only_keys: subset of non_vec_keys explicitly confirmed engine-only
+      (read by backtest_v8_engine/ez_manage/tradier_manage but NOT by any vec_paths/*).
+      Reported alongside for clearer diagnostics; refusal is the same either way.
+    """
     flipped = set((overrides or {}).keys()) - _VEC_AWARE_CONTEXT
     if not flipped:
-        return True, []  # control/baseline arm — no flips, always vec-safe
+        return True, [], []  # control/baseline arm — no flips, always vec-safe
     non_vec = sorted(flipped - vec_aware)
-    return (len(non_vec) == 0), non_vec
+    eo = sorted(set(non_vec) & (engine_only or set()))
+    return (len(non_vec) == 0), non_vec, eo
 
 # 2026-05-17 — Duplicate-result failsafe. After 6 distinct configs produced
 # the byte-identical (pool_sharpe, trades, wins, losses) tuple, we add a
@@ -694,8 +710,11 @@ def main() -> None:
 
     last_flaw_write = 0.0
     vec_aware = _load_vec_aware_knobs()
+    engine_only = _load_engine_only_knobs()
     _vec_mtime = _VEC_AWARE_FILE.stat().st_mtime if _VEC_AWARE_FILE.exists() else 0.0
+    _eo_mtime = _ENGINE_ONLY_FILE.stat().st_mtime if _ENGINE_ONLY_FILE.exists() else 0.0
     print(f"[coord] vec_aware_knobs loaded: {len(vec_aware)} (from {_VEC_AWARE_FILE})", flush=True)
+    print(f"[coord] engine_only_knobs loaded: {len(engine_only)} (from {_ENGINE_ONLY_FILE})", flush=True)
     seen_signatures = _load_seen_signatures()
     print(f"[coord] result signatures from prior ledger: {len(seen_signatures)}", flush=True)
 
@@ -708,6 +727,12 @@ def main() -> None:
                 vec_aware = _load_vec_aware_knobs()
                 _vec_mtime = cur_mtime
                 print(f"[coord] vec_aware_knobs reloaded: {len(vec_aware)}", flush=True)
+        if _ENGINE_ONLY_FILE.exists():
+            cur_eo_mtime = _ENGINE_ONLY_FILE.stat().st_mtime
+            if cur_eo_mtime > _eo_mtime:
+                engine_only = _load_engine_only_knobs()
+                _eo_mtime = cur_eo_mtime
+                print(f"[coord] engine_only_knobs reloaded: {len(engine_only)}", flush=True)
         seen = _load_seen_hashes(args.mode)
         queue = _build_priority_queue(args.mode, seen)
 
@@ -733,15 +758,18 @@ def main() -> None:
         # empty (file missing) — so coordinator still works if list isn't
         # provisioned.
         # ──────────────────────────────────────────────────────────────────
-        vec_ok, non_vec_keys = (True, [])
+        vec_ok, non_vec_keys, engine_only_keys = (True, [], [])
         if vec_aware:
-            vec_ok, non_vec_keys = _arm_is_vec_aware(overrides, vec_aware)
+            vec_ok, non_vec_keys, engine_only_keys = _arm_is_vec_aware(overrides, vec_aware, engine_only)
         if not vec_ok:
-            print(f"[coord] ⊗ {label} [{priority}] hash={h} BLOCKED non_vec_keys={non_vec_keys}", flush=True)
+            tag = "ENGINE_ONLY" if engine_only_keys else "NON_VEC"
+            print(f"[coord] ⊗ {label} [{priority}] hash={h} BLOCKED [{tag}] non_vec_keys={non_vec_keys} engine_only={engine_only_keys}", flush=True)
             _append_ledger({
                 "test_id": label, "cfg_hash": h, "status": "BLOCKED_NON_VEC_KNOBS",
-                "verdict": f"BLOCKED_non_vec_keys={','.join(non_vec_keys)}",
-                "non_vec_keys": non_vec_keys, "config_changes": overrides,
+                "verdict": f"BLOCKED_{tag}_keys={','.join(non_vec_keys)}",
+                "non_vec_keys": non_vec_keys,
+                "engine_only_keys": engine_only_keys,
+                "config_changes": overrides,
                 "mode": args.mode, "elapsed_s": 0.0,
                 "ts_utc": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
             })

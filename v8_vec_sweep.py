@@ -528,6 +528,19 @@ class SweepConfig:
     TR_TREND_V1_SPY_SLOPE_LOOKBACK_D: int = 10
     TR_TREND_V1_RISK_PCT: float = 0.5
     TR_TREND_V1_ACCOUNT_USD: float = 35000.0
+    # ── DEAD-KNOB REWIRE (2026-05-18 18:00 UTC mandate) ─────────────────────────
+    # Flags previously honoured only in backtest_v8_engine.py / tradier_manage.py
+    # but ignored by the vec path → every V8_USE_VEC_ALL=1 sweep that toggled
+    # these returned baseline-identical results (DEAD KNOB / DUPLICATE_OF).
+    # GR_HTF_GATE — block OPEN by wt_bull_alignment / wt_bear_alignment count.
+    # MFI_ENTRY   — block LONG OPEN when mfi_D > threshold (oversold proxy).
+    GR_HTF_GATE_ENABLED: bool = False        # mirrors backtest_v8_engine.py:6062
+    GR_HTF_REQUIRE_BULL: int = 1             # min wt_bull_alignment for LONG OPEN
+    GR_HTF_REQUIRE_BEAR: int = 1             # min wt_bear_alignment for SHORT OPEN
+    GOLDEN_RULE_HTF_GATE_MODE: str = "ALIGN" # ALIGN | OFF (reserved)
+    MFI_ENTRY_ENABLED: bool = False          # mirrors backtest_v8_engine.py:6077
+    MFI_LONG_THRESHOLD_D: float = 20.0       # block LONG when mfi_D > this (default 20 = oversold gate)
+    MFI_SHORT_THRESHOLD_D: float = 80.0      # block SHORT when mfi_D < this (overbought gate)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -855,6 +868,39 @@ def simulate_one_symbol(
         _atr_safe = np.maximum(_atr_series, np.maximum(close * 0.005, 1e-6))
         _atr_parity_qty = _target_dollar_risk / _atr_safe
 
+    # ─── DEAD-KNOB REWIRE precompute (2026-05-18) ───────────────────────────────
+    # GR_HTF_GATE: wt_bull_alignment / wt_bear_alignment in NPZ (integer counts).
+    # Block OPEN when LONG and wt_bull_alignment < GR_HTF_REQUIRE_BULL (mirror SHORT).
+    _gr_htf_gate_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "GR_HTF_GATE_ENABLED", False)):
+        _gh_bull_arr = np.nan_to_num(
+            npz.get("wt_bull_alignment", np.zeros(n, dtype=np.float32)), nan=0.0
+        ).astype(np.int32)
+        _gh_bear_arr = np.nan_to_num(
+            npz.get("wt_bear_alignment", np.zeros(n, dtype=np.float32)), nan=0.0
+        ).astype(np.int32)
+        if is_long:
+            _gh_req = int(getattr(config, "GR_HTF_REQUIRE_BULL", 1))
+            _gr_htf_gate_open_ok = _gh_bull_arr >= _gh_req
+        else:
+            _gh_req = int(getattr(config, "GR_HTF_REQUIRE_BEAR", 1))
+            _gr_htf_gate_open_ok = _gh_bear_arr >= _gh_req
+    # MFI_ENTRY: block LONG OPEN when mfi_D > MFI_LONG_THRESHOLD_D (oversold proxy
+    # — if MFI is already high, momentum is exhausted; the live wiring at
+    # tradier_manage.py:11156 blocks LONG entries unless MFI shows oversold).
+    # SHORT mirror: block when mfi_D < MFI_SHORT_THRESHOLD_D.
+    _mfi_entry_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "MFI_ENTRY_ENABLED", False)):
+        _mfi_d_arr = np.nan_to_num(
+            npz.get("mfi_D", np.full(n, 50.0, dtype=np.float32)), nan=50.0
+        ).astype(np.float32)
+        if is_long:
+            _mfi_thr = float(getattr(config, "MFI_LONG_THRESHOLD_D", 20.0))
+            _mfi_entry_open_ok = _mfi_d_arr <= _mfi_thr
+        else:
+            _mfi_short_thr = float(getattr(config, "MFI_SHORT_THRESHOLD_D", 80.0))
+            _mfi_entry_open_ok = _mfi_d_arr >= _mfi_short_thr
+
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
     # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
     # then short-circuit the legacy OPEN / EXIT pipeline below. Hot loop only
@@ -1029,6 +1075,14 @@ def simulate_one_symbol(
                     continue
             # A4 Daily-decision-TF gate: only evaluate OPEN on last bar of trading day
             if str(config.DECISION_TF_MODE).upper() == "DAILY" and not bool(_daily_decision_mask[i]):
+                continue
+            # DEAD-KNOB REWIRE 2026-05-18: GR_HTF_GATE — block when alignment short.
+            # Mirrors backtest_v8_engine.py:6062 ("BLOCKED_GR_HTF_BULL/BEAR_…").
+            if not bool(_gr_htf_gate_open_ok[i]):
+                continue
+            # DEAD-KNOB REWIRE 2026-05-18: MFI_ENTRY — block LONG/SHORT by mfi_D.
+            # Mirrors backtest_v8_engine.py:6077 ("BLOCKED_MFI_ENTRY_D_…gt…").
+            if not bool(_mfi_entry_open_ok[i]):
                 continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
@@ -2300,7 +2354,32 @@ def main():
     syms = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     sides = [s.strip().upper() for s in args.sides.split(",") if s.strip()]
     cfg = SweepConfig()
-    for k, v in _parse_overrides(args.override).items():
+    # DEAD-KNOB REWIRE 2026-05-18: refuse vec runs that toggle ENGINE-ONLY knobs.
+    # Listed in vec_paths/__init__.py:VEC_ENGINE_ONLY_KNOBS. Without this guard,
+    # such overrides silently pass through to baseline because the vec path
+    # doesn't simulate the live-only state machine they gate — wastes hours of
+    # sweep compute producing DUPLICATE_OF_<baseline>.
+    try:
+        from vec_paths import vec_refuses_knob, vec_engine_only_reason
+    except ImportError:
+        vec_refuses_knob = lambda _: False
+        vec_engine_only_reason = lambda _: ""
+    _parsed_overrides = _parse_overrides(args.override)
+    _engine_only_violations = [k for k in _parsed_overrides if vec_refuses_knob(k)]
+    if _engine_only_violations:
+        sys.stderr.write(
+            "VEC_ENGINE_ONLY_REFUSED: v8_vec_sweep does not honour these knobs "
+            "(would produce DUPLICATE_OF_<baseline>): "
+            + ", ".join(_engine_only_violations) + "\n"
+        )
+        for _k in _engine_only_violations:
+            sys.stderr.write(f"  {_k}: {vec_engine_only_reason(_k)}\n")
+        sys.stderr.write(
+            "Run with backtest_v8_engine.py (V8_USE_VEC_ALL=0) or remove these "
+            "overrides. See vec_paths/__init__.py:VEC_ENGINE_ONLY_KNOBS.\n"
+        )
+        sys.exit(4)
+    for k, v in _parsed_overrides.items():
         if hasattr(cfg, k):
             setattr(cfg, k, v)
         else:
