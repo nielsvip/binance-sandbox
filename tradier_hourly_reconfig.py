@@ -63,27 +63,6 @@ _SHORT_ONLY_OVR = {"LONG_ENABLED": False, "SHORT_ENABLED": True,
 _BOTH_OVR = {"LONG_ENABLED": True, "SHORT_ENABLED": True,
              "WT_DC_LONG_ENABLED": True, "WT_DC_SHORT_ENABLED": True}
 
-# 2026-05-18 baseline_v2 anchor — supersedes empty {} as the tradier baseline. Built
-# from STATE_OF_AFFAIRS + post-May-1 user-locked mandates (R1/R2/DUP_GUARD/
-# WT_3M_FORCE_OPEN_OFF/HTF_TREND_VETO/Rule A/PPL_v2 tradier-suffix variants/
-# ATR_TRAIL_OFF). Stocks have NO same-symbol hedge — hedge knobs omitted.
-BASELINE_V2_TRADIER_PATH = ROOT / "data" / "hourly_reconfig" / "_baselines" / "baseline_v2_tradier_20260518.json"
-
-
-def _load_baseline_v2_tradier() -> Dict:
-    """Load tradier baseline_v2; strip _meta. Returns {} on miss so daemon survives
-    misconfigured deploys without breaking hourly loop."""
-    try:
-        with BASELINE_V2_TRADIER_PATH.open() as f:
-            d = json.load(f)
-    except Exception as e:
-        print(f"  [baseline_v2] tradier load failed: {e}", flush=True)
-        return {}
-    return {k: v for k, v in d.items() if not k.startswith("_")}
-
-
-_BASELINE_V2_TRADIER = _load_baseline_v2_tradier()
-
 
 def _prune_old_engine_runs(engine_runs_dir: Path, keep: int = 2) -> None:
     """Delete all but the `keep` most recent timestamped engine-run directories."""
@@ -122,33 +101,17 @@ def load_safe_override(path: Path) -> Dict:
     return {k: v for k, v in d.items() if not k.startswith("_")}
 
 
-def _bv2_fused(side_ovr: Dict) -> Dict:
-    """Fuse baseline_v2 + side flags. Side flags take precedence so a baseline_v2
-    that ever ships LONG_ENABLED/SHORT_ENABLED can't override the side-only
-    requirement (BASELINE_V2 currently does not set side flags, but this keeps the
-    invariant tight)."""
-    out = dict(_BASELINE_V2_TRADIER)
-    out.update(side_ovr)
-    return out
-
-
 def build_candidates(sym: str, can_long: bool, can_short: bool) -> List[Tuple[str, Dict]]:
-    """Build the candidate list: side-specific baselines + per-sym winner JSONs.
-
-    2026-05-18: baseline_LONG/SHORT/BOTH now layered on top of baseline_v2_tradier_20260518
-    instead of empty {} so per-sym variations measure deltas vs the user-locked
-    mandate set (R1/R2/PPL_v2/HTF_TREND_VETO/Rule A/ATR_TRAIL_OFF) rather than
-    engine defaults.
-    """
+    """Build the candidate list: side-specific baselines + per-sym winner JSONs."""
     cands: List[Tuple[str, Dict]] = []
     base_long_label = "baseline_LONG" if can_long else "baseline_SHORT"
 
     if can_long:
-        cands.append(("baseline_LONG", _bv2_fused(_LONG_ONLY_OVR)))
+        cands.append(("baseline_LONG", dict(_LONG_ONLY_OVR)))
     if can_short:
-        cands.append(("baseline_SHORT", _bv2_fused(_SHORT_ONLY_OVR)))
+        cands.append(("baseline_SHORT", dict(_SHORT_ONLY_OVR)))
     if can_long and can_short:
-        cands.append(("baseline_BOTH", _bv2_fused(_BOTH_OVR)))
+        cands.append(("baseline_BOTH", dict(_BOTH_OVR)))
 
     # Fix C 2026-05-18: layer NEW knob clusters on top of each side-baseline so
     # they are evaluated for both LONG and SHORT permutations. Knob names verified
@@ -204,9 +167,9 @@ def build_candidates(sym: str, can_long: bool, can_short: bool) -> List[Tuple[st
     ]
     side_bases: List[Tuple[str, Dict]] = []
     if can_long:
-        side_bases.append(("LONG", _bv2_fused(_LONG_ONLY_OVR)))
+        side_bases.append(("LONG", dict(_LONG_ONLY_OVR)))
     if can_short:
-        side_bases.append(("SHORT", _bv2_fused(_SHORT_ONLY_OVR)))
+        side_bases.append(("SHORT", dict(_SHORT_ONLY_OVR)))
     for side_label, side_base in side_bases:
         for tag, deltas in TRADIER_NEW_KNOB_CLUSTERS:
             fused = dict(side_base)

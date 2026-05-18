@@ -41,13 +41,14 @@ def _get_crypto_symbols():
     return sorted(syms)
 
 
-def cfg_v24():
+def cfg_v24(mode="tradier"):
+    dc_tf = "D" if mode == "crypto" else "4h"
     return AggressiveCfg(
         exit_X1_topcatch_enabled=False,
         exit_X2_trailing_pct=12.0,
         exit_X3_hardstop_atr_mult=0,
         exit_X7_tech_stop_enabled=True,
-        exit_X7_freeze_dc_tf="4h",
+        exit_X7_freeze_dc_tf=dc_tf,
         exit_X7_abs_floor_pct=-8.0,
         min_hold_bars=48,
         exit_X5_min_hold_bars=48,
@@ -160,27 +161,28 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write-history", action="store_true")
     args = ap.parse_args()
-    cfg = cfg_v24()
     summaries = []
 
     print("\n" + "X"*80)
     print("  v24 — 15m PYRAMID SWEEP")
     print("X"*80)
 
-    # 1) Tradier full universe
-    s = run_universe(TRADIER_114, "tradier", cfg, "2024-04-01", "v24_tradier",
+    # 1) Tradier full universe (DC 4h stop)
+    cfg_t = cfg_v24("tradier")
+    s = run_universe(TRADIER_114, "tradier", cfg_t, "2024-04-01", "v24_tradier",
                      write_history=args.write_history)
     summaries.append(s)
 
-    # 2) Crypto full universe
+    # 2) Crypto full universe (DC D stop — wider for 24/7 vol)
+    cfg_c = cfg_v24("crypto")
     crypto_syms = _get_crypto_symbols()
     print(f"\n  Found {len(crypto_syms)} crypto NPZs")
-    s = run_universe(crypto_syms, "crypto", cfg, "2022-01-01", "v24_crypto",
+    s = run_universe(crypto_syms, "crypto", cfg_c, "2022-01-01", "v24_crypto",
                      write_history=args.write_history)
     summaries.append(s)
 
     # 3) Tradier held-out window
-    s = run_universe(TRADIER_114, "tradier", cfg, "2023-07-01", "v24_tradier_heldout",
+    s = run_universe(TRADIER_114, "tradier", cfg_t, "2023-07-01", "v24_tradier_heldout",
                      write_history=args.write_history)
     summaries.append(s)
 

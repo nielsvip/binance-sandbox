@@ -1175,6 +1175,81 @@ def is_storm(indicators, position_side, account_key=None):
 TRADEABLE_KEYS = set()
 base_path = config.BASE_PATH
 logger = logging.getLogger("ez_manage")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# 2026-05-18 PER-SYM CONFIG OVERLAY — Path B wiring per user mandate.
+# Reads data/hourly_reconfig/per_sym_active_config.json with mtime cache.
+# Each cluster-knob site below switches from `getattr(config, KNOB, default)`
+# to `_psym_get(symbol, side, KNOB, default)` so daemon-written per-sym
+# winners actually flow through to live decisions. The audit map at
+# data/_diagnostic/per_sym_key_consumption_map_20260518.md documented that
+# only 1 (crypto) + 17 (tradier) of ~250 cluster knobs reached a live read.
+# This block opens that aperture for the priority cluster.
+# V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit).
+# ─────────────────────────────────────────────────────────────────────────
+_ezm_per_sym_cfgs: dict = {}
+_ezm_per_sym_cfgs_mtime: float = 0.0
+_ezm_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+
+
+def _psym_get(symbol: str, side: str, knob: str, default):
+    """Per-sym knob lookup. Returns per-sym override if present for
+    (symbol, side) AND override dict contains knob; else falls back to
+    getattr(config, knob, default)."""
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return getattr(config, knob, default)
+    global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
+    try:
+        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+        if mtime != _ezm_per_sym_cfgs_mtime:
+            with _ezm_per_sym_cfgs_path.open() as _f:
+                raw = json.load(_f)
+            _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _ezm_per_sym_cfgs_mtime = mtime
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+    ov = _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {})
+    if knob in ov:
+        return ov[knob]
+    return getattr(config, knob, default)
+
+
+def _psym_sps(symbol: str, side: str):
+    """Effective START_POSITION_SIZE for (symbol, side). Honors per-sym
+    START_POSITION_SIZE_OVERRIDE_USD first, then per-sym START_POSITION_SIZE,
+    finally config.START_POSITION_SIZE. Use at sizing call sites in lieu of
+    `config.START_POSITION_SIZE`.
+    2026-05-18 Path B — implements user's minimum-patch trial-sizing key."""
+    try:
+        if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+            return getattr(config, "START_POSITION_SIZE", 45.0)
+        global _ezm_per_sym_cfgs, _ezm_per_sym_cfgs_mtime
+        try:
+            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+            if mtime != _ezm_per_sym_cfgs_mtime:
+                with _ezm_per_sym_cfgs_path.open() as _f:
+                    raw = json.load(_f)
+                _ezm_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+                _ezm_per_sym_cfgs_mtime = mtime
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+        ov = _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {})
+        if "START_POSITION_SIZE_OVERRIDE_USD" in ov:
+            v = ov["START_POSITION_SIZE_OVERRIDE_USD"]
+            if v is not None:
+                return float(v)
+        if "START_POSITION_SIZE" in ov:
+            return float(ov["START_POSITION_SIZE"])
+    except Exception:
+        pass
+    return float(getattr(config, "START_POSITION_SIZE", 45.0))
+
+
 paper_trading_logger = logging.getLogger("paper_trading")
 paper_trading_logger.propagate = False
 paper_trading_logger.setLevel(logging.DEBUG)
@@ -17061,9 +17136,10 @@ class MultiAccountTradeManager:
                 or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper()
             ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             if not _wt3m_force_open:
-                if bool(getattr(config, "DUP_GUARD_USE_GAIN_GATE", True)):
-                    _dg_min_gain = float(getattr(config, "MIN_GAIN", 3.0))
-                    _dg_mult = float(getattr(config, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))
+                # 2026-05-18 per-sym overlay
+                if bool(_psym_get(symbol, position_side, "DUP_GUARD_USE_GAIN_GATE", True)):
+                    _dg_min_gain = float(_psym_get(symbol, position_side, "MIN_GAIN", 3.0))
+                    _dg_mult = float(_psym_get(symbol, position_side, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))
                     _dg_thr = _dg_min_gain * _dg_mult
                     if not position:
                         position = await self.get_position(position_key)
@@ -18657,7 +18733,8 @@ class MultiAccountTradeManager:
             # ROLLBACK: HTF_TREND_VETO_ENABLED=False in config.py.
             # ═══════════════════════════════════════════════════════════════════════════
             if (
-                bool(getattr(config, "HTF_TREND_VETO_ENABLED", False))
+                # 2026-05-18 per-sym overlay
+                bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ENABLED", False))
                 and action in ("OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REVERSE", "REVERSE_AUGMENT")
                 and "HEDGE" not in (reason or "").upper()
                 and "RULE_C" not in (reason or "").upper()
@@ -19848,7 +19925,9 @@ class MultiAccountTradeManager:
                 logger.info(
                     f"{position_key} fffffff execute_ after 15m check $ {quantity * current_price}"
                 )
-            if position.positionAmt > config.START_POSITION_SIZE and (
+            # 2026-05-18 per-sym overlay
+            _sps_psp_a = _psym_sps(symbol, position_side)
+            if position.positionAmt > _sps_psp_a and (
                 position.gain < 0.3 * config.MIN_GAIN or position.realized_pnl < 0
             ):
                 quantity = 0.7 * quantity
@@ -19912,8 +19991,9 @@ class MultiAccountTradeManager:
                     "HEDGE_OPEN",
                 ] and ((is_long and trend_up) or (not is_long and trend_down))
                 if min_augment_condition_exec:
+                    # 2026-05-18 per-sym overlay
                     min_augment_qty = max(
-                        config.START_POSITION_SIZE / current_price, 1.2 * pos_min_qty
+                        _psym_sps(symbol, position_side) / current_price, 1.2 * pos_min_qty
                     )
                     if quantity < min_augment_qty:
                         quantity = min_augment_qty
@@ -19976,11 +20056,12 @@ class MultiAccountTradeManager:
         override_used = False
         if override_qty is not None:
             if not ("CLOSE" in action or "REDUCE" in action or "PROFIT_TAKE" in action):
+                # 2026-05-18 per-sym overlay
                 quantity = max(
                     quantity,
                     override_qty,
                     pos_min_qty,
-                    config.START_POSITION_SIZE / current_price,
+                    _psym_sps(symbol, position_side) / current_price,
                 )
             else:
                 quantity = override_qty
@@ -20339,7 +20420,8 @@ class MultiAccountTradeManager:
 
             _tm = _re.search(r"SIZE_TIER=(TIER[123])", reason)
             if _tm:
-                _base = getattr(config, "START_POSITION_SIZE", 45.0)
+                # 2026-05-18 per-sym overlay (honors START_POSITION_SIZE_OVERRIDE_USD)
+                _base = _psym_sps(symbol, position_side)
                 if _tm.group(1) == "TIER1":
                     _tier_cap = _base * 1.0 / max(current_price, 1e-9)
                 elif _tm.group(1) == "TIER2":
@@ -20355,7 +20437,8 @@ class MultiAccountTradeManager:
             if "BTC" in symbol:
                 _base = _base * 3
         order_value = quantity * current_price
-        base_size = getattr(config, "START_POSITION_SIZE", 45.0)
+        # 2026-05-18 per-sym overlay
+        base_size = _psym_sps(symbol, position_side)
         if "BTCUSDC" in symbol:
             base_size = base_size * 3
         if is_reduce:
@@ -24296,11 +24379,10 @@ class MultiAccountTradeManager:
                             # If hedge fails for ANY reason → close losing position, OVERRIDING NOLOSS.
                             # Synchronous: await hedge result. No fire-and-forget. No silent failures.
                             _hedge_outcome = "skip"  # one of: success | already_covered | failed | wt_not_against | gain_too_small | disabled
-                            if bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", True)):
+                            # 2026-05-18 per-sym overlay
+                            if bool(_psym_get(symbol, position_side, "OBLIGATORY_HEDGE_ENABLED", True)):
                                 _oh_min_loss = float(
-                                    getattr(
-                                        config, "OBLIGATORY_HEDGE_MIN_LOSS_PCT", -0.25
-                                    )
+                                    _psym_get(symbol, position_side, "OBLIGATORY_HEDGE_MIN_LOSS_PCT", -0.25)
                                 )
                                 if _real_gain <= _oh_min_loss:
                                     _he = getattr(self, "hedge_engine", None)
@@ -24450,7 +24532,8 @@ class MultiAccountTradeManager:
                                         # For SHORT pos: hedge is LONG → require wt1_D > wt2_D.
                                         # Fails open if D-data missing. ROLLBACK: HEDGE_HTF_VETO_ENABLED=False.
                                         # ═══════════════════════════════════════════════════════════════════
-                                        if _oh_user_trigger and bool(getattr(config, "HEDGE_HTF_VETO_ENABLED", False)):
+                                        # 2026-05-18 per-sym overlay
+                                        if _oh_user_trigger and bool(_psym_get(symbol, position_side, "HEDGE_HTF_VETO_ENABLED", False)):
                                             _hhv_w1_D = safe_fetch_float(_oh_ind.get("wt1_D"), 0)
                                             _hhv_w2_D = safe_fetch_float(_oh_ind.get("wt2_D"), 0)
                                             _hhv_data_ok = abs(_hhv_w1_D) > 1e-9 and abs(_hhv_w2_D) > 1e-9
@@ -35399,7 +35482,8 @@ async def _process_single_override_check(
                         # / wt1_3m < wt2_3m (SHORT) MUST have a position. Reopen after every close.
                         # Reentry/hedge gates may NOT block this (see HARD_AUGMENT_LOCK / DUP_GUARD
                         # bypass in execute_now).
-                        elif bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", True)):
+                        # 2026-05-18 per-sym overlay
+                        elif bool(_psym_get(_sym_z, _side_z, "WT_3M_FORCE_OPEN_ENABLED", True)):
                             _wt1_3m_z = safe_fetch_float(_ind_z.get("wt1_3m"), 0)
                             _wt2_3m_z = safe_fetch_float(_ind_z.get("wt2_3m"), 0)
                             _wt_trigger_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (
@@ -35461,7 +35545,8 @@ async def _process_single_override_check(
                         #   SHORT mirror.
                         # ROLLBACK: BREAKOUT_RETEST_ARMED_ENABLED=False in config.py.
                         # ═══════════════════════════════════════════════════════════════════
-                        elif bool(getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+                        # 2026-05-18 per-sym overlay
+                        elif bool(_psym_get(_sym_z, _side_z, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
                             _ra_w1_D = safe_fetch_float(_ind_z.get("wt1_D"), 0)
                             _ra_w2_D = safe_fetch_float(_ind_z.get("wt2_D"), 0)
                             _ra_w1_W = safe_fetch_float(_ind_z.get("wt1_W"), 0)
@@ -35477,7 +35562,8 @@ async def _process_single_override_check(
                             _ra_k_3m_prev = safe_fetch_float(_ind_z.get("k_3m_prev") or _ind_z.get("stoch_k_3m_prev"), _ra_k_3m)
                             _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0)
                             if _ra_data_ok:
-                                _ra_retest_mult = float(getattr(config, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", 0.30))
+                                # 2026-05-18 per-sym overlay
+                                _ra_retest_mult = float(_psym_get(_sym_z, _side_z, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", 0.30))
                                 _ra_dist_atr = abs(_px_z - _ra_dc_basis_D) / _ra_atr_D if _ra_atr_D > 0 else 999.0
                                 _ra_armed_long = (_ra_w1_D > _ra_w2_D and _ra_w1_W > _ra_w2_W and _px_z > _ra_dc_basis_D)
                                 _ra_armed_short = (_ra_w1_D < _ra_w2_D and _ra_w1_W < _ra_w2_W and _px_z < _ra_dc_basis_D)
@@ -37668,10 +37754,11 @@ async def process_position(
     # No time window — fires whenever current_price breaches the recorded stop level.
     # Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL log naming the entry signal.
     # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-18 per-sym overlay
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
+        and bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
     ):
         try:
             _r1_stop = float(getattr(position, "r1_stop_price", 0.0) or 0.0)
@@ -37929,14 +38016,15 @@ async def process_position(
             _wzg_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
             _wzg_max_gain = safe_fetch_float(getattr(position, "max_gain", 0), 0)
             _wzg_peak_min = float(getattr(config, "R2_PEAK_MIN_PCT", 0.5))
-            _wzg_band = float(getattr(config, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", 0.10))
-            _wzg_floor = float(getattr(config, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", 0.01))
+            # 2026-05-18 per-sym overlay
+            _wzg_band = float(_psym_get(symbol, position_side, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", 0.10))
+            _wzg_floor = float(_psym_get(symbol, position_side, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", 0.01))
             _wzg_near_zero = float(
-                getattr(config, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", 0.1)
+                _psym_get(symbol, position_side, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", 0.1)
             )
-            _wzg_decel_ratio = float(getattr(config, "WT_VEL_DECEL_RATIO", 0.5))
-            _wzg_decel_only = bool(getattr(config, "WT_VEL_USE_DECEL_RATIO_ONLY", True))
-            _wzg_tfs = tuple(getattr(config, "R2_TF_LIST", ("15m",)) or ("15m",))
+            _wzg_decel_ratio = float(_psym_get(symbol, position_side, "WT_VEL_DECEL_RATIO", 0.5))
+            _wzg_decel_only = bool(_psym_get(symbol, position_side, "WT_VEL_USE_DECEL_RATIO_ONLY", True))
+            _wzg_tfs = tuple(_psym_get(symbol, position_side, "R2_TF_LIST", ("15m",)) or ("15m",))
             # PEAK-THEN-COLLAPSE: must have peaked ≥ R2_PEAK_MIN_PCT AND now
             # be back inside [floor, band]. From-open-tiny-profit positions
             # don't fire here — R1 (DC4 newborn window) handles those.
@@ -38254,10 +38342,11 @@ async def process_position(
     # Reasons R3_HTF_FLIP / R3_HTF_FLIP_4H are in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
     # ROLLBACK: R3_HTF_FLIP_EXIT_ENABLED=False (and/or _4H_TIER_ENABLED=False) in config.py.
     # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-18 per-sym overlay
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False))
+        and bool(_psym_get(symbol, position_side, "R3_HTF_FLIP_EXIT_ENABLED", False))
     ):
         try:
             if _pp_shared_ind is None:
@@ -38287,7 +38376,7 @@ async def process_position(
                         _r3hf_fire = True
                         _r3hf_tier = "DAILY"
                         _r3hf_detail = f"dc_break={_r3hf_dc_break}_wt_flip={_r3hf_wt_flip}_px={current_price:.6f}_dcBD={_r3hf_dc_basis_D:.6f}_w1D={_r3hf_w1_D:.2f}_w2D={_r3hf_w2_D:.2f}_w1W={_r3hf_w1_W:.2f}_w2W={_r3hf_w2_W:.2f}"
-                if (not _r3hf_fire) and bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
+                if (not _r3hf_fire) and bool(_psym_get(symbol, position_side, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
                     if _r3hf_ema_20_4h > 0 and _r3hf_atr_4h > 0:
                         _r3hf_4h_break_long = _r3hf_is_long and current_price < (_r3hf_ema_20_4h - _r3hf_atr_4h) and _r3hf_w1_4h < _r3hf_w2_4h
                         _r3hf_4h_break_short = (not _r3hf_is_long) and current_price > (_r3hf_ema_20_4h + _r3hf_atr_4h) and _r3hf_w1_4h > _r3hf_w2_4h
@@ -38738,10 +38827,11 @@ async def process_position(
     # CROSS-BACK reversal (user 2026-05-06 follow-up): track last break direction+level.
     # If last_break='UP' AND close drops back below that level → reverse again (close LONG, open SHORT).
     # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-18 per-sym overlay
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "DC_BB_D_BREAK_REVERSE_ENABLED", True))
+        and bool(_psym_get(symbol, position_side, "DC_BB_D_BREAK_REVERSE_ENABLED", True))
     ):
         try:
             _db_ind = await ii(trade_manager, symbol)
@@ -41328,22 +41418,23 @@ async def process_position(
                             _ppl_is_hedge = True
                 except Exception:
                     pass
+            # 2026-05-18 per-sym overlay
             if (
-                getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False)
+                _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ENABLED", False)
                 and account_key in getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS", [])
                 and not _sat_skip_standard_exits
                 and not _ppl_is_hedge
             ):
                 _ppl_min_gain = float(
-                    getattr(config, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 0.5)
+                    _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 0.5)
                 )
                 _ppl_arm_gain = float(
-                    getattr(config, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", 0.75)
+                    _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", 0.75)
                 )
                 _ppl_be_buffer = float(
-                    getattr(config, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT", 0.02)
+                    _psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT", 0.02)
                 )
-                _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+                _ppl_frac = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
                 _ppl_use_maker = bool(
                     getattr(config, "PARTIAL_PROFIT_LOCK_USE_MAKER", True)
                 )

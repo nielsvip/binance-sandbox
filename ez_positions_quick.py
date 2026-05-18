@@ -1743,6 +1743,56 @@ def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     return _per_sym_cfgs.get(f"{symbol}_{side}", {})
 
 
+def _psym_get(symbol: str, side: str, knob: str, default):
+    """General per-sym knob lookup. Returns the per-sym value when an override
+    exists for (symbol, side) AND the override dict contains `knob`; otherwise
+    falls back to `getattr(config, knob, default)`.
+
+    2026-05-18 Path B wiring — replaces silent-ignore of ~250 cluster knobs
+    documented in data/_diagnostic/per_sym_key_consumption_map_20260518.md.
+    V8_DISABLE_PER_SYM=1 forces config defaults (parity audit)."""
+    try:
+        ov = _get_per_sym_overrides(symbol, side)
+        if knob in ov:
+            return ov[knob]
+    except Exception:
+        pass
+    return getattr(config, knob, default)
+
+
+class _PerSymOverlay:
+    """General per-sym config overlay. Forwards attr reads to per-sym overrides
+    dict first; falls back to base config. Same pattern as _BtcConfigOverlay but
+    for ALL syms (not just BTC dedicated path).
+    2026-05-18 — backing class for _get_effective_cfg()."""
+    __slots__ = ("_b", "_o")
+    def __init__(self, base_cfg, overrides: dict):
+        object.__setattr__(self, "_b", base_cfg)
+        object.__setattr__(self, "_o", overrides)
+    def __getattr__(self, name: str):
+        o = object.__getattribute__(self, "_o")
+        if name in o:
+            return o[name]
+        return getattr(object.__getattribute__(self, "_b"), name)
+
+
+def _get_effective_cfg(symbol: str, side: str, base_cfg=None):
+    """Return base_cfg if no per-sym overrides exist, else a _PerSymOverlay that
+    auto-honors any attribute read. Use at decision sites:
+        cfg = _get_effective_cfg(symbol, side, config)
+        if cfg.SOME_KNOB: ...
+    Equivalent in effect to _psym_get() — choose whichever is local-cleaner."""
+    if base_cfg is None:
+        base_cfg = config
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return base_cfg
+    try:
+        overrides = _get_per_sym_overrides(symbol, side)
+    except Exception:
+        overrides = {}
+    return _PerSymOverlay(base_cfg, overrides) if overrides else base_cfg
+
+
 def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
     """True iff BTC dedicated loop should override rate() for this acct+symbol."""
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
@@ -5352,7 +5402,8 @@ class HedgeEngine:
         # USER MANDATE 2026-05-16: hedges are ALWAYS 100% of origin. Pre-fix tiered 0.5/1.0/1.5/2.0
         # based on pnl_pct/history_loss meant shallow-loss hedges undersized at 50% (e.g., a -0.4%
         # position got a 50% hedge — undersized when the trade went deeper). One flat ratio now.
-        target_ratio = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        # 2026-05-18 per-sym overlay
+        target_ratio = float(_psym_get(symbol, losing_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
         if target_ratio == 0: return
         if real_hedge_qty > 0 and existing_hedge_value >= (losing_value * _max_hedge_ratio):
              logger.debug(f"[HEDGE_GUARD] {losing_key} already has hedge {hedge_key} with value ${existing_hedge_value:.2f} >= ${losing_value*_max_hedge_ratio:.2f} (cap 200%). Skipping.")
@@ -6292,8 +6343,9 @@ class HedgeEngine:
         # Was 1.5×; tightened after RENDERUSDT_LONG hedge inflated to $13.62 vs $7 intent.
         # Single source of truth: HEDGE_MAX_PCT_OF_LOSER=1.0. Wrapper uses same key.
         # Triggered after ALTUSDT_LONG $1013 / 12478% in tracker.
-        _max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
-        _max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
+        # 2026-05-18 per-sym overlay (losing_side provided by caller)
+        _max_pct = float(_psym_get(target_symbol, losing_side or "", 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        _max_abs = float(_psym_get(target_symbol, losing_side or "", 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
         _hard_cap = min(losing_value_usd * _max_pct, _max_abs) if losing_value_usd > 0 else _max_abs
         if adjusted_notional > _hard_cap:
             logger.warning(f"🛑 [HEDGE_SIZE_HARD_CAP] {target_symbol}: requested ${adjusted_notional:.2f} > cap ${_hard_cap:.2f} (loser=${losing_value_usd:.2f} × {_max_pct} or abs ${_max_abs}) — clamping")
@@ -7402,8 +7454,9 @@ class HedgeEngine:
         # Absolute cap from config (default 100k, effectively unbound).
         _origin_val = abs(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0)) * current_price
         if _origin_val < 1.0: return True
-        _hsize_max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
-        _hsize_max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 100000.0))
+        # 2026-05-18 per-sym overlay (origin_side from caller)
+        _hsize_max_pct = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        _hsize_max_abs = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_ABSOLUTE_USD', 100000.0))
         _target_val = min(_origin_val * _hsize_max_pct, _hsize_max_abs)
         logger.warning(f"📐 [HEDGE_SAME_SIZE_100PCT] {hedge_key}: origin=${_origin_val:.2f} × pct={_hsize_max_pct:.2f} → target=${_target_val:.2f} (abs_cap=${_hsize_max_abs:.0f})")
         # 2026-04-26 USER RULE — STOP ACCUMULATION. Before firing a new hedge order, check the
@@ -12054,7 +12107,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _origin_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_for) if hasattr(tracker_manager, 'positions_service') else None
         _origin_val = abs(safe_fetch_float(getattr(_origin_pos, 'positionAmt', 0), 0)) * current_price if _origin_pos else 0
         _hedge_val = qty * current_price
-        _max_pct_wrap = float(getattr(config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        # 2026-05-18 per-sym overlay — pull origin side from hedge_for pk
+        _hf_side = 'LONG' if hedge_for.endswith('_LONG') else ('SHORT' if hedge_for.endswith('_SHORT') else '')
+        _hf_sym = parse_position_key(hedge_for)[1] if parse_position_key(hedge_for) else ''
+        _max_pct_wrap = float(_psym_get(_hf_sym, _hf_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
         if _origin_val > 0 and _hedge_val > _origin_val * _max_pct_wrap:
             _capped_qty = (_origin_val * _max_pct_wrap) / current_price
             logger.critical(f"🚫🚫 [HEDGE_SIZE_CAP] {position_key}: hedge ${_hedge_val:.1f} > {_max_pct_wrap*100:.0f}% of origin ${_origin_val:.1f}. CAPPING qty {qty:.6f} → {_capped_qty:.6f} (${_origin_val*_max_pct_wrap:.1f})")
@@ -12771,10 +12827,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                     # lines 5244-5261 (hedge-of-hedge block, already-hedged check, in-flight dedup).
                     # NOW: multi-TF WT gate added — wt_1m + wt_15m + wt_1h must confirm against position.
                     # NEVER DISABLED via `if False:` — tuning via config switches only.
-                    _obl_enabled = bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True))
-                    _hedge_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
-                    _hedge_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
-                    _wt_tfs_required = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+                    # 2026-05-18 per-sym overlay
+                    _obl_enabled = bool(_psym_get(symbol, position_side, 'OBLIGATORY_HEDGE_ENABLED', True))
+                    _hedge_min_loss = float(_psym_get(symbol, position_side, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+                    _hedge_pct = float(_psym_get(symbol, position_side, 'OBLIGATORY_HEDGE_PCT', 1.0))
+                    _wt_tfs_required = int(_psym_get(symbol, position_side, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
                     if _obl_enabled and hedge_engine and _real_gain < _hedge_min_loss:
                         # Per-TF enables (2026-04-17 60d test on 8 bleeding inf shorts):
                         # 3m+1h min2 (both must agree) = 47% precision, +359% PnL proxy (BEST).
@@ -17837,18 +17894,19 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                         if _fppl_other_amt > 0.0001 and _fppl_other_g < _fppl_dl:
                             _fppl_is_hedge = True
                 except Exception: pass
-            if (bool(getattr(config, 'SCALP_V3_FAST_PPL_ENABLED', True))
-                and bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
+            # 2026-05-18 per-sym overlay for PPL
+            if (bool(_psym_get(sym, side, 'SCALP_V3_FAST_PPL_ENABLED', True))
+                and bool(_psym_get(sym, side, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
                 and not _fppl_is_hedge):
-                _fppl_min_gain = float(getattr(config, 'SCALP_V3_FAST_PPL_GAIN_PCT', float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))))
+                _fppl_min_gain = float(_psym_get(sym, side, 'SCALP_V3_FAST_PPL_GAIN_PCT', float(_psym_get(sym, side, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))))
                 if not hasattr(trade_manager, 'partial_profit_lock_state'):
                     trade_manager.partial_profit_lock_state = {}
                 _fppl_state = trade_manager.partial_profit_lock_state.get(pk, {})
                 if not _fppl_state.get('fired', False) and gain >= _fppl_min_gain:
                     _fppl_entry = safe_fetch_float(getattr(p, 'entry_price', 0.0), 0.0)
                     if _fppl_entry > 0:
-                        _fppl_be_buffer = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.02))
-                        _fppl_frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
+                        _fppl_be_buffer = float(_psym_get(sym, side, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.02))
+                        _fppl_frac = float(_psym_get(sym, side, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
                         _fppl_close_side = "SELL" if side == 'LONG' else "BUY"
                         _fppl_pos_side = "LONG" if side == 'LONG' else "SHORT"
                         _fppl_reduce = amt * _fppl_frac

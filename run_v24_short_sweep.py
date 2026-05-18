@@ -44,8 +44,9 @@ TRADIER_114 = [
 ]
 
 
-def cfg_v24_short():
-    return ShortCfg()
+def cfg_v24_short(mode="tradier"):
+    dc_tf = "D" if mode == "crypto" else "4h"
+    return ShortCfg(exit_X7_freeze_dc_tf=dc_tf)
 
 
 def run_universe(symbols, mode, cfg, start_date, label, write_history=False):
@@ -144,7 +145,6 @@ def main():
     ap.add_argument("--crypto-only", action="store_true")
     ap.add_argument("--tradier-only", action="store_true")
     args = ap.parse_args()
-    cfg = cfg_v24_short()
     summaries = []
 
     print("\n" + "X"*80)
@@ -152,14 +152,16 @@ def main():
     print("X"*80)
 
     if not args.tradier_only:
+        cfg_c = cfg_v24_short("crypto")
         crypto_syms = _get_crypto_symbols()
         print(f"\n  Found {len(crypto_syms)} crypto NPZs")
-        s = run_universe(crypto_syms, "crypto", cfg, "2022-01-01", "v24_short_crypto",
+        s = run_universe(crypto_syms, "crypto", cfg_c, "2022-01-01", "v24_short_crypto",
                          write_history=args.write_history)
         summaries.append(s)
 
     if not args.crypto_only:
-        s = run_universe(TRADIER_114, "tradier", cfg, "2024-04-01", "v24_short_tradier",
+        cfg_t = cfg_v24_short("tradier")
+        s = run_universe(TRADIER_114, "tradier", cfg_t, "2024-04-01", "v24_short_tradier",
                          write_history=args.write_history)
         summaries.append(s)
 
