@@ -100,10 +100,23 @@ DATA_DIR = BASE_PATH / "data"
 DECISIONS_DIR = DATA_DIR / "decisions"
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 
-# Halt flag files (shared across accounts — global kill-switches)
-HALT_ENTRIES_FLAG = DATA_DIR / "STRUCT_V4_HALT_ENTRIES"
-HALT_ALL_FLAG = DATA_DIR / "STRUCT_V4_HALT_ALL"
-PANIC_CLOSE_FLAG = DATA_DIR / "STRUCT_V4_PANIC_CLOSE_ALL"
+# Halt flag files — TWO LOCATIONS for back-compat (monitors/_common.py contract):
+#   data/struct_v4/STRUCT_V4_*           = new global (both accounts)
+#   data/struct_v4/STRUCT_V4_*_<acct>    = per-account
+#   data/STRUCT_V4_*                     = legacy global (deprecated, still read)
+STRUCT_V4_DIR = DATA_DIR / "struct_v4"
+# New global (data/struct_v4/) — preferred
+GLOBAL_HALT_ENTRIES_FLAG = STRUCT_V4_DIR / "STRUCT_V4_HALT_ENTRIES"
+GLOBAL_HALT_ALL_FLAG = STRUCT_V4_DIR / "STRUCT_V4_HALT_ALL"
+GLOBAL_PANIC_CLOSE_FLAG = STRUCT_V4_DIR / "STRUCT_V4_PANIC_CLOSE_ALL"
+# Legacy global (data/) — kept for backward compatibility
+LEGACY_HALT_ENTRIES_FLAG = DATA_DIR / "STRUCT_V4_HALT_ENTRIES"
+LEGACY_HALT_ALL_FLAG = DATA_DIR / "STRUCT_V4_HALT_ALL"
+LEGACY_PANIC_CLOSE_FLAG = DATA_DIR / "STRUCT_V4_PANIC_CLOSE_ALL"
+# Legacy module-level aliases (pre-2026-05-18 callers may import these).
+HALT_ENTRIES_FLAG = LEGACY_HALT_ENTRIES_FLAG
+HALT_ALL_FLAG = LEGACY_HALT_ALL_FLAG
+PANIC_CLOSE_FLAG = LEGACY_PANIC_CLOSE_FLAG
 
 # Day-1 sizing
 POSITION_NOTIONAL_USD = float(os.getenv("STRUCT_V4_NOTIONAL", "500"))
@@ -330,13 +343,73 @@ def generate_universe_files(force: bool = False) -> Dict[str, int]:
 # HALT FLAG HANDLING (always FIRST in every cycle)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def check_halt_flags() -> Dict[str, bool]:
-    """Returns dict of {halt_entries, halt_all, panic_close}. ALWAYS first."""
+def check_halt_flags(account: Optional[str] = None) -> Dict[str, Any]:
+    """Returns dict of {halt_entries, halt_all, panic_close, sources}. ALWAYS first.
+
+    Per-account-aware resolution (USER mandate 2026-05-18). Priority high→low:
+      1. Per-account panic:   data/struct_v4/STRUCT_V4_PANIC_CLOSE_ALL_<acct>
+      2. Per-account halt-all: data/struct_v4/STRUCT_V4_HALT_ALL_<acct>
+      3. Per-account halt-ent: data/struct_v4/STRUCT_V4_HALT_ENTRIES_<acct>
+      4. Global (new path):    data/struct_v4/STRUCT_V4_PANIC_CLOSE_ALL / _HALT_ALL / _HALT_ENTRIES
+      5. Legacy global:        data/STRUCT_V4_PANIC_CLOSE_ALL / _HALT_ALL / _HALT_ENTRIES
+
+    A flag at ANY tier triggers the corresponding state — first hit wins for
+    logging, but the boolean OR across all tiers is what gates behaviour.
+    account=None → only global + legacy tiers are checked (used by tooling).
+    """
+    sources: Dict[str, Optional[str]] = {"halt_entries": None,
+                                          "halt_all": None,
+                                          "panic_close": None}
+    halt_entries = False
+    halt_all = False
+    panic_close = False
+    candidates_panic: List[Path] = []
+    candidates_halt_all: List[Path] = []
+    candidates_halt_entries: List[Path] = []
+    if account:
+        candidates_panic.append(STRUCT_V4_DIR / f"STRUCT_V4_PANIC_CLOSE_ALL_{account}")
+        candidates_halt_all.append(STRUCT_V4_DIR / f"STRUCT_V4_HALT_ALL_{account}")
+        candidates_halt_entries.append(STRUCT_V4_DIR / f"STRUCT_V4_HALT_ENTRIES_{account}")
+    candidates_panic.extend([GLOBAL_PANIC_CLOSE_FLAG, LEGACY_PANIC_CLOSE_FLAG])
+    candidates_halt_all.extend([GLOBAL_HALT_ALL_FLAG, LEGACY_HALT_ALL_FLAG])
+    candidates_halt_entries.extend([GLOBAL_HALT_ENTRIES_FLAG, LEGACY_HALT_ENTRIES_FLAG])
+    for p in candidates_panic:
+        if p.exists():
+            panic_close = True
+            if sources["panic_close"] is None:
+                sources["panic_close"] = str(p)
+    for p in candidates_halt_all:
+        if p.exists():
+            halt_all = True
+            if sources["halt_all"] is None:
+                sources["halt_all"] = str(p)
+    for p in candidates_halt_entries:
+        if p.exists():
+            halt_entries = True
+            if sources["halt_entries"] is None:
+                sources["halt_entries"] = str(p)
     return {
-        "halt_entries": HALT_ENTRIES_FLAG.exists(),
-        "halt_all": HALT_ALL_FLAG.exists(),
-        "panic_close": PANIC_CLOSE_FLAG.exists(),
+        "halt_entries": halt_entries,
+        "halt_all": halt_all,
+        "panic_close": panic_close,
+        "sources": sources,
     }
+
+
+def check_per_symbol_panic(symbol: str, account: Optional[str] = None) -> Optional[str]:
+    """Per-symbol panic-close flag. Returns the source path if set, else None.
+
+    Priority: per-account → legacy global (data/STRUCT_V4_PANIC_CLOSE_<SYM>).
+    """
+    sym = symbol.upper()
+    if account:
+        per_acct = STRUCT_V4_DIR / f"STRUCT_V4_PANIC_CLOSE_{account}_{sym}"
+        if per_acct.exists():
+            return str(per_acct)
+    legacy = DATA_DIR / f"STRUCT_V4_PANIC_CLOSE_{sym}"
+    if legacy.exists():
+        return str(legacy)
+    return None
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STATE PERSISTENCE (per-account)
@@ -980,8 +1053,8 @@ async def run_one_cycle(api: TradierAPIClient, ctx: AccountContext,
     """Single pass over universe. Returns summary."""
     ctx.refresh_paper_window()
     cycle_ts = dt.datetime.now(dt.timezone.utc).isoformat()
-    # 1. HALT FLAGS — ALWAYS FIRST
-    halt = check_halt_flags()
+    # 1. HALT FLAGS — ALWAYS FIRST (per-account aware)
+    halt = check_halt_flags(account=ctx.account_key)
     logger.info(f"[{ctx.account_key}] Cycle start {cycle_ts} | halts={halt} | "
                 f"paper={ctx.paper_mode} go_live={ctx.go_live} "
                 f"reason={ctx.paper_reason}")
@@ -1011,6 +1084,18 @@ async def run_one_cycle(api: TradierAPIClient, ctx: AccountContext,
     for sym in syms:
         try:
             summary["checked"] += 1
+            per_sym_panic_src = check_per_symbol_panic(sym, account=ctx.account_key)
+            if per_sym_panic_src:
+                broker_qty = int(live_pos.get(sym, {}).get("qty", 0) or 0)
+                if broker_qty > 0:
+                    res = await place_sell_order(api, ctx, sym, broker_qty, market=True)
+                    log_decision(ctx, {"event": "PER_SYMBOL_PANIC_CLOSE", "symbol": sym,
+                                       "qty": broker_qty, "order": res,
+                                       "flag_source": per_sym_panic_src})
+                if sym in sleeve_positions:
+                    sleeve_positions.pop(sym, None)
+                save_state(ctx, state)
+                continue
             df_5m = await fetch_5m_klines(api, sym, lookback_days=KLINES_LOOKBACK_DAYS)
             if df_5m is None or len(df_5m) < 100:
                 summary["skipped"] += 1
