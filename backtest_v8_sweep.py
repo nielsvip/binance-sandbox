@@ -825,6 +825,72 @@ def grid_tradier_grtf7_hunt():
     return combos
 
 
+def grid_tradier_stop_sweep():
+    """2026-05-18: Comprehensive frozen stop hunt — DC (5m/15m/1h/4h) + BB (lower/basis on 5m/15m/1h/4h).
+    Proper isolation: R1 and/or R2 disabled per variant so each stop mechanism can actually fire.
+    FROZEN_ACTIVATION_STOP_ENABLED=False disables tradier_manage's version (uses engine-level stops only).
+    Target: pool_sharpe > 1.0 on AAPL,MSFT,NVDA,TSLA,META,AMD (6 syms, 2024-01-01).
+    """
+    _fo = {
+        "MFI_ENTRY_ENABLED": False,
+        "GOLDEN_RULE_HTF_MIN_TFS": 0,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": False,
+        "ENTRY_MIN_ALIGNMENT": 1,
+        "ENTRY_ZONE_LONG": 100,
+        "WT_DC_ENTRY_THRESHOLD": 0,
+        "USDC_PREFERENCE_BLOCK_ENABLED": False,
+    }
+    _r1_off = {"R1_DC_LOW4_3M_EMERGENCY_ENABLED": False}
+    _r2_off = {"WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED": False}
+    _fa_off = {"FROZEN_ACTIVATION_STOP_ENABLED": False}
+    return [
+        # ── Control arms ──
+        ("baseline_r1r2",             {**_fo}),
+        ("baseline_r1off",            {**_fo, **_r1_off, **_fa_off}),
+        ("baseline_r1r2off_nostop",   {**_fo, **_r1_off, **_r2_off, **_fa_off}),
+        # ── DC frozen stops — R1 off, R2 active (can DC stop beat R2?) ──
+        ("r1off_dc4_5m",              {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m",  "DC_LOW_FROZEN_STOP_USE_4BAR": True}),
+        ("r1off_dc_5m",               {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m"}),
+        ("r1off_dc4_15m",             {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m", "DC_LOW_FROZEN_STOP_USE_4BAR": True}),
+        ("r1off_dc_15m",              {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m"}),
+        ("r1off_dc_1h",               {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "1h"}),
+        ("r1off_dc_4h",               {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "4h"}),
+        # ── DC frozen stops — R1+R2 off (pure stop, no velocity exit) ──
+        ("r1r2off_dc4_5m",            {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m",  "DC_LOW_FROZEN_STOP_USE_4BAR": True}),
+        ("r1r2off_dc_5m",             {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m"}),
+        ("r1r2off_dc4_15m",           {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m", "DC_LOW_FROZEN_STOP_USE_4BAR": True}),
+        ("r1r2off_dc_15m",            {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m"}),
+        ("r1r2off_dc_1h",             {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "1h"}),
+        ("r1r2off_dc_4h",             {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "4h"}),
+        # ── DC with absolute floor (catches runaway losers) ──
+        ("r1r2off_dc_5m_fl8",         {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m",  "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+        ("r1r2off_dc_15m_fl8",        {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m", "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+        ("r1r2off_dc_1h_fl8",         {**_fo, **_r1_off, **_r2_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "1h",  "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+        # ── BB frozen stops — R1 off, R2 active ──
+        ("r1off_bb_lower_5m",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "5m",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1off_bb_lower_15m",        {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "15m", "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1off_bb_lower_1h",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "1h",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1off_bb_lower_4h",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "4h",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1off_bb_basis_5m",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "5m",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1off_bb_basis_15m",        {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "15m", "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1off_bb_basis_1h",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "1h",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1off_bb_basis_4h",         {**_fo, **_r1_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "4h",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        # ── BB frozen stops — R1+R2 off (pure BB stop) ──
+        ("r1r2off_bb_lower_5m",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "5m",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1r2off_bb_lower_15m",      {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "15m", "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1r2off_bb_lower_1h",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "1h",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1r2off_bb_lower_4h",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "4h",  "BB_FROZEN_STOP_FIELD": "lower"}),
+        ("r1r2off_bb_basis_5m",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "5m",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1r2off_bb_basis_15m",      {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "15m", "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1r2off_bb_basis_1h",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "1h",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        ("r1r2off_bb_basis_4h",       {**_fo, **_r1_off, **_r2_off, **_fa_off, "BB_FROZEN_STOP_ENABLED": True, "BB_FROZEN_STOP_TF": "4h",  "BB_FROZEN_STOP_FIELD": "basis"}),
+        # ── Combined DC+floor best guesses ──
+        ("r1off_dc4_5m_fl8",          {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "5m",  "DC_LOW_FROZEN_STOP_USE_4BAR": True,  "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+        ("r1off_dc_15m_fl8",          {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "15m", "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+        ("r1off_dc_1h_fl8",           {**_fo, **_r1_off, **_fa_off, "DC_LOW_FROZEN_STOP_ENABLED": True, "DC_LOW_FROZEN_STOP_TF": "1h",  "DC_LOW_FROZEN_STOP_FLOOR_PCT": -8.0}),
+    ]
+
+
 def grid_tradier_grtf7_hunt_resume():
     """2026-05-10: Resume from variant [08] — skips baseline + tfs1 (already in 024358.csv).
     Covers tfs2-5 entry grid (24 variants) + exit gate (15) + THR0 combos (6) = 45 total.
@@ -1790,6 +1856,7 @@ TIER_MAP = {
     "haiku_sweep": grid_haiku_sweep,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_4h_stop": grid_tradier_4h_stop,
+    "tradier_stop_sweep": grid_tradier_stop_sweep,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
     "gr_entry_exit_grid_tradier": grid_gr_entry_exit_grid_tradier,

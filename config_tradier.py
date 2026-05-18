@@ -490,7 +490,7 @@ class TradierConfig:
     SMA200_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_T3 SMA200 distance gate for entries
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h
     # === MFI ENTRY FILTER (backtest) ===
-    MFI_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_T4 MFI gate for entries
+    MFI_ENTRY_ENABLED: bool = False  # BACKTEST_CHANGE_T4 MFI gate for entries (2026-05-18: was True — LIVE BUG blocked all LONG entries)
     MFI_LONG_THRESHOLD_D: float = 20.0  # BACKTEST_CHANGE_T4 only long when daily MFI < 20 (oversold)
     # === WT CROSSUNDER SHORT (backtest) ===
     WT_CROSSUNDER_15M_SHORT: bool = True  # BACKTEST_CHANGE_T5 enable WT crossunder on 15m for short entries
@@ -602,6 +602,14 @@ class TradierConfig:
     # Backtest DC stop loss sweep flags (tradier uses 5m TF):
     DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_5m/dc_high4_5m recorded at entry
     DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_5m/dc_high_5m (1-bar, wider)
+    # Generalized frozen stop (engine-level; backcompat: DC_LOW_4H_FROZEN_STOP_ENABLED still works)
+    DC_LOW_FROZEN_STOP_ENABLED: bool = False       # master switch; sweep variants set True + TF
+    DC_LOW_FROZEN_STOP_TF: str = '4h'             # TF to freeze: '5m','15m','1h','4h'
+    DC_LOW_FROZEN_STOP_USE_4BAR: bool = False      # True=dc_low4_{tf} (4-bar tight), False=dc_low_{tf} (20-bar)
+    DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0  # abs loss floor; -999 = off
+    BB_FROZEN_STOP_ENABLED: bool = False           # freeze bb_lower/upper/basis at entry as stop
+    BB_FROZEN_STOP_TF: str = '1h'                 # TF to freeze: '3m','5m','15m','1h','4h'
+    BB_FROZEN_STOP_FIELD: str = 'lower'           # 'lower' (LONG stop), 'upper' (SHORT stop), 'basis' (both)
     DC4_STOP_GR_HEDGE_OVERRIDE_ENABLED: bool = False  # hedge instead of stop if GR score >= min_tfs x min_ind against
     DC4_STOP_GR_SCORE_MIN_TFS: int = 3
     DC4_STOP_GR_SCORE_MIN_IND: int = 5

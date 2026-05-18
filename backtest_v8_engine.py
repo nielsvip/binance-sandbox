@@ -6914,7 +6914,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _bt_rg_t_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
     _bt_rg_t = None if _bt_rg_t_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.tradier.{account_key}")
     _w_exit_prev_t = {}  # sym → bool: was wt1_W > wt2_W last bar (for cross detection)
-    _dc4h_fstop_tr: dict = {}  # pk → frozen dc_low_4h level at first open bar
+    _dc_fstop_tr: dict = {}   # pk → frozen dc_low_{tf} level at first open bar
+    _bb_fstop_tr: dict = {}   # pk → frozen bb_lower/upper/basis_{tf} level at first open bar
     for step, ts in enumerate(all_ts):
         _sim_ts[0] = float(ts)
         if _SWEEP_MODE:
@@ -7164,15 +7165,26 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                 is_full_close=True, action='CLOSE')
                         except Exception:
                             pass
-        # Frozen dc_low_4h stop + absolute loss floor (tradier only, DC_LOW_4H_FROZEN_STOP_ENABLED).
-        # Sets dc_low_4h/dc_high_4h at first bar position seen (frozen-at-entry).
-        # Fires if: long and px < frozen_level while in loss, OR gain < ABS_LOSS_FLOOR_PCT.
-        _dc4h_fstop_on = getattr(config, 'DC_LOW_4H_FROZEN_STOP_ENABLED', False)
-        _dc4h_abs_floor = float(getattr(config, 'DC_LOW_4H_ABS_LOSS_FLOOR_PCT', -8.0))
-        if _dc4h_fstop_on and manager.position_manager:
+        # ═══════════════════════════════════════════════════════════════════════
+        # Generalized frozen stop (tradier only) — DC and BB variants.
+        # DC: DC_LOW_FROZEN_STOP_ENABLED + DC_LOW_FROZEN_STOP_TF + DC_LOW_FROZEN_STOP_USE_4BAR
+        #     Backward compat: DC_LOW_4H_FROZEN_STOP_ENABLED still works (maps to TF='4h').
+        # BB: BB_FROZEN_STOP_ENABLED + BB_FROZEN_STOP_TF + BB_FROZEN_STOP_FIELD (lower/upper/basis)
+        # Both: DC_LOW_FROZEN_STOP_FLOOR_PCT applies as absolute loss floor.
+        # Fires BEFORE process_position (R1/R2) to isolate stop mechanism in sweep.
+        # ═══════════════════════════════════════════════════════════════════════
+        _dc_fstop_on = getattr(config, 'DC_LOW_FROZEN_STOP_ENABLED', False) or getattr(config, 'DC_LOW_4H_FROZEN_STOP_ENABLED', False)
+        _bb_fstop_on = getattr(config, 'BB_FROZEN_STOP_ENABLED', False)
+        _fstop_floor = float(getattr(config, 'DC_LOW_FROZEN_STOP_FLOOR_PCT', getattr(config, 'DC_LOW_4H_ABS_LOSS_FLOOR_PCT', -999.0)))
+        if (_dc_fstop_on or _bb_fstop_on) and manager.position_manager:
+            _dc_fstop_tf = str(getattr(config, 'DC_LOW_FROZEN_STOP_TF', '4h'))
+            _dc_fstop_4bar = bool(getattr(config, 'DC_LOW_FROZEN_STOP_USE_4BAR', False))
+            _bb_fstop_tf = str(getattr(config, 'BB_FROZEN_STOP_TF', '1h'))
+            _bb_fstop_field = str(getattr(config, 'BB_FROZEN_STOP_FIELD', 'lower'))
             for _fsp_pk, _fsp_pos in list(manager.position_manager.positions.items()):
                 if abs(getattr(_fsp_pos, 'positionAmt', 0)) < 0.0001:
-                    _dc4h_fstop_tr.pop(_fsp_pk, None)
+                    _dc_fstop_tr.pop(_fsp_pk, None)
+                    _bb_fstop_tr.pop(_fsp_pk, None)
                     continue
                 _fsp_sym = getattr(_fsp_pos, 'symbol', '') or _fsp_pk.split(':', 1)[-1].rsplit('_', 1)[0]
                 _fsp_ind = indicator_cache.get(_fsp_sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
@@ -7180,20 +7192,53 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _fsp_px <= 0:
                     continue
                 _fsp_is_long = _fsp_pk.endswith('_LONG')
-                if _fsp_pk not in _dc4h_fstop_tr:
-                    _fsp_freeze = float(_fsp_ind.get('dc_low_4h' if _fsp_is_long else 'dc_high_4h', 0) or 0)
-                    if _fsp_freeze > 0:
-                        _dc4h_fstop_tr[_fsp_pk] = _fsp_freeze
-                _fsp_level = _dc4h_fstop_tr.get(_fsp_pk, 0)
                 _fsp_ep = float(getattr(_fsp_pos, 'entry_price', 0) or 0)
-                if _fsp_ep <= 0 or _fsp_level <= 0:
+                if _fsp_ep <= 0:
                     continue
                 _fsp_gain = ((_fsp_px - _fsp_ep) / _fsp_ep * 100.0) if _fsp_is_long else ((_fsp_ep - _fsp_px) / _fsp_ep * 100.0)
-                _fsp_fire = ((_fsp_is_long and _fsp_px < _fsp_level and _fsp_gain < 0) or
-                             (not _fsp_is_long and _fsp_px > _fsp_level and _fsp_gain < 0) or
-                             _fsp_gain < _dc4h_abs_floor)
+                _fsp_fire = _fsp_gain < _fstop_floor
+                _fsp_tag = 'ABS_FLOOR'
+                if _dc_fstop_on and not _fsp_fire:
+                    if _fsp_pk not in _dc_fstop_tr:
+                        _dcf_key = (f'dc_low4_{_dc_fstop_tf}' if (_fsp_is_long and _dc_fstop_4bar) else
+                                    f'dc_high4_{_dc_fstop_tf}' if (not _fsp_is_long and _dc_fstop_4bar) else
+                                    f'dc_low_{_dc_fstop_tf}' if _fsp_is_long else f'dc_high_{_dc_fstop_tf}')
+                        _dcf_val = float(_fsp_ind.get(_dcf_key, 0) or 0)
+                        if _dcf_val > 0:
+                            _dc_fstop_tr[_fsp_pk] = _dcf_val
+                    _dc_level = _dc_fstop_tr.get(_fsp_pk, 0)
+                    if _dc_level > 0 and _fsp_gain < 0:
+                        if (_fsp_is_long and _fsp_px < _dc_level) or (not _fsp_is_long and _fsp_px > _dc_level):
+                            _fsp_fire = True
+                            _fsp_tag = f'DC{"4" if _dc_fstop_4bar else ""}_{_dc_fstop_tf}'
+                if _bb_fstop_on and not _fsp_fire:
+                    if _fsp_pk not in _bb_fstop_tr:
+                        if _bb_fstop_field == 'basis':
+                            _bbf_u = float(_fsp_ind.get(f'bb_upper_{_bb_fstop_tf}', 0) or 0)
+                            _bbf_l = float(_fsp_ind.get(f'bb_lower_{_bb_fstop_tf}', 0) or 0)
+                            _bbf_val = (_bbf_u + _bbf_l) / 2.0 if _bbf_u > 0 and _bbf_l > 0 else 0.0
+                            _bbf_key = f'bb_basis_{_bb_fstop_tf}'
+                        else:
+                            _bbf_field_name = ('lower' if _fsp_is_long else 'upper') if _bb_fstop_field in ('lower', 'upper') else _bb_fstop_field
+                            _bbf_key = f'bb_{_bbf_field_name}_{_bb_fstop_tf}'
+                            _bbf_val = float(_fsp_ind.get(_bbf_key, 0) or 0)
+                        if _bbf_val > 0:
+                            _bb_fstop_tr[_fsp_pk] = _bbf_key
+                    _bb_key = _bb_fstop_tr.get(_fsp_pk)
+                    if _bb_key:
+                        if _bb_fstop_field == 'basis':
+                            _bbu = float(_fsp_ind.get(f'bb_upper_{_bb_fstop_tf}', 0) or 0)
+                            _bbl = float(_fsp_ind.get(f'bb_lower_{_bb_fstop_tf}', 0) or 0)
+                            _cur_bb = (_bbu + _bbl) / 2.0 if _bbu > 0 and _bbl > 0 else 0.0
+                        else:
+                            _cur_bb = float(_fsp_ind.get(_bb_key, 0) or 0)
+                        if _cur_bb > 0 and _fsp_gain < 0:
+                            if (_fsp_is_long and _fsp_px < _cur_bb) or (not _fsp_is_long and _fsp_px > _cur_bb):
+                                _fsp_fire = True
+                                _fsp_tag = f'BB_{_bb_fstop_field.upper()}_{_bb_fstop_tf}'
                 if _fsp_fire:
-                    _dc4h_fstop_tr.pop(_fsp_pk, None)
+                    _dc_fstop_tr.pop(_fsp_pk, None)
+                    _bb_fstop_tr.pop(_fsp_pk, None)
                     try:
                         _fsp_amt = abs(float(getattr(_fsp_pos, 'positionAmt', 0)))
                         await manager.execute_now(
@@ -7202,8 +7247,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             side='SELL' if _fsp_is_long else 'BUY',
                             position_side='LONG' if _fsp_is_long else 'SHORT',
                             quantity=_fsp_amt, old_price=_fsp_px,
-                            unique_id=f"DC4H_FSTOP_{int(step)}",
-                            reason=f"DC_STOP_BREACH_4H_FROZEN_px{_fsp_px:.4f}_level{_fsp_level:.4f}_gain{_fsp_gain:.2f}pct",
+                            unique_id=f"FSTOP_{_fsp_tag}_{int(step)}",
+                            reason=f"FROZEN_STOP_{_fsp_tag}_px{_fsp_px:.4f}_g{_fsp_gain:.2f}pct",
                             is_full_close=True, action='CLOSE')
                     except Exception:
                         pass
