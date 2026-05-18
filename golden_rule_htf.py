@@ -182,6 +182,40 @@ def _ind_score(
     return score, "|".join(parts)
 
 
+def _check_activation(
+    ind: dict,
+    activation_tfs: list,
+    is_long: bool,
+    px: float,
+    dc_thr: float,
+    bb_thr: float,
+) -> tuple[bool, str]:
+    """USER 2026-05-18 activation gate: at least 1 activation TF must show breakout.
+    Breakout = bb_pctb crosses extended threshold OR dc_position crosses extended threshold.
+    Cheap check (~2 fields × len(activation_tfs)) — runs BEFORE the per-TF score scan.
+    """
+    _bb_lvl = bb_thr if bb_thr > 0 else _BB_EXTENDED_LONG
+    _dc_lvl = dc_thr if dc_thr > 0 else _DC_EXTENDED_LONG
+    _bb_s = 1.0 - _bb_lvl
+    _dc_s = 1.0 - _dc_lvl
+    parts = []
+    for tf in activation_tfs:
+        bb = ind.get(f"bb_pct_b_{tf}")
+        dc = ind.get(f"dc_position_{tf}")
+        try:
+            bb_v = float(bb) if bb is not None else -1.0
+            dc_v = float(dc) if dc is not None else -1.0
+        except (TypeError, ValueError):
+            bb_v, dc_v = -1.0, -1.0
+        bb_ok = (bb_v >= _bb_lvl) if is_long else (0 <= bb_v <= _bb_s)
+        dc_ok = (dc_v >= _dc_lvl) if is_long else (0 <= dc_v <= _dc_s)
+        tf_active = bb_ok or dc_ok
+        parts.append(f"{tf}:bb{bb_v:.2f}{'✓' if bb_ok else '✗'}/dc{dc_v:.2f}{'✓' if dc_ok else '✗'}")
+        if tf_active:
+            return True, f"ACT_OK[{','.join(parts)}]"
+    return False, f"NO_ACTIVATION[{','.join(parts)}]"
+
+
 def _run_gate(
     ind: dict,
     is_long: bool,
@@ -193,32 +227,59 @@ def _run_gate(
 ) -> tuple[bool, int, str]:
     """Core gate shared by entry and exit checks.
 
-    2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE mode.
-    When config.GR_TOTAL_VOTE_SCORE_MIN > 0, switch to the multiplicative score gate:
-      total_votes = sum across ALL TFs of (indicators_agreeing in that TF)
-      passes when total_votes >= GR_TOTAL_VOTE_SCORE_MIN
-    Range 1-35 (5 TFs × 7 indicators for crypto; up to 6×7=42 for tradier with W).
-    Score 1 = "1 indicator on 1 TF must agree" (loose). Score 35 = "all indicators on all TFs" (tightest).
+    2026-05-18 USER MANDATE: activation/entry TF split (was: all TFs scored equally).
+    When config.GOLDEN_RULE_REQUIRE_ACTIVATION=True, runs a 2-stage gate:
+      Stage 1 (activation): at least 1 TF in GOLDEN_RULE_ACTIVATION_TF_LIST (default ['D','4h'])
+                            must show breakout (bb_pctb or dc_pos crosses extended threshold).
+      Stage 2 (entry):      score per-TF on GOLDEN_RULE_ENTRY_TF_LIST (default ['1h','15m','3m'])
+                            using existing MIN_TFS x MIN_IND logic.
+    Without activation, gate returns (False, 0, NO_ACTIVATION) — even if entry TFs are bullish.
+    This mirrors STDEV_BREAKOUT_HTF_LIST + STDEV_BREAKOUT_RETEST_TF_LIST structure.
 
-    Legacy MIN_TFS × MIN_IND binary gate kept for backward compat: when
-    GR_TOTAL_VOTE_SCORE_MIN == 0 and min_tfs > 0, use legacy logic.
+    2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE mode (legacy, still supported).
+    When config.GR_TOTAL_VOTE_SCORE_MIN > 0, switch to the multiplicative score gate.
+
+    Legacy MIN_TFS × MIN_IND binary gate kept for backward compat (when activation+vote both off).
     """
-    # === NEW total-vote-score gate ===
-    # Mode-aware config read: tradier overrides land on tradier_manage.config, not config.
+    # Mode-aware config read: tradier overrides land on tradier_manage.config (an instance),
+    # not the config MODULE. Crypto needs Config() instance for dataclass List fields
+    # (field(default_factory=...) doesn't resolve at class level).
     try:
         if mode == "tradier":
             import tradier_manage as _tm_src
             _cfg_obj = _tm_src.config
         else:
-            import config as _cfg_obj
+            import config as _cfg_mod
+            _cfg_obj = getattr(_cfg_mod, "_GR_HTF_CFG_SINGLETON", None)
+            if _cfg_obj is None:
+                _cfg_obj = _cfg_mod.Config()
+                _cfg_mod._GR_HTF_CFG_SINGLETON = _cfg_obj   # cache for next call
         _vote_min = int(getattr(_cfg_obj, 'GR_TOTAL_VOTE_SCORE_MIN', 0) or 0)
         _dc_thr = float(getattr(_cfg_obj, 'GR_DC_EXTENDED_LONG', 0) or 0)
         _bb_thr = float(getattr(_cfg_obj, 'GR_BB_EXTENDED_LONG', 0) or 0)
+        _require_act = bool(getattr(_cfg_obj, 'GOLDEN_RULE_REQUIRE_ACTIVATION', False))
+        _act_list = list(getattr(_cfg_obj, 'GOLDEN_RULE_ACTIVATION_TF_LIST', None) or [])
+        _entry_list = list(getattr(_cfg_obj, 'GOLDEN_RULE_ENTRY_TF_LIST', None) or [])
     except Exception:
         _vote_min = 0
         _dc_thr = 0.0
         _bb_thr = 0.0
-    tfs = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
+        _require_act = False
+        _act_list = []
+        _entry_list = []
+    tfs_default = _TRADIER_TFS if mode == "tradier" else _CRYPTO_TFS
+
+    # === USER 2026-05-18 activation/entry split (when REQUIRE_ACTIVATION=True) ===
+    if _require_act and _act_list:
+        act_ok, act_detail = _check_activation(ind, _act_list, is_long, px, _dc_thr, _bb_thr)
+        if not act_ok:
+            return False, 0, act_detail
+        # Activation confirmed — score only entry TFs (cheaper, semantically correct).
+        tfs = _entry_list if _entry_list else tfs_default
+    else:
+        tfs = tfs_default
+
+    # === legacy total-vote-score gate ===
     if _vote_min > 0:
         total = 0
         parts = []
@@ -227,7 +288,8 @@ def _run_gate(
             total += n
             parts.append(f"{tf}:{n}")
         passes = total >= _vote_min
-        return passes, total, f"vote_total={total}/{_vote_min}req [{' '.join(parts)}]"
+        _act_tag = "+act" if _require_act else ""
+        return passes, total, f"vote_total={total}/{_vote_min}req{_act_tag} [{' '.join(parts)}]"
     # === LEGACY MIN_TFS × MIN_IND binary gate ===
     if min_tfs <= 0:
         return True, 0, "GATE_OFF"
@@ -240,7 +302,8 @@ def _run_gate(
             confirmed += 1
         parts.append(f"{tf}:{n}/{min_ind}{'✓' if ok else ''}")
     passes = confirmed >= min_tfs
-    summary = f"tfs={confirmed}/{min_tfs}req [{' '.join(parts)}]"
+    _act_tag = "+act" if _require_act else ""
+    summary = f"tfs={confirmed}/{min_tfs}req{_act_tag} [{' '.join(parts)}]"
     return passes, confirmed, summary
 
 

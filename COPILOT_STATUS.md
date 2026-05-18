@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 01:06:37 UTC
+# Copilot Status — 2026-05-18 01:21:46 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T00:59:26
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:01:29
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:01:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:01:29
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:03:31
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:03:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:03:31
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:05:34
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:05:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:05:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:13:48
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:15:54
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:15:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:15:54
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:17:56
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:17:56
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:17:56
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T01:20:00
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T01:20:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T01:20:00
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +2.3%
@@ -40,7 +40,6 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **BBUSDT** SHORT (crypto) peaked +6.7%, exited 0m ago
 - WATCHING: **ZRXUSDT** SHORT (crypto) peaked +4.5%, exited 0m ago
 - WATCHING: **SNXUSDT** SHORT (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago

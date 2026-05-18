@@ -894,6 +894,13 @@ class Config:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_MULT_W: float = 4.0         # 2026-05-17 USER: +W mult (cascade 1.0/1.5/2.0/3.0/4.0)
+    # USER 2026-05-18: activation/entry TF split (mirrors STDEV_BREAKOUT_HTF_LIST + STDEV_BREAKOUT_RETEST_TF_LIST).
+    # Previously GR scored all 6 TFs equally — a 3m wick contributed the same vote as a Daily bar.
+    # New: breakout must HAPPEN on activation TF (D/4h), entry trigger must CONFIRM on entry TF (1h/15m/3m).
+    # Same structure as STDEV_BREAKOUT which has been working in tradier_manage.py.
+    GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True              # if True, gate fails when no activation TF shows breakout
+    GOLDEN_RULE_ACTIVATION_TF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])  # WHERE breakout must happen
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m", "3m"])  # WHERE entry trigger fires
     # The GOLDEN_RULE entry consensus uses the EXISTING tested config keys
     # GOLDEN_RULE_HTF_MIN_TFS and GOLDEN_RULE_MIN_IND (defined at line ~1964
     # below) — same knobs that backtest_v8_engine.py and backtest_v8_sweep.py
