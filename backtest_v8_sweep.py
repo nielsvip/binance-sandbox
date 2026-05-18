@@ -759,15 +759,17 @@ def grid_tradier_4h_stop():
     dc_low4_3m (crypto style) confirmed wrong for stocks — 4h Donchian is correct HTF stop.
     DC_LOW_4H_FROZEN_STOP_ENABLED: captures dc_low_4h at first bar position seen (frozen at entry).
     Fires when: long px < frozen_level while in loss, OR gain < ABS_LOSS_FLOOR_PCT.
-    5 variants: baseline, stop_only, stop+8pct_floor (best from inline analysis), floor_only, daily_stop.
-    Run on 20 core stocks × 2024-01-01 for fast initial signal; full 114-sym if ps>1.0."""
+    WT_3M_FORCE_OPEN=True in all variants: required to produce entries since WT_3M_FORCE_OPEN_ENABLED=False
+    in live config_tradier.py (Rule A/B/C not yet wired). Without forced entries, 0 trades = untestable.
+    Run on 3 core stocks × 2024-01-01 for fast initial signal; full 114-sym if ps>1.0."""
+    _fo = {"WT_3M_FORCE_OPEN_ENABLED": True, "WT_3M_FORCE_OPEN_BYPASS_GATES": True}
     return [
-        ("baseline", {}),
-        ("DC4H_STOP_ONLY",       {"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -999.0}),
-        ("DC4H_STOP_8PCT_FLOOR", {"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
-        ("FLOOR_ONLY_8PCT",      {"DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
-        ("FLOOR_ONLY_12PCT",     {"DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
-        ("DC4H_STOP_12PCT_FLOOR",{"DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
+        ("baseline",             {**_fo}),
+        ("DC4H_STOP_ONLY",       {**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -999.0}),
+        ("DC4H_STOP_8PCT_FLOOR", {**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
+        ("FLOOR_ONLY_8PCT",      {**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -8.0}),
+        ("FLOOR_ONLY_12PCT",     {**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": False, "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
+        ("DC4H_STOP_12PCT_FLOOR",{**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -12.0}),
     ]
 
 
