@@ -142,6 +142,16 @@ EXIT_X5_WINDOW_BARS = 3
 EXIT_X6_DC_LOW_1H_LENGTH = 20  # break entry-bar's dc_low(20) on 1h
 EXIT_X7_ABSOLUTE_FLOOR_PCT = -8.0  # absolute -8% hard floor
 
+# LT-direction regime filter (USER 2026-05-18 — block LONG on downtrending names)
+# Per-symbol daily 200SMA trend gate at entry. Symmetric to the SHORT-on-uptrend
+# mistake diagnostic_agent flagged (V0_baseline lost -7,604% shorting uptrending tech);
+# this side blocks LONG when close_D <= sma_200_D. Gates entries only — exits unchanged.
+STRUCT_V4_LT_DIRECTION_FILTER_ENABLED = os.getenv(
+    "STRUCT_V4_LT_DIRECTION_FILTER_ENABLED", "true").lower() == "true"
+STRUCT_V4_LT_DIRECTION_TF = os.getenv("STRUCT_V4_LT_DIRECTION_TF", "D")
+STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS = int(
+    os.getenv("STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS", "200"))
+
 MIN_HOLD_DAYS = 1  # no day-trading
 
 # Indicator history requirement.
@@ -644,6 +654,19 @@ def compute_indicators(df_5m: pd.DataFrame,
     if atr15 is not None and len(atr15.dropna()) >= 1:
         out["atr_15m"] = float(atr15.iloc[-1])
 
+    # LT-direction filter fields (USER 2026-05-18) — generic across configured TF
+    # Default (D, 200) produces same values as close_D / sma_200_D above; this
+    # block makes STRUCT_V4_LT_DIRECTION_TF / _ABOVE_SMA_BARS knobs functional.
+    _tf_to_df = {"5m": df_5m, "15m": df_15m, "1h": df_1h, "4h": df_4h,
+                 "D": df_D, "W": df_W}
+    _lt_df = _tf_to_df.get(STRUCT_V4_LT_DIRECTION_TF)
+    if _lt_df is not None and len(_lt_df) >= STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS:
+        out["lt_dir_close"] = float(_lt_df["close"].iloc[-1])
+        out["lt_dir_sma"] = _sma(_lt_df["close"], STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS)
+    else:
+        out["lt_dir_close"] = None
+        out["lt_dir_sma"] = None
+
     # === USER 2026-05-18 — activation fields for golden_rule_htf gate ===
     # The activation gate reads bb_pct_b_<TF> + dc_position_<TF> for D and 4h
     # (the GOLDEN_RULE_ACTIVATION_TF_LIST). Without these the gate fail-closes.
@@ -712,6 +735,38 @@ def evaluate_entry(ind: Dict[str, Any]
     if ind.get("current_price") is None:
         return None, ["NO_PRICE"], gate_info
 
+    # === LT-DIRECTION FILTER (USER 2026-05-18) ===
+    # Block LONG entries on downtrending symbols (close_TF <= sma_N_TF).
+    # Fires BEFORE GR activation gate. Symmetric to the SHORT-on-uptrend
+    # mistake found in V0_baseline (-7,604% shorting uptrending tech).
+    # Fail-closed: missing data → block (no entry without trend proof).
+    if STRUCT_V4_LT_DIRECTION_FILTER_ENABLED:
+        lt_close = ind.get("lt_dir_close")
+        lt_sma = ind.get("lt_dir_sma")
+        gate_info["lt_direction_filter_enabled"] = True
+        gate_info["lt_direction_tf"] = STRUCT_V4_LT_DIRECTION_TF
+        gate_info["lt_direction_bars"] = STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS
+        gate_info["lt_dir_close"] = lt_close
+        gate_info["lt_dir_sma"] = lt_sma
+        if lt_close is None or lt_sma is None:
+            reasons.append(
+                f"LT_DIRECTION_DOWNTREND:no_data tf={STRUCT_V4_LT_DIRECTION_TF}"
+                f" bars={STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS}")
+            gate_info["lt_direction_passes"] = False
+            gate_info["lt_direction_block_reason"] = "NO_DATA"
+            return None, reasons, gate_info
+        if lt_close <= lt_sma:
+            reasons.append(
+                f"LT_DIRECTION_DOWNTREND:close={lt_close:.4f}"
+                f"<=sma_{STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS}_"
+                f"{STRUCT_V4_LT_DIRECTION_TF}={lt_sma:.4f}")
+            gate_info["lt_direction_passes"] = False
+            gate_info["lt_direction_block_reason"] = "CLOSE_LE_SMA"
+            return None, reasons, gate_info
+        gate_info["lt_direction_passes"] = True
+    else:
+        gate_info["lt_direction_filter_enabled"] = False
+
     # === ACTIVATION GATE (mandatory) ===
     try:
         gr_passes, gr_n_tfs, gr_detail = score_entry_htf(
@@ -725,11 +780,12 @@ def evaluate_entry(ind: Dict[str, Any]
         )
     except Exception as e:
         logger.warning(f"GR gate exception (fail-closed): {e}")
-        return None, [f"GR_GATE_EXCEPTION:{e}"], {"gr_passes": False, "gr_error": str(e)}
+        gate_info.update({"gr_passes": False, "gr_error": str(e)})
+        return None, [f"GR_GATE_EXCEPTION:{e}"], gate_info
 
-    gate_info = {"gr_passes": gr_passes, "gr_n_tfs": gr_n_tfs,
-                 "gr_detail": gr_detail, "gr_min_tfs": GR_MIN_TFS,
-                 "gr_min_ind": GR_MIN_IND, "gr_invert_dc_bb": True}
+    gate_info.update({"gr_passes": gr_passes, "gr_n_tfs": gr_n_tfs,
+                      "gr_detail": gr_detail, "gr_min_tfs": GR_MIN_TFS,
+                      "gr_min_ind": GR_MIN_IND, "gr_invert_dc_bb": True})
 
     if not gr_passes:
         reasons.append(f"GR_GATE_BLOCKED:{gr_detail}")
@@ -1101,6 +1157,7 @@ def _ind_snapshot(ind: Dict[str, Any]) -> Dict[str, Any]:
     keys = ["current_price", "k_15m", "k_1h", "k_4h",
             "wt1_15m", "wt2_15m", "wt1_D", "wt2_D",
             "rsi_D", "sma_200_D", "close_D",
+            "lt_dir_close", "lt_dir_sma",
             "bull_wt_15m", "bear_wt_15m", "bull_wt_D", "bear_wt_D",
             "bull_k_1h", "bull_sma200_D", "bull_wt_W",
             "dc_low_1h_20", "atr_15m", "exit_X5_armed",
@@ -1205,7 +1262,10 @@ def main():
               f"notional=${POSITION_NOTIONAL_USD:.0f} | "
               f"max_pos={MAX_CONCURRENT_POSITIONS} | "
               f"max_deployed=${MAX_TOTAL_DEPLOYED_USD:.0f} | "
-              f"gr_min_tfs={GR_MIN_TFS} gr_min_ind={GR_MIN_IND}")
+              f"gr_min_tfs={GR_MIN_TFS} gr_min_ind={GR_MIN_IND} | "
+              f"lt_dir_filter={STRUCT_V4_LT_DIRECTION_FILTER_ENABLED} "
+              f"tf={STRUCT_V4_LT_DIRECTION_TF} "
+              f"bars={STRUCT_V4_LT_DIRECTION_ABOVE_SMA_BARS}")
     logger.info(banner)
     if ctx.account_key == "trb" and not ctx.paper_mode and not ctx.go_live:
         logger.warning("[trb] STRUCT_V4_PAPER_MODE=false but STRUCT_V4_GO_LIVE!=true → "

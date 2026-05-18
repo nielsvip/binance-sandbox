@@ -37471,6 +37471,13 @@ async def process_position(
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:BLACKLISTED_{symbol}"
     position = await trade_manager.get_position(position_key)
+    # USER 2026-05-18: shared ii() cache for this process_position cycle.
+    # Was 4× Redis stampede (lines below: WZG / R3 / R3_HTF_FLIP / GR_HTF_DIRECT_EXIT
+    # each called `await ii(trade_manager, symbol)` independently). With 50+ positions ×
+    # 4 calls per cycle = 200+ Redis hits per evaluation cycle — proven cause of GR
+    # backtest engine timeouts at 90 min in v4/v5/v6 sweeps. Lazy-init: only fetches on
+    # first GR gate that fires, reuses for all subsequent gates in the same cycle.
+    _pp_shared_ind: Optional[dict] = None
     # 🤖 AGENT advisory short-circuit (supervisor override, all 5 crypto accounts)
     # Hook fires after position fetch so we have all needed context. inf runs SCALP_V3 too —
     # this hook runs first; a force_close advisory wins over a SCALP_V3 hold.
@@ -37843,7 +37850,9 @@ async def process_position(
             # be back inside [floor, band]. From-open-tiny-profit positions
             # don't fire here — R1 (DC4 newborn window) handles those.
             if _wzg_max_gain >= _wzg_peak_min and _wzg_floor <= _wzg_gain < _wzg_band:
-                _wzg_ind = await ii(trade_manager, symbol)
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _wzg_ind = _pp_shared_ind if _pp_shared_ind else None
                 if _wzg_ind:
                     _wzg_is_long = position_side == "LONG"
                     _wzg_fired_tf = None
@@ -37912,7 +37921,9 @@ async def process_position(
             _r3_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
             _r3_gain_max = float(getattr(config, "R3_GAIN_MAX_PCT", 0.0))
             if _r3_gain < _r3_gain_max and _r3_gain > 0:
-                _r3_ind = await ii(trade_manager, symbol)
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _r3_ind = _pp_shared_ind if _pp_shared_ind else None
                 if _r3_ind:
                     _r3_w1_3m = safe_fetch_float(_r3_ind.get("wt1_3m"), 0)
                     _r3_w2_3m = safe_fetch_float(_r3_ind.get("wt2_3m"), 0)
@@ -38154,7 +38165,9 @@ async def process_position(
         and bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False))
     ):
         try:
-            _r3hf_ind = await ii(trade_manager, symbol)
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _r3hf_ind = _pp_shared_ind if _pp_shared_ind else None
         except Exception:
             _r3hf_ind = None
         if _r3hf_ind:
@@ -38234,7 +38247,9 @@ async def process_position(
         and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
     ):
         try:
-            _grde_exit_ind = await ii(trade_manager, symbol)
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _grde_exit_ind = _pp_shared_ind if _pp_shared_ind else None
         except Exception:
             _grde_exit_ind = None
         if _grde_exit_ind:
