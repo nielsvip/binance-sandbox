@@ -1896,11 +1896,78 @@ def run_sweep(
             "trades": 0, "n_syms": 0, "years": 0.0, "max_dd_pct": 0.0,
         }
 
-    # Final-line: canonical 9-field via metrics_guard
+    # Final-line: canonical 9-field via metrics_guard. Per CLAUDE.md NO-LIES
+    # MANDATE / IMPOSTER BLOCK rule 4 this is one of the quarantined producers
+    # and MUST exit non-zero if metrics_guard refuses the row — never silently
+    # downgrade.
+    mg_mode = "stocks" if mode == "tradier" else "crypto"
     try:
         canonical_line = metrics_guard.format_standard_set(std, mode=mode)
     except metrics_guard.FakeMetricRefused as e:
-        canonical_line = f"[METRICS_REFUSED] {e}"
+        sys.stderr.write(
+            f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_sweep "
+            f"format_standard_set: {e}\n"
+        )
+        sys.exit(2)
+
+    # Aggregate canonical row → CSV via metrics_guard.write_sharpe_row(). This
+    # is the chokepoint required by CLAUDE.md to prevent v0-style sub-floor
+    # publication (e.g. pool_sharpe 0.1057, 28 syms, 85.1% dd surfaced as
+    # "good"). write_sharpe_row will refuse banned column names, missing
+    # canonical fields, and inflated values. Sub-floor sample is allowed but
+    # tagged in the verdict column.
+    agg_csv = SWEEP_RESULTS_DIR / f"v8_vec_sweep_{ts_run}.csv"
+    agg_row = {
+        "pool_sharpe": float(std.get("pool_sharpe", 0.0)),
+        "sym_sharpe": float(std.get("sym_sharpe", 0.0)),
+        "avg_gain_trade": float(std.get("avg_gain_trade", 0.0)),
+        "gain_per_yr": float(std.get("gain_per_yr", 0.0)),
+        "gain_sym_yr": float(std.get("gain_sym_yr", 0.0)),
+        "trades": int(std.get("trades", 0) or 0),
+        "max_dd_pct": float(std.get("max_dd_pct", 0.0)),
+        "n_syms": int(std.get("n_syms", 0) or 0),
+        "years": float(std.get("years", 0.0) or 0.0),
+        "engine": "v8_vec_sweep",
+        "tier": "run_sweep",
+        "mode": mode,
+        "account": account,
+        "start": start,
+        "ts_run": ts_run,
+        "summary_path": str(summary_path),
+        "trades_path": str(trades_path),
+    }
+    try:
+        metrics_guard.write_sharpe_row(agg_csv, agg_row, mode=mg_mode, append=False)
+    except metrics_guard.FakeMetricRefused as e:
+        sys.stderr.write(
+            f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_sweep "
+            f"write_sharpe_row: {e}\n"
+        )
+        sys.exit(2)
+
+    # Sub-floor sample = NOT a promote-able publication. The DIAGNOSTIC row is
+    # left in place for transparency, but we exit non-zero so no orchestrator
+    # (sweep_coordinator, leaderboard, HTML generator, etc.) can mistake the
+    # result for a "green row" candidate. Override with env V8_VEC_ALLOW_DIAGNOSTIC=1
+    # to deliberately run diagnostic sweeps without exit code.
+    floor_syms = (metrics_guard.MIN_SYMS_STOCKS if mg_mode == "stocks"
+                  else metrics_guard.MIN_SYMS_CRYPTO)
+    sub_floor = (int(agg_row["n_syms"]) < floor_syms or
+                 float(agg_row["years"]) < metrics_guard.MIN_YEARS)
+    allow_diag = (os.environ.get("V8_VEC_ALLOW_DIAGNOSTIC", "0").strip()
+                  in ("1", "true", "True"))
+    if sub_floor and not allow_diag:
+        sys.stderr.write(
+            f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_sweep sub-floor sample "
+            f"(n_syms={int(agg_row['n_syms'])} < floor={floor_syms} or "
+            f"years={float(agg_row['years']):.2f} < {metrics_guard.MIN_YEARS}). "
+            f"pool_sharpe={float(agg_row['pool_sharpe']):+.4f} is DIAGNOSTIC-only "
+            f"per CLAUDE.md NO-LIES MANDATE sample floor. Row tagged DIAGNOSTIC "
+            f"and left at {agg_csv}; engine exits non-zero so this cannot be "
+            f"promoted. Set V8_VEC_ALLOW_DIAGNOSTIC=1 to suppress this exit "
+            f"on deliberate diagnostic runs.\n"
+        )
+        sys.exit(3)
 
     # ─── Identical-result guard — detect broken thresholds ASAP ─────────────────
     if config.GR_EXIT_ENABLED and std["trades"] > 0:
@@ -1949,6 +2016,7 @@ def run_sweep(
         "canonical_line": canonical_line,
         "summary_path": str(summary_path),
         "trades_path": str(trades_path),
+        "agg_csv": str(agg_csv),
         "elapsed_per_sym": elapsed_per_sym,
     }
     return summary
@@ -2095,56 +2163,89 @@ def run_gr_dcbb_sweep(
     elapsed_total = time.perf_counter() - t_run_start
     print(f"\n[gr_dcbb_sweep] all {n_tasks} tasks done in {elapsed_total:.1f}s — reporting {n_variants} variants\n", flush=True)
 
-    # Report canonical 9-field metrics for every variant
+    # Report canonical 9-field metrics for every variant — routed exclusively
+    # through metrics_guard.write_sharpe_row() per CLAUDE.md IMPOSTER BLOCK
+    # rule 4. ANY refusal aborts the publication with non-zero exit.
     results_dir = Path(__file__).resolve().parent / "data" / "sweep_results"
     results_dir.mkdir(parents=True, exist_ok=True)
     ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_csv = results_dir / f"gr_dcbb_sweep_{mode}_{ts_str}.csv"
-    import csv as _csv
-    header_written = False
     seen_fps: Dict[tuple, str] = {}
     mg_mode = "stocks" if mode == "tradier" else "crypto"
-    with out_csv.open("w", newline="") as f:
-        writer = None
-        for label, dc_thr, bb_thr in _DCBB_GRID:
-            rets = variant_returns[label]
-            trades = len(rets)
-            if trades >= 2:
-                ps = metrics_guard.pool_sharpe(rets)
-                sym_s = ps  # single-pool, no per-sym breakdown here
-                acc_gain = float(sum(rets))
-            else:
-                ps = 0.0; sym_s = 0.0; acc_gain = 0.0
-            n_syms = len(symbols)
-            row = {
-                "label": label, "dc_threshold": dc_thr, "bb_threshold": bb_thr,
-                "pool_sharpe": round(ps, 4), "sym_sharpe": round(sym_s, 4),
-                "avg_gain_trade": round(acc_gain / trades, 4) if trades > 0 else 0.0,
-                "gain_per_yr": round(acc_gain / n_years, 2),
-                "gain_sym_yr": round(acc_gain / max(1, n_syms) / n_years, 4),
-                "trades": trades, "max_dd_pct": round(_max_dd_pct(rets), 4) if rets else 0.0,
-                "n_syms": n_syms, "years": round(n_years, 3),
-            }
-            if writer is None:
-                writer = _csv.DictWriter(f, fieldnames=list(row.keys()))
-                writer.writeheader()
-            writer.writerow(row)
-            # Identical-score detection
-            if trades >= 5:
-                fp = (round(ps, 4), trades)
-                if fp in seen_fps:
-                    print(
-                        f"[IDENTICAL_SCORE_WARNING] '{label}' (DC={dc_thr} BB={bb_thr}) == '{seen_fps[fp]}':"
-                        f" pool_sharpe={ps:.4f} trades={trades} — knob not differentiating!", flush=True,
-                    )
-                else:
-                    seen_fps[fp] = label
-            print(
-                f"  {label:35s}  DC={dc_thr:.2f}  BB={bb_thr:.2f}  "
-                f"pool_sharpe={ps:+.4f}  trades={trades:5d}  gain/yr={acc_gain/n_years:+.1f}%",
-                flush=True,
+    rows_written = 0
+    for label, dc_thr, bb_thr in _DCBB_GRID:
+        rets = variant_returns[label]
+        trades = len(rets)
+        if trades >= 2:
+            ps = metrics_guard.pool_sharpe(rets)
+            sym_s = ps  # single-pool, no per-sym breakdown here
+            acc_gain = float(sum(rets))
+        else:
+            ps = 0.0; sym_s = 0.0; acc_gain = 0.0
+        n_syms = len(symbols)
+        row = {
+            "pool_sharpe": round(ps, 4),
+            "sym_sharpe": round(sym_s, 4),
+            "avg_gain_trade": round(acc_gain / trades, 4) if trades > 0 else 0.0,
+            "gain_per_yr": round(acc_gain / n_years, 2),
+            "gain_sym_yr": round(acc_gain / max(1, n_syms) / n_years, 4),
+            "trades": trades,
+            "max_dd_pct": round(_max_dd_pct(rets), 4) if rets else 0.0,
+            "n_syms": n_syms,
+            "years": round(n_years, 3),
+            "label": label,
+            "dc_threshold": dc_thr,
+            "bb_threshold": bb_thr,
+            "engine": "v8_vec_sweep",
+            "tier": "gr_dcbb_threshold",
+            "mode": mode,
+            "account": account,
+            "start": start,
+            "ts_run": ts_str,
+        }
+        try:
+            metrics_guard.write_sharpe_row(out_csv, row, mode=mg_mode, append=True)
+            rows_written += 1
+        except metrics_guard.FakeMetricRefused as e:
+            sys.stderr.write(
+                f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_gr_dcbb_sweep "
+                f"label={label} dc={dc_thr} bb={bb_thr}: {e}\n"
             )
-    print(f"\n[gr_dcbb_sweep] results -> {out_csv}", flush=True)
+            sys.exit(2)
+        # Identical-score detection
+        if trades >= 5:
+            fp = (round(ps, 4), trades)
+            if fp in seen_fps:
+                print(
+                    f"[IDENTICAL_SCORE_WARNING] '{label}' (DC={dc_thr} BB={bb_thr}) == '{seen_fps[fp]}':"
+                    f" pool_sharpe={ps:.4f} trades={trades} — knob not differentiating!", flush=True,
+                )
+            else:
+                seen_fps[fp] = label
+        print(
+            f"  {label:35s}  DC={dc_thr:.2f}  BB={bb_thr:.2f}  "
+            f"pool_sharpe={ps:+.4f}  trades={trades:5d}  gain/yr={acc_gain/n_years:+.1f}%",
+            flush=True,
+        )
+    print(f"\n[gr_dcbb_sweep] results -> {out_csv} (rows={rows_written}/{len(_DCBB_GRID)})", flush=True)
+
+    # Sub-floor sample-floor gate (same as run_sweep). Exit non-zero so no
+    # orchestrator can promote a sub-floor DC/BB sweep.
+    floor_syms = (metrics_guard.MIN_SYMS_STOCKS if mg_mode == "stocks"
+                  else metrics_guard.MIN_SYMS_CRYPTO)
+    sub_floor = (len(symbols) < floor_syms or n_years < metrics_guard.MIN_YEARS)
+    allow_diag = (os.environ.get("V8_VEC_ALLOW_DIAGNOSTIC", "0").strip()
+                  in ("1", "true", "True"))
+    if sub_floor and not allow_diag:
+        sys.stderr.write(
+            f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_gr_dcbb_sweep sub-floor "
+            f"sample (n_syms={len(symbols)} < floor={floor_syms} or "
+            f"years={n_years:.2f} < {metrics_guard.MIN_YEARS}). Rows written to "
+            f"{out_csv} are DIAGNOSTIC-only per CLAUDE.md NO-LIES MANDATE. "
+            f"Set V8_VEC_ALLOW_DIAGNOSTIC=1 to suppress this exit on deliberate "
+            f"diagnostic runs.\n"
+        )
+        sys.exit(3)
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -2186,6 +2287,16 @@ def main():
     ap.add_argument("--tier", default="", help="Sweep tier: 'gr_dcbb_threshold' for fast DC/BB threshold sweep")
     args = ap.parse_args()
 
+    # NO-LIES MANDATE / IMPOSTER BLOCK retrofit banner (CLAUDE.md 2026-04-30).
+    # Every Sharpe row this engine emits to data/sweep_results/ is now routed
+    # through metrics_guard.write_sharpe_row(); refusals exit non-zero rather
+    # than downgrade silently.
+    print(
+        "v8_vec_sweep imposter-block retrofit active: every row routed through "
+        "metrics_guard.write_sharpe_row()",
+        flush=True,
+    )
+
     syms = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     sides = [s.strip().upper() for s in args.sides.split(",") if s.strip()]
     cfg = SweepConfig()
@@ -2215,6 +2326,7 @@ def main():
     print(f"v8_vec_sweep done in {elapsed:.2f}s | bars={s['total_bars']:,}")
     print(f"  summary={s['summary_path']}")
     print(f"  trades ={s['trades_path']}")
+    print(f"  agg_csv={s['agg_csv']}")
     print(s["canonical_line"])
     return 0
 

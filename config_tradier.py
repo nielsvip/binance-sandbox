@@ -1752,6 +1752,13 @@ class TradierConfig:
     GOLDEN_RULE_MIN_IND: int = 6      # 🚩 NEW BASELINE was 2. ROLLBACK: 2. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
     GR_DC_EXTENDED_LONG: float = 0.80  # 2026-05-13 sweep winner: DC=0.80+BB=0.75 pool_sharpe=0.0623 net (20sym LONG+SHORT gr_dcbb sweep)
     GR_BB_EXTENDED_LONG: float = 0.75  # 2026-05-13 sweep winner: confirmed 2-sym (0.69 net) and 20-sym tests
+    # USER 2026-05-18: 2-stage activation/entry split (mirrors config.py crypto).
+    # Stage 1 (activation): at least 1 TF in ACTIVATION_TF_LIST must show breakout
+    # (bb_pctb or dc_pos crosses extended threshold). Stage 2 (entry): per-TF score
+    # using existing MIN_TFS×MIN_IND only on ENTRY_TF_LIST.
+    GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True
+    GOLDEN_RULE_ACTIVATION_TF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m", "5m"])
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
     # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate, mirrors config.py)
