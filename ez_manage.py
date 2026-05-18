@@ -20146,8 +20146,9 @@ class MultiAccountTradeManager:
                     and k_3m < d_3m
                 )
             ) and self.is_same_direction(position_side, side):
+                # 2026-05-18 per-sym overlay
                 quantity = max(
-                    quantity, 1.15 * config.START_POSITION_SIZE / current_price
+                    quantity, 1.15 * _psym_sps(symbol, position_side) / current_price
                 )
             elif (
                 (
@@ -20165,30 +20166,33 @@ class MultiAccountTradeManager:
                     and k_3m < d_3m
                 )
             ) and self.is_same_direction(position_side, side):
-                quantity = max(quantity, config.START_POSITION_SIZE / current_price)
+                # 2026-05-18 per-sym overlay
+                quantity = max(quantity, _psym_sps(symbol, position_side) / current_price)
         min_augment_qty_usd = pos_min_qty * current_price
         if "AUGMENT" in action:
+            # 2026-05-18 per-sym overlay (compute once)
+            _sps_aug = _psym_sps(symbol, position_side)
             if position.gain > 5 * config.MIN_GAIN:
                 min_augment_qty_usd = max(
-                    5 * config.START_POSITION_SIZE,
+                    5 * _sps_aug,
                     0.8 * abs(float(position.positionAmt)) * current_price,
                     pos_min_qty * current_price,
                 )
             elif position.gain > 3 * config.MIN_GAIN:
                 min_augment_qty_usd = max(
-                    3 * config.START_POSITION_SIZE,
+                    3 * _sps_aug,
                     0.7 * abs(float(position.positionAmt)) * current_price,
                     pos_min_qty * current_price,
                 )
             elif position.gain > 1 * config.MIN_GAIN:
                 min_augment_qty_usd = max(
-                    2 * config.START_POSITION_SIZE,
+                    2 * _sps_aug,
                     0.6 * abs(float(position.positionAmt)) * current_price,
                     pos_min_qty * current_price,
                 )
             elif position.gain > 0.5 * config.MIN_GAIN:
                 min_augment_qty_usd = max(
-                    config.START_POSITION_SIZE,
+                    _sps_aug,
                     0.4 * abs(float(position.positionAmt)) * current_price,
                     pos_min_qty * current_price,
                 )

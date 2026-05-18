@@ -519,16 +519,27 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
       2. per_sym_active_config.json (global per-symbol custom — long-term sweep winner)
       3. regime override (config.get_symbol_setting)
       4. global default (config.PARAM) — basic baseline
-    Falls back to basic ONLY when no custom settings exist for this (sym, side, param)."""
+    Falls back to basic ONLY when no custom settings exist for this (sym, side, param).
+
+    2026-05-18 Path B: when param == 'START_POSITION_SIZE', also try
+    'START_POSITION_SIZE_OVERRIDE_USD' (per-sym trial-sizing key) FIRST in the
+    same overlay chain. Honors user mandate that PROMOTE_MIN_AMOUNT pending
+    candidates trade at the daemon-written $5 trial size before promotion."""
     if account_key and symbol and side:
         # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
         if account_key in ("trb", "trc"):
             cfgs = _load_tradier_per_sym_cfgs(_tradier_per_sym_cfgs_path)
             entry = cfgs.get(f"{symbol}_{side}", {})
+            # 2026-05-18 trial-sizing override
+            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in entry and entry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
+                return entry["START_POSITION_SIZE_OVERRIDE_USD"]
             if param in entry:
                 return entry[param]
         # 2. Global per-symbol custom (single source of truth for per-symbol settings)
         gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
+        # 2026-05-18 trial-sizing override
+        if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
+            return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
         if param in gentry:
             return gentry[param]
         # 3. Regime override
@@ -1883,7 +1894,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # 5m DC channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL.
         # ═══════════════════════════════════════════════════════════════════════
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
-           bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', True)):
+           bool(_cfg('R1_DC_LOW4_3M_EMERGENCY_ENABLED', True, account_key, symbol, position_side)):
             try:
                 # Fixed stop price set at open/augment time — no time window.
                 _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
@@ -1988,12 +1999,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                 _wzg_max_gain = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
                 _wzg_peak_min = float(getattr(config, 'R2_PEAK_MIN_PCT', 0.5))
-                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
-                _wzg_floor = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
-                _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
-                _wzg_decel_ratio = float(getattr(config, 'WT_VEL_DECEL_RATIO', 0.5))
-                _wzg_decel_only = bool(getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
-                _wzg_tfs = tuple(getattr(config, 'R2_TF_LIST', ('1h', '4h', 'D')) or ('1h', '4h', 'D'))
+                # 2026-05-18 per-sym overlay
+                _wzg_band = float(_cfg('WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10, account_key, symbol, position_side))
+                _wzg_floor = float(_cfg('WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01, account_key, symbol, position_side))
+                _wzg_near_zero = float(_cfg('WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1, account_key, symbol, position_side))
+                _wzg_decel_ratio = float(_cfg('WT_VEL_DECEL_RATIO', 0.5, account_key, symbol, position_side))
+                _wzg_decel_only = bool(_cfg('WT_VEL_USE_DECEL_RATIO_ONLY', True, account_key, symbol, position_side))
+                _wzg_tfs = tuple(_cfg('R2_TF_LIST', ('1h', '4h', 'D'), account_key, symbol, position_side) or ('1h', '4h', 'D'))
                 # PEAK-THEN-COLLAPSE only — see ez_manage.py:20783 comment.
                 if _wzg_max_gain >= _wzg_peak_min and _wzg_floor <= _wzg_gain < _wzg_band:
                     _wzg_fired_tf = None
@@ -2025,7 +2037,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         #   SHORT mirror. Reasons R3_HTF_FLIP / R3_HTF_FLIP_4H are in LOSS_EXIT_TECHNICAL_BYPASS.
         # ROLLBACK: R3_HTF_FLIP_EXIT_ENABLED=False (and/or _4H_TIER_ENABLED=False) in config_tradier.py.
         # ═══════════════════════════════════════════════════════════════════════
-        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(getattr(config, 'R3_HTF_FLIP_EXIT_ENABLED', False))):
+        # 2026-05-18 per-sym overlay
+        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(_cfg('R3_HTF_FLIP_EXIT_ENABLED', False, account_key, symbol, position_side))):
             try:
                 _r3hf_w1_D = safe_fetch_float(i.get('wt1_D'), 0)
                 _r3hf_w2_D = safe_fetch_float(i.get('wt2_D'), 0)
@@ -2046,7 +2059,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _r3hf_fire = True
                         _r3hf_tier = "DAILY"
                         _r3hf_detail = f"dc_break={_r3hf_dc_break}_wt_flip={_r3hf_wt_flip}_px={current_price:.4f}_dcBD={_r3hf_dc_basis_D:.4f}_w1D={_r3hf_w1_D:.2f}_w2D={_r3hf_w2_D:.2f}_w1W={_r3hf_w1_W:.2f}_w2W={_r3hf_w2_W:.2f}"
-                if (not _r3hf_fire) and bool(getattr(config, 'R3_HTF_FLIP_4H_TIER_ENABLED', False)):
+                if (not _r3hf_fire) and bool(_cfg('R3_HTF_FLIP_4H_TIER_ENABLED', False, account_key, symbol, position_side)):
                     if _r3hf_ema_20_4h > 0 and _r3hf_atr_4h > 0:
                         _r3hf_4h_long = is_long and current_price < (_r3hf_ema_20_4h - _r3hf_atr_4h) and _r3hf_w1_4h < _r3hf_w2_4h
                         _r3hf_4h_short = (not is_long) and current_price > (_r3hf_ema_20_4h + _r3hf_atr_4h) and _r3hf_w1_4h > _r3hf_w2_4h
@@ -2069,7 +2082,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # cooldown / NOLOSS gates may NOT block this — execute_now bypass is wired
         # via the WT_3M_FORCE_OPEN reason string.
         # ═══════════════════════════════════════════════════════════════════════
-        if (not has_position) and bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)):
+        # 2026-05-18 per-sym overlay
+        if (not has_position) and bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side)):
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
                     _wf_wt1_3m = safe_fetch_float(i.get('wt1_3m'), 0)
@@ -2095,7 +2109,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # SIMPLIFIED stateless form (full breakout_retest_armed state dict pending next session).
         # ROLLBACK: BREAKOUT_RETEST_ARMED_ENABLED=False in config_tradier.py.
         # ═══════════════════════════════════════════════════════════════════════
-        if (not has_position) and bool(getattr(config, 'BREAKOUT_RETEST_ARMED_ENABLED', False)):
+        # 2026-05-18 per-sym overlay
+        if (not has_position) and bool(_cfg('BREAKOUT_RETEST_ARMED_ENABLED', False, account_key, symbol, position_side)):
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
                     _ra_w1_D = safe_fetch_float(i.get('wt1_D'), 0)
@@ -2113,7 +2128,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _ra_k_3m_prev = safe_fetch_float(i.get('k_3m_prev') or i.get('stoch_k_3m_prev'), _ra_k_3m)
                     _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0 and current_price > 0)
                     if _ra_data_ok:
-                        _ra_retest_mult = float(getattr(config, 'BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT', 0.30))
+                        # 2026-05-18 per-sym overlay
+                        _ra_retest_mult = float(_cfg('BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT', 0.30, account_key, symbol, position_side))
                         _ra_dist_atr = abs(current_price - _ra_dc_basis_D) / _ra_atr_D
                         _ra_armed_long = (_ra_w1_D > _ra_w2_D and _ra_w1_W > _ra_w2_W and current_price > _ra_dc_basis_D)
                         _ra_armed_short = (_ra_w1_D < _ra_w2_D and _ra_w1_W < _ra_w2_W and current_price < _ra_dc_basis_D)
@@ -5872,13 +5888,15 @@ class StockStrategy:
         # Step 1 (+0.5%): TP fires 50% via execute_trade_action(REDUCE); stop_level = entry × (1 ± BE_buffer%).
         # Step 2 (+0.75%): upgrade stop_level → first_exit_price (locks +0.5% scalp on remainder).
         # Step 3 (price ≤/≥ stop_level): close remainder (return True → caller fires full close).
+        # 2026-05-18 per-sym overlay
+        _ppl_side_t = 'LONG' if is_long else 'SHORT'
         _ppl_acct_list_t = getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', ['trb', 'trc'])
-        if (getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)
+        if (_cfg('PARTIAL_PROFIT_LOCK_ENABLED', False, _exit_acct_top, symbol, _ppl_side_t)
             and _exit_acct_top in _ppl_acct_list_t):
-            _ppl_min_gain_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5))
-            _ppl_arm_gain_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.75))
-            _ppl_be_buffer_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER', 0.02))
-            _ppl_frac_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5))
+            _ppl_min_gain_t = float(_cfg('PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5, _exit_acct_top, symbol, _ppl_side_t))
+            _ppl_arm_gain_t = float(_cfg('PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.75, _exit_acct_top, symbol, _ppl_side_t))
+            _ppl_be_buffer_t = float(_cfg('PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER', 0.02, _exit_acct_top, symbol, _ppl_side_t))
+            _ppl_frac_t = float(_cfg('PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_pk_t = f"{_exit_acct_top}:{symbol}_{'LONG' if is_long else 'SHORT'}"
             _tm_t = self.trade_manager if hasattr(self, 'trade_manager') else self
             if not hasattr(_tm_t, 'partial_profit_lock_state'):
@@ -5933,10 +5951,12 @@ class StockStrategy:
         if _exit_acct_top in _strict_acct_list and _noloss_min_ts > 0 and gain < _noloss_min_ts:
             # NOLOSS_BYPASS_WT_5OF5 (2026-04-21): 5/5 WT TFs against → allow close at loss.
             # Stocks: 5m/15m/1h/4h/D TFs. Default OFF, sweep-only.
-            _nlb_on = bool(getattr(config, 'NOLOSS_BYPASS_WT_5OF5_ENABLED', False))
+            # 2026-05-18 per-sym overlay
+            _nlb_side_t = 'LONG' if is_long else 'SHORT'
+            _nlb_on = bool(_cfg('NOLOSS_BYPASS_WT_5OF5_ENABLED', False, _exit_acct_top, symbol, _nlb_side_t))
             _nlb_pass = False
             if _nlb_on:
-                _nlb_min = int(getattr(config, 'NOLOSS_BYPASS_WT_5OF5_MIN_TFS', 5))
+                _nlb_min = int(_cfg('NOLOSS_BYPASS_WT_5OF5_MIN_TFS', 5, _exit_acct_top, symbol, _nlb_side_t))
                 _nlb_src = indicators or i
                 _nlb_against = 0
                 for _tf in ('5m', '15m', '1h', '4h', 'D'):
@@ -10076,7 +10096,8 @@ class TradierTradeManager:
             # Complementary to DISASTER_GUARD (which checks D close-vs-prev bias):
             # this checks WT momentum on D. ROLLBACK: HTF_TREND_VETO_ENABLED=False.
             # ═══════════════════════════════════════════════════════════════════════
-            if (bool(getattr(config, 'HTF_TREND_VETO_ENABLED', False))
+            # 2026-05-18 per-sym overlay
+            if (bool(_cfg('HTF_TREND_VETO_ENABLED', False, account_key, symbol, position_side))
                 and is_entry_action
                 and not _is_exit_or_reduce
                 and 'HEDGE' not in (reason or '').upper()

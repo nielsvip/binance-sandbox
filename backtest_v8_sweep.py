@@ -829,16 +829,13 @@ def grid_tradier_stop_sweep():
     """2026-05-18: Comprehensive frozen stop hunt — DC (5m/15m/1h/4h) + BB (lower/basis on 5m/15m/1h/4h).
     Proper isolation: R1 and/or R2 disabled per variant so each stop mechanism can actually fire.
     FROZEN_ACTIVATION_STOP_ENABLED=False disables tradier_manage's version (uses engine-level stops only).
-    Target: pool_sharpe > 1.0 on AAPL,MSFT,NVDA,TSLA,META,AMD (6 syms, 2024-01-01).
+    Target: pool_sharpe > 1.0 on NVDA,TSLA,AMD,META (4 volatile syms, 2024-01-01).
+    _fo is EMPTY — use live config values so entry quality matches live system.
     """
     _fo = {
-        "MFI_ENTRY_ENABLED": False,
-        "GOLDEN_RULE_HTF_MIN_TFS": 0,
-        "STRUCTURAL_RANGE_SHIFT_EXIT": False,
-        "ENTRY_MIN_ALIGNMENT": 1,
-        "ENTRY_ZONE_LONG": 100,
-        "WT_DC_ENTRY_THRESHOLD": 0,
-        "USDC_PREFERENCE_BLOCK_ENABLED": False,
+        "BREAKOUT_RETEST_ARMED_ENABLED": True,   # RULE_A: D/W breakout → flag → LTF bounce entry
+        "GR_HTF_DIRECT_ENTRY_ENABLED": False,    # Abandoned n_tfs×MIN_IND≥12 — was a disaster
+        "WT_3M_FORCE_OPEN_ENABLED": False,       # Disable noise-entry for clean stop isolation
     }
     _r1_off = {"R1_DC_LOW4_3M_EMERGENCY_ENABLED": False}
     _r2_off = {"WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED": False}

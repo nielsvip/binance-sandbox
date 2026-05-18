@@ -1109,8 +1109,10 @@ def simulate_one_symbol(
             _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_lower_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
         elif _bb_field == "upper":
             _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_upper_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
-        else:
-            _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_pct_b_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        else:  # basis = midline = (upper + lower) / 2
+            _bbu = np.nan_to_num(npz.get(f"bb_upper_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _bbl = np.nan_to_num(npz.get(f"bb_lower_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _bb_fstop_arr = np.where((_bbu > 0) & (_bbl > 0), (_bbu + _bbl) / 2.0, 0.0).astype(np.float32)
     _fstop_floor = float(getattr(config, "DC_LOW_FROZEN_STOP_FLOOR_PCT", -999.0))
 
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────

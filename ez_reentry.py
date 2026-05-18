@@ -655,7 +655,22 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             sizing_frac = 0.5; sizing_tag = f"rally_ext_k1h{k_1h:.0f}_50"
         else:
             sizing_frac = 1.0; sizing_tag = "full_100"
-        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
+        # 2026-05-18 per-sym overlay (trial-sizing override)
+        _start_size_psym = start_size
+        try:
+            _per_sym_path = Path(getattr(_cfg, "BASE_PATH", "/Users/niels/Documents/binance")) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+            if _per_sym_path.exists() and os.environ.get("V8_DISABLE_PER_SYM") != "1":
+                import json as _jpsm
+                with _per_sym_path.open() as _fpsm:
+                    _raw_psm = _jpsm.load(_fpsm)
+                _entry_psm = (_raw_psm.get(f"{sym}_{side}") or {}).get("overrides", {})
+                if "START_POSITION_SIZE_OVERRIDE_USD" in _entry_psm and _entry_psm["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
+                    _start_size_psym = float(_entry_psm["START_POSITION_SIZE_OVERRIDE_USD"])
+                elif "START_POSITION_SIZE" in _entry_psm:
+                    _start_size_psym = float(_entry_psm["START_POSITION_SIZE"])
+        except Exception:
+            _start_size_psym = start_size
+        fire_qty = (exit_amt if exit_amt > 0 else (_start_size_psym / max(cur_px, 1e-9))) * sizing_frac
         if fire_qty <= 0:
             continue
         try:

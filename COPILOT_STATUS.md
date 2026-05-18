@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 23:35:19 UTC
+# Copilot Status — 2026-05-18 23:51:05 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:25:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:25:59
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:28:07
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:28:07
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:30:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:30:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:32:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:32:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:34:25
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:34:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:40:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:40:44
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:42:51
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:42:51
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:44:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:44:54
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:47:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:47:00
+- **STALE_INDICATORS** [tradier]  — 2026-05-18T23:49:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T23:49:06
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 7 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
@@ -35,7 +35,6 @@ _None_
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 - HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
 - HELD: **LEXX** LONG (tradier) peak +3.9%, now +-7.9%
-- HELD: **RONINUSDT** LONG (crypto) peak +3.6%, now +0.8%
 - HELD: **WDAY** SHORT (tradier) peak +3.1%, now +-1.0%
 
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
