@@ -66,6 +66,29 @@ NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 OUT_BASE = ROOT / "data" / "hourly_reconfig"
 SWEEP_CSV_DIR = ROOT / "data" / "sweep_results"
 
+# 2026-05-18 baseline_v2 anchor — supersedes BEST as the baseline candidate. Built
+# from STATE_OF_AFFAIRS knobs + post-May-1 user-locked mandates (R1/R2/DUP_GUARD/
+# HEDGE_100PCT/OBLIGATORY_HEDGE/WT_3M_FORCE_OPEN_OFF/HTF_TREND_VETO/Rule A/
+# DC_BB_D_BREAK_REVERSE_OFF/RZ_BASELINE_BOUNCE_SHORT_OFF/PPL_v2). Certified on
+# S1 with sample-floor compliance before promotion to daemon baseline (see
+# data/_diagnostic/baseline_v2_{crypto,tradier}_certification_20260518.txt).
+BASELINE_V2_DIR = ROOT / "data" / "hourly_reconfig" / "_baselines"
+BASELINE_V2_CRYPTO_PATH = BASELINE_V2_DIR / "baseline_v2_crypto_20260518.json"
+BASELINE_V2_TRADIER_PATH = BASELINE_V2_DIR / "baseline_v2_tradier_20260518.json"
+
+
+def _load_baseline_v2(is_tradier: bool) -> Dict:
+    """Load baseline_v2 JSON; strip _meta. Returns {} if missing (daemon survives
+    a missing baseline so a misconfigured deploy doesn't break the hourly loop)."""
+    path = BASELINE_V2_TRADIER_PATH if is_tradier else BASELINE_V2_CRYPTO_PATH
+    try:
+        with path.open() as f:
+            d = json.load(f)
+    except Exception as e:
+        print(f"  [baseline_v2] load failed {path.name}: {e}", flush=True)
+        return {}
+    return {k: v for k, v in d.items() if not k.startswith("_")}
+
 # Account → tradeable-syms file (long/short or pooled).
 # For accounts with split long/short files, list both — wrapper unions them.
 # 2026-04-30 USER DIRECTIVE: trc must use symbols_trb_long/short, NOT trc-specific lists.
@@ -156,8 +179,12 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
     cand: List[Tuple[str, Dict]] = []
 
     if is_tradier:
-        # Tradier candidates: stock-tuned, no BTC_DEDICATED. Defaults + small mutations.
-        cand.append(("baseline", {}))
+        # Tradier candidates: stock-tuned, no BTC_DEDICATED. baseline = baseline_v2
+        # JSON (post-May-1 user mandates) instead of empty {} so per-sym variations
+        # layer on user-locked ground truth rather than engine-default drift.
+        _bv2_tr = _load_baseline_v2(is_tradier=True)
+        cand.append(("BASELINE_V2", dict(_bv2_tr)))
+        cand.append(("baseline", dict(_bv2_tr)))   # clone of BASELINE_V2; "baseline" tag kept for downstream compat
         cand.append(("loose_entry", {
             "TRADIER_WT_DC_ENTRY_THRESHOLD": 18,  # default ~25 → looser
             "TRADIER_ENTRY_MIN_ALIGNMENT": 1,
@@ -245,10 +272,22 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
         # assisted btc trader". The "baseline" candidate WAS engine defaults ({}); now it
         # is override_btc_BEST.json — the proven 6.23yr / 0.4262 pool / 2.14% DD anchor.
         # Hourly revisions must beat this to switch — defaults are no longer a fallback.
-        if cand and cand[0][0] == "BEST":
-            cand.append(("baseline", dict(cand[0][1])))   # baseline = BEST (clone, mutation-safe)
+        #
+        # 2026-05-18 USER DIRECTIVE (supersedes May-1 for baseline): BEST is structurally
+        # outdated — many knob mandates landed since (R1/R2 exit framework, DUP_GUARD gain
+        # gate, HEDGE_100PCT, OBLIGATORY_HEDGE, WT_3M_FORCE_OPEN OFF, HTF_TREND_VETO ON,
+        # R3_HTF_FLIP exit, Rule A retest, DC_BB_D_BREAK_REVERSE OFF, RZ_BASELINE_BOUNCE_SHORT
+        # OFF, PARTIAL_PROFIT_LOCK_v2). baseline_v2 JSON captures all of these layered on
+        # the BEST anchor. BEST kept as a candidate for historical comparison; BASELINE_V2
+        # is the new "baseline" foundation per-sym variations layer on top of.
+        _bv2 = _load_baseline_v2(is_tradier=False)
+        if _bv2:
+            cand.append(("BASELINE_V2", dict(_bv2)))
+            cand.append(("baseline", dict(_bv2)))         # baseline = BASELINE_V2 (clone)
+        elif cand and cand[0][0] == "BEST":
+            cand.append(("baseline", dict(cand[0][1])))   # fallback: BEST clone
         else:
-            cand.append(("baseline", {}))                 # fallback only if BEST failed to load
+            cand.append(("baseline", {}))                 # final fallback if both load failures
         # Mutation focused on producing more trades (loosens entry gates) — addresses
         # BTCDOMUSDT and other low-frequency syms.
         if cand and cand[0][0] == "BEST":

@@ -149,7 +149,7 @@ class AggressiveCfg:
     require_above_sma50_D: bool = False       # require close > SMA_50_D for ANY entry
     x4_exit_extended_cooldown: int = 0        # after X4 exit, cooldown = max(normal, this); 0 = off
     # ─── MULTI-TF DC STOP (from sweep: dc_low on 5m/1h best) ─────────
-    exit_X7_dc_tfs: str = "5m,1h"            # comma-sep TFs for DC frozen stop; empty = use single freeze_dc_tf
+    exit_X7_dc_tfs: str = ""                  # comma-sep TFs for DC frozen stop; empty = use single freeze_dc_tf only
 
 
 # ════════════════════════════════════════════════════════════════════════════════

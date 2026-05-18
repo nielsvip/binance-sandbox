@@ -106,7 +106,7 @@ class ShortCfg:
     require_below_sma50_D: bool = False
     x4_exit_extended_cooldown: int = 0
     # ─── MULTI-TF DC STOP (for shorts: dc_high) ─────────────────────────
-    exit_X7_dc_tfs: str = "5m,1h"
+    exit_X7_dc_tfs: str = ""
 
 
 def _f(npz, key, n, default=0.0):
