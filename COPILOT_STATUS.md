@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 19:03:12 UTC
+# Copilot Status — 2026-05-18 19:19:12 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:01:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:01:36
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-18T19:01:38
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:02:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:02:09
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:02:40
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:02:40
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-18T19:02:41
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:03:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:03:12
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-18T19:17:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-18T19:17:32
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:18:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:18:03
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:18:33
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:18:33
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-18T19:18:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-18T19:18:41
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T19:19:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T19:19:12
 
 ## Missed Trades (trader comparison)
 
@@ -40,7 +40,7 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 1m ago
+- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
 
 ## Supervisor
 
@@ -48,7 +48,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_prices.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)

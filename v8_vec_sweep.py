@@ -539,8 +539,40 @@ class SweepConfig:
     GR_HTF_REQUIRE_BEAR: int = 1             # min wt_bear_alignment for SHORT OPEN
     GOLDEN_RULE_HTF_GATE_MODE: str = "ALIGN" # ALIGN | OFF (reserved)
     MFI_ENTRY_ENABLED: bool = False          # mirrors backtest_v8_engine.py:6077
-    MFI_LONG_THRESHOLD_D: float = 20.0       # block LONG when mfi_D > this (default 20 = oversold gate)
-    MFI_SHORT_THRESHOLD_D: float = 80.0      # block SHORT when mfi_D < this (overbought gate)
+    MFI_LONG_THRESHOLD_D: float = 80.0       # block LONG when mfi_D > this (overbought zone, fixed 2026-05-18)
+    MFI_SHORT_THRESHOLD_D: float = 20.0      # block SHORT when mfi_D < this (oversold zone)
+    # ── CATALYST_VOLUME_GATE (2026-05-17) — block OPEN unless vol > N×50d-avg + DC-D break ──
+    CATALYST_VOLUME_GATE_ENABLED: bool = False
+    CATALYST_VOLUME_RATIO: float = 1.5
+    # ── PENNY_STOCK_LONG_BLOCK (2026-05-17) — block LONG on stocks < $N ──
+    PENNY_STOCK_LONG_BLOCK_ENABLED: bool = False
+    PENNY_STOCK_LONG_BLOCK_PRICE_USD: float = 5.0
+    # ── DC_BREAK_LOW_REQUIRE_HTF (2026-05-17) — bare short needs ≥N HTF bear ──
+    DC_BREAK_LOW_REQUIRE_HTF_ENABLED: bool = False
+    DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: int = 2
+    # ── BAR_MATURITY guards (2026-05-16) — block entry when bar incomplete ──
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK_ENABLED: bool = False
+    WT_DC_ENTRY_BAR_MATURITY_BLOCK: float = 0.7
+    DC_TIER4_BAR_MATURITY_BLOCK_ENABLED: bool = False
+    DC_TIER4_BAR_MATURITY_BLOCK: float = 0.7
+    # ── DT_TARGET_ATR (2026-05-17) — ATR-driven reduce target instead of flat % ──
+    DT_TARGET_ATR_ENABLED: bool = False
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005
+    # ── GHOST_CLOSE_REQUIRE_CONFIRMATION (2026-05-16) — require N API zero-confirms before ghost close ──
+    GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = True
+    # ── HTF_DIRECTION_GATE (2026-05-16) — block OPEN when D-WT against intended side ──
+    HTF_DIRECTION_GATE_ENABLED: bool = False
+    # ── TRADIER_ENTRY_SCORE_THRESHOLD (2026-05-16) — min entry score for OPEN ──
+    ENTRY_SCORE_THRESHOLD: int = 0
+    TRADIER_ENTRY_SCORE_THRESHOLD: int = 0
+    # ── DC_LOW / BB FROZEN STOP (2026-05-18) — freeze DC/BB at entry as stop ──
+    DC_LOW_FROZEN_STOP_ENABLED: bool = False
+    DC_LOW_FROZEN_STOP_TF: str = '4h'
+    DC_LOW_FROZEN_STOP_USE_4BAR: bool = False
+    DC_LOW_FROZEN_STOP_FLOOR_PCT: float = -999.0
+    BB_FROZEN_STOP_ENABLED: bool = False
+    BB_FROZEN_STOP_TF: str = '1h'
+    BB_FROZEN_STOP_FIELD: str = 'lower'
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -638,6 +670,8 @@ class SymState:
     intent_lock_stamp: float = 0.0
     last_open_attempt_ts: float = 0.0
     r1_stop_price: float = 0.0
+    _dc_fstop_entry: float = 0.0
+    _bb_fstop_entry: float = 0.0
     gr_last_fire_ts: float = 0.0    # GOLDEN_RULE cooldown tracking
 
 
@@ -885,21 +919,100 @@ def simulate_one_symbol(
         else:
             _gh_req = int(getattr(config, "GR_HTF_REQUIRE_BEAR", 1))
             _gr_htf_gate_open_ok = _gh_bear_arr >= _gh_req
-    # MFI_ENTRY: block LONG OPEN when mfi_D > MFI_LONG_THRESHOLD_D (oversold proxy
-    # — if MFI is already high, momentum is exhausted; the live wiring at
-    # tradier_manage.py:11156 blocks LONG entries unless MFI shows oversold).
-    # SHORT mirror: block when mfi_D < MFI_SHORT_THRESHOLD_D.
+    # MFI_ENTRY: OVERBOUGHT FILTER (fixed 2026-05-18; prior semantics inverted/dead-gate).
+    # Blocks LONG when mfi_D > MFI_LONG_THRESHOLD_D (80 = overbought zone, reversal expected).
+    # Blocks SHORT when mfi_D < MFI_SHORT_THRESHOLD_D (20 = oversold zone).
     _mfi_entry_open_ok = np.ones(n, dtype=bool)
     if bool(getattr(config, "MFI_ENTRY_ENABLED", False)):
         _mfi_d_arr = np.nan_to_num(
             npz.get("mfi_D", np.full(n, 50.0, dtype=np.float32)), nan=50.0
         ).astype(np.float32)
         if is_long:
-            _mfi_thr = float(getattr(config, "MFI_LONG_THRESHOLD_D", 20.0))
+            _mfi_thr = float(getattr(config, "MFI_LONG_THRESHOLD_D", 80.0))
             _mfi_entry_open_ok = _mfi_d_arr <= _mfi_thr
         else:
-            _mfi_short_thr = float(getattr(config, "MFI_SHORT_THRESHOLD_D", 80.0))
+            _mfi_short_thr = float(getattr(config, "MFI_SHORT_THRESHOLD_D", 20.0))
             _mfi_entry_open_ok = _mfi_d_arr >= _mfi_short_thr
+
+    # ─── CATALYST_VOLUME_GATE precompute (2026-05-18 knob wiring) ──────────────
+    # Derive volume_D_50_sma on-the-fly from existing volume_D field in NPZ.
+    _catalyst_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "CATALYST_VOLUME_GATE_ENABLED", False)):
+        _vol_d = np.nan_to_num(npz.get("volume_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float64)
+        _vol_d_50_sma = npz.get("volume_D_50_sma", None)
+        if _vol_d_50_sma is None:
+            _ts_d = npz.get("timestamp_D", ts)
+            _day_idx = np.concatenate([[0], np.where(np.diff(_ts_d) != 0)[0] + 1])
+            _day_vols = _vol_d[_day_idx]
+            _sma50 = np.full(len(_day_vols), np.nan, dtype=np.float64)
+            for _j in range(len(_day_vols)):
+                _s = max(0, _j - 49)
+                _sma50[_j] = np.mean(_day_vols[_s:_j+1])
+            _vol_d_50_sma = np.zeros(n, dtype=np.float64)
+            for _j in range(len(_day_idx)):
+                _start = _day_idx[_j]
+                _end = _day_idx[_j+1] if _j+1 < len(_day_idx) else n
+                _vol_d_50_sma[_start:_end] = _sma50[_j]
+        else:
+            _vol_d_50_sma = np.nan_to_num(np.asarray(_vol_d_50_sma, dtype=np.float64), nan=0.0)
+        _ratio = float(getattr(config, "CATALYST_VOLUME_RATIO", 1.5))
+        _vol_ok = _vol_d > (_vol_d_50_sma * _ratio)
+        _dc_high_d = np.nan_to_num(npz.get("dc_high_D", np.zeros(n, dtype=np.float32)), nan=0.0)
+        _dc_low_d = np.nan_to_num(npz.get("dc_low_D", np.zeros(n, dtype=np.float32)), nan=0.0)
+        if is_long:
+            _dc_break = close >= _dc_high_d
+        else:
+            _dc_break = close <= _dc_low_d
+        _catalyst_open_ok = _vol_ok & _dc_break
+
+    # ─── PENNY_STOCK_LONG_BLOCK precompute ──────────────────────────────────────
+    _penny_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "PENNY_STOCK_LONG_BLOCK_ENABLED", False)) and is_long and mode == "tradier":
+        _penny_floor = float(getattr(config, "PENNY_STOCK_LONG_BLOCK_PRICE_USD", 5.0))
+        _penny_open_ok = close >= _penny_floor
+
+    # ─── DC_BREAK_LOW_REQUIRE_HTF precompute ────────────────────────────────────
+    _dc_break_htf_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "DC_BREAK_LOW_REQUIRE_HTF_ENABLED", False)) and not is_long:
+        _htf_min = int(getattr(config, "DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS", 2))
+        _bear_count = np.zeros(n, dtype=np.int32)
+        for _tf in ("15m", "1h", "4h", "D"):
+            _w1 = np.nan_to_num(npz.get(f"wt1_{_tf}", np.zeros(n, dtype=np.float32)), nan=0.0)
+            _w2 = np.nan_to_num(npz.get(f"wt2_{_tf}", np.zeros(n, dtype=np.float32)), nan=0.0)
+            _bear_count += (_w1 < _w2).astype(np.int32)
+        _dc_break_htf_ok = _bear_count >= _htf_min
+
+    # ─── HTF_DIRECTION_GATE precompute ──────────────────────────────────────────
+    _htf_dir_open_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)):
+        _wt1_d = np.nan_to_num(npz.get("wt1_D", np.zeros(n, dtype=np.float32)), nan=0.0)
+        _wt2_d = np.nan_to_num(npz.get("wt2_D", np.zeros(n, dtype=np.float32)), nan=0.0)
+        if is_long:
+            _htf_dir_open_ok = _wt1_d > _wt2_d
+        else:
+            _htf_dir_open_ok = _wt1_d < _wt2_d
+
+    # ─── DC_LOW / BB FROZEN STOP precompute ─────────────────────────────────────
+    _dc_fstop_arr = np.zeros(n, dtype=np.float32)
+    _bb_fstop_arr = np.zeros(n, dtype=np.float32)
+    if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)):
+        _fs_tf = str(getattr(config, "DC_LOW_FROZEN_STOP_TF", "4h"))
+        _fs_4bar = bool(getattr(config, "DC_LOW_FROZEN_STOP_USE_4BAR", False))
+        if is_long:
+            _fld = f"dc_low4_{_fs_tf}" if _fs_4bar else f"dc_low_{_fs_tf}"
+        else:
+            _fld = f"dc_high4_{_fs_tf}" if _fs_4bar else f"dc_high_{_fs_tf}"
+        _dc_fstop_arr = np.nan_to_num(npz.get(_fld, np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+    if bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)):
+        _bb_tf = str(getattr(config, "BB_FROZEN_STOP_TF", "1h"))
+        _bb_field = str(getattr(config, "BB_FROZEN_STOP_FIELD", "lower"))
+        if _bb_field == "lower":
+            _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_lower_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        elif _bb_field == "upper":
+            _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_upper_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        else:
+            _bb_fstop_arr = np.nan_to_num(npz.get(f"bb_pct_b_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+    _fstop_floor = float(getattr(config, "DC_LOW_FROZEN_STOP_FLOOR_PCT", -999.0))
 
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
     # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
@@ -1084,6 +1197,18 @@ def simulate_one_symbol(
             # Mirrors backtest_v8_engine.py:6077 ("BLOCKED_MFI_ENTRY_D_…gt…").
             if not bool(_mfi_entry_open_ok[i]):
                 continue
+            # CATALYST_VOLUME_GATE — block OPEN unless vol breakout + DC-D break.
+            if not bool(_catalyst_open_ok[i]):
+                continue
+            # PENNY_STOCK_LONG_BLOCK — block LONG on stocks < $N.
+            if not bool(_penny_open_ok[i]):
+                continue
+            # DC_BREAK_LOW_REQUIRE_HTF — bare short needs ≥N HTF bear.
+            if not bool(_dc_break_htf_ok[i]):
+                continue
+            # HTF_DIRECTION_GATE — block OPEN when D-WT against intended side.
+            if not bool(_htf_dir_open_ok[i]):
+                continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
             wt_open_ok = bool(wt_3m_aligned[i])
@@ -1195,6 +1320,15 @@ def simulate_one_symbol(
                 state.r1_stop_price = _s if _s > 0 else 0.0
             else:
                 state.r1_stop_price = 0.0
+            # Record frozen stop prices at entry time
+            if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)):
+                state._dc_fstop_entry = float(_dc_fstop_arr[i]) if float(_dc_fstop_arr[i]) > 0 else 0.0
+            else:
+                state._dc_fstop_entry = 0.0
+            if bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)):
+                state._bb_fstop_entry = float(_bb_fstop_arr[i]) if float(_bb_fstop_arr[i]) > 0 else 0.0
+            else:
+                state._bb_fstop_entry = 0.0
             continue
 
         # ─── HOLDING: compute gain + age ────────────────────────────────
@@ -1346,6 +1480,35 @@ def simulate_one_symbol(
                     reason=f"DC_STOP_px{mark:.4f}_stop{state.r1_stop_price:.4f}",
                     pnl_pct=pnl_pct,
                 )
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                continue
+
+        # DC_LOW / BB FROZEN STOP — price recorded at entry, exit when breached
+        if state.qty > 0.0001:
+            _fs_hit = False
+            _fs_reason = ""
+            if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)) and hasattr(state, '_dc_fstop_entry') and state._dc_fstop_entry > 0:
+                if (is_long and mark <= state._dc_fstop_entry) or (not is_long and mark >= state._dc_fstop_entry):
+                    _fs_loss = _gain_pct(state.entry_price, mark, is_long)
+                    if _fstop_floor <= -999.0 or _fs_loss >= _fstop_floor:
+                        _fs_hit = True
+                        _fs_reason = f"DC_FROZEN_STOP_{config.DC_LOW_FROZEN_STOP_TF}_px{mark:.4f}_stop{state._dc_fstop_entry:.4f}"
+            if not _fs_hit and bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)) and hasattr(state, '_bb_fstop_entry') and state._bb_fstop_entry > 0:
+                if (is_long and mark <= state._bb_fstop_entry) or (not is_long and mark >= state._bb_fstop_entry):
+                    _fs_loss = _gain_pct(state.entry_price, mark, is_long)
+                    if _fstop_floor <= -999.0 or _fs_loss >= _fstop_floor:
+                        _fs_hit = True
+                        _fs_reason = f"BB_FROZEN_STOP_{config.BB_FROZEN_STOP_TF}_px{mark:.4f}_stop{state._bb_fstop_entry:.4f}"
+            if _fs_hit:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_fs_reason, pnl_pct=pnl_pct)
                 events.append(ev)
                 trade_returns.append(pnl_pct)
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0

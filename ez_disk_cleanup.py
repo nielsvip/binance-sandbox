@@ -283,6 +283,55 @@ def cleanup_plots():
     print(f"   ✅ Removed {removed} old plot files ({format_size(total_size)})")
     return total_size
 
+def cleanup_reentry_queue_done(keep_hours=24):
+    """Prune data/reentry_queue/<acct>/done/ — ez_manage renames every processed reentry cmd into
+    done/ as an audit trail and nothing ever deletes them. inf accumulated 612k files by 2026-05-18,
+    making APFS dir-metadata operations on every rename slow enough to contribute to RSS pressure
+    in the consumer loop. Keep the last 24h for forensics; delete older."""
+    print(f"\n9. Cleaning reentry_queue/<acct>/done/ (keeping last {keep_hours} hours)...")
+    total_size = 0
+    removed = 0
+    cutoff_time = time.time() - (keep_hours * 3600)
+    base = BASE_PATH / "data" / "reentry_queue"
+    if not base.exists():
+        print(f"   (no {base})")
+        return 0
+    for acct_dir in base.iterdir():
+        if not acct_dir.is_dir():
+            continue
+        done_dir = acct_dir / "done"
+        if not done_dir.exists():
+            continue
+        acct_removed = 0
+        acct_size = 0
+        try:
+            with os.scandir(done_dir) as it:
+                for entry in it:
+                    try:
+                        if not entry.is_file(follow_symlinks=False):
+                            continue
+                        st = entry.stat()
+                        if st.st_mtime > cutoff_time:
+                            continue
+                        acct_size += st.st_size
+                        os.unlink(entry.path)
+                        acct_removed += 1
+                    except FileNotFoundError:
+                        continue
+                    except Exception:
+                        continue
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            print(f"   ⚠️  {acct_dir.name}: {e}")
+            continue
+        total_size += acct_size
+        removed += acct_removed
+        if acct_removed:
+            print(f"   - {acct_dir.name}/done: removed {acct_removed} files ({format_size(acct_size)})")
+    print(f"   ✅ Removed {removed} reentry done/ files ({format_size(total_size)})")
+    return total_size
+
 def main():
     print("="*80)
     print("DISK CLEANUP SCRIPT")
@@ -297,6 +346,7 @@ def main():
     total_freed+=cleanup_pycache()
     total_freed+=cleanup_data_dir()
     total_freed+=cleanup_plots()
+    total_freed+=cleanup_reentry_queue_done(keep_hours=24)
     print("\n"+"="*80)
     print(f"TOTAL SPACE FREED: {format_size(total_freed)}")
     print("="*80)

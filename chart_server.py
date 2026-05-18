@@ -3660,6 +3660,726 @@ def run_info():
     })
 
 
+# ============== BACKTEST REVIEW (per-symbol, TF-locked, no marker cap) ==============
+# 2026-05-18: User-requested page after struct_v4_review put 3m trades on D charts.
+# Mandate: crypto trades plot ONLY on 3m candles, stock trades plot ONLY on 5m.
+# Zoom-out happens on the x-axis (more bars visible at smaller width) — NEVER by
+# switching to a higher TF candle. Trade markers must always sit on the bar they
+# fired on; no resampling. Separate page per asset class (no mixing in one URL).
+
+_CONFIG_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+
+
+def _load_config_for(asset: str) -> Dict[str, Any]:
+    """Parse config.py (crypto) or config_tradier.py (stocks) into a {KEY: value}
+    dict, using ast.literal_eval for simple literal RHS values. Non-literal
+    assignments (computed/lambdas/dicts-with-calls) are skipped — they're not
+    useful as "untouched defaults" anyway. Cached on file mtime."""
+    fname = "config.py" if asset == "crypto" else "config_tradier.py"
+    path = BASE_PATH / fname
+    try:
+        mt = path.stat().st_mtime
+    except OSError:
+        return {}
+    cached = _CONFIG_CACHE.get(asset)
+    if cached and cached[0] == mt:
+        return cached[1]
+    import ast as _ast
+    out: Dict[str, Any] = {}
+
+    def _walk(body):
+        # Walk both module-level and class-bodies / function bodies so we pick
+        # up Config-class fields (KEY: type = value → AnnAssign) and any plain
+        # KEY = value at module level. Functions are walked because some knob
+        # defaults live inside get_config()/__init__-style helpers.
+        for node in body:
+            if isinstance(node, _ast.Assign):
+                try:
+                    v = _ast.literal_eval(node.value)
+                except Exception:
+                    continue
+                for t in node.targets:
+                    if isinstance(t, _ast.Name) and t.id.isupper() and len(t.id) >= 2:
+                        out[t.id] = v
+            elif isinstance(node, _ast.AnnAssign):
+                if node.value is None:
+                    continue
+                t = node.target
+                if not (isinstance(t, _ast.Name) and t.id.isupper() and len(t.id) >= 2):
+                    continue
+                try:
+                    out[t.id] = _ast.literal_eval(node.value)
+                except Exception:
+                    pass
+            elif isinstance(node, (_ast.ClassDef, _ast.FunctionDef, _ast.AsyncFunctionDef)):
+                _walk(node.body)
+
+    try:
+        tree = _ast.parse(path.read_text())
+        _walk(tree.body)
+    except Exception:
+        pass
+    _CONFIG_CACHE[asset] = (mt, out)
+    return out
+
+
+@app.route("/run_knobs")
+def run_knobs():
+    """Knob diff for one run: which knobs were EXPLICITLY TESTED via overrides,
+    and what the current LIVE-config value is for everything else.
+
+    {
+      tested:    [{key, v_run, v_live, differs}],   # the overrides_json of the run
+      untouched: [{key, v_live}],                    # current config values, filtered
+      overrides_present: bool,                       # false → run had no recorded overrides
+      asset:    crypto|stocks,
+      run:      <run_id>,
+    }
+
+    `untouched` defaults to a curated "important knob" subset (heuristic: matches
+    common knob substrings like ENABLED, _PCT, WT_, R1_/R2_/R3_, HEDGE_, HTF_,
+    STDEV_, DC_, ATR_, MFI_, RSI_, etc.). Pass ?include_all=1 to get every parsed
+    UPPER_CASE attribute (large)."""
+    run = request.args.get("run", "")
+    asset = request.args.get("asset", "crypto").lower()
+    if asset not in ("crypto", "stocks"):
+        return jsonify({"error": "asset must be crypto or stocks"}), 400
+    if not run:
+        return jsonify({"error": "run required"}), 400
+    # Mirror /tests_for_symbol dual-lookup: hourly_reconfig active_config wins for
+    # hr_<acct>:: runs whose tag matched, autonomous_winners.jsonl is the fallback.
+    overrides: Dict[str, Any] = {}
+    sym_arg = request.args.get("sym", "").upper()
+    side_arg = request.args.get("side", "").upper()
+    if run.startswith("hr_") and "::" in run:
+        try:
+            acct = run.split("::", 1)[0][3:]
+            bare = run.split("::", 1)[1]
+            # bare = "<SYM>__<SIDE>__<tag>"
+            parts = bare.split("__", 2)
+            if len(parts) == 3:
+                sym_parsed, side_parsed, tag = parts
+                sym_use = sym_arg or sym_parsed
+                side_use = side_arg or side_parsed
+                overrides = _hourly_reconfig_overrides(acct, sym_use, side_use, tag) or {}
+        except Exception:
+            overrides = {}
+    if not overrides:
+        overrides = _overrides_for_run(run) or {}
+    live = _load_config_for(asset)
+    tested: List[Dict[str, Any]] = []
+    for k, v in overrides.items():
+        v_live = live.get(k, None)
+        in_config = k in live
+        tested.append({
+            "key": k,
+            "v_run": v,
+            "v_live": v_live if in_config else "<not in config>",
+            "differs": (in_config and v != v_live),
+            "in_config": in_config,
+        })
+    tested.sort(key=lambda r: (not r["differs"], r["key"]))
+    include_all = request.args.get("include_all", "0") == "1"
+    untouched_keys = [k for k in live.keys() if k not in overrides]
+    if not include_all:
+        SCOPES = ("ENABLED", "_PCT", "_THRESHOLD", "_BAND", "_RATIO", "_MIN", "_MAX",
+                  "_HOURS", "_BARS", "_TFS", "_GATE", "_MODE", "_SLOW", "_FAST",
+                  "HEDGE_", "WT_", "DC_", "R1_", "R2_", "R3_", "HTF_", "STDEV_",
+                  "MFI_", "RSI_", "ADX_", "BB_", "ATR_", "SCALP_", "BREAKOUT_",
+                  "RULE_", "OBLIGATORY_", "NOLOSS_", "STRICT_", "FORCE_OPEN",
+                  "DUP_GUARD", "BREAKEVEN_", "PARTIAL_PROFIT", "TRAIL_")
+        untouched_keys = [k for k in untouched_keys if any(s in k for s in SCOPES)]
+    untouched_keys.sort()
+    untouched = [{"key": k, "v_live": live.get(k)} for k in untouched_keys]
+    return jsonify({
+        "run": run,
+        "asset": asset,
+        "n_tested": len(tested),
+        "n_untouched": len(untouched),
+        "n_config_keys": len(live),
+        "tested": tested,
+        "untouched": untouched,
+        "overrides_present": bool(overrides),
+    })
+
+
+_BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg:#0d1117; --bg2:#161b22; --bd:#30363d; --fg:#c9d1d9; --mute:#8b949e;
+    --acc:#58a6ff; --win:#3fb950; --los:#f85149; --warn:#d29922;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+         margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-size: 13px; }
+  header { padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--bd);
+           display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 16px; color: var(--acc); }
+  header .tflock { background:#3d1114; color:var(--los); padding:2px 8px; border-radius:4px;
+                   font-size:11px; font-weight:bold; }
+  header .pill { background: var(--bg); border: 1px solid var(--bd); padding: 3px 8px;
+                 border-radius: 4px; font-size: 11px; color: var(--mute); }
+  header a { color: var(--acc); text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+  select, input, button { background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
+                          padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+  button { cursor: pointer; }
+  button:hover { background: var(--bd); }
+  .layout { display: grid; grid-template-columns: 1fr 360px; gap: 0; height: calc(100vh - 49px); }
+  .left { display: flex; flex-direction: column; min-width: 0; }
+  .right { background: var(--bg2); border-left: 1px solid var(--bd); overflow-y: auto; padding: 12px; }
+  #chart { flex: 0 0 56%; min-height: 320px; border-bottom: 1px solid var(--bd); }
+  #equity { flex: 0 0 14%; min-height: 90px; border-bottom: 1px solid var(--bd); }
+  #tradetable-wrap { flex: 1 1 30%; overflow-y: auto; }
+  table.trades { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.trades th { position: sticky; top: 0; background: var(--bg2); border-bottom: 1px solid var(--bd);
+                    padding: 5px 6px; text-align: left; color: var(--acc); cursor: pointer; user-select: none; }
+  table.trades th:hover { background: var(--bd); }
+  table.trades th.sorted::after { content: ' \25BE'; color: var(--acc); }
+  table.trades th.sorted-asc::after { content: ' \25B4'; }
+  table.trades td { padding: 3px 6px; border-bottom: 1px solid #21262d; font-family: ui-monospace, monospace; }
+  table.trades tr:hover { background: var(--bg2); cursor: pointer; }
+  table.trades tr.flash { background: #2d2400 !important; }
+  td.win { color: var(--win); }
+  td.los { color: var(--los); }
+  td.long { color: var(--acc); }
+  td.short { color: var(--warn); }
+  .banner { padding: 6px 12px; font-size: 12px; }
+  .banner.diag { background: #3d1114; color: var(--los); font-weight: bold; }
+  .banner.ok { background: #0d2818; color: var(--win); }
+  .right h3 { margin: 8px 0 6px; font-size: 12px; color: var(--acc); border-bottom: 1px solid var(--bd); padding-bottom: 4px; }
+  .right h3:first-child { margin-top: 0; }
+  table.knobs { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.knobs td { padding: 2px 4px; border-bottom: 1px solid #21262d; font-family: ui-monospace, monospace; vertical-align: top; }
+  table.knobs td.k { color: var(--fg); word-break: break-all; }
+  table.knobs td.v { color: var(--mute); text-align: right; max-width: 110px; word-break: break-all; }
+  table.knobs tr.differ td.k { color: var(--win); font-weight: bold; }
+  table.knobs tr.differ td.v { color: var(--win); }
+  table.knobs tr.differ td.live { color: var(--mute); text-decoration: line-through; }
+  table.runs { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.runs th { background: var(--bg); border-bottom: 1px solid var(--bd); padding: 4px 6px;
+                  cursor: pointer; user-select: none; text-align: left; color: var(--acc); position: sticky; top: 0; }
+  table.runs th:hover { background: var(--bd); }
+  table.runs th.sorted::after { content: ' \25BE'; }
+  table.runs th.sorted-asc::after { content: ' \25B4'; }
+  table.runs td { padding: 3px 6px; border-bottom: 1px solid #21262d; font-family: ui-monospace, monospace; }
+  table.runs tr { cursor: pointer; }
+  table.runs tr:hover { background: var(--bd); }
+  table.runs tr.active { background: #0d1b2e; }
+  .runlist-wrap { max-height: 240px; overflow-y: auto; margin-bottom: 10px; border: 1px solid var(--bd); border-radius: 4px; }
+  .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 8px; }
+  .pill-row .pill { padding: 2px 6px; font-size: 10px; }
+  .empty { color: var(--mute); font-style: italic; padding: 12px; text-align: center; }
+  .ts-mode-toggle { font-size: 10px; color: var(--mute); }
+  .ts-mode-toggle label { cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>__TITLE__</h1>
+  <span class="tflock">TF LOCKED: __BASE_TF__ (struct_v4_review lesson — no 3m markers on D charts)</span>
+  <label>Symbol: <select id="symPicker"></select></label>
+  <span class="pill" id="runCount">— runs</span>
+  <span class="pill" id="resultStats">—</span>
+  <label class="ts-mode-toggle"><input type="checkbox" id="utcMode" checked> UTC timestamps</label>
+  <span style="margin-left:auto"><a href="/">← chart_server index</a> &nbsp;|&nbsp;
+    <a href="/backtest-review/__OTHER_ASSET__">switch to __OTHER_ASSET__</a></span>
+</header>
+<div id="diagBanner" class="banner" style="display:none"></div>
+<div class="layout">
+  <div class="left">
+    <div id="chart"></div>
+    <div id="equity"></div>
+    <div id="tradetable-wrap">
+      <table class="trades" id="tradeTable">
+        <thead><tr>
+          <th data-col="idx">#</th>
+          <th data-col="entry_ts">Entry</th>
+          <th data-col="exit_ts">Exit</th>
+          <th data-col="side">Side</th>
+          <th data-col="entry_price">Entry $</th>
+          <th data-col="exit_price">Exit $</th>
+          <th data-col="pnl_pct">PnL %</th>
+          <th data-col="duration">Dur</th>
+          <th data-col="entry_reason">Entry reason</th>
+          <th data-col="exit_reason">Exit reason</th>
+        </tr></thead>
+        <tbody><tr><td colspan="10" class="empty">Pick a symbol then a run.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="right">
+    <h3>Runs for this symbol <span style="float:right; font-size:10px; color:var(--mute)" id="runListMeta"></span></h3>
+    <div class="pill-row">
+      <span class="pill">Sort:</span>
+      <select id="runSort" style="font-size:10px;padding:1px 4px">
+        <option value="ts_last">Date (most recent)</option>
+        <option value="sym_sharpe">Pool/Sym Sharpe</option>
+        <option value="gain_per_mo">Gain / month</option>
+        <option value="gain_per_yr">Gain / year</option>
+        <option value="trades">Trades</option>
+        <option value="wr">Win rate</option>
+      </select>
+      <input id="runFilter" placeholder="filter…" style="font-size:10px;padding:1px 4px;flex:1;min-width:60px">
+    </div>
+    <div class="runlist-wrap">
+      <table class="runs" id="runTable">
+        <thead><tr>
+          <th data-col="run">Run</th>
+          <th data-col="side">Side</th>
+          <th data-col="ts_last">Date</th>
+          <th data-col="sym_sharpe">SymSh</th>
+          <th data-col="gain_per_mo">%/mo</th>
+          <th data-col="wr">WR</th>
+          <th data-col="trades">N</th>
+        </tr></thead>
+        <tbody><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3>Knobs TESTED in this run <span id="knobTestedCount" style="float:right;font-size:10px;color:var(--mute)"></span></h3>
+    <table class="knobs" id="knobsTested"><tbody><tr><td colspan="3" class="empty">Pick a run.</td></tr></tbody></table>
+
+    <h3>Knobs UNTOUCHED (live config defaults) <span id="knobUntouchedCount" style="float:right;font-size:10px;color:var(--mute)"></span></h3>
+    <div style="max-height:260px; overflow-y:auto">
+      <table class="knobs" id="knobsUntouched"><tbody><tr><td colspan="2" class="empty">—</td></tr></tbody></table>
+    </div>
+    <div style="margin-top:6px"><label style="font-size:10px;color:var(--mute)"><input type="checkbox" id="knobsAll"> show ALL config keys (not just heuristic important set)</label></div>
+  </div>
+</div>
+
+<script>
+const ASSET = "__ASSET__";
+const BASE_TF = "__BASE_TF__";
+const DEFAULT_SYM = "__DEFAULT_SYM__";
+const TF_SECONDS = { "3m": 180, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400 };
+
+let allRuns = [];
+let currentSym = null;
+let currentRun = null;
+let currentTrades = [];
+let tradeSortCol = "entry_ts";
+let tradeSortDir = 1;
+let runSortCol = "ts_last";
+let runSortDir = -1;
+let tradeSeries = null;
+let candleSeries = null;
+let equityChart = null, equitySeries = null, bhSeries = null;
+let chart = null;
+
+function fmtTs(t) {
+  if (!t) return "";
+  const d = new Date(t * 1000);
+  const utc = document.getElementById("utcMode").checked;
+  if (utc) {
+    return d.toISOString().slice(0,16).replace("T", " ");
+  }
+  return d.toLocaleString();
+}
+function fmtDur(secs) {
+  if (!secs || secs < 0) return "";
+  if (secs < 3600) return Math.round(secs/60) + "m";
+  if (secs < 86400) return (secs/3600).toFixed(1) + "h";
+  return (secs/86400).toFixed(1) + "d";
+}
+function fmtPct(x, digits=2) { if (x === null || x === undefined || isNaN(x)) return ""; return (x>=0?"+":"") + x.toFixed(digits) + "%"; }
+function fmtNum(x, digits=4) { if (x === null || x === undefined || isNaN(x)) return ""; return Number(x).toFixed(digits); }
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(url + " " + r.status);
+  return await r.json();
+}
+
+async function loadSymbols() {
+  const sel = document.getElementById("symPicker");
+  let syms = await fetchJSON("/symbols");
+  // Filter by asset class.
+  syms = syms.filter(s => {
+    const isCrypto = s.endsWith("USDC") || s.endsWith("USDT");
+    return ASSET === "crypto" ? isCrypto : !isCrypto;
+  });
+  syms.sort();
+  sel.innerHTML = syms.map(s => `<option value="${s}">${s}</option>`).join("");
+  const initial = syms.includes(DEFAULT_SYM) ? DEFAULT_SYM : syms[0];
+  sel.value = initial;
+  sel.addEventListener("change", () => onSymbolChange(sel.value));
+  return initial;
+}
+
+async function onSymbolChange(sym) {
+  currentSym = sym;
+  currentRun = null;
+  currentTrades = [];
+  document.getElementById("resultStats").textContent = "—";
+  document.getElementById("diagBanner").style.display = "none";
+  await loadRuns(sym);
+  // Auto-pick top of sorted list
+  if (allRuns.length) {
+    await onRunChange(allRuns[0]);
+  } else {
+    renderTradeTable([]);
+    renderKnobs(null);
+    drawChartBars();
+  }
+}
+
+async function loadRuns(sym) {
+  const tbody = document.querySelector("#runTable tbody");
+  tbody.innerHTML = `<tr><td colspan="7" class="empty">Loading runs for ${sym}…</td></tr>`;
+  try {
+    const data = await fetchJSON(`/tests_for_symbol?sym=${encodeURIComponent(sym)}`);
+    allRuns = data.tests || [];
+    document.getElementById("runCount").textContent = `${allRuns.length} runs`;
+    document.getElementById("runListMeta").textContent = `(content-dedup'd)`;
+    renderRunList();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Error: ${e.message}</td></tr>`;
+    allRuns = [];
+  }
+}
+
+function renderRunList() {
+  const tbody = document.querySelector("#runTable tbody");
+  const flt = (document.getElementById("runFilter").value || "").toLowerCase();
+  let rows = allRuns.filter(r => !flt
+                                  || (r.run||"").toLowerCase().includes(flt)
+                                  || (r.diff_summary||"").toLowerCase().includes(flt));
+  rows.sort((a, b) => {
+    const av = a[runSortCol], bv = b[runSortCol];
+    if (av === bv) return 0;
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    return runSortDir * (av < bv ? -1 : 1);
+  });
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No runs match.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const dateStr = r.ts_last ? new Date(r.ts_last*1000).toISOString().slice(0,10) : "—";
+    const cls = (currentRun && r.run_keyed === currentRun) ? "active" : "";
+    const sideClr = r.side === "LONG" ? "long" : (r.side === "SHORT" ? "short" : "");
+    const shCls = r.sym_sharpe >= 1 ? "win" : (r.sym_sharpe < 0 ? "los" : "");
+    return `<tr class="${cls}" data-run="${r.run_keyed}" title="${r.diff_summary||''}">
+      <td>${r.run}</td>
+      <td class="${sideClr}">${r.side||''}</td>
+      <td>${dateStr}</td>
+      <td class="${shCls}">${fmtNum(r.sym_sharpe,3)}</td>
+      <td class="${r.gain_per_mo>=0?'win':'los'}">${fmtNum(r.gain_per_mo,2)}</td>
+      <td>${(r.wr*100).toFixed(1)}%</td>
+      <td>${r.trades}</td>
+    </tr>`;
+  }).join("");
+  // Update sort header marker
+  document.querySelectorAll("#runTable th").forEach(th => {
+    th.classList.remove("sorted","sorted-asc");
+    if (th.dataset.col === runSortCol) th.classList.add(runSortDir<0 ? "sorted" : "sorted-asc");
+  });
+  // Wire clicks
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const run = allRuns.find(r => r.run_keyed === tr.dataset.run);
+      if (run) onRunChange(run);
+    });
+  });
+}
+
+async function onRunChange(runRow) {
+  currentRun = runRow.run_keyed;
+  document.querySelectorAll("#runTable tr").forEach(tr => tr.classList.toggle("active", tr.dataset.run === currentRun));
+  // Result stats banner
+  const tot = (runRow.gain_per_yr||0).toFixed(1);
+  document.getElementById("resultStats").textContent =
+    `${runRow.trades} trades · WR ${(runRow.wr*100).toFixed(1)}% · SymSh ${fmtNum(runRow.sym_sharpe,3)} · ${tot}%/yr · ${fmtNum(runRow.gain_per_mo,2)}%/mo`;
+  // Diagnostic banner per CLAUDE.md sample floor
+  const minSym = ASSET === "crypto" ? 48 : 100;
+  const banner = document.getElementById("diagBanner");
+  if (runRow.trades < 30 || (runRow.years||0) < 1.0) {
+    banner.className = "banner diag";
+    banner.style.display = "block";
+    banner.textContent = `[DIAGNOSTIC ONLY] trades=${runRow.trades} years=${(runRow.years||0).toFixed(2)} — below sample floor. DO NOT promote to live.`;
+  } else {
+    banner.style.display = "none";
+  }
+  await Promise.all([
+    loadAndDrawTrades(runRow),
+    loadAndDrawKnobs(runRow),
+  ]);
+}
+
+async function loadAndDrawTrades(runRow) {
+  const data = await fetchJSON(`/backtest_trades?run=${encodeURIComponent(runRow.run_keyed)}&sym=${encodeURIComponent(currentSym)}&max=999999`);
+  currentTrades = data.trades || [];
+  await drawChartBars(runRow);
+  renderTradeTable(currentTrades);
+  await drawEquity(runRow);
+}
+
+function tradeWindow(trades) {
+  // Default visible: span the run, padded ±10% of duration on each side.
+  if (!trades.length) return [null, null];
+  let lo = Infinity, hi = -Infinity;
+  for (const t of trades) {
+    const e = t.entry_ts || 0;
+    const x = t.exit_ts || e;
+    if (e && e < lo) lo = e;
+    if (x && x > hi) hi = x;
+  }
+  if (!isFinite(lo) || !isFinite(hi)) return [null, null];
+  const pad = Math.max(86400, (hi - lo) * 0.05);
+  return [lo - pad, hi + pad];
+}
+
+async function drawChartBars(runRow) {
+  if (!chart) initCharts();
+  const [lo, hi] = tradeWindow(currentTrades);
+  let url = `/klines?sym=${encodeURIComponent(currentSym)}&tf=${BASE_TF}&max=30000`;
+  if (lo && hi) url += `&start=${lo}&end=${hi}`;
+  let bars = [];
+  try { bars = await fetchJSON(url); } catch(e) { bars = []; }
+  if (!Array.isArray(bars)) bars = [];
+  candleSeries.setData(bars.map(b => ({ time: b.t, open: b.o, high: b.h, low: b.l, close: b.c })));
+  // Markers on base TF only — explicitly no resampling. Each trade emits TWO markers.
+  // No cap: render every trade. lightweight-charts handles ~50k markers comfortably.
+  const markers = [];
+  for (const t of currentTrades) {
+    const isLong = (t.side || "LONG").toUpperCase() === "LONG";
+    const isWin = (t.pnl_pct || 0) > 0;
+    if (t.entry_ts) {
+      markers.push({
+        time: t.entry_ts,
+        position: isLong ? "belowBar" : "aboveBar",
+        color: isLong ? "#58a6ff" : "#d29922",
+        shape: isLong ? "arrowUp" : "arrowDown",
+        text: isLong ? "L" : "S",
+      });
+    }
+    if (t.exit_ts) {
+      markers.push({
+        time: t.exit_ts,
+        position: isLong ? "aboveBar" : "belowBar",
+        color: isWin ? "#3fb950" : "#f85149",
+        shape: "circle",
+        text: (t.pnl_pct>=0?"+":"") + (t.pnl_pct||0).toFixed(1) + "%",
+      });
+    }
+  }
+  // LWC needs markers sorted by time.
+  markers.sort((a,b) => a.time - b.time);
+  candleSeries.setMarkers(markers);
+  if (lo && hi) {
+    chart.timeScale().setVisibleRange({ from: lo, to: hi });
+  }
+}
+
+async function drawEquity(runRow) {
+  const url = `/equity_curves?runs=${encodeURIComponent(runRow.run_keyed)}&sym=${encodeURIComponent(currentSym)}&max=5000`;
+  let data = {};
+  try { data = await fetchJSON(url); } catch(e) { return; }
+  const eq = (data.runs && data.runs[runRow.run_keyed]) || [];
+  equitySeries.setData(eq.map(p => ({ time: p.t, value: p.v })));
+  const bh = data.buy_hold || [];
+  bhSeries.setData(bh.map(p => ({ time: p.t, value: p.v })));
+}
+
+function initCharts() {
+  const opts = {
+    layout: { background: { color: "#0d1117" }, textColor: "#c9d1d9" },
+    grid: { vertLines: { color: "#21262d" }, horzLines: { color: "#21262d" } },
+    timeScale: { borderColor: "#30363d", timeVisible: true, secondsVisible: false },
+    rightPriceScale: { borderColor: "#30363d" },
+    crosshair: { mode: 1 },
+  };
+  chart = LightweightCharts.createChart(document.getElementById("chart"), opts);
+  candleSeries = chart.addCandlestickSeries({
+    upColor: "#3fb950", downColor: "#f85149", borderVisible: false,
+    wickUpColor: "#3fb950", wickDownColor: "#f85149",
+  });
+  equityChart = LightweightCharts.createChart(document.getElementById("equity"), {
+    ...opts,
+    timeScale: { ...opts.timeScale, visible: false },
+  });
+  equitySeries = equityChart.addLineSeries({ color: "#58a6ff", lineWidth: 2, priceLineVisible: false });
+  bhSeries = equityChart.addLineSeries({ color: "#8b949e", lineWidth: 1, priceLineVisible: false, lineStyle: 2 });
+  // Sync x-axis with main chart.
+  chart.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if (r) try { equityChart.timeScale().setVisibleRange(r); } catch(e){}
+  });
+  window.addEventListener("resize", () => {
+    if (chart) chart.applyOptions({ width: document.getElementById("chart").clientWidth });
+    if (equityChart) equityChart.applyOptions({ width: document.getElementById("equity").clientWidth });
+  });
+  setTimeout(() => {
+    chart.applyOptions({ width: document.getElementById("chart").clientWidth, height: document.getElementById("chart").clientHeight });
+    equityChart.applyOptions({ width: document.getElementById("equity").clientWidth, height: document.getElementById("equity").clientHeight });
+  }, 50);
+}
+
+function renderTradeTable(trades) {
+  const tbody = document.querySelector("#tradeTable tbody");
+  if (!trades.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">No trades for this run.</td></tr>`;
+    return;
+  }
+  const sorted = [...trades];
+  sorted.sort((a, b) => {
+    let av, bv;
+    if (tradeSortCol === "duration") { av = (a.exit_ts||0) - (a.entry_ts||0); bv = (b.exit_ts||0) - (b.entry_ts||0); }
+    else if (tradeSortCol === "idx") { av = trades.indexOf(a); bv = trades.indexOf(b); }
+    else { av = a[tradeSortCol]; bv = b[tradeSortCol]; }
+    if (av === bv) return 0;
+    if (av === undefined || av === null) return 1;
+    if (bv === undefined || bv === null) return -1;
+    return tradeSortDir * (av < bv ? -1 : 1);
+  });
+  const html = sorted.map((t, i) => {
+    const dur = (t.exit_ts||0) - (t.entry_ts||0);
+    const pcCls = (t.pnl_pct||0) >= 0 ? "win" : "los";
+    const sideCls = (t.side||"LONG").toUpperCase() === "LONG" ? "long" : "short";
+    return `<tr data-entry="${t.entry_ts||0}" data-exit="${t.exit_ts||0}">
+      <td>${trades.indexOf(t)+1}</td>
+      <td>${fmtTs(t.entry_ts)}</td>
+      <td>${fmtTs(t.exit_ts)}</td>
+      <td class="${sideCls}">${t.side||""}</td>
+      <td>${fmtNum(t.entry_price,6)}</td>
+      <td>${fmtNum(t.exit_price,6)}</td>
+      <td class="${pcCls}">${fmtPct(t.pnl_pct)}</td>
+      <td>${fmtDur(dur)}</td>
+      <td>${t.entry_reason||t.entry_type||""}</td>
+      <td>${t.exit_reason||""}</td>
+    </tr>`;
+  }).join("");
+  tbody.innerHTML = html;
+  document.querySelectorAll("#tradeTable th").forEach(th => {
+    th.classList.remove("sorted","sorted-asc");
+    if (th.dataset.col === tradeSortCol) th.classList.add(tradeSortDir<0 ? "sorted" : "sorted-asc");
+  });
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const e = Number(tr.dataset.entry||0), x = Number(tr.dataset.exit||0);
+      if (e && x && chart) {
+        const pad = Math.max(TF_SECONDS[BASE_TF]*30, (x-e) * 3);
+        chart.timeScale().setVisibleRange({ from: e - pad, to: x + pad });
+      }
+      document.querySelectorAll("#tradeTable tr").forEach(r => r.classList.remove("flash"));
+      tr.classList.add("flash");
+    });
+  });
+}
+
+async function loadAndDrawKnobs(runRow) {
+  const all = document.getElementById("knobsAll").checked ? "&include_all=1" : "";
+  let data;
+  try {
+    const sideParam = runRow.side ? `&side=${encodeURIComponent(runRow.side)}` : "";
+    data = await fetchJSON(`/run_knobs?run=${encodeURIComponent(runRow.run_keyed)}&asset=${ASSET}&sym=${encodeURIComponent(currentSym)}${sideParam}${all}`);
+  } catch(e) {
+    document.querySelector("#knobsTested tbody").innerHTML = `<tr><td class="empty">Error loading knobs.</td></tr>`;
+    return;
+  }
+  renderKnobs(data);
+}
+
+function renderKnobs(data) {
+  const tt = document.querySelector("#knobsTested tbody");
+  const tu = document.querySelector("#knobsUntouched tbody");
+  if (!data) { tt.innerHTML = `<tr><td colspan="3" class="empty">—</td></tr>`; tu.innerHTML = `<tr><td colspan="2" class="empty">—</td></tr>`; return; }
+  document.getElementById("knobTestedCount").textContent = data.n_tested ? `${data.n_tested} keys` : "(none recorded)";
+  document.getElementById("knobUntouchedCount").textContent = `${data.n_untouched} / ${data.n_config_keys} live keys`;
+  if (!data.overrides_present) {
+    tt.innerHTML = `<tr><td colspan="3" class="empty">No overrides recorded for this run.<br><span style="font-size:10px">(baseline run, or hourly_reconfig non-winning tag — see CLAUDE.md)</span></td></tr>`;
+  } else {
+    tt.innerHTML = data.tested.map(k => `
+      <tr class="${k.differs?'differ':''}">
+        <td class="k">${k.key}</td>
+        <td class="v"><b>${escapeHtml(k.v_run)}</b></td>
+        <td class="v live">${k.in_config ? escapeHtml(k.v_live) : '<i style="color:var(--warn)">not in config</i>'}</td>
+      </tr>
+    `).join("");
+  }
+  if (!data.untouched.length) {
+    tu.innerHTML = `<tr><td colspan="2" class="empty">—</td></tr>`;
+  } else {
+    tu.innerHTML = data.untouched.map(k => `
+      <tr>
+        <td class="k">${k.key}</td>
+        <td class="v">${escapeHtml(k.v_live)}</td>
+      </tr>
+    `).join("");
+  }
+}
+
+function escapeHtml(v) {
+  if (v === null || v === undefined) return "—";
+  return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// Wire up sort headers
+document.querySelectorAll("#tradeTable th").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (tradeSortCol === col) tradeSortDir *= -1; else { tradeSortCol = col; tradeSortDir = 1; }
+    renderTradeTable(currentTrades);
+  });
+});
+document.querySelectorAll("#runTable th").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (runSortCol === col) runSortDir *= -1; else { runSortCol = col; runSortDir = -1; }
+    document.getElementById("runSort").value = col;
+    renderRunList();
+  });
+});
+document.getElementById("runSort").addEventListener("change", e => {
+  runSortCol = e.target.value;
+  runSortDir = (runSortCol === "ts_last" || runSortCol === "sym_sharpe" || runSortCol === "gain_per_mo"
+                || runSortCol === "gain_per_yr" || runSortCol === "wr" || runSortCol === "trades") ? -1 : 1;
+  renderRunList();
+});
+document.getElementById("runFilter").addEventListener("input", renderRunList);
+document.getElementById("knobsAll").addEventListener("change", () => { if (currentRun) {
+  const runRow = allRuns.find(r => r.run_keyed === currentRun);
+  if (runRow) loadAndDrawKnobs(runRow);
+}});
+document.getElementById("utcMode").addEventListener("change", () => renderTradeTable(currentTrades));
+
+(async () => {
+  const sym = await loadSymbols();
+  await onSymbolChange(sym);
+})();
+</script>
+</body>
+</html>
+"""
+
+
+@app.route("/backtest-review/<asset>")
+def backtest_review_page(asset: str):
+    asset = asset.lower()
+    if asset not in ("crypto", "stocks"):
+        return f"<p>Unknown asset class: {asset}. Use /backtest-review/crypto or /backtest-review/stocks.</p>", 404
+    base_tf = "3m" if asset == "crypto" else "5m"
+    title = "Crypto Backtest Review" if asset == "crypto" else "Stocks Backtest Review"
+    default_sym = "BTCUSDC" if asset == "crypto" else "NVDA"
+    other = "stocks" if asset == "crypto" else "crypto"
+    html = (_BACKTEST_REVIEW_HTML
+            .replace("__TITLE__", title)
+            .replace("__BASE_TF__", base_tf)
+            .replace("__ASSET__", asset)
+            .replace("__DEFAULT_SYM__", default_sym)
+            .replace("__OTHER_ASSET__", other))
+    from flask import make_response
+    resp = make_response(html)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return _no_cache(resp)
+
+
 @app.route("/health")
 def health():
     return jsonify({
