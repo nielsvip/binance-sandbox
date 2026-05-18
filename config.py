@@ -1249,6 +1249,8 @@ class Config:
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7           # retest must fire within N days of arm
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30  # |close_3m - armed_level| / atr_D < this
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25      # volume_D > MULT * sma(volume_D, 20) required to arm
+    BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30        # 2026-05-18 sweep knob: LONG fires when stoch_k_3m_prev < this (SHORT mirrors at 100-this). Default mirrors live <30.
+    BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2         # 2026-05-18 sweep knob: min count of {15m, 1h} HTFs aligned with side. 2 = both (live "AND"), 1 = OR.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False     # Rule B (weekly trend + 4h pullback). Default OFF until helpers exist.
     RULE_C_FUNDING_EXTREME_ENABLED: bool = False         # Rule C (funding-extreme mean-reversion). Default OFF until funding gate exists.
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03    # crowded shorts → contrarian LONG (literature default, user-confirmed 2026-05-17)
@@ -2136,6 +2138,29 @@ class Config:
     GR_TOTAL_VOTE_SCORE_MIN: int = 0
     GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.35/0.50/0.65/0.80
     GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for LONG breakout (SHORT = 1 - this). Sweep: 0.45/0.60/0.75/0.90
+    # 🚩 NEW 2026-05-18 — GR v5 BREAKOUT-CONFIRM → BOUNCE-ENTRY STATE MACHINE (SKELETON, default OFF)
+    # Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md
+    # Vec module:  vec_paths/gr_v5_state.py (skeleton — full state arrays land next session)
+    # Replaces per-TF indicator-counter weighted composite. Two-phase:
+    #   IDLE → ARMED  (≥GR_V5_HTF_MIN_ALIGN of {4h,D,W} break dc_high4_prev + wt1>wt2 + vol)
+    #   ARMED → FIRE  (within GR_V5_ARM_WINDOW_BARS, ≥GR_V5_LTF_MIN_ALIGN of {3m,15m,1h}
+    #                  show fresh wt cross + stoch_k oversold + price within retest band)
+    #   ARMED → DISARM(price moves > GR_V5_INVALIDATE_PCT against, or window elapsed)
+    # NPZ availability degraded user's "1m/3m/5m/15m/1h" → crypto {3m,15m,1h}; tradier {5m,15m,1h}.
+    # ALL knobs default OFF / inert. NOT wired in ez_manage.py / tradier_manage.py — backtest sweep ONLY.
+    GR_V5_ENABLED: bool = False
+    GR_V5_HTF_TFS: tuple = ('4h', 'D', 'W')
+    GR_V5_HTF_MIN_ALIGN: int = 2
+    GR_V5_BREAKOUT_REQUIRE_VOLUME: bool = True
+    GR_V5_BREAKOUT_VOL_MULT: float = 1.25
+    GR_V5_LTF_TFS: tuple = ('3m', '15m', '1h')
+    GR_V5_LTF_MIN_ALIGN: int = 2
+    GR_V5_BOUNCE_STOCH_LONG: float = 25.0
+    GR_V5_BOUNCE_STOCH_SHORT: float = 75.0
+    GR_V5_BOUNCE_WT_CROSS_REQUIRED: bool = True
+    GR_V5_ARM_WINDOW_BARS: int = 168
+    GR_V5_RETEST_BAND_PCT: float = 0.03
+    GR_V5_INVALIDATE_PCT: float = 0.02
     # 🚩 NEW 2026-05-12 — GR_HTF DIRECT ENTRY/EXIT SIGNAL (user mandate)
     # Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND (computed by golden_rule_htf.score_entry_htf)
     # ENTRY: flat position + score >= SCORE_MIN → OPEN at START_POSITION_SIZE.

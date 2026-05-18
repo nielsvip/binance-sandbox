@@ -94,12 +94,26 @@ def load_baseline_for_sym(sym: str) -> Optional[SymParams]:
         return None
     overrides = entry.get('overrides') or {}
     p = SymParams()
+    # SILENT-DROP FIX (2026-05-18 audit): without hasattr check, unknown knobs from
+    # per_sym_active_config.json silently succeed via setattr (Python dynamic attrs),
+    # become baseline-identical-result rows, and the agent reports "no improvement".
+    # This is the exact bug the per_sym_engine_audit identified at line 84-89.
+    # Same trap as 2026-05-17 vec-aware-knob-guard incident — cost 7.5h of compute.
+    unknown_knobs: List[str] = []
     for k, v in overrides.items():
         if k.startswith('_'): continue
+        if not hasattr(p, k):
+            unknown_knobs.append(k)
+            continue
         try:
             setattr(p, k, v)
         except Exception:
-            pass
+            unknown_knobs.append(k)
+    if unknown_knobs:
+        # Surface (not swallow) — these are config keys the engine doesn't recognize.
+        # Engine needs Phase 2A+ patches before the 7D agent can optimize them.
+        print(f"[per_sym_7d_agent] {sym}: {len(unknown_knobs)} unknown knobs in baseline (engine missing): "
+              f"{','.join(unknown_knobs[:6])}{'...' if len(unknown_knobs)>6 else ''}", flush=True)
     return p
 
 

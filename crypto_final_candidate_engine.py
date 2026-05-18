@@ -536,7 +536,7 @@ def run_universe(symbols, cfg: FinalCandidateCfg, start_date: str, label: str):
             eligible_sym_sharpes.append(s)
     sym_sharpe_avg = float(np.mean(eligible_sym_sharpes)) if eligible_sym_sharpes else 0.0
 
-    yrs = rows[0]["years"] if rows else 1.0
+    yrs = max(r["years"] for r in rows) if rows else 1.0
     # Aggregate compound mult (geometric mean)
     if rows:
         log_compounds = [np.log(max(0.01, r["compound_mult"])) for r in rows]

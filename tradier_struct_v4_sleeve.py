@@ -203,6 +203,86 @@ def symbol_dropped(symbol: str) -> bool:
         return False
     return symbol in UNIVERSE_DROPS
 
+# ════════════════════════════════════════════════════════════════════════════
+# PER-SYMBOL 20D OVERRIDES (USER 2026-05-18, T-7h to market open)
+# Wires per_sym_20d_agent_stocks.py output. The agent runs hourly and writes
+# data/hourly_reconfig/<account>/active_config_20d.json based on the last
+# 20 days of behavior with 50%/day exponential decay. Schema (per symbol key):
+#   {"wsharpe": float, "trades_20d": int, "overrides": {...}, "_tag": ..., ...}
+# Only entries with wsharpe >= STRUCT_V4_PER_SYM_20D_MIN_WSHARPE are returned.
+# At entry-eval time the sleeve records presence in gate_info (Day-1 passive
+# logging); Day-2 wires knob consumption downstream.
+# Env switch STRUCT_V4_PER_SYM_20D_ENABLED=false reverts to static dicts only.
+# ════════════════════════════════════════════════════════════════════════════
+PER_SYM_20D_ENABLED = os.getenv("STRUCT_V4_PER_SYM_20D_ENABLED", "true").lower() == "true"
+PER_SYM_20D_MIN_WSHARPE = float(os.getenv("STRUCT_V4_PER_SYM_20D_MIN_WSHARPE", "0.7"))
+PER_SYM_20D_CACHE_SECONDS = int(os.getenv("STRUCT_V4_PER_SYM_20D_CACHE_S", "300"))  # 5 min
+# Module-level cache: {account: (loaded_at_epoch, {sym: entry})}
+_PER_SYM_20D_CACHE: Dict[str, Tuple[float, Dict[str, Dict[str, Any]]]] = {}
+
+
+def load_per_sym_20d_overrides(account: str) -> Dict[str, Dict[str, Any]]:
+    """Load per-symbol 20D overrides for `account` from
+    data/hourly_reconfig/<account>/active_config_20d.json.
+
+    Returns {symbol: full_entry_dict} for entries meeting the wsharpe gate.
+    Empty dict if file missing or disabled — graceful fallback to static dicts.
+    Cached for PER_SYM_20D_CACHE_SECONDS.
+    """
+    import time as _time
+    if not PER_SYM_20D_ENABLED:
+        return {}
+    now = _time.time()
+    cached = _PER_SYM_20D_CACHE.get(account)
+    if cached is not None and (now - cached[0]) < PER_SYM_20D_CACHE_SECONDS:
+        return cached[1]
+    path = DATA_DIR / "hourly_reconfig" / account / "active_config_20d.json"
+    if not path.exists():
+        _PER_SYM_20D_CACHE[account] = (now, {})
+        logger.info(f"[{account}] 20D overrides file missing ({path}) — "
+                    f"running on static dicts only")
+        return {}
+    try:
+        with path.open() as f:
+            raw = json.load(f)
+    except Exception as e:
+        logger.warning(f"[{account}] 20D overrides load failed ({path}): {e} — "
+                       f"running on static dicts only")
+        _PER_SYM_20D_CACHE[account] = (now, {})
+        return {}
+    if not isinstance(raw, dict):
+        logger.warning(f"[{account}] 20D overrides not a dict (got {type(raw).__name__}) — ignoring")
+        _PER_SYM_20D_CACHE[account] = (now, {})
+        return {}
+    qualified: Dict[str, Dict[str, Any]] = {}
+    total = 0
+    for sym, entry in raw.items():
+        total += 1
+        if not isinstance(entry, dict):
+            continue
+        try:
+            ws = float(entry.get("wsharpe", float("nan")))
+        except (TypeError, ValueError):
+            continue
+        if ws != ws:  # NaN
+            continue
+        if ws < PER_SYM_20D_MIN_WSHARPE:
+            continue
+        qualified[sym.upper()] = entry
+    logger.info(f"20D overrides loaded for {account}: {len(qualified)}/{total} "
+                f"symbols qualified (wsharpe >= {PER_SYM_20D_MIN_WSHARPE})")
+    _PER_SYM_20D_CACHE[account] = (now, qualified)
+    return qualified
+
+
+def get_per_sym_20d_entry(account: str, symbol: str) -> Optional[Dict[str, Any]]:
+    """Return the per-symbol 20D override entry (full dict) if `symbol` is
+    qualified for `account`, else None."""
+    if not PER_SYM_20D_ENABLED or not account or not symbol:
+        return None
+    return load_per_sym_20d_overrides(account).get(symbol.upper())
+
+
 # Cycle
 CYCLE_INTERVAL_SECONDS = int(os.getenv("STRUCT_V4_CYCLE_S", "300"))  # 5 min
 MARKET_OPEN_UTC = dt.time(13, 30)
@@ -899,6 +979,26 @@ def evaluate_entry(ind: Dict[str, Any]
     gate_info["universe_dropped"] = False
     gate_info["position_mult"] = get_position_mult(symbol)
 
+    # === PER-SYMBOL 20D OVERRIDES (USER 2026-05-18, T-7h to market open) ===
+    # Hourly per_sym_20d_agent_stocks.py writes
+    # data/hourly_reconfig/<account>/active_config_20d.json. The sleeve checks
+    # the per-symbol entry here (after UNIVERSE_DROP, before LT_DIRECTION_FILTER).
+    # Day-1: passive logging only — Day-2 wires downstream knob consumption.
+    # Override priority is: 20D entry (wsharpe >= gate) > static PER_SYM_OVERRIDES
+    # / PER_SYM_POSITION_MULT > sleeve defaults.
+    account = ind.get("__account__")
+    per_sym_20d_entry = get_per_sym_20d_entry(account, symbol) if account else None
+    if per_sym_20d_entry is not None:
+        gate_info["per_sym_20d_active"] = True
+        gate_info["per_sym_20d_wsharpe"] = per_sym_20d_entry.get("wsharpe")
+        gate_info["per_sym_20d_trades"] = per_sym_20d_entry.get("trades_20d")
+        gate_info["per_sym_20d_tag"] = per_sym_20d_entry.get("_tag") or per_sym_20d_entry.get("winning_tag")
+        _ov = per_sym_20d_entry.get("overrides") or {}
+        gate_info["per_sym_20d_overrides"] = (
+            list(_ov.keys()) if isinstance(_ov, dict) else [])
+    else:
+        gate_info["per_sym_20d_active"] = False
+
     # === LT-DIRECTION FILTER (USER 2026-05-18) ===
     # Block LONG entries on downtrending symbols (close_TF <= sma_N_TF).
     # Fires BEFORE GR activation gate. Symmetric to the SHORT-on-uptrend
@@ -1198,6 +1298,10 @@ async def run_one_cycle(api: TradierAPIClient, ctx: AccountContext,
             df_W = await fetch_history_klines(api, sym, interval="weekly",
                                                lookback_days=WEEKLY_LOOKBACK_DAYS)
             ind = compute_indicators(df_5m, df_D=df_D, df_W=df_W)
+            # Inject identifiers so evaluate_entry can resolve UNIVERSE_DROPS,
+            # per-symbol mults, and per-symbol 20D overrides (USER 2026-05-18).
+            ind["symbol"] = sym
+            ind["__account__"] = ctx.account_key
             in_sleeve = sym in sleeve_positions
             in_broker = sym in live_pos and live_pos[sym]["qty"] > 0
             position_state = ("LONG" if in_sleeve and in_broker else

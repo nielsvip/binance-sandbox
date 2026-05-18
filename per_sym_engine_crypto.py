@@ -150,6 +150,20 @@ class SymParams:
     EXIT_WT_ACCEL_ONLY: bool = False  # only exit when WT actually decelerating against side (vs simple cross)
     PARTIAL_PROFIT_LOCK_ENABLED: bool = False
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.0  # at +1% gain, lock breakeven
+    # PPL v2 fields (Phase 2A patch 1) — wired in walk_trades_dual when ENABLED
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10
+    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    # X7 frozen-DC + abs-floor stop (Phase 2A patch 2)
+    X7_FROZEN_DC_STOP_ENABLED: bool = False
+    X7_FREEZE_DC_TF: str = '4h'
+    X7_FREEZE_BB_TF: str = ''
+    X7_ABS_FLOOR_PCT: float = -8.0
+    # SMA50_D LT-direction filter (Phase 2A patch 3)
+    REQUIRE_ABOVE_SMA50_D: bool = False
+    # HEDGE_HTF_VETO + HTF_TREND_VETO (Phase 2A patch 4)
+    HEDGE_HTF_VETO_ENABLED: bool = False
+    HTF_TREND_VETO_ENABLED: bool = False
     # Reentry / reverse paths:
     REVERSE_ON_EXIT_ENABLED: bool = False   # at exit, open opposite side if its signal fires same bar
     FOLLOW_THROUGH_REENTRY_ENABLED: bool = False  # after exit, re-enter same side on continuation
@@ -789,7 +803,17 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      hard_loss_pct: float = 0.5,
                      peak_giveback_fixed_enabled: bool = False,
                      peak_giveback_fixed_drop_pct: float = 0.5,
-                     peak_giveback_fixed_min_peak_pct: float = 0.10) -> List[Dict]:
+                     peak_giveback_fixed_min_peak_pct: float = 0.10,
+                     ppl_v2_enabled: bool = False,
+                     ppl_v2_step1_gain_pct: float = 0.5,
+                     ppl_v2_arm_gain_pct: float = 0.75,
+                     ppl_v2_be_buffer_pct: float = 0.10,
+                     ppl_v2_frac: float = 0.5,
+                     x7_dc_freeze_15m: Optional[np.ndarray] = None,
+                     x7_bb_freeze_15m: Optional[np.ndarray] = None,
+                     x7_abs_floor_pct: float = -8.0,
+                     hedge_htf_ok_long: Optional[np.ndarray] = None,
+                     hedge_htf_ok_short: Optional[np.ndarray] = None) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -849,6 +873,32 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                     exit_i = hl_exit_i
                     xp = float(c15[exit_i])
                     forced_exit_origin = 'hard_loss_pct'
+        # X7 FROZEN-DC + abs-floor stop (Phase 2A patch 2 — cfg_v7_final zero-loser source).
+        # Stop at frozen dc_low at entry OR abs-floor pct, whichever fires first.
+        if not forced_exit_origin and x7_dc_freeze_15m is not None and exit_i > entry_i + min_hold:
+            traj_x7 = c15[entry_i:exit_i + 1]
+            # frozen dc level at the entry bar (the user spec: dc_low at entry, locked)
+            frozen_dc = float(x7_dc_freeze_15m[entry_i]) if entry_i < len(x7_dc_freeze_15m) else 0.0
+            frozen_bb = float(x7_bb_freeze_15m[entry_i]) if (x7_bb_freeze_15m is not None and entry_i < len(x7_bb_freeze_15m)) else 0.0
+            if side == 'LONG':
+                hit_dc = (frozen_dc > 0) & (traj_x7 < frozen_dc) if frozen_dc > 0 else np.zeros_like(traj_x7, dtype=bool)
+                hit_bb = (frozen_bb > 0) & (traj_x7 < frozen_bb) if frozen_bb > 0 else np.zeros_like(traj_x7, dtype=bool)
+                gain_x7 = (traj_x7 - ep) / ep * 100.0
+            else:
+                hit_dc = (frozen_dc > 0) & (traj_x7 > frozen_dc) if frozen_dc > 0 else np.zeros_like(traj_x7, dtype=bool)
+                hit_bb = (frozen_bb > 0) & (traj_x7 > frozen_bb) if frozen_bb > 0 else np.zeros_like(traj_x7, dtype=bool)
+                gain_x7 = (ep - traj_x7) / ep * 100.0
+            abs_floor_hit = gain_x7 <= float(x7_abs_floor_pct)
+            x7_hit = hit_dc | hit_bb | abs_floor_hit
+            if isinstance(x7_hit, np.ndarray) and x7_hit.size > 0:
+                x7_hit[:min_hold] = False
+                x7_idxs = np.flatnonzero(x7_hit)
+                if len(x7_idxs):
+                    x7_exit_i = entry_i + int(x7_idxs[0])
+                    if x7_exit_i < exit_i:
+                        exit_i = x7_exit_i
+                        xp = float(c15[exit_i])
+                        forced_exit_origin = 'x7_frozen_dc'
         # FIXED-% PEAK GIVEBACK (v8 QUICK_PEAK_GIVEBACK style — re-enabled per user 2026-05-05 if needed):
         if peak_giveback_fixed_enabled and not forced_exit_origin and exit_i > entry_i + min_hold:
             traj_pg = c15[entry_i:exit_i + 1]
@@ -892,13 +942,60 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
         # No NOLOSS recovery-walk — that would override the technical exit and bleed the position.
         # NOLOSS_ENABLED kept as a config flag but it does NOT force-hold past technical exits.
         pnl_gross = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
+        # PARTIAL_PROFIT_LOCK_v2 (Phase 2A patch 1): step-1 partial @ ppl_v2_step1_gain_pct, arm @ arm_gain_pct,
+        # final stop = first_exit_price if armed else ep × (1 ± BE_BUFFER_PCT/100). Blended pnl.
+        ppl_origin_tag = ''
+        if ppl_v2_enabled and exit_i > entry_i + min_hold:
+            traj_ppl = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_traj_ppl = (traj_ppl - ep) / ep * 100.0
+            else:
+                gain_traj_ppl = (ep - traj_ppl) / ep * 100.0
+            gain_traj_ppl[:min_hold] = -1e9
+            step1_idxs = np.flatnonzero(gain_traj_ppl >= float(ppl_v2_step1_gain_pct))
+            if len(step1_idxs):
+                step1_local = int(step1_idxs[0])
+                step1_idx = entry_i + step1_local
+                step1_px = float(c15[step1_idx])
+                # Initial stop = breakeven buffer
+                be_buf = float(ppl_v2_be_buffer_pct) / 100.0
+                stop_lvl = ep * (1.0 + be_buf) if side == 'LONG' else ep * (1.0 - be_buf)
+                # Check for arm (upgrade stop to step1_px)
+                arm_idxs = np.flatnonzero(gain_traj_ppl >= float(ppl_v2_arm_gain_pct))
+                if len(arm_idxs):
+                    arm_local = int(arm_idxs[0])
+                    if arm_local > step1_local:
+                        stop_lvl = step1_px
+                # Find stop-hit bar (after step1)
+                tail = traj_ppl[step1_local + 1:]
+                if side == 'LONG':
+                    stop_hit = (tail <= stop_lvl)
+                else:
+                    stop_hit = (tail >= stop_lvl)
+                stop_hit_idxs = np.flatnonzero(stop_hit)
+                if len(stop_hit_idxs):
+                    stop_local = step1_local + 1 + int(stop_hit_idxs[0])
+                    stop_px = float(c15[entry_i + stop_local])
+                    # Blended: FRAC at step1_px, (1-FRAC) at stop_px
+                    frac = max(0.0, min(1.0, float(ppl_v2_frac)))
+                    if side == 'LONG':
+                        leg1 = (step1_px - ep) / ep * 100.0
+                        leg2 = (stop_px - ep) / ep * 100.0
+                    else:
+                        leg1 = (ep - step1_px) / ep * 100.0
+                        leg2 = (ep - stop_px) / ep * 100.0
+                    pnl_gross = frac * leg1 + (1.0 - frac) * leg2
+                    exit_i = entry_i + stop_local
+                    xp = stop_px
+                    if not forced_exit_origin:
+                        ppl_origin_tag = 'ppl_v2'
         trades.append({
             'side': side, 'entry_idx': entry_i, 'exit_idx': exit_i,
             'entry_ts': int(ts15[entry_i]), 'exit_ts': int(ts15[exit_i]),
             'entry_price': ep, 'exit_price': xp,
             'pnl_gross_pct': pnl_gross, 'pnl_pct': pnl_gross - rt_comm,
             'bars_held': exit_i - entry_i,
-            'origin': forced_exit_origin if forced_exit_origin else 'primary',
+            'origin': forced_exit_origin or ppl_origin_tag or 'primary',
         })
         # AUGMENT 1-2-3-4: pyramid into winner at +1/2/3/4% gain levels (each = own trade).
         # Compute pnl trajectory from entry_i to exit_i; mark first crossing of each level.
@@ -945,6 +1042,15 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
             # ONE concurrent hedge: open on flip-against, close on flip-back, can repeat through life of primary.
             prev_state = np.concatenate([[False], hedge_state[:-1]])
             opens = hedge_state & ~prev_state
+            # HEDGE_HTF_VETO (Phase 2A patch 4): block hedge opens unless HTF (Daily wt) supports them.
+            # hedge_htf_ok_long: True at bars where Daily wt supports SHORT-side hedges (i.e. when primary is LONG and HTF flipped bearish).
+            # hedge_htf_ok_short: mirror — supports LONG-side hedges when primary is SHORT.
+            if side == 'LONG' and hedge_htf_ok_long is not None and len(hedge_htf_ok_long) >= exit_i + 1:
+                htf_window = hedge_htf_ok_long[entry_i:exit_i + 1]
+                opens = opens & htf_window
+            elif side == 'SHORT' and hedge_htf_ok_short is not None and len(hedge_htf_ok_short) >= exit_i + 1:
+                htf_window = hedge_htf_ok_short[entry_i:exit_i + 1]
+                opens = opens & htf_window
             open_idxs = np.flatnonzero(opens)
             for open_local in open_idxs:
                 h_idx = entry_i + int(open_local)
@@ -1414,6 +1520,76 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         enter_short = enter_short & ~bullish_div
     c15 = tf_data['15m']['close']
     ts15 = tf_data['15m']['ts']
+    # ─── Phase 2A patch 3: REQUIRE_ABOVE_SMA50_D (LT-direction filter) ───
+    if getattr(params, 'REQUIRE_ABOVE_SMA50_D', False):
+        sma50_3m = base.get('sma_50_D')
+        if sma50_3m is not None:
+            sma50_15m = _resample_3m_to_15m(sma50_3m)
+            if len(sma50_15m) >= len(c15):
+                above50 = c15 > sma50_15m[:len(c15)]
+                enter_long = enter_long & above50
+                enter_short = enter_short & ~above50
+    # ─── Phase 2A patch 4: HTF_TREND_VETO (block entries against Daily WT) ───
+    if getattr(params, 'HTF_TREND_VETO_ENABLED', False):
+        wt1_d_3m = base.get('wt1_D')
+        wt2_d_3m = base.get('wt2_D')
+        if wt1_d_3m is not None and wt2_d_3m is not None:
+            wt1_d_15m = _resample_3m_to_15m(wt1_d_3m)
+            wt2_d_15m = _resample_3m_to_15m(wt2_d_3m)
+            n_min = min(len(wt1_d_15m), len(wt2_d_15m), len(enter_long))
+            if n_min > 0:
+                bull_d = wt1_d_15m[:n_min] > wt2_d_15m[:n_min]
+                # pad to enter_long length if shorter
+                if n_min < len(enter_long):
+                    pad = len(enter_long) - n_min
+                    bull_d = np.concatenate([np.zeros(pad, dtype=bool), bull_d])
+                enter_long = enter_long & bull_d
+                enter_short = enter_short & ~bull_d
+    # ─── Phase 2A patch 4: HEDGE_HTF_VETO precompute (Daily wt supports hedge?) ───
+    hedge_htf_ok_long = None
+    hedge_htf_ok_short = None
+    if getattr(params, 'HEDGE_HTF_VETO_ENABLED', False):
+        wt1_d_3m = base.get('wt1_D')
+        wt2_d_3m = base.get('wt2_D')
+        if wt1_d_3m is not None and wt2_d_3m is not None:
+            wt1_d_15m_h = _resample_3m_to_15m(wt1_d_3m)
+            wt2_d_15m_h = _resample_3m_to_15m(wt2_d_3m)
+            n_min_h = min(len(wt1_d_15m_h), len(wt2_d_15m_h), len(c15))
+            if n_min_h > 0:
+                bull_d_h = wt1_d_15m_h[:n_min_h] > wt2_d_15m_h[:n_min_h]
+                # hedge-of-LONG = SHORT, needs HTF bearish (wt1_D < wt2_D)
+                hedge_htf_ok_long = ~bull_d_h
+                # hedge-of-SHORT = LONG, needs HTF bullish
+                hedge_htf_ok_short = bull_d_h
+                if n_min_h < len(c15):
+                    pad = len(c15) - n_min_h
+                    hedge_htf_ok_long = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_long])
+                    hedge_htf_ok_short = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_short])
+    # ─── Phase 2A patch 2: X7 frozen-DC precompute (subsample to 15m grid) ───
+    x7_dc_freeze_15m = None
+    x7_bb_freeze_15m = None
+    if getattr(params, 'X7_FROZEN_DC_STOP_ENABLED', False):
+        dc_field = f'dc_low_{params.X7_FREEZE_DC_TF}' if 'LONG' or True else None  # both sides use dc_low for stop; SHORT uses dc_high
+        # NOTE: for SHORT, the natural stop is dc_high. But our walker uses one freeze array per call.
+        # Solution: walker reads frozen_dc and decides side semantics there. We just supply both.
+        dc_lo_3m = base.get(f'dc_low_{params.X7_FREEZE_DC_TF}')
+        dc_hi_3m = base.get(f'dc_high_{params.X7_FREEZE_DC_TF}')
+        # Walker uses single freeze: for crypto we use dc_low for LONG; SHORT uses dc_high. But walker takes one array.
+        # Compromise: build a side-aware freeze inside walker; here we pass dc_low (for LONG) and let walker mirror via abs_floor only for SHORT,
+        # OR set freeze=None for SHORT. Simpler: just pass dc_lo; abs_floor still applies symmetrically.
+        if dc_lo_3m is not None:
+            x7_dc_freeze_15m = _resample_3m_to_15m(dc_lo_3m)
+            if len(x7_dc_freeze_15m) < len(c15):
+                pad = len(c15) - len(x7_dc_freeze_15m)
+                x7_dc_freeze_15m = np.concatenate([np.zeros(pad), x7_dc_freeze_15m])
+        bb_tf = getattr(params, 'X7_FREEZE_BB_TF', '') or ''
+        if bb_tf:
+            bb_lo_3m = base.get(f'bb_lower_{bb_tf}')
+            if bb_lo_3m is not None:
+                x7_bb_freeze_15m = _resample_3m_to_15m(bb_lo_3m)
+                if len(x7_bb_freeze_15m) < len(c15):
+                    pad = len(c15) - len(x7_bb_freeze_15m)
+                    x7_bb_freeze_15m = np.concatenate([np.zeros(pad), x7_bb_freeze_15m])
     trades = walk_trades_dual(
         enter_long, leave_long, enter_short, leave_short, c15, ts15,
         int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m),
@@ -1438,6 +1614,16 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         peak_giveback_fixed_enabled=params.PEAK_GIVEBACK_FIXED_PCT_ENABLED,
         peak_giveback_fixed_drop_pct=float(params.PEAK_GIVEBACK_FIXED_DROP_PCT),
         peak_giveback_fixed_min_peak_pct=float(params.PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT),
+        ppl_v2_enabled=getattr(params, 'PARTIAL_PROFIT_LOCK_ENABLED', False),
+        ppl_v2_step1_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5)),
+        ppl_v2_arm_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.75)),
+        ppl_v2_be_buffer_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.10)),
+        ppl_v2_frac=float(getattr(params, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5)),
+        x7_dc_freeze_15m=x7_dc_freeze_15m,
+        x7_bb_freeze_15m=x7_bb_freeze_15m,
+        x7_abs_floor_pct=float(getattr(params, 'X7_ABS_FLOOR_PCT', -8.0)),
+        hedge_htf_ok_long=hedge_htf_ok_long,
+        hedge_htf_ok_short=hedge_htf_ok_short,
     )
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)

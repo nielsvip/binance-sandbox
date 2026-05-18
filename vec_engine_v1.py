@@ -750,47 +750,44 @@ class VecConfig:
     HEDGE_MODE: bool = True
     STRICT_NO_LOSS: bool = False  # Eliminated — replaced by R1/R2/HEDGE
 
-    # ── 2026-05-18 hourly_reconfig cluster-knob STUBS ─────────
-    # These knobs are referenced by the NEW_KNOB_CLUSTERS in flz_hourly_reconfig
-    # and tradier_hourly_reconfig. Adding them here so setattr() succeeds without
-    # AttributeError — but most are NOT YET WIRED into VecEngine.simulate().
-    # The default value mirrors config.py / config_tradier.py at the moment of
-    # adding (verified 2026-05-18). When/if these get wired into the vec engine,
-    # remove the TODO_WIRE_ comment.
-    #
-    # Wiring status notes:
-    # - BREAKOUT_RETEST_ARMED_ENABLED: live in ez_manage/tradier_manage (Rule A
-    #   simplified stateless impl) — NOT wired in vec engine. Cluster runs identical
-    #   to baseline. TODO_WIRE_BREAKOUT_RETEST_ARMED.
-    # - DC_BB_D_BREAK_REVERSE_ENABLED: live default True. Cluster sets it False
-    #   to ablate. Not wired in vec engine. TODO_WIRE_DC_BB_D_BREAK_REVERSE.
-    # - HEDGE_HTF_VETO_ENABLED: live HEDGE_HTF_VETO_ENABLED=True (crypto).
-    #   No same-symbol hedge in vec — knob is a no-op here. TODO_WIRE_HEDGE_HTF_VETO.
-    # - HEDGE_MAX_ABSOLUTE_USD: vec engine has no USD sizing; pct-based only.
-    #   TODO_WIRE_HEDGE_MAX_ABSOLUTE_USD.
-    # - HTF_TREND_VETO_ENABLED: live default True (both modes). Veto opens against
-    #   Daily wt-trend. Not yet wired in vec. TODO_WIRE_HTF_TREND_VETO.
-    # - NOLOSS_BYPASS_WT_5OF5_*: live tradier True / crypto False. Wired in
-    #   tradier_manage process_position. Not wired in vec. TODO_WIRE_NOLOSS_BYPASS_WT_5OF5.
-    # - PARTIAL_PROFIT_LOCK_*_TRADIER: tradier-mode-specific defaults. The vec
-    #   engine uses non-_TRADIER fields uniformly; the cluster will simply re-set
-    #   the same logic with slightly different numbers. TODO_WIRE_TRADIER_PPL_SPLIT.
-    # - STDEV_MACRO_*: long-window log-price z-score gates (D/W/M). Not yet wired
-    #   in vec. TODO_WIRE_STDEV_MACRO.
-    BREAKOUT_RETEST_ARMED_ENABLED: bool = True               # TODO_WIRE_BREAKOUT_RETEST_ARMED
-    DC_BB_D_BREAK_REVERSE_ENABLED: bool = True               # TODO_WIRE_DC_BB_D_BREAK_REVERSE
-    HEDGE_HTF_VETO_ENABLED: bool = True                      # TODO_WIRE_HEDGE_HTF_VETO
-    HEDGE_MAX_ABSOLUTE_USD: float = 100000.0                 # TODO_WIRE_HEDGE_MAX_ABSOLUTE_USD
-    HTF_TREND_VETO_ENABLED: bool = True                      # TODO_WIRE_HTF_TREND_VETO
-    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False              # TODO_WIRE_NOLOSS_BYPASS_WT_5OF5
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5                   # TODO_WIRE_NOLOSS_BYPASS_WT_5OF5
-    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3        # TODO_WIRE_TRADIER_PPL_SPLIT
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5    # TODO_WIRE_TRADIER_PPL_SPLIT
-    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02  # TODO_WIRE_TRADIER_PPL_SPLIT
-    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625          # TODO_WIRE_TRADIER_PPL_SPLIT
-    STDEV_MACRO_ENTRY_VETO_ENABLED: bool = False             # TODO_WIRE_STDEV_MACRO
-    STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False           # TODO_WIRE_STDEV_MACRO
-    STDEV_MACRO_R4_EXIT_ENABLED: bool = False                # TODO_WIRE_STDEV_MACRO
+    # ── 2026-05-18 hourly_reconfig cluster-knobs — WIRED 2026-05-18 19:00 ─────────
+    # All 14 knobs below are now wired in VecEngine.simulate(). See wiring notes:
+    # - BREAKOUT_RETEST_ARMED_ENABLED: ENTRY gate (entry loop, after WT_DC score gate)
+    # - DC_BB_D_BREAK_REVERSE_ENABLED: ENTRY suppression (entry loop, when knob=False any
+    #   entry with reason containing "DC_BB_D_BREAK_REVERSE" is suppressed; since vec engine
+    #   does not emit reverse-reason opens, this acts as a no-op suppressor — the knob's
+    #   primary effect is on live reverse-fire pattern; vec ablation observes via missing
+    #   entries that would have been re-emitted by the reverse path).
+    # - HEDGE_HTF_VETO_ENABLED: HEDGE entry block (hedge_engine section)
+    # - HEDGE_MAX_ABSOLUTE_USD: HEDGE entry block (size cap via qty * price)
+    # - HTF_TREND_VETO_ENABLED: ENTRY veto in OPEN/AUGMENT (entry loop, before WT_DC score)
+    # - NOLOSS_BYPASS_WT_5OF5_ENABLED / _MIN_TFS: EXIT bypass (WT-cross exit + STOCH exit
+    #   allow gain<0 closure when ≥MIN_TFS of {5m,15m,1h,4h,D} WT against)
+    # - PARTIAL_PROFIT_LOCK_*_TRADIER: mode==tradier overrides for PPL Step1/2/3 thresholds
+    # - STDEV_MACRO_ENTRY_VETO_ENABLED: ENTRY veto on STRONG_TOP (LONG) / STRONG_BOT (SHORT)
+    # - STDEV_MACRO_AUGMENT_VETO_ENABLED: AUGMENT veto on TOP/BOT (vec engine has limited
+    #   augment path via SENTIMENT_BOOST — this knob blocks sentiment_boost when at extreme)
+    # - STDEV_MACRO_R4_EXIT_ENABLED: EXIT path after BB_RECOVERY/before STOCH_REVERSE_EXIT
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False              # WIRED 2026-05-18 (entry gate)
+    DC_BB_D_BREAK_REVERSE_ENABLED: bool = True               # WIRED 2026-05-18 (entry suppression)
+    HEDGE_HTF_VETO_ENABLED: bool = True                      # WIRED 2026-05-18 (hedge entry block)
+    HEDGE_MAX_ABSOLUTE_USD: float = 100000.0                 # WIRED 2026-05-18 (hedge size cap)
+    HTF_TREND_VETO_ENABLED: bool = False                     # WIRED 2026-05-18 (entry veto)
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False              # WIRED 2026-05-18 (exit bypass)
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5                   # WIRED 2026-05-18 (exit bypass threshold)
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3        # WIRED 2026-05-18 (tradier PPL step1)
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5    # WIRED 2026-05-18 (tradier PPL step2)
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02  # WIRED 2026-05-18 (tradier PPL BE buffer)
+    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625          # WIRED 2026-05-18 (tradier PPL fraction)
+    STDEV_MACRO_ENTRY_VETO_ENABLED: bool = False             # WIRED 2026-05-18 (entry veto)
+    STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False           # WIRED 2026-05-18 (augment veto)
+    STDEV_MACRO_R4_EXIT_ENABLED: bool = False                # WIRED 2026-05-18 (R4 exit)
+    # STDEV_MACRO threshold mirrors (defaults from vec_paths/stdev_macro_vec.py):
+    STDEV_MACRO_MODERATE_THRESHOLD: float = 1.5
+    STDEV_MACRO_STRONG_THRESHOLD: float = 2.5
+    STDEV_MACRO_WINDOW_D: int = 200
+    STDEV_MACRO_WINDOW_W: int = 52
+    STDEV_MACRO_R4_REQUIRE_LTF_FLIP: bool = True
 
     def update_from_dict(self, d: Dict[str, Any]) -> "VecConfig":
         """Return a new VecConfig with fields from dict d applied."""
@@ -1231,6 +1228,42 @@ class VecEngine:
         # Tracking for sizing scalars
         dd_state: Dict[str, float] = {"peak": 0.0, "dd_pct": 0.0}
 
+        # ── STDEV_MACRO state arrays (2026-05-18 wired) ───────────────────────────
+        # Per-symbol macro_state per bar: 0=MID, ±1=TOP/BOT, ±2=STRONG.
+        # Source preference: NPZ macro_z_D/macro_z_W fields (if present); else compute
+        # on the fly from close array using vec_paths.stdev_macro_vec.
+        # Fail-open: if both unavailable, state stays 0 (MID) → all STDEV gates pass.
+        # Computed ONCE before bar loop (vectorized) for speed.
+        macro_state_per_sym: Dict[str, np.ndarray] = {}
+        _stdev_macro_needed = (
+            bool(getattr(cfg, "STDEV_MACRO_ENTRY_VETO_ENABLED", False))
+            or bool(getattr(cfg, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False))
+            or bool(getattr(cfg, "STDEV_MACRO_R4_EXIT_ENABLED", False))
+        )
+        if _stdev_macro_needed:
+            try:
+                from vec_paths.stdev_macro_vec import (
+                    rolling_log_zscore as _rlz,
+                    derive_state_vec as _dsv,
+                )
+                _macro_w_d = int(getattr(cfg, "STDEV_MACRO_WINDOW_D", 200))
+                _macro_w_w = int(getattr(cfg, "STDEV_MACRO_WINDOW_W", 52))
+                for _ms_sym, _ms_store in stores.items():
+                    _ms_z_d = _ms_store.arrays.get("macro_z_D")
+                    _ms_z_w = _ms_store.arrays.get("macro_z_W")
+                    if _ms_z_d is None or _ms_z_w is None:
+                        _ms_close = _ms_store.arrays.get("close")
+                        if _ms_close is None or len(_ms_close) == 0:
+                            macro_state_per_sym[_ms_sym] = None  # fail-open
+                            continue
+                        _ms_z_d = _rlz(_ms_close, _macro_w_d)
+                        _ms_z_w = _rlz(_ms_close, _macro_w_w)
+                    macro_state_per_sym[_ms_sym] = _dsv(_ms_z_d, _ms_z_w)
+            except Exception:
+                # Fail-open: state stays None per symbol → no veto
+                for _ms_sym in stores:
+                    macro_state_per_sym[_ms_sym] = None
+
         # ── TRADEABILITY whitelist load (parity with TradeManager.is_symbol_tradeable) ──
         tradeable_long: set = set()
         tradeable_short: set = set()
@@ -1480,12 +1513,33 @@ class VecEngine:
                 # Source: vec_paths/partial_profit_lock_v2.py.
                 # Replaces old inline approximation.
                 # NOTE: PARTIAL_PROFIT_LOCK_ENABLED=False in live as of 2026-05-12.
+                # 2026-05-18 WIRED: tradier-mode overrides PPL_GAIN_PCT/ARM/BE_BUFFER/FRAC
+                # via PARTIAL_PROFIT_LOCK_*_TRADIER fields. We pass a shallow proxy when
+                # mode==tradier so PPL module reads tradier values.
+                _ppl_cfg = cfg
+                if cfg.PARTIAL_PROFIT_LOCK_ENABLED and self.mode == "tradier":
+                    class _PPLProxy:
+                        __slots__ = ("_inner",)
+                        _PPL_OVERRIDES = {
+                            "PARTIAL_PROFIT_LOCK_GAIN_PCT": "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER",
+                            "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
+                            "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT": "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER",
+                            "PARTIAL_PROFIT_LOCK_FRAC": "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+                        }
+                        def __init__(self, inner):
+                            object.__setattr__(self, "_inner", inner)
+                        def __getattr__(self, name):
+                            ov = self._PPL_OVERRIDES.get(name)
+                            if ov is not None:
+                                return getattr(self._inner, ov)
+                            return getattr(self._inner, name)
+                    _ppl_cfg = _PPLProxy(cfg)
                 if cfg.PARTIAL_PROFIT_LOCK_ENABLED:
                     for pos in (pos_long, pos_short):
                         if not pos.open:
                             continue
                         if not pos.ppl_fired:
-                            _ppl1 = _check_ppl_step1(store, bar_idx, pos, cfg)
+                            _ppl1 = _check_ppl_step1(store, bar_idx, pos, _ppl_cfg)
                             if _ppl1 is not None:
                                 frac = _ppl1["frac"]
                                 partial_gain = pos.gain_pct * frac
@@ -1500,12 +1554,12 @@ class VecEngine:
                                 pos.ppl_stop_upgraded = False
                                 continue
                         if pos.ppl_fired and not pos.ppl_stop_upgraded:
-                            _ppl2 = _check_ppl_step2(store, bar_idx, pos, cfg)
+                            _ppl2 = _check_ppl_step2(store, bar_idx, pos, _ppl_cfg)
                             if _ppl2 is not None:
                                 pos.ppl_stop_level = _ppl2["new_stop"]
                                 pos.ppl_stop_upgraded = True
                         if pos.ppl_fired and pos.ppl_stop_level > 0:
-                            _ppl3 = _check_ppl_step3(store, bar_idx, pos, cfg)
+                            _ppl3 = _check_ppl_step3(store, bar_idx, pos, _ppl_cfg)
                             if _ppl3 is not None:
                                 pnl = pos.gain_pct
                                 returns_by_sym[sym].append(pnl)
@@ -1535,6 +1589,50 @@ class VecEngine:
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
                         except Exception:
                             pass
+
+                # ── R4_STDEV_MACRO exit (WIRED 2026-05-18) ──────────────────────
+                # Source: config.py:1279 + memory project_stdev_macro_scaffold_20260517.
+                # Long-window log-price z-score on D+W: fire CLOSE when STRONG_TOP (LONG)
+                # or STRONG_BOT (SHORT), optionally requiring LTF 4h flip against.
+                # Bypasses UNIVERSAL_NOLOSS_GATE (reason in LOSS_EXIT_TECHNICAL_BYPASS).
+                if bool(getattr(cfg, "STDEV_MACRO_R4_EXIT_ENABLED", False)):
+                    _r4_arr = macro_state_per_sym.get(sym)
+                    if _r4_arr is not None and bar_idx < len(_r4_arr):
+                        _r4_state = int(_r4_arr[bar_idx])
+                        _r4_require_flip = bool(getattr(cfg, "STDEV_MACRO_R4_REQUIRE_LTF_FLIP", True))
+                        for pos in (pos_long, pos_short):
+                            if not pos.open:
+                                continue
+                            _r4_fire = False
+                            _r4_reason_tag = ""
+                            if pos.side == "LONG" and _r4_state >= 2:
+                                # STRONG_TOP → close LONG
+                                if _r4_require_flip:
+                                    _w1_4h = store.f("wt1_4h", bar_idx, 0.0)
+                                    _w2_4h = store.f("wt2_4h", bar_idx, 0.0)
+                                    _r4_fire = (abs(_w1_4h) > 1e-9 and _w1_4h < _w2_4h)
+                                else:
+                                    _r4_fire = True
+                                _r4_reason_tag = "R4_STDEV_MACRO_TOP"
+                            elif pos.side == "SHORT" and _r4_state <= -2:
+                                if _r4_require_flip:
+                                    _w1_4h = store.f("wt1_4h", bar_idx, 0.0)
+                                    _w2_4h = store.f("wt2_4h", bar_idx, 0.0)
+                                    _r4_fire = (abs(_w1_4h) > 1e-9 and _w1_4h > _w2_4h)
+                                else:
+                                    _r4_fire = True
+                                _r4_reason_tag = "R4_STDEV_MACRO_BOT"
+                            if _r4_fire:
+                                pnl = pos.gain_pct
+                                returns_by_sym[sym].append(pnl)
+                                _emit_trade(pos, ts_i, price, pnl, _r4_reason_tag)
+                                all_returns.append(pnl)
+                                running_gain += pnl
+                                pos.open = False
+                                pos.last_close_ts = ts_i
+                                pos.last_close_price = price
+                                if pnl > 0:
+                                    pos.last_reduce_price = price
 
                 # ── WT_CROSSUNDER_FINAL standalone exit ──────────
                 # Source: vec_paths/wt_crossunder_final.py.
@@ -1578,8 +1676,21 @@ class VecEngine:
                         if hold_min < min_hold:
                             continue
                     # UNIVERSAL_NOLOSS_GATE: block loss exits (except R1/R2/SRS already handled)
+                    # NOLOSS_BYPASS_WT_5OF5 (WIRED 2026-05-18): allow loss exit when ≥MIN_TFS
+                    # of {5m,15m,1h,4h,D} WT against position. Source: tradier_manage.py:5934.
                     if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0:
-                        continue
+                        _nlb_pass = False
+                        if bool(getattr(cfg, "NOLOSS_BYPASS_WT_5OF5_ENABLED", False)):
+                            _nlb_min = int(getattr(cfg, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", 5))
+                            _nlb_against = 0
+                            for _tf in ("5m", "15m", "1h", "4h", "D"):
+                                _w1 = store.f(f"wt1_{_tf}", bar_idx, 0.0)
+                                _w2 = store.f(f"wt2_{_tf}", bar_idx, 0.0)
+                                if (pos.side == "LONG" and _w1 < _w2) or (pos.side == "SHORT" and _w1 > _w2):
+                                    _nlb_against += 1
+                            _nlb_pass = (_nlb_against >= _nlb_min)
+                        if not _nlb_pass:
+                            continue
                     # RSI2 exit check (tradier mode)
                     if self.mode == "tradier" and cfg.TRADIER_RSI2_ENABLED:
                         rsi2 = store.f("rsi2_5m", bar_idx, default=50.0)
@@ -1825,11 +1936,25 @@ class VecEngine:
                 # market_sentiment indicates the position should be larger.
                 # ADDITIVE: does not replace any existing logic, only augments qty.
                 if _sentiment_boost_fn is not None:
+                    # STDEV_MACRO_AUGMENT_VETO (WIRED 2026-05-18): block AUGMENT when at
+                    # TOP/BOT macro extreme (|state|>=1). LONG augment vetoed at TOP, SHORT at BOT.
+                    _smv_aug_block_long = False
+                    _smv_aug_block_short = False
+                    if bool(getattr(cfg, "STDEV_MACRO_AUGMENT_VETO_ENABLED", False)):
+                        _smv_aug_arr = macro_state_per_sym.get(sym)
+                        if _smv_aug_arr is not None and bar_idx < len(_smv_aug_arr):
+                            _smv_aug_state = int(_smv_aug_arr[bar_idx])
+                            _smv_aug_block_long = (_smv_aug_state >= 1)   # TOP or STRONG_TOP
+                            _smv_aug_block_short = (_smv_aug_state <= -1) # BOT or STRONG_BOT
                     try:
                         for _sb_pos in (pos_long, pos_short):
                             if not _sb_pos.open:
                                 continue
                             if _sb_pos.side in _dg_blocked:
+                                continue
+                            if _sb_pos.side == "LONG" and _smv_aug_block_long:
+                                continue
+                            if _sb_pos.side == "SHORT" and _smv_aug_block_short:
                                 continue
                             _sb_result = _sentiment_boost_fn(store, bar_idx, _sb_pos, ts_i, cfg)
                             if _sb_result is not None:
@@ -1855,10 +1980,34 @@ class VecEngine:
                             continue
                         _hg_hedge_side = "SHORT" if _hg_loser_side == "LONG" else "LONG"
                         _hg_hedge_pos = pos_states[sym][_hg_hedge_side]
+                        # ── HEDGE_HTF_VETO (WIRED 2026-05-18) ──
+                        # Source: ez_manage.py:24453.
+                        # For LONG-loser pos hedge=SHORT requires wt1_D < wt2_D.
+                        # For SHORT-loser pos hedge=LONG requires wt1_D > wt2_D.
+                        # Fail-open if D data missing.
+                        _hg_htf_veto_active = False
+                        if bool(getattr(cfg, "HEDGE_HTF_VETO_ENABLED", False)):
+                            _hg_w1_D = store.f("wt1_D", bar_idx, 0.0)
+                            _hg_w2_D = store.f("wt2_D", bar_idx, 0.0)
+                            if abs(_hg_w1_D) > 1e-9 and abs(_hg_w2_D) > 1e-9:
+                                _hg_is_long = (_hg_loser_side == "LONG")
+                                _hg_aligned = (_hg_is_long and _hg_w1_D < _hg_w2_D) or \
+                                              ((not _hg_is_long) and _hg_w1_D > _hg_w2_D)
+                                if not _hg_aligned:
+                                    _hg_htf_veto_active = True
                         try:
                             _hg_scan_result = _check_scan_hedge_losers(store, bar_idx, _hg_loser, all_pos_states=pos_states[sym], mode=self.mode, cfg=cfg)
                         except Exception:
                             _hg_scan_result = None
+                        # HEDGE_MAX_ABSOLUTE_USD cap (WIRED 2026-05-18) — cap qty * price to max abs USD.
+                        # Source: ez_positions_quick.py:6296/7406.
+                        _hg_max_abs = float(getattr(cfg, "HEDGE_MAX_ABSOLUTE_USD", 100000.0))
+                        if _hg_scan_result is not None and _hg_max_abs > 0 and price > 0:
+                            _hg_qty_capped = min(float(_hg_scan_result.get("size_qty", 0.0)), _hg_max_abs / price)
+                            _hg_scan_result = dict(_hg_scan_result)
+                            _hg_scan_result["size_qty"] = _hg_qty_capped
+                        if _hg_htf_veto_active:
+                            _hg_scan_result = None  # HTF veto blocks hedge open
                         if _hg_scan_result is not None and not _hg_hedge_pos.open:
                             _hg_hedge_pos.open = True
                             _hg_hedge_pos.side = _hg_hedge_side
@@ -1884,6 +2033,13 @@ class VecEngine:
                             _hg_obl_result = _check_obligatory_hedge(store, bar_idx, _hg_loser, mode=self.mode, cfg=cfg)
                         except Exception:
                             _hg_obl_result = None
+                        # Apply HEDGE_MAX_ABSOLUTE_USD cap + HEDGE_HTF_VETO to obligatory hedge too.
+                        if _hg_obl_result is not None and _hg_max_abs > 0 and price > 0:
+                            _hg_qty_capped = min(float(_hg_obl_result.get("size_qty", 0.0)), _hg_max_abs / price)
+                            _hg_obl_result = dict(_hg_obl_result)
+                            _hg_obl_result["size_qty"] = _hg_qty_capped
+                        if _hg_htf_veto_active:
+                            _hg_obl_result = None  # HTF veto blocks hedge open
                         if _hg_obl_result is not None and not _hg_hedge_pos.open:
                             _hg_hedge_pos.open = True
                             _hg_hedge_pos.side = _hg_hedge_side
@@ -1956,6 +2112,33 @@ class VecEngine:
                     pos = pos_states[sym][side]
                     if pos.open:
                         continue
+
+                    # ── HTF_TREND_VETO entry gate (WIRED 2026-05-18) ──
+                    # Source: ez_manage.py:18660 / tradier_manage.py:10079.
+                    # Blocks OPEN against Daily wt-trend: LONG requires wt1_D > wt2_D, SHORT mirror.
+                    # Fail-open when wt1_D / wt2_D absent or both near-zero (data missing).
+                    if bool(getattr(cfg, "HTF_TREND_VETO_ENABLED", False)):
+                        _htfv_w1_D = store.f("wt1_D", bar_idx, 0.0)
+                        _htfv_w2_D = store.f("wt2_D", bar_idx, 0.0)
+                        if abs(_htfv_w1_D) > 1e-9 and abs(_htfv_w2_D) > 1e-9:
+                            _htfv_ok = (side == "LONG" and _htfv_w1_D > _htfv_w2_D) or \
+                                       (side == "SHORT" and _htfv_w1_D < _htfv_w2_D)
+                            if not _htfv_ok:
+                                continue
+
+                    # ── STDEV_MACRO entry veto (WIRED 2026-05-18) ──
+                    # Source: config.py:1275 + memory project_stdev_macro_scaffold_20260517.
+                    # Blocks OPEN when STRONG_TOP (state=2) for LONG, STRONG_BOT (state=-2) for SHORT.
+                    # Fail-open when state arrays missing or value MID.
+                    if bool(getattr(cfg, "STDEV_MACRO_ENTRY_VETO_ENABLED", False)):
+                        _smv_arr = macro_state_per_sym.get(sym)
+                        if _smv_arr is not None and bar_idx < len(_smv_arr):
+                            _smv_state = int(_smv_arr[bar_idx])
+                            # STRONG_TOP=2 vetoes LONG; STRONG_BOT=-2 vetoes SHORT
+                            if side == "LONG" and _smv_state >= 2:
+                                continue
+                            if side == "SHORT" and _smv_state <= -2:
+                                continue
 
                     # ── Tradeability gate (parity with is_symbol_tradeable) ──
                     if cfg.TRADEABILITY_GATE_ENABLED and self.mode == "tradier":
@@ -2199,6 +2382,109 @@ class VecEngine:
                             pos.micro_scalp_orig_side = ""
                             pos.qty = cfg.SCALP_V3_POSITION_CAP_USD / max(price, 1e-9)
                             continue  # skip WT path
+
+                    # ── DC_BB_D_BREAK_REVERSE FIRE trigger (WIRED 2026-05-18) ──
+                    # Source: ez_manage.py:38741. Daily DC/BB band break (close vs
+                    # dc_high_D_prev / dc_low_D_prev / bb_upper_D / bb_lower_D) fires reverse-open.
+                    # When knob DISABLED (ablation), this path emits zero entries → fewer trades.
+                    # When knob ENABLED (default True): fires LONG on UP-break, SHORT on DN-break.
+                    if bool(getattr(cfg, "DC_BB_D_BREAK_REVERSE_ENABLED", True)):
+                        _db_dc_hi_d = store.f("dc_high_D_prev", bar_idx, 0.0) or store.f("dc_high_D", bar_idx, 0.0)
+                        _db_dc_lo_d = store.f("dc_low_D_prev", bar_idx, 0.0) or store.f("dc_low_D", bar_idx, 0.0)
+                        _db_bb_up_d = store.f("bb_upper_D", bar_idx, 0.0)
+                        _db_bb_lo_d = store.f("bb_lower_D", bar_idx, 0.0)
+                        _db_break_up = (_db_dc_hi_d > 0 and price > _db_dc_hi_d) or \
+                                       (_db_bb_up_d > 0 and price > _db_bb_up_d)
+                        _db_break_dn = (_db_dc_lo_d > 0 and price < _db_dc_lo_d) or \
+                                       (_db_bb_lo_d > 0 and price < _db_bb_lo_d)
+                        # 1-bar edge detection: prior bar not yet broken; this bar is.
+                        if bar_idx > 0:
+                            _db_prev_px = store.price(bar_idx - 1)
+                            _db_prev_up = (_db_dc_hi_d > 0 and _db_prev_px > _db_dc_hi_d) or \
+                                          (_db_bb_up_d > 0 and _db_prev_px > _db_bb_up_d)
+                            _db_prev_dn = (_db_dc_lo_d > 0 and _db_prev_px < _db_dc_lo_d) or \
+                                          (_db_bb_lo_d > 0 and _db_prev_px < _db_bb_lo_d)
+                            _db_break_up = _db_break_up and not _db_prev_up
+                            _db_break_dn = _db_break_dn and not _db_prev_dn
+                        if (side == "LONG" and _db_break_up) or (side == "SHORT" and _db_break_dn):
+                            pos.open = True
+                            pos.side = side
+                            pos.entry_price = price
+                            pos.entry_ts = ts_i
+                            pos.mark_price = price
+                            pos.gain_pct = 0.0
+                            pos.max_gain_pct = 0.0
+                            pos.last_reduce_price = 0.0
+                            pos.last_close_price = 0.0
+                            pos.last_augment_ts = 0.0
+                            pos.ppl_fired = False
+                            pos.ppl_stop_level = 0.0
+                            pos.ppl_stop_upgraded = False
+                            pos.ppl_first_exit_price = 0.0
+                            pos.r1_fired = False
+                            pos.reason = f"DC_BB_D_BREAK_REVERSE_open_{'UP' if _db_break_up else 'DN'}"
+                            pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                            continue  # skip WT path
+
+                    # ── BREAKOUT_RETEST_ARMED (Rule A) FIRE trigger (WIRED 2026-05-18) ──
+                    # Source: ez_manage.py:35464 / tradier_manage.py ~1832.
+                    # Stateless simplified impl: D/W aligned + retest band + k3m crossover
+                    # + 15m+1h aligned. When all conditions match, OPEN directly.
+                    # ROLLBACK: BREAKOUT_RETEST_ARMED_ENABLED=False.
+                    if bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+                        _ra_w1_D = store.f("wt1_D", bar_idx, 0.0)
+                        _ra_w2_D = store.f("wt2_D", bar_idx, 0.0)
+                        _ra_w1_W = store.f("wt1_W", bar_idx, 0.0)
+                        _ra_w2_W = store.f("wt2_W", bar_idx, 0.0)
+                        _ra_dc_basis_D = store.f("dc_basis_D", bar_idx, 0.0)
+                        _ra_atr_D = store.f("atr_D", bar_idx, 0.0)
+                        _ra_w1_15m = store.f("wt1_15m", bar_idx, 0.0)
+                        _ra_w2_15m = store.f("wt2_15m", bar_idx, 0.0)
+                        _ra_w1_1h = store.f("wt1_1h", bar_idx, 0.0)
+                        _ra_w2_1h = store.f("wt2_1h", bar_idx, 0.0)
+                        _ra_k_3m = store.f("stoch_k_3m", bar_idx, 50.0)
+                        _ra_d_3m = store.f("stoch_d_3m", bar_idx, 50.0)
+                        _ra_k_3m_prev = store.f("stoch_k_3m", max(0, bar_idx - 1), _ra_k_3m)
+                        _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9
+                                       and _ra_dc_basis_D > 0 and _ra_atr_D > 0)
+                        if _ra_data_ok:
+                            _ra_mult = float(getattr(cfg, "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT", 0.30))
+                            _ra_dist_atr = abs(price - _ra_dc_basis_D) / _ra_atr_D
+                            _ra_armed_long = (_ra_w1_D > _ra_w2_D and _ra_w1_W > _ra_w2_W and price > _ra_dc_basis_D)
+                            _ra_armed_short = (_ra_w1_D < _ra_w2_D and _ra_w1_W < _ra_w2_W and price < _ra_dc_basis_D)
+                            _ra_retest_band = _ra_dist_atr < _ra_mult
+                            _ra_k3m_xup = (_ra_k_3m_prev < 30 and _ra_k_3m > _ra_d_3m and _ra_k_3m > _ra_k_3m_prev)
+                            _ra_k3m_xdn = (_ra_k_3m_prev > 70 and _ra_k_3m < _ra_d_3m and _ra_k_3m < _ra_k_3m_prev)
+                            _ra_15m_bull = (_ra_w1_15m > _ra_w2_15m)
+                            _ra_15m_bear = (_ra_w1_15m < _ra_w2_15m)
+                            _ra_1h_bull = (_ra_w1_1h > _ra_w2_1h)
+                            _ra_1h_bear = (_ra_w1_1h < _ra_w2_1h)
+                            _ra_fire = (
+                                (side == "LONG" and _ra_armed_long and _ra_retest_band
+                                 and _ra_k3m_xup and _ra_15m_bull and _ra_1h_bull)
+                                or
+                                (side == "SHORT" and _ra_armed_short and _ra_retest_band
+                                 and _ra_k3m_xdn and _ra_15m_bear and _ra_1h_bear)
+                            )
+                            if _ra_fire:
+                                pos.open = True
+                                pos.side = side
+                                pos.entry_price = price
+                                pos.entry_ts = ts_i
+                                pos.mark_price = price
+                                pos.gain_pct = 0.0
+                                pos.max_gain_pct = 0.0
+                                pos.last_reduce_price = 0.0
+                                pos.last_close_price = 0.0
+                                pos.last_augment_ts = 0.0
+                                pos.ppl_fired = False
+                                pos.ppl_stop_level = 0.0
+                                pos.ppl_stop_upgraded = False
+                                pos.ppl_first_exit_price = 0.0
+                                pos.r1_fired = False
+                                pos.reason = f"RULE_A_RETEST_{side}"
+                                pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                                continue  # skip WT path
 
                     # ── GOLDEN_RULE entry filter ─────────────
                     if cfg.GOLDEN_RULE_ENABLED:

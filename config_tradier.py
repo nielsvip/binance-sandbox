@@ -1789,6 +1789,24 @@ class TradierConfig:
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score for double-size entry. ROLLBACK: 1000.0
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
     GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0
+    # 🚩 NEW 2026-05-18 — GR v5 BREAKOUT-CONFIRM → BOUNCE-ENTRY STATE MACHINE (SKELETON, default OFF)
+    # Tradier LTF degraded to {5m,15m,1h} (no 3m in tradier NPZ).
+    # Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md
+    # Vec module:  vec_paths/gr_v5_state.py (skeleton — full state arrays land next session)
+    # ALL knobs default OFF / inert. NOT wired in tradier_manage.py — backtest sweep ONLY.
+    GR_V5_ENABLED: bool = False
+    GR_V5_HTF_TFS: tuple = ('4h', 'D', 'W')
+    GR_V5_HTF_MIN_ALIGN: int = 2
+    GR_V5_BREAKOUT_REQUIRE_VOLUME: bool = True
+    GR_V5_BREAKOUT_VOL_MULT: float = 1.25
+    GR_V5_LTF_TFS: tuple = ('5m', '15m', '1h')
+    GR_V5_LTF_MIN_ALIGN: int = 2
+    GR_V5_BOUNCE_STOCH_LONG: float = 25.0
+    GR_V5_BOUNCE_STOCH_SHORT: float = 75.0
+    GR_V5_BOUNCE_WT_CROSS_REQUIRED: bool = True
+    GR_V5_ARM_WINDOW_BARS: int = 168
+    GR_V5_RETEST_BAND_PCT: float = 0.03
+    GR_V5_INVALIDATE_PCT: float = 0.02
     # P2-C: DC_BREAK entries routed through GR Phase 1/2 sizing (default OFF)
     DC_BREAK_GR_MULT_ENABLED: bool = False          # P2-C: route DC_BREAK entries through GR Phase 1/2 sizing
     DC_BREAK_GR_MULT_BREAKOUT: float = 0.1          # Phase 1: tiny entry on DC break
@@ -2169,6 +2187,8 @@ class TradierConfig:
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25
+    BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30        # 2026-05-18 sweep knob
+    BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2         # 2026-05-18 sweep knob: 2=AND (live), 1=OR
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_C_FUNDING_EXTREME_ENABLED: bool = False      # stocks don't have funding rates — Rule C is crypto-only conceptually; leave flag for API consistency.
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03

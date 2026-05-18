@@ -47,6 +47,10 @@ PENDING_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "_pending_per_sym_active_
 LIVE_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 PENDING_DIR = ROOT / "data" / "hourly_reconfig" / "_pending_review"
 MANIFEST_PATH = PENDING_DIR / "manifest.json"
+CLASSIFIED_DIR = PENDING_DIR / "_classified"
+CLASSIFIED_FULL = CLASSIFIED_DIR / "promote_full.json"
+CLASSIFIED_MIN = CLASSIFIED_DIR / "promote_min_amount.json"
+CLASSIFIED_REJECT = CLASSIFIED_DIR / "reject.json"
 
 
 def _load(p: Path) -> Dict:
@@ -127,7 +131,8 @@ def cmd_list(pending: Dict) -> int:
 
 
 def cmd_promote_reject(pending: Dict, promote_keys: List[str],
-                       reject_keys: List[str], yes: bool) -> int:
+                       reject_keys: List[str], yes: bool,
+                       payload_source: Dict = None) -> int:
     promote_keys = [k for k in promote_keys if k in pending]
     reject_keys = [k for k in reject_keys if k in pending]
     if not promote_keys and not reject_keys:
@@ -145,7 +150,9 @@ def cmd_promote_reject(pending: Dict, promote_keys: List[str],
             return 1
     live = _load(LIVE_CFG_PATH)
     for k in promote_keys:
-        decision = dict(pending[k])
+        # Prefer classified payload (has injected START_POSITION_SIZE_OVERRIDE_USD + warning)
+        src_entry = (payload_source or {}).get(k) or pending[k]
+        decision = dict(src_entry)
         meta = dict(decision.get("_meta", {}))
         meta["promoted_ts_utc"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
         meta["pending"] = False
@@ -181,25 +188,58 @@ def main() -> int:
                     help="Comma-separated SYM_SIDE keys to reject.")
     ap.add_argument("--yes", "-y", action="store_true",
                     help="Skip confirmation prompt.")
+    ap.add_argument("--use-classified", action="store_true",
+                    help=("Promote keys listed in _classified/promote_full.json + "
+                          "_classified/promote_min_amount.json; reject keys in "
+                          "_classified/reject.json. Refuses if classified dir missing."))
+    ap.add_argument("--full-only", action="store_true",
+                    help="With --use-classified, only promote promote_full.json (skip MIN).")
+    ap.add_argument("--trial-only", action="store_true",
+                    help="With --use-classified, only promote promote_min_amount.json (skip FULL).")
     args = ap.parse_args()
     pending = _load(PENDING_CFG_PATH)
-    if args.review_charts_first or (not any([args.list, args.promote_all,
+    if args.review_charts_first or (not any([args.list, args.promote_all, args.use_classified,
                                               args.promote, args.reject])):
         return cmd_review(pending)
     if args.list:
         return cmd_list(pending)
     promote_keys = []
     reject_keys = []
+    payload_source = None
+    if args.use_classified:
+        full_map = _load(CLASSIFIED_FULL) if CLASSIFIED_FULL.exists() else None
+        min_map = _load(CLASSIFIED_MIN) if CLASSIFIED_MIN.exists() else None
+        rej_map = _load(CLASSIFIED_REJECT) if CLASSIFIED_REJECT.exists() else None
+        if full_map is None or min_map is None or rej_map is None:
+            print(f"ERROR: --use-classified requires {CLASSIFIED_DIR}/{{promote_full,promote_min_amount,reject}}.json",
+                  file=sys.stderr)
+            print("Run: python3 tools/classify_pending_per_sym.py", file=sys.stderr)
+            return 2
+        if args.full_only and args.trial_only:
+            print("ERROR: --full-only and --trial-only are mutually exclusive.", file=sys.stderr)
+            return 2
+        if args.full_only:
+            promote_keys = list(full_map.keys())
+            payload_source = dict(full_map)
+        elif args.trial_only:
+            promote_keys = list(min_map.keys())
+            payload_source = dict(min_map)
+        else:
+            promote_keys = list(full_map.keys()) + list(min_map.keys())
+            payload_source = {**full_map, **min_map}
+        reject_keys = list(rej_map.keys())
+        print(f"[--use-classified] promote_full={len(full_map)} promote_min={len(min_map)} reject={len(rej_map)}")
     if args.promote_all:
         promote_keys = list(pending.keys())
     if args.promote:
         promote_keys.extend([k.strip() for k in args.promote.split(",") if k.strip()])
     if args.reject:
-        reject_keys = [k.strip() for k in args.reject.split(",") if k.strip()]
+        reject_keys.extend([k.strip() for k in args.reject.split(",") if k.strip()])
     # Dedup
     promote_keys = sorted(set(promote_keys) - set(reject_keys))
     reject_keys = sorted(set(reject_keys))
-    return cmd_promote_reject(pending, promote_keys, reject_keys, args.yes)
+    return cmd_promote_reject(pending, promote_keys, reject_keys, args.yes,
+                              payload_source=payload_source)
 
 
 if __name__ == "__main__":

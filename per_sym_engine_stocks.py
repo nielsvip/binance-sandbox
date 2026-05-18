@@ -131,6 +131,24 @@ class SymParamsStocks:
     EXIT_WT_ACCEL_ONLY: bool = False
     PARTIAL_PROFIT_LOCK_ENABLED: bool = False
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.0
+    # PPL v2 fields (Phase 2A patch 1) — wired in walk_trades_dual when ENABLED
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10
+    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    # X7 frozen-DC + abs-floor stop (Phase 2A patch 2)
+    X7_FROZEN_DC_STOP_ENABLED: bool = False
+    X7_FREEZE_DC_TF: str = '4h'
+    X7_FREEZE_BB_TF: str = ''
+    X7_ABS_FLOOR_PCT: float = -8.0
+    # SPY-regime gate (Phase 2A patch 3 — stocks-specific)
+    SPY_REGIME_GATE_ENABLED: bool = False
+    SPY_REGIME_BLOCK_LONGS_BELOW: bool = True
+    SPY_REGIME_BLOCK_SHORTS_ABOVE: bool = False
+    # SMA50_D LT-direction filter (Phase 2A patch 3 — shared)
+    REQUIRE_ABOVE_SMA50_D: bool = False
+    # HEDGE_HTF_VETO + HTF_TREND_VETO (Phase 2A patch 4)
+    HEDGE_HTF_VETO_ENABLED: bool = False
+    HTF_TREND_VETO_ENABLED: bool = False
 
     # Reentry / reverse / augment / hedge / NOLOSS
     REVERSE_ON_EXIT_ENABLED: bool = False
@@ -430,6 +448,108 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
     c15 = tf_data['15m']['close']
     ts15 = tf_data['15m']['ts']
 
+    # ─── Phase 2A patches 3-4 for stocks (SMA50_D / SPY-regime / HTF_TREND_VETO / HEDGE_HTF_VETO / X7 freeze) ───
+    n_c15 = len(c15)
+    def _ss_5m_arr_to_15m(arr_5m):
+        if arr_5m is None or len(arr_5m) == 0:
+            return None
+        ratio = TF_BARS_5M['15m']  # 3
+        cut = (len(arr_5m) // ratio) * ratio
+        sub = arr_5m[:cut][ratio - 1::ratio]
+        if len(sub) >= n_c15:
+            return sub[:n_c15]
+        pad = n_c15 - len(sub)
+        return np.concatenate([np.zeros(pad), sub])
+    # Patch 3 — REQUIRE_ABOVE_SMA50_D
+    if getattr(params, 'REQUIRE_ABOVE_SMA50_D', False):
+        sma50_5m = base.get('sma_50_D')
+        sma50_15m = _ss_5m_arr_to_15m(sma50_5m)
+        if sma50_15m is not None and len(sma50_15m) >= n_c15:
+            above50 = c15 > sma50_15m[:n_c15]
+            enter_long = enter_long & above50
+            enter_short = enter_short & ~above50
+    # Patch 3 — SPY_REGIME_GATE (stocks-only — read SPY NPZ, build above/below 200SMA mask, broadcast)
+    if getattr(params, 'SPY_REGIME_GATE_ENABLED', False):
+        try:
+            spy_base = load_5m_base('SPY', years_back=years_back)
+        except Exception:
+            spy_base = None
+        if spy_base is not None and 'close_5m' in spy_base:
+            spy_close = spy_base['close_5m'].astype(np.float64)
+            # 200-bar SMA on daily; resample SPY to daily, compute SMA, broadcast back to 5m, then 15m.
+            d_spy = resample_5m_to_htf(spy_base, TF_BARS_5M['D'])
+            spy_close_d = d_spy['close']
+            spy_ts_d = d_spy['ts']
+            if len(spy_close_d) >= 200:
+                # Manual rolling mean 200 — np convolve
+                kernel = np.ones(200, dtype=np.float64) / 200.0
+                spy_sma200_d = np.full(len(spy_close_d), np.nan)
+                spy_sma200_d[199:] = np.convolve(spy_close_d, kernel, mode='valid')
+                spy_above_d = (spy_close_d > spy_sma200_d) & np.isfinite(spy_sma200_d)
+                # Broadcast back to symbol's 5m ts grid via searchsorted on spy_ts_d
+                sym_ts_5m = base['ts']
+                # For each sym 5m bar, find the most-recent SPY daily bar
+                idxs = np.searchsorted(spy_ts_d, sym_ts_5m, side='right') - 1
+                idxs = np.clip(idxs, 0, len(spy_above_d) - 1)
+                above_5m = spy_above_d[idxs]
+                # Subsample to 15m grid
+                ratio = TF_BARS_5M['15m']
+                cut = (len(above_5m) // ratio) * ratio
+                sub = above_5m[:cut][ratio - 1::ratio]
+                if len(sub) >= n_c15:
+                    spy_regime_15m = sub[:n_c15]
+                else:
+                    spy_regime_15m = np.concatenate([np.zeros(n_c15 - len(sub), dtype=bool), sub])
+                if getattr(params, 'SPY_REGIME_BLOCK_LONGS_BELOW', True):
+                    enter_long = enter_long & spy_regime_15m
+                if getattr(params, 'SPY_REGIME_BLOCK_SHORTS_ABOVE', False):
+                    enter_short = enter_short & ~spy_regime_15m
+    # Patch 4 — HTF_TREND_VETO (block entries against Daily WT)
+    if getattr(params, 'HTF_TREND_VETO_ENABLED', False):
+        wt1_d_5m = base.get('wt1_D')
+        wt2_d_5m = base.get('wt2_D')
+        if wt1_d_5m is not None and wt2_d_5m is not None:
+            wt1_d_15m = _ss_5m_arr_to_15m(wt1_d_5m)
+            wt2_d_15m = _ss_5m_arr_to_15m(wt2_d_5m)
+            if wt1_d_15m is not None and wt2_d_15m is not None:
+                n_min = min(len(wt1_d_15m), len(wt2_d_15m), len(enter_long))
+                bull_d = wt1_d_15m[:n_min] > wt2_d_15m[:n_min]
+                if n_min < len(enter_long):
+                    pad = len(enter_long) - n_min
+                    bull_d = np.concatenate([np.zeros(pad, dtype=bool), bull_d])
+                enter_long = enter_long & bull_d
+                enter_short = enter_short & ~bull_d
+    # Patch 4 — HEDGE_HTF_VETO precompute
+    hedge_htf_ok_long = None
+    hedge_htf_ok_short = None
+    if getattr(params, 'HEDGE_HTF_VETO_ENABLED', False):
+        wt1_d_5m = base.get('wt1_D')
+        wt2_d_5m = base.get('wt2_D')
+        if wt1_d_5m is not None and wt2_d_5m is not None:
+            wt1_d_15m_h = _ss_5m_arr_to_15m(wt1_d_5m)
+            wt2_d_15m_h = _ss_5m_arr_to_15m(wt2_d_5m)
+            if wt1_d_15m_h is not None and wt2_d_15m_h is not None:
+                n_min_h = min(len(wt1_d_15m_h), len(wt2_d_15m_h), n_c15)
+                bull_d_h = wt1_d_15m_h[:n_min_h] > wt2_d_15m_h[:n_min_h]
+                hedge_htf_ok_long = ~bull_d_h
+                hedge_htf_ok_short = bull_d_h
+                if n_min_h < n_c15:
+                    pad = n_c15 - n_min_h
+                    hedge_htf_ok_long = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_long])
+                    hedge_htf_ok_short = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_short])
+    # Patch 2 — X7 frozen-DC precompute
+    x7_dc_freeze_15m = None
+    x7_bb_freeze_15m = None
+    if getattr(params, 'X7_FROZEN_DC_STOP_ENABLED', False):
+        dc_lo_5m = base.get(f'dc_low_{params.X7_FREEZE_DC_TF}')
+        if dc_lo_5m is not None:
+            x7_dc_freeze_15m = _ss_5m_arr_to_15m(dc_lo_5m)
+        bb_tf = getattr(params, 'X7_FREEZE_BB_TF', '') or ''
+        if bb_tf:
+            bb_lo_5m = base.get(f'bb_lower_{bb_tf}')
+            if bb_lo_5m is not None:
+                x7_bb_freeze_15m = _ss_5m_arr_to_15m(bb_lo_5m)
+
     # Use crypto walker but inject stocks commission via monkey patch
     orig_comm = _crypto.COMMISSION_RT_PCT
     _crypto.COMMISSION_RT_PCT = COMMISSION_RT_PCT_STOCKS
@@ -458,6 +578,16 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
             peak_giveback_fixed_enabled=params.PEAK_GIVEBACK_FIXED_PCT_ENABLED,
             peak_giveback_fixed_drop_pct=float(params.PEAK_GIVEBACK_FIXED_DROP_PCT),
             peak_giveback_fixed_min_peak_pct=float(params.PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT),
+            ppl_v2_enabled=getattr(params, 'PARTIAL_PROFIT_LOCK_ENABLED', False),
+            ppl_v2_step1_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5)),
+            ppl_v2_arm_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.75)),
+            ppl_v2_be_buffer_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.10)),
+            ppl_v2_frac=float(getattr(params, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5)),
+            x7_dc_freeze_15m=x7_dc_freeze_15m,
+            x7_bb_freeze_15m=x7_bb_freeze_15m,
+            x7_abs_floor_pct=float(getattr(params, 'X7_ABS_FLOOR_PCT', -8.0)),
+            hedge_htf_ok_long=hedge_htf_ok_long,
+            hedge_htf_ok_short=hedge_htf_ok_short,
         )
     finally:
         _crypto.COMMISSION_RT_PCT = orig_comm

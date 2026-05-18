@@ -128,6 +128,10 @@ try:
 except ImportError:
     evaluate_gr_htf_vec = None
 try:
+    from vec_paths.breakout_retest import evaluate_breakout_retest_vec
+except ImportError:
+    evaluate_breakout_retest_vec = None
+try:
     from vec_paths.exit_r1_r2 import (
         check_r1_emergency_exit,
         check_r2_wt_vel_slow_exit,
@@ -573,6 +577,20 @@ class SweepConfig:
     BB_FROZEN_STOP_ENABLED: bool = False
     BB_FROZEN_STOP_TF: str = '1h'
     BB_FROZEN_STOP_FIELD: str = 'lower'
+    # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
+    # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
+    # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
+    # produced baseline-identical sweep results when re-enabled because vec path
+    # had no implementation. Default OFF per current config.py/config_tradier.py.
+    HTF_TREND_VETO_ENABLED: bool = False                  # mirrors ez_manage.py:18660
+    R3_HTF_FLIP_EXIT_ENABLED: bool = False                # mirrors ez_manage.py:38260
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = False             # mirrors ez_manage.py:38290
+    BREAKOUT_RETEST_ARMED_ENABLED: bool = False           # mirrors ez_manage.py:35464
+    BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30   # |px - dc_basis_D| / atr_D < this
+    BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7            # window of D-bars for retest arm
+    BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25       # relative_volume_D >= MULT to arm (0 = off)
+    BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30         # LONG fires when stoch_k_3m_prev < this
+    BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2          # 2 = AND (live); 1 = OR over {15m, 1h}
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -992,6 +1010,87 @@ def simulate_one_symbol(
         else:
             _htf_dir_open_ok = _wt1_d < _wt2_d
 
+    # ─── HTF_TREND_VETO precompute (2026-05-18 4-FLAG REWIRE) ───────────────────
+    # Mirrors ez_manage.py:18660+. Blocks OPEN/AUGMENT when wt1_D vs wt2_D against.
+    # NOTE: ez_manage version also fires for AUGMENT and skips HEDGE_*/RULE_C
+    # reasons. In vec there's no per-bar reason string, so we apply identically
+    # to OPEN. (AUGMENT in vec follows OPEN gates upstream of size scaling.)
+    _htf_trend_veto_ok = np.ones(n, dtype=bool)
+    if bool(getattr(config, "HTF_TREND_VETO_ENABLED", False)):
+        _htfv_w1_D = np.nan_to_num(npz.get("wt1_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _htfv_w2_D = np.nan_to_num(npz.get("wt2_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _htfv_data_ok = (np.abs(_htfv_w1_D) > 1e-9) & (np.abs(_htfv_w2_D) > 1e-9)
+        if is_long:
+            _htfv_aligned = _htfv_w1_D > _htfv_w2_D
+        else:
+            _htfv_aligned = _htfv_w1_D < _htfv_w2_D
+        # Fail-open when data missing (mirrors live behaviour: _htfv_data_ok=False → no block)
+        _htf_trend_veto_ok = (~_htfv_data_ok) | _htfv_aligned
+
+    # ─── R3_HTF_FLIP precompute (2026-05-18 4-FLAG REWIRE) ──────────────────────
+    # Mirrors ez_manage.py:38260+. EXIT when (a) Daily tier: px breaks dc_basis_D
+    # AGAINST side OR (wt1_D/wt2_D AND wt1_W/wt2_W flip against), or (b) 4H tier:
+    # px crosses ema_20_4h ± atr_4h against side AND wt1_4h/wt2_4h flip against.
+    _r3hf_daily_fire = np.zeros(n, dtype=bool)
+    _r3hf_4h_fire = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False)):
+        _r3hf_dcD = np.nan_to_num(npz.get("dc_basis_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _r3hf_w1D = np.nan_to_num(npz.get("wt1_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _r3hf_w2D = np.nan_to_num(npz.get("wt2_D", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _r3hf_w1W = np.nan_to_num(npz.get("wt1_W", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _r3hf_w2W = np.nan_to_num(npz.get("wt2_W", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+        _r3hf_dc_present = _r3hf_dcD > 0
+        if is_long:
+            _r3hf_dc_break = (close < _r3hf_dcD) & _r3hf_dc_present
+            _r3hf_wt_flip = (_r3hf_w1D < _r3hf_w2D) & (_r3hf_w1W < _r3hf_w2W)
+        else:
+            _r3hf_dc_break = (close > _r3hf_dcD) & _r3hf_dc_present
+            _r3hf_wt_flip = (_r3hf_w1D > _r3hf_w2D) & (_r3hf_w1W > _r3hf_w2W)
+        _r3hf_daily_fire = _r3hf_dc_break | _r3hf_wt_flip
+        if bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)):
+            _r3hf_ema4h = np.nan_to_num(npz.get("ema_20_4h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _r3hf_atr4h = np.nan_to_num(npz.get("atr_4h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _r3hf_w14h = np.nan_to_num(npz.get("wt1_4h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _r3hf_w24h = np.nan_to_num(npz.get("wt2_4h", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+            _r3hf_4h_data_ok = (_r3hf_ema4h > 0) & (_r3hf_atr4h > 0)
+            if is_long:
+                _r3hf_4h_fire = _r3hf_4h_data_ok & (close < (_r3hf_ema4h - _r3hf_atr4h)) & (_r3hf_w14h < _r3hf_w24h)
+            else:
+                _r3hf_4h_fire = _r3hf_4h_data_ok & (close > (_r3hf_ema4h + _r3hf_atr4h)) & (_r3hf_w14h > _r3hf_w24h)
+
+    # ─── BREAKOUT_RETEST_ARMED precompute (2026-05-18 — delegated to vec_paths) ──
+    # Mirrors ez_manage.py:35464+. SIMPLIFIED stateless. Delegates to
+    # vec_paths.breakout_retest.evaluate_breakout_retest_vec so the four
+    # extra knobs (WINDOW_DAYS, VOLUME_MULT, K_3M_PREV_MAX, HTF_STACK_MIN)
+    # actually affect the fire mask — previous inline impl honored only
+    # ENABLED + RETEST_ATR_MULT (the other arms were DROPPED_PHANTOM_KNOB).
+    _ra_fire_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "BREAKOUT_RETEST_ARMED_ENABLED", False)) and evaluate_breakout_retest_vec is not None:
+        try:
+            _ra_features = {
+                "close": close,
+                "dc_basis_D": npz.get("dc_basis_D"),
+                "atr_D": npz.get("atr_D"),
+                "wt1_D": npz.get("wt1_D"),
+                "wt2_D": npz.get("wt2_D"),
+                "wt1_W": npz.get("wt1_W"),
+                "wt2_W": npz.get("wt2_W"),
+                "wt1_15m": npz.get("wt1_15m"),
+                "wt2_15m": npz.get("wt2_15m"),
+                "wt1_1h": npz.get("wt1_1h"),
+                "wt2_1h": npz.get("wt2_1h"),
+                "stoch_k_3m": npz.get("stoch_k_3m"),
+                "stoch_k_3m_prev": npz.get("stoch_k_3m_prev"),
+                "k_3m": npz.get("k_3m"),
+                "volume_D": npz.get("volume_D"),
+                "relative_volume_D": npz.get("relative_volume_D"),
+                "timestamp_D": npz.get("timestamp_D"),
+            }
+            _ra_long, _ra_short = evaluate_breakout_retest_vec(_ra_features, config, mode=mode)
+            _ra_fire_mask = (_ra_long if is_long else _ra_short).astype(bool)
+        except Exception:
+            _ra_fire_mask = np.zeros(n, dtype=bool)
+
     # ─── DC_LOW / BB FROZEN STOP precompute ─────────────────────────────────────
     _dc_fstop_arr = np.zeros(n, dtype=np.float32)
     _bb_fstop_arr = np.zeros(n, dtype=np.float32)
@@ -1209,6 +1308,11 @@ def simulate_one_symbol(
             # HTF_DIRECTION_GATE — block OPEN when D-WT against intended side.
             if not bool(_htf_dir_open_ok[i]):
                 continue
+            # HTF_TREND_VETO (2026-05-18 REWIRE) — daily WT trend gate.
+            # Mirrors ez_manage.py:18660+. Same direction semantics as HTF_DIRECTION_GATE
+            # but ships under a separate config knob (live treats them independently).
+            if not bool(_htf_trend_veto_ok[i]):
+                continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
             wt_open_ok = bool(wt_3m_aligned[i])
@@ -1227,7 +1331,10 @@ def simulate_one_symbol(
             _b15_ok = bool(_b15_open_mask[i])
             # B2 Connors RSI-2 overlay — sixth trigger (long-only)
             _connors_ok = bool(_connors_open_mask[i])
-            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
+            # BREAKOUT_RETEST_ARMED (2026-05-18 REWIRE) — seventh trigger (Rule A).
+            # Mirrors ez_manage.py:35464+. Stateless simplified form.
+            _ra_ok = bool(_ra_fire_mask[i])
+            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok):
                 continue
             # STDEV_MACRO_ENTRY_VETO — block OPEN at macro extreme on same side.
             # Additive to existing entry triggers (BB-breakout etc.) — never silently
@@ -1272,7 +1379,9 @@ def simulate_one_symbol(
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
-            if _connors_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
+            if _ra_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
+                reason = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"
+            elif _connors_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
                 _crsi_val = float(_crsi_d[i]) if config.CONNORS_RSI2_OVERLAY_ENABLED else 0.0
                 reason = f"CONNORS_RSI2_OVERLAY_crsi={_crsi_val:.1f}"
             elif _delta_result is not None and not fire_block and not wt_open_ok and _gr_result is None and not _b15_ok:
@@ -1457,6 +1566,36 @@ def simulate_one_symbol(
                 pnl_pct = gain
                 ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
                     value=state.qty * mark, reason=_r1["reason"], pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                _pos.gain_pct = 0.0
+                continue
+
+        # R3_HTF_FLIP (2026-05-18 REWIRE) — Daily + 4h structural close.
+        # Mirrors ez_manage.py:38260+. Reason in LOSS_EXIT_TECHNICAL_BYPASS so
+        # close fires even at a loss. Daily tier always evaluated when ENABLED;
+        # 4h tier evaluated only when _4H_TIER_ENABLED. continue → new bar.
+        if state.qty > 0.0001 and bool(getattr(config, "R3_HTF_FLIP_EXIT_ENABLED", False)):
+            _r3_fire = False
+            _r3_tier = ""
+            if bool(_r3hf_daily_fire[i]):
+                _r3_fire = True
+                _r3_tier = "DAILY"
+            elif bool(getattr(config, "R3_HTF_FLIP_4H_TIER_ENABLED", False)) and bool(_r3hf_4h_fire[i]):
+                _r3_fire = True
+                _r3_tier = "4H"
+            if _r3_fire:
+                pnl_pct = gain
+                _r3_reason = f"R3_HTF_FLIP{'_4H' if _r3_tier == '4H' else ''}_{_r3_tier}_px{mark:.6f}"
+                ev = TradeEvent(
+                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_r3_reason, pnl_pct=pnl_pct,
+                )
                 events.append(ev)
                 trade_returns.append(pnl_pct)
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
