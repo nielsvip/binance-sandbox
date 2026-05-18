@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-18 17:16:24 UTC
+# Copilot Status — 2026-05-18 17:31:28 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,10 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-18T17:16:10
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T17:16:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T17:16:10
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-18T17:16:13
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T17:29:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T17:29:45
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-18T17:29:46
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T17:30:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T17:30:17
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T17:30:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T17:30:47
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-18T17:30:47
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-18T17:31:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-18T17:31:18
 
 ## Missed Trades (trader comparison)
 
@@ -34,12 +40,16 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 
-- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
-- WATCHING: **SNXUSDT** LONG (crypto) peaked +3.4%, exited 0m ago
+- WATCHING: **DOTUSDT** LONG (crypto) peaked +3.4%, exited 1m ago
+- WATCHING: **SNXUSDT** LONG (crypto) peaked +3.4%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 1
+**Issues (last 1h):** 14
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
