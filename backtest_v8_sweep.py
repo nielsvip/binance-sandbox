@@ -762,7 +762,11 @@ def grid_tradier_4h_stop():
     WT_3M_FORCE_OPEN=True in all variants: required to produce entries since WT_3M_FORCE_OPEN_ENABLED=False
     in live config_tradier.py (Rule A/B/C not yet wired). Without forced entries, 0 trades = untestable.
     Run on 3 core stocks × 2024-01-01 for fast initial signal; full 114-sym if ps>1.0."""
-    _fo = {"WT_3M_FORCE_OPEN_ENABLED": True, "WT_3M_FORCE_OPEN_BYPASS_GATES": True}
+    # config_tradier.py has two gates that block 100% of entries in current conditions:
+    #   MFI_ENTRY_ENABLED=True/threshold=20: blocks longs when daily MFI>20 (always in bull mkt)
+    #   GOLDEN_RULE_HTF_MIN_TFS=3/MIN_IND=6: requires 3 TFs each with ≥6 indicators — impossible
+    # Both must be disabled to produce entries for stop-mechanism testing.
+    _fo = {"MFI_ENTRY_ENABLED": False, "GOLDEN_RULE_HTF_MIN_TFS": 0}
     return [
         ("baseline",             {**_fo}),
         ("DC4H_STOP_ONLY",       {**_fo, "DC_LOW_4H_FROZEN_STOP_ENABLED": True,  "DC_LOW_4H_ABS_LOSS_FLOOR_PCT": -999.0}),
