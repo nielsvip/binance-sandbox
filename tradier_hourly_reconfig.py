@@ -21,6 +21,7 @@ import os
 import shutil
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -35,6 +36,11 @@ NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 CAND_DIR = ROOT / "data" / "hourly_reconfig" / "trb" / "_candidates"
 OUT_DIR_TRB = ROOT / "data" / "hourly_reconfig" / "trb"
 OUT_DIR_TRC = ROOT / "data" / "hourly_reconfig" / "trc"
+
+# Fix B 2026-05-18: global per_sym_active_config.json — first-writer-wins shared
+# state across all daemons (crypto flz_hourly_reconfig + tradier_hourly_reconfig).
+# Live tradier_manage._get_tradier_sym_cfg() at lines 468-488 already reads it.
+GLOBAL_PER_SYM_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 
 SYMBOLS_LONG_TRB  = ROOT / "symbols_trb_long.json"
 SYMBOLS_SHORT_TRB = ROOT / "symbols_trb_short.json"
@@ -103,6 +109,69 @@ def build_candidates(sym: str, can_long: bool, can_short: bool) -> List[Tuple[st
         cands.append(("baseline_SHORT", dict(_SHORT_ONLY_OVR)))
     if can_long and can_short:
         cands.append(("baseline_BOTH", dict(_BOTH_OVR)))
+
+    # Fix C 2026-05-18: layer NEW knob clusters on top of each side-baseline so
+    # they are evaluated for both LONG and SHORT permutations. Knob names verified
+    # against config_tradier.py; HEDGE_* + DC_BB_D_REV omitted (stocks have no
+    # same-symbol hedge; DC_BB_D_BREAK_REVERSE is crypto-only).
+    TRADIER_NEW_KNOB_CLUSTERS = [
+        ("R1R2_strict", {
+            "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+            "R1_NEWBORN_WINDOW_MIN": 15.0,
+            "R1_USE_DC_4BAR": True,
+            "R1_TF": "5m",
+            "WT_VEL_DECEL_RATIO": 0.4,
+            "WT_VEL_USE_DECEL_RATIO_ONLY": True,
+        }),
+        ("R1R2_loose", {
+            "R1_NEWBORN_WINDOW_MIN": 30.0,
+            "R1_USE_DC_4BAR": False,
+            "WT_VEL_DECEL_RATIO": 0.7,
+            "WT_VEL_USE_DECEL_RATIO_ONLY": False,
+        }),
+        ("RULE_A_on", {
+            "BREAKOUT_RETEST_ARMED_ENABLED": True,
+            "WT_3M_FORCE_OPEN_ENABLED": False,
+            "HTF_TREND_VETO_ENABLED": True,
+        }),
+        ("PPL_v2_tight", {
+            "PARTIAL_PROFIT_LOCK_ENABLED": True,
+            "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER": 0.3,
+            "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER": 0.5,
+            "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER": 0.02,
+            "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": 0.625,
+        }),
+        ("PPL_v2_loose", {
+            "PARTIAL_PROFIT_LOCK_ENABLED": True,
+            "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER": 0.6,
+            "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER": 0.9,
+            "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER": 0.05,
+            "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": 0.5,
+        }),
+        ("NOLOSS_WT5of5", {
+            "NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
+            "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 5,
+        }),
+        ("STDEV_MACRO_veto", {
+            "STDEV_MACRO_ENTRY_VETO_ENABLED": True,
+            "STDEV_MACRO_AUGMENT_VETO_ENABLED": True,
+            "STDEV_MACRO_R4_EXIT_ENABLED": False,
+        }),
+        ("DUP_GUARD_GAIN", {
+            "DUP_GUARD_USE_GAIN_GATE": True,
+            "DUP_GUARD_GAIN_MULTIPLIER": 0.5,
+        }),
+    ]
+    side_bases: List[Tuple[str, Dict]] = []
+    if can_long:
+        side_bases.append(("LONG", dict(_LONG_ONLY_OVR)))
+    if can_short:
+        side_bases.append(("SHORT", dict(_SHORT_ONLY_OVR)))
+    for side_label, side_base in side_bases:
+        for tag, deltas in TRADIER_NEW_KNOB_CLUSTERS:
+            fused = dict(side_base)
+            fused.update(deltas)
+            cands.append((f"{tag}_{side_label}", fused))
 
     # Load per-sym sweeper-found winners from _candidates/
     extra = load_candidates(sym)
@@ -309,6 +378,43 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path,
 
     with active_path.open("w") as f:
         json.dump(existing, f, indent=2)
+
+    # Fix B 2026-05-18: also upsert into GLOBAL per_sym_active_config.json so live
+    # tradier_manage._get_tradier_sym_cfg (lines 468-488) consumes daemon output
+    # via the shared per-(sym,side) override store. First-writer-wins: trb's
+    # tradeable_keys land before trc's, mirroring the user's account-order model.
+    try:
+        if GLOBAL_PER_SYM_CFG_PATH.exists():
+            global_cfgs = json.loads(GLOBAL_PER_SYM_CFG_PATH.read_text())
+        else:
+            global_cfgs = {}
+    except Exception as _exc:
+        print(f"[{account}] global load WARN: {_exc} - starting fresh")
+        global_cfgs = {}
+
+    n_added = 0
+    n_skipped_present = 0
+    cycle_id = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+    for sym_side, decision in existing.items():
+        if sym_side in global_cfgs:
+            n_skipped_present += 1
+            continue
+        tagged = dict(decision)
+        meta = dict(tagged.get("_meta", {}))
+        meta.update({
+            "source_account": account,
+            "source_cycle": cycle_id,
+            "source_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "source_daemon": "tradier_hourly_reconfig",
+        })
+        tagged["_meta"] = meta
+        global_cfgs[sym_side] = tagged
+        n_added += 1
+
+    tmp_g = GLOBAL_PER_SYM_CFG_PATH.with_suffix(".tmp")
+    tmp_g.write_text(json.dumps(global_cfgs, indent=2, default=str))
+    tmp_g.replace(GLOBAL_PER_SYM_CFG_PATH)
+    print(f"[{account}] global per_sym_active_config: +{n_added} new (sym,side); {n_skipped_present} skipped (already present); total={len(global_cfgs)}")
 
     _prune_old_engine_runs(out_dir / "_engine_runs", keep=2)
     elapsed = time.time() - t0

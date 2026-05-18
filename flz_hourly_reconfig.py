@@ -44,6 +44,7 @@ import sys
 import time
 import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -168,6 +169,65 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
             "MIN_HOLD_BARS": 3,
             "COOLDOWN_BARS": 1,
         }))
+        # Fix C 2026-05-18: NEW knob clusters for tradier. Each layered on baseline.
+        # Knob names verified against config_tradier.py. Stocks have no same-symbol
+        # hedge (per memory feedback_hedge_reentry_unblock_20260510), so HEDGE_*
+        # clusters dropped from tradier. DC_BB_D_BREAK_REVERSE is crypto-only.
+        TRADIER_NEW_KNOB_CLUSTERS = [
+            ("BEST_R1R2_strict", {
+                "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+                "R1_NEWBORN_WINDOW_MIN": 15.0,
+                "R1_USE_DC_4BAR": True,
+                "R1_TF": "5m",
+                "R2_TF_LIST": ("1h", "4h", "D"),
+                "WT_VEL_DECEL_RATIO": 0.4,
+                "WT_VEL_USE_DECEL_RATIO_ONLY": True,
+            }),
+            ("BEST_R1R2_loose", {
+                "R1_NEWBORN_WINDOW_MIN": 30.0,
+                "R1_USE_DC_4BAR": False,
+                "WT_VEL_DECEL_RATIO": 0.7,
+                "WT_VEL_USE_DECEL_RATIO_ONLY": False,
+            }),
+            ("BEST_RULE_A_on", {
+                "BREAKOUT_RETEST_ARMED_ENABLED": True,
+                "WT_3M_FORCE_OPEN_ENABLED": False,
+                "HTF_TREND_VETO_ENABLED": True,
+            }),
+            ("BEST_PPL_v2_tight", {
+                "PARTIAL_PROFIT_LOCK_ENABLED": True,
+                "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER": 0.3,
+                "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER": 0.5,
+                "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER": 0.02,
+                "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": 0.625,
+            }),
+            ("BEST_PPL_v2_loose", {
+                "PARTIAL_PROFIT_LOCK_ENABLED": True,
+                "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER": 0.6,
+                "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER": 0.9,
+                "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER": 0.05,
+                "PARTIAL_PROFIT_LOCK_FRAC_TRADIER": 0.5,
+            }),
+            ("BEST_NOLOSS_WT5of5", {
+                "NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
+                "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 5,
+            }),
+            ("BEST_STDEV_MACRO_veto", {
+                "STDEV_MACRO_ENTRY_VETO_ENABLED": True,
+                "STDEV_MACRO_AUGMENT_VETO_ENABLED": True,
+                "STDEV_MACRO_R4_EXIT_ENABLED": False,
+            }),
+            ("BEST_DUP_GUARD_GAIN", {
+                "DUP_GUARD_USE_GAIN_GATE": True,
+                "DUP_GUARD_GAIN_MULTIPLIER": 0.5,
+            }),
+        ]
+        if cand and cand[0][0] == "baseline":
+            base = cand[0][1]
+            for tag, deltas in TRADIER_NEW_KNOB_CLUSTERS:
+                fused = dict(base)
+                fused.update(deltas)
+                cand.append((tag, fused))
     else:
         for tag, fname in (
             ("BEST", "override_btc_BEST.json"),
@@ -212,6 +272,74 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
                 "WT_DC_ENTRY_LONG_THRESHOLD": 9999,      # raise threshold so LONG never fires
             })
             cand.append(("BEST_short_only", short_only))
+        # Fix C 2026-05-18: NEW knob clusters added since 2026-05-09 sprint.
+        # Layered on top of BEST so each is a focused ablation vs BEST. Crypto only.
+        NEW_KNOB_CLUSTERS = [
+            ("BEST_R1R2_strict", {
+                "R1_DC_LOW4_3M_EMERGENCY_ENABLED": True,
+                "R1_NEWBORN_WINDOW_MIN": 15.0,
+                "R1_USE_DC_4BAR": True,
+                "R1_TF": "3m",
+                "R2_TF_LIST": ("15m",),
+                "WT_VEL_DECEL_RATIO": 0.4,
+                "WT_VEL_USE_DECEL_RATIO_ONLY": True,
+            }),
+            ("BEST_R1R2_loose", {
+                "R1_NEWBORN_WINDOW_MIN": 30.0,
+                "R1_USE_DC_4BAR": False,
+                "WT_VEL_DECEL_RATIO": 0.7,
+                "WT_VEL_USE_DECEL_RATIO_ONLY": False,
+            }),
+            ("BEST_RULE_A_on", {
+                "BREAKOUT_RETEST_ARMED_ENABLED": True,
+                "WT_3M_FORCE_OPEN_ENABLED": False,
+                "HTF_TREND_VETO_ENABLED": True,
+            }),
+            ("BEST_HEDGE_HTF_VETO", {
+                "HEDGE_HTF_VETO_ENABLED": True,
+            }),
+            ("BEST_HEDGE_100PCT", {
+                "HEDGE_MAX_PCT_OF_LOSER": 1.0,
+                "HEDGE_MAX_ABSOLUTE_USD": 100000.0,
+                "OBLIGATORY_HEDGE_ENABLED": True,
+            }),
+            ("BEST_PPL_v2_tight", {
+                "PARTIAL_PROFIT_LOCK_ENABLED": True,
+                "PARTIAL_PROFIT_LOCK_GAIN_PCT": 0.5,
+                "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": 0.75,
+                "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT": 0.02,
+                "PARTIAL_PROFIT_LOCK_FRAC": 0.5,
+            }),
+            ("BEST_PPL_v2_loose", {
+                "PARTIAL_PROFIT_LOCK_ENABLED": True,
+                "PARTIAL_PROFIT_LOCK_GAIN_PCT": 0.8,
+                "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": 1.2,
+                "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT": 0.10,
+                "PARTIAL_PROFIT_LOCK_FRAC": 0.5,
+            }),
+            ("BEST_NOLOSS_WT5of5", {
+                "NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
+                "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 5,
+            }),
+            ("BEST_STDEV_MACRO_veto", {
+                "STDEV_MACRO_ENTRY_VETO_ENABLED": True,
+                "STDEV_MACRO_AUGMENT_VETO_ENABLED": True,
+                "STDEV_MACRO_R4_EXIT_ENABLED": False,
+            }),
+            ("BEST_DC_BB_D_REV_OFF", {
+                "DC_BB_D_BREAK_REVERSE_ENABLED": False,
+            }),
+            ("BEST_DUP_GUARD_GAIN", {
+                "DUP_GUARD_USE_GAIN_GATE": True,
+                "DUP_GUARD_GAIN_MULTIPLIER": 0.5,
+            }),
+        ]
+        if cand and cand[0][0] == "BEST":
+            base = cand[0][1]
+            for tag, deltas in NEW_KNOB_CLUSTERS:
+                fused = dict(base)
+                fused.update(deltas)
+                cand.append((tag, fused))
     # Auto-pickup candidates dropped by settings searches (different dir per mode).
     pick_dir = EXTRA_CAND_DIR_TRADIER if is_tradier else EXTRA_CAND_DIR
     if pick_dir.exists():
@@ -621,6 +749,42 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
     tmp2 = opinions_path.with_suffix(".tmp")
     tmp2.write_text(json.dumps(opinions, indent=2, default=str))
     tmp2.replace(opinions_path)
+
+    # Fix B 2026-05-18: also upsert into GLOBAL per_sym_active_config.json so crypto
+    # live (ez_positions_quick._get_per_sym_overrides at line ~1761) consumes daemon
+    # output. First-writer-wins matches user's account-order model: flz processes its
+    # tradeable_keys first, ang second (skips syms already in global), etc.
+    try:
+        if GLOBAL_PER_SYM_CFG_PATH.exists():
+            global_cfgs = json.loads(GLOBAL_PER_SYM_CFG_PATH.read_text())
+        else:
+            global_cfgs = {}
+    except Exception as _exc:
+        print(f"[hourly] global load WARN: {_exc} - starting fresh", flush=True)
+        global_cfgs = {}
+
+    n_added = 0
+    n_skipped_present = 0
+    for sym_side, decision in active.items():
+        if sym_side in global_cfgs:
+            n_skipped_present += 1
+            continue
+        tagged = dict(decision)
+        meta = dict(tagged.get("_meta", {}))
+        meta.update({
+            "source_account": account,
+            "source_cycle": cycle_id,
+            "source_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "source_daemon": "flz_hourly_reconfig",
+        })
+        tagged["_meta"] = meta
+        global_cfgs[sym_side] = tagged
+        n_added += 1
+
+    tmp_g = GLOBAL_PER_SYM_CFG_PATH.with_suffix(".tmp")
+    tmp_g.write_text(json.dumps(global_cfgs, indent=2, default=str))
+    tmp_g.replace(GLOBAL_PER_SYM_CFG_PATH)
+    print(f"[hourly] global per_sym_active_config: +{n_added} new (sym,side) from {account}; {n_skipped_present} skipped (already present); total={len(global_cfgs)}", flush=True)
 
     # Summarize
     changes = [k for k, v in opinions["syms"].items() if v.get("changed")]
