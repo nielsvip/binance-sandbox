@@ -42,13 +42,85 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+# Defensive: some NPZ fields (bar_pattern_codes, bar_vol_regime_codes) are object
+# arrays. Default np.load() refuses with allow_pickle=False since numpy 1.16.5.
+# The engine modules call plain np.load(path) — we patch the default here so
+# those fields load. We only read precomputed indicator data we authored.
+_orig_np_load = np.load
+def _safe_np_load(*args, **kwargs):
+    kwargs.setdefault('allow_pickle', True)
+    return _orig_np_load(*args, **kwargs)
+np.load = _safe_np_load  # affects this process AND its workers via fork+import
+
 import metrics_guard as mg
+import per_sym_engine_stocks as _pse
 from per_sym_engine_stocks import (
     SymParamsStocks,
     simulate_dual_stocks,
     BARS_PER_DAY_STOCKS,
 )
 from per_sym_engine_crypto import NPZ_DIR
+
+# Defensive wrapper around engine's load_5m_base: tolerate 0-d / non-1-d object
+# fields in the NPZ (e.g. bar_pattern_codes scalars on some syms). We delegate
+# to the original loader; if it raises, fall back to a hand-loaded dict that
+# skips problem fields. The engine only consumes float arrays.
+_orig_load_5m_base = _pse.load_5m_base
+
+
+def _safe_load_5m_base(sym, years_back=4.0):
+    try:
+        return _orig_load_5m_base(sym, years_back=years_back)
+    except Exception:
+        pass
+    cache_key = f'{sym}__y{years_back:.2f}'
+    cache = _pse._npz_cache_stocks
+    if cache_key in cache:
+        return cache[cache_key]
+    p = NPZ_DIR / f'{sym}.npz'
+    if not p.exists():
+        return None
+    try:
+        z = np.load(str(p), allow_pickle=True)
+    except Exception:
+        return None
+    needed = ['open_5m', 'high_5m', 'low_5m', 'close_5m', 'timestamps']
+    if not all(k in z.files for k in needed):
+        z.close()
+        return None
+    full: Dict[str, np.ndarray] = {}
+    for k in z.files:
+        try:
+            arr = z[k]
+            if arr.ndim < 1:
+                continue
+            full[k] = arr[:]
+        except Exception:
+            continue
+    z.close()
+    if cache:
+        cache.clear()
+    ts_full = full['timestamps'].astype(np.int64)
+    full['timestamps'] = ts_full
+    cutoff = ts_full[-1] - int(years_back * 365.25 * 86400)
+    si = int(np.searchsorted(ts_full, cutoff))
+    sliced: Dict[str, np.ndarray] = {}
+    for k, arr in full.items():
+        if isinstance(arr, np.ndarray) and arr.ndim == 1 and len(arr) == len(ts_full):
+            sliced[k] = arr[si:]
+        else:
+            sliced[k] = arr
+    sliced['open'] = sliced['open_5m'].astype(np.float64)
+    sliced['high'] = sliced['high_5m'].astype(np.float64)
+    sliced['low'] = sliced['low_5m'].astype(np.float64)
+    sliced['close'] = sliced['close_5m'].astype(np.float64)
+    sliced['volume'] = sliced.get('volume_5m', np.ones(len(sliced['close']))).astype(np.float64)
+    sliced['ts'] = sliced['timestamps']
+    cache[cache_key] = sliced
+    return sliced
+
+
+_pse.load_5m_base = _safe_load_5m_base
 
 OUT_BASE = ROOT / 'data' / 'hourly_reconfig'
 ACTIVE_CFG = OUT_BASE / 'per_sym_active_config.json'
@@ -121,7 +193,14 @@ def load_baseline_for_sym(sym: str) -> Optional[SymParamsStocks]:
 
 def neighborhood_variants(base: SymParamsStocks) -> List[Tuple[str, SymParamsStocks]]:
     """Small candidate set: baseline + loose/tight neighbors + toggle flips.
-    Designed to finish in <30s/sym on 20d window."""
+    Designed to finish in <30s/sym on 20d window.
+
+    USE_V8_AGGREGATORS is forced OFF because v8_quick_engine was renamed to
+    OPUS_VOMIT.py (USER 2026-05-10 mandate); engine falls back to _build_signals
+    which is the correct path for stocks now.
+    """
+    base = base.copy()
+    base.USE_V8_AGGREGATORS = False
     variants: List[Tuple[str, SymParamsStocks]] = [('baseline', base.copy())]
 
     # Loosen
@@ -534,13 +613,16 @@ def main():
         print(f"no syms for account={args.account}")
         return 1
 
+    # dry-run implies no per-variant candidate writes either
+    write_cands = (not args.no_candidates) and (not args.dry_run)
+
     if args.daemon:
         while True:
             t0 = time.time()
             try:
                 cycle(args.account, syms, args.workers,
                       dry_run=args.dry_run,
-                      write_candidates=not args.no_candidates)
+                      write_candidates=write_cands)
             except Exception:
                 traceback.print_exc()
             elapsed = time.time() - t0
@@ -551,7 +633,7 @@ def main():
     else:
         cycle(args.account, syms, args.workers,
               dry_run=args.dry_run,
-              write_candidates=not args.no_candidates)
+              write_candidates=write_cands)
     return 0
 
 

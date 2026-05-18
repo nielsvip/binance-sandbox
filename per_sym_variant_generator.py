@@ -88,11 +88,19 @@ CONTINUOUS_KNOBS: Dict[str, Tuple[float, float]] = {
 # ───────────────────────── samplers ───────────────────────────────────────
 
 def _sobol_unit(n: int, dim: int, seed: int = 0) -> np.ndarray:
-    """Sobol sample in (0,1)^dim. Falls back to numpy.random if scipy unavailable."""
+    """Sobol sample in (0,1)^dim. Falls back to numpy.random if scipy unavailable.
+
+    Suppresses scipy's "n not power-of-2" warning (we accept non-balanced Sobol — variant
+    counts rarely line up to powers of 2, and the small loss of balance is irrelevant when
+    cartesian product over CORE knobs is already deterministic).
+    """
     try:
+        import warnings
         from scipy.stats import qmc
         sampler = qmc.Sobol(d=dim, scramble=True, seed=seed)
-        return sampler.random(n)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)
+            return sampler.random(n)
     except Exception:
         rng = np.random.default_rng(seed)
         return rng.random((n, dim))

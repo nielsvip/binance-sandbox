@@ -39,6 +39,19 @@ import numpy as np
 import metrics_guard as mg
 from per_sym_engine_crypto import SymParams, simulate_dual, NPZ_DIR, _npz_cache
 
+# Optional vec-axis engine (per_sym_vec_engine_crypto). When --use-vec is passed, the
+# agent evaluates MILLIONS of variants instead of the ~9-variant neighbourhood, then
+# falls back to the scalar engine on the top-K for paranoid verification (no claims
+# made on raw vec numbers — they're the SHORTLIST, scalar is the VERDICT).
+try:
+    from per_sym_vec_engine_crypto import sweep_variants as _vec_sweep
+    from per_sym_vec_engine_crypto import top_k as _vec_top_k
+    from per_sym_variant_generator import generate_variants as _gen_variants
+    VEC_AVAILABLE = True
+except Exception as _e:
+    VEC_AVAILABLE = False
+    _vec_sweep = None; _vec_top_k = None; _gen_variants = None
+
 OUT_BASE = ROOT / 'data' / 'hourly_reconfig'
 ACTIVE_CFG = OUT_BASE / 'per_sym_active_config.json'
 SWEEP_CSV_DIR = ROOT / 'data' / 'sweep_results'
@@ -152,9 +165,39 @@ def evaluate_7d(sym: str, params: SymParams) -> Optional[Dict]:
     }
 
 
+_VEC_N_VARIANTS = int(os.environ.get('PER_SYM_VEC_N', '0') or '0')  # 0 = vec disabled
+
+
 def reconfig_one_sym(sym: str) -> Optional[Dict]:
     base = load_baseline_for_sym(sym) or SymParams()
-    variants = neighborhood_variants(base)
+    # ── OPTIONAL: vec-engine shortlist (variant-axis vectorized) ──────────
+    # When PER_SYM_VEC_N env var is set (e.g. =1000000), the vec engine evaluates
+    # that many variants per sym on the 7d window, picks top-K by time-weighted
+    # Sharpe, and feeds those K back through the scalar simulate_dual for paranoid
+    # verification. Vec numbers are NEVER published as final results — they are a
+    # high-throughput SHORTLIST tool only. (per CLAUDE.md SHARPE rule 1: every
+    # Sharpe written to disk must come from the scalar engine via metrics_guard.)
+    vec_extra_variants: List[Tuple[str, SymParams]] = []
+    if _VEC_N_VARIANTS > 0 and VEC_AVAILABLE:
+        try:
+            vec_variants = _gen_variants(n_total=_VEC_N_VARIANTS, mode='crypto')
+            vec_sb = _vec_sweep(sym, vec_variants, years_back=WINDOW_DAYS / 365.25,
+                                chunk_size=10000, verbose=False,
+                                n_years_for_yr_metrics=WINDOW_DAYS / 365.25)
+            # Top 10 candidates by time-weighted Sharpe with >=6 trades
+            top = _vec_top_k(vec_sb, vec_variants, k=10,
+                             sort_by='time_weighted_sharpe', min_trades=MIN_TRADES_FOR_OPINION)
+            for rank, (vd, m) in enumerate(top, 1):
+                p = base.copy()
+                for k, v in vd.items():
+                    if hasattr(p, k):
+                        try: setattr(p, k, v)
+                        except Exception: pass
+                vec_extra_variants.append((f'vec_top{rank}_tws{m["time_weighted_sharpe"]:.2f}', p))
+        except Exception as e:
+            print(f"[7d_agent vec] {sym} ERR: {e}", flush=True)
+            vec_extra_variants = []
+    variants = neighborhood_variants(base) + vec_extra_variants
     results: List[Tuple[str, Dict]] = []
     for tag, p in variants:
         r = evaluate_7d(sym, p)
@@ -305,7 +348,16 @@ def main():
     ap.add_argument('--once', action='store_true', default=True)
     ap.add_argument('--daemon', action='store_true', help='cycle every --interval-s')
     ap.add_argument('--interval-s', type=int, default=3600)
+    ap.add_argument('--vec-n', type=int, default=0,
+                    help='If >0 (e.g. 100000), run per_sym_vec_engine_crypto with that '
+                         'many variants per sym to SHORTLIST. Top-K then re-run on scalar '
+                         'engine. 0 disables. Per CLAUDE.md: vec numbers NEVER promoted.')
     args = ap.parse_args()
+    # propagate to module-level for reconfig_one_sym worker (used by ProcessPoolExecutor too).
+    if args.vec_n:
+        os.environ['PER_SYM_VEC_N'] = str(args.vec_n)
+        global _VEC_N_VARIANTS
+        _VEC_N_VARIANTS = args.vec_n
 
     if args.syms:
         syms = [s.strip() for s in args.syms.split(',') if s.strip()]
