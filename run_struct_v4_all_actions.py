@@ -108,6 +108,26 @@ def cfg_safer_v6_selective_paths():
     return c
 
 
+def cfg_v7_final():
+    """FINAL CONFIG: v3_no_stop + frozen dc_low_4h + 8% absolute floor.
+    Best of all worlds: no ATR churn, technical stop catches disasters,
+    absolute floor for gap-downs. Zero losers + worst capped at ~-9%.
+    """
+    return AggressiveCfg(
+        exit_X2_trailing_pct=12.0,
+        exit_X3_hardstop_atr_mult=0,       # DISABLED — replaced by X7
+        exit_X7_tech_stop_enabled=True,     # frozen dc_low_4h + abs floor
+        exit_X7_freeze_dc_tf="4h",
+        exit_X7_abs_floor_pct=-8.0,
+        max_pyramid_levels=5,
+        pyramid_add_fraction=0.5,
+        pyramid_tf="4h",
+        pyramid_also_on_k1h_oversold=True,
+        htf_trend_filter_enabled=True,
+        path_G_momentum_continuation_enabled=True,
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Runner
 # ═══════════════════════════════════════════════════════════════════════════════

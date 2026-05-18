@@ -114,8 +114,12 @@ class AggressiveCfg:
     exit_X1_k15_min: float = 80.0
     # X2: trailing stop from highest close in-trade
     exit_X2_trailing_pct: float = 5.0
-    # X3: hard stop ATR-based
+    # X3: hard stop ATR-based (legacy — prefer X7 technical stop)
     exit_X3_hardstop_atr_mult: float = 2.0
+    # X7: technical stop — frozen dc_low_4h at entry + absolute floor
+    exit_X7_tech_stop_enabled: bool = False
+    exit_X7_freeze_dc_tf: str = "4h"     # freeze dc_low at this TF at entry
+    exit_X7_abs_floor_pct: float = -8.0  # absolute max loss % (emergency cap)
     # X4: bearish D WT cross (HTF protection)
     exit_X4_daily_bear_wt_enabled: bool = True
     # X5: structural flip (v3 logic, simultaneous-flip on trigger TF)
@@ -204,6 +208,9 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     rsi_D = _f(npz, "rsi_D", n, 50.0)
     sma200_D = _f(npz, "sma_200_D", n)
     atr_15 = _f(npz, "atr_15m", n, 0.0)
+    # X7 technical stop indicators
+    dc_low_4h = _f(npz, f"dc_low_{cfg.exit_X7_freeze_dc_tf}", n, 0.0)
+    wt1_1h_arr = wt1_1h  # alias for X7 confirmation
 
     # Bull crosses
     bull_wt_15 = _bull_cross(wt1_15, wt2_15)
@@ -321,6 +328,7 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
     pyramid_count = 0
     capital_in_trade = 0.0
     cooldown_until = 0
+    frozen_dc_stop = 0.0
     events: List[Dict] = []
     trade_returns: List[float] = []
     entry_path_counts: Dict[str, int] = {}
@@ -375,6 +383,7 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 entry_bar = i
                 highest_close_in_trade = px
                 pyramid_count = 0
+                frozen_dc_stop = float(dc_low_4h[i]) if cfg.exit_X7_tech_stop_enabled else 0.0
                 entry_path_counts[entry_path] = entry_path_counts.get(entry_path, 0) + 1
                 _record_event(i, "OPEN", pos_qty, px, f"PATH_{entry_path}", capital_in_trade)
         else:
@@ -398,8 +407,14 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                     _record_event(i, "AUGMENT", add_qty, px, f"PYRAMID_{pyramid_count}", add_cap)
             # Try EXITS in priority order
             exit_path = None
-            # Hard stop: X3
-            if cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
+            # X7: Technical stop — frozen dc_low_4h at entry + absolute floor
+            if cfg.exit_X7_tech_stop_enabled:
+                cur_gain = (px - avg_entry_price) / avg_entry_price * 100
+                if cur_gain < 0:
+                    if px < frozen_dc_stop or cur_gain < cfg.exit_X7_abs_floor_pct:
+                        exit_path = "X7"
+            # Hard stop: X3 (legacy ATR-based)
+            if exit_path is None and cfg.exit_X3_hardstop_atr_mult > 0 and atr_15[i] > 0:
                 stop_px = avg_entry_price - cfg.exit_X3_hardstop_atr_mult * atr_15[i]
                 if px < stop_px:
                     exit_path = "X3"
