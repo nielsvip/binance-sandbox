@@ -178,7 +178,10 @@ def _rolling_max(arr: np.ndarray, w: int) -> np.ndarray:
 def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                         *, start_ts: Optional[int] = None,
                         return_events: bool = False) -> Dict[str, Any]:
-    npz, ts = load_npz(symbol, mode, start_ts=start_ts)
+    try:
+        npz, ts = load_npz(symbol, mode, start_ts=start_ts)
+    except Exception:
+        return {"sym": symbol, "trades": 0, "compound_mult": 1.0, "skip": True}
     close = np.asarray(npz["close"], dtype=np.float64)
     n = len(close)
     if n < 200:

@@ -2791,6 +2791,35 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         return "SUCCESS"
     trade_manager.execute_trade_action = _crypto_eta
 
+    # 2026-05-18 FIX: Patch execute_now to route through _crypto_eta.
+    # process_position (ez_manage.py) calls trade_manager.execute_now() directly (not
+    # execute_trade_action) for GR_HTF_DIRECT_EXIT, R1, R2, RIDICULOUS_HOLD, ALL_TF_AGAINST,
+    # OBLIGATORY_HEDGE, MICRO_SCALP, PARTIAL_PROFIT_LOCK, etc. — 30+ call sites.
+    # Without this patch, each execute_now call runs the REAL 3,500-line function
+    # (debounce, ii() indicator fetch, queue_trade_action, send_webhook) which causes
+    # GR-enabled variants to TIMEOUT at 90min with 0 trades.
+    async def _v8_execute_now_crypto(position_key=None, account_key=None, symbol=None,
+                                     original_positionAmt=0.0, side='BUY', position_side='LONG',
+                                     quantity=0.0, old_price=0.0, unique_id=None, reason='',
+                                     is_full_close=False, action=None, is_hedge=False,
+                                     hedge_for=None, url_variant='', **kw):
+        return await _crypto_eta(
+            account_key=account_key or '',
+            position_key=position_key or '',
+            symbol=symbol or '',
+            quantity=quantity,
+            current_price=old_price,
+            side=side,
+            position_side=position_side,
+            unique_id=unique_id,
+            is_full_close=is_full_close,
+            action=action or ('CLOSE' if is_full_close else 'OPEN'),
+            reason=reason,
+            is_hedge=is_hedge,
+            hedge_for=hedge_for,
+        )
+    trade_manager.execute_now = _v8_execute_now_crypto
+
     # 2026-05-12 — V8_DECISION_ONLY: stub calculate_final_order_quantity so queue_trade_action
     # doesn't spin up the expensive `ii()` indicator fetcher to compute sizing. We don't care
     # about qty in decision-only mode; we just want entry/exit TIMING to match /history.
