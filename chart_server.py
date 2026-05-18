@@ -3824,6 +3824,9 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
                    font-size:11px; font-weight:bold; }
   header .pill { background: var(--bg); border: 1px solid var(--bd); padding: 3px 8px;
                  border-radius: 4px; font-size: 11px; color: var(--mute); }
+  header .pill.net { background:#0d2818; color:var(--win); border-color:var(--win); font-weight:bold; }
+  .live-row td { color: #8b949e; font-style: italic; }
+  .live-row td.live-tag { color: #8b949e; font-weight: bold; }
   header a { color: var(--acc); text-decoration: none; }
   header a:hover { text-decoration: underline; }
   select, input, button { background: var(--bg); color: var(--fg); border: 1px solid var(--bd);
@@ -3883,12 +3886,18 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
 <header>
   <h1>__TITLE__</h1>
   <span class="tflock">TF LOCKED: __BASE_TF__ (struct_v4_review lesson — no 3m markers on D charts)</span>
+  <span class="pill net" title="Engines now write pnl_pct NET of round-trip cost (crypto 0.08% / stocks 0.05%, configurable). pnl_pct_gross preserved for audit.">NET of cost</span>
   <label>Symbol: <select id="symPicker"></select></label>
   <span class="pill" id="runCount">— runs</span>
   <span class="pill" id="resultStats">—</span>
-  <label class="ts-mode-toggle"><input type="checkbox" id="utcMode" checked> UTC timestamps</label>
-  <span style="margin-left:auto"><a href="/">← chart_server index</a> &nbsp;|&nbsp;
-    <a href="/backtest-review/__OTHER_ASSET__">switch to __OTHER_ASSET__</a></span>
+  <label class="ts-mode-toggle"><input type="checkbox" id="utcMode" checked> UTC ts</label>
+  <label class="ts-mode-toggle" id="liveOverlayLabel" style="display:none"><input type="checkbox" id="liveOverlay"> 7D live overlay</label>
+  <span class="pill" id="liveOverlayInfo" style="display:none"></span>
+  <span style="margin-left:auto">
+    <a href="/backtest-review/__ASSET__/top">▦ leaderboard</a> &nbsp;|&nbsp;
+    <a href="/">← chart_server</a> &nbsp;|&nbsp;
+    <a href="/backtest-review/__OTHER_ASSET__">→ __OTHER_ASSET__</a>
+  </span>
 </header>
 <div id="diagBanner" class="banner" style="display:none"></div>
 <div class="layout">
@@ -3899,17 +3908,19 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
       <table class="trades" id="tradeTable">
         <thead><tr>
           <th data-col="idx">#</th>
+          <th data-col="src">Src</th>
           <th data-col="entry_ts">Entry</th>
           <th data-col="exit_ts">Exit</th>
           <th data-col="side">Side</th>
           <th data-col="entry_price">Entry $</th>
           <th data-col="exit_price">Exit $</th>
-          <th data-col="pnl_pct">PnL %</th>
+          <th data-col="pnl_pct" title="Net of round-trip cost (the metric used everywhere on this page)">Net %</th>
+          <th data-col="pnl_pct_gross" title="Raw price-only return; pnl_pct - round_trip_cost_pct = pnl_pct_gross. Lets you see what the engine produced before costs.">Gross %</th>
           <th data-col="duration">Dur</th>
           <th data-col="entry_reason">Entry reason</th>
           <th data-col="exit_reason">Exit reason</th>
         </tr></thead>
-        <tbody><tr><td colspan="10" class="empty">Pick a symbol then a run.</td></tr></tbody>
+        <tbody><tr><td colspan="12" class="empty">Pick a symbol then a run.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3963,6 +3974,9 @@ let allRuns = [];
 let currentSym = null;
 let currentRun = null;
 let currentTrades = [];
+let liveOverlay = []; // 7D live rounds, reconstructed
+let liveOverlayActive = false;
+let liveOverlayAccts = []; // accts with hourly_reconfig active configs for this sym
 let tradeSortCol = "entry_ts";
 let tradeSortDir = 1;
 let runSortCol = "ts_last";
@@ -4016,9 +4030,10 @@ async function onSymbolChange(sym) {
   currentSym = sym;
   currentRun = null;
   currentTrades = [];
+  liveOverlay = [];
   document.getElementById("resultStats").textContent = "—";
   document.getElementById("diagBanner").style.display = "none";
-  await loadRuns(sym);
+  await Promise.all([loadRuns(sym), loadLiveOverlayMeta(sym)]);
   // Auto-pick top of sorted list
   if (allRuns.length) {
     await onRunChange(allRuns[0]);
@@ -4026,6 +4041,43 @@ async function onSymbolChange(sym) {
     renderTradeTable([]);
     renderKnobs(null);
     drawChartBars();
+  }
+}
+
+async function loadLiveOverlayMeta(sym) {
+  // Probe which accounts have an hourly_reconfig active_config for this sym.
+  // If none → hide the toggle entirely. The 7D overlay is only meaningful for
+  // symbols whose live behavior is driven by per-sym custom hourly settings.
+  liveOverlayAccts = [];
+  const lbl = document.getElementById("liveOverlayLabel");
+  const info = document.getElementById("liveOverlayInfo");
+  try {
+    const data = await fetchJSON(`/historic_recent_overlay?sym=${encodeURIComponent(sym)}&days=7`);
+    liveOverlayAccts = data.accounts || [];
+    if (liveOverlayAccts.length) {
+      lbl.style.display = "";
+      info.style.display = "";
+      info.textContent = `acct: ${liveOverlayAccts.join(', ')}`;
+    } else {
+      lbl.style.display = "none";
+      info.style.display = "none";
+    }
+  } catch(e) {
+    lbl.style.display = "none";
+    info.style.display = "none";
+  }
+}
+
+async function refreshLiveOverlay() {
+  if (!liveOverlayActive || !currentSym) {
+    liveOverlay = [];
+    return;
+  }
+  try {
+    const data = await fetchJSON(`/historic_recent_overlay?sym=${encodeURIComponent(currentSym)}&days=7`);
+    liveOverlay = data.events || [];
+  } catch(e) {
+    liveOverlay = [];
   }
 }
 
@@ -4114,8 +4166,11 @@ async function onRunChange(runRow) {
 }
 
 async function loadAndDrawTrades(runRow) {
-  const data = await fetchJSON(`/backtest_trades?run=${encodeURIComponent(runRow.run_keyed)}&sym=${encodeURIComponent(currentSym)}&max=999999`);
-  currentTrades = data.trades || [];
+  const [bt, _] = await Promise.all([
+    fetchJSON(`/backtest_trades?run=${encodeURIComponent(runRow.run_keyed)}&sym=${encodeURIComponent(currentSym)}&max=999999`),
+    refreshLiveOverlay(),
+  ]);
+  currentTrades = bt.trades || [];
   await drawChartBars(runRow);
   renderTradeTable(currentTrades);
   await drawEquity(runRow);
@@ -4168,6 +4223,34 @@ async function drawChartBars(runRow) {
         shape: "circle",
         text: (t.pnl_pct>=0?"+":"") + (t.pnl_pct||0).toFixed(1) + "%",
       });
+    }
+  }
+  // 7D LIVE OVERLAY — grayscale hollow diamonds, visually quieter than backtest.
+  // Plotted on top of backtest markers so user can see "live did X here, backtest did Y."
+  // Mandate (2026-05-18): visually subdued = "reference only," not primary data.
+  if (liveOverlayActive) {
+    for (const t of liveOverlay) {
+      const isLong = (t.side || "LONG").toUpperCase() === "LONG";
+      if (t.entry_ts) {
+        markers.push({
+          time: t.entry_ts,
+          position: isLong ? "belowBar" : "aboveBar",
+          color: "#8b949e",
+          shape: "circle",
+          text: `◇L·${t.account||""}`,
+          size: 0,
+        });
+      }
+      if (t.exit_ts) {
+        markers.push({
+          time: t.exit_ts,
+          position: isLong ? "aboveBar" : "belowBar",
+          color: "#8b949e",
+          shape: "circle",
+          text: `◇X·${(t.pnl_pct>=0?"+":"") + (t.pnl_pct||0).toFixed(2)}%`,
+          size: 0,
+        });
+      }
     }
   }
   // LWC needs markers sorted by time.
@@ -4223,33 +4306,50 @@ function initCharts() {
 
 function renderTradeTable(trades) {
   const tbody = document.querySelector("#tradeTable tbody");
-  if (!trades.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">No trades for this run.</td></tr>`;
+  // Build merged list: backtest trades + (optionally) live overlay rounds
+  const merged = trades.map(t => ({...t, _src: "BT"}));
+  if (liveOverlayActive) {
+    for (const t of liveOverlay) {
+      merged.push({...t, _src: `LIVE:${t.account||"?"}`});
+    }
+  }
+  if (!merged.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty">No trades for this run.</td></tr>`;
     return;
   }
-  const sorted = [...trades];
-  sorted.sort((a, b) => {
+  merged.sort((a, b) => {
     let av, bv;
     if (tradeSortCol === "duration") { av = (a.exit_ts||0) - (a.entry_ts||0); bv = (b.exit_ts||0) - (b.entry_ts||0); }
-    else if (tradeSortCol === "idx") { av = trades.indexOf(a); bv = trades.indexOf(b); }
+    else if (tradeSortCol === "idx") { av = merged.indexOf(a); bv = merged.indexOf(b); }
+    else if (tradeSortCol === "src") { av = a._src; bv = b._src; }
     else { av = a[tradeSortCol]; bv = b[tradeSortCol]; }
     if (av === bv) return 0;
     if (av === undefined || av === null) return 1;
     if (bv === undefined || bv === null) return -1;
     return tradeSortDir * (av < bv ? -1 : 1);
   });
-  const html = sorted.map((t, i) => {
+  const html = merged.map((t) => {
     const dur = (t.exit_ts||0) - (t.entry_ts||0);
     const pcCls = (t.pnl_pct||0) >= 0 ? "win" : "los";
     const sideCls = (t.side||"LONG").toUpperCase() === "LONG" ? "long" : "short";
-    return `<tr data-entry="${t.entry_ts||0}" data-exit="${t.exit_ts||0}">
-      <td>${trades.indexOf(t)+1}</td>
+    const isLive = t._src && t._src.startsWith("LIVE");
+    const rowCls = isLive ? "live-row" : "";
+    const grossCell = (t.pnl_pct_gross !== undefined && t.pnl_pct_gross !== null)
+                     ? `<td class="${pcCls}">${fmtPct(t.pnl_pct_gross)}</td>`
+                     : `<td class="${pcCls}" title="No gross recorded (older file or live event)">${isLive ? '—' : fmtPct(t.pnl_pct)}</td>`;
+    const srcCell = isLive
+      ? `<td class="live-tag">${t._src}</td>`
+      : `<td>BT</td>`;
+    return `<tr class="${rowCls}" data-entry="${t.entry_ts||0}" data-exit="${t.exit_ts||0}">
+      <td>${merged.indexOf(t)+1}</td>
+      ${srcCell}
       <td>${fmtTs(t.entry_ts)}</td>
       <td>${fmtTs(t.exit_ts)}</td>
       <td class="${sideCls}">${t.side||""}</td>
       <td>${fmtNum(t.entry_price,6)}</td>
       <td>${fmtNum(t.exit_price,6)}</td>
       <td class="${pcCls}">${fmtPct(t.pnl_pct)}</td>
+      ${grossCell}
       <td>${fmtDur(dur)}</td>
       <td>${t.entry_reason||t.entry_type||""}</td>
       <td>${t.exit_reason||""}</td>
@@ -4348,6 +4448,13 @@ document.getElementById("knobsAll").addEventListener("change", () => { if (curre
   if (runRow) loadAndDrawKnobs(runRow);
 }});
 document.getElementById("utcMode").addEventListener("change", () => renderTradeTable(currentTrades));
+document.getElementById("liveOverlay").addEventListener("change", async (e) => {
+  liveOverlayActive = e.target.checked;
+  await refreshLiveOverlay();
+  const runRow = currentRun ? allRuns.find(r => r.run_keyed === currentRun) : null;
+  if (runRow) await drawChartBars(runRow);
+  renderTradeTable(currentTrades);
+});
 
 (async () => {
   const sym = await loadSymbols();
@@ -4374,6 +4481,362 @@ def backtest_review_page(asset: str):
             .replace("__ASSET__", asset)
             .replace("__DEFAULT_SYM__", default_sym)
             .replace("__OTHER_ASSET__", other))
+    from flask import make_response
+    resp = make_response(html)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return _no_cache(resp)
+
+
+@app.route("/backtest_review_top")
+def backtest_review_top_data():
+    """Pool-level leaderboard for the /backtest-review/<asset>/top page.
+    Reads precomputed runs_ranked (refreshed every 30s by _precompute_loop),
+    filters by asset class via run's symbol list, applies CLAUDE.md sample
+    floors as flags (NOT silent filtering — diagnostic stays visible but
+    badged so user can't promote them by mistake)."""
+    asset = request.args.get("asset", "crypto").lower()
+    if asset not in ("crypto", "stocks"):
+        return jsonify({"error": "asset must be crypto or stocks"}), 400
+    sort_by = request.args.get("sort", "pool_sharpe")
+    limit = int(request.args.get("limit", 100))
+    min_trades = int(request.args.get("min_trades", 0))
+    body = _precomputed.get("runs_ranked")
+    if not body:
+        return jsonify({"warming": True, "rows": []}), 503
+    try:
+        rows = json.loads(body)
+    except Exception:
+        return jsonify({"error": "cache parse"}), 500
+    # Per-row asset class via syms (crypto if any USDC/USDT, else stocks).
+    def _row_asset(r):
+        for s in (r.get("syms") or []):
+            if _is_crypto_sym(s):
+                return "crypto"
+        return "stocks"
+    rows = [r for r in rows if _row_asset(r) == asset]
+    if min_trades > 0:
+        rows = [r for r in rows if r.get("trades", 0) >= min_trades]
+    # Sample-floor flag per CLAUDE.md: ≥48 crypto syms or ≥100 stocks, ≥1yr,
+    # ≥30 trades per sym (approximated as total_trades / n_syms ≥ 30).
+    min_syms = 48 if asset == "crypto" else 100
+    for r in rows:
+        n_syms = r.get("n_syms", 0)
+        years = r.get("n_years", 0)
+        trades = r.get("trades", 0)
+        avg_per_sym = trades / max(1, n_syms)
+        sample_ok = (n_syms >= min_syms) and (years >= 1.0) and (avg_per_sym >= 30)
+        r["sample_ok"] = bool(sample_ok)
+        # Promotable per CLAUDE.md: pool_sharpe > 1.0 AND sample floor cleared.
+        # DD filter not yet wired (max_dd_pct TBD in runs_ranked).
+        r["promotable"] = bool(sample_ok and r.get("pool_sharpe", 0) > 1.0)
+        r["gain_per_mo"] = round(r.get("gain_per_yr", 0) / 12.0, 2)
+        r["machine_hint"] = ""  # placeholder for future ext-archive labeling
+    # Sort
+    SORT_DESC = {"pool_sharpe", "sym_sharpe", "gain_per_yr", "gain_per_mo",
+                 "gain_sym_yr", "avg_gain_trade", "trades", "wr",
+                 "total_gain_pct", "mtime", "n_syms", "n_years"}
+    rev = sort_by in SORT_DESC
+    rows.sort(key=lambda r: (r.get(sort_by) is None, -r.get(sort_by, 0) if rev else r.get(sort_by, 0)))
+    rows = rows[:limit]
+    return jsonify({
+        "asset": asset,
+        "sort": sort_by,
+        "n_rows": len(rows),
+        "rows": rows,
+        "claude_md_sample_floor": {
+            "min_syms": min_syms,
+            "min_years": 1.0,
+            "min_trades_per_sym": 30,
+        },
+    })
+
+
+@app.route("/historic_recent_overlay")
+def historic_recent_overlay():
+    """7D live overlay for the per-symbol /backtest-review page.
+    Returns reconstructed live rounds for a symbol, filtered to the last 7
+    days, ONLY for accounts that have a winning hourly_reconfig active_config
+    entry for this (sym, side). The premise is: per CLAUDE.md, custom hourly
+    overrides should be sanity-checked against the live trade outcomes they
+    produced. Symbols without active per-sym configs return empty — no live
+    overlay needed there.
+
+    Output:
+      {
+        accounts: ["fin","inf",...],
+        active_configs: {acct: {sym_side: {winning_tag, n_overrides}}},
+        events: [...flat list of reconstructed close events keyed by acct+side...]
+      }
+    """
+    sym = request.args.get("sym", "").upper()
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    days = int(request.args.get("days", 7))
+    cutoff = int(time.time()) - days * 86400
+    is_crypto = _is_crypto_sym(sym)
+    candidate_accts = list(CRYPTO_ACCOUNTS_ORDER) if is_crypto else list(STOCK_ACCOUNTS_ORDER)
+    active_configs: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for acct in candidate_accts:
+        p = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
+        try:
+            data = json.loads(p.read_text())
+        except Exception:
+            continue
+        per_side: Dict[str, Dict[str, Any]] = {}
+        for side in ("LONG", "SHORT"):
+            rec = data.get(f"{sym}_{side}") or {}
+            wt = rec.get("winning_tag")
+            if wt:
+                per_side[side] = {"winning_tag": wt, "n_overrides": len(rec.get("overrides", {}) or {})}
+        if per_side:
+            active_configs[acct] = per_side
+    # Pull recent live events from history dirs (only for accts with active configs)
+    flat_events: List[Dict[str, Any]] = []
+    rounds_by_acct_side: Dict[str, List[Dict[str, Any]]] = {}
+    for acct in active_configs:
+        base = _history_dir_for(acct)
+        for side in ("LONG", "SHORT"):
+            if side not in active_configs[acct]:
+                continue
+            p = base / f"{sym}_{side}.jsonl"
+            if not p.exists():
+                continue
+            events: List[Dict[str, Any]] = []
+            try:
+                txt = p.read_text()
+            except Exception:
+                continue
+            for line in txt.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    ev = json.loads(line)
+                except Exception:
+                    continue
+                ts_str = ev.get("ts", "")
+                try:
+                    unix_ts = int(datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp())
+                except Exception:
+                    unix_ts = 0
+                if unix_ts < cutoff:
+                    continue
+                ev["unix_ts"] = unix_ts
+                ev["side"] = side
+                ev["account"] = acct
+                ev["symbol"] = sym
+                events.append(ev)
+            events.sort(key=lambda e: e.get("unix_ts", 0))
+            rounds = _reconstruct_trades_from_events(events)
+            for r in rounds:
+                r["account"] = acct
+                r["live"] = True
+                flat_events.append(r)
+            rounds_by_acct_side[f"{acct}:{side}"] = rounds
+    return jsonify({
+        "sym": sym,
+        "days": days,
+        "cutoff_ts": cutoff,
+        "accounts": list(active_configs.keys()),
+        "active_configs": active_configs,
+        "events": flat_events,
+        "rounds_by_acct_side": rounds_by_acct_side,
+    })
+
+
+_BACKTEST_REVIEW_TOP_HTML = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<style>
+  :root { --bg:#0d1117; --bg2:#161b22; --bd:#30363d; --fg:#c9d1d9; --mute:#8b949e;
+          --acc:#58a6ff; --win:#3fb950; --los:#f85149; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { font-family:-apple-system,sans-serif; margin:0; background:var(--bg); color:var(--fg); font-size:13px; }
+  header { padding:8px 16px; background:var(--bg2); border-bottom:1px solid var(--bd);
+           display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:16px; color:var(--acc); }
+  header a { color:var(--acc); text-decoration:none; }
+  header a:hover { text-decoration: underline; }
+  .pill { background:var(--bg); border:1px solid var(--bd); padding:3px 8px;
+          border-radius:4px; font-size:11px; color:var(--mute); }
+  .pill.net { background:#0d2818; color:var(--win); border-color:var(--win); }
+  .pill.diag { background:#3d1114; color:var(--los); border-color:var(--los); }
+  .pill.prom { background:#0d2818; color:var(--win); font-weight:bold; }
+  select, input, button { background:var(--bg); color:var(--fg); border:1px solid var(--bd);
+                          padding:4px 8px; border-radius:4px; font-size:12px; }
+  main { padding:12px 16px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { position:sticky; top:0; background:var(--bg2); border-bottom:1px solid var(--bd);
+       padding:6px 8px; text-align:left; color:var(--acc); cursor:pointer; user-select:none; }
+  th:hover { background:var(--bd); }
+  th.sorted::after { content:' \25BE'; }
+  th.sorted-asc::after { content:' \25B4'; }
+  td { padding:4px 8px; border-bottom:1px solid #21262d; font-family:ui-monospace,monospace; }
+  tr:hover td { background:var(--bg2); cursor:pointer; }
+  tr.promotable td { background:#0d2818; }
+  td.win { color:var(--win); }
+  td.los { color:var(--los); }
+  .tagcol { display:flex; gap:4px; flex-wrap:wrap; }
+  .stagebar { background:var(--bg2); padding:8px 16px; border-bottom:1px solid var(--bd); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .empty { color:var(--mute); padding:24px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>__TITLE__ — Top Runs</h1>
+  <span class="pill net">All numbers NET of round-trip cost (~__RT_COST__% per trade)</span>
+  <span style="margin-left:auto">
+    <a href="/backtest-review/__ASSET__">← per-symbol review</a> &nbsp;|&nbsp;
+    <a href="/backtest-review/__OTHER_ASSET__/top">switch to __OTHER_ASSET__</a>
+  </span>
+</header>
+<div class="stagebar">
+  <label>Sort: <select id="sortPick">
+    <option value="pool_sharpe">pool_sharpe (canonical)</option>
+    <option value="sym_sharpe">sym_sharpe (avg of per-sym, ±5 cap)</option>
+    <option value="gain_per_mo">gain / month</option>
+    <option value="gain_per_yr">gain / year</option>
+    <option value="gain_sym_yr">gain / sym / year</option>
+    <option value="avg_gain_trade">avg gain / trade</option>
+    <option value="wr">win rate</option>
+    <option value="trades">trade count</option>
+    <option value="mtime">most recent</option>
+  </select></label>
+  <label>Min trades: <input id="minTrades" type="number" value="0" min="0" style="width:80px"></label>
+  <label>Limit: <input id="limit" type="number" value="100" min="10" max="500" style="width:80px"></label>
+  <label><input type="checkbox" id="promotableOnly"> Promotable only (sample floor + pool_sh &gt; 1.0)</label>
+  <label><input type="checkbox" id="sampleOk"> Sample-floor-cleared only</label>
+  <span class="pill" id="resultsLbl">—</span>
+</div>
+<main>
+  <table id="topTable">
+    <thead><tr>
+      <th data-col="run">Run</th>
+      <th data-col="tags">Tags</th>
+      <th data-col="pool_sharpe">pool_sharpe</th>
+      <th data-col="sym_sharpe">sym_sharpe</th>
+      <th data-col="avg_gain_trade">avg/trade %</th>
+      <th data-col="gain_per_mo">% / month</th>
+      <th data-col="gain_per_yr">% / year</th>
+      <th data-col="gain_sym_yr">% / sym / yr</th>
+      <th data-col="trades">trades</th>
+      <th data-col="n_syms">syms</th>
+      <th data-col="n_years">years</th>
+      <th data-col="wr">WR</th>
+      <th data-col="mtime">date</th>
+    </tr></thead>
+    <tbody><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
+  </table>
+</main>
+<script>
+const ASSET = "__ASSET__";
+let rawRows = [];
+let sortCol = "pool_sharpe";
+let sortDir = -1;
+
+function fmtNum(x, d=4) { if (x===null||x===undefined||isNaN(x)) return ""; return Number(x).toFixed(d); }
+function fmtDate(t) { if (!t) return "—"; return new Date(t*1000).toISOString().slice(0,10); }
+
+async function loadAndRender() {
+  const sortBy = document.getElementById("sortPick").value;
+  const minT = document.getElementById("minTrades").value || 0;
+  const lim = document.getElementById("limit").value || 100;
+  sortCol = sortBy;
+  const url = `/backtest_review_top?asset=${ASSET}&sort=${sortBy}&min_trades=${minT}&limit=${lim}`;
+  const tbody = document.querySelector("#topTable tbody");
+  tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading…</td></tr>`;
+  let data;
+  try { data = await fetch(url).then(r => r.json()); }
+  catch(e) { tbody.innerHTML = `<tr><td colspan="13" class="empty">Error: ${e.message}</td></tr>`; return; }
+  if (data.warming) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Precompute warming up… refresh in a few seconds.</td></tr>`;
+    return;
+  }
+  rawRows = data.rows || [];
+  render();
+}
+
+function render() {
+  const tbody = document.querySelector("#topTable tbody");
+  const promOnly = document.getElementById("promotableOnly").checked;
+  const sfOnly = document.getElementById("sampleOk").checked;
+  let rows = rawRows;
+  if (promOnly) rows = rows.filter(r => r.promotable);
+  else if (sfOnly) rows = rows.filter(r => r.sample_ok);
+  document.getElementById("resultsLbl").textContent = `${rows.length} rows · sorted by ${sortCol} ${sortDir<0?'▾':'▴'}`;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">No rows match current filters.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const promCls = r.promotable ? "promotable" : "";
+    const tags = [];
+    if (r.promotable) tags.push(`<span class="pill prom">PROMOTABLE</span>`);
+    else if (r.sample_ok) tags.push(`<span class="pill">sample-floor ✓</span>`);
+    else tags.push(`<span class="pill diag">DIAGNOSTIC</span>`);
+    // Click-through: first sym in run → per-symbol page
+    const sym0 = (r.syms && r.syms[0]) || "";
+    const link = sym0 ? `/backtest-review/${ASSET}#sym=${encodeURIComponent(sym0)}` : `/backtest-review/${ASSET}`;
+    const shCls = r.pool_sharpe >= 1 ? "win" : (r.pool_sharpe < 0 ? "los" : "");
+    return `<tr class="${promCls}" data-link="${link}" title="syms=${(r.syms||[]).slice(0,8).join(', ')}${r.syms && r.syms.length>8?'…':''}">
+      <td>${r.run}</td>
+      <td class="tagcol">${tags.join('')}</td>
+      <td class="${shCls}">${fmtNum(r.pool_sharpe,4)}</td>
+      <td>${fmtNum(r.sym_sharpe,4)}</td>
+      <td>${fmtNum(r.avg_gain_trade,3)}</td>
+      <td>${fmtNum(r.gain_per_mo,2)}</td>
+      <td>${fmtNum(r.gain_per_yr,1)}</td>
+      <td>${fmtNum(r.gain_sym_yr,2)}</td>
+      <td>${r.trades}</td>
+      <td>${r.n_syms}</td>
+      <td>${fmtNum(r.n_years,2)}</td>
+      <td>${(r.wr*100).toFixed(1)}%</td>
+      <td>${fmtDate(r.mtime)}</td>
+    </tr>`;
+  }).join("");
+  document.querySelectorAll("#topTable th").forEach(th => {
+    th.classList.remove("sorted","sorted-asc");
+    if (th.dataset.col === sortCol) th.classList.add(sortDir<0 ? "sorted" : "sorted-asc");
+  });
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => { window.location.href = tr.dataset.link; });
+  });
+}
+
+document.querySelectorAll("#topTable th").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (col === "run" || col === "tags") return;
+    document.getElementById("sortPick").value = col;
+    loadAndRender();
+  });
+});
+document.getElementById("sortPick").addEventListener("change", loadAndRender);
+document.getElementById("minTrades").addEventListener("change", loadAndRender);
+document.getElementById("limit").addEventListener("change", loadAndRender);
+document.getElementById("promotableOnly").addEventListener("change", render);
+document.getElementById("sampleOk").addEventListener("change", render);
+loadAndRender();
+</script>
+</body>
+</html>
+"""
+
+
+@app.route("/backtest-review/<asset>/top")
+def backtest_review_top_page(asset: str):
+    asset = asset.lower()
+    if asset not in ("crypto", "stocks"):
+        return f"<p>Unknown asset class: {asset}.</p>", 404
+    title = "Crypto Backtest" if asset == "crypto" else "Stocks Backtest"
+    other = "stocks" if asset == "crypto" else "crypto"
+    rt_cost = "0.08" if asset == "crypto" else "0.05"
+    html = (_BACKTEST_REVIEW_TOP_HTML
+            .replace("__TITLE__", title)
+            .replace("__ASSET__", asset)
+            .replace("__OTHER_ASSET__", other)
+            .replace("__RT_COST__", rt_cost))
     from flask import make_response
     resp = make_response(html)
     resp.headers["Content-Type"] = "text/html; charset=utf-8"

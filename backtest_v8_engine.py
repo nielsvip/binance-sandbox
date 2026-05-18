@@ -1674,6 +1674,33 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
 
 
 # ═══════════════════════════════════════════════════════════════
+# NET PnL HELPER — 2026-05-18 user mandate: every pnl_pct emitted by this
+# engine to JSONL or to _live_pnl["all_pnl_pcts"] MUST be NET of round-trip
+# cost (bid-ask spread + slippage + crypto commission). The raw price-only
+# value is preserved as pnl_pct_gross for audit. Without this, the chart and
+# all downstream sweeps showed gross PnL that overstates by ~10 bps/trade —
+# many low-gain "winners" turn into net losers when traded live.
+#
+# Per-symbol asset detection: USDC/USDT-suffix = crypto, else stocks.
+# Defaults: crypto 0.08% (Binance perp realistic maker/taker mix),
+#           stocks 0.05% (Tradier 0-commission, bid-ask + impact only).
+# Override via config.ROUND_TRIP_COST_PCT / config_tradier.ROUND_TRIP_COST_PCT.
+# ═══════════════════════════════════════════════════════════════
+def _round_trip_cost_for_sym(sym):
+    s = (sym or "").upper()
+    if s.endswith("USDC") or s.endswith("USDT"):
+        try:
+            return float(getattr(config, "ROUND_TRIP_COST_PCT", 0.08))
+        except Exception:
+            return 0.08
+    try:
+        import config_tradier as _ct
+        return float(getattr(_ct, "ROUND_TRIP_COST_PCT", 0.05))
+    except Exception:
+        return 0.05
+
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 6b: PnL computation — pair OPEN→CLOSE by position_key
 # ═══════════════════════════════════════════════════════════════
 def _reconstruct_chart_trades(executed_trades):
@@ -1728,11 +1755,13 @@ def _reconstruct_chart_trades(executed_trades):
                 continue
             close_qty = min(qty, rd["qty"])
             if side == "LONG":
-                pnl_pct = (px - rd["entry_price"]) / rd["entry_price"] * 100.0
+                pnl_pct_gross = (px - rd["entry_price"]) / rd["entry_price"] * 100.0
             else:
-                pnl_pct = (rd["entry_price"] - px) / rd["entry_price"] * 100.0
+                pnl_pct_gross = (rd["entry_price"] - px) / rd["entry_price"] * 100.0
             rd["qty"] -= close_qty
             if rd["qty"] <= 1e-9:
+                _rt_cost = _round_trip_cost_for_sym(sym)
+                pnl_pct_net = pnl_pct_gross - _rt_cost
                 closed_by_sym.setdefault(sym, []).append({
                     "symbol": sym, "side": side,
                     "entry_type": "HEDGE" if rd["is_hedge"] else ("AUGMENT" if "AUGMENT" in rd["entry_reason"].upper() else "OPEN"),
@@ -1742,8 +1771,10 @@ def _reconstruct_chart_trades(executed_trades):
                     "entry_ts": rd["entry_ts"], "entry_price": float(rd["entry_price"]),
                     "exit_bar": 0,
                     "exit_ts": ts, "exit_price": float(px),
-                    "pnl_pct": float(pnl_pct),
-                    "pnl_usd": float((pnl_pct / 100.0) * (rd["entry_price"] * close_qty)),
+                    "pnl_pct": float(pnl_pct_net),
+                    "pnl_pct_gross": float(pnl_pct_gross),
+                    "round_trip_cost_pct": _rt_cost,
+                    "pnl_usd": float((pnl_pct_net / 100.0) * (rd["entry_price"] * close_qty)),
                     "duration_bars": 0,
                     "duration_sec": ts - rd["entry_ts"],
                     "stream": "tier2",
@@ -4897,8 +4928,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if _entry <= 0 or _mark <= 0:
             continue
         _is_long = _amt > 0
-        _mtm_pnl_pct = ((_mark - _entry) / _entry * 100.0) if _is_long else ((_entry - _mark) / _entry * 100.0)
-        _mtm_pnl_dollars = ((_mark - _entry) * abs(_amt)) if _is_long else ((_entry - _mark) * abs(_amt))
+        _mtm_pnl_pct_gross = ((_mark - _entry) / _entry * 100.0) if _is_long else ((_entry - _mark) / _entry * 100.0)
+        _mtm_pnl_dollars_gross = ((_mark - _entry) * abs(_amt)) if _is_long else ((_entry - _mark) * abs(_amt))
+        _sym_for_mtm = _pk.split(':', 1)[1].rsplit('_', 1)[0] if ':' in _pk else _pk.rsplit('_', 1)[0]
+        _mtm_rt_cost = _round_trip_cost_for_sym(_sym_for_mtm)
+        _mtm_pnl_pct = _mtm_pnl_pct_gross - _mtm_rt_cost
+        _mtm_pnl_dollars = _mtm_pnl_dollars_gross - (_mtm_rt_cost / 100.0) * (_entry * abs(_amt))
         _live_pnl["all_pnl_pcts"].append(_mtm_pnl_pct)
         _live_pnl["all_pnl_dollars"].append(_mtm_pnl_dollars) if "all_pnl_dollars" in _live_pnl else None
         _live_pnl["running_pnl_pct"] += _mtm_pnl_pct
@@ -4909,7 +4944,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         else:
             _live_pnl["n_losses"] += 1
             _mtm_losses += 1
-        _sym_for_mtm = _pk.split(':', 1)[1].rsplit('_', 1)[0] if ':' in _pk else _pk.rsplit('_', 1)[0]
         executed_trades.append({
             "timestamp": _mtm_final_ts,
             "symbol": _sym_for_mtm,
@@ -4921,6 +4955,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             "action": "MTM_FINAL_BAR_NOLIES_RULE2",
             "reason": "MTM_FINAL_BAR_NOLIES_RULE2",
             "pnl_pct": _mtm_pnl_pct,
+            "pnl_pct_gross": _mtm_pnl_pct_gross,
+            "round_trip_cost_pct": _mtm_rt_cost,
             "pnl_dollars": _mtm_pnl_dollars,
             "is_full_close": True,
         })

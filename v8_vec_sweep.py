@@ -1928,6 +1928,25 @@ def simulate_one_symbol(
 # Trade event writer → /history/<acct>/<SYM>_<SIDE>.jsonl compatible
 # ════════════════════════════════════════════════════════════════════════════════
 
+def _vec_round_trip_cost_for_sym(sym: str) -> float:
+    """2026-05-18: NET pnl_pct mandate. Per-symbol asset detection mirrors
+    backtest_v8_engine._round_trip_cost_for_sym so JSONL output stays consistent
+    across engines. USDC/USDT-suffix = crypto (0.08% default), else stocks
+    (0.05%). Override via config.ROUND_TRIP_COST_PCT (already exists, defaults
+    to 0.10) or config_tradier.ROUND_TRIP_COST_PCT."""
+    s = (sym or "").upper()
+    if s.endswith("USDC") or s.endswith("USDT"):
+        try:
+            return float(getattr(config, "ROUND_TRIP_COST_PCT", 0.08))
+        except Exception:
+            return 0.08
+    try:
+        import config_tradier as _ct
+        return float(getattr(_ct, "ROUND_TRIP_COST_PCT", 0.05))
+    except Exception:
+        return 0.05
+
+
 def write_history_jsonl(
     account: str,
     symbol: str,
@@ -1936,10 +1955,18 @@ def write_history_jsonl(
     out_root: Path,
 ):
     """Append events to <out_root>/<account>/<SYMBOL>_<SIDE>.jsonl in the
-    schema used by /history/<acct>/*.jsonl (used by /:5057 dashboard etc.)."""
+    schema used by /history/<acct>/*.jsonl (used by /:5057 dashboard etc.).
+
+    2026-05-18 NET MANDATE: ev.pnl_pct is the ENGINE-INTERNAL gross
+    price-only return. The JSONL row gets pnl_pct = NET (gross minus per-symbol
+    round-trip cost) and pnl_pct_gross = original gross for audit. This makes
+    the JSONL consistent with the trade_returns list that the engine already
+    cost-adjusts (this function's row is what chart_server and all sweep
+    aggregators consume, so it MUST be net by default)."""
     acct_dir = out_root / account
     acct_dir.mkdir(parents=True, exist_ok=True)
     path = acct_dir / f"{symbol}_{side}.jsonl"
+    _rt_cost = _vec_round_trip_cost_for_sym(symbol)
     with path.open("w") as fh:
         for ev in events:
             iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
@@ -1953,7 +1980,11 @@ def write_history_jsonl(
                 "indicators": {},
             }
             if ev.pnl_pct:
-                row["pnl_pct"] = round(ev.pnl_pct, 6)
+                _gross = float(ev.pnl_pct)
+                _net = _gross - _rt_cost
+                row["pnl_pct"] = round(_net, 6)
+                row["pnl_pct_gross"] = round(_gross, 6)
+                row["round_trip_cost_pct"] = _rt_cost
             fh.write(json.dumps(row) + "\n")
     return path
 
@@ -2047,14 +2078,26 @@ def run_sweep(
                 if returns:
                     returns_by_sym[key] = returns
 
-                # Write each event to the trades JSONL (source of truth)
+                # Write each event to the trades JSONL (source of truth).
+                # 2026-05-18 NET MANDATE: pnl_pct stored NET of round-trip cost;
+                # raw price-only return preserved as pnl_pct_gross. Mirrors
+                # write_history_jsonl above so both outputs are consistent.
+                _trd_rt_cost = _vec_round_trip_cost_for_sym(sym)
                 for ev in events:
                     iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
-                    trd.write(json.dumps({
+                    _row = {
                         "ts": iso, "symbol": sym, "side": side, "type": ev.type,
                         "qty": ev.qty, "price": ev.price, "value": ev.value,
-                        "reason": ev.reason, "pnl_pct": ev.pnl_pct,
-                    }) + "\n")
+                        "reason": ev.reason,
+                    }
+                    if ev.pnl_pct:
+                        _gross = float(ev.pnl_pct)
+                        _row["pnl_pct"] = _gross - _trd_rt_cost
+                        _row["pnl_pct_gross"] = _gross
+                        _row["round_trip_cost_pct"] = _trd_rt_cost
+                    else:
+                        _row["pnl_pct"] = ev.pnl_pct
+                    trd.write(json.dumps(_row) + "\n")
 
                 # Per-sym summary row
                 n_trades = len(returns)
