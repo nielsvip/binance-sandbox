@@ -123,6 +123,86 @@ POSITION_NOTIONAL_USD = float(os.getenv("STRUCT_V4_NOTIONAL", "500"))
 MAX_CONCURRENT_POSITIONS = int(os.getenv("STRUCT_V4_MAX_POSITIONS", "5"))
 MAX_TOTAL_DEPLOYED_USD = float(os.getenv("STRUCT_V4_MAX_DEPLOYED", "2500"))
 
+# ════════════════════════════════════════════════════════════════════════════
+# PER-SYMBOL OVERRIDES + UNIVERSE DROPS (2026-05-18) — applied from synthesized
+# 5-sector + 7-per-symbol agent reports. ALL [DIAGNOSTIC] per CLAUDE.md sample
+# floor (per-sector n<100). Risk-bounded by Day-1 micro-sizing + monitors.
+# Each per-sym agent independently confirmed the unified rule. See:
+#   /tmp/sector_analysis_*.md (5 sectors)
+#   /tmp/per_sym_{SNDK,MU,PLTR,NVDA_AMD,AVGO_LRCX_INTC_TXN,GOOGL}.md (7 deep-dives)
+# Toggle via env STRUCT_V4_OVERRIDES_ENABLED=false to revert behavior.
+# ════════════════════════════════════════════════════════════════════════════
+OVERRIDES_ENABLED = os.getenv("STRUCT_V4_OVERRIDES_ENABLED", "true").lower() == "true"
+
+# Symbols to DROP from universe at runtime (block all entries).
+# Tagged with originating agent verdict.
+UNIVERSE_DROPS = {
+    # tech_ai_chips agent: B&H < 0 over window, long-only futile
+    "SAP", "ACN", "PYPL", "TTD", "WDAY", "FIVN", "OLED",
+    # precious_metals agent: low Sharpe + short-side blowup
+    "AGI", "AG",
+    # energy_oil_gas agent: sub-sample, sshp -0.625
+    "BNO",
+    # base_metals_mining agent: sole money-loser
+    "ALB",
+    # small_sectors agent: sub-sample NPZ (<0.5 yr)
+    "NLR", "NUKZ", "MSTR",
+}
+
+# Per-symbol POSITION_MULT — base notional ($500) × mult.
+# Boost confirmed winners (≥4× B&H or median high Sharpe sectors),
+# trim chronic underperformers.
+PER_SYM_POSITION_MULT = {
+    # Base metals 4×B&H clearers (sector analyst)
+    "CLF": 2.0, "MP": 2.0, "FCX": 2.0, "SCCO": 2.0,
+    # Consumer media winners (best sector +0.031 baseline)
+    "STZ": 1.5, "RBLX": 1.5, "DIS": 1.5,
+    # Base metals strong (per agent)
+    "NUE": 1.5, "STLD": 1.5, "TECK": 1.5, "LAC": 1.5,
+    "VALE": 1.5, "BHP": 1.5, "RIO": 1.5,
+    # Uranium/agri/defense/commodities boost candidates
+    "UEC": 1.5, "UUUU": 1.5, "UAN": 1.5, "DAR": 1.5, "HII": 1.5, "GLD": 1.5,
+    "DE": 1.2, "GM": 1.2,
+    # Reduce: low-Sharpe / range-bound names
+    "AGCO": 0.5, "NOC": 0.5, "ROKU": 0.5, "IBIT": 0.5, "USO": 0.5, "RS": 0.5,
+}
+
+# Per-symbol full override dict (richer config — currently informational).
+# When the engine's evaluate_entry/exit consults these, it can adjust min_hold,
+# disable specific exit paths, etc. Day-1 sleeve only consumes UNIVERSE_DROPS
+# and PER_SYM_POSITION_MULT; the structured per-sym recipes from per_sym
+# agents (TREND_HOLD_D for multi-baggers) will be wired in Day-2 after
+# Tier-2 backtest validation.
+PER_SYM_OVERRIDES = {
+    # Tech multi-baggers — per-sym agents proved capture 95-242% with
+    # DISABLE_PPL + DISABLE_WT_EXHAUST + daily-TF entry/exit. Reserved for
+    # Day-2 after backtest_v8_engine validation. NOT consumed Day-1.
+    "SNDK": {"_tag": "TREND_HOLD_D"},
+    "MU":   {"_tag": "TREND_HOLD_D"},
+    "PLTR": {"_tag": "TREND_HOLD_D"},
+    "INTC": {"_tag": "TREND_HOLD_D"},
+    "GOOGL":{"_tag": "TREND_HOLD_D"},
+    "NVDA": {"_tag": "TREND_HOLD_D"},
+    "AVGO": {"_tag": "TREND_HOLD_D"},
+    "TXN":  {"_tag": "TREND_HOLD_D"},
+    "MA":   {"_tag": "TREND_HOLD_D"},
+    "CRWV": {"_tag": "TREND_HOLD_D"},
+    "AXON": {"_tag": "TREND_HOLD_D"},
+    "ASTS": {"_tag": "TREND_HOLD_D"},
+}
+
+def get_position_mult(symbol: str) -> float:
+    """Return per-symbol position-size multiplier (1.0 default)."""
+    if not OVERRIDES_ENABLED:
+        return 1.0
+    return float(PER_SYM_POSITION_MULT.get(symbol, 1.0))
+
+def symbol_dropped(symbol: str) -> bool:
+    """True if symbol should not be traded (entries blocked, existing positions can exit)."""
+    if not OVERRIDES_ENABLED:
+        return False
+    return symbol in UNIVERSE_DROPS
+
 # Cycle
 CYCLE_INTERVAL_SECONDS = int(os.getenv("STRUCT_V4_CYCLE_S", "300"))  # 5 min
 MARKET_OPEN_UTC = dt.time(13, 30)
@@ -807,6 +887,17 @@ def evaluate_entry(ind: Dict[str, Any]
     gate_info: Dict[str, Any] = {}
     if ind.get("current_price") is None:
         return None, ["NO_PRICE"], gate_info
+
+    # === UNIVERSE DROP (USER 2026-05-18) ===
+    # Symbols failed multi-sector-analyst gates: B&H<0, sub-sample, blowup short side, etc.
+    # Block ALL entries; existing positions can still exit normally.
+    symbol = ind.get("symbol", "")
+    if symbol_dropped(symbol):
+        reasons.append(f"UNIVERSE_DROP:{symbol}")
+        gate_info["universe_dropped"] = True
+        return None, reasons, gate_info
+    gate_info["universe_dropped"] = False
+    gate_info["position_mult"] = get_position_mult(symbol)
 
     # === LT-DIRECTION FILTER (USER 2026-05-18) ===
     # Block LONG entries on downtrending symbols (close_TF <= sma_N_TF).
