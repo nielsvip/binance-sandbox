@@ -191,9 +191,10 @@ def run_variant(args: Tuple[int, Dict[str, Any], str]) -> Dict[str, Any]:
         if r.get("skip"):
             skip_count += 1
             continue
+        # NOTE: even if 0 trades, count this sym in rows so we know we evaluated it
+        all_returns.extend(r.get("trade_returns") or [])
         if not r.get("trade_returns"):
             continue
-        all_returns.extend(r["trade_returns"])
         rows.append({
             "sym": r["sym"], "years": r.get("years", 0.0),
             "trades": r["trades"], "wr_pct": r.get("wr_pct", 0.0),
@@ -211,11 +212,8 @@ def run_variant(args: Tuple[int, Dict[str, Any], str]) -> Dict[str, Any]:
     sym_sharpes = []
     # Per-sym sharpe needs reconstructing trade list per sym; we didn't keep that.
     # Use ratio-based proxy: gain_per_trade summary
-    avg_gain_trade = float(arr.mean() * 100.0) if len(arr) > 0 else 0.0  # arr is fractional? let's check
-    # simulate_aggressive returns trade_returns as percent-form (looking at code, _record_event uses value=capital)
-    # Actually trade_returns in v8_struct_v4_aggressive looks like fractional gain (e.g. 0.04 = 4%).
-    # But it's actually stored as pct in record_exit... let's just compute both ways for safety:
-    # We'll report avg as-is and let pool_sharpe be the dimensionless ratio.
+    # v8_struct_v4_aggressive.trade_returns are already in PERCENT units (e.g. 4.0 = +4%)
+    avg_gain_trade = float(arr.mean()) if len(arr) > 0 else 0.0  # %/trade
     n_years = rows[0]["years"] if rows else 2.1
     acc_gain = sum(r["compound_mult"] - 1.0 for r in rows) / max(n_syms, 1) * 100.0  # avg cross-sym
     gain_per_yr = acc_gain / max(n_years, 0.01)
