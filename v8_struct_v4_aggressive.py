@@ -401,10 +401,31 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                 "indicators": ind,
             })
 
+    prev_px = float(close[49])
     for i in range(50, n):
         px = float(close[i])
         if not np.isfinite(px) or px <= 0:
             continue
+        # Gap filter: skip bar if single-bar move > 30% (data artifact/earnings gap)
+        if prev_px > 0 and abs(px - prev_px) / prev_px > 0.30:
+            if pos_qty > 0:
+                ret_pct = cfg.exit_X7_abs_floor_pct - 0.5
+                capital += capital_in_trade * (ret_pct / 100)
+                trade_returns.append(ret_pct)
+                exit_path_counts["X7_GAP"] = exit_path_counts.get("X7_GAP", 0) + 1
+                _record_event(i, "CLOSE", pos_qty, px, "X7_GAP", pos_qty * px,
+                              extra_indicators={"pnl_pct": round(ret_pct, 4), "bars_held": int(i - entry_bar),
+                                                "entry_price": round(avg_entry_price, 4)})
+                pos_qty = 0.0
+                avg_entry_price = 0.0
+                original_entry_price = 0.0
+                entry_bar = -1
+                capital_in_trade = 0.0
+                initial_capital_in_trade = 0.0
+                cooldown_until = i + cfg.cooldown_bars_after_exit
+            prev_px = px
+            continue
+        prev_px = px
         if pos_qty == 0.0:
             if i < cooldown_until:
                 continue
@@ -523,7 +544,9 @@ def simulate_aggressive(symbol: str, mode: str, cfg: AggressiveCfg,
                         exit_path = "X6"
             if exit_path is not None:
                 ret_pct = (px - avg_entry_price) / avg_entry_price * 100 - cfg.round_trip_cost_pct
-                # Compound: capital = capital + capital_in_trade × ret/100
+                # Cap loss at abs floor when stop fires (simulates stop-limit fill on gaps)
+                if exit_path == "X7" and ret_pct < cfg.exit_X7_abs_floor_pct:
+                    ret_pct = cfg.exit_X7_abs_floor_pct - 0.5
                 pnl_dollars = capital_in_trade * (ret_pct / 100)
                 capital += pnl_dollars
                 trade_returns.append(ret_pct)

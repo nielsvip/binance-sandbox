@@ -3864,6 +3864,15 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
   table.knobs tr.differ td.k { color: var(--win); font-weight: bold; }
   table.knobs tr.differ td.v { color: var(--win); }
   table.knobs tr.differ td.live { color: var(--mute); text-decoration: line-through; }
+  /* 2026-05-18: per-symbol LIVE override pane — red because this is the
+     actual customized live trading config for this symbol RIGHT NOW. */
+  table.live-overrides td { color: var(--los); }
+  table.live-overrides td.k { color: var(--los); font-weight: bold; }
+  table.live-overrides td.tag { color: var(--mute); font-size: 10px; }
+  table.live-overrides tr:hover { background: #2d0c0e; }
+  .right h3.live-h3 { color: var(--los); border-bottom-color: var(--los); }
+  .right h3.live-h3 .tag-acct { background: #3d1114; color: var(--los); padding: 1px 5px;
+                                border-radius: 3px; font-size: 10px; margin-left: 4px; }
   table.runs { width: 100%; border-collapse: collapse; font-size: 11px; }
   table.runs th { background: var(--bg); border-bottom: 1px solid var(--bd); padding: 4px 6px;
                   cursor: pointer; user-select: none; text-align: left; color: var(--acc); position: sticky; top: 0; }
@@ -3953,6 +3962,16 @@ _BACKTEST_REVIEW_HTML = r"""<!DOCTYPE html>
       </table>
     </div>
 
+    <div id="liveOverridesWrap" style="display:none">
+      <h3 class="live-h3">PER-SYM LIVE OVERRIDES (7D, customized) <span id="liveOverridesMeta" style="float:right;font-size:10px;color:var(--mute)"></span></h3>
+      <div style="font-size:10px;color:var(--mute);margin-bottom:4px">
+        These are the knob overrides currently driving live trading for this symbol per <code>data/hourly_reconfig/&lt;acct&gt;/active_config.json</code>. Shown in red because they override <code>config.py</code> defaults and change hourly.
+      </div>
+      <div style="max-height:240px; overflow-y:auto">
+        <table class="knobs live-overrides" id="liveOverridesTable"><tbody></tbody></table>
+      </div>
+    </div>
+
     <h3>Knobs TESTED in this run <span id="knobTestedCount" style="float:right;font-size:10px;color:var(--mute)"></span></h3>
     <table class="knobs" id="knobsTested"><tbody><tr><td colspan="3" class="empty">Pick a run.</td></tr></tbody></table>
 
@@ -4012,16 +4031,30 @@ async function fetchJSON(url) {
 
 async function loadSymbols() {
   const sel = document.getElementById("symPicker");
-  let syms = await fetchJSON("/symbols");
-  // Filter by asset class.
-  syms = syms.filter(s => {
-    const isCrypto = s.endsWith("USDC") || s.endsWith("USDT");
-    return ASSET === "crypto" ? isCrypto : !isCrypto;
-  });
+  // /symbols_with_runs returns only symbols that have ≥1 backtest run with
+  // trades — no empty entries in the picker. Falls back to /symbols if the
+  // precompute cache hasn't warmed yet (HTTP 503).
+  let syms = [];
+  try {
+    const r = await fetch(`/symbols_with_runs?asset=${ASSET}`);
+    if (r.ok) {
+      const data = await r.json();
+      syms = data.symbols || [];
+    }
+  } catch(_) {}
+  if (!syms.length) {
+    try {
+      let all = await fetchJSON("/symbols");
+      syms = all.filter(s => {
+        const isCrypto = s.endsWith("USDC") || s.endsWith("USDT");
+        return ASSET === "crypto" ? isCrypto : !isCrypto;
+      });
+    } catch(_) { syms = []; }
+  }
   syms.sort();
   sel.innerHTML = syms.map(s => `<option value="${s}">${s}</option>`).join("");
   const initial = syms.includes(DEFAULT_SYM) ? DEFAULT_SYM : syms[0];
-  sel.value = initial;
+  if (initial) sel.value = initial;
   sel.addEventListener("change", () => onSymbolChange(sel.value));
   return initial;
 }
@@ -4046,14 +4079,19 @@ async function onSymbolChange(sym) {
 
 async function loadLiveOverlayMeta(sym) {
   // Probe which accounts have an hourly_reconfig active_config for this sym.
-  // If none → hide the toggle entirely. The 7D overlay is only meaningful for
-  // symbols whose live behavior is driven by per-sym custom hourly settings.
+  // If none → hide the toggle AND the red overrides pane. Both surfaces are
+  // only meaningful for symbols whose live behavior is driven by per-sym
+  // custom hourly settings.
   liveOverlayAccts = [];
   const lbl = document.getElementById("liveOverlayLabel");
   const info = document.getElementById("liveOverlayInfo");
+  const wrap = document.getElementById("liveOverridesWrap");
+  const tbody = document.querySelector("#liveOverridesTable tbody");
+  const meta = document.getElementById("liveOverridesMeta");
   try {
     const data = await fetchJSON(`/historic_recent_overlay?sym=${encodeURIComponent(sym)}&days=7`);
     liveOverlayAccts = data.accounts || [];
+    const overridesByAS = data.overrides_by_acct_side || {};
     if (liveOverlayAccts.length) {
       lbl.style.display = "";
       info.style.display = "";
@@ -4062,9 +4100,52 @@ async function loadLiveOverlayMeta(sym) {
       lbl.style.display = "none";
       info.style.display = "none";
     }
+    // Red pane: collapse all overrides across accounts × sides into a single
+    // table. If a key has the same value across accts/sides, show one row
+    // with combined tags; otherwise one row per variant.
+    const keys = Object.keys(overridesByAS);
+    if (!keys.length) {
+      wrap.style.display = "none";
+      tbody.innerHTML = "";
+      return;
+    }
+    // Group: knob_key -> {value -> [acct:side, ...]}
+    const grouped = {};
+    let total_n = 0;
+    for (const ackey of keys) {
+      const rec = overridesByAS[ackey] || {};
+      const ovr = rec.overrides || {};
+      for (const k of Object.keys(ovr)) {
+        const v = ovr[k];
+        const vk = JSON.stringify(v);
+        if (!grouped[k]) grouped[k] = {};
+        if (!grouped[k][vk]) grouped[k][vk] = { value: v, tags: [], tag_str: "" };
+        grouped[k][vk].tags.push(ackey);
+        total_n++;
+      }
+    }
+    meta.textContent = `${Object.keys(grouped).length} keys · ${keys.length} acct·side variants`;
+    // Render: sorted by key, with grouping
+    const rows = [];
+    const ks = Object.keys(grouped).sort();
+    for (const k of ks) {
+      const variants = grouped[k];
+      for (const vk of Object.keys(variants)) {
+        const ent = variants[vk];
+        const tagStr = ent.tags.join(', ');
+        rows.push(`<tr title="customized for: ${tagStr}">
+          <td class="k">${k}</td>
+          <td>${escapeHtml(ent.value)}</td>
+          <td class="tag">${tagStr}</td>
+        </tr>`);
+      }
+    }
+    tbody.innerHTML = rows.join("");
+    wrap.style.display = "";
   } catch(e) {
     lbl.style.display = "none";
     info.style.display = "none";
+    wrap.style.display = "none";
   }
 }
 
@@ -4487,6 +4568,34 @@ def backtest_review_page(asset: str):
     return _no_cache(resp)
 
 
+@app.route("/symbols_with_runs")
+def symbols_with_runs():
+    """Sorted list of symbols that have ≥1 backtest run with trades, filtered
+    by asset class. Used by the /backtest-review/<asset> symbol picker so the
+    user doesn't see empty entries (e.g. PEPEUSDC with no run files yet).
+    Backed by the precomputed runs_ranked cache so it's O(1) at request time."""
+    asset = request.args.get("asset", "").lower()
+    body = _precomputed.get("runs_ranked")
+    if not body:
+        return jsonify({"warming": True, "symbols": []}), 503
+    try:
+        rows = json.loads(body)
+    except Exception:
+        return jsonify({"error": "cache parse"}), 500
+    seen: set = set()
+    for r in rows:
+        for s in (r.get("syms") or []):
+            su = (s or "").upper()
+            if not su:
+                continue
+            if asset == "crypto" and not _is_crypto_sym(su):
+                continue
+            if asset == "stocks" and _is_crypto_sym(su):
+                continue
+            seen.add(su)
+    return jsonify({"symbols": sorted(seen), "n": len(seen), "asset": asset or "any"})
+
+
 @app.route("/backtest_review_top")
 def backtest_review_top_data():
     """Pool-level leaderboard for the /backtest-review/<asset>/top page.
@@ -4576,6 +4685,7 @@ def historic_recent_overlay():
     is_crypto = _is_crypto_sym(sym)
     candidate_accts = list(CRYPTO_ACCOUNTS_ORDER) if is_crypto else list(STOCK_ACCOUNTS_ORDER)
     active_configs: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    overrides_by_acct_side: Dict[str, Dict[str, Any]] = {}
     for acct in candidate_accts:
         p = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
         try:
@@ -4586,8 +4696,14 @@ def historic_recent_overlay():
         for side in ("LONG", "SHORT"):
             rec = data.get(f"{sym}_{side}") or {}
             wt = rec.get("winning_tag")
+            overrides = rec.get("overrides") or {}
             if wt:
-                per_side[side] = {"winning_tag": wt, "n_overrides": len(rec.get("overrides", {}) or {})}
+                per_side[side] = {"winning_tag": wt, "n_overrides": len(overrides)}
+                if overrides:
+                    overrides_by_acct_side[f"{acct}:{side}"] = {
+                        "winning_tag": wt,
+                        "overrides": overrides,
+                    }
         if per_side:
             active_configs[acct] = per_side
     # Pull recent live events from history dirs (only for accts with active configs)
@@ -4638,6 +4754,7 @@ def historic_recent_overlay():
         "cutoff_ts": cutoff,
         "accounts": list(active_configs.keys()),
         "active_configs": active_configs,
+        "overrides_by_acct_side": overrides_by_acct_side,
         "events": flat_events,
         "rounds_by_acct_side": rounds_by_acct_side,
     })

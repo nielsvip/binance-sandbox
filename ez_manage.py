@@ -37675,6 +37675,20 @@ async def process_position(
     ):
         try:
             _r1_stop = float(getattr(position, "r1_stop_price", 0.0) or 0.0)
+            # 2026-05-18 BUG FIX (USER AUTHORIZED): r1_stop_price only set at 3 of 11
+            # open sites — QUICK_OPEN_STRONG / QUICK_HEDGE_PROTECT / GOLDEN_RULE /
+            # DAEMON_PRICE_CROSS_REENTRY / GUARANTEED_REENTRY / QUICK_SCALP_V3 skipped it.
+            # Lazy-set fallback mirrors tradier_manage.py:1892-1898 so R1 fires for every
+            # open position by reading live dc_low4_3m / dc_high4_3m.
+            if _r1_stop <= 0:
+                _r1_live_key = "dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m"
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _r1_stop_live = safe_fetch_float(_pp_shared_ind.get(_r1_live_key), 0.0)
+                if _r1_stop_live > 0:
+                    _r1_stop = _r1_stop_live
+                    position.r1_stop_price = _r1_stop_live
+                    logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised from live {_r1_live_key}={_r1_stop_live:.6f}")
             _r1_age_min = 0.0
             _r1_opened = getattr(position, "opened_at", None)
             if isinstance(_r1_opened, datetime):
@@ -37938,9 +37952,13 @@ async def process_position(
                     _wzg_tag = ""
                     for _wzg_tf in _wzg_tfs:
                         _v = safe_fetch_float(_wzg_ind.get(f"wt_velocity_{_wzg_tf}"), 0)
-                        _vp = safe_fetch_float(
-                            _wzg_ind.get(f"wt_velocity_{_wzg_tf}_prev", _v), 0
-                        )
+                        # 2026-05-18 BUG FIX (USER AUTHORIZED): wt_velocity_*_prev never
+                        # exists in NPZ or live indicators. Derive from wt_acceleration_{tf}
+                        # per the documented pattern at ez_positions_quick.py:1782-1788
+                        # (accel = velocity - velocity_prev ⇒ velocity_prev = v - a).
+                        # Pre-fix this fell back to _v itself → decel ratio always False → R2 dead.
+                        _a = safe_fetch_float(_wzg_ind.get(f"wt_acceleration_{_wzg_tf}"), 0)
+                        _vp = _v - _a
                         _against = (_wzg_is_long and _v < 0) or (
                             (not _wzg_is_long) and _v > 0
                         )
