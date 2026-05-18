@@ -90,11 +90,11 @@ These fields MUST exist ONLY in stocks NPZs (`backtest_v8_precompute_tradier.py`
 | `stoch_d_{tf}` | 5m | float32 | backtest_v8_engine.py:4279 (fallback) | backtest_v8_precompute_tradier.py:~600-700 |
 | `volume_D_50_sma` | D (single field, NOT per-TF) | float32 | tradier_manage.py CATALYST_VOLUME_GATE (~line 2511) | backtest_v8_precompute_tradier.py:502 |
 
-**`volume_D_50_sma` notes** (added 2026-05-17):
+**`volume_D_50_sma` notes** (added 2026-05-17, patched 2026-05-18):
 - 50-day rolling SMA of D-timeframe raw `volume_D`.
 - Single scalar series per NPZ; only meaningful for D resampled grid.
 - Engine reads via `i.get('volume_D_50_sma', 0)`; absent → 0 → CATALYST_VOLUME_GATE fails-CLOSED.
-- Existing pre-2026-05-17 NPZs lack this field — will return 0 from `i.get`, gate will block all entries when enabled. Regen required before flipping `CATALYST_VOLUME_GATE_ENABLED=True`.
+- **2026-05-18 18:16 UTC: ALL 293 stock NPZs patched** (patch_npz_vol_d_50.py). Field now present in all stock NPZs (1003 fields total). Vec sweep also derives on-the-fly from volume_D as fallback.
 
 ---
 
