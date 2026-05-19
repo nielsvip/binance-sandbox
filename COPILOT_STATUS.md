@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-19 21:00:54 UTC
+# Copilot Status — 2026-05-19 21:16:12 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T20:54:57
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T20:54:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T20:54:57
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T20:56:59
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T20:56:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T20:56:59
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T20:59:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T20:59:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T20:59:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:00:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:11:15
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:11:16
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:12:17
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:13:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:13:18
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:13:18
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:14:20
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T21:15:21
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:15:21
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:15:21
 
 ## Missed Trades (trader comparison)
 
@@ -38,14 +38,14 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 - HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
-- HELD: **DAR** LONG (tradier) peak +4.0%, now +-5.4%
+- HELD: **DAR** LONG (tradier) peak +4.0%, now +-4.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
