@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-19 16:35:12 UTC
+# Copilot Status — 2026-05-19 16:50:52 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:33:22
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:33:22
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:33:22
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:33:56
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:34:27
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:34:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:34:27
-- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:35:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:35:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:35:02
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:49:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:49:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:49:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:50:10
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:50:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:50:10
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-19T16:50:21
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T16:50:42
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T16:50:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T16:50:42
 
 ## Missed Trades (trader comparison)
 
@@ -44,9 +44,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 12
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (10min)
+**Issues (last 1h):** 29
 - [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_rankings.py is NOT running

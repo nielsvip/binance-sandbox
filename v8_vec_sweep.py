@@ -1380,6 +1380,10 @@ def simulate_one_symbol(
         if _mtf_active and check_mtf_small_entry is not None:
             # If position open: check slowdown + big-add
             if state.qty > 0.0001:
+                # Compute gain inline (legacy block does it later)
+                _mtf_gain = _gain_pct(state.entry_price, mark, is_long)
+                if _mtf_gain > state.max_gain:
+                    state.max_gain = _mtf_gain
                 # K_3m + WT_3m + 3m OHLC needed for slowdown
                 _k3 = float(npz.get("k_3m", np.zeros(n))[i]) if "k_3m" in npz else 0.0
                 _wt1_3 = float(npz.get("wt1_3m", np.zeros(n))[i]) if "wt1_3m" in npz else 0.0
@@ -1387,14 +1391,14 @@ def simulate_one_symbol(
                 _o3 = float(npz.get("open_3m", np.zeros(n))[i]) if "open_3m" in npz else 0.0
                 _c3 = float(npz.get("close_3m", np.zeros(n))[i]) if "close_3m" in npz else mark
                 _slow_fire, _slow_reason, _new_stall, _new_max_k = check_mtf_slowdown(
-                    gain=gain, gain_prev=0.0, stall_count=state._mtf_stall_count,
+                    gain=_mtf_gain, gain_prev=0.0, stall_count=state._mtf_stall_count,
                     max_k_seen=state._mtf_max_k_seen, k_3m=_k3, close=_c3, open_=_o3,
                     wt1_3m=_wt1_3, wt2_3m=_wt2_3, big_added=state._mtf_big_added, config=config,
                 )
                 state._mtf_stall_count = _new_stall
                 state._mtf_max_k_seen = _new_max_k
                 if _slow_fire:
-                    pnl_pct = gain
+                    pnl_pct = _mtf_gain
                     ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
                         value=state.qty * mark, reason=_slow_reason, pnl_pct=pnl_pct)
                     events.append(ev); trade_returns.append(pnl_pct)
