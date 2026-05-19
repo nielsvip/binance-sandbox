@@ -633,6 +633,14 @@ class SweepConfig:
     MTF_SLOWDOWN_STALL_BARS: int = 5
     MTF_SLOWDOWN_STALL_PCT: float = 0.1
     MTF_SLOWDOWN_REQUIRE_BIG_ADD: bool = True
+    # 2026-05-19 Phase F slowdown loosening
+    MTF_SLOWDOWN_MASTER_ENABLED: bool = True
+    MTF_SLOWDOWN_REQUIRE_PEAK_PCT: float = 0.0      # only fire after gain peaked >= this (0 = always)
+    MTF_SLOWDOWN_MIN_AGE_S: float = 0.0             # don't fire for first N seconds
+    MTF_SLOWDOWN_DISABLE_RED3M: bool = False
+    MTF_SLOWDOWN_DISABLE_WTFLIP: bool = False
+    MTF_SLOWDOWN_DISABLE_KDROP: bool = False
+    MTF_SLOWDOWN_DISABLE_STALL: bool = False
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -1394,6 +1402,7 @@ def simulate_one_symbol(
                     gain=_mtf_gain, gain_prev=0.0, stall_count=state._mtf_stall_count,
                     max_k_seen=state._mtf_max_k_seen, k_3m=_k3, close=_c3, open_=_o3,
                     wt1_3m=_wt1_3, wt2_3m=_wt2_3, big_added=state._mtf_big_added, config=config,
+                    max_gain=state.max_gain, age_s=(bar_ts - state.opened_at),
                 )
                 state._mtf_stall_count = _new_stall
                 state._mtf_max_k_seen = _new_max_k
