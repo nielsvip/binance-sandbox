@@ -2530,6 +2530,41 @@ def _max_dd_pct(trade_returns: List[float]) -> float:
 # Multi-symbol sweep entry
 # ════════════════════════════════════════════════════════════════════════════════
 
+def _run_sweep_worker(args_tuple):
+    """Worker for parallel run_sweep — simulates ONE (sym, side) cell in a subprocess.
+
+    Returns (sym, side, n_bars, elapsed_s, status, payload):
+        status == "ok":      payload = (events, returns)
+        status == "skip":    payload = error_message (FileNotFoundError)
+        status == "fail":    payload = "TypeName: error_message"
+    """
+    sym, side, mode, config, start_ts, max_bars = args_tuple
+    t0 = time.perf_counter()
+    try:
+        events, returns, n_bars = simulate_one_symbol(
+            sym, side, mode, config,
+            start_ts=start_ts, max_bars=max_bars,
+        )
+    except FileNotFoundError as e:
+        return (sym, side, 0, time.perf_counter() - t0, "skip", str(e))
+    except Exception as e:
+        return (sym, side, 0, time.perf_counter() - t0, "fail",
+                f"{type(e).__name__}: {e}")
+    elapsed = time.perf_counter() - t0
+    return (sym, side, n_bars, elapsed, "ok", (events, returns))
+
+
+def _resolve_workers(workers: int) -> int:
+    """Workers default: max(1, min(8, cpu_count() - 2)). Pass workers <= 0 for default."""
+    if workers and workers > 0:
+        return int(workers)
+    try:
+        cpu = os.cpu_count() or 2
+    except Exception:
+        cpu = 2
+    return max(1, min(8, cpu - 2))
+
+
 def run_sweep(
     *,
     mode: str,
@@ -2549,6 +2584,13 @@ def run_sweep(
         - data/sweep_results/v8_vec_sweep_<TS>.jsonl (per-sym summary rows)
         - data/sweep_results/v8_vec_sweep_<TS>_trades.jsonl (every fill, source-of-truth)
         - /history/<account>/*.jsonl if write_history=True
+
+    2026-05-19 PARALLEL: dispatches (sym, side) cells across a ProcessPoolExecutor
+    (workers= controls pool size; <=0 picks max(1, min(8, cpu_count()-2))). Cells
+    are independent so a 60-sym x 2-side run goes from sequential hours to
+    ~minutes on an 8-core box. JSONL writes still happen in the parent so the
+    file remains coherent; V8_VEC_PROGRESS lines may interleave (one per worker
+    completion, ordered by finish-time).
     """
     config = config or SweepConfig()
     sides = sides or ["LONG", "SHORT"]
@@ -2566,81 +2608,100 @@ def run_sweep(
     total_bars = 0
     elapsed_per_sym = []
 
+    n_workers = _resolve_workers(workers)
+    tasks = [
+        (sym, side, mode, config, start_ts, max_bars)
+        for sym in symbols
+        for side in sides
+    ]
+    n_tasks = len(tasks)
+    print(
+        f"V8_VEC_SWEEP_START: mode={mode} account={account} symbols={len(symbols)} "
+        f"sides={sides} tasks={n_tasks} workers={n_workers} start={start}",
+        flush=True,
+    )
+
     with summary_path.open("w") as smry, trades_path.open("w") as trd:
-        for sym in symbols:
-            for side in sides:
-                t0 = time.perf_counter()
-                try:
-                    events, returns, n_bars = simulate_one_symbol(
-                        sym, side, mode, config,
-                        start_ts=start_ts, max_bars=max_bars,
-                    )
-                except FileNotFoundError as e:
-                    sys.stderr.write(f"SKIP {sym}_{side}: {e}\n")
-                    continue
-                except Exception as e:
-                    sys.stderr.write(f"FAIL {sym}_{side}: {type(e).__name__}: {e}\n")
-                    continue
-                t1 = time.perf_counter()
-                elapsed = t1 - t0
-                elapsed_per_sym.append((sym, side, n_bars, elapsed))
-                total_bars += n_bars
-                key = f"{sym}_{side}"
-                if returns:
-                    returns_by_sym[key] = returns
-                # 2026-05-19 PROGRESS HEARTBEAT — sweep_coordinator silence-detector kills
-                # any engine that prints nothing for PRE_SIM_SILENCE_S (300s). Without this
-                # line, v8_vec_sweep prints only its banner then nothing until completion,
-                # so the coordinator timed out every full-universe run at ~5min. One line
-                # per (sym, side) gives the watchdog a heartbeat AND lets ops see progress.
-                print(
-                    f"V8_VEC_PROGRESS: sym={sym} side={side} n_bars={n_bars} "
-                    f"trades={len(returns)} elapsed_s={elapsed:.2f}",
-                    flush=True,
-                )
+        # Sequential fast-path keeps the existing single-process behaviour (also
+        # used by callers that have already entered a ProcessPoolExecutor, since
+        # nested daemon processes would crash).
+        if n_workers <= 1 or n_tasks <= 1:
+            iterator = (_run_sweep_worker(t) for t in tasks)
+        else:
+            pool = ProcessPoolExecutor(max_workers=n_workers)
+            futures = [pool.submit(_run_sweep_worker, t) for t in tasks]
+            iterator = (fut.result() for fut in as_completed(futures))
+        completed = 0
+        for sym, side, n_bars, elapsed, status, payload in iterator:
+            completed += 1
+            if status == "skip":
+                sys.stderr.write(f"SKIP {sym}_{side}: {payload}\n")
+                continue
+            if status == "fail":
+                sys.stderr.write(f"FAIL {sym}_{side}: {payload}\n")
+                continue
+            events, returns = payload
+            elapsed_per_sym.append((sym, side, n_bars, elapsed))
+            total_bars += n_bars
+            key = f"{sym}_{side}"
+            if returns:
+                returns_by_sym[key] = returns
+            # 2026-05-19 PROGRESS HEARTBEAT — sweep_coordinator silence-detector kills
+            # any engine that prints nothing for PRE_SIM_SILENCE_S (300s). Without this
+            # line, v8_vec_sweep prints only its banner then nothing until completion,
+            # so the coordinator timed out every full-universe run at ~5min. One line
+            # per (sym, side) gives the watchdog a heartbeat AND lets ops see progress.
+            print(
+                f"V8_VEC_PROGRESS: [{completed}/{n_tasks}] sym={sym} side={side} "
+                f"n_bars={n_bars} trades={len(returns)} elapsed_s={elapsed:.2f}",
+                flush=True,
+            )
 
-                # Write each event to the trades JSONL (source of truth).
-                # 2026-05-18 NET MANDATE: pnl_pct stored NET of round-trip cost;
-                # raw price-only return preserved as pnl_pct_gross. Mirrors
-                # write_history_jsonl above so both outputs are consistent.
-                _trd_rt_cost = _vec_round_trip_cost_for_sym(sym)
-                for ev in events:
-                    iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
-                    _row = {
-                        "ts": iso, "symbol": sym, "side": side, "type": ev.type,
-                        "qty": ev.qty, "price": ev.price, "value": ev.value,
-                        "reason": ev.reason,
-                    }
-                    if ev.pnl_pct:
-                        _gross = float(ev.pnl_pct)
-                        _row["pnl_pct"] = _gross - _trd_rt_cost
-                        _row["pnl_pct_gross"] = _gross
-                        _row["round_trip_cost_pct"] = _trd_rt_cost
-                    else:
-                        _row["pnl_pct"] = ev.pnl_pct
-                    trd.write(json.dumps(_row) + "\n")
-
-                # Per-sym summary row
-                n_trades = len(returns)
-                if n_trades > 0:
-                    sym_ps = metrics_guard.pool_sharpe(returns)
-                    sym_dd = _max_dd_pct(returns)
-                    sym_acc = sum(returns)
+            # Write each event to the trades JSONL (source of truth).
+            # 2026-05-18 NET MANDATE: pnl_pct stored NET of round-trip cost;
+            # raw price-only return preserved as pnl_pct_gross. Mirrors
+            # write_history_jsonl above so both outputs are consistent.
+            _trd_rt_cost = _vec_round_trip_cost_for_sym(sym)
+            for ev in events:
+                iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
+                _row = {
+                    "ts": iso, "symbol": sym, "side": side, "type": ev.type,
+                    "qty": ev.qty, "price": ev.price, "value": ev.value,
+                    "reason": ev.reason,
+                }
+                if ev.pnl_pct:
+                    _gross = float(ev.pnl_pct)
+                    _row["pnl_pct"] = _gross - _trd_rt_cost
+                    _row["pnl_pct_gross"] = _gross
+                    _row["round_trip_cost_pct"] = _trd_rt_cost
                 else:
-                    sym_ps = 0.0
-                    sym_dd = 0.0
-                    sym_acc = 0.0
-                smry.write(json.dumps({
-                    "symbol": sym, "side": side, "n_bars": n_bars,
-                    "n_trades": n_trades, "pool_sharpe": sym_ps,
-                    "max_dd_pct": sym_dd, "acc_gain_pct": sym_acc,
-                    "elapsed_s": round(elapsed, 3),
-                }) + "\n")
+                    _row["pnl_pct"] = ev.pnl_pct
+                trd.write(json.dumps(_row) + "\n")
 
-                # Write history JSONL (for live dashboards)
-                if write_history and events:
-                    write_history_jsonl(account, sym, side, events,
-                                        out_root=HISTORY_DIR / f"_v8_vec_sweep_{ts_run}")
+            # Per-sym summary row
+            n_trades = len(returns)
+            if n_trades > 0:
+                sym_ps = metrics_guard.pool_sharpe(returns)
+                sym_dd = _max_dd_pct(returns)
+                sym_acc = sum(returns)
+            else:
+                sym_ps = 0.0
+                sym_dd = 0.0
+                sym_acc = 0.0
+            smry.write(json.dumps({
+                "symbol": sym, "side": side, "n_bars": n_bars,
+                "n_trades": n_trades, "pool_sharpe": sym_ps,
+                "max_dd_pct": sym_dd, "acc_gain_pct": sym_acc,
+                "elapsed_s": round(elapsed, 3),
+            }) + "\n")
+
+            # Write history JSONL (for live dashboards)
+            if write_history and events:
+                write_history_jsonl(account, sym, side, events,
+                                    out_root=HISTORY_DIR / f"_v8_vec_sweep_{ts_run}")
+
+        if n_workers > 1 and n_tasks > 1:
+            pool.shutdown(wait=True)
 
     # ─── Aggregate across symbols using metrics_guard (NO LIES) ──────────────
     if returns_by_sym:
@@ -2907,6 +2968,7 @@ def run_gr_dcbb_sweep(
     n_years = max((datetime.now(timezone.utc) - start_dt).total_seconds() / 86400.0 / 365.25, 0.01)
     n_variants = len(_DCBB_GRID)
     n_tasks = len(symbols) * len(sides)
+    workers = _resolve_workers(workers)
 
     # Accumulate per-variant trade returns BY SYMBOL so metrics_guard can compute
     # proper sym_sharpe (not just pool_sharpe). Routing through
@@ -3074,7 +3136,10 @@ def main():
     ap.add_argument("--symbols", required=True, help="comma-separated, e.g. BTC,ETH,SOL")
     ap.add_argument("--sides", default="LONG,SHORT", help="LONG,SHORT,LONG_SHORT")
     ap.add_argument("--start", default="2024-01-01", help="YYYY-MM-DD")
-    ap.add_argument("--workers", type=int, default=1, help="(reserved for multiproc)")
+    ap.add_argument("--workers", type=int, default=0,
+                    help="ProcessPool size for run_sweep / gr_dcbb_sweep. "
+                         "0 (default) = max(1, min(8, cpu_count()-2)). "
+                         "1 = sequential single-process.")
     ap.add_argument("--max-bars", type=int, default=None, help="Cap bars per symbol (smoke testing)")
     ap.add_argument("--no-history", action="store_true", help="Skip /history/<acct>/ JSONL writes")
     ap.add_argument("--override", action="append", default=[], help="KEY=VAL config overrides (repeatable)")
