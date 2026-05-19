@@ -3087,7 +3087,13 @@ class VecEngine:
                 # ZERO — this exit was tightening vec's per-trade pnl distribution
                 # and producing KS_p=5e-5. Disabling for SOL (per_sym) widens the
                 # loss tail to match live's RIDICULOUS_HOLD-dominated exit mix.
-                _src_master_enabled = bool(getattr(cfg, "STOCH_REVERSE_EXIT_ENABLED", True))
+                # ABLATION_DISABLE_QUICK_EXIT also kills STOCH_REVERSE_EXIT — it IS
+                # the fastest exit path in vec (single-bar wt cross). Combined with
+                # the explicit _ENABLED knob.
+                _src_master_enabled = (
+                    bool(getattr(cfg, "STOCH_REVERSE_EXIT_ENABLED", True))
+                    and not bool(getattr(cfg, "ABLATION_DISABLE_QUICK_EXIT", False))
+                )
                 for pos in (pos_long, pos_short):
                     if not _src_master_enabled:
                         break  # path disabled by per_sym overlay — skip whole exit
@@ -3131,7 +3137,10 @@ class VecEngine:
                     # UNIVERSAL_NOLOSS_GATE: block loss exits (except R1/R2/SRS already handled)
                     # NOLOSS_BYPASS_WT_5OF5 (WIRED 2026-05-18): allow loss exit when ≥MIN_TFS
                     # of {5m,15m,1h,4h,D} WT against position. Source: tradier_manage.py:5934.
-                    if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0:
+                    # ABLATION_DISABLE_CHECK_NOLOSS suppresses UNIVERSAL_NOLOSS_GATE entirely
+                    # (lets losing positions close via WT/STOCH paths — mirrors ez_manage
+                    # ABLATION_DISABLE_CHECK_NOLOSS flag).
+                    if cfg.UNIVERSAL_NOLOSS_GATE and pos.gain_pct < 0 and not bool(getattr(cfg, "ABLATION_DISABLE_CHECK_NOLOSS", False)):
                         _nlb_pass = False
                         if bool(getattr(cfg, "NOLOSS_BYPASS_WT_5OF5_ENABLED", False)):
                             _nlb_min = int(getattr(cfg, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS", 5))
@@ -3432,7 +3441,7 @@ class VecEngine:
                 # ── WT_3M_FORCE_OPEN (ez_manage.py:19969 / tradier_manage.py:1604) ─
                 # Forces OPEN when position is ZERO and wt1_btf matches side direction.
                 # Default OFF. When ON, fires before WT signal gate.
-                if _wt_force_open_fn is not None and getattr(cfg, 'WT_3M_FORCE_OPEN_ENABLED', False):
+                if _wt_force_open_fn is not None and getattr(cfg, 'WT_3M_FORCE_OPEN_ENABLED', False) and not bool(getattr(cfg, 'ABLATION_DISABLE_ENTRY_REVERSAL', False)):
                     for _wf_pos in (pos_long, pos_short):
                         if _wf_pos.open:
                             continue
@@ -3482,7 +3491,13 @@ class VecEngine:
                 # This fires AUGMENT events on already-open positions when
                 # market_sentiment indicates the position should be larger.
                 # ADDITIVE: does not replace any existing logic, only augments qty.
-                if _sentiment_boost_fn is not None:
+                # ABLATION_DISABLE_AUGMENTATION suppresses ALL augmentation paths.
+                # Source: ez_manage.py:43163 / tradier_manage.py:355.
+                # AUGMENT_ONLY_WHEN_PROFITABLE (and _TRADIER) requires pos.gain_pct >= 0
+                # before allowing any augment fire. AUGMENT_HTF_TREND_ENABLED requires
+                # HTF wt alignment with position side. Three guards wired at this site.
+                _aug_disabled = bool(getattr(cfg, "ABLATION_DISABLE_AUGMENTATION", False))
+                if _sentiment_boost_fn is not None and not _aug_disabled:
                     # STDEV_MACRO_AUGMENT_VETO (WIRED 2026-05-18): block AUGMENT when at
                     # TOP/BOT macro extreme (|state|>=1). LONG augment vetoed at TOP, SHORT at BOT.
                     _smv_aug_block_long = False
@@ -3503,6 +3518,21 @@ class VecEngine:
                                 continue
                             if _sb_pos.side == "SHORT" and _smv_aug_block_short:
                                 continue
+                            # AUGMENT_ONLY_WHEN_PROFITABLE — block augment on losing positions.
+                            # mode-specific knob: crypto uses AUGMENT_ONLY_WHEN_PROFITABLE,
+                            # tradier uses AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER.
+                            _aowp_key = "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER" if self.mode == "tradier" else "AUGMENT_ONLY_WHEN_PROFITABLE"
+                            if bool(getattr(cfg, _aowp_key, True)) and _sb_pos.gain_pct < 0:
+                                continue
+                            # AUGMENT_HTF_TREND_ENABLED — require wt1_4h vs wt2_4h match position side.
+                            if bool(getattr(cfg, "AUGMENT_HTF_TREND_ENABLED", True)):
+                                _aht_w1 = store.f("wt1_4h", bar_idx, 0.0)
+                                _aht_w2 = store.f("wt2_4h", bar_idx, 0.0)
+                                if abs(_aht_w1) > 1e-9 and abs(_aht_w2) > 1e-9:
+                                    _aht_ok = (_sb_pos.side == "LONG" and _aht_w1 > _aht_w2) or \
+                                              (_sb_pos.side == "SHORT" and _aht_w1 < _aht_w2)
+                                    if not _aht_ok:
+                                        continue
                             _sb_result = _sentiment_boost_fn(store, bar_idx, _sb_pos, ts_i, cfg)
                             if _sb_result is not None:
                                 # Record augment as a separate (small positive) return
@@ -3520,7 +3550,11 @@ class VecEngine:
                 # Source: ez_positions_quick.py:5002 scan_and_hedge_losers +
                 #         ez_manage.py:14339 OBLIGATORY_HEDGE.
                 # 2026-05-10 strip defaults: 3m alone triggers, no deteriorating-gain gate.
-                if _HEDGE_ENGINE_AVAILABLE and getattr(cfg, "HEDGE_ENGINE_ENABLED", False) and self.mode == "crypto":
+                # ABLATION_DISABLE_HEDGE / _AGGRESSIVE_HEDGE — block the entire hedge path.
+                # Source: ez_manage.py:42879+ ABLATION_*.
+                _hedge_disabled = bool(getattr(cfg, "ABLATION_DISABLE_HEDGE", False)) or \
+                                  bool(getattr(cfg, "ABLATION_DISABLE_AGGRESSIVE_HEDGE", False))
+                if _HEDGE_ENGINE_AVAILABLE and getattr(cfg, "HEDGE_ENGINE_ENABLED", False) and self.mode == "crypto" and not _hedge_disabled:
                     for _hg_loser_side in ("LONG", "SHORT"):
                         _hg_loser = pos_states[sym][_hg_loser_side]
                         if not _hg_loser.open:
@@ -3576,8 +3610,17 @@ class VecEngine:
                             _hg_hedge_pos.qty = _hg_scan_result["size_qty"]
                             _hg_loser.hedge_active = True
                             continue
+                        # OBLIGATORY_HEDGE_ENABLED + MANDATORY_HEDGE_ON_NEGATIVE_ENABLED
+                        # — gate the obligatory hedge call site.
+                        # Source: ez_manage.py:14339 + config.MANDATORY_HEDGE_*.
+                        _obl_enabled = bool(getattr(cfg, "OBLIGATORY_HEDGE_ENABLED", True)) and \
+                                       bool(getattr(cfg, "MANDATORY_HEDGE_ON_NEGATIVE_ENABLED", True))
+                        # MANDATORY_HEDGE_GAIN_THRESHOLD_PCT — only fire when loss <= threshold.
+                        _mand_thr = float(getattr(cfg, "MANDATORY_HEDGE_GAIN_THRESHOLD_PCT", -0.5))
+                        if _obl_enabled and _hg_loser.gain_pct > _mand_thr:
+                            _obl_enabled = False  # loss not deep enough
                         try:
-                            _hg_obl_result = _check_obligatory_hedge(store, bar_idx, _hg_loser, mode=self.mode, cfg=cfg)
+                            _hg_obl_result = _check_obligatory_hedge(store, bar_idx, _hg_loser, mode=self.mode, cfg=cfg) if _obl_enabled else None
                         except Exception:
                             _hg_obl_result = None
                         # Apply HEDGE_MAX_ABSOLUTE_USD cap + HEDGE_HTF_VETO to obligatory hedge too.
@@ -3660,6 +3703,25 @@ class VecEngine:
                     if pos.open:
                         continue
 
+                    # ── ABLATION GATES (WIRED 2026-05-19 vec gap wiring) ──
+                    # Source: ez_manage.py:42879+ / tradier_manage.py:355+ ABLATION_*.
+                    # All default False so baseline unaffected. Each True suppresses
+                    # the corresponding path for sweep diagnostics.
+                    if bool(getattr(cfg, "ABLATION_DISABLE_ENTRY_REVERSAL", False)) and bool(getattr(cfg, "WT_3M_FORCE_OPEN_ENABLED", False)):
+                        # WT_3M_FORCE_OPEN is the vec's only "reversal-style" open.
+                        # When ABLATION_DISABLE_ENTRY_REVERSAL=True we suppress the
+                        # force-open path while still letting other entries fire.
+                        pass  # marker; real gate is below at WT_3M_FORCE_OPEN site
+                    if bool(getattr(cfg, "ABLATION_DISABLE_QUICK_ENTRY", False)):
+                        # QUICK_ENTRY ≈ low-friction entries (SATOSHIT path in vec).
+                        # When True, skip SATOSHIT additive open path. Implementation
+                        # at SATOSHIT site below honors this gate.
+                        pass  # marker; real gate is at SATOSHIT block
+                    if bool(getattr(cfg, "ABLATION_DISABLE_REENTRY", False)) and bool(getattr(cfg, "REENTRY_ENABLED", True)):
+                        # Force REENTRY_ENABLED OFF for the duration of this entry attempt
+                        # (we override at the path-call sites with the OR check below).
+                        pass  # honored at PCB + REENTRY path call sites
+
                     # ── HTF_TREND_VETO entry gate (WIRED 2026-05-18) ──
                     # Source: ez_manage.py:18660 / tradier_manage.py:10079.
                     # Blocks OPEN against Daily wt-trend: LONG requires wt1_D > wt2_D, SHORT mirror.
@@ -3717,7 +3779,7 @@ class VecEngine:
                     # User mandate: REENTRY_ENABLED=False must disable ALL reentry paths,
                     # including PRICE_CROSS_BACK (it IS a reentry). ETH per-sym overlay
                     # sets REENTRY_ENABLED=False; that must kill PCB too.
-                    if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False) and bool(getattr(cfg, 'REENTRY_ENABLED', True)):
+                    if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False) and bool(getattr(cfg, 'REENTRY_ENABLED', True)) and not bool(getattr(cfg, 'ABLATION_DISABLE_REENTRY', False)):
                         try:
                             _pcb_result = _price_cross_back_fn(store, bar_idx, sym, side, pos, cfg, mode=self.mode)
                             if _pcb_result is not None:
@@ -3848,7 +3910,9 @@ class VecEngine:
                         (self.mode == "crypto" and getattr(cfg, "SATOSHIT_ENABLED", False))
                         or (self.mode == "tradier" and getattr(cfg, "SATOSHIT_ENABLED_TRADIER", False))
                     )
-                    if _sat_enabled and _satoshit_fn is not None:
+                    # ABLATION_DISABLE_QUICK_ENTRY suppresses SATOSHIT additive open
+                    # (vec's only "quick entry" path equivalent).
+                    if _sat_enabled and _satoshit_fn is not None and not bool(getattr(cfg, "ABLATION_DISABLE_QUICK_ENTRY", False)):
                         try:
                             _sat_sig = _satoshit_fn(store, bar_idx, side, self.mode, cfg)
                             if _sat_sig is not None:
@@ -3940,7 +4004,7 @@ class VecEngine:
                     # Independent of WT gate — fires when position is closed and
                     # reentry conditions from the live system match.
                     _reentry_sig = None
-                    if _VEC_PATHS_AVAILABLE and cfg.REENTRY_ENABLED:
+                    if _VEC_PATHS_AVAILABLE and cfg.REENTRY_ENABLED and not bool(getattr(cfg, "ABLATION_DISABLE_REENTRY", False)):
                         _reentry_sig = _check_reentry_entry(store, bar_idx, sym, pos, side, cfg)
 
                     if _reentry_sig is not None:
