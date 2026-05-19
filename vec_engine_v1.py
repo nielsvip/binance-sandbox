@@ -601,6 +601,16 @@ class VecConfig:
     WT_3M_FORCE_OPEN_SIZE_USD: float = 9.0         # crypto default (100.0 for tradier)
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True     # bypasses cooldown / dup-guard
 
+    # ── ROUND 5 FIX (2026-05-19) — MIN_ENTRY_SPACING_HOURS ─────────────────
+    # Source: per-sym overlay requirement — round 4 hit structural ceiling
+    # because SOL needed entry spacing tightened (trade ratio 0.21x).
+    # ENTRY_COOLDOWN_SEC only gates the WT path; this knob gates ALL entry
+    # paths (WT, FLZ, REENTRY, SCALP, PCB, DC_BREAK, BB_SQUEEZE...).
+    # When > 0, no new OPEN of any kind within MIN_ENTRY_SPACING_HOURS of
+    # the previous CLOSE on the same (sym, side) pair. Default 0 = no
+    # cross-path spacing (preserves R4 behavior). Set in per_sym overlay.
+    MIN_ENTRY_SPACING_HOURS: float = 0.0
+
     # ── ROUND 4 FIX (2026-05-19) — FLZ_AGENT_FORCE_OPEN_MOCK ─────────────────
     # MTF_SR_FRESH_SETUP-style sparse force-opens. Mirrors flz bot behavior of
     # opening LONG when price kisses a daily/weekly horizontal level even though
@@ -2263,6 +2273,17 @@ class VecEngine:
                         if side == "SHORT" and _sym_u not in tradeable_short:
                             continue
 
+                    # ── ROUND 5 (2026-05-19) — MIN_ENTRY_SPACING_HOURS ──────────────
+                    # Cross-path entry spacing. Gates EVERY new OPEN path below
+                    # (PCB, FLZ, WT, REENTRY, SCALP, DC_BREAK...) by elapsed time
+                    # since last close on this (sym, side) pair. Default 0 = OFF.
+                    # Set per-sym in baseline overlay (e.g. SOLUSDC_LONG = 6.0h).
+                    _r5_spacing_h = float(getattr(cfg, "MIN_ENTRY_SPACING_HOURS", 0.0) or 0.0)
+                    if _r5_spacing_h > 0.0:
+                        _r5_last_close = pos.last_close_ts if hasattr(pos, "last_close_ts") else 0.0
+                        if _r5_last_close > 0.0 and (ts_i - _r5_last_close) < (_r5_spacing_h * 3600.0):
+                            continue
+
                     # ── PRICE_CROSS_BACK_REENTRY (tradier_manage.py:1880) ───────────
                     # ROUND 4 FIX #4 2026-05-19: moved BEFORE cooldown / DUP_GUARD so the
                     # PCB path can actually fire. Previously placed AFTER cooldown — but
@@ -2270,7 +2291,11 @@ class VecEngine:
                     # cooldown always shadowed PCB. Live priority order has PCB BEFORE
                     # cooldown (it IS the recovery from a recent close). Keeps default OFF
                     # for ablation safety; flipped True in r4 baseline.
-                    if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False):
+                    # ROUND 5 FIX #3 (2026-05-19) — PCB also obeys REENTRY_ENABLED master gate.
+                    # User mandate: REENTRY_ENABLED=False must disable ALL reentry paths,
+                    # including PRICE_CROSS_BACK (it IS a reentry). ETH per-sym overlay
+                    # sets REENTRY_ENABLED=False; that must kill PCB too.
+                    if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False) and bool(getattr(cfg, 'REENTRY_ENABLED', True)):
                         try:
                             _pcb_result = _price_cross_back_fn(store, bar_idx, sym, side, pos, cfg, mode=self.mode)
                             if _pcb_result is not None:
@@ -2343,6 +2368,18 @@ class VecEngine:
                                         _flz_d_near = abs(price - _flz_dc_d) <= _flz_thr
                                         _flz_w_near = abs(price - _flz_dc_w) <= _flz_thr
                                         _flz_near = _flz_d_near or _flz_w_near
+                            # ── ROUND 4 FLZ wt_D-bearish gate (optional) ─────────────
+                            # When FLZ_FORCE_OPEN_MOCK_WT_D_BEARISH_ONLY=True, only fire
+                            # when wt1_D < wt2_D (i.e. macro top — recreates the live
+                            # flz-bot tendency to force-open into the bear setup).
+                            if _flz_near and bool(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_WT_D_BEARISH_ONLY", False)):
+                                _flz_w1_D = store.f("wt1_D", bar_idx, 0.0)
+                                _flz_w2_D = store.f("wt2_D", bar_idx, 0.0)
+                                if abs(_flz_w1_D) > 1e-9 and abs(_flz_w2_D) > 1e-9:
+                                    if side == "LONG" and not (_flz_w1_D < _flz_w2_D):
+                                        _flz_near = False
+                                    elif side == "SHORT" and not (_flz_w1_D > _flz_w2_D):
+                                        _flz_near = False
                             if _flz_near:
                                 # New-day gate (anti-spam — flz mostly fires on first bar/day)
                                 _flz_new_day_ok = True
