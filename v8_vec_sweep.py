@@ -2337,7 +2337,8 @@ def run_sweep(
                datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     start_ts = int(start_dt.timestamp())
 
-    ts_run = int(time.time())
+    # 2026-05-19 RACE FIX: epoch+PID for uniqueness when concurrent cells finish in same second
+    ts_run = f"{int(time.time())}_{os.getpid()}"
     SWEEP_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     summary_path = out_jsonl or (SWEEP_RESULTS_DIR / f"v8_vec_sweep_{ts_run}.jsonl")
     trades_path = SWEEP_RESULTS_DIR / f"v8_vec_sweep_{ts_run}_trades.jsonl"
