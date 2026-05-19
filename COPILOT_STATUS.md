@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-19 14:35:00 UTC
+# Copilot Status — 2026-05-19 14:51:11 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:33:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:33:56
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:34:27
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:34:27
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:35:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:35:00
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-05-19T14:35:00
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-19T14:35:00
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-19T14:35:00
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-19T14:35:00
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-19T14:48:33
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:49:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:49:12
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-19T14:49:33
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:49:56
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:49:56
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:50:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:50:26
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T14:51:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T14:51:01
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
 - HELD: **UUUU** SHORT (tradier) peak +15.3%, now +9.4%
-- HELD: **USO** LONG (tradier) peak +12.1%, now +10.6%
+- HELD: **USO** LONG (tradier) peak +12.1%, now +12.1%
 - HELD: **MP** SHORT (tradier) peak +8.9%, now +8.9%
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +3.4%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
@@ -45,8 +45,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_prices.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for men is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
