@@ -103,6 +103,7 @@ class TradierConfig:
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
     LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200 alignment
+    LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = False  # 2026-05-19 PATH D: STDEV_D200_HIGH+WT_D_BEAR composite (68.5% WR, +41 bps fwd60 per signal-fire audit). Default OFF until Tier-2 multi-symbol backtest passes sample-floor + pool_sharpe>1.0.
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5        # 2026-04-27: lowered 0.6→0.5 per user (way too few trades across the board). Same change as crypto.
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # 2026-04-27 — REENTRY engine hook: engines NEVER block reentries, only ADD size + tag reason.

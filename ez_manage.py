@@ -1011,6 +1011,14 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+# 2026-05-19 PATH D — STDEV_MACRO entry-engine import. Default OFF via
+# LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED in config.py.
+try:
+    from entry_engine_stdev_macro import (
+        should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry,
+    )
+except Exception:
+    _ee_should_fire_stdev_macro_entry = None
 
 
 def _ee_reentry_boost(symbol, indicators, is_long, cfg):
@@ -1030,6 +1038,7 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
             ("stoch", _ee_should_fire_stoch_entry, "LIVE_ENTRY_ENGINE_STOCH_ENABLED"),
             ("dc", _ee_should_fire_dc_entry, "LIVE_ENTRY_ENGINE_DC_ENABLED"),
             ("htf", _ee_should_fire_htf_entry, "LIVE_ENTRY_ENGINE_HTF_ENABLED"),
+            ("stdev_macro", _ee_should_fire_stdev_macro_entry, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED"),
         ):
             if not getattr(cfg, _flag, False):
                 continue
@@ -32502,6 +32511,7 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             ("stoch", _ee_should_fire_stoch_entry, "LIVE_ENTRY_ENGINE_STOCH_ENABLED"),
             ("dc", _ee_should_fire_dc_entry, "LIVE_ENTRY_ENGINE_DC_ENABLED"),
             ("htf", _ee_should_fire_htf_entry, "LIVE_ENTRY_ENGINE_HTF_ENABLED"),
+            ("stdev_macro", _ee_should_fire_stdev_macro_entry, "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED"),
         ):
             if not getattr(_tm_cfg, _ee_flag, False):
                 continue

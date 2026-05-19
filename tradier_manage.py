@@ -48,6 +48,12 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+# 2026-05-19 PATH D — STDEV_MACRO entry-engine import (pure function, no I/O).
+# Default OFF via LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED in config_tradier.py.
+try:
+    from entry_engine_stdev_macro import should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry
+except Exception:
+    _ee_should_fire_stdev_macro_entry = None
 # ────────────────────────────────────────────────────────────────────────────────
 # 2026-05-17 TR_TREND_V1 LIVE SHADOW ADAPTER (spec: vec_paths/tr_trend_v1.py +
 # strategy_plan.md §4 + tr_trend_v1_build_report.md). SHADOW-LOG ONLY — never
@@ -291,6 +297,7 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
             ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
             ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
             ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+            ('stdev_macro', _ee_should_fire_stdev_macro_entry, 'LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED'),
         ):
             if not getattr(cfg, _flag, False): continue
             if _fn is None: continue
@@ -2631,6 +2638,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
                             ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
                             ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+                            ('stdev_macro', _ee_should_fire_stdev_macro_entry, 'LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED'),
                         ):
                             if not getattr(config, _ee_flag, False): continue
                             if _ee_fn is None: continue
