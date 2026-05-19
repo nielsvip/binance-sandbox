@@ -1660,6 +1660,11 @@ class VecEngine:
                                 pos.last_reduce_price = price
 
                 # ── WT-based exit logic ─────────────────────────
+                # Iter 1 fix 2026-05-19: live exits require multi-TF confirmation, not
+                # bare 3m WT cross. Add HTF gate: ≥WT_BASE_CROSS_EXIT_HTF_MIN of {1h,4h,D}
+                # must be against position AND 15m confirms. Mirrors WT_CROSSUNDER_FINAL
+                # gating in vec_paths/wt_crossunder_final.py. Default min_htf=1.
+                # Knob WT_BASE_CROSS_EXIT_HTF_GATE_ENABLED defaults True per iter 1.
                 for pos in (pos_long, pos_short):
                     if not pos.open:
                         continue
@@ -1669,6 +1674,29 @@ class VecEngine:
                                   (pos.side == "SHORT" and cross == "BULL")
                     if not exit_signal:
                         continue
+                    # ── ITER 1 HTF confirmation gate ──
+                    if bool(getattr(cfg, "WT_BASE_CROSS_EXIT_HTF_GATE_ENABLED", True)):
+                        _wt1_15m = store.f("wt1_15m", bar_idx, 0.0)
+                        _wt2_15m = store.f("wt2_15m", bar_idx, 0.0)
+                        _wt1_1h  = store.f("wt1_1h",  bar_idx, 0.0)
+                        _wt2_1h  = store.f("wt2_1h",  bar_idx, 0.0)
+                        _wt1_4h  = store.f("wt1_4h",  bar_idx, 0.0)
+                        _wt2_4h  = store.f("wt2_4h",  bar_idx, 0.0)
+                        _wt1_D   = store.f("wt1_D",   bar_idx, 0.0)
+                        _wt2_D   = store.f("wt2_D",   bar_idx, 0.0)
+                        if pos.side == "LONG":
+                            _m15_against = (_wt1_15m < _wt2_15m) or (_wt1_15m > 95)
+                            _htf_against = sum(1 for (_w1, _w2) in [
+                                (_wt1_1h, _wt2_1h), (_wt1_4h, _wt2_4h), (_wt1_D, _wt2_D)
+                            ] if _w1 < _w2)
+                        else:
+                            _m15_against = (_wt1_15m > _wt2_15m) or (_wt1_15m < -95)
+                            _htf_against = sum(1 for (_w1, _w2) in [
+                                (_wt1_1h, _wt2_1h), (_wt1_4h, _wt2_4h), (_wt1_D, _wt2_D)
+                            ] if _w1 > _w2)
+                        _htf_min = int(getattr(cfg, "WT_BASE_CROSS_EXIT_HTF_MIN", 1))
+                        if not (_m15_against and _htf_against >= _htf_min):
+                            continue
                     # ── MIN_HOLD_MINUTES gate (parity with TRADIER_MIN_HOLD_MINUTES=240) ──
                     min_hold = cfg.MIN_HOLD_MINUTES if self.mode == "tradier" else cfg.MIN_HOLD_MINUTES_CRYPTO
                     if min_hold > 0:

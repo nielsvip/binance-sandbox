@@ -592,6 +592,13 @@ class SweepConfig:
     BB_TAG_FAIL_STOP_TF: str = '1h'
     BB_TAG_FAIL_STOP_LOOKBACK: int = 5
     PATTERN_STOPS_LOSS_ONLY: bool = True  # only fire when gain<0; False = fire any time
+    # 2026-05-19 USER MANDATE tight breakout stops
+    NEVER_GO_RED_STOP_ENABLED: bool = False
+    NEVER_GO_RED_MIN_PEAK_PCT: float = 0.3
+    NEVER_GO_RED_BUFFER_PCT: float = 0.0
+    CHANNEL_REENTRY_STOP_ENABLED: bool = False
+    CHANNEL_REENTRY_STOP_TF: str = '1h'
+    CHANNEL_REENTRY_STOP_FIELD: str = 'dc_high'  # 'dc_high' or 'bb_upper'
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -705,6 +712,7 @@ class SymState:
     r1_stop_price: float = 0.0
     _dc_fstop_entry: float = 0.0
     _bb_fstop_entry: float = 0.0
+    _ever_outside_channel: bool = False  # Phase C CHANNEL_REENTRY state
     gr_last_fire_ts: float = 0.0    # GOLDEN_RULE cooldown tracking
 
 
@@ -1144,6 +1152,23 @@ def simulate_one_symbol(
         check_pattern_stops_at_bar = None
     _pattern_stops_loss_only = bool(getattr(config, "PATTERN_STOPS_LOSS_ONLY", True))
 
+    # ─── PHASE C 2026-05-19 tight breakout stops precompute ─────────────────────
+    try:
+        from vec_paths.tight_breakout_stops import (
+            build_channel_arrays, check_never_go_red, check_channel_reentry,
+        )
+        _chre_upper_arr, _chre_lower_arr = build_channel_arrays(npz, n, is_long, config)
+        _ngr_active = bool(getattr(config, "NEVER_GO_RED_STOP_ENABLED", False))
+        _chre_active = bool(getattr(config, "CHANNEL_REENTRY_STOP_ENABLED", False))
+    except Exception as _e:
+        sys.stderr.write(f"tight_breakout_stops precompute failed {symbol}/{side}: {_e}\n")
+        _ngr_active = False
+        _chre_active = False
+        _chre_upper_arr = np.zeros(n, dtype=np.float32)
+        _chre_lower_arr = np.zeros(n, dtype=np.float32)
+        check_never_go_red = None
+        check_channel_reentry = None
+
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
     # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
     # then short-circuit the legacy OPEN / EXIT pipeline below. Hot loop only
@@ -1469,6 +1494,7 @@ def simulate_one_symbol(
                 state._bb_fstop_entry = float(_bb_fstop_arr[i]) if float(_bb_fstop_arr[i]) > 0 else 0.0
             else:
                 state._bb_fstop_entry = 0.0
+            state._ever_outside_channel = False
             continue
 
         # ─── HOLDING: compute gain + age ────────────────────────────────
@@ -1706,7 +1732,37 @@ def simulate_one_symbol(
                     state.last_reduce_ts = bar_ts; state.hedge_active = False
                     state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                     state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    state._ever_outside_channel = False
                     continue
+
+        # ─── PHASE C 2026-05-19 USER MANDATE tight breakout stops ──────────────
+        # NEVER_GO_RED: closes if gain crosses below 0 after max_gain >= peak threshold.
+        # CHANNEL_REENTRY: closes if price was outside channel and re-entered.
+        if (_ngr_active or _chre_active) and state.qty > 0.0001:
+            _tb_fire = False
+            _tb_reason = ""
+            if _ngr_active and check_never_go_red is not None:
+                _tb_fire, _tb_reason = check_never_go_red(gain, state.max_gain, config)
+            if not _tb_fire and _chre_active and check_channel_reentry is not None:
+                _ch_u = float(_chre_upper_arr[i])
+                _ch_l = float(_chre_lower_arr[i])
+                _tb_fire, _tb_reason, _new_ever = check_channel_reentry(
+                    mark, is_long, state._ever_outside_channel, _ch_u, _ch_l, config,
+                )
+                state._ever_outside_channel = _new_ever
+            if _tb_fire:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_tb_reason, pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                state._ever_outside_channel = False
+                continue
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
         # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency, requires gain >= MIN_GAIN.

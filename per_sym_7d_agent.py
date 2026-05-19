@@ -36,8 +36,82 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+# Defensive: some NPZ fields (bar_pattern_codes, bar_vol_regime_codes) are object
+# arrays. Default np.load() refuses with allow_pickle=False since numpy 1.16.5.
+# Engine modules call plain np.load(path) — patch the default here so those fields
+# load. We only read precomputed indicator data we authored. (Same patch as
+# per_sym_20d_agent_stocks.py — extracted 2026-05-19 when ang BTCUSDC NPZ tripped
+# this in the 7D smoke run on S1.)
+_orig_np_load = np.load
+def _safe_np_load(*args, **kwargs):
+    kwargs.setdefault('allow_pickle', True)
+    return _orig_np_load(*args, **kwargs)
+np.load = _safe_np_load  # affects this process AND its workers via fork+import
+
 import metrics_guard as mg
+import per_sym_engine_crypto as _pse_crypto
 from per_sym_engine_crypto import SymParams, simulate_dual, NPZ_DIR, _npz_cache
+
+# Defensive wrapper around engine's load_3m_base: tolerate 0-d / non-1-d object
+# fields in the NPZ (some recent regens stored bar_pattern_codes as 0-d). Mirror
+# the wrapper in per_sym_20d_agent_stocks.py. The engine only consumes float arrays
+# for its decision pipeline.
+_orig_load_3m_base = _pse_crypto.load_3m_base
+
+
+def _safe_load_3m_base(sym, years_back=4.0):
+    try:
+        return _orig_load_3m_base(sym, years_back=years_back)
+    except Exception:
+        pass
+    cache_key = f'{sym}__y{years_back:.2f}'
+    cache = _pse_crypto._npz_cache
+    if cache_key in cache:
+        return cache[cache_key]
+    p = NPZ_DIR / f'{sym}.npz'
+    if not p.exists():
+        return None
+    try:
+        z = np.load(str(p), allow_pickle=True)
+    except Exception:
+        return None
+    needed = ['open_3m', 'high_3m', 'low_3m', 'close_3m', 'timestamps']
+    if not all(k in z.files for k in needed):
+        z.close()
+        return None
+    full: Dict[str, np.ndarray] = {}
+    for k in z.files:
+        try:
+            arr = z[k]
+            if arr.ndim < 1:
+                continue
+            full[k] = arr[:]
+        except Exception:
+            continue
+    z.close()
+    if cache:
+        cache.clear()
+    ts_full = full['timestamps'].astype(np.int64)
+    full['timestamps'] = ts_full
+    cutoff = ts_full[-1] - int(years_back * 365.25 * 86400)
+    si = int(np.searchsorted(ts_full, cutoff))
+    sliced: Dict[str, np.ndarray] = {}
+    for k, arr in full.items():
+        if isinstance(arr, np.ndarray) and arr.ndim == 1 and len(arr) == len(ts_full):
+            sliced[k] = arr[si:]
+        else:
+            sliced[k] = arr
+    sliced['open'] = sliced['open_3m'].astype(np.float64)
+    sliced['high'] = sliced['high_3m'].astype(np.float64)
+    sliced['low'] = sliced['low_3m'].astype(np.float64)
+    sliced['close'] = sliced['close_3m'].astype(np.float64)
+    sliced['volume'] = sliced.get('volume_3m', np.ones(len(sliced['close']))).astype(np.float64)
+    sliced['ts'] = sliced['timestamps']
+    cache[cache_key] = sliced
+    return sliced
+
+
+_pse_crypto.load_3m_base = _safe_load_3m_base
 
 # Optional vec-axis engine (per_sym_vec_engine_crypto). When --use-vec is passed, the
 # agent evaluates MILLIONS of variants instead of the ~9-variant neighbourhood, then
@@ -118,7 +192,14 @@ def load_baseline_for_sym(sym: str) -> Optional[SymParams]:
 
 
 def neighborhood_variants(base: SymParams) -> List[Tuple[str, SymParams]]:
-    """Small candidate set: baseline + a few looser/tighter neighbors. Designed to finish in <30s/sym."""
+    """Small candidate set: baseline + a few looser/tighter neighbors. Designed to finish in <30s/sym.
+
+    USE_V8_AGGREGATORS is forced OFF because v8_quick_engine was renamed to
+    OPUS_VOMIT.py (USER 2026-05-10 mandate). Engine falls back to its native
+    _build_signals path. Same fix as per_sym_20d_agent_stocks.py.
+    """
+    base = base.copy()
+    base.USE_V8_AGGREGATORS = False
     variants: List[Tuple[str, SymParams]] = [('baseline', base.copy())]
     # Loosen
     p = base.copy(); p.MIN_HOLD_BARS_15m = max(1, base.MIN_HOLD_BARS_15m - 2)
@@ -152,6 +233,8 @@ def evaluate_7d(sym: str, params: SymParams) -> Optional[Dict]:
     if not trades:
         return {'wsharpe': 0.0, 'trades': 0, 'trades_per_day': 0.0,
                 'pool_sharpe': 0.0, 'max_dd_pct': 0.0, 'wr_pct': 0.0,
+                'gain_per_week': 0.0,
+                'bh_pct_window': float(m.get('bh_pct_window', 0.0)),
                 'long_trades': 0, 'short_trades': 0,
                 'augment_count': 0, 'reverse_on_exit_count': 0,
                 'mean_rev_reentry_count': 0, 'hedge_count': 0,
@@ -167,6 +250,8 @@ def evaluate_7d(sym: str, params: SymParams) -> Optional[Dict]:
         'pool_sharpe': float(m.get('pool_sharpe', 0)),
         'max_dd_pct': float(m.get('max_dd_pct', 0)),
         'wr_pct': float(m.get('wr_pct', 0)),
+        'gain_per_week': float(m.get('gain_per_week', 0.0)),
+        'bh_pct_window': float(m.get('bh_pct_window', 0.0)),
         'long_trades': int(m.get('long_trades', 0)),
         'short_trades': int(m.get('short_trades', 0)),
         'augment_count': int(m.get('augment_count', 0)),
@@ -244,6 +329,8 @@ def reconfig_one_sym(sym: str) -> Optional[Dict]:
         'pool_sharpe': winner_r['pool_sharpe'],
         'wr_pct': winner_r['wr_pct'],
         'max_dd_pct': winner_r['max_dd_pct'],
+        'gain_per_week': winner_r.get('gain_per_week', 0.0),
+        'bh_pct_window': winner_r.get('bh_pct_window', 0.0),
         'long_trades': winner_r['long_trades'],
         'short_trades': winner_r['short_trades'],
         'augment_count': winner_r['augment_count'],
@@ -253,7 +340,10 @@ def reconfig_one_sym(sym: str) -> Optional[Dict]:
         'follow_through_count': winner_r['follow_through_count'],
         'promote': promote,
         'params': winner_r['params'],
-        'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades']} for t, r in results],
+        'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades'],
+                          'wr_pct': r.get('wr_pct', 0.0), 'max_dd_pct': r.get('max_dd_pct', 0.0),
+                          'gain_per_week': r.get('gain_per_week', 0.0),
+                          'bh_pct_window': r.get('bh_pct_window', 0.0)} for t, r in results],
     }
 
 
@@ -284,6 +374,8 @@ def write_active_7d(account: str, results: List[Dict]) -> int:
             'pool_sharpe': r['pool_sharpe'],
             'wr_pct': r['wr_pct'],
             'max_dd_pct': r['max_dd_pct'],
+            'gain_per_week': r.get('gain_per_week', 0.0),
+            'bh_pct_window': r.get('bh_pct_window', 0.0),
             'long_trades': r['long_trades'],
             'short_trades': r['short_trades'],
             'augment_count': r['augment_count'],
@@ -331,6 +423,22 @@ def cycle(account: str, syms: List[str], workers: int) -> Dict:
     elapsed = time.time() - t0
     promoted = write_active_7d(account, results)
     print(f"[per_sym_7d_agent] done in {elapsed:.0f}s | promoted={promoted}/{len(results)}", flush=True)
+    # Top-10 by wsharpe with WR/DD/gain_per_week/B&H per USER 2026-05-19 reporting standard.
+    valid = [r for r in results if r and 'error' not in r]
+    valid.sort(key=lambda x: x.get('winner_wsharpe', -999), reverse=True)
+    if valid:
+        print(f"  Top {min(10, len(valid))} by wsharpe:", flush=True)
+        for r in valid[:10]:
+            print(f"    {r['sym']:<14s} tag={r['winner_tag']:<18s} "
+                  f"wsharpe={r['winner_wsharpe']:+.3f} "
+                  f"Δ={r['delta_wsharpe']:+.3f} "
+                  f"tr={r['trades']:>4d} tpd={r['trades_per_day']:.2f} "
+                  f"pool={r['pool_sharpe']:+.3f} "
+                  f"WR={r['wr_pct']:5.1f}% "
+                  f"DD={r['max_dd_pct']:5.2f}% "
+                  f"g/wk={r.get('gain_per_week', 0.0):+.2f}% "
+                  f"B&H={r.get('bh_pct_window', 0.0):+.2f}% "
+                  f"promote={r['promote']}", flush=True)
     return {'completed': len(results), 'promoted': promoted, 'elapsed_s': elapsed}
 
 

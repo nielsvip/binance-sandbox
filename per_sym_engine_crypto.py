@@ -1627,10 +1627,13 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     )
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
+    # Buy-and-hold baseline over the same window (short-horizon agents need this).
+    bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
     if not trades:
         empty = {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
                  'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0,
                  'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0,
+                 'gain_per_week': 0.0, 'bh_pct_window': bh_pct,
                  'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1,
                  'tag': f'per_sym_dual_{sym}', 'trade_list': [],
                  'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
@@ -1663,11 +1666,13 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     n_hard_loss = sum(1 for t in trades if t.get('origin') == 'hard_loss_pct')
     n_peak_giveback_fixed = sum(1 for t in trades if t.get('origin') == 'peak_giveback_fixed')
     n_mr = sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry')
+    weeks = max(1.0 / 7.0, span_days / 7.0)
     return {
         'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
         'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
         'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'gain_per_week': total / weeks, 'bh_pct_window': bh_pct,
         'years': yrs, 'n_syms': 1, 'tag': f'per_sym_dual_{sym}',
         'trade_list': trades, 'params': params.to_dict(),
         'long_trades': n_long, 'short_trades': n_short,
@@ -1731,11 +1736,13 @@ def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) ->
     trades = walk_trades(enter, leave, c15, ts15, side,
                          int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m))
 
+    bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
     if not trades:
         return {'sym': sym, 'side': side, 'trades': 0, 'trades_per_day': 0.0,
                 'pool_sharpe': 0.0, 'sym_sharpe': 0.0, 'wr_pct': 0.0,
                 'max_dd_pct': 0.0, 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0,
-                'gain_per_yr': 0.0, 'gain_sym_yr': 0.0, 'years': (ts15[-1] - ts15[0]) / 86400 / 365.25,
+                'gain_per_yr': 0.0, 'gain_per_week': 0.0, 'bh_pct_window': bh_pct,
+                'gain_sym_yr': 0.0, 'years': (ts15[-1] - ts15[0]) / 86400 / 365.25,
                 'n_syms': 1, 'tag': f'per_sym_{sym}_{side}',
                 'trade_list': [], 'params': params.to_dict()}
 
@@ -1743,6 +1750,7 @@ def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) ->
     n = len(rets)
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
+    weeks = max(1.0 / 7.0, span_days / 7.0)
     sd = float(rets.std())
     pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
     wr = float((rets > 0).mean() * 100.0)
@@ -1756,6 +1764,7 @@ def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) ->
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
         'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
         'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'gain_per_week': total / weeks, 'bh_pct_window': bh_pct,
         'years': yrs, 'n_syms': 1,
         'tag': f'per_sym_{sym}_{side}',
         'trade_list': trades, 'params': params.to_dict(),

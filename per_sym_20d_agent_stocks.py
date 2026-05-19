@@ -240,6 +240,8 @@ def evaluate_20d(sym: str, params: SymParamsStocks) -> Optional[Dict]:
     if not trades:
         return {'wsharpe': 0.0, 'trades': 0, 'trades_per_day': 0.0,
                 'pool_sharpe': 0.0, 'max_dd_pct': 0.0, 'wr_pct': 0.0,
+                'gain_per_week': 0.0,
+                'bh_pct_window': float(m.get('bh_pct_window', 0.0)),
                 'long_trades': 0, 'short_trades': 0,
                 'augment_count': 0, 'reverse_on_exit_count': 0,
                 'mean_rev_reentry_count': 0, 'hedge_count': 0,
@@ -261,6 +263,8 @@ def evaluate_20d(sym: str, params: SymParamsStocks) -> Optional[Dict]:
         'engine_pool_sharpe': float(m.get('pool_sharpe', 0)),
         'max_dd_pct': float(m.get('max_dd_pct', 0)),
         'wr_pct': float(m.get('wr_pct', 0)),
+        'gain_per_week': float(m.get('gain_per_week', 0.0)),
+        'bh_pct_window': float(m.get('bh_pct_window', 0.0)),
         'long_trades': int(m.get('long_trades', 0)),
         'short_trades': int(m.get('short_trades', 0)),
         'augment_count': int(m.get('augment_count', 0)),
@@ -323,6 +327,8 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
                         'trades_per_day': r['trades_per_day'],
                         'wr_pct': r['wr_pct'],
                         'max_dd_pct': r['max_dd_pct'],
+                        'gain_per_week': r.get('gain_per_week', 0.0),
+                        'bh_pct_window': r.get('bh_pct_window', 0.0),
                         'long_trades': r['long_trades'],
                         'short_trades': r['short_trades'],
                         'augment_count': r['augment_count'],
@@ -352,6 +358,8 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
         'pool_sharpe': winner_r['pool_sharpe'],
         'wr_pct': winner_r['wr_pct'],
         'max_dd_pct': winner_r['max_dd_pct'],
+        'gain_per_week': winner_r.get('gain_per_week', 0.0),
+        'bh_pct_window': winner_r.get('bh_pct_window', 0.0),
         'long_trades': winner_r['long_trades'],
         'short_trades': winner_r['short_trades'],
         'augment_count': winner_r['augment_count'],
@@ -362,7 +370,10 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
         'open_at_end_count': winner_r['open_at_end_count'],
         'promote': promote,
         'params': winner_r['params'],
-        'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades']}
+        'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades'],
+                          'wr_pct': r.get('wr_pct', 0.0), 'max_dd_pct': r.get('max_dd_pct', 0.0),
+                          'gain_per_week': r.get('gain_per_week', 0.0),
+                          'bh_pct_window': r.get('bh_pct_window', 0.0)}
                          for t, r in results],
     }
 
@@ -408,6 +419,8 @@ def write_active_20d(account: str, results: List[Dict], dry_run: bool) -> int:
             'pool_sharpe': r['pool_sharpe'],
             'wr_pct': r['wr_pct'],
             'max_dd_pct': r['max_dd_pct'],
+            'gain_per_week': r.get('gain_per_week', 0.0),
+            'bh_pct_window': r.get('bh_pct_window', 0.0),
             'long_trades': r['long_trades'],
             'short_trades': r['short_trades'],
             'augment_count': r['augment_count'],
@@ -523,7 +536,11 @@ def cycle(account: str, syms: List[str], workers: int,
                   f"Δ={r['delta_wsharpe']:+.3f} "
                   f"tr={r['trades']:>4d} tpd={r['trades_per_day']:.2f} "
                   f"pool={r['pool_sharpe']:+.3f} "
-                  f"dd={r['max_dd_pct']:5.2f}% promote={r['promote']}", flush=True)
+                  f"WR={r['wr_pct']:5.1f}% "
+                  f"DD={r['max_dd_pct']:5.2f}% "
+                  f"g/wk={r.get('gain_per_week', 0.0):+.2f}% "
+                  f"B&H={r.get('bh_pct_window', 0.0):+.2f}% "
+                  f"promote={r['promote']}", flush=True)
     return {'completed': len(results), 'promoted': promoted, 'elapsed_s': elapsed,
             'diagnostic': len(syms) < mg.MIN_SYMS_STOCKS}
 
@@ -540,8 +557,14 @@ def load_struct_v4_universe() -> List[str]:
 
 def load_account_syms(account: str, include_universe: bool) -> List[str]:
     """Load union of {symbols_<acct>_long.json, symbols_<acct>_short.json}
-    optionally union with struct_v4_universe.json. Deduplicate and keep only syms
-    whose NPZ exists."""
+    filtered by NPZ presence.
+
+    USER 2026-05-19 mandate: for accounts trb/trc the universe is ONLY the
+    per-account symbols_<acct>_long ∪ symbols_<acct>_short — the broader
+    struct_v4_universe.json is NEVER merged in. The previous default merged
+    struct_v4 (~140 syms) which is wider than the ranked tradier_rankings.py
+    output we trade. Other accounts still honour include_universe.
+    """
     files = {
         'trb': ['symbols_trb_long.json', 'symbols_trb_short.json'],
         'trc': ['symbols_trc_long.json', 'symbols_trc_short.json'],
@@ -568,7 +591,10 @@ def load_account_syms(account: str, include_universe: bool) -> List[str]:
                 continue
             seen.add(s)
             syms.append(s)
-    if include_universe:
+    # struct_v4_universe.json is FORBIDDEN for trb/trc going forward (USER 2026-05-19).
+    # Honour include_universe only for non-tradier accounts (currently none use this
+    # loader — kept for forward compatibility).
+    if include_universe and account not in ('trb', 'trc'):
         for s in load_struct_v4_universe():
             if s in seen:
                 continue

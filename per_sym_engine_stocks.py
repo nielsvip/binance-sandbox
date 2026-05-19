@@ -594,10 +594,12 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
 
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
+    bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
     if not trades:
         return {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
                 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0,
                 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0,
+                'gain_per_week': 0.0, 'bh_pct_window': bh_pct,
                 'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1,
                 'tag': f'per_sym_stocks_dual_{sym}', 'trade_list': [],
                 'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
@@ -615,11 +617,13 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
     total = float(rets.sum())
     n_long = sum(1 for t in trades if t['side'] == 'LONG')
     n_short = n - n_long
+    weeks = max(1.0 / 7.0, span_days / 7.0)
     return {
         'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
         'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
         'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'gain_per_week': total / weeks, 'bh_pct_window': bh_pct,
         'years': yrs, 'n_syms': 1, 'tag': f'per_sym_stocks_dual_{sym}',
         'trade_list': trades, 'params': params.to_dict(),
         'long_trades': n_long, 'short_trades': n_short,
