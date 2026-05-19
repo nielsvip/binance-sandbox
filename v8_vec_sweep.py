@@ -615,6 +615,24 @@ class SweepConfig:
     EXH_HTF_TF: str = '1h'
     EXH_HTF_FIELD: str = 'bb_upper'
     EXH_HTF_NEAR_PCT: float = 0.5
+    # 2026-05-19 Phase E MTF protocol — proven entry rewrite
+    MTF_ARMED_ENTRY_ENABLED: bool = False         # master — short-circuits legacy entries
+    MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
+    MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
+    MTF_TRIGGER_WT_IN_BB_ENABLED: bool = True
+    MTF_TRIGGER_WT_TF: str = '15m'
+    MTF_TRIGGER_1H_DIRECT_ENABLED: bool = True
+    MTF_TRIGGER_1H_DIRECT_BANDTYPE: str = 'dc'
+    MTF_TRIGGER_15M_DIRECT_ENABLED: bool = False  # test variant
+    MTF_TRIGGER_15M_DIRECT_BANDTYPE: str = 'dc'
+    MTF_REQUIRE_ARMED_ANY: bool = True
+    MTF_BIG_ADD_TF: str = '3m'                    # test {3m, 15m, 1h}
+    MTF_REQUIRE_HH_BOUNCE: bool = True
+    MTF_BIG_ADD_SIZE_MULT: float = 4.0            # BIG = 4× SMALL = 1× normal
+    MTF_SMALL_SIZE_FRAC: float = 0.25
+    MTF_SLOWDOWN_STALL_BARS: int = 5
+    MTF_SLOWDOWN_STALL_PCT: float = 0.1
+    MTF_SLOWDOWN_REQUIRE_BIG_ADD: bool = True
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -730,6 +748,11 @@ class SymState:
     _bb_fstop_entry: float = 0.0
     _ever_outside_channel: bool = False  # Phase C CHANNEL_REENTRY state
     gr_last_fire_ts: float = 0.0    # GOLDEN_RULE cooldown tracking
+    # Phase E 2026-05-19 MTF protocol state
+    _mtf_prior_bounce_price: float = 0.0
+    _mtf_stall_count: int = 0
+    _mtf_max_k_seen: float = 0.0
+    _mtf_big_added: bool = False
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -1258,6 +1281,22 @@ def simulate_one_symbol(
         )
         return [], [], n
 
+    # ─── PHASE E 2026-05-19 MTF protocol precompute ────────────────────────────
+    try:
+        from vec_paths.mtf_armed_entries import (
+            build_mtf_arrays, check_mtf_small_entry,
+            check_mtf_big_add, check_mtf_slowdown,
+        )
+        _mtf_arrays = build_mtf_arrays(npz, n, is_long, config)
+        _mtf_active = bool(_mtf_arrays.get("enabled", False))
+    except Exception as _e:
+        sys.stderr.write(f"mtf_armed_entries precompute failed {symbol}/{side}: {_e}\n")
+        _mtf_arrays = {"enabled": False}
+        _mtf_active = False
+        check_mtf_small_entry = check_mtf_big_add = check_mtf_slowdown = None
+    _mtf_small_frac = float(getattr(config, "MTF_SMALL_SIZE_FRAC", 0.25))
+    _mtf_big_mult = float(getattr(config, "MTF_BIG_ADD_SIZE_MULT", 4.0))
+
     for i in range(n):
         bar_ts = float(ts[i])
         mark = float(close[i])
@@ -1330,6 +1369,72 @@ def simulate_one_symbol(
                         state.augmented_count += 1
                         state.last_augment_ts = bar_ts
             continue  # TR_TREND_v1 handles this bar fully — skip all legacy logic
+
+        # ─── PHASE E 2026-05-19 MTF protocol short-circuit ───────────────────
+        # When MTF_ARMED_ENTRY_ENABLED=True, ALL legacy entries are disabled.
+        # Only MTF triggers open positions:
+        #   - SMALL on (ARMED+WT-in-BB) or 1h/15m direct breakout
+        #   - BIG ADD on HH-validated bounce on configured TF
+        # SLOWDOWN immediate-sell fires after SMALL if no BIG ADD yet.
+        # Standard frozen-stop / pattern exits still apply after position open.
+        if _mtf_active and check_mtf_small_entry is not None:
+            # If position open: check slowdown + big-add
+            if state.qty > 0.0001:
+                # K_3m + WT_3m + 3m OHLC needed for slowdown
+                _k3 = float(npz.get("k_3m", np.zeros(n))[i]) if "k_3m" in npz else 0.0
+                _wt1_3 = float(npz.get("wt1_3m", np.zeros(n))[i]) if "wt1_3m" in npz else 0.0
+                _wt2_3 = float(npz.get("wt2_3m", np.zeros(n))[i]) if "wt2_3m" in npz else 0.0
+                _o3 = float(npz.get("open_3m", np.zeros(n))[i]) if "open_3m" in npz else 0.0
+                _c3 = float(npz.get("close_3m", np.zeros(n))[i]) if "close_3m" in npz else mark
+                _slow_fire, _slow_reason, _new_stall, _new_max_k = check_mtf_slowdown(
+                    gain=gain, gain_prev=0.0, stall_count=state._mtf_stall_count,
+                    max_k_seen=state._mtf_max_k_seen, k_3m=_k3, close=_c3, open_=_o3,
+                    wt1_3m=_wt1_3, wt2_3m=_wt2_3, big_added=state._mtf_big_added, config=config,
+                )
+                state._mtf_stall_count = _new_stall
+                state._mtf_max_k_seen = _new_max_k
+                if _slow_fire:
+                    pnl_pct = gain
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_slow_reason, pnl_pct=pnl_pct)
+                    events.append(ev); trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                    state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                    continue
+                # BIG ADD check (only once per position)
+                if not state._mtf_big_added and check_mtf_big_add is not None:
+                    _big_fire, _big_reason, _new_prior = check_mtf_big_add(
+                        _mtf_arrays, i, mark, is_long, state._mtf_prior_bounce_price, config,
+                    )
+                    state._mtf_prior_bounce_price = _new_prior
+                    if _big_fire:
+                        add_qty = state.qty * (_mtf_big_mult - 1.0)
+                        if add_qty > 0:
+                            denom = state.qty + add_qty
+                            new_entry = (state.qty * state.entry_price + add_qty * mark) / denom if denom > 0 else mark
+                            ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=add_qty, price=mark,
+                                value=add_qty * mark, reason=_big_reason)
+                            events.append(ev)
+                            state.qty = denom; state.entry_price = new_entry
+                            state.augmented_count += 1; state.last_augment_ts = bar_ts
+                            state._mtf_big_added = True
+                continue  # MTF holds position — skip legacy logic
+            # No position: check for SMALL entry
+            _small_fire, _small_reason = check_mtf_small_entry(_mtf_arrays, i, config)
+            if _small_fire:
+                new_qty = float(config.START_POSITION_SIZE) * _mtf_small_frac / max(mark, 1e-9)
+                ev = TradeEvent(ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
+                    value=new_qty * mark, reason=_small_reason)
+                events.append(ev)
+                state.qty = new_qty; state.entry_price = mark; state.initial_qty = new_qty
+                state.opened_at = bar_ts; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_open_attempt_ts = bar_ts; state.last_augment_ts = bar_ts
+                state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+            continue  # MTF active — skip all legacy entry logic
 
         # ─── 2026-05-17 VEC_OVERTRADE_FIX — POST-CLOSE COOLDOWN ──────────────
         # Mirrors slow engine backtest_v8_engine.py:2473-2486 which gates every
