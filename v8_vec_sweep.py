@@ -577,6 +577,21 @@ class SweepConfig:
     BB_FROZEN_STOP_ENABLED: bool = False
     BB_FROZEN_STOP_TF: str = '1h'
     BB_FROZEN_STOP_FIELD: str = 'lower'
+    # PHASE B 2026-05-19 candle-pattern stops (no-hedge regime)
+    LH_STOP_ENABLED: bool = False
+    LH_STOP_TF: str = '15m'
+    LL_STOP_ENABLED: bool = False
+    LL_STOP_TF: str = '15m'
+    IB_STOP_ENABLED: bool = False
+    IB_STOP_TF: str = '1h'
+    IB_STOP_LOOKBACK: int = 20
+    PULLBACK_STOP_ENABLED: bool = False
+    PULLBACK_STOP_TF: str = '15m'
+    PULLBACK_STOP_MODE: str = 'red2'      # red1 / red2 / red3
+    BB_TAG_FAIL_STOP_ENABLED: bool = False
+    BB_TAG_FAIL_STOP_TF: str = '1h'
+    BB_TAG_FAIL_STOP_LOOKBACK: int = 5
+    PATTERN_STOPS_LOSS_ONLY: bool = True  # only fire when gain<0; False = fire any time
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -1114,6 +1129,20 @@ def simulate_one_symbol(
             _bbl = np.nan_to_num(npz.get(f"bb_lower_{_bb_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
             _bb_fstop_arr = np.where((_bbu > 0) & (_bbl > 0), (_bbu + _bbl) / 2.0, 0.0).astype(np.float32)
     _fstop_floor = float(getattr(config, "DC_LOW_FROZEN_STOP_FLOOR_PCT", -999.0))
+
+    # ─── PHASE B 2026-05-19 candle-pattern stops precompute ─────────────────────
+    try:
+        from vec_paths.candle_pattern_stops import (
+            build_all_pattern_stop_arrays, check_pattern_stops_at_bar,
+        )
+        _pattern_stop_arrays = build_all_pattern_stop_arrays(npz, n, is_long, config)
+        _pattern_stop_active = any(v is not None for v in _pattern_stop_arrays.values())
+    except Exception as _e:
+        sys.stderr.write(f"candle_pattern_stops precompute failed {symbol}/{side}: {_e}\n")
+        _pattern_stop_arrays = {}
+        _pattern_stop_active = False
+        check_pattern_stops_at_bar = None
+    _pattern_stops_loss_only = bool(getattr(config, "PATTERN_STOPS_LOSS_ONLY", True))
 
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
     # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
@@ -1658,6 +1687,26 @@ def simulate_one_symbol(
                 state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 continue
+
+        # ─── PHASE B 2026-05-19 candle-pattern stops (PSTOP_*) ─────────────────
+        # LH / LL / IB / PULLBACK / BB_TAG_FAIL — all configurable per TF.
+        # By default fires only when underwater (PATTERN_STOPS_LOSS_ONLY=True).
+        if _pattern_stop_active and check_pattern_stops_at_bar is not None and state.qty > 0.0001:
+            _ps_eligible = (gain < 0) if _pattern_stops_loss_only else True
+            if _ps_eligible:
+                _ps_fire, _ps_reason = check_pattern_stops_at_bar(_pattern_stop_arrays, i, config)
+                if _ps_fire:
+                    pnl_pct = gain
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_ps_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    continue
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
         # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency, requires gain >= MIN_GAIN.
