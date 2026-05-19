@@ -601,6 +601,24 @@ class VecConfig:
     WT_3M_FORCE_OPEN_SIZE_USD: float = 9.0         # crypto default (100.0 for tradier)
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True     # bypasses cooldown / dup-guard
 
+    # ── ROUND 4 FIX (2026-05-19) — FLZ_AGENT_FORCE_OPEN_MOCK ─────────────────
+    # MTF_SR_FRESH_SETUP-style sparse force-opens. Mirrors flz bot behavior of
+    # opening LONG when price kisses a daily/weekly horizontal level even though
+    # WT setup is unfavorable. Forensic evidence (ETH 30d window):
+    #   live opens: FLZ_AGENT_FORCE_OPEN(MTF_SR_FRESH_SETUP) × 6 of 12 OPENs.
+    #   Vec previously had no equivalent → vec never lost on those entries →
+    #   vec sharpe sign FLIPPED positive vs live's slightly-negative.
+    # Logic: when bar_idx is on a daily-open boundary AND price within
+    # FLZ_MOCK_SR_ATR_MULT × atr_D of dc_basis_D OR dc_basis_W, force open
+    # this side. Bypasses WT score / GR filter (intentional). Honors cooldown
+    # and dup_guard (these are bot-level too).
+    # Default OFF; flipped on per-sym via baseline JSON.
+    FLZ_FORCE_OPEN_MOCK_ENABLED: bool = False
+    FLZ_FORCE_OPEN_MOCK_SR_ATR_MULT: float = 0.50  # distance to D-basis in ATR_D units
+    FLZ_FORCE_OPEN_MOCK_REQUIRE_NEW_DAY: bool = True  # only fire on first bar of a UTC day
+    FLZ_FORCE_OPEN_MOCK_MIN_GAP_HOURS: float = 6.0  # min hours between FLZ-mock fires (anti-spam)
+    FLZ_FORCE_OPEN_MOCK_LONG_ONLY: bool = True  # mirrors live ETH evidence (all 6 fires were LONG)
+
     # ── GOLDEN_RULE enforcement loop ─────────────────────────
     # Source: ez_manage.py:_golden_rule_loop() + backtest_v8_engine.py:2339.
     # GOLDEN_RULE_ENABLED / BASE_USD / MULT_* / DC_*/BB_* already declared above.
@@ -2245,29 +2263,13 @@ class VecEngine:
                         if side == "SHORT" and _sym_u not in tradeable_short:
                             continue
 
-                    # ── Per-sym entry cooldown (parity with AUGMENT_LOCK / DUP_GUARD) ──
-                    # Real engine blocks new entries for N seconds after last close on this pk.
-                    # Default 900s (15 min) per CLAUDE.md AUGMENT_LOCK.
-                    last_close_ts = pos.last_close_ts if hasattr(pos, "last_close_ts") else 0
-                    if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
-                        if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
-                            continue
-
-                    # ── DUP_GUARD on NEW opens (Path 2) ──────────────────────────
-                    # Source: vec_paths/dup_guard.py + ez_manage.py:14062 HARD_AUGMENT_LOCK.
-                    # Per CLAUDE.md 2026-05-09: AUGMENT_LOCK extends to ALL opens,
-                    # including true OPEN on empty positions.
-                    if _DUP_GUARD_AVAILABLE and bool(getattr(cfg, 'DUP_GUARD_ENABLED', True)):
-                        _new_open_blk = _check_dup_guard_block(
-                            pos, float(ts_i), 0.0, cfg,
-                            pos_value_usd=0.0, action="OPEN"
-                        )
-                        if _new_open_blk is not None:
-                            continue
-
                     # ── PRICE_CROSS_BACK_REENTRY (tradier_manage.py:1880) ───────────
-                    # Fires when last close was recent and price is back near exit level.
-                    # Default OFF. Fires BEFORE DC_BREAK and WT gate — mirrors live priority.
+                    # ROUND 4 FIX #4 2026-05-19: moved BEFORE cooldown / DUP_GUARD so the
+                    # PCB path can actually fire. Previously placed AFTER cooldown — but
+                    # PCB MAX_AGE_MIN=240 == ENTRY_COOLDOWN_SEC=14400s/60=240, so the
+                    # cooldown always shadowed PCB. Live priority order has PCB BEFORE
+                    # cooldown (it IS the recovery from a recent close). Keeps default OFF
+                    # for ablation safety; flipped True in r4 baseline.
                     if _price_cross_back_fn is not None and getattr(cfg, 'PRICE_CROSS_BACK_REENTRY_ENABLED', False):
                         try:
                             _pcb_result = _price_cross_back_fn(store, bar_idx, sym, side, pos, cfg, mode=self.mode)
@@ -2291,6 +2293,91 @@ class VecEngine:
                                 continue  # skip DC_BREAK and WT path
                         except Exception:
                             pass
+
+                    # ── Per-sym entry cooldown (parity with AUGMENT_LOCK / DUP_GUARD) ──
+                    # Real engine blocks new entries for N seconds after last close on this pk.
+                    # Default 900s (15 min) per CLAUDE.md AUGMENT_LOCK.
+                    # ROUND 4 2026-05-19: moved AFTER PCB so PCB can override cooldown.
+                    last_close_ts = pos.last_close_ts if hasattr(pos, "last_close_ts") else 0
+                    if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
+                        if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
+                            continue
+
+                    # ── DUP_GUARD on NEW opens (Path 2) ──────────────────────────
+                    # Source: vec_paths/dup_guard.py + ez_manage.py:14062 HARD_AUGMENT_LOCK.
+                    # Per CLAUDE.md 2026-05-09: AUGMENT_LOCK extends to ALL opens,
+                    # including true OPEN on empty positions.
+                    if _DUP_GUARD_AVAILABLE and bool(getattr(cfg, 'DUP_GUARD_ENABLED', True)):
+                        _new_open_blk = _check_dup_guard_block(
+                            pos, float(ts_i), 0.0, cfg,
+                            pos_value_usd=0.0, action="OPEN"
+                        )
+                        if _new_open_blk is not None:
+                            continue
+
+                    # ── ROUND 4 FIX 2026-05-19 — FLZ_AGENT_FORCE_OPEN_MOCK ──────────
+                    # Sparse MTF_SR-style force-open. Two modes (toggle via MODE knob):
+                    #   "near_dc"   = price within ATR_MULT × atr_D of dc_basis_D / dc_basis_W.
+                    #   "near_dc_high" = price within ATR_MULT × atr_D of dc_HIGH_D
+                    #                    (level just touched at top — captures late-buy peak fills)
+                    # Bypasses WT/GR filters (sparse-entry mock for flz bot late-buy opens).
+                    # Honors cooldown + dup_guard. Default OFF.
+                    if bool(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_ENABLED", False)):
+                        _flz_long_only = bool(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_LONG_ONLY", True))
+                        _flz_skip = (_flz_long_only and side != "LONG")
+                        if not _flz_skip:
+                            _flz_mode = str(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_MODE", "near_dc"))
+                            _flz_atr_d = store.f("atr_D", bar_idx, 0.0)
+                            _flz_thr = float(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_SR_ATR_MULT", 0.50)) * _flz_atr_d
+                            _flz_near = False
+                            if _flz_atr_d > 0 and _flz_thr > 0:
+                                if _flz_mode == "near_dc_high":
+                                    _flz_lvl = store.f("dc_high_D", bar_idx, 0.0) or store.f("dc_high_D_prev", bar_idx, 0.0)
+                                    if _flz_lvl > 0:
+                                        # LONG only: fire when price approached the high (price within thr below high)
+                                        _flz_near = (price <= _flz_lvl + _flz_thr) and (price >= _flz_lvl - _flz_thr)
+                                else:
+                                    _flz_dc_d = store.f("dc_basis_D", bar_idx, 0.0)
+                                    _flz_dc_w = store.f("dc_basis_W", bar_idx, _flz_dc_d) or _flz_dc_d
+                                    if _flz_dc_d > 0:
+                                        _flz_d_near = abs(price - _flz_dc_d) <= _flz_thr
+                                        _flz_w_near = abs(price - _flz_dc_w) <= _flz_thr
+                                        _flz_near = _flz_d_near or _flz_w_near
+                            if _flz_near:
+                                # New-day gate (anti-spam — flz mostly fires on first bar/day)
+                                _flz_new_day_ok = True
+                                if bool(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_REQUIRE_NEW_DAY", True)):
+                                    _flz_prev_day = (ts_i - 300) // 86400
+                                    _flz_curr_day = ts_i // 86400
+                                    _flz_new_day_ok = (_flz_curr_day != _flz_prev_day)
+                                # Last FLZ fire spacing (stored on pos object)
+                                _flz_last_fire_ts = float(getattr(pos, "flz_last_fire_ts", 0.0))
+                                _flz_min_gap_s = float(getattr(cfg, "FLZ_FORCE_OPEN_MOCK_MIN_GAP_HOURS", 6.0)) * 3600.0
+                                _flz_gap_ok = (ts_i - _flz_last_fire_ts) >= _flz_min_gap_s
+                                if _flz_new_day_ok and _flz_gap_ok:
+                                    if True:
+                                        pos.open = True
+                                        pos.side = side
+                                        pos.entry_price = price
+                                        pos.entry_ts = ts_i
+                                        pos.mark_price = price
+                                        pos.gain_pct = 0.0
+                                        pos.max_gain_pct = 0.0
+                                        pos.last_reduce_price = 0.0
+                                        pos.last_close_price = 0.0
+                                        pos.last_augment_ts = 0.0
+                                        pos.ppl_fired = False
+                                        pos.ppl_stop_level = 0.0
+                                        pos.ppl_stop_upgraded = False
+                                        pos.ppl_first_exit_price = 0.0
+                                        pos.r1_fired = False
+                                        pos.reason = "FLZ_AGENT_FORCE_OPEN_MOCK(MTF_SR)"
+                                        pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
+                                        try:
+                                            pos.flz_last_fire_ts = float(ts_i)
+                                        except Exception:
+                                            pass
+                                        continue  # skip SATOSHIT/WT path
 
                     # ── SATOSHIT additive open (ez_satoshit.evaluate_satoshit_entry) ─
                     # Source: ez_manage.py:23266 eval_funcs pipeline.
