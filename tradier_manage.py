@@ -2076,6 +2076,125 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _r3hf_err:
                 logger.debug(f"[R3_HTF_FLIP] {position_key} err: {_r3hf_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        # MTF COMPOUND EXIT — Path A Phase 1 wiring 2026-05-19 (USER MANDATE) — stocks mirror.
+        # Source: vec_paths/mtf_armed_entries.py:127-235. Replacement protection stack for
+        # HEDGE_MODE + DC_LOW_4 emergency. 5 triggers, ANY fires CLOSE:
+        #   1. MTF_ATR_TRAIL: ATR trail (ratchets from entry, default TF=1h for stocks per
+        #      MTF_ATR_TRAIL_TF_TRADIER) × MTF_ATR_TRAIL_MULT
+        #   2. MTF_DC_REJECT: price was outside dc_high/low_TF and re-crossed back
+        #   3. MTF_BB_REJECT: BB tag-fail mask within MTF_BB_REJECT_EXIT_LOOKBACK bars
+        #   4. MTF_GR_WT_EXIT: GR HTF exit gate (opposite-side TFs) AND wt cross against (BOTH)
+        # Master switch MTF_EXIT_USE_COMPOUND defaults False → entire block inert.
+        # New reasons MTF_ATR_TRAIL/MTF_DC_REJECT/MTF_BB_REJECT/MTF_GR_WT_EXIT are in
+        # config_tradier.LOSS_EXIT_TECHNICAL_BYPASS so loss-side close fires past NOLOSS_DC4H.
+        # Per-position trail state lives in trade_manager.mtf_compound_exit_state[position_key].
+        # Tradier base TF = 5m → default TFs = 1h (~12x base) for ATR/DC/BB/WT.
+        # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default).
+        # ═══════════════════════════════════════════════════════════════════════
+        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))):
+            try:
+                if not hasattr(trade_manager, 'mtf_compound_exit_state'):
+                    trade_manager.mtf_compound_exit_state = {}
+                _mtfce_state = trade_manager.mtf_compound_exit_state.get(position_key, {'trail': 0.0, 'ever_outside_dc': False, 'bb_tag_bars': []})
+                _mtfce_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
+                _mtfce_fire = False
+                _mtfce_reason = ""
+                _mtfce_atr_tf = str(_cfg('MTF_ATR_TRAIL_TF_TRADIER', _cfg('MTF_ATR_TRAIL_TF', '1h', account_key, symbol, position_side), account_key, symbol, position_side))
+                _mtfce_dc_tf = str(_cfg('MTF_DC_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
+                _mtfce_bb_tf = str(_cfg('MTF_BB_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
+                _mtfce_wt_tf = str(_cfg('MTF_WT_CROSS_EXIT_TF', '1h', account_key, symbol, position_side))
+                _mtfce_atr_mult = float(_cfg('MTF_ATR_TRAIL_MULT', 2.5, account_key, symbol, position_side))
+                _mtfce_bb_lb = int(_cfg('MTF_BB_REJECT_EXIT_LOOKBACK', 5, account_key, symbol, position_side))
+                # ─── 1. MTF_ATR_TRAIL ─────────────────────────────────────────────
+                if bool(_cfg('MTF_ATR_TRAIL_ENABLED', False, account_key, symbol, position_side)):
+                    _mtfce_atr = safe_fetch_float(i.get(f'atr_{_mtfce_atr_tf}'), 0)
+                    if _mtfce_atr > 0 and _mtfce_entry > 0 and current_price > 0:
+                        if is_long:
+                            _mtfce_cand = max(_mtfce_entry - _mtfce_atr_mult * _mtfce_atr, current_price - _mtfce_atr_mult * _mtfce_atr)
+                            _mtfce_state['trail'] = max(_mtfce_state.get('trail', 0.0), _mtfce_cand) if _mtfce_state.get('trail', 0.0) > 0 else _mtfce_cand
+                            if _mtfce_state['trail'] > 0 and current_price < _mtfce_state['trail']:
+                                _mtfce_fire = True
+                                _mtfce_reason = f"MTF_ATR_TRAIL_{_mtfce_atr_tf}_x{_mtfce_atr_mult}_lvl{_mtfce_state['trail']:.4f}"
+                        else:
+                            _mtfce_cand = min(_mtfce_entry + _mtfce_atr_mult * _mtfce_atr, current_price + _mtfce_atr_mult * _mtfce_atr)
+                            _mtfce_state['trail'] = min(_mtfce_state.get('trail', 0.0), _mtfce_cand) if _mtfce_state.get('trail', 0.0) > 0 else _mtfce_cand
+                            if _mtfce_state['trail'] > 0 and current_price > _mtfce_state['trail']:
+                                _mtfce_fire = True
+                                _mtfce_reason = f"MTF_ATR_TRAIL_{_mtfce_atr_tf}_x{_mtfce_atr_mult}_lvl{_mtfce_state['trail']:.4f}"
+                # ─── 2. MTF_DC_REJECT ─────────────────────────────────────────────
+                if (not _mtfce_fire) and bool(_cfg('MTF_DC_REJECT_EXIT_ENABLED', False, account_key, symbol, position_side)):
+                    if is_long:
+                        _mtfce_band = safe_fetch_float(i.get(f'dc_high_{_mtfce_dc_tf}'), 0)
+                        if _mtfce_band > 0:
+                            if current_price > _mtfce_band:
+                                _mtfce_state['ever_outside_dc'] = True
+                            elif _mtfce_state.get('ever_outside_dc', False) and current_price < _mtfce_band:
+                                _mtfce_fire = True
+                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
+                    else:
+                        _mtfce_band = safe_fetch_float(i.get(f'dc_low_{_mtfce_dc_tf}'), 0)
+                        if _mtfce_band > 0:
+                            if current_price < _mtfce_band:
+                                _mtfce_state['ever_outside_dc'] = True
+                            elif _mtfce_state.get('ever_outside_dc', False) and current_price > _mtfce_band:
+                                _mtfce_fire = True
+                                _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
+                # ─── 3. MTF_BB_REJECT ─────────────────────────────────────────────
+                if (not _mtfce_fire) and bool(_cfg('MTF_BB_REJECT_EXIT_ENABLED', False, account_key, symbol, position_side)):
+                    _mtfce_bbu = safe_fetch_float(i.get(f'bb_upper_{_mtfce_bb_tf}'), 0)
+                    _mtfce_bbl = safe_fetch_float(i.get(f'bb_lower_{_mtfce_bb_tf}'), 0)
+                    _mtfce_high = safe_fetch_float(i.get(f'high_{_mtfce_bb_tf}'), current_price)
+                    _mtfce_low = safe_fetch_float(i.get(f'low_{_mtfce_bb_tf}'), current_price)
+                    if is_long and _mtfce_bbu > 0:
+                        _mtfce_tag_now = _mtfce_high >= _mtfce_bbu - 1e-9
+                        _mtfce_fail_now = (_mtfce_high < _mtfce_bbu) and _mtfce_high > 0
+                    elif (not is_long) and _mtfce_bbl > 0:
+                        _mtfce_tag_now = _mtfce_low <= _mtfce_bbl + 1e-9 and _mtfce_low > 0
+                        _mtfce_fail_now = (_mtfce_low > _mtfce_bbl) and _mtfce_low > 0
+                    else:
+                        _mtfce_tag_now = False
+                        _mtfce_fail_now = False
+                    _mtfce_tag_bars = list(_mtfce_state.get('bb_tag_bars', []))
+                    _mtfce_now_s = int(time.time())
+                    if _mtfce_tag_now:
+                        _mtfce_tag_bars.append(_mtfce_now_s)
+                    # Stock 5m base TF → ~300s × lookback bars window
+                    _mtfce_cutoff_s = _mtfce_now_s - _mtfce_bb_lb * 300
+                    _mtfce_tag_bars = [b for b in _mtfce_tag_bars if b >= _mtfce_cutoff_s]
+                    _mtfce_state['bb_tag_bars'] = _mtfce_tag_bars
+                    if _mtfce_fail_now and len(_mtfce_tag_bars) > 0:
+                        _mtfce_fire = True
+                        _mtfce_reason = f"MTF_BB_REJECT_{_mtfce_bb_tf}"
+                # ─── 4. MTF_GR_WT_EXIT (GR HTF + WT cross — BOTH required) ───────
+                if (not _mtfce_fire) and bool(_cfg('MTF_GR_EXIT_GATE_ENABLED', False, account_key, symbol, position_side)):
+                    _mtfce_wt1 = safe_fetch_float(i.get(f'wt1_{_mtfce_wt_tf}'), 0)
+                    _mtfce_wt2 = safe_fetch_float(i.get(f'wt2_{_mtfce_wt_tf}'), 0)
+                    _mtfce_wt_against = (is_long and _mtfce_wt1 < _mtfce_wt2) or ((not is_long) and _mtfce_wt1 > _mtfce_wt2)
+                    if _mtfce_wt_against and bool(_cfg('MTF_WT_CROSS_EXIT_ENABLED', False, account_key, symbol, position_side)):
+                        _mtfce_gr_min_tfs = int(_cfg('MTF_GR_EXIT_MIN_TFS', 3, account_key, symbol, position_side))
+                        _mtfce_gr_count = 0
+                        for _gtf in ('1h', '4h', 'D', 'W'):
+                            _gw1 = safe_fetch_float(i.get(f'wt1_{_gtf}'), 0)
+                            _gw2 = safe_fetch_float(i.get(f'wt2_{_gtf}'), 0)
+                            if is_long and _gw1 < _gw2 and _gw1 != 0:
+                                _mtfce_gr_count += 1
+                            elif (not is_long) and _gw1 > _gw2 and _gw1 != 0:
+                                _mtfce_gr_count += 1
+                        if _mtfce_gr_count >= _mtfce_gr_min_tfs:
+                            _mtfce_fire = True
+                            _mtfce_reason = f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
+                # Persist state regardless of fire
+                trade_manager.mtf_compound_exit_state[position_key] = _mtfce_state
+                if _mtfce_fire:
+                    _mtfce_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    logger.error(f"⛔ [{_mtfce_reason[:18]}] {position_key}: gain={_mtfce_gain:.2f}% px={current_price:.4f} entry={_mtfce_entry:.4f} → CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"{_mtfce_reason}_g{_mtfce_gain:.2f}%", 100.0, override_qty=999999)
+                    trade_manager.mtf_compound_exit_state.pop(position_key, None)
+                    return f"{_mtfce_reason[:18]}_CLOSED"
+            except Exception as _mtfce_err:
+                logger.debug(f"[MTF_COMPOUND_EXIT] {position_key} err: {_mtfce_err}")
+        # ═══ END MTF COMPOUND EXIT ═══
+        # ═══════════════════════════════════════════════════════════════════════
         # WT_3M_FORCE_OPEN — USER NON-NEGOTIABLE 2026-05-10 (stocks).
         # Every symbol in symbols_trb_long/short must have a position whenever the
         # wt1_3m vs wt2_3m condition holds. Reopen after every close. Reentry /

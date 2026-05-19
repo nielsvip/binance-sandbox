@@ -1196,6 +1196,13 @@ class Config:
         # 2026-05-16 BACKTEST SWEEP ONLY: DC4 stop research variable in backtest_v8_engine.py.
         # This reason is NEVER emitted by live trading code — safe to bypass NOLOSS gate.
         'DC_STOP_BREACH',
+        # 2026-05-19 Path A Phase 1: MTF compound exit (ATR trail + GR HTF slowdown + WT cross + DC/BB reject).
+        # ALL bypass NOLOSS — these are sanctioned loss-exit replacements behind master MTF_EXIT_USE_COMPOUND switch.
+        # Default OFF; baseline_v5 cert flips master True after sweep proves replacement quality.
+        'MTF_ATR_TRAIL',
+        'MTF_DC_REJECT',
+        'MTF_BB_REJECT',
+        'MTF_GR_WT_EXIT',
     ])
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
@@ -1302,6 +1309,36 @@ class Config:
     STDEV_MACRO_R4_EXIT_ENABLED: bool = False            # fire CLOSE on STRONG_TOP (LONG) / STRONG_BOT (SHORT) + LTF flip (wt_4h). Runs AFTER R1/R2/R3 — never preempts. Bypass reasons R4_STDEV_MACRO_TOP/BOT already added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
     STDEV_MACRO_R4_REQUIRE_LTF_FLIP: bool = True         # require wt1_4h vs wt2_4h flip alongside macro extreme; False = fire on macro state alone (more trigger-happy)
     STDEV_MACRO_HEDGE_BOOST_ENABLED: bool = False        # extra OBLIGATORY_HEDGE trigger when origin held against macro extreme. Additive to existing 3m/15m/1h triggers — never removes them.
+    # ═══════════════════════════════════════════════════════════════════
+    # MTF COMPOUND EXIT — Path A Phase 1 wiring 2026-05-19 (USER MANDATE)
+    # Source: data/_diagnostic/protection_stack_2026051*.md + vec_paths/mtf_armed_entries.py:166-235.
+    # Replacement protection stack for HEDGE_MODE + DC_LOW_4 emergency. 5 triggers, ANY fires close:
+    #   1. ATR trail hit (HARD, ratchets from entry)
+    #   2. DC reject (price was outside dc_high/low_TF and re-crossed back)
+    #   3. BB reject (recent BB tag-fail mask)
+    #   4. GR HTF exit gate (opposite-side GR score passes)  ─┬─ BOTH required
+    #   5. WT cross 15m/1h against side                       ─┘  for soft exit
+    # Master switch MTF_EXIT_USE_COMPOUND defaults False — wiring is no-op until baseline_v5 cert flips it.
+    # Crypto base TF = 3m → MTF_ATR_TRAIL_TF=15m default (5x base).
+    # New CLOSE reasons (MTF_ATR_TRAIL_*, MTF_DC_REJECT_*, MTF_BB_REJECT_*, MTF_GR_WT_EXIT_*)
+    # added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS above.
+    # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default) — entire branch becomes inert.
+    # ═══════════════════════════════════════════════════════════════════
+    MTF_EXIT_USE_COMPOUND: bool = False                  # master switch — replaces HEDGE_MODE + DC_LOW_4 emergency when True
+    MTF_ATR_TRAIL_ENABLED: bool = False
+    MTF_ATR_TRAIL_MULT: float = 2.5                      # placeholder — sweep will dial across 1.5..4.0
+    MTF_ATR_TRAIL_TF: str = '15m'                        # crypto base 3m → 15m HTF
+    MTF_DC_REJECT_EXIT_ENABLED: bool = False
+    MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
+    MTF_DC_REJECT_EXIT_TF: str = '15m'
+    MTF_BB_REJECT_EXIT_ENABLED: bool = False
+    MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
+    MTF_BB_REJECT_EXIT_TF: str = '15m'
+    MTF_GR_EXIT_GATE_ENABLED: bool = False
+    MTF_GR_EXIT_MIN_TFS: int = 3
+    MTF_GR_EXIT_MIN_IND: int = 5
+    MTF_WT_CROSS_EXIT_ENABLED: bool = False
+    MTF_WT_CROSS_EXIT_TF: str = '15m'                    # '15m' | '1h' | 'either'
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

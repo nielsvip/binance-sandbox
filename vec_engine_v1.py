@@ -200,6 +200,23 @@ except ImportError:
     def _check_winner_protect_hold(store, bar_idx, pos_state, mode, cfg): return False
     def _check_wt_15m_vel_slow_zero_gain(store, bar_idx, pos_state, mode, cfg): return None
 
+# MTF COMPOUND EXIT — Path A Phase 1 wiring 2026-05-19 (USER MANDATE)
+# Source: vec_paths/mtf_armed_entries.py:127-235. Master switch MTF_EXIT_USE_COMPOUND
+# (config.py / config_tradier.py) defaults False → wiring is no-op until baseline_v5 flips it.
+try:
+    from vec_paths.mtf_armed_entries import (
+        build_compound_exit_arrays as _build_mtf_compound_exit_arrays,
+        check_mtf_compound_exit as _check_mtf_compound_exit,
+    )
+    from vec_paths.gr_filter_vec import build_gr_filter_mask as _build_gr_filter_mask_for_mtf_exit
+    _MTF_COMPOUND_EXIT_AVAILABLE = True
+except ImportError:
+    _MTF_COMPOUND_EXIT_AVAILABLE = False
+    def _build_mtf_compound_exit_arrays(npz, n, is_long, mode, config): return {}
+    def _check_mtf_compound_exit(arrays, i, mark, gain, entry_price, is_long, prev_trail, ever_outside_dc, config):
+        return False, "", prev_trail, ever_outside_dc
+    def _build_gr_filter_mask_for_mtf_exit(npz, n, is_long, mode, config): return None
+
 # ───────────────────────────────────────────────────────────
 # Path setup
 # ───────────────────────────────────────────────────────────
@@ -2376,6 +2393,11 @@ class _PositionState:
     prev_gain: float = 0.0
     micro_scalp_exit_price: float = 0.0
     micro_scalp_orig_side: str = ""
+    # MTF COMPOUND EXIT (Path A Phase 1 2026-05-19) — per-position trail + DC-side history.
+    # mtf_atr_trail: ratcheted stop level (0 = unset). mtf_ever_outside_dc: True once price
+    # ever crossed beyond dc_high/_low_TF (LONG/SHORT); fires close on cross-back.
+    mtf_atr_trail: float = 0.0
+    mtf_ever_outside_dc: bool = False
 
 
 # ───────────────────────────────────────────────────────────
@@ -2530,6 +2552,35 @@ class VecEngine:
             sym: {"LONG": _PositionState(), "SHORT": _PositionState()}
             for sym in stores
         }
+
+        # ── MTF COMPOUND EXIT precompute cache (Path A Phase 1 2026-05-19) ──
+        # Per (sym, side) pre-built array dict. Empty when MTF_EXIT_USE_COMPOUND=False
+        # (default) → entire branch becomes a single bool-False check per bar (~free).
+        _mtf_compound_active = bool(getattr(cfg, "MTF_EXIT_USE_COMPOUND", False)) and _MTF_COMPOUND_EXIT_AVAILABLE
+        _mtf_compound_arrays: Dict[str, Dict[str, dict]] = {sym: {"LONG": {}, "SHORT": {}} for sym in stores}
+        if _mtf_compound_active:
+            _gr_exit_min_tfs = int(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3))
+            _gr_exit_min_ind = int(getattr(cfg, "MTF_GR_EXIT_MIN_IND", 5))
+            class _GRExitCfgForMTF:
+                MTF_GR_FILTER_ENABLED = True
+                MTF_GR_MIN_TFS = _gr_exit_min_tfs
+                MTF_GR_MIN_IND = _gr_exit_min_ind
+                MTF_GR_INVERT_DC_BB = False
+            for _mtf_sym, _mtf_store in stores.items():
+                for _mtf_side in ("LONG", "SHORT"):
+                    _mtf_is_long = (_mtf_side == "LONG")
+                    try:
+                        _ce_arr = _build_mtf_compound_exit_arrays(
+                            _mtf_store.arrays, _mtf_store.n_bars, _mtf_is_long, self.mode, cfg,
+                        )
+                        if bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False)):
+                            _ce_arr["gr_exit_mask"] = _build_gr_filter_mask_for_mtf_exit(
+                                _mtf_store.arrays, _mtf_store.n_bars, (not _mtf_is_long), self.mode, _GRExitCfgForMTF(),
+                            )
+                        _mtf_compound_arrays[_mtf_sym][_mtf_side] = _ce_arr
+                    except Exception as _ce_err:
+                        sys.stderr.write(f"[MTF_COMPOUND_EXIT_PRECOMPUTE_ERR] {_mtf_sym}/{_mtf_side}: {_ce_err}\n")
+                        _mtf_compound_arrays[_mtf_sym][_mtf_side] = {}
 
         # ── ROUND 6 (2026-05-19) — DC_BB_D_BREAK_REVERSE crossback state ──
         # Mirrors ez_manage.py:38881 _db_state dict. Per-symbol tracks:
@@ -2777,6 +2828,45 @@ class VecEngine:
                         pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
                         if pnl > 0:
                             pos.last_reduce_price = price
+
+                # ── MTF COMPOUND EXIT (Path A Phase 1 2026-05-19 USER MANDATE) ──
+                # Replacement protection stack for HEDGE_MODE + DC_LOW_4 emergency. 5 triggers
+                # any-of: ATR trail / DC reject / BB reject / GR HTF exit + WT cross (BOTH).
+                # Master switch MTF_EXIT_USE_COMPOUND=False default → no-op.
+                # Bypasses NOLOSS (close reasons MTF_ATR_TRAIL/MTF_DC_REJECT/MTF_BB_REJECT/
+                # MTF_GR_WT_EXIT are in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS / LOSS_EXIT_TECHNICAL_BYPASS).
+                # Fires AFTER R1/R2 (lets emergency exits preempt) and BEFORE RIDICULOUS_HOLD_VEC.
+                if _mtf_compound_active:
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _mtf_arr = _mtf_compound_arrays.get(sym, {}).get(pos.side, {})
+                        if not _mtf_arr:
+                            continue
+                        _mtf_is_long = (pos.side == "LONG")
+                        try:
+                            _ce_fire, _ce_reason, _new_trail, _new_ever_dc = _check_mtf_compound_exit(
+                                _mtf_arr, bar_idx, price, pos.gain_pct, pos.entry_price,
+                                _mtf_is_long, pos.mtf_atr_trail, pos.mtf_ever_outside_dc, cfg,
+                            )
+                        except Exception as _ce_per_bar_err:
+                            sys.stderr.write(f"[MTF_COMPOUND_EXIT_PER_BAR_ERR] {sym}/{pos.side}@{bar_idx}: {_ce_per_bar_err}\n")
+                            continue
+                        pos.mtf_atr_trail = _new_trail
+                        pos.mtf_ever_outside_dc = _new_ever_dc
+                        if _ce_fire:
+                            pnl = pos.gain_pct
+                            returns_by_sym[sym].append(pnl)
+                            _emit_trade(pos, ts_i, price, pnl, _ce_reason)
+                            all_returns.append(pnl)
+                            running_gain += pnl
+                            pos.open = False
+                            pos.last_close_ts = ts_i
+                            pos.last_close_price = price
+                            pos.mtf_atr_trail = 0.0
+                            pos.mtf_ever_outside_dc = False
+                            if pnl > 0:
+                                pos.last_reduce_price = price
 
                 # ── ROUND 3 FIX #1 2026-05-19 — RIDICULOUS_HOLD_VEC time-cap ──
                 # Live source: ez_manage.py:38754 RIDICULOUS_HOLD_GUARD. Forced-close

@@ -2160,7 +2160,7 @@ class TradierConfig:
     RP_PROTECT_MIN_GAIN: float = 1.0
     NOLOSS_DC4H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: DC-based NOLOSS off. Same-sector hedge replaces it.
     NOLOSS_BB1H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: BB-based NOLOSS off (technical exits handle this).
-    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R3_HTF_FLIP_4H', 'R4_STDEV_MACRO_TOP', 'R4_STDEV_MACRO_BOT')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging. R3_HTF_FLIP / R3_HTF_FLIP_4H added 2026-05-17: Daily + parallel 4h structural close. R4_STDEV_MACRO_TOP/BOT added 2026-05-17: long-window log-price z-score on D AND W extreme, default OFF.
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R3_HTF_FLIP_4H', 'R4_STDEV_MACRO_TOP', 'R4_STDEV_MACRO_BOT', 'MTF_ATR_TRAIL', 'MTF_DC_REJECT', 'MTF_BB_REJECT', 'MTF_GR_WT_EXIT')  # GAIN_EROSION added 2026-04-20. R3_HTF_FLIP/_4H added 2026-05-17. R4_STDEV_MACRO_TOP/BOT added 2026-05-17. MTF_ATR_TRAIL/MTF_DC_REJECT/MTF_BB_REJECT/MTF_GR_WT_EXIT added 2026-05-19 Path A Phase 1: MTF compound exit (gated on MTF_EXIT_USE_COMPOUND, default False).
     # 2026-05-10 USER NON-NEGOTIABLE: every symbol in symbols_trb_long/short must have a
     # position open whenever wt1_3m vs wt2_3m condition holds. Reopen after every close.
     # Reentry / cooldown / NOLOSS gates may NOT block this. The reason 'WT_3M_FORCE_OPEN'
@@ -2189,6 +2189,30 @@ class TradierConfig:
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25
     BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30        # 2026-05-18 sweep knob
     BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2         # 2026-05-18 sweep knob: 2=AND (live), 1=OR
+    # ═══════════════════════════════════════════════════════════════════
+    # MTF COMPOUND EXIT — Path A Phase 1 wiring 2026-05-19 (USER MANDATE)
+    # Mirrors config.py. Tradier base TF = 5m → MTF_ATR_TRAIL_TF_TRADIER='1h' (~12x base).
+    # 5 triggers, ANY fires close (see config.py for full doc).
+    # Master switch MTF_EXIT_USE_COMPOUND defaults False — wiring is no-op until baseline_v5 cert flips it.
+    # New CLOSE reasons added to LOSS_EXIT_TECHNICAL_BYPASS above.
+    # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default).
+    # ═══════════════════════════════════════════════════════════════════
+    MTF_EXIT_USE_COMPOUND: bool = False
+    MTF_ATR_TRAIL_ENABLED: bool = False
+    MTF_ATR_TRAIL_MULT: float = 2.5                      # placeholder — sweep will dial
+    MTF_ATR_TRAIL_TF: str = '1h'                         # stocks base 5m → 1h HTF (~12x). MTF_ATR_TRAIL_TF_TRADIER alias for engines.
+    MTF_ATR_TRAIL_TF_TRADIER: str = '1h'                 # explicit tradier variant for engine consumers
+    MTF_DC_REJECT_EXIT_ENABLED: bool = False
+    MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
+    MTF_DC_REJECT_EXIT_TF: str = '1h'
+    MTF_BB_REJECT_EXIT_ENABLED: bool = False
+    MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
+    MTF_BB_REJECT_EXIT_TF: str = '1h'
+    MTF_GR_EXIT_GATE_ENABLED: bool = False
+    MTF_GR_EXIT_MIN_TFS: int = 3
+    MTF_GR_EXIT_MIN_IND: int = 5
+    MTF_WT_CROSS_EXIT_ENABLED: bool = False
+    MTF_WT_CROSS_EXIT_TF: str = '1h'                     # '1h' | '4h' | 'either' (stocks)
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_C_FUNDING_EXTREME_ENABLED: bool = False      # stocks don't have funding rates — Rule C is crypto-only conceptually; leave flag for API consistency.
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03
