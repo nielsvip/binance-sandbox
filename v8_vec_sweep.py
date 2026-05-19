@@ -402,6 +402,11 @@ class SweepConfig:
     WT_CROSSUNDER_FINAL_ENABLED: bool = True
     WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS_ENABLED: bool = False
     WT_CROSSUNDER_FINAL_NOLOSS_BYPASS: bool = False
+    # R10 Target 3 (2026-05-19): min-hold gate to suppress adjacent-bar scalp cascade.
+    # R9 forensic: 211/3344 closes were adjacent-bar exits via WT_CROSSUNDER_FINAL.
+    # Gate skips the exit when (bar_ts - state.opened_at) / base_tf_seconds < this.
+    # 0 = no-op (legacy). Base TF: 180s crypto (3m) / 300s tradier (5m).
+    WT_CROSSUNDER_FINAL_MIN_HOLD_BARS: int = 0
     # ── GOLDEN_RULE entries ───────────────────────────────────────────────────
     GOLDEN_RULE_ENABLED: bool = True
     GOLDEN_RULE_BASE_USD: float = 5.0
