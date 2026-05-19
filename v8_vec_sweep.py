@@ -2528,8 +2528,12 @@ def run_gr_dcbb_sweep(
     n_variants = len(_DCBB_GRID)
     n_tasks = len(symbols) * len(sides)
 
-    # Accumulate per-variant trade returns across all symbols
-    variant_returns: Dict[str, List[float]] = {label: [] for label, _, _ in _DCBB_GRID}
+    # Accumulate per-variant trade returns BY SYMBOL so metrics_guard can compute
+    # proper sym_sharpe (not just pool_sharpe). Routing through
+    # metrics_guard.standard_metric_set per CLAUDE.md NO-LIES mandate.
+    variant_returns_by_sym: Dict[str, Dict[str, List[float]]] = {
+        label: {} for label, _, _ in _DCBB_GRID
+    }
 
     print(
         f"[gr_dcbb_sweep] mode={mode} symbols={len(symbols)} sides={sides} start={start}"
@@ -2557,7 +2561,8 @@ def run_gr_dcbb_sweep(
                 print(f"[gr_dcbb_sweep] [{completed}/{n_tasks}] {sym_key}/{side_key} WORKER_ERROR: {e}", flush=True)
                 continue
             for label, ret_list in sym_result.items():
-                variant_returns[label].extend(ret_list)
+                if ret_list:
+                    variant_returns_by_sym[label].setdefault(sym_key, []).extend(ret_list)
             n_trades_here = sum(len(v) for v in sym_result.values())
             print(f"[gr_dcbb_sweep] [{completed}/{n_tasks}] {sym_key}/{side_key} done — variants={len(sym_result)} trades_all_variants={n_trades_here}", flush=True)
 
@@ -2575,25 +2580,30 @@ def run_gr_dcbb_sweep(
     mg_mode = "stocks" if mode == "tradier" else "crypto"
     rows_written = 0
     for label, dc_thr, bb_thr in _DCBB_GRID:
-        rets = variant_returns[label]
-        trades = len(rets)
-        if trades >= 2:
-            ps = metrics_guard.pool_sharpe(rets)
-            sym_s = ps  # single-pool, no per-sym breakdown here
-            acc_gain = float(sum(rets))
+        rets_by_sym = variant_returns_by_sym[label]
+        # Flat list for max_dd_pct (cumulative-curve metric); per-sym dict for
+        # metrics_guard.standard_metric_set so sym_sharpe is real, not pool_sharpe.
+        flat_rets: List[float] = []
+        for _sym_rets in rets_by_sym.values():
+            flat_rets.extend(_sym_rets)
+        if len(flat_rets) >= 2:
+            std = metrics_guard.standard_metric_set(rets_by_sym, n_years)
         else:
-            ps = 0.0; sym_s = 0.0; acc_gain = 0.0
-        n_syms = len(symbols)
+            std = {
+                "pool_sharpe": 0.0, "sym_sharpe": 0.0, "avg_gain_trade": 0.0,
+                "gain_per_yr": 0.0, "gain_sym_yr": 0.0, "trades": len(flat_rets),
+                "n_syms": len(rets_by_sym), "years": n_years,
+            }
         row = {
-            "pool_sharpe": round(ps, 4),
-            "sym_sharpe": round(sym_s, 4),
-            "avg_gain_trade": round(acc_gain / trades, 4) if trades > 0 else 0.0,
-            "gain_per_yr": round(acc_gain / n_years, 2),
-            "gain_sym_yr": round(acc_gain / max(1, n_syms) / n_years, 4),
-            "trades": trades,
-            "max_dd_pct": round(_max_dd_pct(rets), 4) if rets else 0.0,
-            "n_syms": n_syms,
-            "years": round(n_years, 3),
+            "pool_sharpe": round(float(std["pool_sharpe"]), 4),
+            "sym_sharpe": round(float(std["sym_sharpe"]), 4),
+            "avg_gain_trade": round(float(std["avg_gain_trade"]), 4),
+            "gain_per_yr": round(float(std["gain_per_yr"]), 2),
+            "gain_sym_yr": round(float(std["gain_sym_yr"]), 4),
+            "trades": int(std["trades"]),
+            "max_dd_pct": round(_max_dd_pct(flat_rets), 4) if flat_rets else 0.0,
+            "n_syms": int(std["n_syms"]),
+            "years": round(float(std["years"]), 3),
             "label": label,
             "dc_threshold": dc_thr,
             "bb_threshold": bb_thr,
@@ -2614,18 +2624,21 @@ def run_gr_dcbb_sweep(
             )
             sys.exit(2)
         # Identical-score detection
-        if trades >= 5:
-            fp = (round(ps, 4), trades)
+        _ps_round = float(row["pool_sharpe"])
+        _trades_int = int(row["trades"])
+        _gain_per_yr_val = float(row["gain_per_yr"])
+        if _trades_int >= 5:
+            fp = (_ps_round, _trades_int)
             if fp in seen_fps:
                 print(
                     f"[IDENTICAL_SCORE_WARNING] '{label}' (DC={dc_thr} BB={bb_thr}) == '{seen_fps[fp]}':"
-                    f" pool_sharpe={ps:.4f} trades={trades} — knob not differentiating!", flush=True,
+                    f" pool_sharpe={_ps_round:.4f} trades={_trades_int} — knob not differentiating!", flush=True,
                 )
             else:
                 seen_fps[fp] = label
         print(
             f"  {label:35s}  DC={dc_thr:.2f}  BB={bb_thr:.2f}  "
-            f"pool_sharpe={ps:+.4f}  trades={trades:5d}  gain/yr={acc_gain/n_years:+.1f}%",
+            f"pool_sharpe={_ps_round:+.4f}  trades={_trades_int:5d}  gain/yr={_gain_per_yr_val:+.1f}%",
             flush=True,
         )
     print(f"\n[gr_dcbb_sweep] results -> {out_csv} (rows={rows_written}/{len(_DCBB_GRID)})", flush=True)
