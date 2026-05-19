@@ -1936,8 +1936,16 @@ def simulate_one_symbol(
         # WT_CROSSUNDER_FINAL (stateless indicator check)
         # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency — only fire when
         # gain >= MIN_GAIN (profit harvest) or at real loss (noloss_gate routes).
+        # 2026-05-19 R10 Target 3: WT_CROSSUNDER_FINAL_MIN_HOLD_BARS gate suppresses
+        # adjacent-bar scalp cascade (211/3344 R9 closes were single-bar exits).
         if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
-            if gain >= min_gain or gain < comm_buf:
+            _wtcf_min_hold = int(getattr(config, "WT_CROSSUNDER_FINAL_MIN_HOLD_BARS", 0))
+            _wtcf_hold_ok = True
+            if _wtcf_min_hold > 0 and state.opened_at > 0.0:
+                _wtcf_base_tf_s = 300.0 if mode == "tradier" else 180.0
+                _wtcf_bars_held = (bar_ts - state.opened_at) / _wtcf_base_tf_s
+                _wtcf_hold_ok = _wtcf_bars_held >= _wtcf_min_hold
+            if _wtcf_hold_ok and (gain >= min_gain or gain < comm_buf):
                 _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
                 if _wtcf is not None:
                     exit_id = 91
