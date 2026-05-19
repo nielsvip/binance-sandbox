@@ -2588,6 +2588,16 @@ def run_sweep(
                 key = f"{sym}_{side}"
                 if returns:
                     returns_by_sym[key] = returns
+                # 2026-05-19 PROGRESS HEARTBEAT — sweep_coordinator silence-detector kills
+                # any engine that prints nothing for PRE_SIM_SILENCE_S (300s). Without this
+                # line, v8_vec_sweep prints only its banner then nothing until completion,
+                # so the coordinator timed out every full-universe run at ~5min. One line
+                # per (sym, side) gives the watchdog a heartbeat AND lets ops see progress.
+                print(
+                    f"V8_VEC_PROGRESS: sym={sym} side={side} n_bars={n_bars} "
+                    f"trades={len(returns)} elapsed_s={elapsed:.2f}",
+                    flush=True,
+                )
 
                 # Write each event to the trades JSONL (source of truth).
                 # 2026-05-18 NET MANDATE: pnl_pct stored NET of round-trip cost;
@@ -3137,6 +3147,35 @@ def main():
     print(f"  trades ={s['trades_path']}")
     print(f"  agg_csv={s['agg_csv']}")
     print(s["canonical_line"])
+    # 2026-05-19 COORD-COMPATIBLE V8_RESULT LINE — sweep_coordinator parses
+    # `V8_RESULT: pool_sharpe=… sym_sharpe=… sharpe=… gain_pct=… closes=… wins=… losses=…`
+    # (crypto) or `… pnl=… trades=… …` (tradier). Emit the same shape so the
+    # coord ledger captures pool_sharpe/trades/etc. when dispatching v8_vec_sweep.
+    _trades_int = int(s.get("n_trades", s.get("trades", 0)) or 0)
+    _wins_int = int(s.get("wins", 0) or 0)
+    _losses_int = int(s.get("losses", 0) or 0)
+    if _wins_int == 0 and _losses_int == 0 and _trades_int > 0:
+        # standard_metric_set doesn't track wins/losses across pooled returns;
+        # leave zero — coord uses trades count as ground truth.
+        pass
+    _ps_val = float(s.get("pool_sharpe", 0.0))
+    _ss_val = float(s.get("sym_sharpe", 0.0))
+    _agt = float(s.get("avg_gain_trade", 0.0))
+    _gain_pct_total = _agt * _trades_int  # reconstruct total gain (used for V8_RESULT only)
+    if args.mode == "tradier":
+        print(
+            f"V8_RESULT: pool_sharpe={_ps_val:.6f} sym_sharpe={_ss_val:.6f} "
+            f"sharpe={_ps_val:.6f} pnl={_gain_pct_total:+.4f} "
+            f"trades={_trades_int} wins={_wins_int} losses={_losses_int}",
+            flush=True,
+        )
+    else:
+        print(
+            f"V8_RESULT: pool_sharpe={_ps_val:.6f} sym_sharpe={_ss_val:.6f} "
+            f"sharpe={_ps_val:.6f} gain_pct={_gain_pct_total:+.4f} "
+            f"closes={_trades_int} wins={_wins_int} losses={_losses_int}",
+            flush=True,
+        )
     return 0
 
 

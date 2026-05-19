@@ -56,7 +56,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import metrics_guard  # noqa: E402 — NO-LIES mandate
 
 BASE_PATH = Path(__file__).resolve().parent
-ENGINE_PATH = BASE_PATH / "backtest_v8_engine.py"
+# 2026-05-19 VEC-DISPATCH MANDATE — sweep_coordinator now dispatches v8_vec_sweep.py
+# (pure-vectorized, 4-13x faster, deterministic). backtest_v8_engine.py is reserved
+# for small-sample parity tests vs vec only — never the sweep workhorse.
+# Per-arm wall-clock budget: ~minutes, not hours. Old slow-engine runs at 390s
+# timed out without ever emitting a V8_RESULT line; the vec engine completes
+# fast enough that the coord's silence-detector + heartbeat catches real hangs.
+ENGINE_PATH = BASE_PATH / "v8_vec_sweep.py"
 OVERRIDE_DIR = BASE_PATH / "data" / "sweep_overrides"
 COORD_DIR = BASE_PATH / "data" / "sweep_coordinator"
 
@@ -328,21 +334,40 @@ def _run_one(
     overrides["USDC_PREFERENCE_BLOCK_ENABLED"] = False
     h = item.get("_hash") or _cfg_hash(overrides)
 
+    # 2026-05-19 — still write an override JSON for audit / parity-recheck
+    # workflows (humans + tools/v8_live_vs_backtest_compare.py read these).
+    # The actual config flip is now passed via `--override KEY=VAL` args to
+    # v8_vec_sweep.py — V8_OVERRIDE_FILE was only honoured by the slow engine.
     override_path = OVERRIDE_DIR / f"coord_{label}_{h}.json"
     OVERRIDE_DIR.mkdir(parents=True, exist_ok=True)
     override_path.write_text(json.dumps(overrides, indent=2))
 
-    cmd = [PY_BIN, str(ENGINE_PATH), "--mode", mode, "--account", account,
-           "--start", start, "--capital", str(capital)]
+    # v8_vec_sweep CLI:
+    #   --mode {crypto,tradier} --account <acc> --symbols A,B,C --start YYYY-MM-DD
+    #   --override KEY=VAL  (repeatable)  --no-history  --workers N
+    # NOT accepted: --capital, --npz-dir (vec engine reads npz from
+    # backtest_v8/indicators/ directly; capital is irrelevant to per-trade
+    # returns which is what pool_sharpe is computed from).
+    cmd = [PY_BIN, "-u", str(ENGINE_PATH), "--mode", mode, "--account", account,
+           "--start", start, "--no-history"]
     if symbols:
         cmd += ["--symbols", symbols]
-    if npz_dir:
-        cmd += ["--npz-dir", npz_dir]
+    for k, v in overrides.items():
+        # render bools/numbers/strings as KEY=VAL; coord refuses unknown knobs
+        # upstream via the vec-aware guard, so any KEY here is one the vec
+        # engine should understand.
+        cmd += ["--override", f"{k}={v}"]
 
     env = os.environ.copy()
+    # V8_OVERRIDE_FILE kept for tools that read it post-hoc, but vec engine
+    # ignores it — the source-of-truth flip is in --override args above.
     env["V8_OVERRIDE_FILE"] = str(override_path)
     for k, v in VEC_ENV.items():
         env[k] = v
+    # Allow sub-floor DIAGNOSTIC rows (the coord handles classification);
+    # without this the vec engine exits non-zero on small samples and the
+    # coord ledger captures only NO_RESULT.
+    env["V8_VEC_ALLOW_DIAGNOSTIC"] = "1"
 
     t0 = time.time()
     match = None
@@ -404,7 +429,10 @@ def _run_one(
             stdout_tail.append(line)
             if len(stdout_tail) > 40:
                 stdout_tail.pop(0)
-            if not _sim_started and "starting simulation" in line:
+            # Phase change: slow engine prints "starting simulation"; vec
+            # engine prints "V8_VEC_PROGRESS:" once per (sym,side) cell — the
+            # first such line means the sweep is past NPZ load and looping.
+            if not _sim_started and ("starting simulation" in line or "V8_VEC_PROGRESS:" in line):
                 _sim_started = True
                 _silence_phase = "post_sim"
                 _silence_limit = POST_SIM_SILENCE_S
