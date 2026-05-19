@@ -641,6 +641,13 @@ class SweepConfig:
     MTF_SLOWDOWN_DISABLE_WTFLIP: bool = False
     MTF_SLOWDOWN_DISABLE_KDROP: bool = False
     MTF_SLOWDOWN_DISABLE_STALL: bool = False
+    # 2026-05-19 Phase G — GR filter + WT-direction suspension
+    MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED: bool = True
+    MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
+    MTF_GR_FILTER_ENABLED: bool = True
+    MTF_GR_MIN_TFS: int = 3
+    MTF_GR_MIN_IND: int = 5
+    MTF_GR_INVERT_DC_BB: bool = False
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -1305,6 +1312,18 @@ def simulate_one_symbol(
     _mtf_small_frac = float(getattr(config, "MTF_SMALL_SIZE_FRAC", 0.25))
     _mtf_big_mult = float(getattr(config, "MTF_BIG_ADD_SIZE_MULT", 4.0))
 
+    # ─── PHASE G 2026-05-19 GR filter pass mask precompute ─────────────────────
+    try:
+        from vec_paths.gr_filter_vec import build_gr_filter_mask
+        if _mtf_active and bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
+            _gr_filter_mask = build_gr_filter_mask(npz, n, is_long, mode, config)
+        else:
+            _gr_filter_mask = np.ones(n, dtype=bool)
+    except Exception as _e:
+        sys.stderr.write(f"gr_filter_vec precompute failed {symbol}/{side}: {_e}\n")
+        _gr_filter_mask = np.ones(n, dtype=bool)
+    _mtf_require_gr = bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True))
+
     for i in range(n):
         bar_ts = float(ts[i])
         mark = float(close[i])
@@ -1435,8 +1454,10 @@ def simulate_one_symbol(
                             state.augmented_count += 1; state.last_augment_ts = bar_ts
                             state._mtf_big_added = True
                 continue  # MTF holds position — skip legacy logic
-            # No position: check for SMALL entry
+            # No position: check for SMALL entry (gated by GR filter)
             _small_fire, _small_reason = check_mtf_small_entry(_mtf_arrays, i, config)
+            if _small_fire and _mtf_require_gr and not _gr_filter_mask[i]:
+                _small_fire = False  # blocked by GR filter
             if _small_fire:
                 new_qty = float(config.START_POSITION_SIZE) * _mtf_small_frac / max(mark, 1e-9)
                 ev = TradeEvent(ts=bar_ts, type="OPEN", qty=new_qty, price=mark,

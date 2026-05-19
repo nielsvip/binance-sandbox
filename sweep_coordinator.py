@@ -691,11 +691,13 @@ def main() -> None:
     ap.add_argument("--status", action="store_true", help="Print stats and exit")
     args = ap.parse_args()
 
-    global HANG_TIMEOUT_S, SILENCE_TIMEOUT_S
+    global HANG_TIMEOUT_S, SILENCE_TIMEOUT_S, PRE_SIM_SILENCE_S, POST_SIM_SILENCE_S
     if args.hang_timeout > 0:
         HANG_TIMEOUT_S = args.hang_timeout
     if args.silence_timeout > 0:
         SILENCE_TIMEOUT_S = args.silence_timeout
+        PRE_SIM_SILENCE_S = args.silence_timeout
+        POST_SIM_SILENCE_S = max(POST_SIM_SILENCE_S, min(args.silence_timeout // 2, 600))
 
     COORD_DIR.mkdir(parents=True, exist_ok=True)
 
