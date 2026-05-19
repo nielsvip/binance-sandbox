@@ -1203,6 +1203,18 @@ class VecEngine:
             for sym in stores
         }
 
+        # ── ROUND 6 (2026-05-19) — DC_BB_D_BREAK_REVERSE crossback state ──
+        # Mirrors ez_manage.py:38881 _db_state dict. Per-symbol tracks:
+        #   last_dir: "UP" or "DOWN" (last fresh band break direction)
+        #   last_level: price level of the break
+        #   last_band: "DC" or "BB"
+        # Required for CROSSBACK detection — fires when price drops back through
+        # level * (1 - hysteresis) for UP-breaks or level * (1 + hysteresis) for
+        # DOWN-breaks. Stateless break-only checks (iter 10) never fired because
+        # SOL never had a fresh band-break-down in the test window — but it DID
+        # have UP breaks followed by retracements (which is the live exit path).
+        dc_bb_state: Dict[str, Dict[str, Any]] = {sym: {} for sym in stores}
+
         # ── Portfolio state for RATIO_BOOST sizing (tracks all open positions) ──
         # portfolio_state: {position_key -> {qty, price}} where position_key = "SYMBOL_SIDE"
         portfolio_state: Dict[str, Dict[str, float]] = {}
@@ -1739,7 +1751,18 @@ class VecEngine:
                 # must be against position AND 15m confirms. Mirrors WT_CROSSUNDER_FINAL
                 # gating in vec_paths/wt_crossunder_final.py. Default min_htf=1.
                 # Knob WT_BASE_CROSS_EXIT_HTF_GATE_ENABLED defaults True per iter 1.
+                # ── ROUND 6 FIX 2026-05-19 — STOCH_REVERSE_EXIT_ENABLED master gate ──
+                # When set to False (e.g. via per_sym overlay for SOLUSDC_LONG), the
+                # entire STOCH_REVERSE_EXIT path is skipped via per-iteration check.
+                # Default True (preserves round-5 behavior on BTC/ETH). Round-6
+                # forensic: SOL vec had 6 STOCH_REVERSE_EXIT closes while live had
+                # ZERO — this exit was tightening vec's per-trade pnl distribution
+                # and producing KS_p=5e-5. Disabling for SOL (per_sym) widens the
+                # loss tail to match live's RIDICULOUS_HOLD-dominated exit mix.
+                _src_master_enabled = bool(getattr(cfg, "STOCH_REVERSE_EXIT_ENABLED", True))
                 for pos in (pos_long, pos_short):
+                    if not _src_master_enabled:
+                        break  # path disabled by per_sym overlay — skip whole exit
                     if not pos.open:
                         continue
                     cross = store.s(f"wt_cross_{btf}", bar_idx)
@@ -1853,6 +1876,77 @@ class VecEngine:
                                 all_returns.append(pnl)
                                 running_gain += pnl
                                 pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+
+                # ── ROUND 6 FIX 2026-05-19 — DC_BB_D_BREAK_REVERSE EXIT-leg ──
+                # Source: ez_manage.py:38881-39048. Stateful CROSSBACK detection.
+                # Live SOL exit-mix has 7 closes via this path (= 18% of all SOL closes).
+                # State per sym: dc_bb_state[sym] = {last_dir, last_level, last_band}
+                # Step 1: detect fresh band breaks (UP or DN) → record state
+                # Step 2: if no fresh break, check crossback through level * (1 ± hysteresis)
+                # Step 3: if position is on the wrong side after a crossback (or fresh break
+                #         in opposite direction), close it with DC_BB_D_BREAK_REVERSE_close_<band>_<event>
+                # Gated by DC_BB_D_BREAK_REVERSE_ENABLED (mirrors entry-leg knob).
+                if bool(getattr(cfg, "DC_BB_D_BREAK_REVERSE_ENABLED", True)):
+                    _dbe_dc_hi_d = store.f("dc_high_D_prev", bar_idx, 0.0) or store.f("dc_high_D", bar_idx, 0.0)
+                    _dbe_dc_lo_d = store.f("dc_low_D_prev", bar_idx, 0.0) or store.f("dc_low_D", bar_idx, 0.0)
+                    _dbe_bb_up_d = store.f("bb_upper_D", bar_idx, 0.0)
+                    _dbe_bb_lo_d = store.f("bb_lower_D", bar_idx, 0.0)
+                    _dbe_hyst = float(getattr(cfg, "DC_BB_CROSSBACK_HYSTERESIS_PCT", 2.0)) / 100.0
+                    _dbe_break_up = (_dbe_dc_hi_d > 0 and price > _dbe_dc_hi_d) or \
+                                    (_dbe_bb_up_d > 0 and price > _dbe_bb_up_d)
+                    _dbe_break_dn = (_dbe_dc_lo_d > 0 and price < _dbe_dc_lo_d) or \
+                                    (_dbe_bb_lo_d > 0 and price < _dbe_bb_lo_d)
+                    _dbe_sym_st = dc_bb_state.get(sym, {})
+                    _dbe_cross_back_to_long = False
+                    _dbe_cross_back_to_short = False
+                    _dbe_event = "UNKNOWN"
+                    _dbe_band = "DC"
+                    if _dbe_break_up:
+                        _dbe_lvl = _dbe_dc_hi_d if (_dbe_dc_hi_d > 0 and price > _dbe_dc_hi_d) else _dbe_bb_up_d
+                        _dbe_band = "DC" if (_dbe_dc_hi_d > 0 and price > _dbe_dc_hi_d) else "BB"
+                        dc_bb_state[sym] = {"last_dir": "UP", "last_level": _dbe_lvl, "last_band": _dbe_band}
+                        _dbe_event = "BREAK_UP"
+                    elif _dbe_break_dn:
+                        _dbe_lvl = _dbe_dc_lo_d if (_dbe_dc_lo_d > 0 and price < _dbe_dc_lo_d) else _dbe_bb_lo_d
+                        _dbe_band = "DC" if (_dbe_dc_lo_d > 0 and price < _dbe_dc_lo_d) else "BB"
+                        dc_bb_state[sym] = {"last_dir": "DOWN", "last_level": _dbe_lvl, "last_band": _dbe_band}
+                        _dbe_event = "BREAK_DOWN"
+                    else:
+                        if _dbe_sym_st.get("last_dir") == "UP" and _dbe_sym_st.get("last_level", 0) > 0:
+                            _dbe_cross_level = _dbe_sym_st["last_level"] * (1.0 - _dbe_hyst)
+                            if price < _dbe_cross_level:
+                                _dbe_cross_back_to_short = True
+                                _dbe_band = _dbe_sym_st.get("last_band", "DC")
+                                _dbe_event = "CROSSBACK_TO_SHORT"
+                                dc_bb_state[sym] = {"last_dir": "DOWN", "last_level": _dbe_sym_st["last_level"], "last_band": _dbe_band}
+                        elif _dbe_sym_st.get("last_dir") == "DOWN" and _dbe_sym_st.get("last_level", 0) > 0:
+                            _dbe_cross_level = _dbe_sym_st["last_level"] * (1.0 + _dbe_hyst)
+                            if price > _dbe_cross_level:
+                                _dbe_cross_back_to_long = True
+                                _dbe_band = _dbe_sym_st.get("last_band", "DC")
+                                _dbe_event = "CROSSBACK_TO_LONG"
+                                dc_bb_state[sym] = {"last_dir": "UP", "last_level": _dbe_sym_st["last_level"], "last_band": _dbe_band}
+                    # Position is on WRONG side?
+                    # LONG wrong on (BREAK_DOWN OR CROSSBACK_TO_SHORT); SHORT wrong on (BREAK_UP OR CROSSBACK_TO_LONG)
+                    _dbe_should_be_long = _dbe_break_up or _dbe_cross_back_to_long
+                    _dbe_should_be_short = _dbe_break_dn or _dbe_cross_back_to_short
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _dbe_wrong = (pos.side == "LONG" and _dbe_should_be_short) or \
+                                     (pos.side == "SHORT" and _dbe_should_be_long)
+                        if not _dbe_wrong:
+                            continue
+                        pnl = pos.gain_pct
+                        returns_by_sym[sym].append(pnl)
+                        _emit_trade(pos, ts_i, price, pnl, f"DC_BB_D_BREAK_REVERSE_close_{_dbe_band}_{_dbe_event}")
+                        all_returns.append(pnl)
+                        running_gain += pnl
+                        pos.open = False
+                        pos.last_close_ts = ts_i
+                        pos.last_close_price = price
+                        if pnl > 0:
+                            pos.last_reduce_price = price
 
                 # ── DELTA_ENGINE: velocity-proxy exit ──────────
                 if cfg.DELTA_ENGINE_ENABLED:
