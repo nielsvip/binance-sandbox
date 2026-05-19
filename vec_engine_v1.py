@@ -789,6 +789,22 @@ class VecConfig:
     STDEV_MACRO_WINDOW_W: int = 52
     STDEV_MACRO_R4_REQUIRE_LTF_FLIP: bool = True
 
+    # ── ROUND 3 FIX #1 2026-05-19 — RIDICULOUS_HOLD_VEC time-cap exit ─────────
+    # Mirror of ez_manage.py:38754 RIDICULOUS_HOLD_GUARD. Live evidence (iter 22-24):
+    # 64% of live ETH closes & 60% of live SOL closes fire reason
+    # "RIDICULOUS_HOLD_age{H}h_cap48h_g{-X}%" — small-loss positions held >48h get
+    # force-closed. Vec engine NEVER force-closes on age alone — it relies on
+    # STOCH_REVERSE_EXIT / PPL / R1 / R2 which all over-fire vs live.
+    # New time-cap path: fires when position age > N hours AND gain in band
+    # [floor_pct, ceil_pct]. Default ceil_pct = 0.5% (small-loss-or-near-zero
+    # band; matches live evidence where age >239h closes had gain -0.39% to -0.01%).
+    # Live uses RIDICULOUS_HOLD_HOURS = 48.0 (config.py default).
+    # Default RIDICULOUS_HOLD_VEC_ENABLED=False so baseline unchanged. Opt-in.
+    RIDICULOUS_HOLD_VEC_ENABLED: bool = False
+    RIDICULOUS_HOLD_VEC_HOURS: float = 48.0
+    RIDICULOUS_HOLD_VEC_GAIN_FLOOR_PCT: float = -15.0   # close if gain >= floor
+    RIDICULOUS_HOLD_VEC_GAIN_CEIL_PCT: float = 0.5      #   and gain <= ceil
+
     def update_from_dict(self, d: Dict[str, Any]) -> "VecConfig":
         """Return a new VecConfig with fields from dict d applied."""
         import copy
@@ -1394,6 +1410,36 @@ class VecEngine:
                         if pnl > 0:
                             pos.last_reduce_price = price
 
+                # ── ROUND 3 FIX #1 2026-05-19 — RIDICULOUS_HOLD_VEC time-cap ──
+                # Live source: ez_manage.py:38754 RIDICULOUS_HOLD_GUARD. Forced-close
+                # path for small-loss positions held longer than HOURS. Iter 22-24
+                # showed this firing on 4 of 6 live ETH closes (age 239-272h, gains
+                # -0.39% to -0.01%) and 16 of 38 live SOL closes (age 50-92h).
+                # Vec had NO equivalent → over-fired STOCH_REVERSE_EXIT instead.
+                # BYPASSES NOLOSS gate (close at small loss is sanctioned for stale
+                # positions). Default OFF so baseline preserved; baseline file opts in.
+                if bool(getattr(cfg, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
+                    _rh_hours = float(getattr(cfg, "RIDICULOUS_HOLD_VEC_HOURS", 48.0))
+                    _rh_floor = float(getattr(cfg, "RIDICULOUS_HOLD_VEC_GAIN_FLOOR_PCT", -15.0))
+                    _rh_ceil = float(getattr(cfg, "RIDICULOUS_HOLD_VEC_GAIN_CEIL_PCT", 0.5))
+                    for pos in (pos_long, pos_short):
+                        if not pos.open:
+                            continue
+                        _rh_age_h = (ts_i - pos.entry_ts) / 3600.0
+                        if _rh_age_h <= _rh_hours:
+                            continue
+                        _rh_g = pos.gain_pct
+                        if not (_rh_floor <= _rh_g <= _rh_ceil):
+                            continue
+                        pnl = _rh_g
+                        returns_by_sym[sym].append(pnl)
+                        _emit_trade(pos, ts_i, price, pnl, "RIDICULOUS_HOLD_VEC")
+                        all_returns.append(pnl)
+                        running_gain += pnl
+                        pos.open = False; pos.last_close_ts = ts_i; pos.last_close_price = price
+                        if pnl > 0:
+                            pos.last_reduce_price = price
+
                 # ── WT_15M_VEL_SLOW near-zero gain exit (Path 5 / R2 variant) ──────
                 # Source: vec_paths/winner_protect.py + ez_manage.py:21022 R2 block.
                 # Fires BEFORE NOLOSS gate — is a NOLOSS bypass.
@@ -1728,6 +1774,29 @@ class VecEngine:
                             continue
                         if pos.side == "SHORT" and rsi2 > cfg.TRADIER_RSI2_EXIT_THRESHOLD_SHORT:
                             continue
+                    # ── ITER 14 fix 2026-05-19 (round 2): STOCH_REVERSE_EXIT_MIN_LOSS_HOLD_HOURS ──
+                    # Live behavior: bare WT-bear-cross does NOT close a losing position. Loss
+                    # exits go through R1/R2/HEDGE_FAILED/RIDICULOUS_HOLD time-cap (~48h). Vec
+                    # was over-firing STOCH_REVERSE_EXIT on losses immediately. Add a MIN_HOLD
+                    # gate that applies ONLY when position is at loss — winners can still exit
+                    # immediately. Knob STOCH_REVERSE_EXIT_MIN_LOSS_HOLD_HOURS default 0.0 (no
+                    # gate so SOL convergence preserved). Iter 11 NONNEG_GAIN gate was reverted —
+                    # it blocked SOL's legitimate small-loss closes which mirror live RIDICULOUS_HOLD.
+                    _src_min_loss_h = float(getattr(cfg, "STOCH_REVERSE_EXIT_MIN_LOSS_HOLD_HOURS", 0.0))
+                    if _src_min_loss_h > 0.0 and pos.gain_pct < 0:
+                        _age_h = (ts_i - pos.entry_ts) / 3600.0
+                        if _age_h < _src_min_loss_h:
+                            continue
+                    # ── ITER 22 fix 2026-05-19 (round 2): STOCH_REVERSE_EXIT_LOSS_THRESHOLD_PCT ──
+                    # Live RIDICULOUS_HOLD cap fires ~ -1% to -2% range (samples: -0.39%, -0.01%,
+                    # -0.17%, -0.06%); very-small losses tend to be HELD until time-cap. Mirror
+                    # this: refuse STOCH_REVERSE_EXIT when gain is between threshold and 0 (small
+                    # loss not big enough to warrant exit). Closes only when gain < threshold OR
+                    # gain >= 0. Default 0.0 (no effect — preserves SOL convergence). Bump via
+                    # baseline to e.g. -1.5 for stronger live parity on BTC/ETH.
+                    _src_loss_thr = float(getattr(cfg, "STOCH_REVERSE_EXIT_LOSS_THRESHOLD_PCT", 0.0))
+                    if _src_loss_thr < 0.0 and _src_loss_thr < pos.gain_pct < 0.0:
+                        continue
                     pnl = pos.gain_pct
                     returns_by_sym[sym].append(pnl)
                     _emit_trade(pos, ts_i, price, pnl, "STOCH_REVERSE_EXIT")

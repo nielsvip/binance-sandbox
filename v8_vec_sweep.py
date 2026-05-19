@@ -599,6 +599,17 @@ class SweepConfig:
     CHANNEL_REENTRY_STOP_ENABLED: bool = False
     CHANNEL_REENTRY_STOP_TF: str = '1h'
     CHANNEL_REENTRY_STOP_FIELD: str = 'dc_high'  # 'dc_high' or 'bb_upper'
+    # 2026-05-19 USER MANDATE Phase D — smart exhaustion exit
+    EXH_EXIT_ENABLED: bool = False
+    EXH_LTF_FIELD: str = 'bb_upper'         # 'bb_upper' or 'dc_high' (3m base; auto-flips for SHORT)
+    EXH_USE_BASIS_CROSS: bool = True
+    EXH_BASIS_FIELD: str = 'dc_basis'       # 'bb_basis' or 'dc_basis'
+    EXH_K_15M_LONG_THRESHOLD: float = 80.0  # k_15m >= this required to fire LONG exit
+    EXH_K_15M_SHORT_THRESHOLD: float = 20.0
+    EXH_HTF_GATE_ENABLED: bool = False
+    EXH_HTF_TF: str = '1h'
+    EXH_HTF_FIELD: str = 'bb_upper'
+    EXH_HTF_NEAR_PCT: float = 0.5
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -1169,6 +1180,19 @@ def simulate_one_symbol(
         check_never_go_red = None
         check_channel_reentry = None
 
+    # ─── PHASE D 2026-05-19 smart exhaustion exit precompute ────────────────────
+    try:
+        from vec_paths.exhaustion_exit import (
+            build_exh_arrays, check_exh_exit_at_bar,
+        )
+        _exh_arrays = build_exh_arrays(npz, n, is_long, config)
+        _exh_active = bool(_exh_arrays.get("enabled", False))
+    except Exception as _e:
+        sys.stderr.write(f"exhaustion_exit precompute failed {symbol}/{side}: {_e}\n")
+        _exh_arrays = {"enabled": False}
+        _exh_active = False
+        check_exh_exit_at_bar = None
+
     # ─── TR_TREND_v1 precompute (2026-05-17 NEW STRATEGY, default-OFF) ──────────
     # When TR_TREND_V1_ENABLED is True we build the per-bar boolean gates ONCE
     # then short-circuit the legacy OPEN / EXIT pipeline below. Hot loop only
@@ -1738,6 +1762,27 @@ def simulate_one_symbol(
         # ─── PHASE C 2026-05-19 USER MANDATE tight breakout stops ──────────────
         # NEVER_GO_RED: closes if gain crosses below 0 after max_gain >= peak threshold.
         # CHANNEL_REENTRY: closes if price was outside channel and re-entered.
+        # ─── PHASE D 2026-05-19 USER MANDATE smart exhaustion exit ─────────────
+        # EXH: (3m LTF rejection OR basis cross) AND k_15m extreme [AND HTF near]
+        if _exh_active and check_exh_exit_at_bar is not None and state.qty > 0.0001:
+            _prev_mark = float(close[i-1]) if i > 0 else mark
+            _exh_fire, _exh_reason, _new_ever_exh = check_exh_exit_at_bar(
+                _exh_arrays, i, mark, _prev_mark, is_long, state._ever_outside_channel, config,
+            )
+            state._ever_outside_channel = _new_ever_exh
+            if _exh_fire:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_exh_reason, pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                state._ever_outside_channel = False
+                continue
         if (_ngr_active or _chre_active) and state.qty > 0.0001:
             _tb_fire = False
             _tb_reason = ""
