@@ -648,6 +648,24 @@ class SweepConfig:
     MTF_GR_MIN_TFS: int = 3
     MTF_GR_MIN_IND: int = 5
     MTF_GR_INVERT_DC_BB: bool = False
+    # 2026-05-19 Phase H2 — slowdown TF selector (3m noisy, 15m steadier)
+    MTF_SLOWDOWN_TF: str = '3m'
+    # 2026-05-19 Phase I — compound exit (ATR trail + GR exit + WT cross + DC/BB reject)
+    MTF_EXIT_USE_COMPOUND: bool = False         # master — replaces slowdown exit
+    MTF_ATR_TRAIL_ENABLED: bool = True
+    MTF_ATR_TRAIL_MULT: float = 2.0
+    MTF_ATR_TRAIL_TF: str = '15m'                # '15m', '1h', 'D'
+    MTF_GR_EXIT_GATE_ENABLED: bool = True
+    MTF_GR_EXIT_MIN_TFS: int = 3
+    MTF_GR_EXIT_MIN_IND: int = 5
+    MTF_WT_CROSS_EXIT_ENABLED: bool = True
+    MTF_WT_CROSS_EXIT_TF: str = '15m'            # '15m', '1h', 'either'
+    MTF_DC_REJECT_EXIT_ENABLED: bool = True
+    MTF_DC_REJECT_EXIT_TF: str = '15m'
+    MTF_BB_REJECT_EXIT_ENABLED: bool = True
+    MTF_BB_REJECT_EXIT_TF: str = '15m'
+    MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
+    MTF_REENTRY_COOLDOWN_BARS_HARD: int = 1
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
     # Mirrors ez_manage.py:18650+ (HTF_TREND_VETO), :38247+ (R3_HTF_FLIP/_4H),
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
@@ -768,6 +786,9 @@ class SymState:
     _mtf_stall_count: int = 0
     _mtf_max_k_seen: float = 0.0
     _mtf_big_added: bool = False
+    # Phase I 2026-05-19 compound exit state
+    _mtf_atr_trail: float = 0.0
+    _mtf_ever_outside_dc: bool = False
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -1324,6 +1345,31 @@ def simulate_one_symbol(
         _gr_filter_mask = np.ones(n, dtype=bool)
     _mtf_require_gr = bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True))
 
+    # ─── PHASE I 2026-05-19 compound exit precompute ──────────────────────────
+    try:
+        from vec_paths.mtf_armed_entries import build_compound_exit_arrays, check_mtf_compound_exit
+        from vec_paths.gr_filter_vec import build_gr_filter_mask as _build_gr_mask
+        _mtf_compound_active = bool(getattr(config, "MTF_EXIT_USE_COMPOUND", False)) and _mtf_active
+        if _mtf_compound_active:
+            _compound_arrays = build_compound_exit_arrays(npz, n, is_long, mode, config)
+            # GR exit mask = GR filter pass for OPPOSITE side
+            _gr_exit_min_tfs = int(getattr(config, "MTF_GR_EXIT_MIN_TFS", 3))
+            _gr_exit_min_ind = int(getattr(config, "MTF_GR_EXIT_MIN_IND", 5))
+            # Temporarily build a config wrapper for opposite-side scoring
+            class _GRExitCfg:
+                MTF_GR_FILTER_ENABLED = True
+                MTF_GR_MIN_TFS = _gr_exit_min_tfs
+                MTF_GR_MIN_IND = _gr_exit_min_ind
+                MTF_GR_INVERT_DC_BB = False
+            _compound_arrays["gr_exit_mask"] = _build_gr_mask(npz, n, not is_long, mode, _GRExitCfg())
+        else:
+            _compound_arrays = {}
+    except Exception as _e:
+        sys.stderr.write(f"compound_exit precompute failed {symbol}/{side}: {_e}\n")
+        _compound_arrays = {}
+        _mtf_compound_active = False
+        check_mtf_compound_exit = None
+
     for i in range(n):
         bar_ts = float(ts[i])
         mark = float(close[i])
@@ -1411,12 +1457,33 @@ def simulate_one_symbol(
                 _mtf_gain = _gain_pct(state.entry_price, mark, is_long)
                 if _mtf_gain > state.max_gain:
                     state.max_gain = _mtf_gain
-                # K_3m + WT_3m + 3m OHLC needed for slowdown
-                _k3 = float(npz.get("k_3m", np.zeros(n))[i]) if "k_3m" in npz else 0.0
-                _wt1_3 = float(npz.get("wt1_3m", np.zeros(n))[i]) if "wt1_3m" in npz else 0.0
-                _wt2_3 = float(npz.get("wt2_3m", np.zeros(n))[i]) if "wt2_3m" in npz else 0.0
-                _o3 = float(npz.get("open_3m", np.zeros(n))[i]) if "open_3m" in npz else 0.0
-                _c3 = float(npz.get("close_3m", np.zeros(n))[i]) if "close_3m" in npz else mark
+                # ─── PHASE I compound exit (takes precedence over slowdown) ─
+                if _mtf_compound_active and check_mtf_compound_exit is not None:
+                    _ce_fire, _ce_reason, _new_trail, _new_ever_dc = check_mtf_compound_exit(
+                        _compound_arrays, i, mark, _mtf_gain, state.entry_price,
+                        is_long, state._mtf_atr_trail, state._mtf_ever_outside_dc, config,
+                    )
+                    state._mtf_atr_trail = _new_trail
+                    state._mtf_ever_outside_dc = _new_ever_dc
+                    if _ce_fire:
+                        pnl_pct = _mtf_gain
+                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_ce_reason, pnl_pct=pnl_pct)
+                        events.append(ev); trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                        state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                        state._mtf_atr_trail = 0.0; state._mtf_ever_outside_dc = False
+                        continue
+                # Phase H2 — TF-selectable slowdown trigger inputs
+                _slow_tf = str(getattr(config, "MTF_SLOWDOWN_TF", "3m"))
+                _k3 = float(npz.get(f"k_{_slow_tf}", np.zeros(n))[i]) if f"k_{_slow_tf}" in npz else 0.0
+                _wt1_3 = float(npz.get(f"wt1_{_slow_tf}", np.zeros(n))[i]) if f"wt1_{_slow_tf}" in npz else 0.0
+                _wt2_3 = float(npz.get(f"wt2_{_slow_tf}", np.zeros(n))[i]) if f"wt2_{_slow_tf}" in npz else 0.0
+                _o3 = float(npz.get(f"open_{_slow_tf}", np.zeros(n))[i]) if f"open_{_slow_tf}" in npz else 0.0
+                _c3 = float(npz.get(f"close_{_slow_tf}", np.zeros(n))[i]) if f"close_{_slow_tf}" in npz else mark
                 _slow_fire, _slow_reason, _new_stall, _new_max_k = check_mtf_slowdown(
                     gain=_mtf_gain, gain_prev=0.0, stall_count=state._mtf_stall_count,
                     max_k_seen=state._mtf_max_k_seen, k_3m=_k3, close=_c3, open_=_o3,
