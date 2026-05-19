@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-19 21:31:29 UTC
+# Copilot Status — 2026-05-19 21:46:46 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:25:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:26:33
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:27:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:27:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:27:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:28:36
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:29:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:29:36
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:29:37
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-19T21:30:38
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:39:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:39:48
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T21:41:51
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:41:51
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:41:51
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:43:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:43:53
+- **STALE_INDICATORS** [tradier]  — 2026-05-19T21:45:55
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-19T21:45:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-19T21:45:55
 
 ## Missed Trades (trader comparison)
 
@@ -38,7 +38,7 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 - HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
-- HELD: **DAR** LONG (tradier) peak +4.0%, now +-4.1%
+- HELD: **DAR** LONG (tradier) peak +4.0%, now +-5.4%
 
 ## Supervisor
 
@@ -46,7 +46,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_prices.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
