@@ -294,8 +294,41 @@ run_script() {
                 rss_kb=$(awk '/VmRSS/{print $2}' "/proc/$script_pid/status" 2>/dev/null || echo 0)
             fi
             local MAX_RSS_KB=1572864  # 1.5GB default (was 900MB)
-            if [[ "$SCRIPT" == "ez_manage.py" && "${ARGS[*]}" == *"--account inf"* ]]; then
-                MAX_RSS_KB=2306867  # ~2.2GB for inf (91 open positions @ ~17MB ea + 200MB base)
+            if [[ "$SCRIPT" == "ez_manage.py" ]]; then
+                # 2026-05-19 OOM_CYCLE: men cycling 137 every 7-37min, ang/fin trending toward
+                # ceiling. Observed RSS peaks at preemptive recycle: men 1.6-2.18GB, ang 1.8GB,
+                # fin 1.7-1.77GB. The 2026-04-30 baseline (men=50pos@880MB) no longer holds —
+                # working set has grown (new R1/R2/R3 state, per_sym overlay, HH/HL/LL framework,
+                # STDEV_MACRO). flz with 1 open position remains stable at 469-643MB so this
+                # is genuinely workload-scaled, not a leak: same evidence pattern that justified
+                # inf's bump to 2.2GB. Apply same ceiling to men/ang/fin.
+                case "${ARGS[*]}" in
+                    *"--account inf"*) MAX_RSS_KB=2306867 ;;  # 2.2GB (2026-04-30 original)
+                    *"--account men"*) MAX_RSS_KB=2306867 ;;  # 2.2GB (2026-05-19 OOM_CYCLE)
+                    *"--account ang"*) MAX_RSS_KB=2306867 ;;  # 2.2GB (2026-05-19 OOM_CYCLE)
+                    *"--account fin"*) MAX_RSS_KB=2306867 ;;  # 2.2GB (2026-05-19 OOM_CYCLE)
+                esac
+                # 2026-05-19: file-based override so future ceiling tweaks don't require
+                # restarting the bash watchdog. Lets ops bump a single account without
+                # rebooting all 5 ez_manage tty sessions. Empty/missing file = use case
+                # default above. Path: data/.watchdog_max_rss_kb_<acct>
+                local _override_acct=""
+                for _arg in "${ARGS[@]}"; do
+                    if [[ "$_arg" =~ ^(ang|inf|flz|men|fin)$ ]]; then
+                        _override_acct="$_arg"
+                        break
+                    fi
+                done
+                if [[ -n "$_override_acct" ]]; then
+                    local _override_file="$WORKDIR/data/.watchdog_max_rss_kb_${_override_acct}"
+                    if [[ -f "$_override_file" ]]; then
+                        local _override_val
+                        _override_val=$(cat "$_override_file" 2>/dev/null | tr -d ' \n\r' || echo "")
+                        if [[ "$_override_val" =~ ^[0-9]+$ ]] && [[ "$_override_val" -ge 524288 ]]; then
+                            MAX_RSS_KB="$_override_val"
+                        fi
+                    fi
+                fi
             fi
             if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
                 rss_over_count=$((rss_over_count + 1))
@@ -369,7 +402,13 @@ main() {
     # that just consumes CPU + adds memory pressure without recovering. Each consecutive
     # 137 doubles the wait (60→120→240→480→600 cap). Any clean / non-137 exit resets the
     # counter. Applied only to ez_manage workers (where this pattern was observed).
+    # 2026-05-19 OOM_CYCLE: also reset when the last run lasted ≥300s. A 5-min stable run
+    # before a single 137 = intermittent jetsam wave, NOT a thrash loop. Without this, men
+    # got stuck at 600s backoff for hours because every restart eventually OOMed even after
+    # 30+ min uptime, and the counter never reset. Distinguishes "ceiling exceeded after
+    # legitimate work" from "thrash loop where every restart OOMs in <60s".
     local consecutive_sigkill=0
+    local _run_started_at=0
     while true; do
         # Check for rapid restarts
         check_rapid_restarts
@@ -384,8 +423,17 @@ main() {
         }
 
         # Run the script
+        _run_started_at=$(date +%s)
         run_script
         local _last_exit=$?
+        local _run_duration=$(( $(date +%s) - _run_started_at ))
+
+        if [[ "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 && "$_run_duration" -ge 300 ]]; then
+            if [[ "$consecutive_sigkill" -gt 0 ]]; then
+                log "[SIGKILL_BACKOFF] last run lasted ${_run_duration}s (≥300s stable) — resetting counter (was $consecutive_sigkill)"
+            fi
+            consecutive_sigkill=0
+        fi
 
         if [[ "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 ]]; then
             consecutive_sigkill=$((consecutive_sigkill + 1))
