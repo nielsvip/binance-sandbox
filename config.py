@@ -1259,6 +1259,29 @@ class Config:
     HEDGE_HTF_VETO_ENABLED: bool = True                  # 2026-05-17: block OBLIGATORY_HEDGE if Daily WT hasn't flipped to support hedge direction. For LONG position the hedge is SHORT (requires wt1_D < wt2_D), for SHORT position the hedge is LONG (requires wt1_D > wt2_D). Source: data/research_20260516/PLAN.md §3.7. Live data showed hedge entries dominating opens (58-82% per acct) and QUICK_HEDGE_PROTECT_LONG_LOSS averaging -0.49%. ROLLBACK: set False.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False  # 2026-05-17: future feature — replace stateless dc_basis_D anchor with persistent breakout_retest_armed[symbol][side] state dict (arm on dc_high_D[prev_D] cross + volume confirm, fire on retest within 7d). Wired in ez_manage MultiAccountTradeManager state dicts. Default OFF — needs code in next session, sweep variant queued for forward validation.
     # ═══════════════════════════════════════════════════════════════════
+    # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (3m/15m/1h) state machine
+    # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
+    # state machine. Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md.
+    # NPZ degradation: spec was 1m/3m/5m/15m/1h for bounce but NPZ has no 1m + no
+    # 5m-for-crypto, so crypto LTFs degrade to {3m, 15m, 1h}; tradier LTFs use
+    # {5m, 15m, 1h}. All knobs default OFF until sample-floor sweep proves edge.
+    # NOT WIRED in ez_manage / tradier_manage / backtest_v8_engine. vec_paths/
+    # gr_v5_state.py skeleton present; full state-machine impl pending followup.
+    # ═══════════════════════════════════════════════════════════════════
+    GR_V5_ENABLED: bool = False
+    GR_V5_HTF_TFS: tuple = ('4h', 'D', 'W')              # breakout-confirm TFs
+    GR_V5_HTF_MIN_ALIGN: int = 2                          # 2-of-3 alignment to arm
+    GR_V5_BREAKOUT_REQUIRE_VOLUME: bool = True
+    GR_V5_BREAKOUT_VOL_MULT: float = 1.25
+    GR_V5_LTF_TFS: tuple = ('3m', '15m', '1h')           # crypto bounce TFs (NPZ has no 1m, no 5m-for-crypto)
+    GR_V5_LTF_MIN_ALIGN: int = 2                          # 2-of-3 (was "3 of 5" pre NPZ-degradation)
+    GR_V5_BOUNCE_STOCH_LONG: float = 25.0                 # k oversold for LONG bounce fire
+    GR_V5_BOUNCE_STOCH_SHORT: float = 75.0                # k overbought for SHORT bounce fire
+    GR_V5_BOUNCE_WT_CROSS_REQUIRED: bool = True
+    GR_V5_ARM_WINDOW_BARS: int = 168                      # 7d at 1h cadence (or 56 at 3h)
+    GR_V5_RETEST_BAND_PCT: float = 0.03                   # |price - armed_price|/armed_price < 3%
+    GR_V5_INVALIDATE_PCT: float = 0.02                    # close below armed_price*(1 - 0.02) → disarm
+    # ═══════════════════════════════════════════════════════════════════
     # STDEV_MACRO — long-window log-price z-score on D/W/M (2026-05-17)
     # User mandate: BB is for short-window breakouts (untouched). STDEV is for
     # REAL macro tops/bottoms on D/W/M. Additive ONLY — never replaces, never

@@ -2197,6 +2197,28 @@ class TradierConfig:
     HEDGE_HTF_VETO_ENABLED: bool = False                 # 2026-05-17: tradier has no same-symbol hedge mechanism (per memory feedback_hedge_reentry_unblock_20260510 "Stocks have NO same-symbol hedge"); flag exists for config-symmetry only. ROLLBACK: irrelevant on tradier.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False
     # ═══════════════════════════════════════════════════════════════════
+    # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (5m/15m/1h) state machine
+    # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
+    # state machine. Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md.
+    # NPZ degradation: spec was 1m/3m/5m/15m/1h for bounce but tradier NPZ has no 1m
+    # and no 3m, so tradier LTFs are {5m, 15m, 1h}. All knobs default OFF.
+    # NOT WIRED in tradier_manage / backtest_v8_engine. vec_paths/gr_v5_state.py
+    # skeleton present; full state-machine impl pending followup.
+    # ═══════════════════════════════════════════════════════════════════
+    GR_V5_ENABLED: bool = False
+    GR_V5_HTF_TFS: tuple = ('4h', 'D', 'W')              # breakout-confirm TFs
+    GR_V5_HTF_MIN_ALIGN: int = 2                          # 2-of-3 alignment to arm
+    GR_V5_BREAKOUT_REQUIRE_VOLUME: bool = True
+    GR_V5_BREAKOUT_VOL_MULT: float = 1.25
+    GR_V5_LTF_TFS: tuple = ('5m', '15m', '1h')           # tradier bounce TFs (5m base, no 1m/3m)
+    GR_V5_LTF_MIN_ALIGN: int = 2                          # 2-of-3
+    GR_V5_BOUNCE_STOCH_LONG: float = 25.0
+    GR_V5_BOUNCE_STOCH_SHORT: float = 75.0
+    GR_V5_BOUNCE_WT_CROSS_REQUIRED: bool = True
+    GR_V5_ARM_WINDOW_BARS: int = 168
+    GR_V5_RETEST_BAND_PCT: float = 0.03
+    GR_V5_INVALIDATE_PCT: float = 0.02
+    # ═══════════════════════════════════════════════════════════════════
     # STDEV_MACRO — long-window log-price z-score on D/W/M (2026-05-17)
     # Mirrors config.py. BB stays for breakouts (untouched). STDEV adds a
     # macro top/bottom layer (additive only). All gates default OFF; S1
