@@ -348,8 +348,12 @@ def _run_one(
     # NOT accepted: --capital, --npz-dir (vec engine reads npz from
     # backtest_v8/indicators/ directly; capital is irrelevant to per-trade
     # returns which is what pool_sharpe is computed from).
+    # 2026-05-19 PARALLEL: v8_vec_sweep run_sweep now supports ProcessPool.
+    # Coord defaults workers via SWEEP_COORD_WORKERS (env), else 4 — same as
+    # gr_dcbb path. Passing --workers 0 lets the engine auto-pick cpu-2 capped 8.
+    _v8_workers = int(os.environ.get("SWEEP_COORD_WORKERS", "4"))
     cmd = [PY_BIN, "-u", str(ENGINE_PATH), "--mode", mode, "--account", account,
-           "--start", start, "--no-history"]
+           "--start", start, "--no-history", "--workers", str(_v8_workers)]
     if symbols:
         cmd += ["--symbols", symbols]
     for k, v in overrides.items():
