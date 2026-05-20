@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-20 08:50:58 UTC
+# Copilot Status — 2026-05-20 09:06:19 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T08:43:48
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T08:43:48
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T08:45:51
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T08:45:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T08:45:51
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T08:47:54
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T08:47:54
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T08:47:54
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T08:49:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T08:49:56
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:00:09
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:00:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:00:09
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:02:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:02:12
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:04:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:04:15
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:06:18
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:06:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:06:18
 
 ## Missed Trades (trader comparison)
 
@@ -38,15 +38,15 @@ _None_
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +2.1%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-7.6%
 - HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
-- HELD: **DAR** LONG (tradier) peak +4.0%, now +-5.4%
+- HELD: **DAR** LONG (tradier) peak +4.0%, now +-4.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_positions.py is NOT running
-- [LOW] tradier_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
