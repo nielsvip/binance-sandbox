@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-20 17:34:14 UTC
+# Copilot Status — 2026-05-20 17:49:37 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:32:31
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:33:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:33:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:33:02
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:33:32
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:33:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:33:32
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:34:04
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:34:04
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:34:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:47:43
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:48:14
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:48:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:48:14
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:48:44
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:48:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:48:44
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T17:49:27
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T17:49:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T17:49:27
 
 ## Missed Trades (trader comparison)
 
@@ -33,12 +33,12 @@ _None_
 - HELD: **UUUU** SHORT (tradier) peak +15.3%, now +13.8%
 - HELD: **USO** LONG (tradier) peak +12.1%, now +12.1%
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +4.6%
+- HELD: **MU** LONG (tradier) peak +6.5%, now +6.5%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
 - HELD: **SNDK** LONG (tradier) peak +5.3%, now +5.3%
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +-4.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
 - HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
-- HELD: **MU** LONG (tradier) peak +4.1%, now +4.1%
 
 ## Supervisor
 
@@ -46,7 +46,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_prices.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_rankings.py is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
