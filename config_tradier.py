@@ -2206,8 +2206,8 @@ class TradierConfig:
     # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened AFTER this ts.
     # Default 0 → uses trade_manager startup time (positions open at restart ride legacy exits).
     MTF_EXIT_MIN_OPEN_TS: float = 0.0
-    MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner (was '1h')
-    MTF_ATR_TRAIL_TF_TRADIER: str = '15m'                # mirror Phase I winner
+    MTF_ATR_TRAIL_TF: str = '5m'                         # *EXPERIMENTAL 2026-05-20: T5b stocks sweep (171 syms × 2.13yr bull-only) showed ATR_5m × 2.0 Pareto-dominates 15m × 2.0 — pool_sharpe +0.2257 vs +0.1983 AND worst-trade −6.32% vs −15.71%. Theory: 1-bar stop on each system's base TF (stocks 5m → 5m ATR; crypto 3m → 15m ATR). CAVEATS: (a) bull-only window, no bear regime tested; (b) trade rate 0.54/sym/day << user target 2-8/day across ALL variants (entry-side issue, not stop-side). Rollback: set both to '15m'. Was '15m' Phase I winner.
+    MTF_ATR_TRAIL_TF_TRADIER: str = '5m'                 # *EXPERIMENTAL 2026-05-20: same as above — was '15m' (Phase I mirror); flipped to '5m' per T5b stocks sweep.
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
     MTF_DC_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
