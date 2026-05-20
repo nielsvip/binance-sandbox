@@ -2222,6 +2222,23 @@ class TradierConfig:
     HEDGE_HTF_VETO_ENABLED: bool = False                 # 2026-05-17: tradier has no same-symbol hedge mechanism (per memory feedback_hedge_reentry_unblock_20260510 "Stocks have NO same-symbol hedge"); flag exists for config-symmetry only. ROLLBACK: irrelevant on tradier.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False
     # ═══════════════════════════════════════════════════════════════════
+    # 2026-05-20 USER MANDATE — MTF protocol filter (Phase I REJ_1h winner)
+    # Phase J sample-floor: 293 stocks × 2.13y → pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
+    # FILTER mode in tradier_manage.execute_now: existing entries must pass MTF gates.
+    # See data/hourly_reconfig/_baselines/baseline_v6_tradier_mtf_phase_i_20260520.json.
+    # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════
+    MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER
+    MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
+    MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
+    MTF_REQUIRE_ARMED_ANY: bool = True
+    MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED: bool = True
+    MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
+    MTF_GR_FILTER_ENABLED: bool = True
+    MTF_GR_MIN_TFS: int = 3                          # Phase I winner
+    MTF_GR_MIN_IND: int = 5                          # Phase I winner
+    MTF_GR_INVERT_DC_BB: bool = False
+    # ═══════════════════════════════════════════════════════════════════
     # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (5m/15m/1h) state machine
     # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
     # state machine. Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md.

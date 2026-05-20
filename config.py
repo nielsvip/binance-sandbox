@@ -1267,6 +1267,24 @@ class Config:
     HEDGE_HTF_VETO_ENABLED: bool = True                  # 2026-05-17: block OBLIGATORY_HEDGE if Daily WT hasn't flipped to support hedge direction. For LONG position the hedge is SHORT (requires wt1_D < wt2_D), for SHORT position the hedge is LONG (requires wt1_D > wt2_D). Source: data/research_20260516/PLAN.md §3.7. Live data showed hedge entries dominating opens (58-82% per acct) and QUICK_HEDGE_PROTECT_LONG_LOSS averaging -0.49%. ROLLBACK: set False.
     BREAKOUT_RETEST_ARMED_PERSISTENT_ENABLED: bool = False  # 2026-05-17: future feature — replace stateless dc_basis_D anchor with persistent breakout_retest_armed[symbol][side] state dict (arm on dc_high_D[prev_D] cross + volume confirm, fire on retest within 7d). Wired in ez_manage MultiAccountTradeManager state dicts. Default OFF — needs code in next session, sweep variant queued for forward validation.
     # ═══════════════════════════════════════════════════════════════════
+    # 2026-05-20 USER MANDATE — MTF protocol filter (Phase I REJ_1h winner)
+    # Phase J sample-floor: 293 stocks × 2.13y → pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
+    # FILTER mode: existing entries must additionally pass MTF gates.
+    # See data/hourly_reconfig/_baselines/baseline_v6_*_mtf_phase_i_20260520.json.
+    # mtf_live_evaluator.py is the runtime; vec_paths/mtf_armed_entries.py is the backtest mirror.
+    # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════
+    MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER — gates all entries via mtf_live_evaluator
+    MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
+    MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
+    MTF_REQUIRE_ARMED_ANY: bool = True
+    MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED: bool = True
+    MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
+    MTF_GR_FILTER_ENABLED: bool = True
+    MTF_GR_MIN_TFS: int = 3                          # Phase I winner
+    MTF_GR_MIN_IND: int = 5                          # Phase I winner
+    MTF_GR_INVERT_DC_BB: bool = False
+    # ═══════════════════════════════════════════════════════════════════
     # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (3m/15m/1h) state machine
     # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
     # state machine. Design doc: data/research_20260518/gr_v5_breakout_bounce_design.md.

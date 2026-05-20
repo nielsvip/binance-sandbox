@@ -22551,6 +22551,44 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛡️ MTF FILTER (USER 2026-05-20) — Phase I REJ_1h winner config gates entries.
+        # Phase J validated: pool_S +0.28, avg DD 6.5%, +113%/sym/yr on 293 stocks × 2.13y.
+        # MTF runs as a FILTER on existing entries (not a replacement):
+        #   1. Per-sym blocklist from Phase K (DD>20% or Sharpe<0 → MTF_ENTRY_BLOCKED=True)
+        #   2. >=1 armed state on {1h,4h,D,W} × {dc,bb,wt} (existence in trend)
+        #   3. GR multi-confirm filter passes (>= MTF_GR_MIN_TFS of 6 TFs × MTF_GR_MIN_IND of 11 inds)
+        # Per-sym MTF_SIZE_MULT (1.0/0.5/0.0) applied to quantity for LUMPY-half / SAFE-full / BLOCKED.
+        # Fail-open on any exception so legacy paths still work.
+        # ROLLBACK: set MTF_ARMED_ENTRY_ENABLED=False in config.py.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                    and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
+                import mtf_live_evaluator as _mle
+                if not hasattr(self, "mtf_states"):
+                    self.mtf_states = {}
+                _mtf_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                _mtf_side = position_side or "LONG"
+                if _mtf_sym:
+                    _mtf_ind = await ii(self, _mtf_sym)
+                    if _mtf_ind:
+                        _mtf_blocked = bool(_psym_get(_mtf_sym, _mtf_side, "MTF_ENTRY_BLOCKED", False))
+                        _mtf_ok, _mtf_reason = _mle.mtf_entry_filter_passes(
+                            self.mtf_states, _mtf_sym, _mtf_side, _mtf_ind, "crypto", config,
+                            blocked=_mtf_blocked,
+                        )
+                        if not _mtf_ok:
+                            logger.warning(f"[MTF_FILTER_BLOCK] {position_key} act={action} side={_mtf_side}: {_mtf_reason}")
+                            return f"BLOCKED_{_mtf_reason}"
+                        # Apply per-sym MTF_SIZE_MULT (Phase K 3-tier: 1.0 SAFE / 0.5 LUMPY)
+                        _mtf_mult = _mle.mtf_size_mult_for(_psym_get, _mtf_sym, _mtf_side, default=1.0)
+                        if 0 < _mtf_mult < 1.0:
+                            _orig_qty = quantity
+                            quantity = quantity * _mtf_mult
+                            logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.6f}→{quantity:.6f} (mult={_mtf_mult})")
+        except Exception as _mtf_e:
+            logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
         # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency-exit reasons bypass.
         # Defends against strategy thrash that floods the same pkey with opens/augments.

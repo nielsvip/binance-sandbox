@@ -10154,6 +10154,38 @@ class TradierTradeManager:
             _is_augment_or_entry = is_augment
             is_entry_action = action in ['OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'] if action else False
             _is_exit_or_reduce = action in ('REDUCE', 'CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'QUICK_CLOSE') if action else False
+            # ═══════════════════════════════════════════════════════════════════════════
+            # 🛡️ MTF FILTER (USER 2026-05-20) — Phase I REJ_1h winner gates entries.
+            # Phase J validated on 293 stocks × 2.13y: pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
+            # FILTER mode: existing entries (Rule A, GR direct, WT_3M_FORCE_OPEN, REENTRY etc.)
+            # still fire, but must ADDITIONALLY pass: (1) per-sym blocklist, (2) >=1 armed state,
+            # (3) GR multi-confirm filter. Per-sym MTF_SIZE_MULT (1.0/0.5/0.0) applied to qty.
+            # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False in config_tradier.py.
+            # ═══════════════════════════════════════════════════════════════════════════
+            try:
+                if is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                    import mtf_live_evaluator as _mle
+                    if not hasattr(self, "mtf_states"):
+                        self.mtf_states = {}
+                    _mtf_ind = self.get_indicators(symbol) if hasattr(self, "get_indicators") else self.indicators.get(symbol, {})
+                    if _mtf_ind:
+                        _mtf_blocked = bool(_cfg("MTF_ENTRY_BLOCKED", False, account_key, symbol, position_side))
+                        _mtf_ok, _mtf_reason = _mle.mtf_entry_filter_passes(
+                            self.mtf_states, symbol, position_side, _mtf_ind, "tradier", config,
+                            blocked=_mtf_blocked,
+                        )
+                        if not _mtf_ok:
+                            logger.warning(f"[MTF_FILTER_BLOCK] {position_key} act={action}: {_mtf_reason}")
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_{_mtf_reason}"
+                        _mtf_mult = float(_cfg("MTF_SIZE_MULT", 1.0, account_key, symbol, position_side))
+                        if 0 < _mtf_mult < 1.0:
+                            _orig_qty = quantity
+                            quantity = quantity * _mtf_mult
+                            logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.4f}→{quantity:.4f} (mult={_mtf_mult})")
+            except Exception as _mtf_e:
+                logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
             # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══
             # trb/trc/tra use symbols_trb_long/short (not tradeable_keys.json which is crypto-only)
             if is_augment and getattr(config, 'TRADIER_REQUIRE_TRADEABLE_KEY', True):

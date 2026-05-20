@@ -430,3 +430,50 @@ def ensure_state(states: dict, key: str) -> dict:
     if key not in states:
         states[key] = _new_state()
     return states[key]
+
+
+# ── ONE-LINE FILTER for chokepoint use in ez_manage / tradier_manage ────────
+
+def mtf_entry_filter_passes(
+    mtf_states: dict, symbol: str, side: str, indicators: dict, mode: str,
+    config: Any, blocked: bool = False,
+) -> tuple[bool, str]:
+    """One-line gate. Returns (allow_entry: bool, reason_if_blocked: str).
+
+    Called BEFORE queue_trade_action(..., 'OPEN'/'AUGMENT', ...) in live code:
+      ok, reason = mtf_entry_filter_passes(
+          trade_manager.mtf_states, symbol, side, indicators, mode, config,
+          blocked=_psym_get(symbol, side, "MTF_ENTRY_BLOCKED", False),
+      )
+      if not ok:
+          logger.info(f"[MTF_FILTER_BLOCK] {position_key}: {reason}")
+          return
+
+    Always maintains armed state (so blocked syms still update for future).
+    """
+    # Block from per-sym blocklist (Phase K)
+    if blocked:
+        return False, "MTF_PER_SYM_BLOCKED"
+    # Maintain armed state regardless of position state (so future entries can fire)
+    key = f"{symbol}_{side}"
+    state = ensure_state(mtf_states, key)
+    update_armed_state(state, indicators, side, config)
+    # ARMED-any requirement
+    if bool(getattr(config, "MTF_REQUIRE_ARMED_ANY", True)):
+        if not _armed_any_effective(state, indicators, side, config):
+            return False, "MTF_NO_ARMED_STATE"
+    # GR filter requirement
+    if bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
+        min_tfs = int(getattr(config, "MTF_GR_MIN_TFS", 3))
+        min_ind = int(getattr(config, "MTF_GR_MIN_IND", 5))
+        if not gr_filter_pass(indicators, side, mode, config, min_tfs=min_tfs, min_ind=min_ind):
+            return False, f"MTF_GR_FILTER_FAIL_{min_tfs}tf_{min_ind}ind"
+    return True, ""
+
+
+def mtf_size_mult_for(psym_get_fn, symbol: str, side: str, default: float = 1.0) -> float:
+    """Returns size multiplier from per-sym overlay (0.0/0.5/1.0 per Phase K)."""
+    try:
+        return float(psym_get_fn(symbol, side, "MTF_SIZE_MULT", default))
+    except (TypeError, ValueError):
+        return default
