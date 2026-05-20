@@ -597,7 +597,7 @@ class TradierConfig:
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = False  # stocks: no auto-hedge engine yet
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = False
     # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # name kept for parity; tradier uses 5m TF
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-05-20 USER MANDATE: DC_LOW_4 emergency close OFF — replaced by MTF compound exit. Name kept for parity; tradier uses 5m TF. ROLLBACK: True restores newborn-window emergency close.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — per stocks team finding: frozen dc_low_4h@entry + -8% floor.
     # Worst-case stocks loss capped at -9% (vs -12.6% baseline / -17% intra-trade). 250 stops × 30 syms × 2.1yr = 4/sym/yr.

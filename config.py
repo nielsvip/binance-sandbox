@@ -75,7 +75,7 @@ class Config:
     SERVICE_STOP = True
     SERVICE_REDUCE = True
     MANAGE_REDUCE = True
-    HEDGE_MODE: bool = True  # RE-ENABLED 2026-03-30: Can't hold losers without hedging. Cascade was OBLIGATORY_HEDGE loops (killed), NOT HEDGE_MODE. Hedges via ez_positions_quick ONLY.
+    HEDGE_MODE: bool = False  # 2026-05-20 USER MANDATE: hedge OFF, replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). All hedge code paths gated by config.HEDGE_MODE → False short-circuits them. ROLLBACK: True restores hedge protection.
     SANDBOX_MODE: bool = False
     SANDBOX_ACCOUNTS: List[str] = field(default_factory=lambda: ["sbx"])
 
@@ -554,7 +554,7 @@ class Config:
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
-    HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
+    HEDGE_SAME_SYMBOL_ENABLED: bool = False  # 2026-05-20 USER MANDATE: same-symbol hedge OFF — MTF compound exit replaces it. ROLLBACK: True restores 150% same-symbol hedge.
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
     HEDGE_ALL_POSITIONS: bool = True   # 2026-05-10 USER MANDATE: if wt1_3m against trade → 100% same-symbol hedge. PERIOD. P/L irrelevant. Combined with HEDGE_TRIGGER_USE_WT_3M_ALONE=True + HEDGE_DETERIORATING_GAIN_ENABLED=False = scan_and_hedge_losers fires on wt1_3m flip alone, no loss precondition.
     # === 2026-04-17 HEDGE OVERHAUL — user directive: hedges close on wt_3m flip no matter the P/L ===
@@ -917,7 +917,7 @@ class Config:
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-05-20 USER MANDATE: DC_LOW_4 emergency close OFF — replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). ROLLBACK: True restores newborn-window dc4_3m emergency close.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — replaces RIDICULOUS_LOSS late-fire (PHBUSDT -27% lock-in).
     # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
@@ -1348,7 +1348,7 @@ class Config:
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (one-line kill switch).
     MTF_EXIT_USE_COMPOUND: bool = True                   # master switch — compound exit replaces hedge protection
     MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
-    MTF_ATR_TRAIL_MULT: float = 3.0                      # 2026-05-20 USER: start at 3.0 (loose, no restart-cascade), tighten slowly. Phase I tested {1.5,2,3,4} all tied on Sharpe/DD.
+    MTF_ATR_TRAIL_MULT: float = 2.0                      # 2026-05-20 USER MANDATE: 2x ATR 15m trail from current price. Was 3.0 (loose), now tightened to spec. Phase I tested {1.5,2,3,4} all tied on Sharpe/DD.
     # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened
     # AFTER this timestamp. Default 0 → falls back to trade_manager startup time,
     # so positions open at restart ride through with legacy exits and only future
@@ -1565,7 +1565,7 @@ class Config:
     # tracker consultation). Cascade guards now in execute_dual_hedge (5244-5261): blocks
     # hedge-of-hedge, already-hedged, in-flight dedup. Rule re-enabled with multi-TF WT gate.
     # NEVER DISABLED via `if False:` — tune only via these switches.
-    OBLIGATORY_HEDGE_ENABLED: bool = True                # FOREVER RULE — never False in live
+    OBLIGATORY_HEDGE_ENABLED: bool = False               # 2026-05-20 USER MANDATE: hedge OFF entirely, MTF compound exit replaces it. Prior "FOREVER RULE" comment superseded by explicit user authorization 2026-05-20. ROLLBACK: True restores obligatory-hedge scanner.
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5           # 2026-05-06: -0.25→-0.5 per HEDGE_BANDAID_BACKTEST winner. trigger when gain below this
     OBLIGATORY_HEDGE_PCT: float = 1.0                    # hedge size (1.0 = 100%)
     # Per-TF enables (VALIDATED 2026-04-17 60d test on 8 bleeding inf shorts):
