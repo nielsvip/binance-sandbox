@@ -1,21 +1,21 @@
-# Copilot Status — 2026-05-20 19:53:25 UTC
+# Copilot Status — 2026-05-20 20:08:44 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T19:51:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T19:51:52
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T19:52:24
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T19:52:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T19:52:24
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T19:52:54
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T19:52:54
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T19:52:54
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T19:53:25
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T19:53:25
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T20:02:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-20T20:02:01
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T20:04:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T20:04:04
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T20:06:07
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T20:06:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T20:06:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-20T20:06:07
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T20:08:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T20:08:12
 
 ## Missed Trades (trader comparison)
 
@@ -45,8 +45,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [LOW] tradier_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
