@@ -1919,7 +1919,7 @@ class TradierConfig:
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     HEDGE_NEWBORN_GRACE_MINUTES: float = 0.0  # 2026-05-12 USER MANDATE: hedges should have NO grace period — must close instantly when WT flips.
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2% ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
-    HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
+    HEDGE_SAME_SYMBOL_ENABLED: bool = False  # 2026-05-20 USER MANDATE: same-symbol hedge OFF (tradier already no same-symbol hedge engine; sync for safety). ROLLBACK: True if crypto-style hedge ever wired for stocks.
     HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
     HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory). ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HOUR_OF_DAY_GATE_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Audit hourly Sharpe first.
@@ -2202,7 +2202,7 @@ class TradierConfig:
     # Phase J sample-floor validated on 293 stocks × 2.13y.
     MTF_EXIT_USE_COMPOUND: bool = True                   # master ON
     MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
-    MTF_ATR_TRAIL_MULT: float = 3.0                      # 2026-05-20 USER: start at 3.0 (loose, no restart-cascade), tighten slowly.
+    MTF_ATR_TRAIL_MULT: float = 2.0                      # 2026-05-20 USER MANDATE: 2x ATR 15m trail from current price (was 3.0 loose).
     # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened AFTER this ts.
     # Default 0 → uses trade_manager startup time (positions open at restart ride legacy exits).
     MTF_EXIT_MIN_OPEN_TS: float = 0.0
