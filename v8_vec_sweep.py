@@ -132,6 +132,11 @@ try:
 except ImportError:
     evaluate_breakout_retest_vec = None
 try:
+    # 2026-05-20 PORT — live 4-engine entry vote (WT/Stoch/DC/HTF/STDEV_MACRO)
+    from vec_paths.live_entry_engine import live_entry_engine_passes_vec
+except ImportError:
+    live_entry_engine_passes_vec = None
+try:
     from vec_paths.exit_r1_r2 import (
         check_r1_emergency_exit,
         check_r2_wt_vel_slow_exit,
@@ -574,6 +579,23 @@ class SweepConfig:
     # ── TRADIER_ENTRY_SCORE_THRESHOLD (2026-05-16) — min entry score for OPEN ──
     ENTRY_SCORE_THRESHOLD: int = 0
     TRADIER_ENTRY_SCORE_THRESHOLD: int = 0
+    # ── LIVE_ENTRY_ENGINE vote (2026-05-20 PORT) — 4-engine score aggregator ──
+    # Mirrors ez_manage.py:32543 / tradier_manage.py:2657 etc. Defaults OFF
+    # so existing sweeps are unchanged. When LIVE_ENTRY_ENGINE_ENABLED=True,
+    # an OPEN must additionally satisfy:
+    #   final_score = base_score + BOOST_SCORE*score_max >= threshold
+    # where score_max = max(score among fired engines with score >= MIN_SCORE)
+    # and threshold = WT_DC_ENTRY_THRESHOLD (tradier) | ENTRY_SCORE_THRESHOLD (crypto).
+    # When LIVE_ENTRY_ENGINE_ENABLED=False the vec module is a pass-through.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5
+    LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0
+    WT_DC_ENTRY_THRESHOLD: float = 0.0  # tradier final-score threshold for vec gate
     # ── DC_LOW / BB FROZEN STOP (2026-05-18) — freeze DC/BB at entry as stop ──
     DC_LOW_FROZEN_STOP_ENABLED: bool = False
     DC_LOW_FROZEN_STOP_TF: str = '4h'
@@ -1661,6 +1683,19 @@ def simulate_one_symbol(
                         continue
                 except Exception:
                     pass
+            # LIVE_ENTRY_ENGINE vote (2026-05-20 PORT) — 4-engine score aggregator
+            # mirroring ez_manage.py:32543 / tradier_manage.py:2657. Default OFF.
+            # When master flag is True: an OPEN that passed the trigger cascade above
+            # must additionally clear `final_score = boost*score_max + base_score`
+            # against the configured threshold. base_score is 0 in vec (full
+            # wt_dc_entry_scorer port out of scope); see vec_paths/live_entry_engine.py.
+            if live_entry_engine_passes_vec is not None and bool(getattr(config, "LIVE_ENTRY_ENGINE_ENABLED", False)):
+                _ee_passes, _ee_final, _ee_reasons = live_entry_engine_passes_vec(
+                    npz, i, "LONG" if is_long else "SHORT",
+                    base_score=0.0, cfg=config, symbol=symbol, mode=mode,
+                )
+                if not _ee_passes:
+                    continue
             # Compute size via qty pipeline (single-bar call into vec for parity)
             base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
             # A3 ATR-parity sizing override: replace base qty with ATR-parity qty

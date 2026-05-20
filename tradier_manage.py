@@ -533,8 +533,13 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     same overlay chain. Honors user mandate that PROMOTE_MIN_AMOUNT pending
     candidates trade at the daemon-written $5 trial size before promotion."""
     if account_key and symbol and side:
-        # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
-        if account_key in ("trb", "trc"):
+        # 2026-05-20 PER_SYM_AB_SPLIT: per_sym overlays only for trb (treatment).
+        # trc is held as pure-baseline control account: skips both the 7D per-account
+        # overlay (trb/active_config.json) AND the global per_sym_active_config.json
+        # so its trades reflect config.PARAM defaults only. Daily trb-vs-trc diff
+        # measures the live impact of per_sym overrides.
+        if account_key == "trb":
+            # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
             cfgs = _load_tradier_per_sym_cfgs(_tradier_per_sym_cfgs_path)
             entry = cfgs.get(f"{symbol}_{side}", {})
             # 2026-05-18 trial-sizing override
@@ -542,14 +547,14 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
                 return entry["START_POSITION_SIZE_OVERRIDE_USD"]
             if param in entry:
                 return entry[param]
-        # 2. Global per-symbol custom (single source of truth for per-symbol settings)
-        gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
-        # 2026-05-18 trial-sizing override
-        if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
-            return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
-        if param in gentry:
-            return gentry[param]
-        # 3. Regime override
+            # 2. Global per-symbol custom (single source of truth for per-symbol settings)
+            gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
+            # 2026-05-18 trial-sizing override
+            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
+                return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
+            if param in gentry:
+                return gentry[param]
+        # 3. Regime override (applies to all accounts — not per_sym agent output)
         v = config.get_symbol_setting(account_key, f"{symbol}_{side}", param)
         if v is not None:
             return v

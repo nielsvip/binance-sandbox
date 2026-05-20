@@ -1,28 +1,30 @@
-"""stdev_macro — macro top/bottom gates driven by the auto-tuned BB %B
-already precomputed in NPZ via ez_indicators.bb_auto_tune.
+"""stdev_macro — macro top/bottom gates.
 
-REVISION 2026-05-17 — pivoted from a custom macro_z computation to consume
-the existing auto-tuned bb_pct_b_{D,4h,1h} fields. Rationale: bb_auto_tune
-already sweeps σ from 1.5→3.5 per (symbol, TF) to maximize balanced upper +
-lower band touches — i.e., the σ that "touches the max amount of bars" in
-both directions. bb_pct_b_D > 0.95 means price is at the auto-tuned upper
-band where historical D-highs cluster; bb_pct_b_D < 0.05 the mirror. This
-IS the macro top/bottom signal; macro_z duplicated the work less precisely.
+Two algorithms coexist (additive — neither path overrides the other):
+  (1) BB %B based (production default 2026-05-17 → present): consume the
+      already-precomputed bb_pct_b_{D,4h,1h} fields from NPZ. derive_state()
+      + compute_stdev_macro_state() + downstream entry_veto / augment_veto /
+      r4_exit / hedge_trigger_boost all use this path.
+  (2) Log-price rolling z-score (vec parity path): compute_z_scalar() +
+      derive_state_logz() mirror vec_paths/stdev_macro_vec.py. Used by
+      tools/test_stdev_macro_parity.py to validate that the vec rolling-z
+      gives bit-identical results to the scalar loop. Downstream gates do
+      NOT currently consume the log-z path — adding it is a separate
+      decision (would require config-driven algorithm selection).
 
-Hierarchy:
-  - bb_auto_tune (in ez_indicators.bb_auto_tune) — picks σ per sym/TF for
-    maximum balanced band touches. Writes bb_upper/bb_lower/bb_pct_b to NPZ
-    via backtest_v8_precompute.py:818-831.
-  - This module reads bb_pct_b_D, bb_pct_b_4h, bb_pct_b_1h from the per-bar
-    indicators dict and derives a 5-state classifier.
-  - Downstream gates (entry_veto / r4_exit / hedge_trigger_boost) consult
-    the classifier behind their own *_ENABLED flags.
+The two algorithms answer DIFFERENT questions:
+  - BB %B reads "where is price within the auto-tuned σ band right now."
+  - Log-z reads "how many σ away is log(price) from its rolling mean over
+    N bars" (default windows D=200, W=52, M=24 per vec defaults).
+
+Both are valid macro tops/bottoms signals — they just look at different
+horizons and reference frames. Keep both until backtest evidence picks one.
 
 Default-OFF, additive. Never overrides an existing decision path.
 """
 from __future__ import annotations
 import math
-from typing import Any
+from typing import Any, Sequence
 
 
 # Auto-tuned BB %B thresholds (price normalized to [0,1] across the auto-tuned
@@ -223,3 +225,70 @@ def hedge_trigger_boost(origin_side: str, state_dict: dict, config_obj) -> tuple
     if origin_u == "SHORT" and state_dict.get("is_strong_bot"):
         return True, "STDEV_MACRO_HEDGE_BOOST_BOT"
     return False, ""
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# LOG-PRICE ROLLING Z-SCORE PATH (parity twin of vec_paths/stdev_macro_vec.py)
+# ════════════════════════════════════════════════════════════════════════════
+# These functions are the SCALAR reference implementations for the vectorized
+# log-price z-score path in vec_paths/stdev_macro_vec.py. They exist to back
+# the parity test tools/test_stdev_macro_parity.py. They do NOT replace the
+# BB %B path above — downstream gates (entry_veto / augment_veto / r4_exit /
+# hedge_trigger_boost) continue to consume compute_stdev_macro_state's BB %B
+# output. Wiring derive_state_logz into a downstream gate is a separate
+# decision that must go through backtest validation first.
+
+DEFAULT_WINDOWS = {"D": 200, "W": 52, "M": 24}
+STRONG_THRESHOLD = 2.5
+MODERATE_THRESHOLD = 1.5
+
+
+def compute_z_scalar(log_close: float, mean: float, std: float) -> float:
+    """Scalar log-price z-score given pre-computed log(close), mean, std.
+
+    z = (log_close - mean) / std
+
+    Returns 0.0 when:
+      - any input is NaN/Inf
+      - std < 1e-9 (constant series)
+
+    The caller is responsible for computing log(close) and the rolling mean/std
+    over the window of interest. This matches vec_paths/stdev_macro_vec's
+    rolling_log_zscore per-bar output (pandas rolling.mean/std with ddof=0).
+    """
+    if not math.isfinite(log_close) or not math.isfinite(mean) or not math.isfinite(std):
+        return 0.0
+    if std < 1e-9:
+        return 0.0
+    return (log_close - mean) / std
+
+
+def derive_state_logz(z_d: float, z_w: float) -> str:
+    """Scalar log-z-score state classifier — parity twin of derive_state_vec.
+
+    Returns one of STATE_STRONG_TOP / STATE_TOP / STATE_MID / STATE_BOT /
+    STATE_STRONG_BOT.
+
+    Opposite-sign extremes between D and W (one TF top, other TF bot) → MID
+    (conflict). Mirrors vec semantics (vec returns int8 codes, this returns
+    the matching string).
+    """
+    if not math.isfinite(z_d):
+        z_d = 0.0
+    if not math.isfinite(z_w):
+        z_w = 0.0
+    top_any = (z_d > MODERATE_THRESHOLD) or (z_w > MODERATE_THRESHOLD)
+    bot_any = (z_d < -MODERATE_THRESHOLD) or (z_w < -MODERATE_THRESHOLD)
+    if top_any and bot_any:  # conflict
+        return STATE_MID
+    strong_top = (z_d > STRONG_THRESHOLD) and (z_w > MODERATE_THRESHOLD)
+    strong_bot = (z_d < -STRONG_THRESHOLD) and (z_w < -MODERATE_THRESHOLD)
+    if strong_top:
+        return STATE_STRONG_TOP
+    if strong_bot:
+        return STATE_STRONG_BOT
+    if top_any:
+        return STATE_TOP
+    if bot_any:
+        return STATE_BOT
+    return STATE_MID
