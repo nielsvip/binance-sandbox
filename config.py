@@ -1343,20 +1343,23 @@ class Config:
     # added to UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS above.
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default) — entire branch becomes inert.
     # ═══════════════════════════════════════════════════════════════════
-    MTF_EXIT_USE_COMPOUND: bool = False                  # master switch — replaces HEDGE_MODE + DC_LOW_4 emergency when True
-    MTF_ATR_TRAIL_ENABLED: bool = False
-    MTF_ATR_TRAIL_MULT: float = 2.5                      # placeholder — sweep will dial across 1.5..4.0
-    MTF_ATR_TRAIL_TF: str = '15m'                        # crypto base 3m → 15m HTF
-    MTF_DC_REJECT_EXIT_ENABLED: bool = False
+    # 2026-05-20 FLIPPED ON per USER mandate (hedge OFF requires stops; Phase I REJ_1h winner).
+    # Phase J sample-floor: 293 stocks × 2.13y → pool_S +0.28, avg DD 6.5%, +113%/sym/yr.
+    # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (one-line kill switch).
+    MTF_EXIT_USE_COMPOUND: bool = True                   # master switch — compound exit replaces hedge protection
+    MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
+    MTF_ATR_TRAIL_MULT: float = 2.0                      # Phase I winner (was 2.5 placeholder)
+    MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner
+    MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_DC_REJECT_EXIT_TF: str = '15m'
-    MTF_BB_REJECT_EXIT_ENABLED: bool = False
+    MTF_DC_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
+    MTF_BB_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_BB_REJECT_EXIT_TF: str = '15m'
-    MTF_GR_EXIT_GATE_ENABLED: bool = False
+    MTF_BB_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
+    MTF_GR_EXIT_GATE_ENABLED: bool = True                # 2026-05-20 ON (Phase I)
     MTF_GR_EXIT_MIN_TFS: int = 3
     MTF_GR_EXIT_MIN_IND: int = 5
-    MTF_WT_CROSS_EXIT_ENABLED: bool = False
+    MTF_WT_CROSS_EXIT_ENABLED: bool = True               # 2026-05-20 ON (Phase I)
     MTF_WT_CROSS_EXIT_TF: str = '15m'                    # '15m' | '1h' | 'either'
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

@@ -2198,22 +2198,24 @@ class TradierConfig:
     # New CLOSE reasons added to LOSS_EXIT_TECHNICAL_BYPASS above.
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default).
     # ═══════════════════════════════════════════════════════════════════
-    MTF_EXIT_USE_COMPOUND: bool = False
-    MTF_ATR_TRAIL_ENABLED: bool = False
-    MTF_ATR_TRAIL_MULT: float = 2.5                      # placeholder — sweep will dial
-    MTF_ATR_TRAIL_TF: str = '1h'                         # stocks base 5m → 1h HTF (~12x). MTF_ATR_TRAIL_TF_TRADIER alias for engines.
-    MTF_ATR_TRAIL_TF_TRADIER: str = '1h'                 # explicit tradier variant for engine consumers
-    MTF_DC_REJECT_EXIT_ENABLED: bool = False
+    # 2026-05-20 FLIPPED ON per USER mandate (hedge OFF requires stops; Phase I REJ_1h winner).
+    # Phase J sample-floor validated on 293 stocks × 2.13y.
+    MTF_EXIT_USE_COMPOUND: bool = True                   # master ON
+    MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
+    MTF_ATR_TRAIL_MULT: float = 2.0                      # Phase I winner (was 2.5 placeholder)
+    MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner (was '1h')
+    MTF_ATR_TRAIL_TF_TRADIER: str = '15m'                # mirror Phase I winner
+    MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_DC_REJECT_EXIT_TF: str = '1h'
-    MTF_BB_REJECT_EXIT_ENABLED: bool = False
+    MTF_DC_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
+    MTF_BB_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
-    MTF_BB_REJECT_EXIT_TF: str = '1h'
-    MTF_GR_EXIT_GATE_ENABLED: bool = False
+    MTF_BB_REJECT_EXIT_TF: str = '1h'                    # Phase I winner (REJ_1h)
+    MTF_GR_EXIT_GATE_ENABLED: bool = True                # 2026-05-20 ON
     MTF_GR_EXIT_MIN_TFS: int = 3
     MTF_GR_EXIT_MIN_IND: int = 5
-    MTF_WT_CROSS_EXIT_ENABLED: bool = False
-    MTF_WT_CROSS_EXIT_TF: str = '1h'                     # '1h' | '4h' | 'either' (stocks)
+    MTF_WT_CROSS_EXIT_ENABLED: bool = True               # 2026-05-20 ON
+    MTF_WT_CROSS_EXIT_TF: str = '15m'                    # Phase I winner (was '1h')
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_C_FUNDING_EXTREME_ENABLED: bool = False      # stocks don't have funding rates — Rule C is crypto-only conceptually; leave flag for API consistency.
     FUNDING_EXTREME_LONG_THRESHOLD_PCT: float = -0.03
