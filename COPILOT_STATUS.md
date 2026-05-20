@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-20 09:06:19 UTC
+# Copilot Status — 2026-05-20 09:21:48 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:00:09
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:00:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:00:09
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:02:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:02:12
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:04:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:04:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:06:18
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:06:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:06:18
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:14:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:14:28
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:16:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:16:31
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:18:33
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:18:33
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:18:33
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T09:20:36
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T09:20:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T09:20:36
 
 ## Missed Trades (trader comparison)
 
@@ -37,7 +37,7 @@ _None_
 - HELD: **SNDK** LONG (tradier) peak +4.8%, now +4.8%
 - HELD: **ARM** LONG (tradier) peak +4.7%, now +2.1%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-7.6%
-- HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
+- HELD: **CIBR** LONG (tradier) peak +4.3%, now +3.9%
 - HELD: **DAR** LONG (tradier) peak +4.0%, now +-4.1%
 
 ## Supervisor
@@ -48,5 +48,5 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
