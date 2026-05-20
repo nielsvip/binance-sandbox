@@ -2098,7 +2098,17 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # Tradier base TF = 5m → default TFs = 1h (~12x base) for ATR/DC/BB/WT.
         # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default).
         # ═══════════════════════════════════════════════════════════════════════
-        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))):
+        # USER 2026-05-20: MTF compound exit applies only to positions opened after startup_ts
+        # (or explicit config TS). Pre-MTF positions ride legacy exits — no restart cascade.
+        _mtfce_min_ts_gate = float(_cfg('MTF_EXIT_MIN_OPEN_TS', 0.0, account_key, symbol, position_side))
+        if _mtfce_min_ts_gate <= 0:
+            if not hasattr(trade_manager, '_mtfce_startup_ts'):
+                trade_manager._mtfce_startup_ts = time.time()
+            _mtfce_min_ts_gate = trade_manager._mtfce_startup_ts
+        _mtfce_pos_open_ts_gate = float(getattr(position, 'opened_at', 0) or 0) if position else 0.0
+        if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0
+                and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))
+                and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate):
             try:
                 if not hasattr(trade_manager, 'mtf_compound_exit_state'):
                     trade_manager.mtf_compound_exit_state = {}

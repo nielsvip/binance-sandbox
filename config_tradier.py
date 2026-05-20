@@ -2202,7 +2202,10 @@ class TradierConfig:
     # Phase J sample-floor validated on 293 stocks × 2.13y.
     MTF_EXIT_USE_COMPOUND: bool = True                   # master ON
     MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
-    MTF_ATR_TRAIL_MULT: float = 2.0                      # Phase I winner (was 2.5 placeholder)
+    MTF_ATR_TRAIL_MULT: float = 3.0                      # 2026-05-20 USER: start at 3.0 (loose, no restart-cascade), tighten slowly.
+    # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened AFTER this ts.
+    # Default 0 → uses trade_manager startup time (positions open at restart ride legacy exits).
+    MTF_EXIT_MIN_OPEN_TS: float = 0.0
     MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner (was '1h')
     MTF_ATR_TRAIL_TF_TRADIER: str = '15m'                # mirror Phase I winner
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON

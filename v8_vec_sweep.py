@@ -885,11 +885,21 @@ def simulate_one_symbol(
     # WT against for hedge trigger (15m and 1h)
     wt_15m_against = (wt1_15m < wt2_15m) if is_long else (wt1_15m > wt2_15m)
     wt_1h_against  = (wt1_1h  < wt2_1h)  if is_long else (wt1_1h  > wt2_1h)
+    # GR activation params (2026-05-18 2-stage gate — mirror live golden_rule_htf).
+    _gr_require_act = bool(getattr(config, "GOLDEN_RULE_REQUIRE_ACTIVATION", False))
+    _gr_act_tfs = list(getattr(config, "GOLDEN_RULE_ACTIVATION_TF_LIST", None) or [])
+    _gr_entry_tfs = list(getattr(config, "GOLDEN_RULE_ENTRY_TF_LIST", None) or [])
+    _gr_dc_thr = float(getattr(config, "GR_DC_EXTENDED_LONG", 0.0) or 0.0)
+    _gr_bb_thr = float(getattr(config, "GR_BB_EXTENDED_LONG", 0.0) or 0.0)
     # GR against-score (vote_min=total-count) — used by GR_HEDGE_SCORE_FLOOR only
     _gr_against_count: Optional[np.ndarray] = None
     if int(config.GR_HEDGE_SCORE_FLOOR) > 0 and evaluate_gr_htf_vec is not None:
         _, _gr_against_count = evaluate_gr_htf_vec(
-            npz, is_long=(not is_long), mode=mode, vote_min=1, n=n
+            npz, is_long=(not is_long), mode=mode, vote_min=1, n=n,
+            dc_threshold=_gr_dc_thr, bb_threshold=_gr_bb_thr,
+            require_activation=_gr_require_act,
+            activation_tfs=_gr_act_tfs,
+            entry_tfs=_gr_entry_tfs,
         )
     # GR exit gate (legacy min_tfs × min_ind mode) — fires when ≥ MIN_TFS TFs each
     # have ≥ MIN_IND indicators agreeing AGAINST the trade AND wt1_3m is also against.
@@ -902,6 +912,10 @@ def simulate_one_symbol(
             min_tfs=int(config.GR_EXIT_MIN_TFS),
             min_ind=int(config.GR_EXIT_MIN_IND),
             vote_min=0, n=n,
+            dc_threshold=_gr_dc_thr, bb_threshold=_gr_bb_thr,
+            require_activation=_gr_require_act,
+            activation_tfs=_gr_act_tfs,
+            entry_tfs=_gr_entry_tfs,
         )
         # Validity check: degenerate threshold → exit THIS variant only (no shared abort).
         # Shared abort (_SESSION_ABORT_PATH) is reserved for IDENTICAL RESULT detection only.
@@ -2901,6 +2915,10 @@ def _dcbb_worker(args_tuple):
     if evaluate_gr_htf_vec is None:
         sys.stderr.write(f"[dcbb_worker] evaluate_gr_htf_vec not available\n")
         return result
+    # GR activation params (2026-05-18 2-stage gate — mirror live golden_rule_htf).
+    _gr_require_act = bool(getattr(base_config, "GOLDEN_RULE_REQUIRE_ACTIVATION", False))
+    _gr_act_tfs = list(getattr(base_config, "GOLDEN_RULE_ACTIVATION_TF_LIST", None) or [])
+    _gr_entry_tfs = list(getattr(base_config, "GOLDEN_RULE_ENTRY_TF_LIST", None) or [])
     # Precompute all 16 HTF confirmation masks
     htf_masks: List[np.ndarray] = []
     for _label, dc_thr, bb_thr in _DCBB_GRID:
@@ -2910,6 +2928,9 @@ def _dcbb_worker(args_tuple):
             invert_dc_bb=True,
             dc_threshold=dc_thr, bb_threshold=bb_thr,
             n=n,
+            require_activation=_gr_require_act,
+            activation_tfs=_gr_act_tfs,
+            entry_tfs=_gr_entry_tfs,
         )
         htf_masks.append(mask)
     # Run 16 simulations using cached NPZ

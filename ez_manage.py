@@ -38485,10 +38485,22 @@ async def process_position(
     # Fires AFTER R3_HTF_FLIP (so structural exits preempt) and BEFORE GR_HTF_DIRECT_EXIT.
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (already default) → block becomes inert.
     # ═══════════════════════════════════════════════════════════════════════════
+    # ─── USER 2026-05-20: MTF compound exit applies ONLY to positions opened
+    #     AFTER MTF_EXIT_MIN_OPEN_TS. Default 0 → resolves to trade_manager
+    #     startup time so currently-open positions ride legacy exits, only
+    #     future opens get MTF-managed. Prevents restart-cascade closing
+    #     existing trades. Resolved once per call below as `_mtfce_min_ts_gate`.
+    _mtfce_min_ts_gate = float(_psym_get(symbol, position_side, "MTF_EXIT_MIN_OPEN_TS", 0.0)) if position else 0.0
+    if _mtfce_min_ts_gate <= 0:
+        if not hasattr(trade_manager, "_mtfce_startup_ts"):
+            trade_manager._mtfce_startup_ts = time.time()
+        _mtfce_min_ts_gate = trade_manager._mtfce_startup_ts
+    _mtfce_pos_open_ts_gate = float(getattr(position, "opened_at", 0) or 0) if position else 0.0
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and bool(_psym_get(symbol, position_side, "MTF_EXIT_USE_COMPOUND", False))
+        and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate
     ):
         try:
             if not hasattr(trade_manager, "mtf_compound_exit_state"):

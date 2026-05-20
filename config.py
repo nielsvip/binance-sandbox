@@ -1348,7 +1348,12 @@ class Config:
     # ROLLBACK: set MTF_EXIT_USE_COMPOUND=False (one-line kill switch).
     MTF_EXIT_USE_COMPOUND: bool = True                   # master switch — compound exit replaces hedge protection
     MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
-    MTF_ATR_TRAIL_MULT: float = 2.0                      # Phase I winner (was 2.5 placeholder)
+    MTF_ATR_TRAIL_MULT: float = 3.0                      # 2026-05-20 USER: start at 3.0 (loose, no restart-cascade), tighten slowly. Phase I tested {1.5,2,3,4} all tied on Sharpe/DD.
+    # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened
+    # AFTER this timestamp. Default 0 → falls back to trade_manager startup time,
+    # so positions open at restart ride through with legacy exits and only future
+    # opens get MTF-managed. To explicitly set: assign Unix epoch (e.g. `date +%s`).
+    MTF_EXIT_MIN_OPEN_TS: float = 0.0
     MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
