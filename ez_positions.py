@@ -74,6 +74,45 @@ _save_locks: Dict[str, asyncio.Lock] = {}
 _last_save_time: Dict[str, float] = {}
 _save_debounce_seconds = 2.0
 _last_backup_time = {}
+
+def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dict[str, Any]], file_paths_by_side: Dict[str, Path], do_backup_by_side: Dict[str, bool]) -> Dict[str, str]:
+    # WHY: keeps fsync + shutil.copy2 + temp-file write off the asyncio event loop. Pre-2026-05-20 this block ran inline and stalled process_account_update past the 120s wait_for tripwire (3 pau_stall events for flz/men/inf in 30 min on 2026-05-20).
+    import os as _os, shutil as _shutil, time as _t
+    from datetime import datetime as _dt, timezone as _tz
+    results: Dict[str, str] = {}
+    for side, positions_dict in all_positions_by_side.items():
+        if not positions_dict:
+            results[side] = "EMPTY"
+            continue
+        main_file = file_paths_by_side[side]
+        main_file.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = main_file.parent / f".{main_file.name}.tmp.{int(_t.time() * 1000000)}"
+        try:
+            json_bytes = json_dumps(positions_dict)
+            if isinstance(json_bytes, str):
+                json_bytes = json_bytes.encode('utf-8')
+            with open(temp_file, "wb") as f:
+                f.write(json_bytes)
+                f.flush()
+                _os.fsync(f.fileno())
+            if not temp_file.exists() or temp_file.stat().st_size == 0:
+                raise IOError(f"Temp file not created or empty: {temp_file}")
+            if do_backup_by_side.get(side) and main_file.exists():
+                backup_dir = main_file.parent / "backups"
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                timestamp = _dt.now(_tz.utc).strftime("%Y%m%d_%H%M%S")
+                backup_file = backup_dir / f"{main_file.stem}_backup_{timestamp}.json"
+                _shutil.copy2(main_file, backup_file)
+            _shutil.move(str(temp_file), str(main_file))
+            results[side] = "OK" if main_file.exists() else "MISSING_AFTER_MOVE"
+        except Exception as e:
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except Exception:
+                    pass
+            results[side] = f"FAILED:{e}"
+    return results
 # async def atomic_save_positions(position_service: PositionService, account_key: str, force=None) -> None:
 #     if account_key not in _save_locks:_save_locks[account_key] = asyncio.Lock()
 #     lock = _save_locks[account_key]
@@ -288,48 +327,39 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                     logger.error(f"[atomic_save][{account_key}] to_dict failed for {pos_key}: {e}")
                     continue
             # CRITICAL: Save each side - ALWAYS save fresh data from memory (source of truth)
+            # 2026-05-20: prep paths + backup decisions on event loop; do the heavy file work in a worker thread so fsync/shutil.copy2/move/JSON write don't stall asyncio. Pre-fix this block ran inline and tripped the 120s PAU watchdog.
+            sorted_by_side: Dict[str, Dict[str, Any]] = {}
+            file_paths_by_side: Dict[str, Path] = {}
+            do_backup_by_side: Dict[str, bool] = {}
+            backup_dirs_by_side: Dict[str, Path] = {}
+            now_ts = time.time()
             for side, positions_dict in all_positions_by_side.items():
                 if not positions_dict:
                     logger.warning(f"[atomic_save][{account_key}:{side}] ⚠️ No positions to save for {side} side")
                     continue
                 main_file = position_service.get_position_file(account_key, side)
-                main_file.parent.mkdir(parents=True, exist_ok=True)
-                sorted_positions = position_service._sort_positions_dict(positions_dict)
-                temp_file = main_file.parent / f".{main_file.name}.tmp.{int(time.time() * 1000000)}"
-                try:
-                    json_bytes = json_dumps(sorted_positions)
-                    if isinstance(json_bytes, str): json_bytes = json_bytes.encode('utf-8')
-                    logger.debug(f"[atomic_save][{account_key}:{side}] 💾 Writing {len(sorted_positions)} positions to temp file...")
-                    with open(temp_file, "wb") as f:
-                        f.write(json_bytes)
-                        f.flush()
-                        os.fsync(f.fileno())
-                    if not temp_file.exists() or temp_file.stat().st_size == 0:
-                        raise IOError(f"Temp file not created or empty: {temp_file}")
-                    if main_file.exists():
-                        backup_dir = main_file.parent / "backups"
-                        backup_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        now_ts = time.time()
-                        bk_key = f"{account_key}_{side}"
-                        # If we haven't saved a backup in 5 mins, do it now
-                        if (now_ts - _last_backup_time.get(bk_key, 0)) > 300:
-                            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                            backup_file = backup_dir / f"{main_file.stem}_backup_{timestamp}.json"
-                            shutil.copy2(main_file, backup_file) # THIS IS THE HEAVY LINE
-                            _last_backup_time[bk_key] = now_ts
-                            asyncio.create_task(position_service.prune_old_backups(str(backup_dir), main_file.stem))
-                    shutil.move(str(temp_file), str(main_file))
-                    if main_file.exists():
-                        logger.info(f"[atomic_save][{account_key}:{side}] ✅ SAVED {len(sorted_positions)} positions to {main_file.name}")
-                    else:
+                sorted_by_side[side] = position_service._sort_positions_dict(positions_dict)
+                file_paths_by_side[side] = main_file
+                bk_key = f"{account_key}_{side}"
+                do_backup = (now_ts - _last_backup_time.get(bk_key, 0)) > 300
+                do_backup_by_side[side] = do_backup
+                if do_backup:
+                    backup_dirs_by_side[side] = main_file.parent / "backups"
+                    _last_backup_time[bk_key] = now_ts
+            if sorted_by_side:
+                results = await asyncio.to_thread(_atomic_save_blocking, account_key, sorted_by_side, file_paths_by_side, do_backup_by_side)
+                for side, status in results.items():
+                    if status == "OK":
+                        logger.info(f"[atomic_save][{account_key}:{side}] ✅ SAVED {len(sorted_by_side.get(side, {}))} positions to {file_paths_by_side[side].name}")
+                    elif status == "EMPTY":
+                        continue
+                    elif status == "MISSING_AFTER_MOVE":
                         logger.error(f"[atomic_save][{account_key}:{side}] ❌ File missing after move!")
-                except Exception as e:
-                    logger.error(f"[atomic_save][{account_key}:{side}] ❌ Write failed: {e}", exc_info=True)
-                    if temp_file.exists():
-                        try: temp_file.unlink()
-                        except Exception: pass
-                    raise
+                    else:
+                        logger.error(f"[atomic_save][{account_key}:{side}] ❌ {status}")
+                for side, backup_dir in backup_dirs_by_side.items():
+                    main_file = file_paths_by_side[side]
+                    asyncio.create_task(position_service.prune_old_backups(str(backup_dir), main_file.stem))
             logger.info(f"[atomic_save][{account_key}] ✅ COMPLETED - All positions saved")
             _last_save_time[account_key] = time.time()
         except Exception as e:

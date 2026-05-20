@@ -7370,7 +7370,12 @@ class PositionService:
         self._mark_positions_dirty()
         asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
         from ez_positions import atomic_save_positions
-        await atomic_save_positions(self, account_key, force=True)
+        # 2026-05-20: bound the save. Even with the to_thread refactor, a stuck filesystem could still hold the await; the 15s ceiling + background fallback keeps PAU from tripping the 120s tripwire.
+        try:
+            await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[handle_augmentation][{position_key}] atomic_save_positions >15s — backgrounding to keep PAU live")
+            asyncio.create_task(atomic_save_positions(self, account_key, force=True))
 
     def _fetch_decision_context_blocking(self, position_key: str) -> dict:
         """Synchronous JSONL/disk scan for decision context. MUST run in asyncio.to_thread — never on event loop. Each JSONL file can be 1–12 MB; line scan blocks event loop and was contributing to process_account_update HUNG > 120s on 2026-04-29."""
@@ -7692,7 +7697,12 @@ class PositionService:
         self._mark_positions_dirty()
         asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
         from ez_positions import atomic_save_positions
-        await atomic_save_positions(self, account_key, force=True)
+        # 2026-05-20: bound the save (see handle_augmentation note).
+        try:
+            await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[handle_reduction][{position_key}] atomic_save_positions >15s — backgrounding to keep PAU live")
+            asyncio.create_task(atomic_save_positions(self, account_key, force=True))
         try :
             # 2026-05-07: bounded; this path issues open-orders fetch + cancel/place via
             # asyncio.to_thread Binance calls and was a second hang point inside the
