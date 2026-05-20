@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-20 22:22:33 UTC
+# Copilot Status — 2026-05-20 22:38:02 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:15:59
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:18:03
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:18:03
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:18:03
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:20:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:20:08
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:20:08
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:22:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:22:12
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:22:12
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:32:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:32:32
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:32:32
+- **STALE_INDICATORS** [tradier]  — 2026-05-20T22:34:36
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:34:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:34:36
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:34:36
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-20T22:36:38
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-20T22:36:38
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-20T22:36:38
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 12 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
+- HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-3.0%
 - HELD: **UUUU** SHORT (tradier) peak +15.3%, now +13.8%
 - HELD: **USO** LONG (tradier) peak +12.1%, now +12.1%
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +4.6%
@@ -45,8 +45,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (20min)
 - [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (21min)
+- [MEDIUM] tradier_positions.py running but log stale (36min)
+- [MEDIUM] tradier_positions.py running but log stale (37min)
 - [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (22min)
+- [MEDIUM] tradier_positions.py running but log stale (38min)
