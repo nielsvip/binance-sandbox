@@ -330,6 +330,22 @@ run_script() {
                     fi
                 fi
             fi
+            # 2026-05-21 OOM_CYCLE: 4-sample (20s) confirmation lets RSS spike from
+            # ceiling (2.2GB) → 3.0GB before SIGTERM fires (men 20:29:04 hit 3102992KB).
+            # When RSS is already ≥130% of ceiling, that IS sustained — confirmation
+            # adds risk, not signal. Recycle IMMEDIATELY at >130% so the 30s graceful
+            # SIGTERM window starts before jetsam picks us off (jetsam picks the
+            # largest RSS regardless of our ceiling; losing the race = exit 137 and
+            # in-flight state loss). Confirmation tier still applies for the
+            # 100–130% band (slow drift, may be transient).
+            local _hard_ceiling=$((MAX_RSS_KB * 130 / 100))
+            if [[ -n "$rss_kb" && "$rss_kb" -gt "$_hard_ceiling" ]]; then
+                log "🚨 RSS hard overflow: ${rss_kb}KB > 130% of ${MAX_RSS_KB}KB (${_hard_ceiling}KB). Immediate graceful recycle — skipping confirmation window to beat jetsam."
+                kill -TERM "$script_pid" 2>/dev/null || true
+                sleep 30
+                kill -KILL "$script_pid" 2>/dev/null || true
+                break
+            fi
             if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
                 rss_over_count=$((rss_over_count + 1))
                 if [[ "$rss_over_count" -ge 4 ]]; then

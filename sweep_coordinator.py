@@ -170,6 +170,12 @@ VEC_ENV = {
     "V8_RATE_GUARD_DISABLED": "1",
     "V8_BACKTEST_DISK_CACHE": "1",
     "USDC_PREFERENCE_BLOCK_ENABLED": "0",
+    # 2026-05-21 20:42 — bypass v8_vec_sweep's per-account (sym, side) allowlist filter.
+    # Coord sweeps test arbitrary universes that don't have to match the live account's
+    # hand-picked tradeable_keys. Without this, --account ang --symbols BTC/ETH/SOL/XRP
+    # produces tasks=0 (ang_long.json doesn't include those + ang_short.json is empty),
+    # killing every crypto arm as USELESS with 0 trades.
+    "V8_VEC_SWEEP_BYPASS_ACCT_FILTER": "1",
 }
 
 V8_RESULT_RE = re.compile(

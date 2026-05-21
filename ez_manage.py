@@ -18713,8 +18713,11 @@ class MultiAccountTradeManager:
             # triage found 99% of QUICK_OPEN_STRONG_BUY firing through scoring engine was being
             # killed by DELTA_GATE NO_SIGNAL. Config knob DELTA_GATE_STRONG_BUY_QUICK_BYPASS (default
             # True) lets ops disable without code change. Ablation backtest deferred.
+            # 2026-05-21 19:01 — exclude "NOT A TRADEABLE KEY" reasons per [[feedback-history-is-
+            # comparison-truth-20260521]] mandate: tradeable_keys is hand-picked, never auto-expand.
             _is_strong_buy_or_quick_bypass = (
                 ("STRONG_BUY" in _reason_up_eta or "QUICK_OPEN" in _reason_up_eta)
+                and "NOT A TRADEABLE KEY" not in _reason_up_eta
                 and bool(getattr(config, "DELTA_GATE_STRONG_BUY_QUICK_BYPASS", True))
             )
             if (
@@ -22601,9 +22604,12 @@ class MultiAccountTradeManager:
             # upstream gates. Per "no switch-off, change parameters instead" mandate, this is a
             # parameter-level bypass rather than disabling MTF_ARMED_ENTRY_ENABLED. Config knob
             # MTF_FILTER_STRONG_BUY_QUICK_BYPASS (default True). ROLLBACK: set to False.
+            # 2026-05-21 19:01 — exclude "NOT A TRADEABLE KEY" per [[feedback-history-is-comparison
+            # -truth-20260521]] mandate: tradeable_keys is hand-picked, never auto-expand.
             _reason_up_mtf = (reason or "").upper()
             _mtf_strong_buy_quick_bypass = (
                 ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf)
+                and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)

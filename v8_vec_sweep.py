@@ -2648,10 +2648,16 @@ def run_sweep(
     # system would refuse via symbols_<acct>_long/short.json. Mirrors live tradier_positions.py
     # is_symbol_tradeable. File missing → fail-open (allow). File present (even empty list) →
     # honor strictly. Skipped cells don't run the simulation; lower wall-clock, honest numbers.
+    # 2026-05-21 20:40 — BYPASS for parameter sweeps that test arbitrary symbol universes.
+    #   sweep_coordinator runs --account ang --symbols BTC/ETH/SOL/XRP, but ang's allowlist
+    #   contains 25 different syms (and ang_short.json=[]). Result: 0 cells, 0 trades, 200+
+    #   sweep arms wasted as USELESS dedups. Bypass with env V8_VEC_SWEEP_BYPASS_ACCT_FILTER=1
+    #   (set by coord) — preserves live-mirror filter for non-sweep callers.
+    _bypass_acct_filter = os.environ.get("V8_VEC_SWEEP_BYPASS_ACCT_FILTER", "0") in ("1", "true", "True")
     _repo_root = Path(__file__).resolve().parent
     _vec_allow_long: Optional[set] = None
     _vec_allow_short: Optional[set] = None
-    if account:
+    if account and not _bypass_acct_filter:
         _vl_path = _repo_root / f"symbols_{account}_long.json"
         _vs_path = _repo_root / f"symbols_{account}_short.json"
         try:
