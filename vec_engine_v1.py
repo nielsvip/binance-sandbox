@@ -929,6 +929,7 @@ class VecConfig:
     ENTRY_SYMGATE_ENABLED: bool = False
     ENTRY_TRIGGER_TF: str = '15m'
     ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED: bool = True
+    ENTRY_VET_RELAX_MODE: int = 1  # 2026-05-21 wired — see config.py: 0=strict 1=current 2=trigger-only 3=auto-pass
     ENTRY_VOL_MIN_RATIO: float = 1.3
     ENTRY_ZONE_LONG: float = 80.0
     ENTRY_ZONE_SHORT: float = 20.0

@@ -775,15 +775,23 @@ def check_entry_vetting(
             or (current_price < dc_low_3m and dc_low_3m > 0)
             or (wt1_3m < wt2_3m and k_3m < d_3m)
         )
-    # 2026-05-09 sweep-exposure: when ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED=False the
-    # structure/breakout pre-check is bypassed (the trigger alone gates entry). Default True
-    # preserves legacy "higher-low OR fresh 3m channel expansion" requirement.
-    if bool(getattr(config, "ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED", True)):
+    # 2026-05-21 20:10 — Graded relax-mode replaces the boolean.
+    # Mode 0=strict (both required), 1=either (default — current True behavior), 2=trigger-only
+    # (was False behavior), 3=auto-pass. Legacy boolean still honored when knob absent:
+    # True maps to mode 1, False maps to mode 2.
+    _ev_legacy = bool(getattr(config, "ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED", True))
+    _ev_mode = int(getattr(config, "ENTRY_VET_RELAX_MODE", 1 if _ev_legacy else 2))
+    if _ev_mode == 0:
+        if not (structure_ok and dc_breakout):
+            return False, f"NO_STRUCT_AND_BREAKOUT"
+    elif _ev_mode == 1:
         if not (structure_ok or dc_breakout):
             return False, f"NO_STRUCT_OR_BREAKOUT"
-    if not trigger:
+    # mode 2: skip structure/breakout pre-check (trigger-only gate below)
+    # mode 3: auto-pass (skip both pre-check and trigger gate below)
+    if _ev_mode != 3 and not trigger:
         return False, f"NO_TRIGGER"
-    return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}"
+    return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}_mode={_ev_mode}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -18376,11 +18384,12 @@ class MultiAccountTradeManager:
                             )
                             break
                 if not (_htf_winner or _htf_pullback or _htf_reason_bypass):
-                    if is_long and _htf_dir_eta == "BEAR" and _htf_score_eta <= -5:
-                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED LONG — dir=BEAR htfScore={_htf_score_eta} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
+                    _htfv_thresh = float(getattr(config, "HTF_TREND_VETO_SCORE_MIN_ABS", 5.0))
+                    if is_long and _htf_dir_eta == "BEAR" and _htf_score_eta <= -_htfv_thresh:
+                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED LONG — dir=BEAR htfScore={_htf_score_eta} thr=-{_htfv_thresh:.0f} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}"
-                    if not is_long and _htf_dir_eta == "BULL" and _htf_score_eta >= 5:
-                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED SHORT — dir=BULL htfScore={_htf_score_eta} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
+                    if not is_long and _htf_dir_eta == "BULL" and _htf_score_eta >= _htfv_thresh:
+                        logger.warning(f"[HTF_TREND_VETO] {position_key}: BLOCKED SHORT — dir=BULL htfScore={_htf_score_eta} thr={_htfv_thresh:.0f} gain={_htf_pos_gain:.2f}% reason={(reason or '')[:60]}")
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}"
             if (
                 position
@@ -30377,7 +30386,7 @@ async def monitor_entries(
             except Exception:
                 pass
         except Exception as e:
-            logger.error(f"[{account_key}] Monitor error {pkey}: {e}")
+            logger.error(f"[{account_key}] Monitor error {pkey}: {e}", exc_info=True)
             try:
                 trade_manager.processing_keys.discard(pkey)
             except Exception:

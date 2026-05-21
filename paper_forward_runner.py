@@ -153,9 +153,20 @@ def _log(msg: str) -> None:
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    try:
+        tmp.write_bytes(data)
+    except OSError:
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
+    try:
+        tmp.replace(path)
+    except FileNotFoundError:
+        path.write_bytes(data)
 
 
 def _load_json(path: Path, default):

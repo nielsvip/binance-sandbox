@@ -20,14 +20,15 @@ LOG_DIR = os.path.join(os.path.expanduser("~"), "logs")
 
 # Group tunnels by host — each host gets ONE multiplexed SSH connection
 HOSTS = {
-    "server": {
-        "host": "niels@157.180.125.52",
-        "forwards": [
-            # {"name": "Server Redis", "local_port": 6381, "remote_port": 6379},  # DISABLED — local scripts must NEVER use server Redis (1.5s latency per call)
-            # {"name": "Analytics Dashboard", "local_port": 5050, "remote_port": 5050},  # DISABLED — trade_analytics.py runs locally now. Re-enable when push.py moves scripts back to server.
-            {"name": "OpenClaw Dashboard", "local_port": 18789, "remote_port": 18789},
-        ],
-    },
+    # "server" host entry DISABLED 2026-05-21 — all three former forwards (Server Redis 6381, Analytics 5050, OpenClaw 18789) are now disabled. OpenClaw remote :18789 has no listener; tunnel spammed ssh_tunnels.log with 1837 "SSH process died" + 534 "Connection refused" events. Restore this block (with the desired forwards) when an S1 service needs a Mac-localhost forward again.
+    # "server": {
+    #     "host": "niels@157.180.125.52",
+    #     "forwards": [
+    #         {"name": "Server Redis", "local_port": 6381, "remote_port": 6379},  # DO NOT re-enable per CLAUDE.md (1.5s latency)
+    #         {"name": "Analytics Dashboard", "local_port": 5050, "remote_port": 5050},
+    #         {"name": "OpenClaw Dashboard", "local_port": 18789, "remote_port": 18789},
+    #     ],
+    # },
     "gateway": {
         "host": "niels@157.90.168.35",
         "forwards": [

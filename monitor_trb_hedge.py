@@ -50,16 +50,24 @@ def get_sector(sym: str) -> str:
     return SECTOR_MAP.get(s, "Other")
 
 async def fetch_positions(account_key: str) -> list:
+    client = None
     try:
         client = TradierAPIClient(config, account_key=account_key)
         positions = await client.get_account_positions(account_key)
         return positions or []
     except Exception as e:
         return [{"_error": str(e)}]
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
 
 async def fetch_quotes(symbols: list) -> dict:
     if not symbols:
         return {}
+    client = None
     try:
         client = TradierAPIClient(config, account_key="trb")
         syms_str = ",".join(set(symbols))
@@ -74,6 +82,12 @@ async def fetch_quotes(symbols: list) -> dict:
         return quotes
     except Exception as e:
         return {}
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
 
 def reconstruct_from_decisions() -> dict:
     """Fallback: reconstruct open positions from today's decision JSONL."""

@@ -979,6 +979,10 @@ class Config:
     # check_entry_vetting NO_STRUCT_OR_BREAKOUT at ez_manage.py:507 had no toggle.
     # When False, the "structure_ok or dc_breakout" requirement is bypassed (entry trigger alone gates).
     ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED: bool = True
+    # 2026-05-21 20:10 — Graded relax-mode replacing boolean. Per user "no switch-off, parameter sweeps".
+    # 0=strict (both structure_ok AND dc_breakout required), 1=current (either, default), 2=trigger-only, 3=auto-pass.
+    # Sweep [0,1,2,3] for positive delta. ROLLBACK: 1.
+    ENTRY_VET_RELAX_MODE: int = 1
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
@@ -1770,6 +1774,10 @@ class Config:
     # These reasons already pass their own internal HTF validation (RZ in wt_dc_delta._run_redzone) or are
     # mandated regardless (TRADEABLE_KEYS_MANDATORY). Substrings matched uppercased against the reason.
     HTF_TREND_VETO_BYPASS_ENABLED: bool = True
+    # 2026-05-21 20:05 — wired knob (was hardcoded ±5 in ez_manage.py:18379/18382).
+    # Live: 70 BLOCKED_HTF_TREND_VETO_SHORT/5min on men/fin from htfScore=5-8. Wider threshold lets
+    # weak-conviction HTF trends through. Sweep [5,6,7,8,10,12,15]. ROLLBACK: 5.
+    HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0
     HTF_TREND_VETO_BYPASS_REASONS: list = field(default_factory=lambda: [
         "TRADEABLE_KEYS_MANDATORY",
         "RZ_",

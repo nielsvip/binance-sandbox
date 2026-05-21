@@ -2219,6 +2219,9 @@ class TradierConfig:
     # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
     HTF_TREND_VETO_ENABLED: bool = True                  # 2026-05-21 USER URGENT: re-enabled after UAN+SNDK flip-flops at 19:30 UTC. Gates OPEN/AUGMENT when wt1_D vs wt2_D against side. Backtest validation in flight on S1; revert on negative Sharpe delta.
     HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True        # 2026-05-21 USER URGENT: block reduce/close (EOD_SLIM_RATIO, SENTIMENT_FADE, SCALP_TIMEOUT, MTF_ATR_TRAIL, etc.) when Daily WT still SUPPORTS position direction. R1_/R2_/HEDGE/PARTIAL_PROFIT_LOCK/EOD_FORCE_FLAT/EMERGENCY/LIQUIDATION/PARABOLIC_EXIT bypass. Mirror of [[feedback-filter-block-triage-loosening-20260521]] reversal — HTF must agree both ways.
+    # 2026-05-21 20:05 — wired knob (was hardcoded ±5 in ez_manage.py:18379/18382).
+    # Sweep [5,6,7,8,10,12,15] for positive delta Sharpe / WR vs current ±5. ROLLBACK: 5.
+    HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0
     R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = False            # was True 2026-05-17; reverted — no sample-floor proof
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.

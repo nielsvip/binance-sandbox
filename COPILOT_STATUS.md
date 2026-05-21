@@ -1,14 +1,21 @@
-# Copilot Status — 2026-05-21 19:51:15 UTC
+# Copilot Status — 2026-05-21 20:07:39 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T19:51:02
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:51:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:51:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:59:06
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T19:59:36
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:59:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:59:36
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T20:01:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T20:01:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T20:03:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T20:03:41
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T20:05:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T20:05:48
 
 ## Missed Trades (trader comparison)
 
@@ -35,5 +42,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 1
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+**Issues (last 1h):** 9
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] ez_prices.py running but log stale (11min)
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_prices.py is NOT running

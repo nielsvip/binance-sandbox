@@ -93,11 +93,24 @@ def load_state():
 
 
 def save_state(state):
-    with open(STATE_FILE, "w") as f:
+    tmp = STATE_FILE.with_suffix(".json.tmp")
+    with open(tmp, "w") as f:
         json.dump(state, f, indent=2)
+    os.replace(tmp, STATE_FILE)
+
+
+SIGNAL_LOG_MAX_BYTES = 50 * 1024 * 1024
 
 
 def log_signal(sig):
+    try:
+        if SIGNAL_LOG.exists() and SIGNAL_LOG.stat().st_size > SIGNAL_LOG_MAX_BYTES:
+            rotated = SIGNAL_LOG.with_name(SIGNAL_LOG.name + ".1")
+            if rotated.exists():
+                rotated.unlink()
+            SIGNAL_LOG.rename(rotated)
+    except Exception:
+        pass
     with open(SIGNAL_LOG, "a") as f:
         f.write(json.dumps(sig, default=str) + "\n")
 

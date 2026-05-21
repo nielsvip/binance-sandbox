@@ -1,6 +1,8 @@
 #!/bin/bash
-# sync_chart_data.sh — pull latest hourly_reconfig + canonical_trades from S1+S2 to MB.
+# sync_chart_data.sh — pull latest hourly_reconfig + canonical_trades from S1 to MB.
 # SIMPLE rsync (no fancy include/exclude — just mirror, MB has disk).
+# 2026-05-21: S2 (204.168.181.211) DEAD since 2026-05-08 — all tradier sweeps moved to S1.
+# All rsync targets now point at S1 only. Per CLAUDE.md: "Never SSH s2-int".
 
 set -u
 LOG="${HOME}/Documents/binance/logs/sync_chart_data.log"
@@ -32,11 +34,11 @@ for acct in flz fin inf; do
     "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
 done
 
-# S2 tradier: trc, trb
+# S1 tradier: trc, trb (was S2 pre-2026-05-08 shutdown — S1 confirmed has trb/trc dirs 2026-05-21)
 for acct in trc trb; do
-  echo "[sync] s2:hourly_reconfig/$acct"
+  echo "[sync] s1:hourly_reconfig/$acct"
   $RSYNC --timeout=180 \
-    "niels@204.168.181.211:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
+    "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
     "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
 done
 
@@ -57,9 +59,8 @@ echo "[sync] csvs"
 $RSYNC --timeout=60 --include='canonical_*.csv' --exclude='*' \
   "niels@157.180.125.52:/home/niels/binance-sandbox/data/sweep_results/" \
   "$MB_BASE/data/sweep_results/" 2>&1 || echo "  [warn] rsync exit $?"
-$RSYNC --timeout=60 --include='canonical_*.csv' --exclude='*' \
-  "niels@204.168.181.211:/home/niels/binance-sandbox/data/sweep_results/" \
-  "$MB_BASE/data/sweep_results/" 2>&1 || echo "  [warn] rsync exit $?"
+# S2 sweep_results rsync removed — S2 dead 2026-05-08 (host key change warnings 3677/day).
+# Historical S2 sweep CSVs already archived at /Volumes/TOSHIBA_EXT/binance_archive/data/sweep_results/.
 
 # Prune older cycles to last 5 per account (keeps MB disk reasonable)
 for acct in flz fin inf trc trb; do
