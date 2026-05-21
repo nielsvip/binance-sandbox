@@ -1310,6 +1310,13 @@ class TradierConfig:
     PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True
     PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
     PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0 # only fire within 4h of the close
+    # === OVERTRADE_GUARD (2026-05-21 19:10 PARITY FIX — was missing from tradier config) ===
+    # config.py:965 was loosened 8→50 earlier today. tradier_manage.py:3215 reads
+    # `getattr(config, 'TRADES_PER_SYM_PER_DAY_MAX', 8)` where config = TradierConfig()
+    # — without this field, tradier silently fell back to default 8. Live trb log
+    # 2026-05-21 19:06 shows every NEW open blocked by `OVERTRADE_GUARD ... cap=8`
+    # despite crypto cap=50. Adding here closes the parity gap. ROLLBACK: set to 8.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 50
     # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ===
     # PRICE_CROSS_BACK above only fires when positionAmt == 0 (fully closed). The
     # "forgotten winner" pattern is dominated by SENTIMENT_FADE REDUCEs that leave
