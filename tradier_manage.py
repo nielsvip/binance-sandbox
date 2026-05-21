@@ -3062,8 +3062,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
     except Exception as e:
         import traceback as _tb
         _tb_lines = _tb.format_exc().splitlines()
-        _last = next((l.strip() for l in reversed(_tb_lines) if 'tradier_manage.py' in l), '')
-        logger.error(f"[{account_key}] 💥 CRASH in process_position for {symbol}: {e} | at {_last}")
+        # 2026-05-21 19:30 — widen traceback capture: first try tradier_manage.py frames,
+        # fall back to the LAST 'File "...", line N' frame anywhere (utils.py, ez_*, etc.)
+        # so cross-module crashes (e.g. float(datetime) in utils) get a location.
+        _last_tm = next((l.strip() for l in reversed(_tb_lines) if 'tradier_manage.py' in l), '')
+        _last_any = next((l.strip() for l in reversed(_tb_lines) if l.strip().startswith('File "')), '')
+        _last = _last_tm or _last_any or '<no_frame>'
+        logger.error(f"[{account_key}] 💥 CRASH in process_position for {symbol}: {type(e).__name__}: {e} | at {_last}")
         return "ERROR"
 
 
@@ -10411,6 +10416,37 @@ class TradierTradeManager:
                             if lock_acquired and self.redis_manager:
                                 await self.redis_manager.delete(exec_lock_key)
                             return f"BLOCKED_HTF_TREND_VETO_action={action}"
+
+            # ═══════════════════════════════════════════════════════════════════════
+            # HTF_TREND_VETO_ON_REDUCE — 2026-05-21 USER URGENT MANDATE
+            # Block reduce/close when Daily WT still SUPPORTS position direction.
+            # Mirror of HTF_TREND_VETO above, but for is_reduce: LONG+wt1_D>wt2_D → BLOCK; SHORT+wt1_D<wt2_D → BLOCK.
+            # Stops EOD_SLIM_RATIO, SENTIMENT_FADE, SCALP_TIMEOUT, MTF_ATR_TRAIL etc. firing against the macro trend.
+            # Bypass: R1_/R2_/HEDGE/PARTIAL_PROFIT_LOCK/EOD_FORCE_FLAT/EMERGENCY/LIQUIDATION/PARABOLIC_EXIT/LOSS_EXIT_TECHNICAL_BYPASS reasons.
+            # ROLLBACK: set HTF_TREND_VETO_ON_REDUCE_ENABLED=False.
+            # ═══════════════════════════════════════════════════════════════════════
+            if (bool(_cfg('HTF_TREND_VETO_ON_REDUCE_ENABLED', False, account_key, symbol, position_side))
+                and is_reduce
+                and not is_hedge):
+                _htfr_reason_up = (reason or '').upper()
+                _htfr_bypass_substrings = ('R1_', 'R2_', 'HEDGE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'EMERGENCY', 'LIQUIDATION', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'TAKE_PROFIT', 'HEDGE_FAILED')
+                _htfr_bypass = any(s in _htfr_reason_up for s in _htfr_bypass_substrings)
+                if not _htfr_bypass:
+                    try:
+                        _htfr_ind = await self.tradier_indicators.get_indicators(symbol) if getattr(self, 'tradier_indicators', None) else None
+                    except Exception:
+                        _htfr_ind = None
+                    if _htfr_ind:
+                        _htfr_wt1_D = safe_fetch_float(_htfr_ind.get('wt1_D'), 0)
+                        _htfr_wt2_D = safe_fetch_float(_htfr_ind.get('wt2_D'), 0)
+                        _htfr_data_ok = abs(_htfr_wt1_D) > 1e-9 and abs(_htfr_wt2_D) > 1e-9
+                        if _htfr_data_ok:
+                            _htfr_supports = (is_long and _htfr_wt1_D > _htfr_wt2_D) or ((not is_long) and _htfr_wt1_D < _htfr_wt2_D)
+                            if _htfr_supports:
+                                logger.warning(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfr_wt1_D:.2f} wt2_D={_htfr_wt2_D:.2f} reason={(reason or '')[:50]} (HTF still supports side — hold)")
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_HTF_TREND_VETO_ON_REDUCE_action={action}"
 
             # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
             # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.
