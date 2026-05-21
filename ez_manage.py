@@ -18342,11 +18342,18 @@ class MultiAccountTradeManager:
             #   Without this, wt_dc_delta._run_redzone fires entry_long/entry_short correctly but the open gets
             #   blocked here because the broader HTF is still trending opposite — which is the whole point of
             #   an RZ bounce or a compression breakout. See HTF_TREND_VETO_BYPASS_REASONS in config.
+            # 2026-05-21 19:30 FIX: this AUGMENT-only block fired on plain OPEN too because
+            # `is_augment = not is_reduce` (line 17097) makes OPEN qualify. Block was blocking 497
+            # fresh SHORT opens on men + 338 on fin in last 8h ("dir=BULL htfScore=N"). Real augment
+            # block also gated by position-has-size check — entry has its own veto at line ~18745.
+            _htfv_has_size = position and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) > self.min_qty.get(symbol, 0.0001)
             if (
                 is_augment
+                and _htfv_has_size
                 and "HEDGE" not in action
                 and "QUICK" not in action
                 and "REENTRY" not in action
+                and "OPEN" not in action.upper()
             ):
                 _htf_min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 3.0), 3.0)
                 _htf_pos_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -44797,7 +44804,7 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
                     * (1.5 if retest_bonus else 1.0)
                 )
                 for account_key in trade_manager.accounts:
-                    positions = trade_manager.get_positions_for_account(account_key)
+                    positions = trade_manager.get_positions_by_account(account_key)
                     if move_pct > 0:
                         pk = f"{symbol}_LONG"
                         if (

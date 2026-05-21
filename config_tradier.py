@@ -1328,8 +1328,8 @@ class TradierConfig:
     # has a new bypass `_is_recovery_aug` (reason-based: 'RECOVERY_AUG' in reason).
     # Default OFF — flip to True only after backtest validation on the 7-day
     # "forgotten" set (713 closes, see data/today_bt_baseline diff).
-    RECOVERY_AUGMENT_ENABLED: bool = False
-    RECOVERY_AUGMENT_BAND_PCT: float = 0.3       # mirrors PRICE_CROSS_BACK_BAND_PCT
+    RECOVERY_AUGMENT_ENABLED: bool = True  # 2026-05-21 USER MANDATE post-SNDK — "GET RIGHT BACK IN" on partial-close cross-back (sibling to PRICE_CROSS_BACK for positionAmt>0)
+    RECOVERY_AUGMENT_BAND_PCT: float = 1.0       # 2026-05-21 widened 0.3→1.0 (rally past 0.3% band was leaving positions stranded)
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # mirrors PRICE_CROSS_BACK_MAX_AGE_MIN
     RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing
     RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE (matches PRICE_CROSS_BACK qty)

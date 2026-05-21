@@ -2585,17 +2585,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _xb_max_age = float(getattr(config, 'PRICE_CROSS_BACK_MAX_AGE_MIN', 240.0))
                         _xb_band_pct = float(getattr(config, 'PRICE_CROSS_BACK_BAND_PCT', 0.3))
                         _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
-                        if _xb_age_min < _xb_max_age and _xb_dist_pct <= _xb_band_pct:
-                            # Direction sanity: LONG only buys back when price is at-or-below exit (pullback);
-                            # SHORT only sells when price is at-or-above exit (rally back into resistance).
-                            _xb_dir_ok = (is_long and current_price <= _xb_last_px * (1 + _xb_band_pct/100)) or \
-                                         ((not is_long) and current_price >= _xb_last_px * (1 - _xb_band_pct/100))
-                            if _xb_dir_ok:
+                        if _xb_age_min < _xb_max_age:
+                            # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
+                            # Old logic required dist<=band AND favorable direction. SNDK rally
+                            # beyond +0.3% band → NO reentry. Now: fire whenever price crossed
+                            # BACK THROUGH exit in favorable direction (LONG: cur>=exit,
+                            # SHORT: cur<=exit). Within-band on the other side also allowed.
+                            _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
+                            _xb_within_band = _xb_dist_pct <= _xb_band_pct
+                            if _xb_favorable or _xb_within_band:
                                 _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
                                 action_type = "OPEN"
                                 qty = max(1, int(_xb_qty))
                                 conf = 90.0
-                                reason = f"PRICE_CROSS_BACK_REENTRY_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m"
+                                _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                                reason = f"PRICE_CROSS_BACK_REENTRY_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
                                 _xb_reentry_fired = True
                                 logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
                 # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
@@ -7402,10 +7406,19 @@ class StockStrategy:
                 except Exception: pass
             if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and current_price > 0:
                 _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
-                if _xb_dist_pct <= _xb_band_pct:
+                # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
+                # Old logic was symmetric: fired only when |cur-exit|<=band%. SNDK case proved
+                # this fails — sold at $1531, rallied past +0.3% band → NO reentry. Now: fire
+                # whenever price crosses BACK THROUGH exit in the favorable direction
+                # (LONG: cur >= exit, SHORT: cur <= exit). Below-exit-by-band still allowed too
+                # (catches early refire just below the level). No upper cap above exit for LONG.
+                _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
+                _xb_within_band = _xb_dist_pct <= _xb_band_pct
+                if _xb_favorable or _xb_within_band:
                     _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                    logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} ≈ exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}% within {_xb_band_pct:.2f}%) age={_xb_age_min:.0f}m — REOPEN")
-                    return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m", 90.0, _xb_qty
+                    _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                    logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
+                    return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
         # ═══ RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ═══════
         # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
         # (positionAmt > 0 after SENTIMENT_FADE / DELTA_EXIT / WT_BANDAID REDUCE)
@@ -8449,7 +8462,23 @@ class TradierTradeManager:
                                 if _gain_pct < 0.3:
                                     logger.info(f"[REBAL_NOLOSS_BLOCK] {symbol} {side}: sentiment wants reduce but gain={_gain_pct:+.2f}% < 0.3% — HOLDING (STRICT_NO_LOSS)")
                                     continue
+                                # 2026-05-21 USER MANDATE — "LTF can't be screaming BUY and SELL at the same instant".
+                                # SNDK was SENTIMENT_FADE'd at $1531.695 with loc=78 (top of range) while LTF still
+                                # screaming rally. If LTF (5m+15m) still aligns WITH the position direction across
+                                # >=2 of {wt-cross, ha-candle, 5m-price-direction}, REFUSE the fade.
+                                _ltf_wt5_with  = (float(i.get('wt1_5m', 0)  or 0) > float(i.get('wt2_5m', 0)  or 0)) if side == 'LONG' else (float(i.get('wt1_5m', 0)  or 0) < float(i.get('wt2_5m', 0)  or 0))
+                                _ltf_wt15_with = (float(i.get('wt1_15m', 0) or 0) > float(i.get('wt2_15m', 0) or 0)) if side == 'LONG' else (float(i.get('wt1_15m', 0) or 0) < float(i.get('wt2_15m', 0) or 0))
+                                _ltf_ha5_with  = (str(i.get('ha_5m', 'neutral'))  == ('green' if side == 'LONG' else 'red'))
+                                _ltf_ha15_with = (str(i.get('ha_15m', 'neutral')) == ('green' if side == 'LONG' else 'red'))
+                                _ltf_c5_now   = float(i.get('close_5m', 0) or i.get('current_price', 0) or 0)
+                                _ltf_c5_prev  = float(i.get('close_5m_prev', 0) or 0)
+                                _ltf_price_with = (_ltf_c5_now > _ltf_c5_prev > 0) if side == 'LONG' else (0 < _ltf_c5_now < _ltf_c5_prev)
+                                _ltf_with_count = sum([_ltf_wt5_with, _ltf_wt15_with, _ltf_ha5_with, _ltf_ha15_with, _ltf_price_with])
+                                if _ltf_with_count >= 2:
+                                    logger.info(f"[REBAL_LTF_CONTRADICTION_BLOCK] {symbol} {side}: SENTIMENT_FADE wants reduce but LTF still screaming {side} ({_ltf_with_count}/5 with us — wt5={_ltf_wt5_with},wt15={_ltf_wt15_with},ha5={_ltf_ha5_with},ha15={_ltf_ha15_with},price_dir={_ltf_price_with}) — HOLDING (USER 2026-05-21 SNDK)")
+                                    continue
                                 # V4: Multi-TF WT exit confirmation — don't rebalance if HTFs still support
+                                # 2026-05-21 tightened from <2 to <3: require 3 of 4 TFs against (was 2 of 4).
                                 _wt_b5 = float(i.get('wt1_5m', 0) or 0) > float(i.get('wt2_5m', 0) or 0)
                                 _wt_b15 = float(i.get('wt1_15m', 0) or 0) > float(i.get('wt2_15m', 0) or 0)
                                 _wt_b1h = float(i.get('wt1_1h', 0) or 0) > float(i.get('wt2_1h', 0) or 0)
@@ -8458,8 +8487,8 @@ class TradierTradeManager:
                                     _rebal_tf_against = sum([1 for b in [_wt_b5, _wt_b15, _wt_b1h, _wt_b4h] if not b])
                                 else:
                                     _rebal_tf_against = sum([1 for b in [_wt_b5, _wt_b15, _wt_b1h, _wt_b4h] if b])
-                                if _rebal_tf_against < 2:
-                                    logger.info(f"[REBAL_WT_BLOCK] {symbol} {side}: sentiment wants reduce but only {_rebal_tf_against}/4 TFs against — HOLDING")
+                                if _rebal_tf_against < 3:
+                                    logger.info(f"[REBAL_WT_BLOCK] {symbol} {side}: sentiment wants reduce but only {_rebal_tf_against}/4 TFs against (need ≥3) — HOLDING")
                                     continue
                                 reason = f"SENTIMENT_FADE ideal={int(ideal_qty)} cur={int(current_qty)} loc={i.get('0market_sentiment_local',0):.1f} WT{_rebal_tf_against}TF"
                                 logger.info(f"📉 {symbol} REBALANCE REDUCE: {reason}")
@@ -10257,7 +10286,17 @@ class TradierTradeManager:
             # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False in config_tradier.py.
             # ═══════════════════════════════════════════════════════════════════════════
             try:
-                if is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                # 2026-05-21 USER MANDATE — narrow MTF FILTER bypass for PRICE_CROSS_BACK
+                # reentries. SNDK was sold at $1531 then rally continued without reentry because
+                # MTF FILTER blocked the cross-back. PRICE_CROSS_BACK is already gated by
+                # band/age/direction at line ~7405 — letting it past MTF FILTER is the "GET
+                # RIGHT BACK IN" path. Other reentry sources (DAEMON_PRICE_CROSS, MTF, etc.)
+                # still gated by the 04:35 EMERGENCY REVERT — only PRICE_CROSS_BACK is unblocked.
+                # PRICE_CROSS_BACK fires from both BRANCH A (action='REENTRY', positionAmt>0 evaluate_reentry) and
+                # BRANCH B (action='OPEN', positionAmt==0 _evaluate_for_account_and_symbol). Reason substring is
+                # the discriminator either way.
+                _pxc_back_reentry = 'PRICE_CROSS_BACK' in (reason or '').upper() or 'RECOVERY_AUG' in (reason or '').upper()
+                if is_entry_action and not _pxc_back_reentry and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}
@@ -10278,6 +10317,8 @@ class TradierTradeManager:
                             _orig_qty = quantity
                             quantity = quantity * _mtf_mult
                             logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.4f}→{quantity:.4f} (mult={_mtf_mult})")
+                elif _pxc_back_reentry and is_entry_action:
+                    logger.warning(f"[MTF_FILTER_BYPASS_PRICE_CROSS_BACK] {position_key}: MTF FILTER bypassed for PRICE_CROSS_BACK reentry — band/age/direction gated upstream (USER 2026-05-21 SNDK)")
             except Exception as _mtf_e:
                 logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
             # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══

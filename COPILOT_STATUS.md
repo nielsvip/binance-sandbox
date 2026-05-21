@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-21 19:22:46 UTC
+# Copilot Status — 2026-05-21 19:39:23 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,9 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-21T19:20:20
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:20:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:20:52
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T19:21:22
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:21:22
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:21:22
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:21:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:21:53
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:22:23
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:22:23
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T19:38:32
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T19:38:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T19:38:32
 
 ## Missed Trades (trader comparison)
 
@@ -27,10 +20,9 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-1.0%
-- HELD: **SNDK** LONG (tradier) peak +15.9%, now +0.0%
 - HELD: **UUUU** SHORT (tradier) peak +15.3%, now +4.4%
 - HELD: **USO** LONG (tradier) peak +12.1%, now +3.4%
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +0.9%
@@ -43,9 +35,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 22
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+**Issues (last 1h):** 5
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running

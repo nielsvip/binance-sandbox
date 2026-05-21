@@ -1289,6 +1289,9 @@ class Config:
     MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER — gates all entries via mtf_live_evaluator
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
+    # 2026-05-21 19:35 — REVERTED 19:25 False back to True per user mandate "no switch-off, change parameters instead".
+    # State-loss workaround moves to parameter sweep on MTF_ARMED_HTF_LIST: '1h,4h,D,W' → '1h,4h' so ARM fires
+    # on shorter HTFs and recovers faster post-restart. Sweep validates positive-delta-Sharpe before live flip.
     MTF_REQUIRE_ARMED_ANY: bool = True
     MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED: bool = True
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
