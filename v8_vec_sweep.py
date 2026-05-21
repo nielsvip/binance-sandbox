@@ -145,6 +145,10 @@ except ImportError:
     check_r1_emergency_exit = None
     check_r2_wt_vel_slow_exit = None
 try:
+    from vec_paths.newborn_loss_kill import check_newborn_loss_kill_exit
+except ImportError:
+    check_newborn_loss_kill_exit = None
+try:
     from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
 except ImportError:
     check_wt_crossunder_final_exit = None
@@ -394,6 +398,11 @@ class SweepConfig:
     R1_NEWBORN_WINDOW_MIN: float = 15.0
     R1_USE_DC_4BAR: bool = True
     R1_TF: str = ""          # auto: "3m" crypto / "5m" tradier
+    # ── NEWBORN_LOSS_KILL (2026-05-21 USER post-ORDI mandate) ─────────────────
+    # Closes any newborn position whose gain crosses below threshold. Tighter than R1.
+    NEWBORN_LOSS_KILL_ENABLED: bool = True
+    NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5
     # ── R2 WT velocity slow exit ──────────────────────────────────────────────
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
     WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01
@@ -1908,6 +1917,25 @@ def simulate_one_symbol(
                 pnl_pct = gain
                 ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
                     value=state.qty * mark, reason=_r1["reason"], pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                _pos.gain_pct = 0.0
+                continue
+
+        # ─── NEWBORN_LOSS_KILL (USER 2026-05-21 post-ORDI mandate) ───────────────
+        # Closes newborn position the moment gain drops below threshold.
+        # Tighter than R1; doesn't require DC4 breach. Bypasses NO_LOSS.
+        if check_newborn_loss_kill_exit is not None and state.qty > 0.0001:
+            _nlk = check_newborn_loss_kill_exit(_store, i, _pos, mode, config)
+            if _nlk is not None:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_nlk["reason"], pnl_pct=pnl_pct)
                 events.append(ev)
                 trade_returns.append(pnl_pct)
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
