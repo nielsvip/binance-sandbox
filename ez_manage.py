@@ -22595,8 +22595,20 @@ class MultiAccountTradeManager:
         # ROLLBACK: set MTF_ARMED_ENTRY_ENABLED=False in config.py.
         # ═══════════════════════════════════════════════════════════════════════════
         try:
+            # 2026-05-21 USER: STRONG_BUY + QUICK_OPEN bypass mirrors DELTA bypass. MTF needs an
+            # armed state which is wiped on every restart and takes hours to re-arm — but the
+            # QUICK_OPEN/STRONG_BUY scoring engine already produces high-conviction signals from
+            # upstream gates. Per "no switch-off, change parameters instead" mandate, this is a
+            # parameter-level bypass rather than disabling MTF_ARMED_ENTRY_ENABLED. Config knob
+            # MTF_FILTER_STRONG_BUY_QUICK_BYPASS (default True). ROLLBACK: set to False.
+            _reason_up_mtf = (reason or "").upper()
+            _mtf_strong_buy_quick_bypass = (
+                ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf)
+                and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
+            )
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
-                    and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
+                    and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
+                    and not _mtf_strong_buy_quick_bypass):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):
                     self.mtf_states = {}

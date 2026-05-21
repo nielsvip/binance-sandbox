@@ -1290,7 +1290,12 @@ class Config:
     # mtf_live_evaluator.py is the runtime; vec_paths/mtf_armed_entries.py is the backtest mirror.
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
-    MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER — gates all entries via mtf_live_evaluator
+    MTF_ARMED_ENTRY_ENABLED: bool = False            # 2026-05-21 20:55 USER DISABLE — 100% block on cold-start, pending backtest re-tune
+    # 2026-05-21 USER: bypass MTF_FILTER for STRONG_BUY and QUICK_OPEN reasons. Same pattern as
+    # DELTA_GATE_STRONG_BUY_QUICK_BYPASS — MTF state wipes every restart and takes hours to re-arm,
+    # so high-conviction QUICK_OPEN scoring entries get blocked for hours post-restart. Parameter-level
+    # bypass per "no switch-off" mandate (line 1296). ROLLBACK: set to False.
+    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = True
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
     # 2026-05-21 19:35 — REVERTED 19:25 False back to True per user mandate "no switch-off, change parameters instead".
