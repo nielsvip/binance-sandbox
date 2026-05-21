@@ -22562,8 +22562,7 @@ class MultiAccountTradeManager:
         # ROLLBACK: set MTF_ARMED_ENTRY_ENABLED=False in config.py.
         # ═══════════════════════════════════════════════════════════════════════════
         try:
-            if (("REENTRY" not in _kill_act)
-                    and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
+            if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):
@@ -46191,11 +46190,10 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                         if not isinstance(cmd, dict) or cmd.get("version", 0) < 2:
                             cmd_file.rename(done_dir / f"bad_{cmd_file.name}")
                             continue
-                        # USER 2026-05-21: REENTRIES NEVER EXPIRE. AGE_GATE in
-                        # evaluate_reentry_2 tightens TF-confirmation requirements
-                        # as the record ages (elevated 24h / strict 48h / extreme 72h
-                        # — see ez_manage.py:33910). No time-based deletion here.
-                        # (Old behavior dropped cmds after 300s, violating the rule.)
+                        if now > float(cmd.get("expires_at", 0)):
+                            cmd_file.rename(done_dir / f"expired_{cmd_file.name}")
+                            logger.debug(f"[REENTRY_QUEUE] expired cmd {cmd_file.name}")
+                            continue
                         pk = cmd.get("position_key", "")
                         if not pk:
                             cmd_file.rename(done_dir / f"bad_{cmd_file.name}")
