@@ -3748,18 +3748,31 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if mode == "tradier" and os.environ.get("V8_USE_VEC_ALL", "0") == "1" and bool(getattr(config, 'SENTIMENT_FADE_PROXY_ENABLED', False)):
             try:
                 from vec_paths.sentiment_fade import check_sentiment_fade as _sent_check
-                for _sent_pk, _sent_pos in list(trade_manager.positions.items()):
-                    if abs(getattr(_sent_pos, 'positionAmt', 0)) < 0.0001:
-                        continue
-                    _sent_result = _sent_check(None, step, _sent_pos, mode, config)
-                    if _sent_result:
-                        _sent_sym = getattr(_sent_pos, 'symbol', '') or (_sent_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _sent_pk else _sent_pk[:-5] if _sent_pk.endswith('_LONG') else _sent_pk[:-6])
-                        _sent_px = price_cache.get(_sent_sym, 0)
-                        if _sent_px <= 0:
+                # 2026-05-21 SENTIMENT_FADE_MODE — test-matrix knob ("REDUCE"|"CLOSE"|"DISABLED")
+                _sent_mode = str(getattr(config, 'SENTIMENT_FADE_MODE', 'REDUCE')).upper()
+                if _sent_mode != 'DISABLED':
+                    for _sent_pk, _sent_pos in list(trade_manager.positions.items()):
+                        if abs(getattr(_sent_pos, 'positionAmt', 0)) < 0.0001:
                             continue
-                        _sent_is_long = _sent_pk.endswith('_LONG')
-                        _sent_qty = abs(float(getattr(_sent_pos, 'positionAmt', 0))) * 0.5
-                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_sent_pk, symbol=_sent_sym, quantity=_sent_qty, current_price=_sent_px, side='SELL' if _sent_is_long else 'BUY', position_side='LONG' if _sent_is_long else 'SHORT', action='REDUCE', reason=_sent_result['reason'], is_full_close=False, is_hedge=False)
+                        _sent_result = _sent_check(None, step, _sent_pos, mode, config)
+                        if _sent_result:
+                            _sent_sym = getattr(_sent_pos, 'symbol', '') or (_sent_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _sent_pk else _sent_pk[:-5] if _sent_pk.endswith('_LONG') else _sent_pk[:-6])
+                            _sent_px = price_cache.get(_sent_sym, 0)
+                            if _sent_px <= 0:
+                                continue
+                            _sent_is_long = _sent_pk.endswith('_LONG')
+                            _sent_full_qty = abs(float(getattr(_sent_pos, 'positionAmt', 0)))
+                            if _sent_mode == 'CLOSE':
+                                _sent_qty = _sent_full_qty
+                                _sent_action = 'CLOSE'
+                                _sent_full_close = True
+                                _sent_reason_tag = _sent_result['reason'] + '_MODE_CLOSE'
+                            else:  # REDUCE (default)
+                                _sent_qty = _sent_full_qty * 0.5
+                                _sent_action = 'REDUCE'
+                                _sent_full_close = False
+                                _sent_reason_tag = _sent_result['reason']
+                            await trade_manager.execute_trade_action(account_key=account_key, position_key=_sent_pk, symbol=_sent_sym, quantity=_sent_qty, current_price=_sent_px, side='SELL' if _sent_is_long else 'BUY', position_side='LONG' if _sent_is_long else 'SHORT', action=_sent_action, reason=_sent_reason_tag, is_full_close=_sent_full_close, is_hedge=False)
             except Exception:
                 pass
 

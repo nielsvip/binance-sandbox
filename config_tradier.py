@@ -1327,6 +1327,18 @@ class TradierConfig:
     RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing
     RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE (matches PRICE_CROSS_BACK qty)
     RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # set Position.recovery_fired after firing; cleared on next REDUCE
+    # === SENTIMENT_FADE_MODE (2026-05-21 — test matrix per user 'make it a close if useful, else discard') ===
+    # 7-day audit (data/today_bt_baseline + forgotten-reentry hunt): SENTIMENT_FADE is
+    # the dominant exit reason for abandoned winners (ARM +20.9%, UUUU +20.2%, UEC +16.1%,
+    # MP +12.4%, NVDA +8.4%, GDX +7.6%, ...) and the partial-REDUCE leaves positionAmt > 0
+    # which freezes the position (can't AUGMENT due to MIN_GAIN, can't REENTER due to
+    # NO_DOUBLE_OPEN_BLOCK). Modes:
+    #   "REDUCE"   — current behavior: partial reduce to ideal_qty (defaults to this for safety)
+    #   "CLOSE"    — full close; lets PRICE_CROSS_BACK_REENTRY handle the recovery cleanly
+    #   "DISABLED" — skip the SENTIMENT_FADE rebalance entirely
+    # Read by tradier_manage.py SentimentManager rebalancer AND by backtest_v8_engine.py
+    # vec proxy at line ~3748. Test-matrix sweep arms (S1 queue.json): SENTIMENT_FADE_MODE_*.
+    SENTIMENT_FADE_MODE: str = "REDUCE"
     # === DUPLICATE-FIRE GUARDS (2026-04-27 — MSTR headless-chicken loop) ===
     # Same (position_key, action) refused if queued within N sec. Stops the
     # "REBALANCE → invalid_api_response → REBALANCE" loop the broker rejected

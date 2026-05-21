@@ -14271,11 +14271,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     side='SELL' if is_long else 'BUY'
                     await tracker_manager.set_processing(position_key)
                     
-                    # Determine quantity: 2% rule is full CLOSE, others are reduce to min
+                    # Determine quantity: CLOSE/STOP/KILL reasons are full CLOSE; others reduce.
+                    # 2026-05-21 USER FIX: removed redundant second `is_full_close = "CLOSE" in hard_exit_reason`
+                    # at this exact line — it dropped STOP/KILL predicate so HEDGE_ORPHAN_KILL_no_original
+                    # (contains KILL, not CLOSE) was flipping to fractional REDUCE and amplifying 3× before
+                    # actually closing. Same bug class as the 2026-05-16 HEDGE_FAILED_FALLBACK_CLOSE fix
+                    # (ez_manage.py:24482). Now STOP/KILL keep is_full_close=True end-to-end.
                     is_full_close = "CLOSE" in hard_exit_reason or "STOP" in hard_exit_reason or "KILL" in hard_exit_reason
                     reduce_q = position.positionAmt if is_full_close else (position.positionAmt - (pos_min_qty * 0.9))
-               
-                    is_full_close = "CLOSE" in hard_exit_reason
                     # BACKTEST_CHANGE_100: At small gains (0.3-1.0%), only reduce 30-50%, not dump to minimum.
                     # One loss at -$5 wipes 10 wins at +$0.50. Keep most of position to let it run.
                     if not is_full_close and current_gain < 1.0 and current_gain >= _min_profit:
