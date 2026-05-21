@@ -400,9 +400,14 @@ class SweepConfig:
     R1_TF: str = ""          # auto: "3m" crypto / "5m" tradier
     # ── NEWBORN_LOSS_KILL (2026-05-21 USER post-ORDI mandate) ─────────────────
     # Closes any newborn position whose gain crosses below threshold. Tighter than R1.
-    NEWBORN_LOSS_KILL_ENABLED: bool = True
+    # 2026-05-22 V2 — added WT velocity confirmation after V1 (-0.5%/30min unguarded)
+    # scored ΔSharpe -0.0139 (closed wicks → re-entered worse). REQUIRE_VEL_AGAINST=True
+    # means we only close when momentum confirms the loss is real, not a wick.
+    NEWBORN_LOSS_KILL_ENABLED: bool = False
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5
+    NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True
+    NEWBORN_LOSS_KILL_VEL_TF: str = ""           # auto: "3m" crypto / "5m" tradier
     # ── R2 WT velocity slow exit ──────────────────────────────────────────────
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
     WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01

@@ -941,9 +941,11 @@ class Config:
     # is force-closed, bypassing UNIVERSAL_NOLOSS_GATE. Hedges excluded.
     # ROLLBACK: NEWBORN_LOSS_KILL_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════════════
-    NEWBORN_LOSS_KILL_ENABLED: bool = True
+    NEWBORN_LOSS_KILL_ENABLED: bool = False        # 2026-05-22 00:00 — V1 DISABLED after A/B (ΔSharpe=-0.0139). V2 adds WT vel confirmation; awaiting A/B verdict before enabling.
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0     # window from open within which loss-kill applies
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5  # close newborn position when gain ≤ this (small buffer for noise)
+    NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True  # 2026-05-22 V2: only close if wt_velocity_TF also against position (not a wick)
+    NEWBORN_LOSS_KILL_VEL_TF: str = ""             # auto: "3m" crypto / "5m" tradier when empty
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — replaces RIDICULOUS_LOSS late-fire (PHBUSDT -27% lock-in).
     # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
     # Per-bar check: if current_price breaches frozen level AND gain<0 → CLOSE (FROZEN_ACT_STOP_FROZEN_BREACH).

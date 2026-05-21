@@ -37891,7 +37891,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", True))
+        and bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False))
         and not bool(getattr(position, "is_hedge", False))
     ):
         try:
@@ -37902,14 +37902,26 @@ async def process_position(
             _nlk_window = safe_fetch_float(getattr(config, "NEWBORN_LOSS_KILL_WINDOW_MIN", 30.0), 30.0)
             _nlk_threshold = safe_fetch_float(getattr(config, "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT", -0.5), -0.5)
             _nlk_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
-            if 0 <= _nlk_age_min <= _nlk_window and _nlk_gain <= _nlk_threshold:
+            # 2026-05-22 V2 — WT velocity confirmation. V1 closed wick-driven dips and
+            # re-entered at worse prices (vec A/B: ΔSharpe -0.0139). Require vel against
+            # position direction so we only close on real momentum reversals.
+            _nlk_vel_ok = True
+            _nlk_vel_used = 0.0
+            if bool(getattr(config, "NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST", True)):
+                _nlk_vel_tf = getattr(config, "NEWBORN_LOSS_KILL_VEL_TF", "") or "3m"
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _nlk_vel_used = safe_fetch_float(_pp_shared_ind.get(f"wt_velocity_{_nlk_vel_tf}", 0.0), 0.0)
+                _nlk_is_long_for_vel = position_side == "LONG"
+                _nlk_vel_ok = (_nlk_is_long_for_vel and _nlk_vel_used < 0) or ((not _nlk_is_long_for_vel) and _nlk_vel_used > 0)
+            if 0 <= _nlk_age_min <= _nlk_window and _nlk_gain <= _nlk_threshold and _nlk_vel_ok:
                 _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _nlk_is_long = position_side == "LONG"
                 _nlk_close_side = "SELL" if _nlk_is_long else "BUY"
                 _nlk_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
                 _nlk_entry_sig = (getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "?")
                 logger.error(
-                    f"⛔ [NEWBORN_LOSS_KILL] {position_key}: age={_nlk_age_min:.1f}m (≤{_nlk_window}m) gain={_nlk_gain:.2f}% (≤{_nlk_threshold:.2f}%) price={current_price:.6f} entry={_nlk_entry:.6f} entry_sig={_nlk_entry_sig[:40]} → CLOSE"
+                    f"⛔ [NEWBORN_LOSS_KILL] {position_key}: age={_nlk_age_min:.1f}m (≤{_nlk_window}m) gain={_nlk_gain:.2f}% (≤{_nlk_threshold:.2f}%) vel={_nlk_vel_used:.2f} price={current_price:.6f} entry={_nlk_entry:.6f} entry_sig={_nlk_entry_sig[:40]} → CLOSE"
                 )
                 try:
                     _nlk_result = await trade_manager.execute_now(
