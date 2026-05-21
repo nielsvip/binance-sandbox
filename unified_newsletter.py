@@ -336,7 +336,71 @@ def get_recently_applied() -> list:
 # SECTION 4 — BUILD HTML EMAIL
 # ═══════════════════════════════════════════════════════════════════
 
-def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list) -> str:
+def get_eod_scoreboard() -> dict:
+    """Read balance_floor_status.json + COPILOT_STATUS.md for the EOD scoreboard section.
+
+    Returns: {
+        'balances': {acct: balance_usd},
+        'held_outperformers': [{'symbol','side','system','peak_pct','current_pct','dropoff_pct'}],
+        'held_count': int,
+        'watching_count': int,
+        'reentered_count': int,
+        'recent_anomalies': [...]  # last-hour anomalies from COPILOT_STATUS
+    }
+    """
+    import re
+    out = {"balances": {}, "held_outperformers": [], "held_count": 0, "watching_count": 0, "reentered_count": 0, "recent_anomalies": []}
+    bf_path = BASE_PATH / "data" / "balance_floor_status.json"
+    if bf_path.exists():
+        try:
+            bf = json.loads(bf_path.read_text())
+            for r in bf.get("results", []):
+                acct = r.get("account"); bal = r.get("balance")
+                if acct and bal is not None:
+                    out["balances"][acct] = float(bal)
+        except Exception as e:
+            logger.warning(f"balance_floor_status.json parse: {e}")
+    cs_path = BASE_PATH / "COPILOT_STATUS.md"
+    if cs_path.exists():
+        try:
+            text = cs_path.read_text()
+            section = None
+            for raw in text.splitlines():
+                line = raw.rstrip()
+                if line.startswith("## "):
+                    section = line[3:].strip().lower(); continue
+                if section == "outperformer tracker":
+                    m_summary = re.search(r"Held:\*\*\s*(\d+)\s*\|\s*Watching for reentry:\s*(\d+)\s*\|\s*Reentered:\s*(\d+)", line)
+                    if m_summary:
+                        out["held_count"] = int(m_summary.group(1))
+                        out["watching_count"] = int(m_summary.group(2))
+                        out["reentered_count"] = int(m_summary.group(3))
+                        continue
+                    # ez_copilot emits "**Held:** N | Watching for reentry: M | Reentered: K" — handle both forms
+                    m_summary2 = re.search(r"\*\*Held:\*\*\s*(\d+)\s*\|\s*Watching for reentry:\s*(\d+)\s*\|\s*Reentered:\s*(\d+)", line)
+                    if m_summary2:
+                        out["held_count"] = int(m_summary2.group(1))
+                        out["watching_count"] = int(m_summary2.group(2))
+                        out["reentered_count"] = int(m_summary2.group(3))
+                        continue
+                    m_held = re.match(r"-\s*HELD:\s*\*\*([A-Z0-9_.\-]+)\*\*\s+(LONG|SHORT)\s+\((\w+)\)\s+peak\s+\+?(-?[\d.]+)%,\s+now\s+\+?(-?[\d.]+)%", line)
+                    if m_held:
+                        sym, side, system, peak_s, now_s = m_held.groups()
+                        try:
+                            peak = float(peak_s); cur = float(now_s)
+                            out["held_outperformers"].append({"symbol": sym, "side": side, "system": system, "peak_pct": peak, "current_pct": cur, "dropoff_pct": peak - cur})
+                        except ValueError:
+                            pass
+                elif section and "recent anomalies" in section:
+                    m_anom = re.match(r"-\s*\*\*([A-Z_]+)\*\*\s*\[(\w+)\]\s+([^—]+)—\s+(\S+)", line)
+                    if m_anom:
+                        out["recent_anomalies"].append({"type": m_anom.group(1), "system": m_anom.group(2), "target": m_anom.group(3).strip(), "ts": m_anom.group(4)})
+        except Exception as e:
+            logger.warning(f"COPILOT_STATUS.md parse: {e}")
+    return out
+
+
+def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list, eod: dict = None) -> str:
     """Build the unified newsletter HTML."""
     now = datetime.now(timezone.utc)
     css = """
@@ -467,6 +531,48 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-size: 11p
         for r in local_status.get("recent_results", []):
             parts.append(f"<p>{r['file']} ({r['age_hours']:.0f}h ago, {r['size']/1024:.0f}KB)</p>")
         parts.append("</div>")
+    # ── Section 2.5: EOD Scoreboard + Forgotten ──
+    if eod:
+        parts.append("<h2>EOD Scoreboard</h2>")
+        bal = eod.get("balances", {})
+        trb_b = bal.get("trb"); trc_b = bal.get("trc")
+        if trb_b is not None or trc_b is not None:
+            parts.append("<table><tr><th>Account</th><th>Balance USD</th><th>vs Other</th></tr>")
+            if trb_b is not None and trc_b is not None:
+                _diff_b = trb_b - trc_b
+                _diff_cls = "g" if _diff_b > 0 else "r"
+                parts.append(f"<tr><td><b>trb</b></td><td class='b'>${trb_b:,.2f}</td><td class='{_diff_cls}'>{_diff_b:+,.0f} vs trc</td></tr>")
+                parts.append(f"<tr><td><b>trc</b></td><td class='b'>${trc_b:,.2f}</td><td class='{('r' if _diff_b > 0 else 'g')}'>{-_diff_b:+,.0f} vs trb</td></tr>")
+            elif trb_b is not None:
+                parts.append(f"<tr><td><b>trb</b></td><td class='b'>${trb_b:,.2f}</td><td class='gr'>(trc unavailable)</td></tr>")
+            elif trc_b is not None:
+                parts.append(f"<tr><td><b>trc</b></td><td class='b'>${trc_b:,.2f}</td><td class='gr'>(trb unavailable)</td></tr>")
+            crypto_total = sum(bal.get(a, 0) for a in ("ang", "inf", "flz", "men", "fin"))
+            if crypto_total > 0:
+                parts.append(f"<tr><td><b>crypto pool</b></td><td>${crypto_total:,.2f}</td><td class='gr'>ang+inf+flz+men+fin</td></tr>")
+            parts.append("</table>")
+        forgotten = eod.get("held_outperformers", [])
+        held_n = eod.get("held_count", 0)
+        watch_n = eod.get("watching_count", 0)
+        reent_n = eod.get("reentered_count", 0)
+        parts.append(f"<h3>Forgotten Winners <span class='gr'>(held={held_n}, watching={watch_n}, reentered={reent_n})</span></h3>")
+        if forgotten:
+            forgotten_sorted = sorted(forgotten, key=lambda x: x.get("dropoff_pct", 0), reverse=True)
+            parts.append("<table><tr><th>Sym</th><th>Side</th><th>System</th><th>Peak%</th><th>Now%</th><th>Dropoff</th></tr>")
+            for f in forgotten_sorted:
+                _drop_cls = "r" if f["dropoff_pct"] > 5 else ("o" if f["dropoff_pct"] > 2 else "g")
+                _now_cls = "g" if f["current_pct"] >= 0 else "r"
+                parts.append(f"<tr><td><b>{f['symbol']}</b></td><td>{f['side']}</td><td>{f['system']}</td><td>{f['peak_pct']:+.1f}%</td><td class='{_now_cls}'>{f['current_pct']:+.1f}%</td><td class='{_drop_cls} b'>-{f['dropoff_pct']:.1f}%</td></tr>")
+            parts.append("</table>")
+        else:
+            parts.append("<p class='unchanged'>No held outperformers — clean book</p>")
+        anomalies = eod.get("recent_anomalies", [])
+        if anomalies:
+            from collections import Counter
+            type_counts = Counter((a["type"], a["system"]) for a in anomalies)
+            parts.append("<p><b>Recent anomalies (last hour):</b> ")
+            chips = [f"{t}/{s}: {n}" for (t, s), n in type_counts.most_common(6)]
+            parts.append(", ".join(chips) + "</p>")
     # ── Section 3: Applied to Live ──
     if applied:
         parts.append("<h2>Recently Applied to Live</h2>")
@@ -507,15 +613,18 @@ def run(dry_run: bool = False, force: bool = False):
     local_status = get_local_sweep_status()
     # 4. Applied configs
     applied = get_recently_applied()
+    # 5. EOD scoreboard (trb-vs-trc + forgotten table)
+    eod = get_eod_scoreboard()
     # Check if there's anything new
     has_new_sweep = bool(s1_status.get("active_sweeps") or s2_status.get("active_sweeps") or s1_status.get("latest_results") or s2_status.get("latest_results"))
-    has_anything = trader_delta.get("has_new") or has_new_sweep or applied
+    has_eod = bool(eod.get("balances") or eod.get("held_outperformers"))
+    has_anything = trader_delta.get("has_new") or has_new_sweep or applied or has_eod
     if not has_anything and not force:
         logger.info("No new findings or sweep activity — skipping newsletter")
         print("No new findings. Use --force to send anyway.")
         return
     # Build HTML
-    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied)
+    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied, eod=eod)
     # Count what's new for subject line
     new_parts = []
     if trader_delta.get("new_indicators"):
