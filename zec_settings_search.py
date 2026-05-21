@@ -140,10 +140,32 @@ def score_candidate(wsharpe: float, n_trades: int, days: float = 7.0) -> float:
     return 0.5 * sharpe_part + 0.5 * trade_part
 
 
-def run_one_test(cfg_dict: Dict) -> Tuple[float, int, float, float]:
-    """Returns (sharpe, n_trades, pnl_usd, wr_pct). v8_quick_engine.simulate
-    doesn't expose a per-side trade list — only summary dict. Score per-config
-    rather than per-side."""
+def _load_window(days_back: int | None) -> Dict:
+    """Returns a stores dict {sym: {array_name: arr, ...}} for simulate.
+    days_back=None → full NPZ (~4yr). days_back=7 → last 7 days."""
+    z = np.load(str(NPZ_DIR / f"{ZEC_SYM}.npz"))
+    data = {k: z[k] for k in z.files}
+    z.close()
+    if days_back is None or "timestamps" not in data:
+        return {ZEC_SYM: data}
+    ts = data["timestamps"]
+    n = len(ts)
+    if n == 0:
+        return {ZEC_SYM: data}
+    start_ts = int(ts[-1]) - days_back * 86400
+    start_idx = int(np.searchsorted(ts, start_ts))
+    if start_idx <= 0:
+        return {ZEC_SYM: data}
+    sliced = {}
+    for k, v in data.items():
+        if isinstance(v, np.ndarray) and len(v) == n:
+            sliced[k] = v[start_idx:]
+        else:
+            sliced[k] = v
+    return {ZEC_SYM: sliced}
+
+
+def _apply_cfg(cfg_dict: Dict) -> QuickConfig:
     cfg = QuickConfig()
     for k, v in cfg_dict.items():
         if k.startswith("_"):
@@ -157,20 +179,19 @@ def run_one_test(cfg_dict: Dict) -> Tuple[float, int, float, float]:
         cfg.BTC_DEDICATED_ENABLED = True
     except Exception:
         pass
-    z = None
+    return cfg
+
+
+def run_test(stores: Dict, cfg_dict: Dict) -> Tuple[float, int, float, float]:
+    """Returns (sharpe, trades, pnl_usd, wr). v8_quick_engine.simulate returns
+    summary dict; no per-side breakdown."""
+    cfg = _apply_cfg(cfg_dict)
     try:
-        z = np.load(str(NPZ_DIR / f"{ZEC_SYM}.npz"))
-        r = simulate({ZEC_SYM: z}, cfg, capital=10000.0)
+        r = simulate(stores, cfg, capital=10000.0)
     except SystemExit:
         return 0.0, 0, 0.0, 0.0
     except Exception:
         return 0.0, 0, 0.0, 0.0
-    finally:
-        if z is not None:
-            try:
-                z.close()
-            except Exception:
-                pass
     if not isinstance(r, dict):
         return 0.0, 0, 0.0, 0.0
     return (
@@ -181,30 +202,45 @@ def run_one_test(cfg_dict: Dict) -> Tuple[float, int, float, float]:
     )
 
 
+RESEARCH_FEED = ROOT / "data" / "zec_supervisor" / "research_feed.jsonl"
+RESEARCH_FEED.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _append_research_feed(rec: Dict) -> None:
+    try:
+        with RESEARCH_FEED.open("a") as f:
+            f.write(json.dumps(rec, default=str) + "\n")
+    except Exception as e:
+        print(f"[research_feed] write failed: {e}", file=sys.stderr)
+
+
 def search_one_iteration(iter_id: int) -> Dict:
     base = load_baseline()
     new_cfg, notes = mutate(base, n_mutations=random.randint(2, 4))
     npz_p = NPZ_DIR / f"{ZEC_SYM}.npz"
-    results = {"iter": iter_id, "sym": ZEC_SYM, "mutations": notes}
+    results = {"iter": iter_id, "sym": ZEC_SYM, "mutations": notes, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     if not npz_p.exists():
         return results
-    sharpe, n_trades, pnl, wr = run_one_test(new_cfg)
-    # Score: sharpe-weighted (range -2..+2 → [-1,1]) + trade-count-normalized.
-    # Window is full NPZ (~4yr) since v8_quick_engine doesn't expose windowing;
-    # iterate fast to surface aggregate winners.
-    sharpe_part = min(max(sharpe, -2.0), 2.0) / 2.0
-    trade_part = min(n_trades / max(TARGET_TRADES_PER_WEEK * 4 * 12, 1), 2.0) / 2.0  # target ~12mo of trades
+    # 7D first — fast iteration window.
+    stores_7d = _load_window(7)
+    s7, n7, p7, w7 = run_test(stores_7d, new_cfg)
+    results["d7"] = {"sharpe": round(s7, 4), "trades": n7, "pnl_usd": round(p7, 2), "wr": round(w7, 4), "tier": mg.tier_name(s7)}
+    # USER MANDATE 2026-05-21: AFTER 7D optimized settings, ALWAYS run 4yr on the
+    # new settings. Both reported in the Unified Newsletter.
+    s4, n4, p4, w4 = 0.0, 0, 0.0, 0.0
+    if n7 >= 1:  # only validate non-degenerate 7D outcomes; saves compute on dead configs
+        stores_4yr = _load_window(None)
+        s4, n4, p4, w4 = run_test(stores_4yr, new_cfg)
+    results["d4yr"] = {"sharpe": round(s4, 4), "trades": n4, "pnl_usd": round(p4, 2), "wr": round(w4, 4), "tier": mg.tier_name(s4)}
+    # Score combines 7D recency-bias with 4yr generalization. Both must be positive
+    # for promotion; 4yr is the harder gate.
+    sharpe_part = min(max(s7, -2.0), 2.0) / 2.0
+    trade_part = min(n7 / max(TARGET_TRADES_PER_WEEK, 1), 2.0) / 2.0
     score = 0.5 * sharpe_part + 0.5 * trade_part
-    results.update({
-        "sharpe": round(sharpe, 4),
-        "trades": n_trades,
-        "pnl_usd": round(pnl, 2),
-        "wr": round(wr, 4),
-        "score": round(score, 4),
-        "tier": mg.tier_name(sharpe),
-    })
+    results["score"] = round(score, 4)
     promoted = False
-    if n_trades >= 5 and sharpe > 0.5:
+    # Promotion gate: 7D sharpe>0.5 AND trades>=3 AND 4yr sharpe>0 (doesn't blow up out-of-sample).
+    if n7 >= 3 and s7 > 0.5 and s4 > 0.0:
         cand_path = CAND_DIR / f"zec_{ZEC_SYM}_top.json"
         prev_score = -1.0
         if cand_path.exists():
@@ -217,18 +253,19 @@ def search_one_iteration(iter_id: int) -> Dict:
             saved = dict(new_cfg)
             saved["_meta"] = (
                 f"zec_settings_search winner iter={iter_id} mutations={notes} | "
+                f"7D: sharpe={s7:.3f} trades={n7} pnl=${p7:.0f} | "
+                f"4yr: sharpe={s4:.3f} trades={n4} pnl=${p4:.0f} | "
                 f"USER OVERRIDE 2026-05-21: single-sym promotion for ZEC"
             )
             saved["_score"] = score
-            saved["_sharpe"] = sharpe
-            saved["_trades"] = n_trades
-            saved["_pnl_usd"] = pnl
-            saved["_wr"] = wr
+            saved["_d7"] = results["d7"]
+            saved["_d4yr"] = results["d4yr"]
             saved["_sym"] = ZEC_SYM
             saved["_promoted_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             cand_path.write_text(json.dumps(saved, indent=2))
             promoted = True
     results["promoted"] = promoted
+    _append_research_feed(results)
     return results
 
 
@@ -255,11 +292,13 @@ def main() -> int:
             with log_path.open("a") as f:
                 f.write(json.dumps(r) + "\n")
             promoted = "YES" if r.get("promoted") else "-"
+            d7 = r.get("d7", {})
+            d4 = r.get("d4yr", {})
             print(
-                f"[zec_search] iter={iter_id} t={elapsed:.0f}s promoted={promoted} "
-                f"sharpe={r.get('sharpe',0):+.3f} trades={r.get('trades',0)} "
-                f"pnl=${r.get('pnl_usd',0):.0f} wr={r.get('wr',0):.2f} "
-                f"score={r.get('score',0):.3f} muts={','.join(r.get('mutations',[])[:2])}",
+                f"[zec_search] iter={iter_id} t={elapsed:.0f}s promoted={promoted} | "
+                f"7D: sh={d7.get('sharpe',0):+.2f} n={d7.get('trades',0)} pnl=${d7.get('pnl_usd',0):.0f} | "
+                f"4yr: sh={d4.get('sharpe',0):+.2f} n={d4.get('trades',0)} pnl=${d4.get('pnl_usd',0):.0f} | "
+                f"muts={','.join(r.get('mutations',[])[:2])}",
                 flush=True,
             )
             n_done += 1
