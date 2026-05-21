@@ -3285,9 +3285,15 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             # If position already exists for this key (positionAmt > 0), block any new open of any kind.
             # OPEN/REENTER/REENTRY/HEDGE all forbidden while same-key position is alive.
             # AUGMENT is the ONLY legitimate add path — and it has its own MIN_GAIN gates upstream.
-            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and positionAmt > 0:
+            # 2026-05-20 RECOVERY_AUG bypass: reason contains "RECOVERY_AUG" → narrow exception
+            # for partial-close trap recovery (price crossed back through last_reduction_price
+            # within band+age). The evaluate_reentry caller already validated band/age/direction.
+            _is_recovery_aug_qta = "RECOVERY_AUG" in (reason or "").upper()
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and positionAmt > 0 and not _is_recovery_aug_qta:
                 logger.critical(f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — positionAmt={positionAmt:.4f} > 0. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{reason[:80]}'")
                 return False
+            if _is_recovery_aug_qta and positionAmt > 0:
+                logger.warning(f"[NO_DOUBLE_OPEN_BLOCK_BYPASS_RECOVERY_AUG] {position_key}: {action} positionAmt={positionAmt:.4f} reason='{reason[:80]}' — bypass allowed (partial-close recovery)")
             # 2026-04-29 USER RULE: post-close cooldown. After a CLOSE, block re-OPEN of same symbol
             # for TRADIER_POST_CLOSE_COOLDOWN_MIN minutes. Stops the 1-share open→close→reopen flap
             # observed today on NVDA/USO/MSFT/GOOGL (LONG BUY firing every ~30s).
@@ -7377,6 +7383,48 @@ class StockStrategy:
                     _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                     logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} ≈ exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}% within {_xb_band_pct:.2f}%) age={_xb_age_min:.0f}m — REOPEN")
                     return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m", 90.0, _xb_qty
+        # ═══ RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ═══════
+        # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
+        # (positionAmt > 0 after SENTIMENT_FADE / DELTA_EXIT / WT_BANDAID REDUCE)
+        # and price crosses back through last_reduction_price within band+age.
+        # Reason contains "RECOVERY_AUG_" — execute_now's HARD_MIN_GAIN_WALL and
+        # NO_DOUBLE_OPEN_BLOCK have matching `_is_recovery_aug` bypasses (search
+        # for RECOVERY_AUG in tradier_manage.py).  Default OFF behind
+        # RECOVERY_AUGMENT_ENABLED.  Single-fire per reduction cycle when
+        # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE=True via Position.recovery_fired.
+        if positionAmt > 0 and bool(getattr(config, 'RECOVERY_AUGMENT_ENABLED', False)):
+            _ra_last_px = float(getattr(position, 'last_reduction_price', 0) or 0)
+            _ra_last_t = getattr(position, 'last_reduction_time', None)
+            _ra_recovery_fired = bool(getattr(position, 'recovery_fired', False))
+            _ra_one_fire = bool(getattr(config, 'RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE', True))
+            if _ra_last_px > 0 and _ra_last_t and not (_ra_one_fire and _ra_recovery_fired):
+                _ra_band_pct = float(getattr(config, 'RECOVERY_AUGMENT_BAND_PCT', 0.3))
+                _ra_max_age_min = float(getattr(config, 'RECOVERY_AUGMENT_MAX_AGE_MIN', 240.0))
+                _ra_age_min = 9999.0
+                try:
+                    _ra_lt = _ra_last_t if not isinstance(_ra_last_t, str) else datetime.fromisoformat(str(_ra_last_t).replace("Z", "+00:00"))
+                    if _ra_lt.tzinfo is None: _ra_lt = _ra_lt.replace(tzinfo=timezone.utc)
+                    _ra_age_min = (datetime.now(timezone.utc) - _ra_lt).total_seconds() / 60.0
+                except Exception: pass
+                if _ra_age_min < _ra_max_age_min and current_price > 0:
+                    _ra_dist_pct = abs(current_price - _ra_last_px) / _ra_last_px * 100.0
+                    # Directional cross check: LONG wants price >= last_reduction_price, SHORT <=
+                    _ra_dir_ok = (is_long and current_price >= _ra_last_px) or ((not is_long) and current_price <= _ra_last_px)
+                    if _ra_dist_pct <= _ra_band_pct and _ra_dir_ok:
+                        _ra_require_wt = bool(getattr(config, 'RECOVERY_AUGMENT_REQUIRE_WT_CROSS', False))
+                        _ra_wt_ok = True
+                        if _ra_require_wt:
+                            _ra_w1 = float(i.get('wt1_5m', 0) or 0); _ra_w2 = float(i.get('wt2_5m', 0) or 0)
+                            _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
+                        if _ra_wt_ok:
+                            _ra_size_pct = float(getattr(config, 'RECOVERY_AUGMENT_SIZE_PCT', 1.0))
+                            _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
+                            # Mark fired so the same reduction cycle doesn't fire repeatedly.
+                            try:
+                                if _ra_one_fire: position.recovery_fired = True
+                            except Exception: pass
+                            logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m wt_ok={_ra_wt_ok} → AUGMENT qty={_ra_qty:.4f}")
+                            return "REENTRY_OPEN", f"RECOVERY_AUG_PARTIAL_exit{_ra_last_px:.4f}_cur{current_price:.4f}_dist{_ra_dist_pct:.3f}%_age{_ra_age_min:.0f}m", 95.0, _ra_qty
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_positionSize', 0) or positionAmt)
         last_red_time = getattr(position, 'last_reduction_time', None)

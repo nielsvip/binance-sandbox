@@ -533,6 +533,18 @@ class Config:
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
+    # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix, mirrors config_tradier) ===
+    # Fires AUGMENT with distinct reason "RECOVERY_AUG_*" when a partially-reduced
+    # position (positionAmt > 0 after SENTIMENT_FADE / WT_BANDAID / DELTA_EXIT REDUCE)
+    # sees price cross back through last_reduction_price within the band+age window.
+    # Bypasses HARD_MIN_GAIN_WALL via reason-based `_is_recovery_aug` flag in execute_now.
+    # Default OFF — flip only after backtest on the 7-day "forgotten" set (713 closes).
+    RECOVERY_AUGMENT_ENABLED: bool = False
+    RECOVERY_AUGMENT_BAND_PCT: float = 0.3       # within 0.3% of last_reduction_price
+    RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # only fire within 4h of the reduction
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, require favorable WT cross on 3m before firing
+    RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE
+    RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # set Position.recovery_fired after firing; cleared on next REDUCE
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_RALLY_K15M_MAX: float = 30.0    # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598. 2026-04-25 rapid-grid 50-sym: K40/50/60/60+gap3 all identical to K30 — reentry count not K-gated, binding constraint is entry score + cooldown.

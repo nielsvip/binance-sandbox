@@ -1438,12 +1438,25 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # Without this, the engine hits a HEDGE_ELECTED_DISABLED log spam every bar for every losing
     # position with an opposite-side counterpart. Engine "stuck" at 0% CPU due to log I/O.
     # In sweep/decision-only mode we just no-op the call entirely (no log, no work).
-    if hasattr(ez_positions_quick, 'LossManager') and getattr(config, 'HEDGE_DUAL_IF_HEDGE_MODE', False) is False:
-        _orig_execute_dual = getattr(ez_positions_quick.LossManager, 'execute_dual_hedge', None)
+    # 2026-05-21 FIX: original patch targeted `LossManager` which DOES NOT EXIST in
+    # ez_positions_quick.py. The actual class is `HedgeEngine` (line ~4887). Wrong-class
+    # patch silently skipped → live execute_dual_hedge ran every bar → infinite-loop hang
+    # on BREAKEVEN_GAIN_EROSION_STOP → HEDGE_ELECTED_DISABLED → next bar same trigger.
+    # Return shape matches live's `{'overall_status': 'cross_symbol_disabled', ...}` so
+    # downstream callers checking `.get('overall_status') in ['success','partial']` see
+    # False and fall through to the proper close path.
+    if hasattr(ez_positions_quick, 'HedgeEngine') and getattr(config, 'HEDGE_DUAL_IF_HEDGE_MODE', False) is False:
+        _orig_execute_dual = getattr(ez_positions_quick.HedgeEngine, 'execute_dual_hedge', None)
         if _orig_execute_dual is not None:
             async def _noop_execute_dual_hedge(self, *args, **kwargs):
-                return {'status': 'skipped', 'reason': 'HEDGE_DUAL_IF_HEDGE_MODE=False (backtest-engine short-circuit)'}
-            ez_positions_quick.LossManager.execute_dual_hedge = _noop_execute_dual_hedge
+                return {
+                    'overall_status': 'cross_symbol_disabled',
+                    'elected_symbol': {'status': 'disabled'},
+                    'actual_symbol': {'status': 'disabled'},
+                    'status': 'skipped',
+                    'reason': 'HEDGE_DUAL_IF_HEDGE_MODE=False (backtest-engine short-circuit)',
+                }
+            ez_positions_quick.HedgeEngine.execute_dual_hedge = _noop_execute_dual_hedge
 
     # --- Patch get_simple_redis_manager to return in-memory Redis ---
     _mem_redis = InMemoryRedis()

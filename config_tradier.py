@@ -1310,6 +1310,23 @@ class TradierConfig:
     PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True
     PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
     PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0 # only fire within 4h of the close
+    # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ===
+    # PRICE_CROSS_BACK above only fires when positionAmt == 0 (fully closed). The
+    # "forgotten winner" pattern is dominated by SENTIMENT_FADE REDUCEs that leave
+    # positionAmt > 0 (partial close). With gain < MIN_GAIN, both AUGMENT (gate at
+    # ~tradier_manage.py:9768) and REENTRY (gate at ~tradier_manage.py:3288) are
+    # blocked — the position is frozen. RECOVERY_AUGMENT fires AUGMENT with a
+    # distinct reason string starting "RECOVERY_AUG_" when price crosses back
+    # through last_reduction_price within the band+age window. The HARD_MIN_GAIN_WALL
+    # has a new bypass `_is_recovery_aug` (reason-based: 'RECOVERY_AUG' in reason).
+    # Default OFF — flip to True only after backtest validation on the 7-day
+    # "forgotten" set (713 closes, see data/today_bt_baseline diff).
+    RECOVERY_AUGMENT_ENABLED: bool = False
+    RECOVERY_AUGMENT_BAND_PCT: float = 0.3       # mirrors PRICE_CROSS_BACK_BAND_PCT
+    RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # mirrors PRICE_CROSS_BACK_MAX_AGE_MIN
+    RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing
+    RECOVERY_AUGMENT_SIZE_PCT: float = 1.0       # 1.0 = 1× START_POSITION_SIZE (matches PRICE_CROSS_BACK qty)
+    RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE: bool = True  # set Position.recovery_fired after firing; cleared on next REDUCE
     # === DUPLICATE-FIRE GUARDS (2026-04-27 — MSTR headless-chicken loop) ===
     # Same (position_key, action) refused if queued within N sec. Stops the
     # "REBALANCE → invalid_api_response → REBALANCE" loop the broker rejected
