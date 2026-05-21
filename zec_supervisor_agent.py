@@ -38,25 +38,13 @@ import config as _cfg_mod
 
 CFG = _cfg_mod.Config()
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-if not ANTHROPIC_API_KEY:
-    _key_file = Path.home() / ".anthropic_key"
-    if _key_file.exists():
-        try:
-            ANTHROPIC_API_KEY = _key_file.read_text().strip()
-        except Exception:
-            pass
-if not ANTHROPIC_API_KEY:
-    print("ERROR: ANTHROPIC_API_KEY not set (env var or ~/.anthropic_key)", file=sys.stderr)
+import shutil, subprocess
+# USER MANDATE 2026-05-21: NO API key — use Claude Code CLI subscription auth.
+# The `claude` CLI without --bare uses OAuth/keychain (subscription), not API key.
+CLAUDE_BIN = shutil.which("claude") or "/Users/niels/.local/bin/claude"
+if not Path(CLAUDE_BIN).exists():
+    print(f"ERROR: claude CLI not found at {CLAUDE_BIN}", file=sys.stderr)
     sys.exit(2)
-
-try:
-    from anthropic import Anthropic
-except ImportError:
-    print("ERROR: pip install anthropic", file=sys.stderr)
-    sys.exit(2)
-
-CLIENT = Anthropic(api_key=ANTHROPIC_API_KEY)
 MODEL = getattr(CFG, "ZEC_SUPERVISOR_MODEL", "claude-sonnet-4-6")
 
 HIST_PATH = ROOT / "data" / "history" / "flz" / "ZECUSDC_LONG.jsonl"
@@ -232,23 +220,79 @@ def _close_count_last_hour() -> int:
     return n
 
 
+DECISION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": ["hold", "close", "adapt_overrides"]},
+        "close_reason": {"type": "string", "maxLength": 200},
+        "close_action": {"type": "string", "enum": ["force_close", "force_hedge"]},
+        "overrides_patch": {"type": "object"},
+        "thesis": {"type": "string", "maxLength": 400},
+    },
+    "required": ["action"],
+}
+
+
 def call_sonnet(snapshot: dict) -> dict:
-    user_msg = json.dumps(snapshot, default=str)
-    resp = CLIENT.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": [{"type": "text", "text": user_msg}]}],
+    """Invoke `claude -p` subprocess (uses subscription auth via OAuth/keychain)."""
+    user_msg = (
+        "Decide an action for flz:ZECUSDC_LONG based on this snapshot. "
+        "Respond with strict JSON matching the schema — nothing else.\n\n"
+        f"SNAPSHOT:\n{json.dumps(snapshot, default=str)}"
     )
-    text = "".join(b.text for b in resp.content if hasattr(b, "text"))
-    text = text.strip()
+    try:
+        # cwd=/tmp avoids the binance CLAUDE.md auto-load (~32k tokens). --system-prompt
+        # replaces the default base prompt entirely. Net per-call: ~few k tokens instead of 40k+.
+        proc = subprocess.run(
+            [
+                CLAUDE_BIN,
+                "-p",
+                user_msg,
+                "--model", MODEL,
+                "--system-prompt", SYSTEM_PROMPT,
+                "--output-format", "json",
+                "--json-schema", json.dumps(DECISION_SCHEMA),
+                "--disallowedTools", "Bash,Edit,Write,WebFetch,WebSearch,Agent",
+                "--exclude-dynamic-system-prompt-sections",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+            cwd="/tmp",
+        )
+    except subprocess.TimeoutExpired:
+        return {"action": "hold", "thesis": "CLI_TIMEOUT_180s"}
+    except Exception as e:
+        return {"action": "hold", "thesis": f"CLI_LAUNCH_FAIL: {e}"}
+    if proc.returncode != 0:
+        return {"action": "hold", "thesis": f"CLI_RC={proc.returncode} stderr[:200]={proc.stderr[:200]!r}"}
+    raw = proc.stdout.strip()
+    # When --json-schema is used, claude routes the response into outer['structured_output']
+    # rather than outer['result']. Fall back through both, plus inline markdown JSON.
+    try:
+        outer = json.loads(raw)
+    except Exception:
+        outer = {}
+    if isinstance(outer, dict):
+        so = outer.get("structured_output")
+        if isinstance(so, dict) and "action" in so:
+            return so
+        text = outer.get("result", "") or raw
+    else:
+        text = raw
+    text = (text or "").strip()
     if text.startswith("```"):
         text = text.strip("`")
         if text.startswith("json"):
             text = text[4:]
         text = text.strip()
+    if not text:
+        return {"action": "hold", "thesis": f"EMPTY_RESPONSE rc={proc.returncode}"}
     try:
-        return json.loads(text)
+        d = json.loads(text)
+        if not isinstance(d, dict) or "action" not in d:
+            return {"action": "hold", "thesis": f"PARSE_NO_ACTION: raw[:200]={text[:200]!r}"}
+        return d
     except Exception as e:
         return {"action": "hold", "thesis": f"PARSE_FAIL: {e}; raw[:200]={text[:200]!r}"}
 

@@ -140,29 +140,39 @@ def score_candidate(wsharpe: float, n_trades: int, days: float = 7.0) -> float:
     return 0.5 * sharpe_part + 0.5 * trade_part
 
 
-def _load_window(days_back: int | None) -> Dict:
-    """Returns a stores dict {sym: {array_name: arr, ...}} for simulate.
-    days_back=None → full NPZ (~4yr). days_back=7 → last 7 days."""
-    z = np.load(str(NPZ_DIR / f"{ZEC_SYM}.npz"))
-    data = {k: z[k] for k in z.files}
-    z.close()
-    if days_back is None or "timestamps" not in data:
-        return {ZEC_SYM: data}
-    ts = data["timestamps"]
-    n = len(ts)
-    if n == 0:
-        return {ZEC_SYM: data}
-    start_ts = int(ts[-1]) - days_back * 86400
-    start_idx = int(np.searchsorted(ts, start_ts))
-    if start_idx <= 0:
-        return {ZEC_SYM: data}
-    sliced = {}
-    for k, v in data.items():
-        if isinstance(v, np.ndarray) and len(v) == n:
-            sliced[k] = v[start_idx:]
-        else:
-            sliced[k] = v
-    return {ZEC_SYM: sliced}
+def _load_window(days_back: int | None):
+    """For 4yr: returns NpzFile (lazy, fast — matches what worked before).
+    For 7D: slices to last days_back days and returns a materialized dict.
+    Either form is acceptable as a `stores` value passed to simulate({sym: stores_value})."""
+    if days_back is None:
+        z = np.load(str(NPZ_DIR / f"{ZEC_SYM}.npz"), allow_pickle=True)
+        return {ZEC_SYM: z}
+    # Sliced path requires materialization.
+    z = np.load(str(NPZ_DIR / f"{ZEC_SYM}.npz"), allow_pickle=True)
+    try:
+        if "timestamps" not in z.files:
+            return {ZEC_SYM: dict(z)}
+        ts = z["timestamps"]
+        n = len(ts)
+        if n == 0:
+            return {ZEC_SYM: dict(z)}
+        start_ts = int(ts[-1]) - days_back * 86400
+        start_idx = int(np.searchsorted(ts, start_ts))
+        if start_idx <= 0:
+            return {ZEC_SYM: dict(z)}
+        sliced = {}
+        for k in z.files:
+            v = z[k]
+            if isinstance(v, np.ndarray) and v.ndim >= 1 and v.shape[0] == n:
+                sliced[k] = v[start_idx:]
+            else:
+                sliced[k] = v
+        return {ZEC_SYM: sliced}
+    finally:
+        try:
+            z.close()
+        except Exception:
+            pass
 
 
 def _apply_cfg(cfg_dict: Dict) -> QuickConfig:
@@ -225,12 +235,10 @@ def search_one_iteration(iter_id: int) -> Dict:
     stores_7d = _load_window(7)
     s7, n7, p7, w7 = run_test(stores_7d, new_cfg)
     results["d7"] = {"sharpe": round(s7, 4), "trades": n7, "pnl_usd": round(p7, 2), "wr": round(w7, 4), "tier": mg.tier_name(s7)}
-    # USER MANDATE 2026-05-21: AFTER 7D optimized settings, ALWAYS run 4yr on the
-    # new settings. Both reported in the Unified Newsletter.
-    s4, n4, p4, w4 = 0.0, 0, 0.0, 0.0
-    if n7 >= 1:  # only validate non-degenerate 7D outcomes; saves compute on dead configs
-        stores_4yr = _load_window(None)
-        s4, n4, p4, w4 = run_test(stores_4yr, new_cfg)
+    # USER MANDATE 2026-05-21: AFTER 7D optimized settings, ALWAYS run 4yr on
+    # the new settings. Both reported in the Unified Newsletter.
+    stores_4yr = _load_window(None)
+    s4, n4, p4, w4 = run_test(stores_4yr, new_cfg)
     results["d4yr"] = {"sharpe": round(s4, 4), "trades": n4, "pnl_usd": round(p4, 2), "wr": round(w4, 4), "tier": mg.tier_name(s4)}
     # Score combines 7D recency-bias with 4yr generalization. Both must be positive
     # for promotion; 4yr is the harder gate.
