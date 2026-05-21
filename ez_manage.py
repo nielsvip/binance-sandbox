@@ -24277,6 +24277,8 @@ class MultiAccountTradeManager:
                             except Exception:
                                 pass
                         # 2026-05-06 USER MANDATE — emergency safety closes bypass NEWBORN_PROTECT.
+                        # 2026-05-21 22:54 USER (ORDI incident): NEWBORN_LOSS_KILL + R1_DC_LOW4_3M_EMERGENCY
+                        # also bypass — they're the tighter newborn-loss protections the user explicitly mandated.
                         _nb_reason_up = (reason or "").upper()
                         _nb_emergency = (
                             "DC_BB_D_BREAK_REVERSE" in _nb_reason_up
@@ -24285,6 +24287,8 @@ class MultiAccountTradeManager:
                             or "UNDERWATER_HEDGE_OR_CLOSE" in _nb_reason_up
                             or "WT15M_AGAINST" in _nb_reason_up
                             or "ALL_TF_AGAINST" in _nb_reason_up
+                            or "NEWBORN_LOSS_KILL" in _nb_reason_up
+                            or "R1_DC_LOW4_3M_EMERGENCY" in _nb_reason_up
                         )
                         if not _nb_dc_broken and not _nb_emergency:
                             logger.critical(
@@ -37875,6 +37879,60 @@ async def process_position(
             f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts"
         )
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # NEWBORN_LOSS_KILL — USER MANDATE 2026-05-21 22:47 (post-ORDIUSDC incident).
+    # Force-close any position younger than NEWBORN_LOSS_KILL_WINDOW_MIN whose gain has
+    # dropped below NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT. Tighter than R1 (which waits
+    # for DC4 breach); intended to kill top-of-range entries the instant they go red.
+    # Hedges excluded — hedge sizing/exit has its own logic.
+    # Bypasses UNIVERSAL_NOLOSS_GATE via reason "NEWBORN_LOSS_KILL" added to bypass list.
+    # ROLLBACK: config.NEWBORN_LOSS_KILL_ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", True))
+        and not bool(getattr(position, "is_hedge", False))
+    ):
+        try:
+            _nlk_opened = getattr(position, "opened_at", None)
+            _nlk_age_min = -1.0
+            if isinstance(_nlk_opened, datetime):
+                _nlk_age_min = (datetime.now(timezone.utc) - _nlk_opened).total_seconds() / 60.0
+            _nlk_window = safe_fetch_float(getattr(config, "NEWBORN_LOSS_KILL_WINDOW_MIN", 30.0), 30.0)
+            _nlk_threshold = safe_fetch_float(getattr(config, "NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT", -0.5), -0.5)
+            _nlk_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+            if 0 <= _nlk_age_min <= _nlk_window and _nlk_gain <= _nlk_threshold:
+                _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _nlk_is_long = position_side == "LONG"
+                _nlk_close_side = "SELL" if _nlk_is_long else "BUY"
+                _nlk_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
+                _nlk_entry_sig = (getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "?")
+                logger.error(
+                    f"⛔ [NEWBORN_LOSS_KILL] {position_key}: age={_nlk_age_min:.1f}m (≤{_nlk_window}m) gain={_nlk_gain:.2f}% (≤{_nlk_threshold:.2f}%) price={current_price:.6f} entry={_nlk_entry:.6f} entry_sig={_nlk_entry_sig[:40]} → CLOSE"
+                )
+                try:
+                    _nlk_result = await trade_manager.execute_now(
+                        position_key=position_key,
+                        account_key=account_key,
+                        symbol=symbol,
+                        original_positionAmt=_nlk_amt,
+                        side=_nlk_close_side,
+                        position_side=position_side,
+                        quantity=_nlk_amt,
+                        old_price=current_price,
+                        unique_id=f"NEWBORN_LOSS_KILL_{int(time.time())}",
+                        reason=f"NEWBORN_LOSS_KILL_age{_nlk_age_min:.1f}m_g{_nlk_gain:.2f}_entry_{str(_nlk_entry_sig)[:30]}",
+                        is_full_close=True,
+                        action="CLOSE",
+                    )
+                    if not (isinstance(_nlk_result, str) and ("BLOCK" in _nlk_result.upper() or "SKIP" in _nlk_result.upper() or "REJECT" in _nlk_result.upper())):
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:NEWBORN_LOSS_KILL_CLOSED"
+                except Exception as _nlk_exec_err:
+                    logger.error(f"[NEWBORN_LOSS_KILL] {position_key}: execute_now failed: {_nlk_exec_err}")
+        except Exception as _nlk_outer:
+            logger.debug(f"[NEWBORN_LOSS_KILL] {position_key} probe err: {_nlk_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
     # R1 — DC_LOW4_3M EMERGENCY CLOSE (USER 2026-05-09).
     # Fixed stop price set at open/augment time (dc_low4_3m LONG / dc_high4_3m SHORT).

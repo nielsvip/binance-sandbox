@@ -929,8 +929,21 @@ class Config:
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-05-20 USER MANDATE: DC_LOW_4 emergency close OFF — replaced by MTF compound exit (2x ATR15m trail + GR/WT/DC/BB rejection). ROLLBACK: True restores newborn-window dc4_3m emergency close.
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # 2026-05-21 22:47 USER MANDATE: RE-ENABLED after ORDIUSDC top-of-range incident — emergency close on dc4_3m breach is back ON. Previous 2026-05-20 OFF was based on assumption that MTF compound exit would replace it; MTF did not fire on ORDI 6%+ drawdown so R1 is restored.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-21 22:47 USER MANDATE — NEWBORN_LOSS_KILL.
+    # After ORDIUSDC bought at 1h channel high then wicked 14%, user mandate:
+    # "STUPIDITIES like ORDI entry AT THE VERY FUCKING TOP of all timeframes can NEVER
+    # happen and EVEN IF THEY DO THEY GET CLOSED IMMEDIATELY when price < entry price."
+    # NEWBORN_LOSS_KILL implements the close-side: any position younger than
+    # NEWBORN_LOSS_KILL_WINDOW_MIN with gain < NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT
+    # is force-closed, bypassing UNIVERSAL_NOLOSS_GATE. Hedges excluded.
+    # ROLLBACK: NEWBORN_LOSS_KILL_ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════════════
+    NEWBORN_LOSS_KILL_ENABLED: bool = True
+    NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0     # window from open within which loss-kill applies
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5  # close newborn position when gain ≤ this (small buffer for noise)
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — replaces RIDICULOUS_LOSS late-fire (PHBUSDT -27% lock-in).
     # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
     # Per-bar check: if current_price breaches frozen level AND gain<0 → CLOSE (FROZEN_ACT_STOP_FROZEN_BREACH).
@@ -1191,6 +1204,7 @@ class Config:
         'ALL_TF_AGAINST',                 # 2026-05-06 user mandate: all TFs against → close primary, hedge becomes main
         # 2026-05-09 USER MANDATE: only R1, R2, hedge-failed can close at loss.
         'R1_DC_LOW4_3M_EMERGENCY',        # newborn-window dc4_3m breach → close
+        'NEWBORN_LOSS_KILL',              # 2026-05-21 USER: newborn position with gain<threshold → close (ORDI-protection)
         'FROZEN_ACT_STOP_FROZEN_BREACH',  # 2026-05-18 USER: price < frozen_dc_low_4h@entry (LONG) / > frozen_dc_high_4h@entry (SHORT) AND gain<0 → close
         'FROZEN_ACT_STOP_ABSOLUTE_FLOOR', # 2026-05-18 USER: gain ≤ FROZEN_ABSOLUTE_FLOOR_PCT_(CRYPTO|TRADIER) → close. Replaces RIDICULOUS_LOSS late-fire (which caught PHBUSDT at -27% not -15%). Active per-bar at entry-frozen activation TF level.
         'R2_WT_VEL_SLOW',                 # wt vel slowdown near 0 gain → close at small positive
@@ -1299,7 +1313,8 @@ class Config:
     # DELTA_GATE_STRONG_BUY_QUICK_BYPASS — MTF state wipes every restart and takes hours to re-arm,
     # so high-conviction QUICK_OPEN scoring entries get blocked for hours post-restart. Parameter-level
     # bypass per "no switch-off" mandate (line 1296). ROLLBACK: set to False.
-    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = True
+    # 2026-05-21 22:47 — REVERTED to False after ORDIUSDC top-of-range incident. MTF_FILTER back ON.
+    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = False
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
     # 2026-05-21 19:35 — REVERTED 19:25 False back to True per user mandate "no switch-off, change parameters instead".
@@ -1539,8 +1554,9 @@ class Config:
     # 2026-05-21 USER: bypass DELTA_GATE for STRONG_BUY and QUICK_OPEN reasons. Trade-resumption
     # after 99% block found in filter-block triage. QUICK_OPEN scanner + scoring-engine STRONG_BUY
     # already pass multiple upstream gates; delta_tracker NO_SIGNAL was vetoing them in addition.
-    # Ablation backtest deferred. ROLLBACK: set to False.
-    DELTA_GATE_STRONG_BUY_QUICK_BYPASS: bool = True
+    # 2026-05-21 22:47 — REVERTED to False after ORDIUSDC top-of-range entry incident (fin GR
+    # 5.0x @ 4.36393 dc_h1h=4.366, then 14% wick). DELTA_GATE is back ON.
+    DELTA_GATE_STRONG_BUY_QUICK_BYPASS: bool = False
     # Reduce/close paths in service
     DELTA_SERVICE_REDUCE_GATE: bool = True  # Service reductions need delta confirmation
     DELTA_SERVICE_TRAILING_STOP: bool = True # Trailing stops use delta context
