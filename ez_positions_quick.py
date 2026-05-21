@@ -14047,11 +14047,12 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         else:
                             _hv_aligned = int(_hv_w1_1h < _hv_w2_1h) + int(_hv_w1_4h < _hv_w2_4h) + int(_hv_w1_D < _hv_w2_D)
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
-                if not hard_exit_reason and not is_hedge:
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)):
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
                     # 2026-04-28 USER RULE: commission-aware. Close must net positive after fees+slippage.
                     # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% earlier today.
                     # Floor lifted to COMMISSION_BUFFER_PCT (0.10%) so a "near-breakeven" close is ACTUALLY breakeven post-fees.
+                    # 2026-05-21 USER MANDATE: hard kill-switch wrapping the whole block. ZECUSDC bled +17% trend via 5+ noise-zone closes.
                     _be_req_profit = bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', True))
                     _be_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
                     _be_min_gain = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', _be_comm_buf))

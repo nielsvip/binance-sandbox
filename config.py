@@ -63,7 +63,7 @@ class Config:
     COMMISSION_BUFFER_PCT: float = 0.10
     REENTRY_PRICE_IMPROVE_PCT: float = 0.10  # require 0.10% price improvement vs exit before reentry
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
-    MAX_AUGMENTS_PER_POSITION: int = 3  # URGENT_FIX: cap total augments, stop piling into losers
+    MAX_AUGMENTS_PER_POSITION: int = 20  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
@@ -1237,8 +1237,8 @@ class Config:
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
     # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
-    WT_3M_FORCE_OPEN_ENABLED: bool = True
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
+    WT_3M_FORCE_OPEN_ENABLED: bool = False  # USER 2026-05-21 04:45: DISABLED — fired LONG ZECUSDC @ $582 with K>90 on 7 TFs in +15.76%/24h parabolic context. No HTF overheat veto; BYPASS_GATES=True meant ALL context ignored. Suicide-prone until SMA_15 pullback pyramid replaces it (vec-validated).
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # USER 2026-05-21 04:45: defense-in-depth — even if master flag flipped True again, gate-bypass off.
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
     # Total votes = sum of bullish indicators across 5 TFs (3m/15m/1h/4h/D), max 35.
@@ -2402,7 +2402,7 @@ class Config:
     SBA_MAX_LOSS_PCT: float = -15.0  # BACKTEST_CHANGE_145: Stop averaging beyond -15% (backtest: -15% and -10% tied)
     SBA_SIZE_FRACTION: float = 0.40  # BACKTEST_CHANGE_145: 40% of START_POSITION_SIZE per add (backtest: 0.40 > 0.25/0.35)
     SBA_MAX_ADDS: int = 2  # BACKTEST_CHANGE_145: Max recovery adds per position (backtest: 2 > 1)
-    SBA_MAX_TOTAL_MULT: float = 2.5  # BACKTEST_CHANGE_145: Position can't exceed 2.5x START_POSITION_SIZE
+    SBA_MAX_TOTAL_MULT: float = 20.0  # 2026-05-21 USER MANDATE: position must be able to compound to 20x start_position_size when price keeps moving favorably. Was 2.5. ROLLBACK: 2.5 restores backtest-145 cap.
     SBA_MIN_SCORE: float = 3.5  # BACKTEST_CHANGE_145: Min bounce score to trigger (backtest: 3.5 > 4.0/4.5, 66% SBA WR)
     SBA_COOLDOWN_POSITION_S: int = 3375  # BACKTEST_CHANGE_145: ~56min between adds (backtest: 15 bars × 15m = 3375s optimal)
     SBA_COOLDOWN_GLOBAL_S: int = 300  # BACKTEST_CHANGE_145: 5min between ANY SBA add (crash guard)
@@ -2556,7 +2556,11 @@ class Config:
     OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT: float = 1.5
     # 2026-04-28 USER RULE: BREAKEVEN_GAIN_EROSION may not close at a loss — only fire when in profit zone
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True
-    BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 0.0     # gate fires only when MIN_GAIN <= current_gain < 0.02
+    # 2026-05-21 USER MANDATE: ZECUSDC flz lost +17% trend ride to 5+ closes at gain 0.11/0.15/0.20/0.24/0.48% age 15-20m.
+    # Combined with MTF_ATR_TRAIL=2x protection (line 1363), this noise-zone scalp is now strictly harmful.
+    # Hard kill via switch + window raised to 50.0–50.5% (effectively unreachable). ROLLBACK: ENABLED=True + MIN_GAIN=0.0.
+    BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
+    BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0     # gate fires only when MIN_GAIN <= current_gain < MIN_GAIN+0.5
     # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL may not close hedge at a loss
     HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT: bool = True
     # 2026-04-28 USER RULE: HEDGE_CLOSE_SCALP Rule C requires combined (hedge+orig) >= 0 before firing
