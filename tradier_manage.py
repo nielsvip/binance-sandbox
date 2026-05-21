@@ -2110,7 +2110,20 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if not hasattr(trade_manager, '_mtfce_startup_ts'):
                 trade_manager._mtfce_startup_ts = time.time()
             _mtfce_min_ts_gate = trade_manager._mtfce_startup_ts
-        _mtfce_pos_open_ts_gate = float(getattr(position, 'opened_at', 0) or 0) if position else 0.0
+        # 2026-05-21 19:15 DATETIME CRASH FIX (user-mandated: 3556 CRASH events in trb log today
+        # all "float() argument must be a string or a real number, not 'datetime.datetime'").
+        # opened_at is a datetime object on positions loaded from disk; bare float() throws.
+        # Pattern mirrors lines 13778/13832/13910/13968 in this file.
+        _mtfce_opened_at = getattr(position, 'opened_at', 0) if position else 0
+        if _mtfce_opened_at is None:
+            _mtfce_pos_open_ts_gate = 0.0
+        elif hasattr(_mtfce_opened_at, 'timestamp'):
+            try: _mtfce_pos_open_ts_gate = float(_mtfce_opened_at.timestamp())
+            except Exception: _mtfce_pos_open_ts_gate = 0.0
+        elif isinstance(_mtfce_opened_at, (int, float)):
+            _mtfce_pos_open_ts_gate = float(_mtfce_opened_at)
+        else:
+            _mtfce_pos_open_ts_gate = 0.0
         if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0
                 and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))
                 and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate):
@@ -3043,7 +3056,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         return "PROCESSED"
 
     except Exception as e:
-        logger.error(f"[{account_key}] 💥 CRASH in process_position for {symbol}: {e}")
+        import traceback as _tb
+        _tb_lines = _tb.format_exc().splitlines()
+        _last = next((l.strip() for l in reversed(_tb_lines) if 'tradier_manage.py' in l), '')
+        logger.error(f"[{account_key}] 💥 CRASH in process_position for {symbol}: {e} | at {_last}")
         return "ERROR"
 
 
@@ -3317,8 +3333,15 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         current_price = 0.0
         if position:
             current_price = getattr(position, 'current_price', 0) or getattr(position, 'mark_price', 0) or 0
+        current_price = float(current_price) if current_price is not None else 0.0
         if current_price <= 0:
-            current_price,ts = await trade_manager.get_current_price(symbol)
+            _gcp = await trade_manager.get_current_price(symbol)
+            if _gcp is None:
+                current_price = 0.0
+            elif isinstance(_gcp, tuple):
+                current_price = float(_gcp[0]) if _gcp and _gcp[0] is not None else 0.0
+            else:
+                current_price = float(_gcp) if _gcp is not None else 0.0
         if current_price <= 0:
             logger.warning(f"[queue_trade_action] No price for {symbol}")
             return False
