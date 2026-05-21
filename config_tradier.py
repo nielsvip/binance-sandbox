@@ -98,7 +98,7 @@ class TradierConfig:
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
     LIVE_ENTRY_ENGINE_ENABLED: bool = False         # 2026-04-29 PATH A REVERTED: 12sym×6mo sample below 100sym×1yr published-Sharpe floor (rule 4b) and 0.874<1.0 trash floor (rule 6). Both numbers were undersize noise. Re-enable only after 114-stock × ≥1yr Tier-2 clears pool_sharpe ≥1.0.
-    WT_DC_HTF_GATE: str = "4h"                      # 2026-04-27 NEW — block WT_DC entry when 4h is against. Closes the gap that DELTA_HTF_GATE had. Values: 'none' / '4h' / '4h_D'
+    WT_DC_HTF_GATE: str = "1h"                      # 2026-05-21 LOOSENED 4h→1h: filter-block triage found 28/day WT_DC_HTF_BLOCK at 4h-against on trb. ROLLBACK: "4h". Values: 'none' / '1h' / '4h' / '4h_D'
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
@@ -1797,8 +1797,8 @@ class TradierConfig:
     # Source: tradier_grtf7_hunt sweep — best result tfs=3 ind=6 → pool_sharpe +0.2587
     # (3× baseline lift, 23 trades, dd=0% on 20-sym × 4mo, sub-floor [DIAGNOSTIC]).
     # ROLLBACK: HTF_MIN_TFS=0 (was 0 — gate fully OFF).
-    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 🚩 NEW BASELINE was 0. ROLLBACK: 0. TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
-    GOLDEN_RULE_MIN_IND: int = 6      # 🚩 NEW BASELINE was 2. ROLLBACK: 2. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-05-21 LOOSENED 3→1: filter-block triage 100% block trb/trc since 5/18. ROLLBACK: 3 (prior). TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
+    GOLDEN_RULE_MIN_IND: int = 2      # 2026-05-21 LOOSENED 6→2: same triage. Original baseline value pre-2026-05-13. ROLLBACK: 6 (prior). Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
     GR_DC_EXTENDED_LONG: float = 0.80  # 2026-05-13 sweep winner: DC=0.80+BB=0.75 pool_sharpe=0.0623 net (20sym LONG+SHORT gr_dcbb sweep)
     GR_BB_EXTENDED_LONG: float = 0.75  # 2026-05-13 sweep winner: confirmed 2-sym (0.69 net) and 20-sym tests
     # USER 2026-05-18: 2-stage activation/entry split (mirrors config.py crypto).
@@ -1815,7 +1815,7 @@ class TradierConfig:
     # ROLLBACK entry: GR_HTF_DIRECT_ENTRY_ENABLED=False (or SCORE_MIN=1000.0).
     # ROLLBACK exit : GR_HTF_DIRECT_EXIT_ENABLED=False (or EXIT_SCORE=1000.0).
     GR_HTF_DIRECT_ENTRY_ENABLED: bool = True       # 🚩 Master entry switch. ROLLBACK: False
-    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 12.0    # 🚩 Min score (n_tfs × min_ind). ROLLBACK: 1000.0
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 6.0     # 2026-05-21 LOOSENED 12→6: live log showed scores=4-6 failing 78×/day. ROLLBACK: 12.0 (prior). Min score (n_tfs × min_ind).
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score for double-size entry. ROLLBACK: 1000.0
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
     GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0

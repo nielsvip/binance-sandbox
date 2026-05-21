@@ -962,7 +962,7 @@ class Config:
     # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 8
+    TRADES_PER_SYM_PER_DAY_MAX: int = 50  # 2026-05-21 LOOSENED 8→50: filter-block triage. OVERTRADE_GUARD counter increments on every queued attempt (not just fills) — 99-100% block rates meant the first 8 failed attempts capped the symbol for the rest of the day. ROLLBACK: 8. Applies to crypto AND tradier.
     FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
@@ -1494,7 +1494,7 @@ class Config:
     DELTA_Z_WINDOW: int = 200
     DELTA_MAX_HOLD_BARS: int = 0  # DISABLED — ride winners until technicals turn. No fixed time exits.
     DELTA_COOLDOWN_BARS: int = 120  # WINNER: 120 bars (6h at 3m)
-    DELTA_HTF_GATE: str = "4h_D"  # WINNER: both 4h AND D must confirm
+    DELTA_HTF_GATE: str = "none"  # 2026-05-21 LOOSENED 4h_D→none: filter-block triage — DELTA_GATE HTF leg fired 95/day on flz blocking entries against side. ROLLBACK: "4h_D" (prior winner). Values: 'none' / '4h' / '4h_D'
     DELTA_ATR_ENTRY_FILTER: bool = False  # WINNER: OFF for crypto
     # LT overrides (for swing mode on specific accounts/positions)
     DELTA_LT_EXIT_TF: str = "4h"  # Crypto LT: exit on 4h (stoch_cross)
@@ -2228,8 +2228,8 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 2026-05-13 USER MANDATE: was 0 (off). TFs=[3m,15m,1h,4h,D]. All callsites now read this — no hardcoded overrides.
-    GOLDEN_RULE_MIN_IND: int = 5  # 2026-05-13 USER MANDATE: was 1. Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree (5 = all 5 indicators must align).
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-05-21 LOOSENED 3→1: filter-block triage 332/day GOLDEN_RULE_CONSENSUS_BLOCK on flz, 0 fresh OPENs in 7d. ROLLBACK: 3 (prior 2026-05-13 baseline). TFs=[3m,15m,1h,4h,D].
+    GOLDEN_RULE_MIN_IND: int = 2  # 2026-05-21 LOOSENED 5→2: same triage. ROLLBACK: 5 (prior). Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree.
     # 2026-05-12 USER MANDATE: alternate TOTAL-VOTE-SCORE gate (multiplicative).
     # When > 0: passes if SUM across all TFs of (indicators_agreeing per TF) >= GR_TOTAL_VOTE_SCORE_MIN.
     # Range: 1 (loosest, 1 vote anywhere) ... 35 (5 TFs × 7 indicators all agreeing — tightest possible for crypto).
