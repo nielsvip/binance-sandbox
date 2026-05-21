@@ -694,6 +694,7 @@ class SweepConfig:
     # produced baseline-identical sweep results when re-enabled because vec path
     # had no implementation. Default OFF per current config.py/config_tradier.py.
     HTF_TREND_VETO_ENABLED: bool = False                  # mirrors ez_manage.py:18660
+    HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0             # 2026-05-21 wired knob (engine-only — vec uses binary alignment)
     R3_HTF_FLIP_EXIT_ENABLED: bool = False                # mirrors ez_manage.py:38260
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = False             # mirrors ez_manage.py:38290
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False           # mirrors ez_manage.py:35464
