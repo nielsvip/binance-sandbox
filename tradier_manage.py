@@ -8419,7 +8419,25 @@ class TradierTradeManager:
                         if current_qty == 0: continue
                         deviation_pct = (ideal_qty - current_qty) / current_qty
                         if deviation_pct < -0.20:
-                            qty_to_reduce = current_qty - ideal_qty
+                            # 2026-05-21 SENTIMENT_FADE_MODE wiring (user-mandated): mirror
+                            # backtest_v8_engine.py vec-proxy dispatch at line ~3748. Default
+                            # "REDUCE" preserves prior production behavior; "CLOSE" lets
+                            # PRICE_CROSS_BACK_REENTRY / RECOVERY_AUGMENT take over on the
+                            # positionAmt==0 path; "DISABLED" skips entirely.
+                            _sent_mode = str(getattr(config, 'SENTIMENT_FADE_MODE', 'REDUCE')).upper()
+                            if _sent_mode == 'DISABLED':
+                                logger.info(f"[REBAL_SENTIMENT_FADE_DISABLED] {symbol} {side}: SENTIMENT_FADE_MODE=DISABLED — skipping fade rebalance")
+                                continue
+                            if _sent_mode == 'CLOSE':
+                                qty_to_reduce = current_qty
+                                _is_full_close = True
+                                _mode_suffix = '_MODE_CLOSE'
+                                _action = 'CLOSE'
+                            else:
+                                qty_to_reduce = current_qty - ideal_qty
+                                _is_full_close = False
+                                _mode_suffix = ''
+                                _action = 'REDUCE'
                             if qty_to_reduce * current_price > 100: # Only if moving > $100
                                 # STRICT_NO_LOSS: Never reduce at a loss — IBIT disaster -$3,148 on Mar 5-11
                                 _gain_pct = getattr(pos, 'gain', 0) or 0
@@ -8438,8 +8456,8 @@ class TradierTradeManager:
                                 if _rebal_tf_against < 2:
                                     logger.info(f"[REBAL_WT_BLOCK] {symbol} {side}: sentiment wants reduce but only {_rebal_tf_against}/4 TFs against — HOLDING")
                                     continue
-                                reason = f"SENTIMENT_FADE ideal={int(ideal_qty)} cur={int(current_qty)} loc={i.get('0market_sentiment_local',0):.1f} WT{_rebal_tf_against}TF"
-                                logger.info(f"📉 {symbol} REBALANCE REDUCE: {reason}")
+                                reason = f"SENTIMENT_FADE ideal={int(ideal_qty)} cur={int(current_qty)} loc={i.get('0market_sentiment_local',0):.1f} WT{_rebal_tf_against}TF{_mode_suffix}"
+                                logger.info(f"📉 {symbol} REBALANCE {_action}: {reason}")
                                 _acct = pk.split(':')[0] if ':' in pk else 'trb'
                                 # Stamp attempt BEFORE firing so a failed order still blocks re-fire for cooldown window.
                                 self._rebal_attempt_ts[pk] = _now_ts
@@ -8447,7 +8465,7 @@ class TradierTradeManager:
                                     _acct, pk, symbol, qty_to_reduce, current_price,
                                     "SELL" if side == "LONG" else "BUY",
                                     side, f"rebal_{int(time.time())}",
-                                    action="REDUCE", reason=reason, override_qty=qty_to_reduce)
+                                    action=_action, reason=reason, override_qty=qty_to_reduce)
                         elif deviation_pct > 0.25:
                             # Use higher threshold for adding to be conservative
                             qty_to_add = ideal_qty - current_qty
@@ -10234,7 +10252,7 @@ class TradierTradeManager:
             # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False in config_tradier.py.
             # ═══════════════════════════════════════════════════════════════════════════
             try:
-                if is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                if is_entry_action and action != 'REENTRY' and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}

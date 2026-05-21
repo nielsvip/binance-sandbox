@@ -22562,7 +22562,8 @@ class MultiAccountTradeManager:
         # ROLLBACK: set MTF_ARMED_ENTRY_ENABLED=False in config.py.
         # ═══════════════════════════════════════════════════════════════════════════
         try:
-            if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+            if (("REENTRY" not in _kill_act)
+                    and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):

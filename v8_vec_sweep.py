@@ -2643,6 +2643,32 @@ def run_sweep(
     """
     config = config or SweepConfig()
     sides = sides or ["LONG", "SHORT"]
+    # 2026-05-21 PER-SIDE ALLOWLIST FIX (user-mandated): drop (sym, side) cells that the live
+    # system would refuse via symbols_<acct>_long/short.json. Mirrors live tradier_positions.py
+    # is_symbol_tradeable. File missing → fail-open (allow). File present (even empty list) →
+    # honor strictly. Skipped cells don't run the simulation; lower wall-clock, honest numbers.
+    _repo_root = Path(__file__).resolve().parent
+    _vec_allow_long: Optional[set] = None
+    _vec_allow_short: Optional[set] = None
+    if account:
+        _vl_path = _repo_root / f"symbols_{account}_long.json"
+        _vs_path = _repo_root / f"symbols_{account}_short.json"
+        try:
+            if _vl_path.exists():
+                _vec_allow_long = set(json.load(open(_vl_path)))
+        except Exception:
+            _vec_allow_long = None
+        try:
+            if _vs_path.exists():
+                _vec_allow_short = set(json.load(open(_vs_path)))
+        except Exception:
+            _vec_allow_short = None
+    def _vec_side_allowed(_sym: str, _side: str) -> bool:
+        if _side == "LONG":
+            return _vec_allow_long is None or _sym in _vec_allow_long
+        if _side == "SHORT":
+            return _vec_allow_short is None or _sym in _vec_allow_short
+        return True
     start_dt = datetime.fromisoformat(start.replace("Z", "+00:00")) if "T" in start else \
                datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     start_ts = int(start_dt.timestamp())
@@ -2662,11 +2688,14 @@ def run_sweep(
         (sym, side, mode, config, start_ts, max_bars)
         for sym in symbols
         for side in sides
+        if _vec_side_allowed(sym, side)
     ]
     n_tasks = len(tasks)
+    _vec_skipped = len(symbols) * len(sides) - n_tasks
     print(
         f"V8_VEC_SWEEP_START: mode={mode} account={account} symbols={len(symbols)} "
-        f"sides={sides} tasks={n_tasks} workers={n_workers} start={start}",
+        f"sides={sides} tasks={n_tasks} (per_side_skipped={_vec_skipped}) "
+        f"workers={n_workers} start={start}",
         flush=True,
     )
 

@@ -3115,13 +3115,38 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     trade_manager.tradeable_keys = all_position_keys
     trade_manager._last_tradeable_update = float('inf')  # never expire — our 48 symbols are fixed
     trade_manager.symbols = set(stores.keys())
+    # 2026-05-21 PER-SIDE ALLOWLIST FIX (user-mandated): respect symbols_<acct>_long/short.json
+    # instead of broadcasting every NPZ sym to both sides. Live tradier_positions.py reads the
+    # same files; BT engine must mirror or it simulates wrong-side phantom trades that live
+    # correctly refuses (root cause of "BT-only entries" discrepancy on trb 2026-05-21).
+    _long_allow_path = BASE_PATH / f"symbols_{account_key}_long.json"
+    _short_allow_path = BASE_PATH / f"symbols_{account_key}_short.json"
+    try:
+        _long_allow = set(json.load(open(_long_allow_path))) if _long_allow_path.exists() else None
+    except Exception:
+        _long_allow = None
+    try:
+        _short_allow = set(json.load(open(_short_allow_path))) if _short_allow_path.exists() else None
+    except Exception:
+        _short_allow = None
     for sym in stores.keys():
-        for side_attr in [f'symbols_{account_key}_long', f'symbols_{account_key}_short', f'symbols_{account_key}']:
+        _long_ok = (_long_allow is None) or (sym in _long_allow)
+        _short_ok = (_short_allow is None) or (sym in _short_allow)
+        _attrs_to_add = []
+        if _long_ok:
+            _attrs_to_add.append(f'symbols_{account_key}_long')
+        if _short_ok:
+            _attrs_to_add.append(f'symbols_{account_key}_short')
+        if _long_ok or _short_ok:
+            _attrs_to_add.append(f'symbols_{account_key}')
+        for side_attr in _attrs_to_add:
             if hasattr(trade_manager, side_attr):
                 getattr(trade_manager, side_attr).add(sym)
             else:
                 setattr(trade_manager, side_attr, {sym})
-    v8_logger.info(f"Tradeable keys: {len(all_position_keys)} ({len(stores)} symbols × 2 sides)")
+    _na_long = len(_long_allow) if _long_allow is not None else len(stores)
+    _na_short = len(_short_allow) if _short_allow is not None else len(stores)
+    v8_logger.info(f"Tradeable keys: {len(all_position_keys)} ({len(stores)} symbols, allow long={_na_long} short={_na_short})")
 
     trade_manager._startup_complete = True
 
@@ -6751,8 +6776,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if _seeded:
             v8_logger.info(f"Seeded {_seeded} positions from {_seed_file.name}")
     sym_list = list(stores.keys())
-    setattr(manager, f"symbols_long_{account_key}", sym_list)
-    setattr(manager, f"symbols_short_{account_key}", sym_list)
+    # 2026-05-21 PER-SIDE ALLOWLIST FIX (user-mandated): respect symbols_<acct>_long/short.json.
+    # Live attr names are symbols_long_<acct> / symbols_short_<acct> (read by is_symbol_tradeable
+    # in tradier_positions.py:907-908). Previously both attrs were set to full sym_list so the
+    # BT engine simulated NVDA_SHORT / PAAS_LONG etc. that live correctly refuses.
+    _la_long_path = BASE_PATH / f"symbols_{account_key}_long.json"
+    _la_short_path = BASE_PATH / f"symbols_{account_key}_short.json"
+    try:
+        _la_long = set(json.load(open(_la_long_path))) if _la_long_path.exists() else None
+    except Exception:
+        _la_long = None
+    try:
+        _la_short = set(json.load(open(_la_short_path))) if _la_short_path.exists() else None
+    except Exception:
+        _la_short = None
+    _long_list = [s for s in sym_list if (_la_long is None) or (s in _la_long)]
+    _short_list = [s for s in sym_list if (_la_short is None) or (s in _la_short)]
+    setattr(manager, f"symbols_long_{account_key}", _long_list)
+    setattr(manager, f"symbols_short_{account_key}", _short_list)
+    v8_logger.info(f"PER_SIDE_ALLOWLIST {account_key}: long={len(_long_list)}/{len(sym_list)} short={len(_short_list)}/{len(sym_list)}")
     manager.symbols = sym_list
     manager.order_queue = tm_mod.OrderQueue(manager)
     # BACKTEST FIX: deduplication uses real-time (60s/90s) — kills all entries in fast simulation.
