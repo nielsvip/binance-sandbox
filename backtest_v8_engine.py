@@ -2391,6 +2391,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _new_amt = _old_amt + abs(qty)
                     _do_pos.entry_price = (_old_ep * _old_amt + px * abs(qty)) / _new_amt if _new_amt > 0 else px
                     _do_pos.positionAmt = _new_amt; _do_pos.quantity = _new_amt
+                    # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
+                    # Without this opened_at sticks at the original-open value → age 999999m sentinel
+                    # → BREAKEVEN_GAIN_EROSION_STOP fires immediately on tiny gains → orphan churn.
+                    if _old_amt < 0.0001:
+                        _do_pos.entry_price = px
+                        try: _do_pos.opened_at = _sim_datetime_now(timezone.utc)
+                        except Exception: pass
                     _do_pos.augmented_count = getattr(_do_pos, 'augmented_count', 0) + 1
                     try: _do_pos.last_augmentation_time = _sim_datetime_now(timezone.utc)
                     except Exception: pass
@@ -2823,6 +2830,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 new_amt = old_amt + abs(qty)
                 pos.entry_price = (old_ep*old_amt + px*abs(qty))/new_amt if new_amt>0 else px
                 pos.positionAmt = new_amt; pos.quantity = new_amt
+                # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
+                if old_amt < 0.0001:
+                    pos.entry_price = px
+                    try: pos.opened_at = _sim_datetime_now(timezone.utc)
+                    except Exception: pass
             else:
                 class _P:
                     def __init__(s, sy, sd, q, ep):
@@ -5905,6 +5917,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pos.entry_price = (old_entry * old_amt + px * abs(qty)) / new_amt if new_amt > 0 else px
                 pos.positionAmt = new_amt
                 pos.quantity = new_amt
+                # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
+                if old_amt < 0.0001:
+                    pos.entry_price = px
+                    try: pos.opened_at = _sim_now_t(timezone.utc)
+                    except Exception: pass
                 pos.augmented_count = getattr(pos, 'augmented_count', 0) + 1
                 pos.last_augmentation_time = _sim_now_t(timezone.utc)
             else:

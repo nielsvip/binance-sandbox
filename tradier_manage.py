@@ -9801,21 +9801,29 @@ class TradierTradeManager:
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED — losing position (gain={position.gain:.2f}%)")
             return "BLOCKED_NO_GAIN"
-        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain <= 0:
+        # 2026-05-20 RECOVERY_AUG bypass (mirrors queue_trade_action bypass): reason contains
+        # "RECOVERY_AUG" → narrow exception for partial-close trap recovery. evaluate_reentry
+        # already validated price crossed band+age+direction; gain<MIN_GAIN is the EXPECTED
+        # state (position was REDUCEd while losing/break-even and we want back in at recovery).
+        _is_recovery_aug = "RECOVERY_AUG" in (reason or "").upper()
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_recovery_aug and position.gain <= 0:
             logger.warning(f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)")
             return "BLOCKED_NO_GAIN"
         # MIN GAIN AUGMENT GUARD — parity with crypto. NEVER augment a position below MIN_GAIN%.
         _min_aug_gain = getattr(config, 'MIN_GAIN', 3.0)
-        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain < _min_aug_gain:
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_recovery_aug and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
         # HARD WALL: position already open (positionAmt > 0) → NO buy of any kind without MIN_GAIN.
         # Applies to ALL action labels (AUGMENT, REENTRY, OPEN, etc.) — no _is_reentry bypass.
-        # Only exemption: exit actions (CLOSE, REDUCE, PROFIT_TAKE) and WT_D_BOUNCE_AUG.
+        # Only exemption: exit actions (CLOSE, REDUCE, PROFIT_TAKE), WT_D_BOUNCE_AUG, and
+        # 2026-05-20 RECOVERY_AUG (partial-close recovery).
         _pos_qty_hw = abs(float(getattr(position, 'positionAmt', 0) or 0))
-        if not is_exit_action and not _is_wt_d_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+        if not is_exit_action and not _is_wt_d_aug and not _is_recovery_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
             logger.warning(f"[HARD_MIN_GAIN_WALL] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED action={action}")
             return f"BLOCKED_MIN_GAIN_WALL_{position.gain:.2f}pct<{_min_aug_gain}pct"
+        if _is_recovery_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+            logger.critical(f"[HARD_MIN_GAIN_WALL_BYPASS_RECOVERY_AUG] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BYPASS ALLOWED (RECOVERY_AUG reason='{reason[:80]}')")
 
         if action == "OPEN" and position_side == "SHORT" and symbol.upper() in self.non_shortable_symbols:
             logger.warning(f"✋ {symbol} BLOCKED: Symbol not available for short sales on Tradier")
