@@ -400,7 +400,109 @@ def get_eod_scoreboard() -> dict:
     return out
 
 
-def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list, eod: dict = None) -> str:
+def get_zec_research_delta(state: dict) -> dict:
+    """ZEC custom-search delta — every iteration runs 7D then 4yr.
+    USER MANDATE 2026-05-21: always report both windows side-by-side.
+    Feed lives on S1 (zec_settings_search runs there); pull via SSH."""
+    out = {"iters": [], "promotions": [], "best_d7": None, "best_d4yr": None}
+    raw = _ssh_cmd(SERVER_1, "tail -n 500 /home/niels/binance-sandbox/data/zec_supervisor/research_feed.jsonl 2>/dev/null", timeout=20)
+    if not raw:
+        # Mac fallback (if run on S1 directly)
+        feed = BASE_PATH / "data" / "zec_supervisor" / "research_feed.jsonl"
+        if feed.exists():
+            try:
+                raw = feed.read_text()
+            except Exception:
+                raw = ""
+    if not raw:
+        return out
+    last_iter = int(state.get("last_zec_iter", 0))
+    new_iters = []
+    promotions = []
+    best_d7 = None
+    best_d4yr = None
+    max_iter = last_iter
+    try:
+        for line in raw.splitlines():
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            it = int(rec.get("iter", 0))
+            if it <= last_iter:
+                continue
+            new_iters.append(rec)
+            if it > max_iter:
+                max_iter = it
+            d7 = rec.get("d7") or {}
+            d4 = rec.get("d4yr") or {}
+            if best_d7 is None or d7.get("sharpe", -99) > (best_d7.get("d7", {}).get("sharpe", -99)):
+                best_d7 = rec
+            if best_d4yr is None or d4.get("sharpe", -99) > (best_d4yr.get("d4yr", {}).get("sharpe", -99)):
+                best_d4yr = rec
+            if rec.get("promoted"):
+                promotions.append(rec)
+    except Exception as e:
+        logger.warning(f"zec feed read failed: {e}")
+    out["iters"] = new_iters
+    out["promotions"] = promotions
+    out["best_d7"] = best_d7
+    out["best_d4yr"] = best_d4yr
+    out["_state_update"] = {"last_zec_iter": max_iter}
+    return out
+
+
+def _zec_section_html(zec: dict) -> list:
+    """Render ZEC custom research section. Always include 7D + 4yr side-by-side."""
+    parts = ["<h2>ZEC Custom Research (flz:ZECUSDC_LONG)</h2>"]
+    n_new = len(zec.get("iters", []))
+    n_prom = len(zec.get("promotions", []))
+    if n_new == 0:
+        parts.append("<p class='unchanged'>No new iterations since last newsletter.</p>")
+        return parts
+    parts.append(f"<p>New iterations since last digest: <b>{n_new}</b> &middot; Promotions: <b>{n_prom}</b></p>")
+    best7 = zec.get("best_d7") or {}
+    best4 = zec.get("best_d4yr") or {}
+    def _cell(d, key):
+        v = (d or {}).get(key, 0)
+        if isinstance(v, float):
+            return f"{v:+.3f}" if "sharpe" in key else f"{v:.2f}"
+        return str(v)
+    parts.append("<h3>Best of period</h3>")
+    parts.append("<table><tr><th>Best by</th><th>7D Sharpe</th><th>7D trades</th><th>7D PnL$</th><th>4yr Sharpe</th><th>4yr trades</th><th>4yr PnL$</th><th>Mutations</th></tr>")
+    for label, rec in (("7D winner", best7), ("4yr winner", best4)):
+        if not rec:
+            continue
+        d7 = rec.get("d7", {})
+        d4 = rec.get("d4yr", {})
+        muts = ", ".join((rec.get("mutations") or [])[:3])
+        parts.append(
+            f"<tr><td>{label}</td>"
+            f"<td>{_cell(d7,'sharpe')}</td><td>{d7.get('trades',0)}</td><td>{d7.get('pnl_usd',0):.0f}</td>"
+            f"<td>{_cell(d4,'sharpe')}</td><td>{d4.get('trades',0)}</td><td>{d4.get('pnl_usd',0):.0f}</td>"
+            f"<td><code>{muts}</code></td></tr>"
+        )
+    parts.append("</table>")
+    if zec.get("promotions"):
+        parts.append("<h3>Promoted candidates (7D winner AND 4yr non-negative)</h3>")
+        parts.append("<table><tr><th>iter</th><th>7D sh / n / $</th><th>4yr sh / n / $</th><th>mutations</th></tr>")
+        for rec in zec["promotions"][-10:]:
+            d7 = rec.get("d7", {})
+            d4 = rec.get("d4yr", {})
+            muts = ", ".join((rec.get("mutations") or [])[:3])
+            parts.append(
+                f"<tr><td>{rec.get('iter')}</td>"
+                f"<td>{d7.get('sharpe',0):+.2f} / {d7.get('trades',0)} / {d7.get('pnl_usd',0):.0f}</td>"
+                f"<td>{d4.get('sharpe',0):+.2f} / {d4.get('trades',0)} / {d4.get('pnl_usd',0):.0f}</td>"
+                f"<td><code>{muts}</code></td></tr>"
+            )
+        parts.append("</table>")
+    return parts
+
+
+def build_newsletter_html(trader_delta: dict, s1_status: dict, s2_status: dict, local_status: dict, applied: list, eod: dict = None, zec_delta: dict = None) -> str:
     """Build the unified newsletter HTML."""
     now = datetime.now(timezone.utc)
     css = """
@@ -573,6 +675,9 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-size: 11p
             parts.append("<p><b>Recent anomalies (last hour):</b> ")
             chips = [f"{t}/{s}: {n}" for (t, s), n in type_counts.most_common(6)]
             parts.append(", ".join(chips) + "</p>")
+    # ── Section 2.7: ZEC Custom Research (7D + 4yr always paired) ──
+    if zec_delta is not None:
+        parts.extend(_zec_section_html(zec_delta))
     # ── Section 3: Applied to Live ──
     if applied:
         parts.append("<h2>Recently Applied to Live</h2>")
@@ -615,16 +720,19 @@ def run(dry_run: bool = False, force: bool = False):
     applied = get_recently_applied()
     # 5. EOD scoreboard (trb-vs-trc + forgotten table)
     eod = get_eod_scoreboard()
+    # 6. ZEC custom research delta (USER MANDATE 2026-05-21: always pair 7D+4yr)
+    zec_delta = get_zec_research_delta(state)
     # Check if there's anything new
     has_new_sweep = bool(s1_status.get("active_sweeps") or s2_status.get("active_sweeps") or s1_status.get("latest_results") or s2_status.get("latest_results"))
     has_eod = bool(eod.get("balances") or eod.get("held_outperformers"))
-    has_anything = trader_delta.get("has_new") or has_new_sweep or applied or has_eod
+    has_zec = bool(zec_delta.get("iters") or zec_delta.get("promotions"))
+    has_anything = trader_delta.get("has_new") or has_new_sweep or applied or has_eod or has_zec
     if not has_anything and not force:
         logger.info("No new findings or sweep activity — skipping newsletter")
         print("No new findings. Use --force to send anyway.")
         return
     # Build HTML
-    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied, eod=eod)
+    html = build_newsletter_html(trader_delta, s1_status, s2_status, local_status, applied, eod=eod, zec_delta=zec_delta)
     # Count what's new for subject line
     new_parts = []
     if trader_delta.get("new_indicators"):
@@ -660,6 +768,8 @@ def run(dry_run: bool = False, force: bool = False):
         state.update(trader_delta["_state_update"])
     state["last_sweep_s1"] = {"timestamp": now, "active": bool(s1_status.get("active_sweeps")), "n_results": len(s1_status.get("latest_results", []))}
     state["last_sweep_s2"] = {"timestamp": now, "active": bool(s2_status.get("active_sweeps")), "n_results": len(s2_status.get("latest_results", []))}
+    if zec_delta.get("_state_update"):
+        state.update(zec_delta["_state_update"])
     save_state(state)
     elapsed = time.time() - start
     logger.info(f"Done in {elapsed:.0f}s")

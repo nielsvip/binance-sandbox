@@ -26,10 +26,10 @@ RSYNC="rsync -a --no-perms --no-times --inplace --partial"
 
 mkdir -p "$MB_BASE/data/hourly_reconfig" "$MB_BASE/data/canonical_trades" "$MB_BASE/data/sweep_results"
 
-# S1 crypto: flz, fin, inf — full hourly_reconfig dir mirror
+# S1 crypto: flz, fin, inf — hourly_reconfig dir mirror (--exclude=runs/ 2026-05-21: runs/ is 22GB audit trail Mac live trading never reads; chart_server/build_symbol_configs/parity_diff are on-demand tools, run on S1 instead)
 for acct in flz fin inf; do
   echo "[sync] s1:hourly_reconfig/$acct"
-  $RSYNC --timeout=180 \
+  $RSYNC --timeout=180 --exclude='runs/' \
     "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
     "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
 done
@@ -37,7 +37,7 @@ done
 # S1 tradier: trc, trb (was S2 pre-2026-05-08 shutdown — S1 confirmed has trb/trc dirs 2026-05-21)
 for acct in trc trb; do
   echo "[sync] s1:hourly_reconfig/$acct"
-  $RSYNC --timeout=180 \
+  $RSYNC --timeout=180 --exclude='runs/' \
     "niels@157.180.125.52:/home/niels/binance-sandbox/data/hourly_reconfig/${acct}/" \
     "$MB_BASE/data/hourly_reconfig/${acct}/" 2>&1 || echo "  [warn] rsync exit $?"
 done
