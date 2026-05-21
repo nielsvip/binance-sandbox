@@ -1527,6 +1527,11 @@ class Config:
     DELTA_EXIT_OVERRIDE_NOLOSS: bool = True  # Delta exits bypass STRICT_NO_LOSS
     # Hedge paths
     DELTA_GATE_HEDGE_OPEN: bool = False    # Do NOT gate hedges — they must always execute
+    # 2026-05-21 USER: bypass DELTA_GATE for STRONG_BUY and QUICK_OPEN reasons. Trade-resumption
+    # after 99% block found in filter-block triage. QUICK_OPEN scanner + scoring-engine STRONG_BUY
+    # already pass multiple upstream gates; delta_tracker NO_SIGNAL was vetoing them in addition.
+    # Ablation backtest deferred. ROLLBACK: set to False.
+    DELTA_GATE_STRONG_BUY_QUICK_BYPASS: bool = True
     # Reduce/close paths in service
     DELTA_SERVICE_REDUCE_GATE: bool = True  # Service reductions need delta confirmation
     DELTA_SERVICE_TRAILING_STOP: bool = True # Trailing stops use delta context
@@ -1778,6 +1783,12 @@ class Config:
     # Live: 70 BLOCKED_HTF_TREND_VETO_SHORT/5min on men/fin from htfScore=5-8. Wider threshold lets
     # weak-conviction HTF trends through. Sweep [5,6,7,8,10,12,15]. ROLLBACK: 5.
     HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0
+    # 2026-05-21 20:15 — Knob-gated rollback for HTF_TREND_VETO augment-only fix (ez_manage.py:18358).
+    # True  → AUGMENT veto only fires on REAL augments (position has size, action not OPEN). Default after fix.
+    # False → PRE-FIX behavior: AUGMENT veto also catches plain OPENs.
+    # 497 men + 338 fin SHORT OPENs/8h were blocked by the buggy pre-fix block (action=OPEN, is_augment=True
+    # because is_augment=not is_reduce). Per user: backtest and revert if Sharpe delta negative.
+    HTF_AUG_VETO_FIX_ENABLED: bool = True
     HTF_TREND_VETO_BYPASS_REASONS: list = field(default_factory=lambda: [
         "TRADEABLE_KEYS_MANDATORY",
         "RZ_",

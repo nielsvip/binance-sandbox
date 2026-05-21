@@ -18355,14 +18355,21 @@ class MultiAccountTradeManager:
             # `is_augment = not is_reduce` (line 17097) makes OPEN qualify. Block was blocking 497
             # fresh SHORT opens on men + 338 on fin in last 8h ("dir=BULL htfScore=N"). Real augment
             # block also gated by position-has-size check — entry has its own veto at line ~18745.
+            # 2026-05-21 20:15 — knob-gated so fix is backtestable + revertable.
+            #   HTF_AUG_VETO_FIX_ENABLED=True  → NEW behavior (skip block for plain OPENs; only block real AUGMENTs)
+            #   HTF_AUG_VETO_FIX_ENABLED=False → OLD behavior (block plain OPENs too; pre-fix)
+            # Per-sym overlay supported; default True. Flip to False to revert if Sharpe delta negative.
+            _htfv_fix_on = bool(_psym_get(symbol, position_side, "HTF_AUG_VETO_FIX_ENABLED", True))
             _htfv_has_size = position and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) > self.min_qty.get(symbol, 0.0001)
+            _htfv_open_excl = ("OPEN" not in action.upper()) if _htfv_fix_on else True
+            _htfv_size_req = _htfv_has_size if _htfv_fix_on else True
             if (
                 is_augment
-                and _htfv_has_size
+                and _htfv_size_req
                 and "HEDGE" not in action
                 and "QUICK" not in action
                 and "REENTRY" not in action
-                and "OPEN" not in action.upper()
+                and _htfv_open_excl
             ):
                 _htf_min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 3.0), 3.0)
                 _htf_pos_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -18702,6 +18709,14 @@ class MultiAccountTradeManager:
             # 2026-04-23: bypass for SCALP_V3 — scanner uses divergence+velocity as its own
             # signal; delta_tracker requires aligned entries which blocks scalp outliers.
             _is_scalp_v3 = "SCALP_V3_OPEN" in str(reason).upper()
+            # 2026-05-21 USER: STRONG_BUY + QUICK_OPEN bypass to unblock OPENs after filter-block
+            # triage found 99% of QUICK_OPEN_STRONG_BUY firing through scoring engine was being
+            # killed by DELTA_GATE NO_SIGNAL. Config knob DELTA_GATE_STRONG_BUY_QUICK_BYPASS (default
+            # True) lets ops disable without code change. Ablation backtest deferred.
+            _is_strong_buy_or_quick_bypass = (
+                ("STRONG_BUY" in _reason_up_eta or "QUICK_OPEN" in _reason_up_eta)
+                and bool(getattr(config, "DELTA_GATE_STRONG_BUY_QUICK_BYPASS", True))
+            )
             if (
                 self.delta_tracker
                 and action in ("OPEN", "QUICK_OPEN", "REENTRY")
@@ -18709,6 +18724,7 @@ class MultiAccountTradeManager:
                 and not _is_scalp_v3
                 and not _is_reentry_bypass
                 and not _is_force_open_eta
+                and not _is_strong_buy_or_quick_bypass
             ):
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and (
@@ -38512,7 +38528,8 @@ async def process_position(
         if not hasattr(trade_manager, "_mtfce_startup_ts"):
             trade_manager._mtfce_startup_ts = time.time()
         _mtfce_min_ts_gate = trade_manager._mtfce_startup_ts
-    _mtfce_pos_open_ts_gate = float(getattr(position, "opened_at", 0) or 0) if position else 0.0
+    _mtfce_opened_at_raw = getattr(position, "opened_at", None) if position else None
+    _mtfce_pos_open_ts_gate = (_mtfce_opened_at_raw.timestamp() if isinstance(_mtfce_opened_at_raw, datetime) else safe_fetch_float(_mtfce_opened_at_raw, 0.0))
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
