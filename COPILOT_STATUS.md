@@ -1,21 +1,21 @@
-# Copilot Status — 2026-05-21 13:22:56 UTC
+# Copilot Status — 2026-05-21 13:38:12 UTC
 
-**Market Hours:** NO | **Tradier Priority:** YES
+**Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:16:49
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:18:51
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:18:51
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:18:51
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:20:53
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:20:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:20:53
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:22:55
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:22:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:22:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:36:20
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:36:51
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:36:51
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:36:51
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:37:21
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:37:21
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:37:21
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T13:37:52
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T13:37:52
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T13:37:52
 
 ## Missed Trades (trader comparison)
 
@@ -44,8 +44,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
-- [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] tradier_manage.py for trc is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_prices.py is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
