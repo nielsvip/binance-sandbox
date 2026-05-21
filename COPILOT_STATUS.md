@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-21 16:11:04 UTC
+# Copilot Status — 2026-05-21 16:24:46 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:08:41
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T16:09:11
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:09:11
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:09:11
-- **STALE_INDICATORS** [tradier]  — 2026-05-21T16:09:43
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:09:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:09:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:10:13
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:10:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:10:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:22:54
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T16:23:25
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:23:25
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:23:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T16:23:55
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:23:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:23:55
+- **STALE_INDICATORS** [tradier]  — 2026-05-21T16:24:26
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-21T16:24:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-21T16:24:26
 
 ## Missed Trades (trader comparison)
 
@@ -34,18 +34,18 @@ _None_
 - HELD: **USO** LONG (tradier) peak +12.1%, now +5.7%
 - HELD: **GDX** SHORT (tradier) peak +7.8%, now +4.6%
 - HELD: **MU** LONG (tradier) peak +7.4%, now +7.4%
-- HELD: **CIBR** LONG (tradier) peak +5.6%, now +2.1%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.5%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-1.6%
+- HELD: **CIBR** LONG (tradier) peak +4.3%, now +2.1%
 - HELD: **WDAY** SHORT (tradier) peak +3.1%, now +-1.0%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [HIGH] ez_prices.py is NOT running
+**Issues (last 1h):** 14
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
