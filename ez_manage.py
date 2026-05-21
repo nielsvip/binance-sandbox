@@ -17104,6 +17104,30 @@ class MultiAccountTradeManager:
             or "REDUCE" in reason
         )
         is_augment = not is_reduce
+        # ═══ 2026-05-21 USER MANDATE: ZEC_FLZ_LONG 5x sizing ═══
+        # Applies to OPEN/AUGMENT/REENTRY on flz:ZECUSDC LONG only. Hedges excluded
+        # (hedge sizing has its own ratio logic). REDUCE/CLOSE never multiplied — the
+        # is_reduce branch already returned above. ROLLBACK: config.ZEC_FLZ_LONG_SIZE_MULT = 1.0.
+        if (
+            account_key == 'flz'
+            and symbol == 'ZECUSDC'
+            and str(position_side or '').upper() == 'LONG'
+            and is_augment
+            and not is_hedge
+        ):
+            _zec_mult = safe_fetch_float(getattr(config, 'ZEC_FLZ_LONG_SIZE_MULT', 1.0), 1.0)
+            if _zec_mult > 1.0:
+                _orig_q = quantity
+                _orig_ov = override_qty
+                try:
+                    quantity = float(quantity) * _zec_mult if quantity is not None else quantity
+                    if override_qty is not None:
+                        override_qty = float(override_qty) * _zec_mult
+                    logger.critical(
+                        f"[ZEC_FLZ_5X_EXEC] {position_key}: qty {_orig_q}→{quantity} override_qty {_orig_ov}→{override_qty} mult={_zec_mult}x action={action} reason={(reason or '')[:60]}"
+                    )
+                except Exception as _e:
+                    logger.error(f"[ZEC_FLZ_5X_EXEC] failed to apply mult: {_e}")
         position = None
         # ═══ ABSOLUTE RULE: NEVER OPEN AN ALREADY-OPEN POSITION — reclassify to AUGMENT ═══
         if is_augment and "OPEN" in action.upper() and "CLOSE" not in action.upper():

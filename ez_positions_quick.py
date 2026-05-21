@@ -1063,6 +1063,13 @@ def compute_dc_width_sizing(indicators, current_price, is_long, cfg, htf_count, 
     final_mult = max(2.0, min(max_mult, 1.0 + strength * (max_mult - 1.0)))
     return final_mult, f'DC(m={dc_moment:.0f},q={dc_qty:.0f},x={final_mult:.1f})'
 
+def _zec_flz_long_size_mult(account_key, symbol, is_long, config_obj) -> float:
+    # 2026-05-21 USER MANDATE: flz:ZECUSDC_LONG gets ZEC_FLZ_LONG_SIZE_MULT (default 5.0).
+    # Returns 1.0 (no-op) for everything else. ROLLBACK: set ZEC_FLZ_LONG_SIZE_MULT=1.0 in config.
+    if account_key == 'flz' and symbol == 'ZECUSDC' and is_long:
+        return safe_fetch_float(getattr(config_obj, 'ZEC_FLZ_LONG_SIZE_MULT', 1.0), 1.0)
+    return 1.0
+
 def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, config_obj, trade_manager, tracker_data: Dict[str, Any] = None, is_long: bool = True, indicators: Dict[str, Any] = None, metrics: Dict[str, Any] = None, curr_amt: float = 0.0, account_key: str = None) -> float:
     if current_price <= 0: return 0.0
     base_usdc_size = safe_fetch_float(getattr(config_obj, 'START_POSITION_SIZE', 45.0), 45.0)

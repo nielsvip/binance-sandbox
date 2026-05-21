@@ -1220,6 +1220,10 @@ class Config:
         'MTF_DC_REJECT',
         'MTF_BB_REJECT',
         'MTF_GR_WT_EXIT',
+        # 2026-05-21 USER: ZEC supervisor agent (Sonnet) autonomous close, capped 1/hr.
+        # See ZEC_SUPERVISOR_* knobs below and zec_supervisor_agent.py.
+        'AGENT_AUTONOMOUS_CLOSE',
+        'ZEC_SUPERVISOR_CLOSE',
     ])
     # 2026-05-15 USER: SHORT price-cross daemon reentries require wt1_3m crossunder + k_3m>60.
     # 2026-05-16 RE-FLIPPED to False — earlier edit reverted by an external process.
@@ -2588,6 +2592,19 @@ class Config:
     # Hard kill via switch + window raised to 50.0–50.5% (effectively unreachable). ROLLBACK: ENABLED=True + MIN_GAIN=0.0.
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 50.0     # gate fires only when MIN_GAIN <= current_gain < MIN_GAIN+0.5
+    # 2026-05-21 USER MANDATE: ZECUSDC custom flz config.
+    #   ZEC_FLZ_LONG_SIZE_MULT: applied to base_usdc_size in calculate_dynamic_quantity AND to
+    #     augment_qty in WT_3M / WINNER_SIZE / forced sites when account=='flz' & sym=='ZECUSDC' & is_long.
+    #     ROLLBACK: set to 1.0.
+    #   ZEC_SUPERVISOR_*: zec_supervisor_agent.py (Sonnet 4.6) daemon authority.
+    #     AUTONOMOUS_CLOSE_PER_HOUR_MAX caps autonomous closes; OVERRIDE_PATCH unlimited.
+    #     Bypass reasons AGENT_AUTONOMOUS_CLOSE / ZEC_SUPERVISOR_CLOSE in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS.
+    ZEC_FLZ_LONG_SIZE_MULT: float = 5.0
+    ZEC_SUPERVISOR_ENABLED: bool = True
+    ZEC_SUPERVISOR_POLL_INTERVAL_SEC: int = 300
+    ZEC_SUPERVISOR_AUTONOMOUS_CLOSE_PER_HOUR_MAX: int = 1
+    ZEC_SUPERVISOR_MODEL: str = "claude-sonnet-4-6"
+    ZEC_SUPERVISOR_HISTORY_LOOKBACK_MIN: int = 30
     # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL may not close hedge at a loss
     HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT: bool = True
     # 2026-04-28 USER RULE: HEDGE_CLOSE_SCALP Rule C requires combined (hedge+orig) >= 0 before firing
