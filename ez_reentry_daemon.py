@@ -60,7 +60,7 @@ logging.basicConfig(
 logger = logging.getLogger("ez_reentry_daemon")
 
 _HOLD_GLOBAL = Path("/tmp/REENTRY_DAEMON_HOLD")
-_CMD_TTL_S = 300.0  # command files expire after 5 minutes if not consumed
+_CMD_TTL_S = 10.0 * 365.0 * 86400.0  # USER 2026-05-21: reentries NEVER expire. AGE_GATE in ez_manage tightens TF-confirmation as record ages (elevated 24h, strict 48h, extreme 72h). 10y TTL = effectively infinite while keeping JSON field for backward compat.
 _MIN_GAP_S = 60.0   # per-position dedup: don't re-queue within 60s
 _MAX_FIRES_PER_TICK = 20
 _SOFT_EXIT_RE = None  # compiled on first use

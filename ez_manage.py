@@ -46191,10 +46191,11 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                         if not isinstance(cmd, dict) or cmd.get("version", 0) < 2:
                             cmd_file.rename(done_dir / f"bad_{cmd_file.name}")
                             continue
-                        if now > float(cmd.get("expires_at", 0)):
-                            cmd_file.rename(done_dir / f"expired_{cmd_file.name}")
-                            logger.debug(f"[REENTRY_QUEUE] expired cmd {cmd_file.name}")
-                            continue
+                        # USER 2026-05-21: REENTRIES NEVER EXPIRE. AGE_GATE in
+                        # evaluate_reentry_2 tightens TF-confirmation requirements
+                        # as the record ages (elevated 24h / strict 48h / extreme 72h
+                        # — see ez_manage.py:33910). No time-based deletion here.
+                        # (Old behavior dropped cmds after 300s, violating the rule.)
                         pk = cmd.get("position_key", "")
                         if not pk:
                             cmd_file.rename(done_dir / f"bad_{cmd_file.name}")
