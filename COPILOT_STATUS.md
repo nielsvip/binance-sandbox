@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-22 02:46:49 UTC
+# Copilot Status — 2026-05-22 03:01:21 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,11 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-22T02:45:57
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T02:45:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T02:45:57
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T02:45:57
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T02:45:57
+- **STALE_INDICATORS** [tradier]  — 2026-05-22T02:58:15
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T02:58:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T02:58:15
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T02:58:15
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T02:58:15
+- **STALE_INDICATORS** [tradier]  — 2026-05-22T03:00:18
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T03:00:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T03:00:18
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T03:00:18
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T03:00:18
 
 ## Missed Trades (trader comparison)
 
@@ -38,9 +43,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 11
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 50
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
