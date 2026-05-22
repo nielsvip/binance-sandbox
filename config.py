@@ -603,7 +603,13 @@ class Config:
     # Binance Futures USDC pairs), no webhook fallback. Closes at gain >= threshold AND first
     # deceleration; reopens when price re-crosses exit_price. Fires from process_position before
     # other close paths. Bypasses STRICT_NO_LOSS / UNG / hedge gates — close only on POSITIVE gain.
-    MICRO_SCALP_USDC_MAKER_ENABLED: bool = True
+    # 2026-05-22 USER MANDATE: DISABLED globally. Gate ONLY fires on gain>=0.02% AND decelerating —
+    # never on losers (gain<0). Net effect: cuts every winner at the first tiny pullback past 0.02%,
+    # never closes losers. Asymmetric exit. 2026-05-21 incident: ZECUSDC flz closed at +0.666% while
+    # price continued to +1% more. Re-enable ONLY if scalar A/B sweep at thresholds 0.1%..2.0%
+    # (MICROSCALP_THR_* arms in sweep_coordinator) shows POSITIVE delta pool_sharpe vs OFF baseline.
+    # ROLLBACK: set ENABLED=True (and use the threshold that won the sweep).
+    MICRO_SCALP_USDC_MAKER_ENABLED: bool = False
     MICRO_SCALP_USDC_ACCOUNTS: list = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
