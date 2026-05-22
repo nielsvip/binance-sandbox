@@ -18815,6 +18815,29 @@ class MultiAccountTradeManager:
                             f"[HTF_TREND_VETO] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_htfv_wt1_D:.2f} wt2_D={_htfv_wt2_D:.2f} reason={(reason or '')[:50]}"
                         )
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_action={action}"
+            # ═══════════════════════════════════════════════════════════════════════════
+            # HTF_TREND_VETO_ON_REDUCE — 2026-05-22 USER MANDATE: hold bottom entries
+            # until Daily WT flips. Block reduce/close when Daily WT supports position.
+            # Mirrors tradier_manage.py:10476. Bypass: R1_/HEDGE/HEDGE_FAILED/EMERGENCY/
+            # LIQUIDATION/R3_HTF_FLIP/R4_STDEV_MACRO/STRUCTURAL_RANGE_SHIFT only.
+            # Notably: R2_ NOT bypassed (user mandate), PPL NOT bypassed.
+            # ═══════════════════════════════════════════════════════════════════════════
+            if (
+                getattr(config, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)
+                and is_reduce
+                and not ("HEDGE" in (reason or "").upper() and "HEDGE_FAILED" not in (reason or "").upper())
+            ):
+                _hvr_reason_up = (reason or "").upper()
+                _hvr_bypass = ("R1_" in _hvr_reason_up or "HEDGE_FAILED" in _hvr_reason_up or "EMERGENCY" in _hvr_reason_up or "LIQUIDATION" in _hvr_reason_up or "R3_HTF_FLIP" in _hvr_reason_up or "R4_STDEV_MACRO" in _hvr_reason_up or "STRUCTURAL_RANGE_SHIFT" in _hvr_reason_up)
+                if not _hvr_bypass:
+                    _hvr_wt1_D = _sf(i.get("wt1_D", 0), 0)
+                    _hvr_wt2_D = _sf(i.get("wt2_D", 0), 0)
+                    _hvr_data_ok = abs(_hvr_wt1_D) > 1e-9 and abs(_hvr_wt2_D) > 1e-9
+                    if _hvr_data_ok:
+                        _hvr_supports = (is_long and _hvr_wt1_D > _hvr_wt2_D) or ((not is_long) and _hvr_wt1_D < _hvr_wt2_D)
+                        if _hvr_supports:
+                            logger.warning(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} is_long={is_long} wt1_D={_hvr_wt1_D:.2f} wt2_D={_hvr_wt2_D:.2f} reason={(reason or '')[:50]} (Daily WT supports — hold)")
+                            return f"{position_key}_BLOCKED_HTF_TREND_VETO_ON_REDUCE_action={action}"
             if (
                 action
                 in [
@@ -38473,6 +38496,15 @@ async def process_position(
                             _wzg_fired_tf, _wzg_vel, _wzg_vel_prev = _wzg_tf, _v, _vp
                             _wzg_tag = "DECEL" if _decel else "DYING"
                             break
+                    if _wzg_fired_tf:
+                        _wzg_wt1_D = safe_fetch_float(_wzg_ind.get("wt1_D"), 0)
+                        _wzg_wt2_D = safe_fetch_float(_wzg_ind.get("wt2_D"), 0)
+                        _wzg_htf_ok = abs(_wzg_wt1_D) > 1e-9 and abs(_wzg_wt2_D) > 1e-9
+                        if _wzg_htf_ok:
+                            _wzg_htf_supports = (_wzg_is_long and _wzg_wt1_D > _wzg_wt2_D) or ((not _wzg_is_long) and _wzg_wt1_D < _wzg_wt2_D)
+                            if _wzg_htf_supports:
+                                logger.warning(f"[R2_WT_VEL_SLOW_HTF_HOLD] {position_key}: R2 fired {_wzg_fired_tf} but Daily WT supports side (wt1_D={_wzg_wt1_D:.2f} wt2_D={_wzg_wt2_D:.2f}) → HOLD")
+                                _wzg_fired_tf = None
                     if _wzg_fired_tf:
                         _wzg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _wzg_close_side = "SELL" if _wzg_is_long else "BUY"

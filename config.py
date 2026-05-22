@@ -1313,6 +1313,8 @@ class Config:
     # ═══════════════════════════════════════════════════════════════════
     # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
     HTF_TREND_VETO_ENABLED: bool = False                 # was True 2026-05-17; reverted — no sample-floor proof
+    # 2026-05-22 USER MANDATE: bottom entries hold until HTF flips. Block reduce/close when Daily WT supports position.
+    HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True
     R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = False            # was True 2026-05-17; reverted — no sample-floor proof
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
@@ -2172,7 +2174,9 @@ class Config:
     # Step 1 (gain >= PPL_GAIN_PCT): close PPL_FRAC via place_maker_order; fallback send_webhook url_variant="2".
     # Step 2 (gain >= PPL_ARM_GAIN_PCT): arm trailing stop at first-exit price.
     # Step 3 (SL hit: price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
+    # 2026-05-22 DISABLED: closes 50% at +0.5% with zero HTF check — kills bottom entries.
+    # Already disabled for tradier. Hold until HTF flips per user mandate.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger. 2026-04-25 rapid-grid: vectorized optimum 1.125%; 0.8%→2.02, 0.5%→1.52, 0.3%→1.25 pool_sharpe (vs 2.66 at 1.125%). Live stays 0.5% (Finandy latency limits); do not lower further.
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75     # At this gain, upgrade stop from BE+buffer to first_exit_price (0.5% level)

@@ -10484,7 +10484,8 @@ class TradierTradeManager:
                 and is_reduce
                 and not is_hedge):
                 _htfr_reason_up = (reason or '').upper()
-                _htfr_bypass_substrings = ('R1_', 'R2_', 'HEDGE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'EMERGENCY', 'LIQUIDATION', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'TAKE_PROFIT', 'HEDGE_FAILED')
+                # 2026-05-22: R2_ REMOVED from bypass — user mandate: hold until HTF flips. R2 near-BE exits must check Daily WT.
+                _htfr_bypass_substrings = ('R1_', 'HEDGE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'EMERGENCY', 'LIQUIDATION', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'TAKE_PROFIT', 'HEDGE_FAILED')
                 _htfr_bypass = any(s in _htfr_reason_up for s in _htfr_bypass_substrings)
                 if not _htfr_bypass:
                     try:
