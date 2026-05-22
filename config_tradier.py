@@ -1713,12 +1713,12 @@ class TradierConfig:
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
     AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
     BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
-    BB_BREAKOUT_ENABLED: bool = True  # 2026-04-26: Phase 9 alpha enable
+    BB_BREAKOUT_ENABLED: bool = False  # 2026-05-22: vec A/B ΔSharpe=-0.0069 → DISABLED
     BB_BREAKOUT_SCORE: int = 20  # BACKTEST_CHANGE_132: Score bonus for breakout
     BB_BREAKOUT_TF: str = '1h'
     BB_ENTRY_LONG_THRESHOLD: float = -0.2  # BACKTEST_CHANGE_6: BB %B extremes
     BB_ENTRY_SHORT_THRESHOLD: float = 1.0
-    BB_RSI_STOCH_SCALP_ENABLED: bool = True  # BACKTEST_CHANGE_134: BB+RSI+Stoch triple confirmation scalp (73-77% WR)
+    BB_RSI_STOCH_SCALP_ENABLED: bool = False  # 2026-05-22: vec A/B ΔSharpe=-0.0069 → DISABLED
     BB_RSI_STOCH_SCALP_SCORE: int = 12  # BACKTEST_CHANGE_134: Score bonus for triple confirmation
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
     BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
