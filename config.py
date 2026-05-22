@@ -1346,7 +1346,9 @@ class Config:
     # so high-conviction QUICK_OPEN scoring entries get blocked for hours post-restart. Parameter-level
     # bypass per "no switch-off" mandate (line 1296). ROLLBACK: set to False.
     # 2026-05-21 22:47 — REVERTED to False after ORDIUSDC top-of-range incident. MTF_FILTER back ON.
-    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = False
+    # 2026-05-22 21:30 — RE-ENABLED: TOP_OF_RANGE_BLOCK now catches ORDI-type dc_pos≥0.95 entries.
+    # Without this bypass, zero entries for 15.5h post-restart (MTF takes hours to re-arm).
+    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = True
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
     # 2026-05-21 19:35 — REVERTED 19:25 False back to True per user mandate "no switch-off, change parameters instead".
@@ -1588,7 +1590,9 @@ class Config:
     # already pass multiple upstream gates; delta_tracker NO_SIGNAL was vetoing them in addition.
     # 2026-05-21 22:47 — REVERTED to False after ORDIUSDC top-of-range entry incident (fin GR
     # 5.0x @ 4.36393 dc_h1h=4.366, then 14% wick). DELTA_GATE is back ON.
-    DELTA_GATE_STRONG_BUY_QUICK_BYPASS: bool = False
+    # 2026-05-22 21:30 — RE-ENABLED: TOP_OF_RANGE_BLOCK (dc_pos≥0.95 all 1h/4h/D) now prevents
+    # the ORDI scenario. Without bypass, 100% entry block for hours post-restart.
+    DELTA_GATE_STRONG_BUY_QUICK_BYPASS: bool = True
     # Reduce/close paths in service
     DELTA_SERVICE_REDUCE_GATE: bool = True  # Service reductions need delta confirmation
     DELTA_SERVICE_TRAILING_STOP: bool = True # Trailing stops use delta context
