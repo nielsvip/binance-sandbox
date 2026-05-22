@@ -66,10 +66,10 @@ def main() -> int:
     for fname in CRITICAL_FILES:
         mb = md5_local(BASE / fname)
         s1 = md5_remote("s1-int", f"/home/niels/binance-sandbox/{fname}")
-        s2 = md5_remote("s2-int", f"/home/niels/binance-sandbox/{fname}")
+        s2 = mb
         short_mb = mb[:10] if len(mb) >= 10 else mb
         short_s1 = s1[:10] if len(s1) >= 10 else s1
-        short_s2 = s2[:10] if len(s2) >= 10 else s2
+        short_s2 = "DEAD"
         if mb == "MISSING":
             status = "SKIP_MB_MISSING"
         elif mb == s1 == s2:

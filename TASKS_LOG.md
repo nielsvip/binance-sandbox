@@ -2,7 +2,16 @@
 
 Master record of issues, decisions, and pending edits surfaced during the fin-account audit. Updated each turn so context survives compaction.
 
-## Edits SHIPPED 2026-05-08 22:50–23:15 UTC
+## Session Mandates 2026-05-22
+- **Source Control**: NO GitHub required. Do not stage or commit unless specifically asked.
+- **Backups**: ALWAYS use the `/backups/` folder for backing up any file before any change.
+- **Communication**: Minimal confirmations for every single thing. Senior Peer Programmer style.
+- **Environment**: Sandbox is on S1 (`/home/niels/binance-sandbox`).
+- **Safety**: NO LIVE CODE changes unless specifically approved.
+- **Documentation**: Keep .md files updated.
+
+## Edits SHIPPED 2026-05-08 22:55
+
 
 | # | Edit | Files | md5 (Mac=S1 verified) |
 |---|---|---|---|

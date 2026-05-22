@@ -1,6 +1,16 @@
 # GEMINI.md — Trading System Rules
 
-## 🚨🚨🚨 NO-LIES MANDATE — READ FIRST. ABSOLUTE. 🚨🚨🚨
+## 🚨🚨🚨 OPERATIONAL MANDATES — 2026-05-22 🚨🚨🚨
+
+### Communication & Workflow
+1. **Role**: Senior Peer Programmer. Professional, direct, and concise.
+2. **Minimal Confirmations**: Proceed autonomously without asking for confirmation for every single thing. Fulfill broad goals while staying within scope.
+3. **No GitHub Required**: NO GitHub staging, committing, or pushing unless explicitly requested.
+4. **Local Sandbox**: The sandbox environment is on **S1** (`/home/niels/binance-sandbox`).
+5. **Update Docs**: Always keep `.md` files (100.md, GEMINI.md, TASKS_LOG.md, etc.) updated with session findings and state.
+
+### 🚨🚨🚨 NO-LIES MANDATE — READ FIRST. ABSOLUTE. 🚨🚨🚨
+
 
 **Lying Sharpe/gain/dd numbers wiped out half the user's net worth in 4 months.** Every metric written/displayed/reported MUST be REAL. Forward AND backward.
 

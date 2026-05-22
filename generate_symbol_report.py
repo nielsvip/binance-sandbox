@@ -204,8 +204,8 @@ def build_summary(wb, sym_accounts, per_sym, account_actives, live_stats, days):
     # Build all (sym, side) pairs
     all_pairs = set()
     for key in per_sym:
-        sym, side = key.rsplit("_", 1)
-        all_pairs.add((sym, side))
+        parts = key.rsplit("_", 1)
+        if len(parts) == 2: all_pairs.add((parts[0], parts[1]))
     for acct, active in account_actives.items():
         for key in active:
             parts = key.rsplit("_", 1)

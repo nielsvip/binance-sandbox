@@ -1924,7 +1924,7 @@ async def run_daily_cycle(args):
             print(f"\n  Active GTC orders ({len(gtc_orders)}):")
             for occ, info in gtc_orders.items():
                 age = (datetime.now() - datetime.fromisoformat(info["placed_at"])).days if info.get("placed_at") else "?"
-                print(f"    {occ}: {info.get('side','?')} @ ${info['target_price']:.2f} — {info.get('reason', '?')[:50]} — {age}d old")
+                print(f"    {occ}: {info.get('side','?')} @ ${info.get('target_price', 0.0):.2f} — {info.get('reason', '?')[:50]} — {age}d old")
         if review_only:
             print("\n  Review complete (no orders)")
             return

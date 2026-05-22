@@ -837,6 +837,9 @@ class SymState:
     # Phase I 2026-05-19 compound exit state
     _mtf_atr_trail: float = 0.0
     _mtf_ever_outside_dc: bool = False
+    # 2026-05-22 USER: MICRO_SCALP_USDC_CLOSE wire-in. Per-bar prev_gain so the
+    # decel comparison (gain < prev_gain) works in vec just like ez_manage:40000+.
+    prev_gain: float = 0.0
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -1419,7 +1422,7 @@ def simulate_one_symbol(
                     if arr is None or idx >= len(arr):
                         return default
                     return float(arr[idx])
-            _tor_shim = _StoreShim(prices=npz.get("price"), npz=npz)
+            _tor_shim = _StoreShim(prices=npz.get("close"), npz=npz)
             _tor_block_long, _tor_block_short = build_top_of_range_block_masks(_tor_shim, n, config)
         except Exception as _e:
             sys.stderr.write(f"top_of_range_block precompute failed {symbol}/{side}: {_e}\n")
@@ -1969,6 +1972,36 @@ def simulate_one_symbol(
                 _pos.gain_pct = 0.0
                 continue
 
+        # ─── MICRO_SCALP_USDC_CLOSE (USER 2026-05-22 wire-in — matches ez_manage:40000+) ───
+        # Fires when gain >= threshold AND gain < prev_gain (first decel past threshold).
+        # USDC syms only (crypto mode + symbol.endswith("USDC")); stocks use the parallel
+        # MICRO_SCALP_STOCKS_MAKER_ENABLED knob (not wired here yet). Bypasses noloss gates
+        # in live (only fires on positive gain), so close direct.
+        # ROLLBACK: set MICRO_SCALP_USDC_MAKER_ENABLED=False (config.py:606) — the gate goes idle.
+        if (
+            exit_id == EXIT_NONE
+            and state.qty > 0.0001
+            and mode == "crypto"
+            and symbol.endswith("USDC")
+            and bool(getattr(config, "MICRO_SCALP_USDC_MAKER_ENABLED", False))
+        ):
+            _ms_thr = float(getattr(config, "MICRO_SCALP_GAIN_THRESHOLD_PCT", 0.02))
+            if gain >= _ms_thr and gain < state.prev_gain:
+                pnl_pct = gain
+                _ms_reason = f"MICRO_SCALP_USDC_CLOSE_g{gain:.3f}%_prev{state.prev_gain:.3f}%"
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=_ms_reason, pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                state.prev_gain = 0.0
+                _pos.gain_pct = 0.0
+                continue
+
         # ─── NEWBORN_LOSS_KILL (USER 2026-05-21 post-ORDI mandate) ───────────────
         # Closes newborn position the moment gain drops below threshold.
         # Tighter than R1; doesn't require DC4 breach. Bypasses NO_LOSS.
@@ -2514,6 +2547,12 @@ def simulate_one_symbol(
                         state.augmented_count += 1
                         state.last_augment_ts = bar_ts
                         state.gr_last_fire_ts = bar_ts
+
+        # 2026-05-22 USER: end-of-bar bookkeeping — capture current bar's gain as prev_gain
+        # for the next bar's MICRO_SCALP decel comparison. Only meaningful when position is
+        # still open after the exit cascade (closed positions set prev_gain=0 on close).
+        if state.qty > 0.0001:
+            state.prev_gain = gain
 
     # ─── MtM-FINAL-BAR (NO-LIES RULE 2: open losers MUST be appended) ──────
     if state.qty > 0.0001:
