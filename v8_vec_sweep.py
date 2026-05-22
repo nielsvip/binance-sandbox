@@ -567,6 +567,10 @@ class SweepConfig:
     WT_15M_BOUNCE_BB_MIN: float = 0.05        # bb_pct_b lower bound (within BB)
     WT_15M_BOUNCE_BB_MAX: float = 0.95        # bb_pct_b upper bound (within BB)
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
+    # ── BB_BREAKOUT + BB_RSI_STOCH SCALP (Phase 9 — WIRED 2026-05-22) ─────
+    BB_BREAKOUT_ENABLED: bool = True             # price outside BB on TF → entry trigger
+    BB_BREAKOUT_TF: str = '1h'                   # which TF bb_pct_b to check
+    BB_RSI_STOCH_SCALP_ENABLED: bool = True      # triple confirmation: BB + RSI + Stoch
     # ── STRUCTURAL-PATTERN GATES (2026-05-15) — default OFF, sweep-A/B before live ──
     # A1: SPY > 200SMA top-level regime gate (Faber/Antonacci/Clenow/Connors universal)
     SPY_REGIME_GATE_ENABLED: bool = False
@@ -1099,6 +1103,27 @@ def simulate_one_symbol(
             _b15_htf_ok = (~_b15_rising_4h & ~_b15_rising_1h) if config.WT_15M_BOUNCE_REQUIRE_BOTH_HTF \
                 else (~_b15_rising_4h | ~_b15_rising_1h)
         _b15_open_mask = _b15_fresh & _b15_bb_ok & _b15_dir_ok & _b15_htf_ok
+
+    # BB_BREAKOUT — price outside BB on configured TF → entry trigger (2026-05-22)
+    _bb_break_mask = np.zeros(n, dtype=bool)
+    if config.BB_BREAKOUT_ENABLED:
+        _bb_tf = config.BB_BREAKOUT_TF
+        _bb_pct = np.nan_to_num(npz.get(f'bb_pct_b_{_bb_tf}', np.full(n, 0.5, dtype=np.float32))).astype(np.float32)
+        if is_long:
+            _bb_break_mask = _bb_pct > 1.0
+        else:
+            _bb_break_mask = _bb_pct < 0.0
+
+    # BB_RSI_STOCH_SCALP — triple confirmation at extremes → entry trigger (2026-05-22)
+    _brs_mask = np.zeros(n, dtype=bool)
+    if config.BB_RSI_STOCH_SCALP_ENABLED:
+        _brs_bb = np.nan_to_num(npz.get('bb_pct_b_5m', np.full(n, 0.5, dtype=np.float32))).astype(np.float32)
+        _brs_rsi = np.nan_to_num(npz.get('rsi_5m', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
+        _brs_k = np.nan_to_num(npz.get('stoch_k_5m', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
+        if is_long:
+            _brs_mask = (_brs_bb < 0.2) & (_brs_rsi < 30) & (_brs_k < 20)
+        else:
+            _brs_mask = (_brs_bb > 0.8) & (_brs_rsi > 70) & (_brs_k > 80)
 
     # ─── STRUCTURAL GATES PRECOMPUTE (2026-05-15) ─────────────────────────────
     # A1: SPY > 200SMA regime mask (aligned to this symbol's ts).
@@ -1854,6 +1879,9 @@ def simulate_one_symbol(
             # BREAKOUT_RETEST_ARMED (2026-05-18 REWIRE) — seventh trigger (Rule A).
             # Mirrors ez_manage.py:35464+. Stateless simplified form.
             _ra_ok = bool(_ra_fire_mask[i])
+            # BB_BREAKOUT + BB_RSI_STOCH — eighth + ninth triggers (2026-05-22)
+            _bb_break_ok = bool(_bb_break_mask[i])
+            _brs_ok = bool(_brs_mask[i])
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
             # Daily-cap on quality entries (~1-2/day target)
@@ -1871,7 +1899,7 @@ def simulate_one_symbol(
                 # quality entry fires — count it
                 state.quality_entries_today += 1
             else:
-                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok):
+                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok):
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1

@@ -2719,6 +2719,25 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _ee_boost = float(getattr(config, 'LIVE_ENTRY_ENGINE_BOOST_SCORE', 8.0))
                             _entry_score = _entry_score + (_ee_boost * _ee_score_max)
                             _entry_reason = (_entry_reason or '') + f" +ENGINES({','.join(_ee_reasons)})"
+                    # ═══ BB SCORING BOOSTS (Phase 9 — WIRED 2026-05-22) ═══
+                    if getattr(config, 'BB_BREAKOUT_ENABLED', False):
+                        _bb_tf = getattr(config, 'BB_BREAKOUT_TF', '1h')
+                        _bb_pct = float((_entry_ind or {}).get(f'bb_pct_b_{_bb_tf}', 0.5) or 0.5)
+                        if (is_long and _bb_pct > 1.0) or ((not is_long) and _bb_pct < 0.0):
+                            _bb_boost = int(getattr(config, 'BB_BREAKOUT_SCORE', 20))
+                            _entry_score += _bb_boost
+                            _entry_reason = (_entry_reason or '') + f" +BB_BREAK({_bb_tf}={_bb_pct:.2f}+{_bb_boost})"
+                    if getattr(config, 'BB_RSI_STOCH_SCALP_ENABLED', False):
+                        _brs_bb = float((_entry_ind or {}).get('bb_pct_b_5m', 0.5) or 0.5)
+                        _brs_rsi = float((_entry_ind or {}).get('rsi_5m', 50) or 50)
+                        _brs_k = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                        _brs_long = _brs_bb < 0.2 and _brs_rsi < 30 and _brs_k < 20
+                        _brs_short = _brs_bb > 0.8 and _brs_rsi > 70 and _brs_k > 80
+                        if (is_long and _brs_long) or ((not is_long) and _brs_short):
+                            _brs_boost = int(getattr(config, 'BB_RSI_STOCH_SCALP_SCORE', 12))
+                            _entry_score += _brs_boost
+                            _entry_reason = (_entry_reason or '') + f" +BB_RSI_STOCH(bb={_brs_bb:.2f}rsi={_brs_rsi:.0f}k={_brs_k:.0f}+{_brs_boost})"
+                    # ═══ END BB SCORING BOOSTS ═══
                     # tra uses a much higher entry bar so only the strongest HTF
                     # setups fire — long-term hold needs few, very high quality entries.
                     if account_key == 'tra':
