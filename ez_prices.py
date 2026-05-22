@@ -1814,6 +1814,9 @@ class ResamplingAndGapFillEngine:
             redis_key = f"klines:{symbol}:{interval}"
             df_for_redis = final_df.tail(1500).copy()
             df_for_redis['timestamp'] = df_for_redis['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            _ts_dt_cols = [c for c in df_for_redis.columns if c != 'timestamp' and (pd.api.types.is_datetime64_any_dtype(df_for_redis[c]) or c == 'timestamp_dt')]
+            if _ts_dt_cols:
+                df_for_redis = df_for_redis.drop(columns=_ts_dt_cols)
             payload = {
                 "symbol": symbol, 
                 "interval": interval,
