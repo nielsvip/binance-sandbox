@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-22 01:31:15 UTC
+# Copilot Status — 2026-05-22 01:46:56 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T01:26:32
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T01:26:32
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T01:26:32
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T01:28:38
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T01:28:38
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T01:28:38
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T01:28:38
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T01:30:45
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T01:30:45
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T01:30:45
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T01:41:25
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T01:43:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T01:43:31
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T01:43:31
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T01:43:31
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T01:45:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T01:45:54
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T01:45:54
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T01:45:54
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-22T01:46:25
 
 ## Missed Trades (trader comparison)
 
@@ -43,9 +43,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 48
-- [MEDIUM] tradier_positions.py running but log stale (19min)
-- [MEDIUM] tradier_positions.py running but log stale (20min)
-- [MEDIUM] tradier_positions.py running but log stale (21min)
-- [MEDIUM] tradier_positions.py running but log stale (22min)
-- [MEDIUM] tradier_positions.py running but log stale (23min)
+**Issues (last 1h):** 50
+- [HIGH] ez_manage.py for fin is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (38min)
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (39min)

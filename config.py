@@ -952,6 +952,16 @@ class Config:
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5  # close newborn position when gain ≤ this (small buffer for noise)
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True  # 2026-05-22 V2: only close if wt_velocity_TF also against position (not a wick)
     NEWBORN_LOSS_KILL_VEL_TF: str = ""             # auto: "3m" crypto / "5m" tradier when empty
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-22 TOP_OF_RANGE_BLOCK — prevent ORDI-style top-of-range entries.
+    # Block OPEN/AUGMENT when price in top THRESHOLD% of DC channel on ALL listed TFs
+    # (LONG), or bottom (SHORT). Vec A/B (sub-floor, 7 syms × 1.95yr): ΔSharpe=+0.0009.
+    # Marginal positive — user mandate "if positive deploy". ROLLBACK: ENABLED=False.
+    # ═══════════════════════════════════════════════════════════════════════════
+    TOP_OF_RANGE_BLOCK_ENABLED: bool = True
+    TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
+    TOP_OF_RANGE_BLOCK_TF_LIST: str = "1h,4h,D"
+    TOP_OF_RANGE_BLOCK_REQUIRE_ALL: bool = True
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — replaces RIDICULOUS_LOSS late-fire (PHBUSDT -27% lock-in).
     # At first per-bar evaluation, freeze dc_low_4h (LONG) / dc_high_4h (SHORT) on position.
     # Per-bar check: if current_price breaches frozen level AND gain<0 → CLOSE (FROZEN_ACT_STOP_FROZEN_BREACH).

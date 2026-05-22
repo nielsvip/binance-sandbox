@@ -22611,6 +22611,53 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛡️ TOP_OF_RANGE_BLOCK (USER 2026-05-22, post-ORDIUSDC mandate)
+        # Block OPEN/AUGMENT when price is in the top THRESHOLD% of DC channel on
+        # ALL listed TFs (default 1h,4h,D at 0.95). For LONG: blocks when at top.
+        # For SHORT: blocks when at bottom. Backstop against ORDI-style top-of-range
+        # entries via GR/STRONG_BUY scanners. Vec A/B (sub-floor): ΔSharpe +0.0009.
+        # Fail-open on any exception. ROLLBACK: TOP_OF_RANGE_BLOCK_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (
+                bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False))
+                and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                and "HEDGE" not in (reason or "").upper()
+            ):
+                _tor_threshold = safe_fetch_float(getattr(config, "TOP_OF_RANGE_BLOCK_THRESHOLD", 0.95), 0.95)
+                _tor_tfs_raw = getattr(config, "TOP_OF_RANGE_BLOCK_TF_LIST", "1h,4h,D")
+                _tor_tfs = [t.strip() for t in (_tor_tfs_raw if isinstance(_tor_tfs_raw, (list, tuple)) else str(_tor_tfs_raw).split(","))]
+                _tor_tfs = [t for t in _tor_tfs if t]
+                _tor_require_all = bool(getattr(config, "TOP_OF_RANGE_BLOCK_REQUIRE_ALL", True))
+                _tor_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                _tor_is_long = (position_side or "LONG") == "LONG"
+                if _tor_sym and _tor_tfs and current_price and current_price > 0:
+                    _tor_ind = _pp_shared_ind if _pp_shared_ind else (await ii(self, _tor_sym) or {})
+                    _tor_long_extremes = []
+                    _tor_short_extremes = []
+                    for _tor_tf in _tor_tfs:
+                        _tor_low = safe_fetch_float(_tor_ind.get(f"dc_low_{_tor_tf}"), 0.0)
+                        _tor_high = safe_fetch_float(_tor_ind.get(f"dc_high_{_tor_tf}"), 0.0)
+                        if _tor_low <= 0 or _tor_high <= 0 or _tor_high <= _tor_low:
+                            continue
+                        _tor_pos = (current_price - _tor_low) / (_tor_high - _tor_low)
+                        _tor_pos = max(0.0, min(1.0, _tor_pos))
+                        _tor_long_extremes.append(_tor_pos >= _tor_threshold)
+                        _tor_short_extremes.append(_tor_pos <= (1.0 - _tor_threshold))
+                    if _tor_long_extremes:
+                        if _tor_is_long:
+                            _tor_blocked = all(_tor_long_extremes) if _tor_require_all else any(_tor_long_extremes)
+                            _tor_side_str = "LONG"
+                        else:
+                            _tor_blocked = all(_tor_short_extremes) if _tor_require_all else any(_tor_short_extremes)
+                            _tor_side_str = "SHORT"
+                        if _tor_blocked:
+                            _tor_levels = ",".join([f"{tf}={lvl:.2f}" for tf, lvl in zip(_tor_tfs, [(current_price - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) / max(1e-9, safe_fetch_float(_tor_ind.get(f'dc_high_{tf}'), 1.0) - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) for tf in _tor_tfs])])
+                            logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key} act={action} side={_tor_side_str}: BLOCKED price={current_price:.6f} dc_pos[{_tor_levels}] threshold={_tor_threshold} reason={(reason or '')[:50]}")
+                            return f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}"
+        except Exception as _tor_e:
+            logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key}: check error (fail-open): {_tor_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ MTF FILTER (USER 2026-05-20) — Phase I REJ_1h winner config gates entries.
         # Phase J validated: pool_S +0.28, avg DD 6.5%, +113%/sym/yr on 293 stocks × 2.13y.
         # MTF runs as a FILTER on existing entries (not a replacement):

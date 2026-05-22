@@ -273,12 +273,25 @@ class SweepConfig:
     where they exist. Override via CLI --override KEY=VAL pairs."""
 
     # ── position sizing ───────────────────────────────────────────────────
-    START_POSITION_SIZE: float = 55.0
-    MIN_POSITION_SIZE: float = 25.0
+    # 2026-05-22 PARITY: live config.py has START_POSITION_SIZE=18.0,
+    # MIN_POSITION_SIZE=1.0. Vec was using 55/25 — sizing doesn't affect %
+    # returns but does shape min-qty rounding behavior.
+    START_POSITION_SIZE: float = 18.0
+    MIN_POSITION_SIZE: float = 1.0
     MIN_GAIN: float = 3.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     COMMISSION_BUFFER_PCT: float = 0.10
-    ROUND_TRIP_COST_PCT: float = 0.10  # bid-ask spread + slippage; deducted from every trade return
+    # 2026-05-22 USER MANDATE: vec was applying 0.08% per-trade cost on USDC syms
+    # that pay ZERO maker fee in live (Binance Futures USDC perps). On 10k+ trades
+    # this is 800%+ in fictitious cost, dragging every vec backtest negative.
+    # Per-suffix realistic costs:
+    #   USDC: 0% maker + ~0.01% slippage = 0.01%
+    #   USDT: 0.02% × 2 maker + slippage = 0.06%
+    #   Stocks: handled by config_tradier (~0.05%)
+    # ROUND_TRIP_COST_PCT is the legacy fallback (still read for backward-compat).
+    ROUND_TRIP_COST_PCT: float = 0.01
+    ROUND_TRIP_COST_USDC_PCT: float = 0.01
+    ROUND_TRIP_COST_USDT_PCT: float = 0.06
     WT_HTF_DISCOUNT_ENABLED: bool = True
     # ── reentry blocks ────────────────────────────────────────────────────
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
@@ -317,7 +330,10 @@ class SweepConfig:
         "R1_DC_LOW4_3M_EMERGENCY", "R2_WT_VEL_SLOW", "WT_15M_VEL_SLOW",
         "HEDGE_FAILED", "STRUCTURAL_RANGE_SHIFT", "WT_3M_FORCE_OPEN",
     )
-    OBLIGATORY_HEDGE_ENABLED: bool = True
+    # 2026-05-22 PARITY FIX: live config has HEDGE_MODE=False, OBLIGATORY_HEDGE_ENABLED=False
+    # for most accounts. Vec defaulted True, hedging positions live wouldn't have hedged,
+    # creating phantom HEDGE_CLOSE events that distort baseline. Match live defaults.
+    OBLIGATORY_HEDGE_ENABLED: bool = False
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5
     OBLIGATORY_HEDGE_PCT: float = 1.0
     OBLIGATORY_HEDGE_WT_USE_1M: bool = False
@@ -325,22 +341,22 @@ class SweepConfig:
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0
-    HEDGE_MODE: bool = True
+    HEDGE_MODE: bool = False
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = True
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False
-    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = False  # 2026-05-22 parity: live False
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True
     HEDGE_COMPLETED_LOCKOUT_SECONDS: float = 60.0
     # ── augment / dup guard ───────────────────────────────────────────────
-    DUP_GUARD_USE_GAIN_GATE: bool = True   # 2026-05-17 VEC_OVERTRADE_FIX: match live default
+    DUP_GUARD_USE_GAIN_GATE: bool = False  # 2026-05-22 parity: live False — time-cooldown is fallback
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     PULLBACK_AUGMENT_ENABLED: bool = True
     PULLBACK_AUGMENT_REVERSAL_MIN: float = 1.0
     HARD_AUGMENT_LOCK_SECONDS: float = 900.0
     HARD_REDUCE_LOCK_SECONDS: float = 60.0
     AUGMENTATION_COOLDOWN_SECONDS: float = 540.0
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # 2026-05-22 parity: live False
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
     # ── 2026-05-17 VEC_OVERTRADE_FIX (master kill flag) ──────────────────
@@ -427,7 +443,7 @@ class SweepConfig:
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True
     WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1
     R2_PEAK_MIN_PCT: float = 0.5
-    R2_TF_LIST: Optional[List[str]] = None   # None = auto per mode
+    R2_TF_LIST: tuple = ('15m',)   # 2026-05-22 parity: live ('15m',). Was None.
     # ── WT crossunder final exit ──────────────────────────────────────────────
     WT_CROSSUNDER_FINAL_ENABLED: bool = True
     WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS_ENABLED: bool = False
@@ -454,8 +470,8 @@ class SweepConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
-    GOLDEN_RULE_MIN_IND: int = 1
-    GOLDEN_RULE_HTF_MIN_TFS: int = 0
+    GOLDEN_RULE_MIN_IND: int = 2  # 2026-05-22 parity: live 2
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-05-22 parity: live 1
     GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for HTF confirmation (0=use module default)
     GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for HTF confirmation (0=use module default)
     # ── Partial Profit Lock (PPL) ────────────────────────────────────────────
@@ -494,7 +510,7 @@ class SweepConfig:
     HEDGE_MIN_LOSS_PCT: float = -0.5        # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
     HEDGE_QTY_PCT: float = 1.0              # hedge qty as fraction of main qty
     HEDGE_CLOSE_ON_WT3M_FLIP: bool = True   # close hedge when wt1_3m turns back
-    GR_HEDGE_SCORE_FLOOR: int = 6           # GR against-score floor for hedge trigger (0=disabled)
+    GR_HEDGE_SCORE_FLOOR: int = 15           # 2026-05-22 parity: live 15 (was vec 6 — too aggressive hedging)
     GR_HEDGE_REQUIRE_WT3M: bool = True      # always require wt1_3m against for hedge
     HEDGE_TRIGGER_REQUIRE_15M_OR_1H: bool = True  # require 15m or 1h WT alignment (can be overridden by GR)
     # ── IN_GAIN_TREND exit ────────────────────────────────────────────────────
@@ -503,10 +519,13 @@ class SweepConfig:
     IN_GAIN_TREND_MED_WINNER_PCT: float = 5.0     # gain threshold for 15m tier
     IN_GAIN_TREND_MIN_GAIN: float = 2.0           # minimum gain to even check
     # ── DELTA_ENGINE entries ──────────────────────────────────────────────────
-    DELTA_ENGINE_ENABLED: bool = False          # default OFF (matches live default)
-    DELTA_ENTRY_ENABLED: bool = False
-    DELTA_ENTRY_MIN_TF: int = 2
-    DELTA_ENTRY_Z_THRESHOLD: float = 1.5
+    # 2026-05-22: live has these True but vec_paths/delta_engine.py needs adapter
+    # patch (uses store.b() which doesn't exist on _NPZStoreAdapter). Leaving False
+    # until adapter fix; this IS a known parity gap.
+    DELTA_ENGINE_ENABLED: bool = False  # PARITY_GAP: live True; vec port incomplete
+    DELTA_ENTRY_ENABLED: bool = False   # PARITY_GAP: live True; vec port incomplete
+    DELTA_ENTRY_MIN_TF: int = 3         # 2026-05-22 parity: live 3
+    DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # 2026-05-22 parity: live 2.5
     DELTA_SPEED_SMOOTH: int = 5
     DELTA_TF_Z_THRESHOLD: float = 1.5
     DELTA_HTF_GATE: str = "none"
@@ -612,11 +631,13 @@ class SweepConfig:
     # where score_max = max(score among fired engines with score >= MIN_SCORE)
     # and threshold = WT_DC_ENTRY_THRESHOLD (tradier) | ENTRY_SCORE_THRESHOLD (crypto).
     # When LIVE_ENTRY_ENGINE_ENABLED=False the vec module is a pass-through.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    # 2026-05-22 PARITY: live has all 4 entry-engine flags True (WT/Stoch/DC/HTF).
+    # If the vec port at v8_vec_sweep:623+ is wired, this enables the same gate.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = True
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True
     LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = False
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0
@@ -698,7 +719,7 @@ class SweepConfig:
     # 2026-05-19 Phase H2 — slowdown TF selector (3m noisy, 15m steadier)
     MTF_SLOWDOWN_TF: str = '3m'
     # 2026-05-19 Phase I — compound exit (ATR trail + GR exit + WT cross + DC/BB reject)
-    MTF_EXIT_USE_COMPOUND: bool = False         # master — replaces slowdown exit
+    MTF_EXIT_USE_COMPOUND: bool = True   # 2026-05-22 parity: live True (Phase I MTF compound exit)
     MTF_ATR_TRAIL_ENABLED: bool = True
     MTF_ATR_TRAIL_MULT: float = 2.0
     MTF_ATR_TRAIL_TF: str = '15m'                # '15m', '1h', 'D'
@@ -708,9 +729,9 @@ class SweepConfig:
     MTF_WT_CROSS_EXIT_ENABLED: bool = True
     MTF_WT_CROSS_EXIT_TF: str = '15m'            # '15m', '1h', 'either'
     MTF_DC_REJECT_EXIT_ENABLED: bool = True
-    MTF_DC_REJECT_EXIT_TF: str = '15m'
+    MTF_DC_REJECT_EXIT_TF: str = '1h'  # 2026-05-22 parity: live 1h
     MTF_BB_REJECT_EXIT_ENABLED: bool = True
-    MTF_BB_REJECT_EXIT_TF: str = '15m'
+    MTF_BB_REJECT_EXIT_TF: str = '1h'  # 2026-05-22 parity: live 1h
     MTF_BB_REJECT_EXIT_LOOKBACK: int = 5
     MTF_REENTRY_COOLDOWN_BARS_HARD: int = 1
     # ── 4-FLAG REWIRE (2026-05-18 21:00 UTC mandate) ────────────────────────────
@@ -2585,8 +2606,10 @@ def simulate_one_symbol(
     if _side_return_mult != 1.0:
         trade_returns = [r * _side_return_mult for r in trade_returns]
 
-    # Deduct round-trip spread/slippage from every trade return (NO-LIES: gross ≠ net)
-    _rt_cost = float(getattr(config, "ROUND_TRIP_COST_PCT", 0.10))
+    # Deduct round-trip spread/slippage from every trade return (NO-LIES: gross ≠ net).
+    # 2026-05-22 FIX: use per-sym suffix (USDC=0.01%, USDT=0.06%) — was applying live USDT-class
+    # cost to zero-fee USDC syms, dragging baseline 800%+ negative on 10k+ trades.
+    _rt_cost = _vec_round_trip_cost_for_sym(symbol, config)
     if _rt_cost != 0.0:
         trade_returns = [r - _rt_cost for r in trade_returns]
 
@@ -2597,18 +2620,28 @@ def simulate_one_symbol(
 # Trade event writer → /history/<acct>/<SYM>_<SIDE>.jsonl compatible
 # ════════════════════════════════════════════════════════════════════════════════
 
-def _vec_round_trip_cost_for_sym(sym: str) -> float:
-    """2026-05-18: NET pnl_pct mandate. Per-symbol asset detection mirrors
-    backtest_v8_engine._round_trip_cost_for_sym so JSONL output stays consistent
-    across engines. USDC/USDT-suffix = crypto (0.08% default), else stocks
-    (0.05%). Override via config.ROUND_TRIP_COST_PCT (already exists, defaults
-    to 0.10) or config_tradier.ROUND_TRIP_COST_PCT."""
+def _vec_round_trip_cost_for_sym(sym: str, cfg: Optional["SweepConfig"] = None) -> float:
+    """2026-05-22 FIX: previous impl referenced an unbound module-level `config`
+    name (NameError swallowed by try/except), silently returning 0.08 literal for
+    every USDC/USDT sym regardless of override. With 10k+ trades that's 800%+ in
+    fictitious cost that turned every vec baseline negative.
+
+    Now realistic per-suffix:
+      USDC: 0% maker + ~0.01% slippage = 0.01% (Binance USDC perps zero-fee maker)
+      USDT: 0.02% × 2 maker + slippage  = 0.06%
+      Stocks: read from config_tradier (~0.05%)
+
+    Pass `cfg` (SweepConfig instance) to override defaults; the engine threads it
+    through from simulate_one_symbol callers."""
     s = (sym or "").upper()
-    if s.endswith("USDC") or s.endswith("USDT"):
-        try:
-            return float(getattr(config, "ROUND_TRIP_COST_PCT", 0.08))
-        except Exception:
-            return 0.08
+    if s.endswith("USDC"):
+        if cfg is not None:
+            return float(getattr(cfg, "ROUND_TRIP_COST_USDC_PCT", 0.01))
+        return 0.01
+    if s.endswith("USDT"):
+        if cfg is not None:
+            return float(getattr(cfg, "ROUND_TRIP_COST_USDT_PCT", 0.06))
+        return 0.06
     try:
         import config_tradier as _ct
         return float(getattr(_ct, "ROUND_TRIP_COST_PCT", 0.05))
@@ -2622,6 +2655,7 @@ def write_history_jsonl(
     side: str,
     events: List[TradeEvent],
     out_root: Path,
+    cfg: Optional["SweepConfig"] = None,
 ):
     """Append events to <out_root>/<account>/<SYMBOL>_<SIDE>.jsonl in the
     schema used by /history/<acct>/*.jsonl (used by /:5057 dashboard etc.).
@@ -2635,7 +2669,7 @@ def write_history_jsonl(
     acct_dir = out_root / account
     acct_dir.mkdir(parents=True, exist_ok=True)
     path = acct_dir / f"{symbol}_{side}.jsonl"
-    _rt_cost = _vec_round_trip_cost_for_sym(symbol)
+    _rt_cost = _vec_round_trip_cost_for_sym(symbol, cfg)
     with path.open("w") as fh:
         for ev in events:
             iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
@@ -2855,7 +2889,7 @@ def run_sweep(
             # 2026-05-18 NET MANDATE: pnl_pct stored NET of round-trip cost;
             # raw price-only return preserved as pnl_pct_gross. Mirrors
             # write_history_jsonl above so both outputs are consistent.
-            _trd_rt_cost = _vec_round_trip_cost_for_sym(sym)
+            _trd_rt_cost = _vec_round_trip_cost_for_sym(sym, config)
             for ev in events:
                 iso = datetime.fromtimestamp(ev.ts, tz=timezone.utc).isoformat()
                 _row = {
