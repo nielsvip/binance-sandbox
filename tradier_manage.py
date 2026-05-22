@@ -10574,6 +10574,177 @@ class TradierTradeManager:
                     return "NOLOSS_BLOCK"
             # Get current position and price
             position = self.position_manager.positions.get(position_key)
+            try:
+                _stale_block_act = (action or "").upper()
+                _stale_block_reason_up = (reason or "").upper()
+                _stale_block_skip = (("CLOSE" in _stale_block_act) or is_full_close or ("INTERVENTION" in _stale_block_reason_up) or ("MANUAL" in _stale_block_reason_up) or ("SYSTEM_FORCE" in _stale_block_reason_up) or ("HEDGE" in _stale_block_act) or ("NOLOSS" in _stale_block_reason_up) or ("LIQUIDATION" in _stale_block_reason_up) or ("STOP" in _stale_block_reason_up) or ("TAKE_PROFIT" in _stale_block_reason_up))
+                if not getattr(self, "is_backtest", False) and not _stale_block_skip and position:
+                    _stale_ts = getattr(position, "mark_price_last_updated", None)
+                    if isinstance(_stale_ts, str):
+                        with suppress(Exception): _stale_ts = isoparse(_stale_ts)
+                    if isinstance(_stale_ts, datetime) and _stale_ts.tzinfo is None: _stale_ts = _stale_ts.replace(tzinfo=timezone.utc)
+                    _stale_now = datetime.now(timezone.utc)
+                    _stale_age_s = (_stale_now - _stale_ts).total_seconds() if isinstance(_stale_ts, datetime) else 999999.0
+                    _stale_max_age = float(getattr(config, "EXECUTE_NOW_MAX_MARK_AGE_S", 60.0))
+                    if _stale_age_s > _stale_max_age:
+                        _ref_p, _ref_ts = await self.get_current_price(symbol)
+                        if _ref_p and float(_ref_p) > 0:
+                            position.mark_price = float(_ref_p)
+                            position.mark_price_last_updated = datetime.now(timezone.utc)
+                            _stale_age_s = 0.0
+                    _live_stale_blocked = _stale_age_s > _stale_max_age
+                    try:
+                        from vec_paths.stale_mark_price import evaluate_stale_mark_block_core as _vec_stale_fn
+                        _stale_ts_shadow = getattr(position, "mark_price_last_updated", None)
+                        if isinstance(_stale_ts_shadow, str):
+                            try: _stale_ts_shadow = isoparse(_stale_ts_shadow)
+                            except Exception: pass
+                        if isinstance(_stale_ts_shadow, datetime) and _stale_ts_shadow.tzinfo is None: _stale_ts_shadow = _stale_ts_shadow.replace(tzinfo=timezone.utc)
+                        _ts_shadow = _stale_ts_shadow.timestamp() if isinstance(_stale_ts_shadow, datetime) else None
+                        _vec_blocked, _vec_reason, _vec_age = _vec_stale_fn(float(getattr(position, "mark_price", 0.0) or 0.0), _ts_shadow, datetime.now(timezone.utc).timestamp(), config, symbol=symbol, is_close_action=_stale_block_skip)
+                        _divergent = (_live_stale_blocked != _vec_blocked)
+                        _compare_entry = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "stale_mark_price", "live_result": "BLOCKED" if _live_stale_blocked else "OK", "vec_result": "BLOCKED" if _vec_blocked else "OK", "divergent": _divergent, "live_age": _stale_age_s, "vec_age": _vec_age}
+                        _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                        with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_entry) + "\n")
+                        if _divergent: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] stale_mark_price divergence on {position_key} action={action}: live_blocked={_live_stale_blocked} ({_stale_age_s:.1f}s) vs vec_blocked={_vec_blocked} ({_vec_age:.1f}s)")
+                        if bool(getattr(config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False)):
+                            if _vec_blocked:
+                                logger.critical(f"🚫 [LIVE_VEC_STALE_MARK_PRICE_BLOCK] {position_key}: VEC STALE BLOCK ENFORCED! age={_vec_age:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action}")
+                                if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_STALE_MARK_PRICE_age{_vec_age:.1f}s"
+                            _live_stale_blocked = False
+                    except Exception as _sh_err:
+                        logger.warning(f"[LIVE_VEC_STALE_MARK_PRICE_SHADOW_ERR] {type(_sh_err).__name__}: {_sh_err}")
+                    if _live_stale_blocked:
+                        logger.critical(f"🚫 [STALE_MARK_PRICE_BLOCK] {position_key}: mark_price age={_stale_age_s:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action} reason={(reason or '')[:60]} — would make decision on stale gain. CLOSE actions bypass this gate.")
+                        if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_STALE_MARK_PRICE_age{_stale_age_s:.1f}s"
+            except Exception as _stale_e:
+                logger.warning(f"[STALE_MARK_PRICE_BLOCK] guard error (fail-open): {type(_stale_e).__name__}: {_stale_e}")
+            try:
+                _now = time.time()
+                _acct = account_key or (position_key.split(":")[0] if position_key and ":" in position_key else "unknown")
+                _sym_key = position_key or "unknown"
+                if not hasattr(self, "_brake_cache"): self._brake_cache = {}
+                _cache = self._brake_cache.get(_acct)
+                if not _cache or (_now - _cache.get("ts", 0)) > 10:
+                    import json as _bjson
+                    from datetime import datetime as _bdt
+                    from datetime import timedelta as _btd
+                    from datetime import timezone as _btz
+                    _cutoff = _bdt.now(_btz.utc) - _btd(hours=1)
+                    _dfile = str(Path(config.BASE_PATH) / "data" / "decisions" / f"decisions_{_acct}_{_bdt.now(_btz.utc).strftime('%Y%m%d')}.jsonl")
+                    _hour_entries = 0
+                    _hour_total = 0
+                    _sym_counts = {}
+                    try:
+                        with open(_dfile, errors="replace") as _df:
+                            _df.seek(0, 2)
+                            _fsize = _df.tell()
+                            _df.seek(max(0, _fsize - 500000))
+                            if _fsize > 500000: _df.readline()
+                            for _line in _df:
+                                try:
+                                    _dd = _bjson.loads(_line)
+                                    _ts = _dd.get("timestamp", "")
+                                    _dt = _bdt.fromisoformat(_ts.replace("Z", "+00:00"))
+                                    if _dt < _cutoff: continue
+                                    _hour_total += 1
+                                    _da = _dd.get("action", "")
+                                    if _da in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT"): _hour_entries += 1
+                                    _dpk = _dd.get("position_key", "")
+                                    _sym_counts[_dpk] = _sym_counts.get(_dpk, 0) + 1
+                                except Exception: pass
+                    except FileNotFoundError: pass
+                    self._brake_cache[_acct] = {"ts": _now, "entries": _hour_entries, "total": _hour_total, "syms": _sym_counts}
+                    _cache = self._brake_cache[_acct]
+                _act_check = (action or "").upper()
+                _is_close = _act_check in ("CLOSE", "QUICK_CLOSE", "REDUCE", "PARTIAL_CLOSE", "STRONG_REDUCE")
+                _is_profitable_close = False
+                if _is_close and position:
+                    _brake_gain = float(getattr(position, "gain", 0.0) or 0.0)
+                    if _brake_gain > 0.1: _is_profitable_close = True
+                _live_eb_blocked = False
+                _live_eb_reason = "OK"
+                if not _is_profitable_close:
+                    if _cache["entries"] > 500:
+                        _live_eb_blocked = True
+                        _live_eb_reason = "EMERGENCY_BRAKE_MAX_ENTRIES"
+                    elif _cache["total"] > 1000:
+                        _live_eb_blocked = True
+                        _live_eb_reason = "EMERGENCY_BRAKE_MAX_TRADES"
+                    else:
+                        _sym_count = _cache["syms"].get(_sym_key, 0)
+                        if _sym_count > 50:
+                            _live_eb_blocked = True
+                            _live_eb_reason = "EMERGENCY_BRAKE_SYMBOL_CHURN"
+                try:
+                    from vec_paths.emergency_brake import evaluate_emergency_brake_core as _vec_eb_fn
+                    _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
+                    _dt_now = datetime.now(timezone.utc)
+                    _vec_eb_blocked, _vec_eb_res = _vec_eb_fn(_acct, _dt_now, position_key or "", action or "", is_profitable_close=_is_profitable_close, config=config, decisions_dir_path=_dec_dir)
+                    _divergent_eb = (_live_eb_blocked != _vec_eb_blocked)
+                    _compare_eb = {"timestamp": _dt_now.isoformat(), "position_key": position_key, "action": action, "module": "emergency_brake", "live_result": "BLOCKED" if _live_eb_blocked else "OK", "vec_result": "BLOCKED" if _vec_eb_blocked else "OK", "divergent": _divergent_eb, "live_reason": _live_eb_reason, "vec_reason": _vec_eb_res}
+                    _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                    with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_eb) + "\n")
+                    if _divergent_eb: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] emergency_brake divergence on {position_key} action={action}: live_blocked={_live_eb_blocked} ({_live_eb_reason}) vs vec_blocked={_vec_eb_blocked} ({_vec_eb_res})")
+                    if bool(getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False)):
+                        if _vec_eb_blocked:
+                            logger.critical(f"🛑 [LIVE_VEC_EMERGENCY_BRAKE] {position_key}: VEC BRAKE ENFORCED! reason={_vec_eb_res}")
+                            if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                            return f"BLOCKED_{_vec_eb_res}"
+                        _live_eb_blocked = False
+                except Exception as _eb_sh_err:
+                    logger.warning(f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}")
+                if _live_eb_blocked:
+                    if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
+                        logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected.")
+                        if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_EMERGENCY_BRAKE_MAX_ENTRIES"
+                    elif _live_eb_reason == "EMERGENCY_BRAKE_MAX_TRADES":
+                        logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['total']} trades/hr — HALTED. Max 1000. Glitch detected.")
+                        if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_EMERGENCY_BRAKE_MAX_TRADES"
+                    elif _live_eb_reason == "EMERGENCY_BRAKE_SYMBOL_CHURN":
+                        _sym_count = _cache["syms"].get(_sym_key, 0)
+                        logger.critical(f"🛑 [EMERGENCY_BRAKE] {_sym_key}: {_sym_count}/hr on same symbol — BLOCKED. Max 50. Glitch detected.")
+                        if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_EMERGENCY_BRAKE_SYMBOL_CHURN"
+            except Exception as _eb_err:
+                logger.debug(f"[EMERGENCY_BRAKE] Error: {_eb_err}")
+            _live_q_blocked = False
+            _live_q_name = "OK"
+            _reason_key = (reason or "").strip()
+            _quarantine = []
+            try:
+                import json as _qjson
+                with open(str(Path(config.BASE_PATH) / "data" / "function_quarantine.json")) as _qf: _quarantine = _qjson.load(_qf)
+                for _qname in _quarantine:
+                    if _qname and _qname in _reason_key:
+                        _live_q_blocked = True
+                        _live_q_name = _qname
+                        break
+            except Exception: pass
+            try:
+                from vec_paths.quarantine_strategy_validation import evaluate_quarantine_core as _vec_q_fn
+                _vec_q_blocked, _vec_q_res = _vec_q_fn(position_key, reason, action, is_hedge, original_position_amt, set(_quarantine), config)
+                _divergent_q = (_live_q_blocked != _vec_q_blocked)
+                _compare_q = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "quarantine_strategy", "live_result": "BLOCKED" if _live_q_blocked else "OK", "vec_result": "BLOCKED" if _vec_q_blocked else "OK", "divergent": _divergent_q, "live_reason": f"QUARANTINED({_live_q_name})" if _live_q_blocked else "OK", "vec_reason": _vec_q_res}
+                _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_q) + "\n")
+                if _divergent_q: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] quarantine_strategy divergence on {position_key} action={action}: live_blocked={_live_q_blocked} ({_live_q_name}) vs vec_blocked={_vec_q_blocked} ({_vec_q_res})")
+                if bool(getattr(config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False)):
+                    if _vec_q_blocked:
+                        logger.warning(f"⛔ [LIVE_VEC_QUARANTINE_BLOCK] {position_key}: VEC QUARANTINE ENFORCED! reason='{_reason_key}' matches quarantined '{_vec_q_res}'")
+                        if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_{_vec_q_res}"
+                    _live_q_blocked = False
+            except Exception as _q_sh_err:
+                logger.warning(f"[LIVE_VEC_QUARANTINE_SHADOW_ERR] {type(_q_sh_err).__name__}: {_q_sh_err}")
+            if _live_q_blocked:
+                logger.warning(f"⛔ [QUARANTINE_BLOCK] {position_key}: reason '{_reason_key}' matches quarantined '{_live_q_name}'")
+                if lock_acquired and self.redis_manager: await self.redis_manager.delete(exec_lock_key)
+                return f"BLOCKED_QUARANTINED({_live_q_name})"
             current_price = old_price
             if not current_price or current_price <= 0:
                 current_price,ts = await self.get_current_price(symbol)

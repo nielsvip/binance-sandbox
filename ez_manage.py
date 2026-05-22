@@ -23168,10 +23168,30 @@ class MultiAccountTradeManager:
                                     f"[STALE_MARK_PRICE_REFRESH_API_ERR] {position_key}"
                                     f" sym={_stale_sym}: {type(_api_e).__name__}: {_api_e}"
                                 )
-                        if _stale_age_s > _stale_max_age:
-                            logger.critical(
-                                f"🚫 [STALE_MARK_PRICE_BLOCK] {position_key}: mark_price age={_stale_age_s:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action} reason={(reason or '')[:60]} — would make decision on stale gain. CLOSE actions bypass this gate."
-                            )
+                        _live_stale_blocked = _stale_age_s > _stale_max_age
+                        try:
+                            from vec_paths.stale_mark_price import evaluate_stale_mark_block_core as _vec_stale_fn
+                            _stale_ts_shadow = getattr(_stale_pos, "mark_price_last_updated", None)
+                            if isinstance(_stale_ts_shadow, str):
+                                try: _stale_ts_shadow = isoparse(_stale_ts_shadow)
+                                except Exception: pass
+                            if isinstance(_stale_ts_shadow, datetime) and _stale_ts_shadow.tzinfo is None: _stale_ts_shadow = _stale_ts_shadow.replace(tzinfo=timezone.utc)
+                            _ts_shadow = _stale_ts_shadow.timestamp() if isinstance(_stale_ts_shadow, datetime) else None
+                            _vec_blocked, _vec_reason, _vec_age = _vec_stale_fn(float(getattr(_stale_pos, "mark_price", 0.0) or 0.0), _ts_shadow, datetime.now(timezone.utc).timestamp(), config, symbol=_stale_sym, is_close_action=_stale_block_skip)
+                            _divergent = (_live_stale_blocked != _vec_blocked)
+                            _compare_entry = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "stale_mark_price", "live_result": "BLOCKED" if _live_stale_blocked else "OK", "vec_result": "BLOCKED" if _vec_blocked else "OK", "divergent": _divergent, "live_age": _stale_age_s, "vec_age": _vec_age}
+                            _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                            with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_entry) + "\n")
+                            if _divergent: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] stale_mark_price divergence on {position_key} action={action}: live_blocked={_live_stale_blocked} ({_stale_age_s:.1f}s) vs vec_blocked={_vec_blocked} ({_vec_age:.1f}s)")
+                            if bool(getattr(config, "LIVE_VEC_STALE_MARK_PRICE_ENABLED", False)):
+                                if _vec_blocked:
+                                    logger.critical(f"🚫 [LIVE_VEC_STALE_MARK_PRICE_BLOCK] {position_key}: VEC STALE BLOCK ENFORCED! age={_vec_age:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action}")
+                                    return f"BLOCKED_STALE_MARK_PRICE_age{_vec_age:.1f}s"
+                                _live_stale_blocked = False
+                        except Exception as _sh_err:
+                            logger.warning(f"[LIVE_VEC_STALE_MARK_PRICE_SHADOW_ERR] {type(_sh_err).__name__}: {_sh_err}")
+                        if _live_stale_blocked:
+                            logger.critical(f"🚫 [STALE_MARK_PRICE_BLOCK] {position_key}: mark_price age={_stale_age_s:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action} reason={(reason or '')[:60]} — would make decision on stale gain. CLOSE actions bypass this gate.")
                             return f"BLOCKED_STALE_MARK_PRICE_age{_stale_age_s:.1f}s"
         except Exception as _stale_e:
             logger.warning(
@@ -24173,45 +24193,87 @@ class MultiAccountTradeManager:
                 if _brake_gain > 0.1:
                     _is_profitable_close = True  # Profitable closes ALWAYS execute — never blocked by brake
                 # Losing closes/reduces are STILL subject to the brake — NO exceptions
+            _live_eb_blocked = False
+            _live_eb_reason = "OK"
             if not _is_profitable_close:
                 if _cache["entries"] > 500:
-                    logger.critical(
-                        f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected."
-                    )
+                    _live_eb_blocked = True
+                    _live_eb_reason = "EMERGENCY_BRAKE_MAX_ENTRIES"
+                elif _cache["total"] > 1000:
+                    _live_eb_blocked = True
+                    _live_eb_reason = "EMERGENCY_BRAKE_MAX_TRADES"
+                else:
+                    _sym_count = _cache["syms"].get(_sym_key, 0)
+                    if _sym_count > 50:
+                        _live_eb_blocked = True
+                        _live_eb_reason = "EMERGENCY_BRAKE_SYMBOL_CHURN"
+            try:
+                from vec_paths.emergency_brake import evaluate_emergency_brake_core as _vec_eb_fn
+                _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
+                _dt_now = datetime.now(timezone.utc)
+                _vec_eb_blocked, _vec_eb_res = _vec_eb_fn(_acct, _dt_now, position_key or "", action or "", is_profitable_close=_is_profitable_close, config=config, decisions_dir_path=_dec_dir)
+                _divergent_eb = (_live_eb_blocked != _vec_eb_blocked)
+                _compare_eb = {"timestamp": _dt_now.isoformat(), "position_key": position_key, "action": action, "module": "emergency_brake", "live_result": "BLOCKED" if _live_eb_blocked else "OK", "vec_result": "BLOCKED" if _vec_eb_blocked else "OK", "divergent": _divergent_eb, "live_reason": _live_eb_reason, "vec_reason": _vec_eb_res}
+                _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+                with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_eb) + "\n")
+                if _divergent_eb: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] emergency_brake divergence on {position_key} action={action}: live_blocked={_live_eb_blocked} ({_live_eb_reason}) vs vec_blocked={_vec_eb_blocked} ({_vec_eb_res})")
+                if bool(getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False)):
+                    if _vec_eb_blocked:
+                        logger.critical(f"🛑 [LIVE_VEC_EMERGENCY_BRAKE] {position_key}: VEC BRAKE ENFORCED! reason={_vec_eb_res}")
+                        return f"BLOCKED_{_vec_eb_res}"
+                    _live_eb_blocked = False
+            except Exception as _eb_sh_err:
+                logger.warning(f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}")
+            if _live_eb_blocked:
+                if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
+                    logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected.")
                     return "BLOCKED_EMERGENCY_BRAKE_MAX_ENTRIES"
-                if _cache["total"] > 1000:
-                    logger.critical(
-                        f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['total']} trades/hr — HALTED. Max 1000. Glitch detected."
-                    )
+                elif _live_eb_reason == "EMERGENCY_BRAKE_MAX_TRADES":
+                    logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['total']} trades/hr — HALTED. Max 1000. Glitch detected.")
                     return "BLOCKED_EMERGENCY_BRAKE_MAX_TRADES"
-                _sym_count = _cache["syms"].get(_sym_key, 0)
-                if _sym_count > 50:
-                    logger.critical(
-                        f"🛑 [EMERGENCY_BRAKE] {_sym_key}: {_sym_count}/hr on same symbol — BLOCKED. Max 50. Glitch detected."
-                    )
+                elif _live_eb_reason == "EMERGENCY_BRAKE_SYMBOL_CHURN":
+                    _sym_count = _cache["syms"].get(_sym_key, 0)
+                    logger.critical(f"🛑 [EMERGENCY_BRAKE] {_sym_key}: {_sym_count}/hr on same symbol — BLOCKED. Max 50. Glitch detected.")
                     return "BLOCKED_EMERGENCY_BRAKE_SYMBOL_CHURN"
         except Exception as _eb_err:
             logger.debug(f"[EMERGENCY_BRAKE] Error: {_eb_err}")
         _act = (action or "").upper()
         # ═══ QUARANTINE CHECK — punish functions that caused losses ═══
+        _live_q_blocked = False
+        _live_q_name = "OK"
+        _reason_key = (reason or "").strip()
+        _quarantine = []
         try:
-            _reason_key = (reason or "").strip()
             import json as _qjson
-
-            with open(
-                str(Path(config.BASE_PATH) / "data" / "function_quarantine.json")
-            ) as _qf:
+            with open(str(Path(config.BASE_PATH) / "data" / "function_quarantine.json")) as _qf:
                 _quarantine = _qjson.load(_qf)
             for _qname in _quarantine:
-                if _qname in _reason_key:
-                    logger.warning(
-                        f"⛔ [QUARANTINE_BLOCK] {position_key}: reason '{_reason_key}' matches quarantined '{_qname}'"
-                    )
-                    return f"BLOCKED_QUARANTINED({_qname})"
-        except FileNotFoundError:
-            pass
+                if _qname and _qname in _reason_key:
+                    _live_q_blocked = True
+                    _live_q_name = _qname
+                    break
         except Exception:
             pass
+        try:
+            from vec_paths.quarantine_strategy_validation import evaluate_quarantine_core as _vec_q_fn
+            _vec_q_blocked, _vec_q_res = _vec_q_fn(position_key, reason, action, is_hedge, original_positionAmt, set(_quarantine), config)
+            _divergent_q = (_live_q_blocked != _vec_q_blocked)
+            _compare_q = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "quarantine_strategy", "live_result": "BLOCKED" if _live_q_blocked else "OK", "vec_result": "BLOCKED" if _vec_q_blocked else "OK", "divergent": _divergent_q, "live_reason": f"QUARANTINED({_live_q_name})" if _live_q_blocked else "OK", "vec_reason": _vec_q_res}
+            _compare_file = Path(getattr(config, "BASE_PATH", "/users/niels/documents/binance")) / "data" / "live_vs_vec_compare.jsonl"
+            with open(str(_compare_file), "a") as _cf:
+                _cf.write(json.dumps(_compare_q) + "\n")
+            if _divergent_q:
+                logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] quarantine_strategy divergence on {position_key} action={action}: live_blocked={_live_q_blocked} ({_live_q_name}) vs vec_blocked={_vec_q_blocked} ({_vec_q_res})")
+            if bool(getattr(config, "LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False)):
+                if _vec_q_blocked:
+                    logger.warning(f"⛔ [LIVE_VEC_QUARANTINE_BLOCK] {position_key}: VEC QUARANTINE ENFORCED! reason='{_reason_key}' matches quarantined '{_vec_q_res}'")
+                    return f"BLOCKED_{_vec_q_res}"
+                _live_q_blocked = False
+        except Exception as _q_sh_err:
+            logger.warning(f"[LIVE_VEC_QUARANTINE_SHADOW_ERR] {type(_q_sh_err).__name__}: {_q_sh_err}")
+        if _live_q_blocked:
+            logger.warning(f"⛔ [QUARANTINE_BLOCK] {position_key}: reason '{_reason_key}' matches quarantined '{_live_q_name}'")
+            return f"BLOCKED_QUARANTINED({_live_q_name})"
         # ═══ END QUARANTINE CHECK ═══
         # 2026-04-27: was `if 'OPEN' in reason.upper() and ...`. The reason can legitimately
         # contain 'OPEN' as part of a strategy ENTRY label (e.g. SCALP_V3_OPEN_PROTECTIVE_EXIT_*)
