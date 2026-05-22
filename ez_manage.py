@@ -392,7 +392,7 @@ _ABSOLUTE_WEBHOOK_LOCK: Dict[
     str, float
 ] = {}  # (account:symbol_side:orderside) → expiry
 _ABSOLUTE_WEBHOOK_TTL: float = 30.0
-_DUPLICATE_OPEN_COOLDOWN = 900.0  # seconds — HARD block on re-opening within this window (matches _AUGMENT_LOCK)
+_DUPLICATE_OPEN_COOLDOWN = 0.0  # 2026-05-22 USER MANDATE: time-cooldown destroys reentry on parabolic moves. REENTRY on positionAmt=0 already gated by gain-based DUP_GUARD_GAIN (1.5% floor for AUGMENT); time-cooldown was redundant + harmful.
 # 2026-05-09: FOOTHOLD pile-on guard. The free-pass FOOTHOLD branch (pos<=$45) was bypassing both DUP_GUARD paths,
 # letting the system fire $10 opens once a minute when the position never grew (Finandy success-with-empty-data,
 # broker rejecting, or some other downstream silent failure). Tracks per position_key the (timestamp, pos_val) of each
@@ -21049,14 +21049,10 @@ class MultiAccountTradeManager:
                 logger.info(
                     f"[{position_key}] Capped to max position size: ${qty * current_price:.2f}"
                 )
-        if account_key == "fin":
-            max_fin_size = get_max_position_size(symbol, account_key="fin")
-            if qty * current_price > max_fin_size:
-                safe_cp = max(current_price, 1e-9)
-                qty = max_fin_size / safe_cp - position.positionAmt / safe_cp
-                logger.info(
-                    f"[{position_key}] Final FIN account cap: ${qty * current_price:.2f}"
-                )
+        # 2026-05-22 USER MANDATE: NUKED. fin custom sizing was `(max_cap - positionAmt) / price` arithmetic which
+        # produced NEGATIVE qty whenever stale in-memory positionAmt > 0 (root cause of 18 phantom-fill events on
+        # fin:NEARUSDC_LONG in May 2026, after last real fill was 2026-04-24). All accounts eroded — there is no
+        # need for a fin-specific size cap; the general `max_pos_size_usd` cap above (line ~21046) handles all.
         if config.EXTREME_MODE and account_key in ["ang", "inf", "men", "flz"]:
             extreme_multiplier = 3.0
             qty = extreme_multiplier * min(

@@ -549,7 +549,7 @@ class Config:
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_RALLY_K15M_MAX: float = 30.0    # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598. 2026-04-25 rapid-grid 50-sym: K40/50/60/60+gap3 all identical to K30 — reentry count not K-gated, binding constraint is entry score + cooldown.
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
-    REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
+    REENTRY_MIN_GAP_MINUTES: float = 0.0    # 2026-05-22 USER MANDATE: hard 15-min gap blocked reentry on NEAR +83% rally. If exit <15min old, deeper reentry pipeline (T-Defer-1) requires breakout-through-prior-high; >15min, exit_price is the trigger. Removing the bar-count floor.
     REENTRY_SYMGATE_ENABLED: bool = False   # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = False     # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
@@ -1358,6 +1358,10 @@ class Config:
     # on shorter HTFs and recovers faster post-restart. Sweep validates positive-delta-Sharpe before live flip.
     MTF_REQUIRE_ARMED_ANY: bool = True
     MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED: bool = True
+    # 2026-05-22 USER MANDATE: bypass the "wt1 still rising" suspend during expansion regime
+    # (HTF dc_pos at extreme = breakout). NEAR +83% rally: WT flattened at extreme while price
+    # climbed — suspend blocked all entries. Default True; flip to False to revert.
+    MTF_ARMED_WT_DIRECTION_SUSPEND_BREAKOUT_BYPASS: bool = True
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
     MTF_GR_FILTER_ENABLED: bool = True
     MTF_GR_MIN_TFS: int = 3                          # Phase I winner

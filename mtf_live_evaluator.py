@@ -137,16 +137,18 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
                 state["prior_bb_upper"][tf] = cur_up if is_long else state["prior_bb_upper"].get(tf, cur_up)
                 state["prior_bb_lower"][tf] = cur_dn if is_long else state["prior_bb_lower"].get(tf, cur_dn)
             elif bt == "wt":
+                # 2026-05-22 USER MANDATE: instead of "fresh cross THIS bar only", arm on directional
+                # condition (wt1>wt2 for LONG). This persists the armed flag across the whole leg
+                # rather than resetting every bar. Cross-down still disarms. NEAR +83% rally proved
+                # the cross-only logic blocked entries after the first cross faded out of "fresh" state.
                 wt1 = _f(indicators, f"wt1_{tf}")
                 wt2 = _f(indicators, f"wt2_{tf}")
-                wt1_p = state["prior_wt1"].get(tf, wt1)
-                wt2_p = state["prior_wt2"].get(tf, wt2)
                 if is_long:
-                    on = (wt1 > wt2 and wt1_p <= wt2_p)
-                    off = (wt1 < wt2 and wt1_p >= wt2_p)
+                    on = (wt1 > wt2)
+                    off = (wt1 < wt2)
                 else:
-                    on = (wt1 < wt2 and wt1_p >= wt2_p)
-                    off = (wt1 > wt2 and wt1_p <= wt2_p)
+                    on = (wt1 < wt2)
+                    off = (wt1 > wt2)
                 state["prior_wt1"][tf] = wt1
                 state["prior_wt2"][tf] = wt2
             else:
@@ -160,10 +162,38 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
         state["prev_wt1"][tf] = state["prior_wt1"].get(tf, wt1_now)
 
 
+def _is_expansion_regime(indicators: dict) -> bool:
+    """USER MANDATE 2026-05-22: bypass WT-direction-suspend during expansion regime.
+    Expansion = HTF dc_pos >= 0.85 AND ATR_1h > 1.5x its 20-bar median (or any of {1h,4h,D} dc_pos > 0.9).
+    Rationale: NEAR +83% rally — WT spent days at extreme overbought, wt1 flattened/fell while price climbed.
+    Suspending on "wt1 not rising this bar" blocked entries through the entire parabolic.
+    During expansion, dc/bb arming is the meaningful signal; WT direction is noise.
+    """
+    dc_pos_1h = _f(indicators, "dc_pos_1h")
+    dc_pos_4h = _f(indicators, "dc_pos_4h")
+    dc_pos_d  = _f(indicators, "dc_pos_D")
+    # ANY of {1h,4h,D} at dc_pos>=0.9 = expansion (LONG side); <=0.10 = expansion (SHORT side)
+    if dc_pos_1h >= 0.90 or dc_pos_4h >= 0.90 or dc_pos_d >= 0.90: return True
+    if 0 < dc_pos_1h <= 0.10 or 0 < dc_pos_4h <= 0.10 or 0 < dc_pos_d <= 0.10: return True
+    # Composite: 1h dc_pos elevated AND atr expanding
+    atr_1h = _f(indicators, "atr_1h"); atr_1h_med = _f(indicators, "atr_1h_med_20") or _f(indicators, "atr_1h_sma_20")
+    if dc_pos_1h >= 0.85 and atr_1h_med > 0 and atr_1h > 1.5 * atr_1h_med: return True
+    return False
+
+
 def _armed_any_effective(state: dict, indicators: dict, side: str, config: Any) -> bool:
-    """Return True if any armed flag is currently True AND WT-direction is favorable on that TF."""
+    """Return True if any armed flag is currently True AND WT-direction is favorable on that TF.
+
+    2026-05-22 USER MANDATE: bypass WT direction-suspend during expansion regime
+    (dc_pos at HTF extreme). Suspend logic was designed for mean-reverting chop, not parabolic
+    breakouts where price is at top of range BECAUSE of expansion (not despite of it).
+    """
     if not state.get("armed"): return False
     suspend_on = bool(getattr(config, "MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED", True))
+    # NEW: bypass suspend entirely when expansion regime AND user opted into the bypass
+    if suspend_on and bool(getattr(config, "MTF_ARMED_WT_DIRECTION_SUSPEND_BREAKOUT_BYPASS", True)):
+        if _is_expansion_regime(indicators):
+            suspend_on = False
     is_long = (side == "LONG")
     for key, is_armed in state["armed"].items():
         if not is_armed: continue
