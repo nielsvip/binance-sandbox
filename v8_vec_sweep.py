@@ -619,7 +619,7 @@ class SweepConfig:
     QUALITY_BOTTOM_VOL_WINDOW_BARS: int = 20
     QUALITY_BOTTOM_HA_FLIP_LOOKBACK: int = 3
     QUALITY_BOTTOM_MAX_PER_DAY: int = 3
-    QUALITY_BOTTOM_DISABLE_SCATTERGUN: bool = True
+    QUALITY_BOTTOM_DISABLE_SCATTERGUN: bool = False
     # ── TR_TREND_v1 (2026-05-17 build, spec §4) — DEFAULT-OFF NEW STRATEGY ────────
     # When True, simulate_one_symbol uses ONLY the TR_TREND_v1 D-decision breakout-
     # retest paths (legacy wt_3m / reentry / GR / DELTA / connors triggers disabled
