@@ -412,6 +412,13 @@ class SweepConfig:
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True
     NEWBORN_LOSS_KILL_VEL_TF: str = ""           # auto: "3m" crypto / "5m" tradier
+    # ── TOP_OF_RANGE_BLOCK (2026-05-22 USER post-ORDI prevention mandate) ────
+    # Block OPEN/AUGMENT when dc_position is extreme on ALL listed TFs.
+    # ORDI was bought at dc_h1h — this prevents repeat. Default OFF until A/B proves +ΔSharpe.
+    TOP_OF_RANGE_BLOCK_ENABLED: bool = False
+    TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
+    TOP_OF_RANGE_BLOCK_TF_LIST: str = "1h,4h,D"
+    TOP_OF_RANGE_BLOCK_REQUIRE_ALL: bool = True
     # ── R2 WT velocity slow exit ──────────────────────────────────────────────
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
     WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01
@@ -1400,6 +1407,28 @@ def simulate_one_symbol(
         _gr_filter_mask = np.ones(n, dtype=bool)
     _mtf_require_gr = bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True))
 
+    # ─── 2026-05-22 TOP_OF_RANGE_BLOCK precompute (post-ORDI prevention) ────
+    if build_top_of_range_block_masks is not None:
+        try:
+            class _StoreShim:
+                def __init__(self, prices, npz):
+                    self.prices = prices
+                    self.arrays = npz
+                def f(self, key, idx, default=0.0):
+                    arr = self.arrays.get(key)
+                    if arr is None or idx >= len(arr):
+                        return default
+                    return float(arr[idx])
+            _tor_shim = _StoreShim(prices=npz.get("price"), npz=npz)
+            _tor_block_long, _tor_block_short = build_top_of_range_block_masks(_tor_shim, n, config)
+        except Exception as _e:
+            sys.stderr.write(f"top_of_range_block precompute failed {symbol}/{side}: {_e}\n")
+            _tor_block_long = np.zeros(n, dtype=bool)
+            _tor_block_short = np.zeros(n, dtype=bool)
+    else:
+        _tor_block_long = np.zeros(n, dtype=bool)
+        _tor_block_short = np.zeros(n, dtype=bool)
+
     # ─── PHASE I 2026-05-19 compound exit precompute ──────────────────────────
     try:
         from vec_paths.mtf_armed_entries import build_compound_exit_arrays, check_mtf_compound_exit
@@ -1737,6 +1766,10 @@ def simulate_one_symbol(
             )
             new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
+                continue
+            # 2026-05-22 TOP_OF_RANGE_BLOCK — skip entries when price is at extreme
+            # range position on all listed TFs (USER ORDI-prevention mandate).
+            if (is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i]):
                 continue
             if _ra_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
                 reason = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"

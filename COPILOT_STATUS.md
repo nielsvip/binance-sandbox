@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-22 00:25:01 UTC
+# Copilot Status — 2026-05-22 00:40:17 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T00:22:03
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T00:22:03
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-22T00:22:04
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-22T00:22:04
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-22T00:23:07
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T00:24:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T00:24:08
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T00:24:08
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T00:24:08
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-22T00:24:10
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T00:38:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T00:38:40
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T00:38:40
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T00:38:40
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-22T00:39:01
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-22T00:39:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-22T00:39:01
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-22T00:40:05
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-22T00:40:05
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-22T00:40:05
 
 ## Missed Trades (trader comparison)
 
@@ -43,9 +43,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 14
-- [HIGH] ez_manage.py for flz is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (15min)
-- [MEDIUM] tradier_positions.py running but log stale (16min)
-- [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] tradier_positions.py running but log stale (17min)
+**Issues (last 1h):** 32
+- [MEDIUM] tradier_positions.py running but log stale (29min)
+- [MEDIUM] tradier_positions.py running but log stale (30min)
+- [MEDIUM] tradier_positions.py running but log stale (31min)
+- [MEDIUM] tradier_positions.py running but log stale (32min)
+- [MEDIUM] tradier_positions.py running but log stale (33min)
