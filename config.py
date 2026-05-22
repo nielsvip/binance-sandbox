@@ -721,7 +721,7 @@ class Config:
     # Inline loops DISABLED — daemon is sole reentry signal source.
     # Kill child (pkill -f ez_reentry_daemon) to stop reentries while trading continues.
     EZ_REENTRY_DAEMON_ENABLED: bool = True
-    EZ_REENTRY_INLINE_ENABLED: bool = False
+    EZ_REENTRY_INLINE_ENABLED: bool = True
     EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = False
@@ -2187,7 +2187,7 @@ class Config:
     MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = False  # 2026-05-12 USER MANDATE: DISABLED. Was clamping SELL limits ABOVE market (entry+buf) — orders never filled when price moved against entry. User: "only valid value is dc_low4_3m and that can never be above price". Until rewritten to use dc_low4_3m (LONG) / dc_high4_3m (SHORT), keep OFF so exits aren't blocked.
     MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC: float = 300.0  # how long to wait at floor before timing out
     # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation, plus a tight stop.
-    GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — strip K-adverse + full-stack-confirmation gates that blocked reentries on inf positions. The 3m+15m+HTF stack requirement was the silent killer.
+    GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = True  # 2026-05-22 RESTORED: K-adverse block (k_3m≥80 LONG / k_3m≤20 SHORT) + 3m+15m WT stack + ≥1 HTF. Without this, fires at K=79 with no WT check → 42.8% WR. Original strip 2026-05-10 was treating symptom (blocked reentries) instead of fixing root cause (invalid gate logic).
     GUARANTEED_REENTRY_DELTA_GATE_ENABLED: bool = False  # 2026-05-10 USER MANDATE: DELTA_REENTRY_BLOCKED_tf/_z/_4h_against gates were silently rejecting reentries via check_reentry_delta_tolerant. Default OFF — re-enable as sweep knob only.
     GUARANTEED_REENTRY_K_HIGH_BLOCK: float = 80.0      # block LONG reentry when k_3m >= this (adverse extreme)
     GUARANTEED_REENTRY_K_LOW_BLOCK: float = 20.0       # block SHORT reentry when k_3m <= this (adverse extreme)
@@ -2458,6 +2458,7 @@ class Config:
     DC_BREAKOUT_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_133: Donchian breakout entry (trend-following)
     DC_BREAKOUT_SCORE: int = 15  # BACKTEST_CHANGE_133: Conservative (30% WR in ranging)
     DC_BREAKOUT_TF: str = "1h"  # BACKTEST_CHANGE_133: TF for breakout
+    DC_BREAKOUT_MIN_TF: str = "1h"  # Minimum TF for DC breakout entries. '3m'|'15m'|'1h'|'4h'. Default '1h' — 3m+15m had 37.7% WR (37% of all DC events). User mandate 2026-05-22: only 1h+ unless backtest proves lower.
     ATR_ADAPTIVE_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_135: Inverse ATR sizing (high vol = smaller)
     ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 2.0  # BACKTEST_CHANGE_135: Target ATR%. Size=1x at this ATR.
     MACD_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_136: MACD cross-back exit for profitable positions

@@ -34102,10 +34102,10 @@ async def process_single_reentry_evaluation(
             _dc_reentry_breakout = None  # skip this block entirely
         dc_high_1h = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
         dc_low_1h = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
+        _dc_reentry_allow_15m = str(getattr(config, 'DC_BREAKOUT_MIN_TF', '1h')).lower() in ('3m', '15m')
         if is_long:
-            if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (
-                dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)
-            ):
+            _dc_re_long_ok = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_reentry_allow_15m and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
+            if _dc_re_long_ok:
                 if k_3m > d_3m:
                     _dc_reentry_breakout = True
                     _dc_re_tf = (
@@ -34114,9 +34114,8 @@ async def process_single_reentry_evaluation(
                         else "15M"
                     )
         else:
-            if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (
-                dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)
-            ):
+            _dc_re_short_ok = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_reentry_allow_15m and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
+            if _dc_re_short_ok:
                 if k_3m < d_3m:
                     _dc_reentry_breakout = True
                     _dc_re_tf = (

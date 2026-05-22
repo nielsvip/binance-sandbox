@@ -163,6 +163,10 @@ except ImportError:
     build_top_of_range_block_masks = None
     build_breakout_masks = None
 try:
+    from vec_paths.wt_dc_htf_gate import build_wt_dc_htf_gate_mask
+except ImportError:
+    build_wt_dc_htf_gate_mask = None
+try:
     from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
 except ImportError:
     check_wt_crossunder_final_exit = None
@@ -701,6 +705,7 @@ class SweepConfig:
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0
     WT_DC_ENTRY_THRESHOLD: float = 0.0  # tradier final-score threshold for vec gate
+    WT_DC_HTF_GATE: str = "none"  # 'none'|'1h'|'4h'|'4h_D' — mirrors tradier_manage:2751; blocks wt_open_ok entry when HTF WT against
     # ── DC_LOW / BB FROZEN STOP (2026-05-18) — freeze DC/BB at entry as stop ──
     DC_LOW_FROZEN_STOP_ENABLED: bool = False
     DC_LOW_FROZEN_STOP_TF: str = '4h'
@@ -1586,6 +1591,18 @@ def simulate_one_symbol(
         _breakout_long_any = np.zeros(n, dtype=bool)
         _breakout_short_any = np.zeros(n, dtype=bool)
 
+    # ─── WT_DC_HTF_GATE precompute (mirrors tradier_manage:2751-2762) ──────────
+    # Blocks wt_open_ok (WT force-open) entries when the configured HTF WT is
+    # against the trade direction. Gate: 'none'|'1h'|'4h'|'4h_D'.
+    if build_wt_dc_htf_gate_mask is not None:
+        try:
+            _wt_dc_htf_gate_block = build_wt_dc_htf_gate_mask(npz, n, is_long, config)
+        except Exception as _e:
+            sys.stderr.write(f"wt_dc_htf_gate precompute failed {symbol}/{side}: {_e}\n")
+            _wt_dc_htf_gate_block = np.zeros(n, dtype=bool)
+    else:
+        _wt_dc_htf_gate_block = np.zeros(n, dtype=bool)
+
     # ─── PHASE I 2026-05-19 compound exit precompute ──────────────────────────
     try:
         from vec_paths.mtf_armed_entries import build_compound_exit_arrays, check_mtf_compound_exit
@@ -1861,6 +1878,10 @@ def simulate_one_symbol(
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
             wt_open_ok = bool(wt_3m_aligned[i])
+            # WT_DC_HTF_GATE — block wt_open_ok when HTF WT is against the trade.
+            # Mirrors tradier_manage:2751-2762. Does NOT block GR/DELTA/B15/etc.
+            if wt_open_ok and _wt_dc_htf_gate_block[i]:
+                wt_open_ok = False
             # GOLDEN_RULE entry check (third trigger when flat)
             _gr_result = None
             if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED:

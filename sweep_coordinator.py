@@ -136,9 +136,16 @@ def _result_signature(row: dict) -> tuple:
     ps = row.get("pool_sharpe")
     if ps is None:
         return None
+    trades = int(row.get("trades", 0) or 0)
+    # 2026-05-22 — 0-trade results are NON-RESULTS, not duplicates. Many unrelated
+    # arms can legitimately produce trades=0 (different reasons each); treating
+    # that as a result-signature falsely links them and poisons all downstream
+    # tests with DUPLICATE_OF_<old_zero_trade_baseline>. Skip dedup for 0-trade.
+    if trades == 0:
+        return None
     return (
         round(float(ps), 4),
-        int(row.get("trades", 0) or 0),
+        trades,
         int(row.get("wins", 0) or 0),
         int(row.get("losses", 0) or 0),
         str(row.get("mode", "")),

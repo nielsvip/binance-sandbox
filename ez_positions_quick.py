@@ -15202,17 +15202,20 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _dch1h = safe_fetch_float(indicators.get('dc_high_1h', 0), 0)
                         _dch4h = safe_fetch_float(indicators.get('dc_high_4h', 0), 0)
                         _dc_tf, _dc_tier_mult = None, 1.0
+                        _dc_min_tf = str(getattr(config, 'DC_BREAKOUT_MIN_TF', '1h')).lower()
+                        _dc_allow_15m = _dc_min_tf in ('3m', '15m')
+                        _dc_allow_3m = _dc_min_tf == '3m'
                         # BREAKOUT: LONG when price > DC high, SHORT when price < DC low
                         if is_long:
                             if _dch4h > 0 and current_price > _dch4h * (1 + _buf): _dc_tf, _dc_tier_mult = "DC4H", 3.0
                             elif _dch1h > 0 and current_price > _dch1h * (1 + _buf): _dc_tf, _dc_tier_mult = "DC1H", 2.0
-                            elif _dch15 > 0 and current_price > _dch15 * (1 + _buf): _dc_tf, _dc_tier_mult = "DC15M", 1.5
-                            elif _dch3  > 0 and current_price > _dch3  * (1 + _buf): _dc_tf, _dc_tier_mult = "DC3M", 1.0
+                            elif _dc_allow_15m and _dch15 > 0 and current_price > _dch15 * (1 + _buf): _dc_tf, _dc_tier_mult = "DC15M", 1.5
+                            elif _dc_allow_3m and _dch3  > 0 and current_price > _dch3  * (1 + _buf): _dc_tf, _dc_tier_mult = "DC3M", 1.0
                         else:
                             if _dcl4h > 0 and current_price < _dcl4h * (1 - _buf): _dc_tf, _dc_tier_mult = "DC4H", 3.0
                             elif _dcl1h > 0 and current_price < _dcl1h * (1 - _buf): _dc_tf, _dc_tier_mult = "DC1H", 2.0
-                            elif _dcl15 > 0 and current_price < _dcl15 * (1 - _buf): _dc_tf, _dc_tier_mult = "DC15M", 1.5
-                            elif _dcl3  > 0 and current_price < _dcl3  * (1 - _buf): _dc_tf, _dc_tier_mult = "DC3M", 1.0
+                            elif _dc_allow_15m and _dcl15 > 0 and current_price < _dcl15 * (1 - _buf): _dc_tf, _dc_tier_mult = "DC15M", 1.5
+                            elif _dc_allow_3m and _dcl3  > 0 and current_price < _dcl3  * (1 - _buf): _dc_tf, _dc_tier_mult = "DC3M", 1.0
                         if _dc_tf:
                             # Per-position cooldown: prevent multiple DC_BREAKOUT opens in rapid succession
                             if not hasattr(trade_manager, '_dc_breakout_entry_cd'):

@@ -2750,6 +2750,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # SHORT-into-uptrend gap that allowed PLTR loss. Default 'none' = inert; live config sets '4h'.
                     _wtdc_htf_gate = str(getattr(config, 'WT_DC_HTF_GATE', 'none')).lower()
                     _htf_block = False
+                    if _wtdc_htf_gate == '1h':
+                        _wt1_1h = float((_entry_ind or {}).get('wt1_1h', 0) or 0)
+                        _wt2_1h = float((_entry_ind or {}).get('wt2_1h', 0) or 0)
+                        _1h_against = (is_long and _wt1_1h < _wt2_1h) or ((not is_long) and _wt1_1h > _wt2_1h)
+                        if _1h_against: _htf_block = True
                     if _wtdc_htf_gate in ('4h', '4h_d'):
                         _wt1_4h = float((_entry_ind or {}).get('wt1_4h', 0) or 0)
                         _wt2_4h = float((_entry_ind or {}).get('wt2_4h', 0) or 0)
