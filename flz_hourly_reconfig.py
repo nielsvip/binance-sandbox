@@ -701,13 +701,17 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
             best = max(cand_results, key=lambda r: r.get("wsharpe", -1e9))
             prev_op = prev_opinions.get("syms", {}).get(sym_key, {}).get("opinion", "FLAT")
             opinion, sample_tag = write_opinion(account, sym, side, best, prev_op, now_ts)
-            # 2026-05-22 USER MANDATE: wsharpe<0 → force HTF_TREND_VETO_ENABLED=True
-            # override so live trading is HTF-gated until next cycle scores positive.
-            # Self-clearing: next cycle picks best.overrides afresh (without our injection)
-            # if wsharpe goes positive — no manual cleanup needed.
+            # 2026-05-22 USER MANDATE: wsharpe<0 → no trade.
+            # Inject LONG_ENABLED/SHORT_ENABLED=False (hard block) AND HTF_TREND_VETO_ENABLED=True
+            # (defense in depth) so live trading refuses to OPEN/AUGMENT.
+            # Self-clearing: next cycle picks best.overrides afresh if wsharpe rises ≥ 0.
             _ovr = dict(best.get("overrides", {}) or {})
             if float(best.get("wsharpe", 0.0)) < 0.0:
                 _ovr["HTF_TREND_VETO_ENABLED"] = True
+                if side.upper() == "LONG":
+                    _ovr["LONG_ENABLED"] = False
+                else:
+                    _ovr["SHORT_ENABLED"] = False
             active[sym_key] = {
                 "winning_tag": best["tag"],
                 "wsharpe": best["wsharpe"],
