@@ -22636,21 +22636,35 @@ class MultiAccountTradeManager:
                     _tor_ind = await ii(self, _tor_sym) or {}
                     _tor_long_extremes = []
                     _tor_short_extremes = []
+                    # 2026-05-22 USER MANDATE: "BREAKOUTS GET RESPECTED but CLOSE AT
+                    # ENTRY PRICE as they most likely fall back". Detect breakout =
+                    # raw_dc_pos > 1.0 (LONG, price above channel high) or < 0.0 (SHORT,
+                    # below channel low) on ANY listed TF. If breakout on any TF, the
+                    # top-of-range block is SKIPPED. NEWBORN_LOSS_KILL handles failed
+                    # breakouts at breakeven.
+                    _tor_breakout_long = False
+                    _tor_breakout_short = False
                     for _tor_tf in _tor_tfs:
                         _tor_low = safe_fetch_float(_tor_ind.get(f"dc_low_{_tor_tf}"), 0.0)
                         _tor_high = safe_fetch_float(_tor_ind.get(f"dc_high_{_tor_tf}"), 0.0)
                         if _tor_low <= 0 or _tor_high <= 0 or _tor_high <= _tor_low:
                             continue
-                        _tor_pos = (_tor_price - _tor_low) / (_tor_high - _tor_low)
-                        _tor_pos = max(0.0, min(1.0, _tor_pos))
+                        _tor_raw_pos = (_tor_price - _tor_low) / (_tor_high - _tor_low)
+                        if _tor_raw_pos > 1.0:
+                            _tor_breakout_long = True
+                        if _tor_raw_pos < 0.0:
+                            _tor_breakout_short = True
+                        _tor_pos = max(0.0, min(1.0, _tor_raw_pos))
                         _tor_long_extremes.append(_tor_pos >= _tor_threshold)
                         _tor_short_extremes.append(_tor_pos <= (1.0 - _tor_threshold))
                     if _tor_long_extremes:
                         if _tor_is_long:
                             _tor_blocked = all(_tor_long_extremes) if _tor_require_all else any(_tor_long_extremes)
+                            _tor_blocked = _tor_blocked and not _tor_breakout_long
                             _tor_side_str = "LONG"
                         else:
                             _tor_blocked = all(_tor_short_extremes) if _tor_require_all else any(_tor_short_extremes)
+                            _tor_blocked = _tor_blocked and not _tor_breakout_short
                             _tor_side_str = "SHORT"
                         if _tor_blocked:
                             _tor_levels = ",".join([f"{tf}={lvl:.2f}" for tf, lvl in zip(_tor_tfs, [(_tor_price - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) / max(1e-9, safe_fetch_float(_tor_ind.get(f'dc_high_{tf}'), 1.0) - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) for tf in _tor_tfs])])

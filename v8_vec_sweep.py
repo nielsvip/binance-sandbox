@@ -308,6 +308,10 @@ class SweepConfig:
     # Emergencies (R1/R3/R4/HEDGE_FAILED/RIDICULOUS_*/FROZEN_*/SUPERVISOR) bypass.
     # 0.0 = disabled. Default 1.0% well above 0.08% cost.
     MIN_EXIT_GAIN_PCT: float = 1.0
+    # 2026-05-22 B3 PARITY: live config.py:66 MAX_AUGMENTS_PER_POSITION=20 (USER
+    # 2026-05-21). Vec was uncapped — winners that should compound past 20× were
+    # also stacking augments on mean-reversion losers, biasing pool_sharpe negative.
+    MAX_AUGMENTS_PER_POSITION: int = 20
     WT_HTF_DISCOUNT_ENABLED: bool = True
     # ── reentry blocks ────────────────────────────────────────────────────
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
@@ -441,7 +445,7 @@ class SweepConfig:
     # means we only close when momentum confirms the loss is real, not a wick.
     NEWBORN_LOSS_KILL_ENABLED: bool = False
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
-    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0    # V3 breakeven (V1 -0.5% / V2 -0.5%+vel both -ΔSharpe)
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True
     NEWBORN_LOSS_KILL_VEL_TF: str = ""           # auto: "3m" crypto / "5m" tradier
     # ── TOP_OF_RANGE_BLOCK (2026-05-22 USER post-ORDI prevention mandate) ────
@@ -575,6 +579,14 @@ class SweepConfig:
     # Applied to OPEN base_qty BEFORE compute_trade_qty_vec; AUGMENTs inherit proportionally.
     LONG_SIZE_MULT: float = 1.0
     SHORT_SIZE_MULT: float = 1.0
+    # 2026-05-22 B1: per-(account, symbol, side) sizing multiplier.
+    # Mirrors live ez_manage.execute_trade_action ZEC_FLZ_LONG_SIZE_MULT and
+    # any future per-sym scalars. Format:
+    #   {"flz:ZECUSDC_LONG": 5.0, "trb:NVDA_LONG": 2.0, ...}
+    # Applied to per-trade returns on top of LONG_SIZE_MULT/SHORT_SIZE_MULT.
+    # Single-sym sweeps pass via SIM_ACCOUNT_KEY env var or via SweepConfig.
+    PER_SYM_SIZE_MULTS: dict = field(default_factory=lambda: {"flz:ZECUSDC_LONG": 5.0})
+    SIM_ACCOUNT_KEY: str = "flz"
     # ── TR_TREND_v1 (2026-05-17 build, spec §4) — DEFAULT-OFF NEW STRATEGY ────────
     # When True, simulate_one_symbol uses ONLY the TR_TREND_v1 D-decision breakout-
     # retest paths (legacy wt_3m / reentry / GR / DELTA / connors triggers disabled
@@ -1401,6 +1413,14 @@ def simulate_one_symbol(
     # per trade — economically equivalent to "deploy 3x dollars at the same setup."
     _side_return_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else \
                         float(getattr(config, "SHORT_SIZE_MULT", 1.0))
+    # 2026-05-22 B1: per-(account, symbol, side) sizing multiplier — multiplied on top
+    # of side_return_mult. Mirrors live ZEC_FLZ_LONG_SIZE_MULT=5.0 etc.
+    _psm_dict = getattr(config, "PER_SYM_SIZE_MULTS", {}) or {}
+    _psm_account = str(getattr(config, "SIM_ACCOUNT_KEY", "flz") or "flz")
+    _psm_key = f"{_psm_account}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+    _psm_mult = float(_psm_dict.get(_psm_key, 1.0))
+    if _psm_mult != 1.0:
+        _side_return_mult = _side_return_mult * _psm_mult
 
     _tr_v1_requested = bool(getattr(config, "TR_TREND_V1_ENABLED", False))
     _tr_v1_active = _tr_v1_requested and bool(_tr_trend_arrays.get("enabled", False))

@@ -949,7 +949,7 @@ class Config:
     # ═══════════════════════════════════════════════════════════════════════════
     NEWBORN_LOSS_KILL_ENABLED: bool = False        # 2026-05-22 00:00 — V1 DISABLED after A/B (ΔSharpe=-0.0139). V2 adds WT vel confirmation; awaiting A/B verdict before enabling.
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0     # window from open within which loss-kill applies
-    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = -0.5  # close newborn position when gain ≤ this (small buffer for noise)
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0   # 2026-05-22 V3 breakeven exit (V1 -0.5% / V2 -0.5%+vel both -ΔSharpe). User: "CLOSE AT ENTRY PRICE as they most likely fall back".
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True  # 2026-05-22 V2: only close if wt_velocity_TF also against position (not a wick)
     NEWBORN_LOSS_KILL_VEL_TF: str = ""             # auto: "3m" crypto / "5m" tradier when empty
     # ═══════════════════════════════════════════════════════════════════════════

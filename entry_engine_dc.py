@@ -44,14 +44,14 @@ def should_fire_dc_entry(symbol, indicators, side):
         return False, f"BAD_SIDE({side})", 0.0
     price = _f(indicators, 'current_price') or _f(indicators, 'price')
     if price <= 0:
-        # 2026-05-19 PATH D BUG FIX: live caller pipelines (tradier_indicators.compute_extra_indicators
-        # at line 1149 + ez_market_data) inject current_price under different keys. Previous silent
-        # NO_PRICE return dropped fire rate from 13.56% to 0% whenever the dict was constructed in a
-        # path that didn't inject. Fall back to mark_price / close_5m / close_3m / close in that order.
         for _alt in ('mark_price', 'close_5m', 'close_3m', 'close'):
-            price = _f(indicators, _alt)
+            _val = indicators.get(_alt)
+            if _val is not None and hasattr(_val, '__getitem__') and hasattr(_val, '__len__') and not isinstance(_val, (str, dict)) and len(_val) > 0:
+                try: price = float(_val[-1])
+                except (TypeError, ValueError): price = 0.0
+            else:
+                price = _f(indicators, _alt)
             if price > 0:
-                # Log-once warn so live operators can see the fragile-injection path was hit.
                 try:
                     import sys
                     if not getattr(should_fire_dc_entry, '_warned_no_price', False):
