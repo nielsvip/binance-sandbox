@@ -86,7 +86,7 @@ class TradierConfig:
     # disturbing trb/trc behaviour.
     # ───────────────────────────────────────────────────────────────────────────
     TRA_LONG_ONLY: bool = True                       # tra is cash account → no shorts EVER
-    TRA_NO_LOSS_EXIT: bool = True                    # tra never closes a position at a loss
+    TRA_NO_LOSS_EXIT: bool = False                    # tra never closes a position at a loss
     TRA_STRICT_EXIT_ONLY: bool = True                # only the 5-of-5 STRICT_EXIT gate counts
     TRA_DISABLE_DELTA_ENTRY: bool = True             # delta engine is too fast for long-term hold
     TRA_DISABLE_AUGMENT: bool = True                 # no churn from augments either
@@ -349,7 +349,7 @@ class TradierConfig:
     # exposure is neutralized while premium decays. Unwind hedge when the option
     # is sellable again (bid recovers past the threshold).
     # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
-    OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
+    OPTIONS_EQUITY_HEDGE_ENABLED: bool = False
     OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
     # === HEDGE SIZING CAPS (2026-04-27 — PLTR triple-fire $50k short on $4.3k call) ===
     # Hedge qty = min( delta×contracts×100, MAX_PCT_OF_OPT_COST × cb / px,
@@ -1951,7 +1951,7 @@ class TradierConfig:
     HA_WICK_QUALITY_ENABLED: bool = False  # BACKTEST_CHANGE_144: HA streak quality scoring (62% WR with EMA filter)
     HA_WICK_QUALITY_SCORE: int = 15  # BACKTEST_CHANGE_144: Score bonus for strong HA streak
     HA_WICK_QUALITY_TF: str = '1h'
-    HEDGE_ACCOUNTS = ['ang', 'fin', 'men', 'flz']
+    HEDGE_ACCOUNTS = []
     HEDGE_ALL_POSITIONS: bool = False  # BC_988: NEW. If True, hedge ALL positions when wt15m against (not just losers). Test pending.
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
@@ -2433,7 +2433,7 @@ class TradierConfig:
     SBA_MAX_CONCURRENT: int = 3  # BACKTEST_CHANGE_145: Max positions receiving SBA at once
     SBA_MAX_TOTAL_MULT: float = 2.5  # BACKTEST_CHANGE_145: Position can't exceed 2.5x START_POSITION_SIZE
     SBA_MIN_SCORE: float = 3.5  # BACKTEST_CHANGE_145: Min bounce score to trigger (backtest: 3.5 > 4.0/4.5, 66% SBA WR)
-    SCALP_ACCOUNTS = ['inf']
+    SCALP_ACCOUNTS = []#['inf']
     SCALP_MODE: bool = True  # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_OVERRIDE = False  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
@@ -2460,7 +2460,8 @@ class TradierConfig:
     STOP_LOSS_THRESHOLD = 999.0  # BACKTEST_CHANGE_17: was 1.0. Dead code under STRICT_NO_LOSS — disabled
     STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
     STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk ; DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
-    STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']
+    STRICT_NO_LOSS_ACCOUNTS = []#['ang', 'inf', 'flz', 'men', 'fin']' 
+    STRICT_NO_LOSS_ACCOUNTS_TRADIER = [] 
     SWEEP_OPTIMAL_ENTRY_TF: str = '1h'  # DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     SYMBOL_PERF_DECAY_HOURS: float = 12.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416

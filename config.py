@@ -371,7 +371,7 @@ class Config:
     HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.
-    STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
+    STRICT_NO_LOSS_ACCOUNTS = []#'ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === THROUGHPUT SAFETY KNOBS (added 2026-04-26 — pre-50-500/day push) ===
     # Master kill switch — when True, all four THROUGHPUT_SAFETY_* gates below are honored.
@@ -1202,7 +1202,7 @@ class Config:
     # When True: execute_now blocks ALL reduce/close where real_gain < 0%
     # Exceptions: hedges (is_hedge=True), STRUCTURAL_RANGE_SHIFT_EXIT, LIQUIDATION
     # This replaces Finandy's external NO_LOSS so it can be turned off safely.
-    UNIVERSAL_NOLOSS_GATE: bool = True
+    UNIVERSAL_NOLOSS_GATE: bool = False
     # 2026-04-16: bypass for technical-exit reasons so WT/DC/structure reversals can close losers.
     # Without this, UNIVERSAL_NOLOSS_GATE turns all technical exits into no-ops on losing positions,
     # which is the exact pattern that kept ATOMUSDT SHORT bleeding from 0 to -2.78%.
@@ -1663,7 +1663,7 @@ class Config:
     # wt1_3m AND wt1_1h against the trade direction → MUST take 100% same-symbol hedge.
     # If hedge cannot be opened for ANY reason → close losing position immediately, OVERRIDING NOLOSS.
     # SKY.USDT incident 2026-05-09: -17% for 11 days, no hedge, no close — exact failure mode this fixes.
-    OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = True              # master switch for the periodic loop
+    OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = False              # master switch for the periodic loop
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False                 # USER 2026-05-11: was True → False. Live data: 5,848 HEDGE_FAILED_FALLBACK_CLOSE in 24h (31.8% of all closes) because 1h hadn't flipped when 3m did. Superseded by HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H below.
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = True           # USER 2026-05-11 LATEST: hedge OPEN requires wt1_3m against AND (wt1_15m against OR wt1_1h against). Catches sharp 3m+15m moves the 1h-lag couldn't, while keeping 2-TF confirmation. Close still uses wt_3m alone (HEDGE_CLOSE_MODE='wt_3m').
