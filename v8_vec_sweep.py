@@ -568,9 +568,9 @@ class SweepConfig:
     WT_15M_BOUNCE_BB_MAX: float = 0.95        # bb_pct_b upper bound (within BB)
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
     # ── BB_BREAKOUT + BB_RSI_STOCH SCALP (Phase 9 — WIRED 2026-05-22) ─────
-    BB_BREAKOUT_ENABLED: bool = True             # price outside BB on TF → entry trigger
+    BB_BREAKOUT_ENABLED: bool = False             # price outside BB on TF → entry trigger
     BB_BREAKOUT_TF: str = '1h'                   # which TF bb_pct_b to check
-    BB_RSI_STOCH_SCALP_ENABLED: bool = True      # triple confirmation: BB + RSI + Stoch
+    BB_RSI_STOCH_SCALP_ENABLED: bool = False     # triple confirmation: BB + RSI + Stoch
     # ── STRUCTURAL-PATTERN GATES (2026-05-15) — default OFF, sweep-A/B before live ──
     # A1: SPY > 200SMA top-level regime gate (Faber/Antonacci/Clenow/Connors universal)
     SPY_REGIME_GATE_ENABLED: bool = False
