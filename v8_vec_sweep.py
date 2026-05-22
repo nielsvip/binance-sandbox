@@ -132,6 +132,15 @@ try:
 except ImportError:
     evaluate_breakout_retest_vec = None
 try:
+    # 2026-05-22 USER MANDATE: real bottom/top detector — replaces scattergun micro-entries
+    from vec_paths.quality_bottom_entry import (
+        precompute_quality_bottom_long_mask,
+        precompute_quality_top_short_mask,
+    )
+except ImportError:
+    precompute_quality_bottom_long_mask = None
+    precompute_quality_top_short_mask = None
+try:
     # 2026-05-20 PORT — live 4-engine entry vote (WT/Stoch/DC/HTF/STDEV_MACRO)
     from vec_paths.live_entry_engine import live_entry_engine_passes_vec
 except ImportError:
@@ -149,9 +158,10 @@ try:
 except ImportError:
     check_newborn_loss_kill_exit = None
 try:
-    from vec_paths.top_of_range_block import build_top_of_range_block_masks
+    from vec_paths.top_of_range_block import build_top_of_range_block_masks, build_breakout_masks
 except ImportError:
     build_top_of_range_block_masks = None
+    build_breakout_masks = None
 try:
     from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
 except ImportError:
@@ -247,6 +257,8 @@ class _PosStateAdapter:
     def entry_price(self) -> float: return self._state.entry_price
     @property
     def entry_ts(self) -> float: return self._state.opened_at
+    @property
+    def breakout_entry(self) -> bool: return bool(getattr(self._state, "breakout_entry", False))
     @property
     def qty(self) -> float:
         return self._state.qty if self._state.is_long else -self._state.qty
@@ -444,10 +456,12 @@ class SweepConfig:
     # scored ΔSharpe -0.0139 (closed wicks → re-entered worse). REQUIRE_VEL_AGAINST=True
     # means we only close when momentum confirms the loss is real, not a wick.
     NEWBORN_LOSS_KILL_ENABLED: bool = False
+    NEWBORN_LOSS_KILL_MIN_AGE_MIN: float = 15.0  # V4 — give position time to breathe
     NEWBORN_LOSS_KILL_WINDOW_MIN: float = 30.0
-    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0    # V3 breakeven (V1 -0.5% / V2 -0.5%+vel both -ΔSharpe)
+    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0    # V3 breakeven
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True
     NEWBORN_LOSS_KILL_VEL_TF: str = ""           # auto: "3m" crypto / "5m" tradier
+    NEWBORN_LOSS_KILL_SURGICAL_ONLY: bool = True # V4 — only fire on breakout_entry positions
     # ── TOP_OF_RANGE_BLOCK (2026-05-22 USER post-ORDI prevention mandate) ────
     # Block OPEN/AUGMENT when dc_position is extreme on ALL listed TFs.
     # ORDI was bought at dc_h1h — this prevents repeat. Default OFF until A/B proves +ΔSharpe.
@@ -587,6 +601,21 @@ class SweepConfig:
     # Single-sym sweeps pass via SIM_ACCOUNT_KEY env var or via SweepConfig.
     PER_SYM_SIZE_MULTS: dict = field(default_factory=lambda: {"flz:ZECUSDC_LONG": 5.0})
     SIM_ACCOUNT_KEY: str = "flz"
+    # 2026-05-22 USER MANDATE: REAL bottom/top entry, ~1-2 per sym per day.
+    # Replaces scattergun WT_3M/RZ_BASELINE/GR micro-fires when active.
+    # See vec_paths/quality_bottom_entry.py for full rationale + factor list.
+    QUALITY_BOTTOM_ENTRY_ENABLED: bool = True
+    QUALITY_BOTTOM_PULLBACK_PCT: float = 3.0
+    QUALITY_BOTTOM_K_15M_MAX: float = 25.0
+    QUALITY_BOTTOM_K_1H_MAX: float = 35.0
+    QUALITY_BOTTOM_PULLBACK_WINDOW_BARS: int = 96  # 24h on 15m basis (15m × 96 = 24h)
+    QUALITY_BOTTOM_BB_PCTB_MAX: float = 0.20
+    QUALITY_BOTTOM_DC_LOW_PROX_PCT: float = 0.5
+    QUALITY_BOTTOM_VOL_MULT: float = 1.3
+    QUALITY_BOTTOM_VOL_WINDOW_BARS: int = 20
+    QUALITY_BOTTOM_HA_FLIP_LOOKBACK: int = 3
+    QUALITY_BOTTOM_MAX_PER_DAY: int = 3
+    QUALITY_BOTTOM_DISABLE_SCATTERGUN: bool = True
     # ── TR_TREND_v1 (2026-05-17 build, spec §4) — DEFAULT-OFF NEW STRATEGY ────────
     # When True, simulate_one_symbol uses ONLY the TR_TREND_v1 D-decision breakout-
     # retest paths (legacy wt_3m / reentry / GR / DELTA / connors triggers disabled
@@ -887,6 +916,12 @@ class SymState:
     # 2026-05-22 USER: MICRO_SCALP_USDC_CLOSE wire-in. Per-bar prev_gain so the
     # decel comparison (gain < prev_gain) works in vec just like ez_manage:40000+.
     prev_gain: float = 0.0
+    # 2026-05-22 QUALITY_BOTTOM_ENTRY daily-cap state (USER ~1-2/day mandate)
+    quality_entries_today: int = 0
+    quality_last_day_utc: int = 0
+    # 2026-05-22 SURGICAL NLK: tag entry as breakout when it bypassed TOR_BLOCK
+    # via raw_dc_pos>1.0 exception. Surgical NLK only fires on these positions.
+    breakout_entry: bool = False
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -1301,6 +1336,23 @@ def simulate_one_symbol(
         except Exception:
             _ra_fire_mask = np.zeros(n, dtype=bool)
 
+    # ─── 2026-05-22 QUALITY_BOTTOM_ENTRY precompute (USER MANDATE) ──────────────
+    # Multi-factor AND-gate: HTF bullish + ≥3% pullback + multi-TF oversold +
+    # HA reversal + lower-band proximity + volume confirm.
+    # See vec_paths/quality_bottom_entry.py.
+    _qb_fire_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", True)) and (
+        precompute_quality_bottom_long_mask is not None
+        and precompute_quality_top_short_mask is not None
+    ):
+        try:
+            if is_long:
+                _qb_fire_mask = precompute_quality_bottom_long_mask(npz, config).astype(bool)
+            else:
+                _qb_fire_mask = precompute_quality_top_short_mask(npz, config).astype(bool)
+        except Exception as _qb_exc:
+            _qb_fire_mask = np.zeros(n, dtype=bool)
+
     # ─── DC_LOW / BB FROZEN STOP precompute ─────────────────────────────────────
     _dc_fstop_arr = np.zeros(n, dtype=np.float32)
     _bb_fstop_arr = np.zeros(n, dtype=np.float32)
@@ -1486,6 +1538,28 @@ def simulate_one_symbol(
     else:
         _tor_block_long = np.zeros(n, dtype=bool)
         _tor_block_short = np.zeros(n, dtype=bool)
+    # 2026-05-22 SURGICAL NLK: precompute breakout masks regardless of TOR_BLOCK_ENABLED.
+    # Used to tag pos_state.breakout_entry on OPEN events so NLK can fire surgically.
+    if build_breakout_masks is not None:
+        try:
+            class _BkShim:
+                def __init__(self, prices, npz):
+                    self.prices = prices
+                    self.arrays = npz
+                def f(self, key, idx, default=0.0):
+                    arr = self.arrays.get(key)
+                    if arr is None or idx >= len(arr):
+                        return default
+                    return float(arr[idx])
+            _bk_shim = _BkShim(prices=npz.get("close"), npz=npz)
+            _breakout_long_any, _breakout_short_any = build_breakout_masks(_bk_shim, n, config)
+        except Exception as _e:
+            sys.stderr.write(f"build_breakout_masks failed {symbol}/{side}: {_e}\n")
+            _breakout_long_any = np.zeros(n, dtype=bool)
+            _breakout_short_any = np.zeros(n, dtype=bool)
+    else:
+        _breakout_long_any = np.zeros(n, dtype=bool)
+        _breakout_short_any = np.zeros(n, dtype=bool)
 
     # ─── PHASE I 2026-05-19 compound exit precompute ──────────────────────────
     try:
@@ -1778,8 +1852,27 @@ def simulate_one_symbol(
             # BREAKOUT_RETEST_ARMED (2026-05-18 REWIRE) — seventh trigger (Rule A).
             # Mirrors ez_manage.py:35464+. Stateless simplified form.
             _ra_ok = bool(_ra_fire_mask[i])
-            if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok):
-                continue
+            # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
+            _qb_ok = bool(_qb_fire_mask[i])
+            # Daily-cap on quality entries (~1-2/day target)
+            _qb_max_per_day = int(getattr(config, "QUALITY_BOTTOM_MAX_PER_DAY", 3))
+            _today_utc = int(bar_ts // 86400)
+            if state.quality_last_day_utc != _today_utc:
+                state.quality_last_day_utc = _today_utc
+                state.quality_entries_today = 0
+            if _qb_ok and state.quality_entries_today >= _qb_max_per_day:
+                _qb_ok = False  # daily cap reached
+            # When DISABLE_SCATTERGUN: quality gate is the ONLY trigger; suppress all others.
+            if bool(getattr(config, "QUALITY_BOTTOM_DISABLE_SCATTERGUN", True)) and bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", True)):
+                if not _qb_ok:
+                    continue
+                # quality entry fires — count it
+                state.quality_entries_today += 1
+            else:
+                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok):
+                    continue
+                if _qb_ok:
+                    state.quality_entries_today += 1
             # STDEV_MACRO_ENTRY_VETO — block OPEN at macro extreme on same side.
             # Additive to existing entry triggers (BB-breakout etc.) — never silently
             # overrides them; refuses the entry with an explicit reason. Default OFF.
@@ -1870,6 +1963,10 @@ def simulate_one_symbol(
             state.augmented_count = 0
             state.max_gain = 0.0
             state.last_open_attempt_ts = bar_ts
+            # 2026-05-22 SURGICAL NLK — tag entry as breakout-bypassed if either
+            # breakout mask fires at this bar for this side. Used by surgical NLK
+            # to only close newborn losers that were breakout entries.
+            state.breakout_entry = bool(_breakout_long_any[i] if is_long else _breakout_short_any[i])
             # 2026-05-17 VEC_OVERTRADE_FIX — stamp last_augment_ts on OPEN as
             # well as on AUGMENT (L1271 below). Slow engine sets
             # `_bt_augment_lock[pk]` in execute_trade_action for every

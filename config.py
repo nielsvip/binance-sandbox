@@ -952,6 +952,8 @@ class Config:
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = 0.0   # 2026-05-22 V3 breakeven exit (V1 -0.5% / V2 -0.5%+vel both -ΔSharpe). User: "CLOSE AT ENTRY PRICE as they most likely fall back".
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = True  # 2026-05-22 V2: only close if wt_velocity_TF also against position (not a wick)
     NEWBORN_LOSS_KILL_VEL_TF: str = ""             # auto: "3m" crypto / "5m" tradier when empty
+    NEWBORN_LOSS_KILL_MIN_AGE_MIN: float = 15.0    # 2026-05-22 V4 user: "they need time to breathe so do not let it kick in until 12-25 min after open"
+    NEWBORN_LOSS_KILL_SURGICAL_ONLY: bool = True   # 2026-05-22 V4: only close positions that were BREAKOUT entries (bypassed TOR via raw_dc_pos>1.0)
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-05-22 TOP_OF_RANGE_BLOCK — prevent ORDI-style top-of-range entries.
     # Block OPEN/AUGMENT when price in top THRESHOLD% of DC channel on ALL listed TFs
