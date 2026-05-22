@@ -18755,26 +18755,46 @@ class MultiAccountTradeManager:
                     (is_long and _d_sig.entry_long)
                     or (not is_long and _d_sig.entry_short)
                 )
-                if not _delta_ok:
-                    _htf_gate = getattr(config, "DELTA_HTF_GATE", "none")
-                    logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED NO_SIGNAL htf={_htf_gate} action={action} r={(reason or '')[:50]}")
-                    return f"{position_key}_BLOCKED_DELTA_NO_SIGNAL_htf={_htf_gate}"
                 _htf_gate = getattr(config, "DELTA_HTF_GATE", "none")
+                if not _delta_ok:
+                    if _htf_gate == "hh_hl_4h":
+                        pass  # structure-based gate; no-delta-signal is fine, fall through to HH/HL check below
+                    else:
+                        logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED NO_SIGNAL htf={_htf_gate} action={action} r={(reason or '')[:50]}")
+                        return f"{position_key}_BLOCKED_DELTA_NO_SIGNAL_htf={_htf_gate}"
                 if _htf_gate != "none":
-                    _wt1_4h = _sf(i.get("wt1_4h", 0), 0)
-                    _wt2_4h = _sf(i.get("wt2_4h", 0), 0)
-                    _wt1_D = _sf(i.get("wt1_D", 0), 0)
-                    _wt2_D = _sf(i.get("wt2_D", 0), 0)
-                    if _htf_gate in ("4h", "4h_D", "4h_D_strict"):
-                        _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
-                        if not _4h_ok:
-                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_4h_AGAINST wt1_4h={_wt1_4h:.2f} wt2_4h={_wt2_4h:.2f} is_long={is_long}")
-                            return f"{position_key}_BLOCKED_DELTA_HTF_4h_AGAINST"
-                    if _htf_gate in ("4h_D", "4h_D_strict"):
-                        _D_ok = (_wt1_D > _wt2_D) if is_long else (_wt1_D < _wt2_D)
-                        if not _D_ok:
-                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_D_AGAINST wt1_D={_wt1_D:.2f} wt2_D={_wt2_D:.2f} is_long={is_long}")
-                            return f"{position_key}_BLOCKED_DELTA_HTF_D_AGAINST"
+                    if _htf_gate == "hh_hl_4h":
+                        _dch4h = _sf(i.get("dc_high_4h", 0), 0)
+                        _dcl4h = _sf(i.get("dc_low_4h", 0), 0)
+                        _dch4h_p = _sf(i.get("dc_high_4h_prev", 0), 0)
+                        _dcl4h_p = _sf(i.get("dc_low_4h_prev", 0), 0)
+                        _ha4h = str(i.get("ha_4h", "") or "")
+                        _hh = _dch4h > _dch4h_p > 0
+                        _hl = _dcl4h > _dcl4h_p > 0
+                        _lh = _dch4h < _dch4h_p
+                        _ll = _dcl4h < _dcl4h_p
+                        if is_long:
+                            _struct_ok = (_hh and _hl) or (_ha4h == "green")
+                        else:
+                            _struct_ok = (_lh and _ll) or (_ha4h == "red")
+                        if not _struct_ok:
+                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HH_HL_4h hh={_hh} hl={_hl} lh={_lh} ll={_ll} ha={_ha4h} is_long={is_long}")
+                            return f"{position_key}_BLOCKED_DELTA_HH_HL_4h"
+                    else:
+                        _wt1_4h = _sf(i.get("wt1_4h", 0), 0)
+                        _wt2_4h = _sf(i.get("wt2_4h", 0), 0)
+                        _wt1_D = _sf(i.get("wt1_D", 0), 0)
+                        _wt2_D = _sf(i.get("wt2_D", 0), 0)
+                        if _htf_gate in ("4h", "4h_D", "4h_D_strict"):
+                            _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
+                            if not _4h_ok:
+                                logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_4h_AGAINST wt1_4h={_wt1_4h:.2f} wt2_4h={_wt2_4h:.2f} is_long={is_long}")
+                                return f"{position_key}_BLOCKED_DELTA_HTF_4h_AGAINST"
+                        if _htf_gate in ("4h_D", "4h_D_strict"):
+                            _D_ok = (_wt1_D > _wt2_D) if is_long else (_wt1_D < _wt2_D)
+                            if not _D_ok:
+                                logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HTF_D_AGAINST wt1_D={_wt1_D:.2f} wt2_D={_wt2_D:.2f} is_long={is_long}")
+                                return f"{position_key}_BLOCKED_DELTA_HTF_D_AGAINST"
                 # 2026-04-10 BUGFIX: bull_speed_z/bear_speed_z and active_tf_count don't exist on
                 # DeltaSignal __slots__. Direct attr access here was raising AttributeError, caught
                 # by execute_trade_wrapper outer except, silently aborting the entire trade path
