@@ -149,6 +149,10 @@ try:
 except ImportError:
     check_newborn_loss_kill_exit = None
 try:
+    from vec_paths.top_of_range_block import build_top_of_range_block_masks
+except ImportError:
+    build_top_of_range_block_masks = None
+try:
     from vec_paths.wt_crossunder_final import check_wt_crossunder_final_exit
 except ImportError:
     check_wt_crossunder_final_exit = None
