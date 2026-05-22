@@ -7454,10 +7454,16 @@ class StockStrategy:
                 _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
                 _xb_within_band = _xb_dist_pct <= _xb_band_pct
                 if _xb_favorable or _xb_within_band:
-                    _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                    _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
-                    logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
-                    return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
+                    _xb_gate_ok = True
+                    if bool(getattr(config, 'REENTRY_CONFIRMATION_GATES_ENABLED', True)):
+                        _k5 = float(i.get('stoch_k_5m', 50) or 50); _kp5 = float(i.get('stoch_k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
+                        if is_long: _xb_gate_ok = (_k5 < float(getattr(config, 'REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
+                        else: _xb_gate_ok = (_k5 > float(getattr(config, 'REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
+                    if _xb_gate_ok:
+                        _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                        _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                        logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
+                        return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
         # ═══ RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ═══════
         # Sibling to PRICE_CROSS_BACK: fires when position is PARTIALLY closed
         # (positionAmt > 0 after SENTIMENT_FADE / DELTA_EXIT / WT_BANDAID REDUCE)
@@ -7491,10 +7497,14 @@ class StockStrategy:
                         if _ra_require_wt:
                             _ra_w1 = float(i.get('wt1_5m', 0) or 0); _ra_w2 = float(i.get('wt2_5m', 0) or 0)
                             _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
-                        if _ra_wt_ok:
+                        _ra_gate_ok = True
+                        if bool(getattr(config, 'REENTRY_CONFIRMATION_GATES_ENABLED', True)):
+                            _k5 = float(i.get('stoch_k_5m', 50) or 50); _kp5 = float(i.get('stoch_k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
+                            if is_long: _ra_gate_ok = (_k5 < float(getattr(config, 'REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
+                            else: _ra_gate_ok = (_k5 > float(getattr(config, 'REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
+                        if _ra_wt_ok and _ra_gate_ok:
                             _ra_size_pct = float(getattr(config, 'RECOVERY_AUGMENT_SIZE_PCT', 1.0))
                             _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
-                            # Mark fired so the same reduction cycle doesn't fire repeatedly.
                             try:
                                 if _ra_one_fire: position.recovery_fired = True
                             except Exception: pass
@@ -8144,6 +8154,7 @@ class TradierTradeManager:
         self.clock_offset = 0.0
         self.ready_to_trade = True
         self.gfv_tracker = GFVTracker(config.DATA_DIR)
+        import mtf_live_evaluator as _mle; self.mtf_states = _mle.load_mtf_states()
 
     async def initialize_all_position_fields(self):
         """Ensure ALL position fields are initialized"""
