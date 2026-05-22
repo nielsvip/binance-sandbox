@@ -15202,9 +15202,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _dch1h = safe_fetch_float(indicators.get('dc_high_1h', 0), 0)
                         _dch4h = safe_fetch_float(indicators.get('dc_high_4h', 0), 0)
                         _dc_tf, _dc_tier_mult = None, 1.0
-                        _dc_min_tf = str(getattr(config, 'DC_BREAKOUT_MIN_TF', '1h')).lower()
-                        _dc_allow_15m = _dc_min_tf in ('3m', '15m')
-                        _dc_allow_3m = _dc_min_tf == '3m'
+                        _dc_allow_15m = bool(getattr(config, 'DC_BREAKOUT_ALLOW_15M', False))
+                        _dc_allow_3m = bool(getattr(config, 'DC_BREAKOUT_ALLOW_3M', False))
                         # BREAKOUT: LONG when price > DC high, SHORT when price < DC low
                         if is_long:
                             if _dch4h > 0 and current_price > _dch4h * (1 + _buf): _dc_tf, _dc_tier_mult = "DC4H", 3.0

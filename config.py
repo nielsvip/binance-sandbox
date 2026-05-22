@@ -2458,7 +2458,8 @@ class Config:
     DC_BREAKOUT_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_133: Donchian breakout entry (trend-following)
     DC_BREAKOUT_SCORE: int = 15  # BACKTEST_CHANGE_133: Conservative (30% WR in ranging)
     DC_BREAKOUT_TF: str = "1h"  # BACKTEST_CHANGE_133: TF for breakout
-    DC_BREAKOUT_MIN_TF: str = "1h"  # Minimum TF for DC breakout entries. '3m'|'15m'|'1h'|'4h'. Default '1h' — 3m+15m had 37.7% WR (37% of all DC events). User mandate 2026-05-22: only 1h+ unless backtest proves lower.
+    DC_BREAKOUT_ALLOW_15M: bool = False  # Allow 15m DC breakout entries. Default False — 15m DC had 37.7% WR. User mandate 2026-05-22: 1h+ only unless backtest proves otherwise.
+    DC_BREAKOUT_ALLOW_3M: bool = False  # Allow 3m DC breakout entries. Default False — 3m DC had ~37.7% WR, fires too frequently. Requires DC_BREAKOUT_ALLOW_15M=True.
     ATR_ADAPTIVE_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_135: Inverse ATR sizing (high vol = smaller)
     ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 2.0  # BACKTEST_CHANGE_135: Target ATR%. Size=1x at this ATR.
     MACD_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_136: MACD cross-back exit for profitable positions
