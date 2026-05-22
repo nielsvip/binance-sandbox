@@ -38,6 +38,7 @@ _VALID_FAILURE_TAGS = (
     'account not allowed', 'account_not_allowed', 'check_account_allowed',
     'in flight', 'in_flight', 'in-flight', 'debounce',
     'duplicate', 'dup_guard', 'cooldown',
+    'hard_reduce_lock', 'reduce_lock', 'duplicate_reduce_cooldown',
     'newborn-position-immunity', 'augment_lock',
     'liquidity', 'no quote', 'no_quote', 'stale price',
     'rate limit', 'rate_limit', '-1003', '-2010', '-2011', '-2018', '-2019',
