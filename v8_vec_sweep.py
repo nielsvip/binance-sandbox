@@ -210,6 +210,14 @@ class _NPZStoreAdapter:
         if arr is None or idx >= len(arr): return default
         try: return float(arr[idx])
         except Exception: return default
+    def b(self, key: str, idx: int, default: bool = False) -> bool:
+        # 2026-05-22 B4: added for vec_paths/delta_engine which reads bool fields
+        # (dc_basis_crossover_1h etc.) via store.b(). Previously delta_engine crashed
+        # with AttributeError when DELTA_ENGINE_ENABLED was True.
+        arr = self._npz.get(key)
+        if arr is None or idx >= len(arr): return default
+        try: return bool(arr[idx])
+        except Exception: return default
     def price(self, idx: int) -> float:
         return float(self._close[idx])
     @property
@@ -294,6 +302,12 @@ class SweepConfig:
     ROUND_TRIP_COST_PCT: float = 0.08
     ROUND_TRIP_COST_USDC_PCT: float = 0.08
     ROUND_TRIP_COST_USDT_PCT: float = 0.08
+    # 2026-05-22 USER MANDATE: NO EXIT AT LOW GAINS. /history audit: 48% of all
+    # closes fired below +0.02% gain, 92.8% below +1.0%. System cannot capture
+    # upside. Global floor: non-emergency exits must clear MIN_EXIT_GAIN_PCT.
+    # Emergencies (R1/R3/R4/HEDGE_FAILED/RIDICULOUS_*/FROZEN_*/SUPERVISOR) bypass.
+    # 0.0 = disabled. Default 1.0% well above 0.08% cost.
+    MIN_EXIT_GAIN_PCT: float = 1.0
     WT_HTF_DISCOUNT_ENABLED: bool = True
     # ── reentry blocks ────────────────────────────────────────────────────
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
@@ -521,13 +535,11 @@ class SweepConfig:
     IN_GAIN_TREND_MED_WINNER_PCT: float = 5.0     # gain threshold for 15m tier
     IN_GAIN_TREND_MIN_GAIN: float = 2.0           # minimum gain to even check
     # ── DELTA_ENGINE entries ──────────────────────────────────────────────────
-    # 2026-05-22: live has these True but vec_paths/delta_engine.py needs adapter
-    # patch (uses store.b() which doesn't exist on _NPZStoreAdapter). Leaving False
-    # until adapter fix; this IS a known parity gap.
-    DELTA_ENGINE_ENABLED: bool = False  # PARITY_GAP: live True; vec port incomplete
-    DELTA_ENTRY_ENABLED: bool = False   # PARITY_GAP: live True; vec port incomplete
-    DELTA_ENTRY_MIN_TF: int = 3         # 2026-05-22 parity: live 3
-    DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # 2026-05-22 parity: live 2.5
+    # 2026-05-22 B4: adapter .b() method added — DELTA_ENGINE can now run. Re-flipped to True.
+    DELTA_ENGINE_ENABLED: bool = True
+    DELTA_ENTRY_ENABLED: bool = True
+    DELTA_ENTRY_MIN_TF: int = 3
+    DELTA_ENTRY_Z_THRESHOLD: float = 2.5
     DELTA_SPEED_SMOOTH: int = 5
     DELTA_TF_Z_THRESHOLD: float = 1.5
     DELTA_HTF_GATE: str = "none"
@@ -1540,17 +1552,23 @@ def simulate_one_symbol(
                         state.max_gain = 0.0
                         state.last_augment_ts = bar_ts
                     elif _trxe["action"] == "ADD":
-                        denom = state.qty + qty_to_add
-                        new_entry = (state.qty * state.entry_price + qty_to_add * mark) / denom if denom > 0 else mark
-                        ev = TradeEvent(
-                            ts=bar_ts, type="AUGMENT", qty=qty_to_add, price=mark,
-                            value=qty_to_add * mark, reason=_trxe["reason"],
-                        )
-                        events.append(ev)
-                        state.qty = denom
-                        state.entry_price = new_entry
-                        state.augmented_count += 1
-                        state.last_augment_ts = bar_ts
+                        # 2026-05-22 B3: MAX_AUGMENTS cap (live=20). Mandate 2026-05-21:
+                        # winners compound; losers don't pile up.
+                        _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
+                        if state.augmented_count >= _max_aug:
+                            pass  # skip augment — cap reached
+                        else:
+                            denom = state.qty + qty_to_add
+                            new_entry = (state.qty * state.entry_price + qty_to_add * mark) / denom if denom > 0 else mark
+                            ev = TradeEvent(
+                                ts=bar_ts, type="AUGMENT", qty=qty_to_add, price=mark,
+                                value=qty_to_add * mark, reason=_trxe["reason"],
+                            )
+                            events.append(ev)
+                            state.qty = denom
+                            state.entry_price = new_entry
+                            state.augmented_count += 1
+                            state.last_augment_ts = bar_ts
             continue  # TR_TREND_v1 handles this bar fully — skip all legacy logic
 
         # ─── PHASE E 2026-05-19 MTF protocol short-circuit ───────────────────
@@ -1620,16 +1638,21 @@ def simulate_one_symbol(
                     )
                     state._mtf_prior_bounce_price = _new_prior
                     if _big_fire:
-                        add_qty = state.qty * (_mtf_big_mult - 1.0)
-                        if add_qty > 0:
-                            denom = state.qty + add_qty
-                            new_entry = (state.qty * state.entry_price + add_qty * mark) / denom if denom > 0 else mark
-                            ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=add_qty, price=mark,
-                                value=add_qty * mark, reason=_big_reason)
-                            events.append(ev)
-                            state.qty = denom; state.entry_price = new_entry
-                            state.augmented_count += 1; state.last_augment_ts = bar_ts
-                            state._mtf_big_added = True
+                        # 2026-05-22 B3: MAX_AUGMENTS cap
+                        _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
+                        if state.augmented_count >= _max_aug:
+                            pass  # cap reached
+                        else:
+                            add_qty = state.qty * (_mtf_big_mult - 1.0)
+                            if add_qty > 0:
+                                denom = state.qty + add_qty
+                                new_entry = (state.qty * state.entry_price + add_qty * mark) / denom if denom > 0 else mark
+                                ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=add_qty, price=mark,
+                                    value=add_qty * mark, reason=_big_reason)
+                                events.append(ev)
+                                state.qty = denom; state.entry_price = new_entry
+                                state.augmented_count += 1; state.last_augment_ts = bar_ts
+                                state._mtf_big_added = True
                 continue  # MTF holds position — skip legacy logic
             # No position: check for SMALL entry (gated by GR filter)
             _small_fire, _small_reason = check_mtf_small_entry(_mtf_arrays, i, config)
@@ -2515,6 +2538,10 @@ def simulate_one_symbol(
             aug_qty = float(elig["augment_qty"][0])
             if aug_qty <= 0:
                 continue
+            # 2026-05-22 B3: MAX_AUGMENTS cap
+            _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
+            if state.augmented_count >= _max_aug:
+                continue
             # New blended entry
             denom = state.qty + aug_qty
             new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
@@ -2557,19 +2584,22 @@ def simulate_one_symbol(
             if _gr_cooldown_ok and _gr_htf_ok:
                 _gr_aug = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
                 if _gr_aug is not None and _gr_aug.get("action") == "AUGMENT":
-                    aug_mult = float(_gr_aug.get("mult", 1.0))
-                    aug_qty = (config.START_POSITION_SIZE * aug_mult) / mark
-                    if aug_qty > 0:
-                        denom = state.qty + aug_qty
-                        new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
-                        ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=aug_qty, price=mark,
-                            value=aug_qty * mark, reason=_gr_aug["reason"])
-                        events.append(ev)
-                        state.qty = denom
-                        state.entry_price = new_entry
-                        state.augmented_count += 1
-                        state.last_augment_ts = bar_ts
-                        state.gr_last_fire_ts = bar_ts
+                    # 2026-05-22 B3: MAX_AUGMENTS cap
+                    _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
+                    if state.augmented_count < _max_aug:
+                        aug_mult = float(_gr_aug.get("mult", 1.0))
+                        aug_qty = (config.START_POSITION_SIZE * aug_mult) / mark
+                        if aug_qty > 0:
+                            denom = state.qty + aug_qty
+                            new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
+                            ev = TradeEvent(ts=bar_ts, type="AUGMENT", qty=aug_qty, price=mark,
+                                value=aug_qty * mark, reason=_gr_aug["reason"])
+                            events.append(ev)
+                            state.qty = denom
+                            state.entry_price = new_entry
+                            state.augmented_count += 1
+                            state.last_augment_ts = bar_ts
+                            state.gr_last_fire_ts = bar_ts
 
         # 2026-05-22 USER: end-of-bar bookkeeping — capture current bar's gain as prev_gain
         # for the next bar's MICRO_SCALP decel comparison. Only meaningful when position is

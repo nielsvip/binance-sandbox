@@ -10,6 +10,14 @@ Master record of issues, decisions, and pending edits surfaced during the fin-ac
 - **Safety**: NO LIVE CODE changes unless specifically approved.
 - **Documentation**: Keep .md files updated.
 
+## Strategy Login Verification — 2026-05-22 02:15 UTC
+- **MacBook Live Trading**: 14 procs (ang, inf, fin, flz, men, trb, trc) — **OK** (≥7).
+- **S1 Sweep Workers**: 5 crypto, 4 tradier — **OK** (≥1 each).
+- **S1 Results Growth**: CSVs and logs advancing (last mtime 02:00 UTC) — **OK**.
+- **Sandbox Parity**: 24 core files bit-identical (MB=S1) — **OK**.
+- **Locked Files**: 40+ entries in `LOCKED_FILES.md`; `ez_manage.py`, `tradier_manage.py`, and configs are HARD-LOCKED.
+- **State of Affairs**: `MIN_GAIN_TO_BUY_AGGRESSIVELY` 3.0%, `RATIO_MULTIPLIER` 3.0, `HEDGE_MODE` True (crypto).
+
 ## Edits SHIPPED 2026-05-08 22:55
 
 
