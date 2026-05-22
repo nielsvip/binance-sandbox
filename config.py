@@ -1561,7 +1561,7 @@ class Config:
     DELTA_Z_WINDOW: int = 200
     DELTA_MAX_HOLD_BARS: int = 0  # DISABLED — ride winners until technicals turn. No fixed time exits.
     DELTA_COOLDOWN_BARS: int = 120  # WINNER: 120 bars (6h at 3m)
-    DELTA_HTF_GATE: str = "4h_D"  # 2026-05-22 RESTORED none→4h_D: prior winner per comment. Triage loosened to none with no backtest; DC_BREAK at 37.7% WR confirms unfiltered delta entries are noise. ROLLBACK: "none" (triage). Values: 'none' / '4h' / '4h_D'
+    DELTA_HTF_GATE: str = "none"  # 2026-05-22 REVERTED 4h_D→none: 4h_D blocks 100% of LONG entries when 4h WT bearish — same block as May 21 triage. A/B sweep queued on S1 (none/4h/4h_D) to prove live setting before applying. Values: 'none' / '4h' / '4h_D'
     DELTA_ATR_ENTRY_FILTER: bool = False  # WINNER: OFF for crypto
     # LT overrides (for swing mode on specific accounts/positions)
     DELTA_LT_EXIT_TF: str = "4h"  # Crypto LT: exit on 4h (stoch_cross)
