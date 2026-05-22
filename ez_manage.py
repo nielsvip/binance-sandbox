@@ -46412,7 +46412,7 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                 logger.warning(
                     f"[REENTRY_MONITOR] {position_key}: {source} level={level_price:.6f} cur={_cur_price:.6f} → partial qty={fire_qty:.4f} (${fire_usd:.1f})"
                 )
-                await execute_now(
+                await trade_manager.execute_now(
                     trade_manager.order_queue,
                     trade_manager,
                     position_key,

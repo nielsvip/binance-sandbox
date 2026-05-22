@@ -7308,7 +7308,7 @@ class StockStrategy:
             # 2026-04-28: if PPL has fired, effective gain is doubled.
             try:
                 from ez_reentry import effective_gain_pct as _eff_gain_t
-                _eff_gain_val = _eff_gain_t(f"{getattr(self, 'account_key', '')}:{symbol}_{position_side}", gain, self, config)
+                _eff_gain_val = _eff_gain_t(f"{getattr(self, 'account_key', '')}:{symbol}_{position.position_side}", gain, self, config)
             except Exception:
                 _eff_gain_val = gain
             if _eff_gain_val < getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0):
