@@ -432,37 +432,44 @@ def ensure_state(states: dict, key: str) -> dict:
     return states[key]
 
 
+def load_mtf_states() -> dict:
+    """Load cached mtf_states from disk with fallback to empty dict."""
+    import os, json
+    path = "data/mtf_states_cache.json"
+    if not os.path.exists(path): return {}
+    try:
+        with open(path, "r") as f: return json.load(f)
+    except Exception: return {}
+
+
+def save_mtf_states(mtf_states: dict) -> None:
+    """Save cached mtf_states to disk atomically."""
+    import os, json
+    path = "data/mtf_states_cache.json"
+    tmp_path = path + ".tmp"
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(tmp_path, "w") as f: json.dump(mtf_states, f)
+        os.replace(tmp_path, path)
+    except Exception: pass
+
+
 # ── ONE-LINE FILTER for chokepoint use in ez_manage / tradier_manage ────────
 
 def mtf_entry_filter_passes(
     mtf_states: dict, symbol: str, side: str, indicators: dict, mode: str,
     config: Any, blocked: bool = False,
 ) -> tuple[bool, str]:
-    """One-line gate. Returns (allow_entry: bool, reason_if_blocked: str).
-
-    Called BEFORE queue_trade_action(..., 'OPEN'/'AUGMENT', ...) in live code:
-      ok, reason = mtf_entry_filter_passes(
-          trade_manager.mtf_states, symbol, side, indicators, mode, config,
-          blocked=_psym_get(symbol, side, "MTF_ENTRY_BLOCKED", False),
-      )
-      if not ok:
-          logger.info(f"[MTF_FILTER_BLOCK] {position_key}: {reason}")
-          return
-
-    Always maintains armed state (so blocked syms still update for future).
-    """
-    # Block from per-sym blocklist (Phase K)
+    """One-line gate. Returns (allow_entry: bool, reason_if_blocked: str)."""
     if blocked:
         return False, "MTF_PER_SYM_BLOCKED"
-    # Maintain armed state regardless of position state (so future entries can fire)
     key = f"{symbol}_{side}"
     state = ensure_state(mtf_states, key)
     update_armed_state(state, indicators, side, config)
-    # ARMED-any requirement
+    save_mtf_states(mtf_states)
     if bool(getattr(config, "MTF_REQUIRE_ARMED_ANY", True)):
         if not _armed_any_effective(state, indicators, side, config):
             return False, "MTF_NO_ARMED_STATE"
-    # GR filter requirement
     if bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
         min_tfs = int(getattr(config, "MTF_GR_MIN_TFS", 3))
         min_ind = int(getattr(config, "MTF_GR_MIN_IND", 5))

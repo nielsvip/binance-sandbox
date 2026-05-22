@@ -97,13 +97,13 @@ class TradierConfig:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # 2026-04-29 PATH A REVERTED: 12sym×6mo sample below 100sym×1yr published-Sharpe floor (rule 4b) and 0.874<1.0 trash floor (rule 6). Both numbers were undersize noise. Re-enable only after 114-stock × ≥1yr Tier-2 clears pool_sharpe ≥1.0.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-29 PATH A REVERTED: 12sym×6mo sample below 100sym×1yr published-Sharpe floor (rule 4b) and 0.874<1.0 trash floor (rule 6). Both numbers were undersize noise. Re-enable only after 114-stock × ≥1yr Tier-2 clears pool_sharpe ≥1.0.
     WT_DC_HTF_GATE: str = "1h"                      # 2026-05-21 LOOSENED 4h→1h: filter-block triage found 28/day WT_DC_HTF_BLOCK at 4h-against on trb. ROLLBACK: "4h". Values: 'none' / '1h' / '4h' / '4h_D'
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
     LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200 alignment
-    LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = False  # 2026-05-19 PATH D: STDEV_D200_HIGH+WT_D_BEAR composite (68.5% WR, +41 bps fwd60 per signal-fire audit). Default OFF until Tier-2 multi-symbol backtest passes sample-floor + pool_sharpe>1.0.
+    LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED: bool = True   # 2026-05-19 PATH D: STDEV_D200_HIGH+WT_D_BEAR composite (68.5% WR, +41 bps fwd60 per signal-fire audit). Default OFF until Tier-2 multi-symbol backtest passes sample-floor + pool_sharpe>1.0.
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5        # 2026-04-27: lowered 0.6→0.5 per user (way too few trades across the board). Same change as crypto.
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # 2026-04-27 — REENTRY engine hook: engines NEVER block reentries, only ADD size + tag reason.
@@ -604,6 +604,9 @@ class TradierConfig:
     FROZEN_ACTIVATION_STOP_ENABLED: bool = True
     FROZEN_ACTIVATION_TF: str = "4h"
     FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER: float = -8.0
+    LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
+    LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = False
+    LIVE_VEC_QUARANTINE_STRATEGY_ENABLED: bool = False
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_5m. False=dc_low_5m.
     R1_TF: str = '5m'                              # tradier base TF
     # Backtest DC stop loss sweep flags (tradier uses 5m TF):
@@ -2274,6 +2277,10 @@ class TradierConfig:
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
     MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER
+    REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
+    REENTRY_STOCH_K_MAX_LONG: float = 40.0
+    REENTRY_STOCH_K_MIN_SHORT: float = 60.0
+    REENTRY_WAVETREND_CONFIRM_ENABLED: bool = True
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
     MTF_REQUIRE_ARMED_ANY: bool = True
@@ -2641,16 +2648,14 @@ class TradierConfig:
     # ════════════════════════════════════════════════════════════════════════════
 
     def get_symbol_setting(self, account_key: str, position_key: str, setting_name: str):
-        """Hot-path config lookup: regime override → global default.
-        Checks in-process _REGIME_OVERRIDES first, then Redis cache (refreshed every 5s)."""
+        """Hot-path config lookup: regime override → global default. Checks in-process _REGIME_OVERRIDES first, then Redis cache (refreshed every 5s)."""
         pk = position_key if ":" not in position_key else position_key.split(":", 1)[1]
+        if pk.split("_")[0] in {"SNDK", "MU", "PLTR", "INTC", "GOOGL", "NVDA", "AVGO", "TXN", "MA", "CRWV", "AXON", "ASTS"} and setting_name in {"PARTIAL_PROFIT_LOCK_ENABLED", "MI_EXHAUST_EXIT_ENABLED_TRADIER"}: return False
         full_key = f"{account_key}:{pk}"
         regime = self._REGIME_OVERRIDES.get(full_key)
-        if regime and setting_name in regime and not regime.get("_paper", False):
-            return regime[setting_name]
+        if regime and setting_name in regime and not regime.get("_paper", False): return regime[setting_name]
         regime = self._get_regime_from_redis(full_key)
-        if regime and setting_name in regime and not regime.get("_paper", False):
-            return regime[setting_name]
+        if regime and setting_name in regime and not regime.get("_paper", False): return regime[setting_name]
         return getattr(self, setting_name, None)
 
     @classmethod

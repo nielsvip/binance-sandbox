@@ -7009,6 +7009,8 @@ class MultiAccountTradeManager:
         # Finandy circuit-breaker: tracks when Finandy is broken (data:[] responses).
         # Set to now+300s on each FINANDY_EMPTY. When broken, reduces fall back to place_maker_order.
         self._finandy_broken_until: float = 0.0
+        import mtf_live_evaluator as _mle
+        self.mtf_states = _mle.load_mtf_states()
 
     async def _attempt_json_repair(self, content: str) -> Optional[str]:
         if not content or not isinstance(content, str):
@@ -17145,26 +17147,24 @@ class MultiAccountTradeManager:
         # If positionAmt > 0 (even dust) → REFUSE. Never silently convert to AUGMENT.
         _is_reentry = False
         _original_action_was_reentry = action == "REENTRY"
+        _is_recovery_aug = "RECOVERY_AUG" in (reason or "").upper()
         if action == "REENTRY":
-            _is_reentry = True
-            if not position:
-                position = await self.get_position(position_key)
-            _re_amt = (
-                abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
-                if position
-                else 0.0
-            )
+            if not position: position = await self.get_position(position_key)
+            _re_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
             if _re_amt != 0.0:
-                logger.critical(
-                    f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}"
-                )
-                return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
-            action = "OPEN"
-            is_reduce = False
-            is_augment = False
-            logger.info(
-                f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}"
-            )
+                if _is_recovery_aug:
+                    action = "AUGMENT"
+                    is_augment = True
+                    _is_reentry = False
+                else:
+                    logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}")
+                    return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
+            if not _is_recovery_aug:
+                _is_reentry = True
+                action = "OPEN"
+                is_reduce = False
+                is_augment = False
+                logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
         # ═══ HARD DUPLICATE OPEN GUARD — gain-based per USER 2026-05-09 ═══
         # Replaces the 900s time-cooldown with a gain gate. Augments require
         # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
@@ -17173,10 +17173,7 @@ class MultiAccountTradeManager:
         # WT_3M_FORCE_OPEN / TRADEABLE_KEYS_MANDATORY bypass entirely — pre-check
         # in the main loop guards cooldown; these are mandatory-foothold signals.
         if is_augment:
-            _wt3m_force_open = (
-                "WT_3M_FORCE_OPEN" in (reason or "").upper()
-                or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper()
-            ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+            _wt3m_force_open = ("WT_3M_FORCE_OPEN" in (reason or "").upper() or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper() or _is_recovery_aug) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             if not _wt3m_force_open:
                 # 2026-05-18 per-sym overlay
                 if bool(_psym_get(symbol, position_side, "DUP_GUARD_USE_GAIN_GATE", True)):
@@ -17259,7 +17256,7 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]"
                     )
-            elif _pos_val > _min_pos_val and _gain < 3.0:
+            elif _pos_val > _min_pos_val and _gain < 3.0 and not _is_recovery_aug:
                 # ABSOLUTE: NO opens/augments/reentries/hedges on positions with gain < 3%. No exceptions.
                 if _gain < 0.0:
                     logger.critical(
@@ -25596,6 +25593,7 @@ class MultiAccountTradeManager:
                             )
                             position.last_reduction_price = current_price
                             position.last_reduction_time = now_dt
+                            position.recovery_fired = False
                             if "ORPHANED_HEDGE" not in reason_upper:
                                 asyncio.create_task(
                                     self._close_associated_hedge(
@@ -25724,6 +25722,7 @@ class MultiAccountTradeManager:
                 )
                 position.last_reduction_price = current_price
                 position.last_reduction_time = now_dt
+                position.recovery_fired = False
                 if "ORPHANED_HEDGE" not in reason_upper:
                     asyncio.create_task(
                         self._close_associated_hedge(
@@ -30797,7 +30796,47 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     account_key = ctx["account_key"]
     trade_manager = ctx["trade_manager"]
     position = trade_manager.positions.get(position_key)
-    if not position or position.positionAmt > 0:
+    if not position: return None
+    is_long = ctx.get("position_side", "LONG") == "LONG"
+    positionAmt = abs(safe_fetch_float(position.positionAmt, 0.0))
+    if positionAmt > 0:
+        if bool(getattr(config, "RECOVERY_AUGMENT_ENABLED", False)):
+            _ra_last_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+            _ra_last_t = getattr(position, "last_reduction_time", None)
+            _ra_recovery_fired = bool(getattr(position, "recovery_fired", False))
+            _ra_one_fire = bool(getattr(config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", True))
+            if _ra_last_px > 0 and _ra_last_t and not (_ra_one_fire and _ra_recovery_fired):
+                _ra_band_pct = float(getattr(config, "RECOVERY_AUGMENT_BAND_PCT", 0.3))
+                _ra_max_age_min = float(getattr(config, "RECOVERY_AUGMENT_MAX_AGE_MIN", 240.0))
+                _ra_age_min = 9999.0
+                try:
+                    _ra_lt = _ra_last_t if not isinstance(_ra_last_t, str) else datetime.fromisoformat(str(_ra_last_t).replace("Z", "+00:00"))
+                    if _ra_lt.tzinfo is None: _ra_lt = _ra_lt.replace(tzinfo=timezone.utc)
+                    _ra_age_min = (datetime.now(timezone.utc) - _ra_lt).total_seconds() / 60.0
+                except Exception: pass
+                if _ra_age_min < _ra_max_age_min:
+                    current_price = safe_fetch_float(ctx.get("current_price") or ctx.get("mark_price") or getattr(position, "mark_price", 0.0), 0.0)
+                    if not current_price: current_price = await price(symbol, position, 3)
+                    if current_price > 0:
+                        _ra_dist_pct = abs(current_price - _ra_last_px) / _ra_last_px * 100.0
+                        _ra_dir_ok = (is_long and current_price >= _ra_last_px) or ((not is_long) and current_price <= _ra_last_px)
+                        if _ra_dist_pct <= _ra_band_pct and _ra_dir_ok:
+                            _ra_require_wt = bool(getattr(config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", False))
+                            _ra_wt_ok = True
+                            if _ra_require_wt:
+                                i = await ii(trade_manager, symbol)
+                                if i:
+                                    _ra_w1 = float(i.get("wt1_3m", 0.0) or 0.0); _ra_w2 = float(i.get("wt2_3m", 0.0) or 0.0)
+                                    _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
+                                else: _ra_wt_ok = False
+                            if _ra_wt_ok:
+                                _ra_size_pct = float(getattr(config, "RECOVERY_AUGMENT_SIZE_PCT", 1.0))
+                                _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
+                                try:
+                                    if _ra_one_fire: position.recovery_fired = True
+                                except Exception: pass
+                                logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m wt_ok={_ra_wt_ok} → REENTRY qty={_ra_qty:.4f}")
+                                return Signal(action="REENTRY", reason=f"RECOVERY_AUG_PARTIAL_exit{_ra_last_px:.4f}_cur{current_price:.4f}_dist{_ra_dist_pct:.3f}%_age{_ra_age_min:.0f}m", conviction=95.0, quantity=_ra_qty)
         return None
     # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
     # would BLOCK the resulting signal (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE).
@@ -38256,6 +38295,46 @@ async def process_position(
                     logger.warning(f"[FROZEN_ACT_STOP_EXEC_ERR] {position_key}: {_fa_exec_err}")
         except Exception as _fa_outer:
             logger.debug(f"[FROZEN_ACT_STOP] {position_key} probe err: {_fa_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # R1d — BB_FROZEN_STOP (Phase 3 Optimization)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False))
+    ):
+        try:
+            _bb_tf = str(getattr(config, "BB_FROZEN_STOP_TF", "1h"))
+            _bb_field_opt = str(getattr(config, "BB_FROZEN_STOP_FIELD", "lower"))
+            _bb_is_long = position_side == "LONG"
+            _bb_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+            _bb_frozen = getattr(position, "_frozen_bb_act", None)
+            if _bb_frozen is None:
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _bb_ind = _pp_shared_ind if _pp_shared_ind else None
+                if _bb_ind:
+                    _bb_field_name = ("lower" if _bb_is_long else "upper") if _bb_field_opt in ("lower", "upper") else _bb_field_opt
+                    _bb_key = f"bb_{_bb_field_name}_{_bb_tf}"
+                    _bb_frozen_raw = _bb_ind.get(_bb_key)
+                    if _bb_frozen_raw not in (None, 0, 0.0):
+                        try:
+                            _bb_frozen = float(_bb_frozen_raw)
+                            setattr(position, "_frozen_bb_act", _bb_frozen)
+                        except (TypeError, ValueError):
+                            _bb_frozen = None
+            if _bb_frozen is not None and _bb_gain < 0:
+                if (_bb_is_long and current_price < _bb_frozen) or (not _bb_is_long and current_price > _bb_frozen):
+                    _bb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                    _bb_close_side = "SELL" if _bb_is_long else "BUY"
+                    _bb_reason = f"BB_FROZEN_STOP_BREACH_g{_bb_gain:.2f}%_frozen{_bb_tf}={_bb_frozen}_cur={current_price}"
+                    logger.critical(f"⛔ [BB_FROZEN_STOP] {position_key}: g={_bb_gain:.2f}% frozen_bb_{_bb_tf}={_bb_frozen} cur={current_price:.6f} → CLOSE")
+                    _bb_result = await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_bb_amt, side=_bb_close_side, position_side=position_side, quantity=_bb_amt, old_price=current_price, unique_id=f"BB_FROZEN_STOP_{int(time.time())}", reason=_bb_reason, is_full_close=True, action="CLOSE")
+                    if isinstance(_bb_result, str) and not any(x in _bb_result.upper() for x in ("BLOCK", "SKIP", "REJECT")):
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:BB_FROZEN_STOP_CLOSED"
+        except Exception as _bb_stop_err:
+            logger.debug(f"[BB_FROZEN_STOP_ERR] {position_key} stop check err: {_bb_stop_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-08, tightened 2026-05-09).
     # Trigger (per TF in R2_TF_LIST):

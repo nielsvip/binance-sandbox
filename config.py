@@ -968,6 +968,12 @@ class Config:
     # Or if gain ≤ FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO → CLOSE (FROZEN_ACT_STOP_ABSOLUTE_FLOOR). Active path mirroring stocks team's finding.
     FROZEN_ACTIVATION_STOP_ENABLED: bool = True
     FROZEN_ACTIVATION_TF: str = "4h"               # which TF's dc_low/high we freeze at entry (D / 4h)
+    BB_FROZEN_STOP_ENABLED: bool = True
+    BB_FROZEN_STOP_TF: str = "1h"
+    BB_FROZEN_STOP_FIELD: str = "lower"
+    LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
+    LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = False
+    LIVE_VEC_QUARANTINE_STRATEGY_ENABLED: bool = False
     FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO: float = -10.0  # crypto more volatile than stocks; loosen vs -8 default. Sweep range: -5/-8/-10/-15.
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):
@@ -1326,7 +1332,11 @@ class Config:
     # mtf_live_evaluator.py is the runtime; vec_paths/mtf_armed_entries.py is the backtest mirror.
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
-    MTF_ARMED_ENTRY_ENABLED: bool = False            # 2026-05-21 20:55 USER DISABLE — 100% block on cold-start, pending backtest re-tune
+    MTF_ARMED_ENTRY_ENABLED: bool = True             # 2026-05-22 02:37 Re-enabled post persistent hydration fix
+    REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
+    REENTRY_STOCH_K_MAX_LONG: float = 40.0
+    REENTRY_STOCH_K_MIN_SHORT: float = 60.0
+    REENTRY_WAVETREND_CONFIRM_ENABLED: bool = True
     # 2026-05-21 USER: bypass MTF_FILTER for STRONG_BUY and QUICK_OPEN reasons. Same pattern as
     # DELTA_GATE_STRONG_BUY_QUICK_BYPASS — MTF state wipes every restart and takes hours to re-arm,
     # so high-conviction QUICK_OPEN scoring entries get blocked for hours post-restart. Parameter-level
@@ -2664,9 +2674,16 @@ class Config:
     WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False     # True = only exit on EXHAUST if gain > 0
     WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.5      # Only fire WT_EXHAUST after position peaked ≥ this. Prevents firing at tiny gains (0.1%) in backtest where 4h state repeats every 15m bar — same as R2_PEAK_MIN_PCT so the two gates don't compete.
     # EXIT: PERCENTILE OB/OS — close LONG when D+4h both overbought, SHORT when oversold
-    WT_PERCENTILE_EXIT_ENABLED: bool = False        # OFF: in strong rally D WT stays elevated, exits too early
-    WT_PERCENTILE_EXIT_OB_D: float = 90.0          # D percentile > this → exit LONG
-    WT_PERCENTILE_EXIT_OB_4H: float = 75.0         # 4h percentile > this → confirm exit LONG
+    # 2026-05-22 USER MANDATE: re-enabled with TIGHTER thresholds based on vec sweep
+    # of 14 arms on ZECUSDC LONG 4yr post-B-fixes. Arm 11 (OB_D=75, OB_4H=55) produced
+    # best non-sizing Sharpe (+0.0414 vs +0.0348 default OFF) and best gain/yr
+    # (+200.78%/yr vs +165.22%/yr OFF). Prior "OFF — exits too early" reason no longer
+    # applies at 75/55: lower thresholds bracket overbought earlier (exit sooner on
+    # tops) which IS the "out at the top" mandate.
+    # ROLLBACK: ENABLED=False, OB_D=90, OB_4H=75.
+    WT_PERCENTILE_EXIT_ENABLED: bool = True
+    WT_PERCENTILE_EXIT_OB_D: float = 75.0          # was 90 — sell sooner on D overbought (vec arm 11)
+    WT_PERCENTILE_EXIT_OB_4H: float = 55.0         # was 75 — 4h confirmation tighter (vec arm 11)
     WT_PERCENTILE_EXIT_OS_D: float = 10.0          # D percentile < this → exit SHORT
     WT_PERCENTILE_EXIT_OS_4H: float = 25.0         # 4h percentile < this → confirm exit SHORT
     # ENTRY: wt_composite_delta gate — block entries when MTF bias strongly opposes
