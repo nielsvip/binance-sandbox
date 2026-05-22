@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-22 14:49:49 UTC
+# Copilot Status — 2026-05-22 15:00:02 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T14:48:48
-- **STALE_INDICATORS** [tradier]  — 2026-05-22T14:49:18
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T14:49:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T14:49:18
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-22T14:49:18
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T14:49:18
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T14:49:49
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T14:49:49
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-22T14:49:49
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T14:49:49
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T14:58:29
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T14:59:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T14:59:00
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-22T14:59:00
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T14:59:30
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T14:59:30
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-22T14:59:30
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T15:00:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T15:00:02
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-22T15:00:02
 
 ## Missed Trades (trader comparison)
 
@@ -27,21 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 13 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +-0.3%
-- HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.2%
-- HELD: **LEXX** LONG (tradier) peak +7.3%, now +2.8%
-- HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **FIVN** LONG (tradier) peak +5.3%, now +1.3%
-- HELD: **ACN** SHORT (tradier) peak +4.4%, now +-8.3%
+- HELD: **UUUU** SHORT (tradier) peak +15.3%, now +3.5%
+- HELD: **USO** LONG (tradier) peak +12.1%, now +4.8%
+- HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.5%
+- HELD: **GDX** SHORT (tradier) peak +7.8%, now +3.9%
+- HELD: **LEXX** LONG (tradier) peak +7.3%, now +3.5%
+- HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.6%
+- HELD: **FIVN** LONG (tradier) peak +5.3%, now +1.1%
+- HELD: **ACN** SHORT (tradier) peak +4.4%, now +-8.0%
 - HELD: **UAN** LONG (tradier) peak +3.5%, now +0.0%
-- HELD: **GM** LONG (tradier) peak +3.3%, now +2.3%
-- HELD: **WDAY** SHORT (tradier) peak +3.1%, now +-4.0%
-
-- WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
-- WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
-- WATCHING: **PBF** LONG (tradier) peaked +3.0%, exited 0m ago
 
 ## Supervisor
 
