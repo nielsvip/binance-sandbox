@@ -1809,8 +1809,8 @@ class TradierConfig:
     # Source: tradier_grtf7_hunt sweep — best result tfs=3 ind=6 → pool_sharpe +0.2587
     # (3× baseline lift, 23 trades, dd=0% on 20-sym × 4mo, sub-floor [DIAGNOSTIC]).
     # ROLLBACK: HTF_MIN_TFS=0 (was 0 — gate fully OFF).
-    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-05-21 LOOSENED 3→1: filter-block triage 100% block trb/trc since 5/18. ROLLBACK: 3 (prior). TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6.
-    GOLDEN_RULE_MIN_IND: int = 2      # 2026-05-21 LOOSENED 6→2: same triage. Original baseline value pre-2026-05-13. ROLLBACK: 6 (prior). Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7.
+    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 2026-05-22 RESTORED 1→3: triage set 1 with no backtest. Stage-2 entry TFs=[1h,15m,5m]. ROLLBACK: 1 (triage). Prior locked: 3.
+    GOLDEN_RULE_MIN_IND: int = 5      # 2026-05-22 RESTORED 2→5: triage set 2 with no backtest. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. ROLLBACK: 2 (triage).
     GR_DC_EXTENDED_LONG: float = 0.80  # 2026-05-13 sweep winner: DC=0.80+BB=0.75 pool_sharpe=0.0623 net (20sym LONG+SHORT gr_dcbb sweep)
     GR_BB_EXTENDED_LONG: float = 0.75  # 2026-05-13 sweep winner: confirmed 2-sym (0.69 net) and 20-sym tests
     # USER 2026-05-18: 2-stage activation/entry split (mirrors config.py crypto).
@@ -1827,8 +1827,8 @@ class TradierConfig:
     # ROLLBACK entry: GR_HTF_DIRECT_ENTRY_ENABLED=False (or SCORE_MIN=1000.0).
     # ROLLBACK exit : GR_HTF_DIRECT_EXIT_ENABLED=False (or EXIT_SCORE=1000.0).
     GR_HTF_DIRECT_ENTRY_ENABLED: bool = True       # 🚩 Master entry switch. ROLLBACK: False
-    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 6.0     # 2026-05-21 LOOSENED 12→6: live log showed scores=4-6 failing 78×/day. ROLLBACK: 12.0 (prior). Min score (n_tfs × min_ind).
-    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 18.0 # 🚩 Score for double-size entry. ROLLBACK: 1000.0
+    GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 18.0    # 2026-05-22 RESTORED 6→18: user mandate (min 18). Was 6 after triage (1 indicator fires live entry). ROLLBACK: 6 (triage).
+    GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 27.0 # 2026-05-22: raised 18→27 to create gap above SCORE_MIN=18 (was same value — every entry was double-sized). ROLLBACK: 18.0.
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
     GR_HTF_DIRECT_EXIT_SCORE: float = 15.5          # 🚩 2026-05-12 user: ">15" → 15.5 catches integer scores 16+. PRIOR 18.0. ROLLBACK: 1000.0
     # 🚩 NEW 2026-05-18 — GR v5 BREAKOUT-CONFIRM → BOUNCE-ENTRY STATE MACHINE (SKELETON, default OFF)
