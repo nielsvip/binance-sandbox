@@ -349,6 +349,16 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
             crossed = (is_long and cur_px > exit_px) or (not is_long and cur_px < exit_px)
         if not crossed:
             continue
+        if _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True):
+            _ind = _get_indicators(redis_client, symbol)
+            _k = float(_ind.get("stoch_k_3m") or _ind.get("stoch_k_5m") or _ind.get("stoch_k_15m") or 50.0)
+            _kp = float(_ind.get("stoch_k_3m_prev") or _ind.get("stoch_k_5m_prev") or _ind.get("stoch_k_15m_prev") or 50.0)
+            _w1 = float(_ind.get("wt1_3m") or _ind.get("wt1_5m") or _ind.get("wt1_15m") or 0.0)
+            _w2 = float(_ind.get("wt2_3m") or _ind.get("wt2_5m") or _ind.get("wt2_15m") or 0.0)
+            _gate_ok = (_k < _cfg_float("REENTRY_STOCH_K_MAX_LONG", 40.0)) or (_k > _kp and _w1 > _w2) if is_long else (_k > _cfg_float("REENTRY_STOCH_K_MIN_SHORT", 60.0)) or (_k < _kp and _w1 < _w2)
+            if not _gate_ok:
+                logger.info(f"[DAEMON] Reentry gate BLOCKED {pk}: k={_k:.1f} kp={_kp:.1f} wt1={_w1:.1f} wt2={_w2:.1f}")
+                continue
         positions = _get_positions_from_redis(redis_client, account_key)
         pos_amt = positions.get(pk, 0.0)
         # USER 2026-05-16 (PHBUSDT 33-qty-residual + price-cross-no-reentry incident):

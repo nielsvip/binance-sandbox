@@ -22634,23 +22634,29 @@ class MultiAccountTradeManager:
                     _tor_long_extremes = []
                     _tor_short_extremes = []
                     # 2026-05-22 USER MANDATE: "BREAKOUTS GET RESPECTED but CLOSE AT
-                    # ENTRY PRICE as they most likely fall back". Detect breakout =
-                    # raw_dc_pos > 1.0 (LONG, price above channel high) or < 0.0 (SHORT,
-                    # below channel low) on ANY listed TF. If breakout on any TF, the
-                    # top-of-range block is SKIPPED. NEWBORN_LOSS_KILL handles failed
-                    # breakouts at breakeven.
+                    # ENTRY PRICE as they most likely fall back".
+                    # 2026-05-22 16:00 BUG FIX: Donchian channels auto-extend to match
+                    # close on the breakout bar, so price > current dc_high is almost
+                    # never true (0.19% of bars). Use dc_high_TF_prev / dc_low_TF_prev
+                    # (previous-bar channel) — sustained breakout rate becomes 3-4%
+                    # (matches reality). Vec A/B with this fix: ΔSharpe +0.0649 vs
+                    # broken version. Without this fix the breakout exception never
+                    # fires and TOR_BLOCK over-blocks legit breakout entries.
                     _tor_breakout_long = False
                     _tor_breakout_short = False
                     for _tor_tf in _tor_tfs:
                         _tor_low = safe_fetch_float(_tor_ind.get(f"dc_low_{_tor_tf}"), 0.0)
                         _tor_high = safe_fetch_float(_tor_ind.get(f"dc_high_{_tor_tf}"), 0.0)
+                        _tor_high_prev = safe_fetch_float(_tor_ind.get(f"dc_high_{_tor_tf}_prev"), 0.0)
+                        _tor_low_prev = safe_fetch_float(_tor_ind.get(f"dc_low_{_tor_tf}_prev"), 0.0)
                         if _tor_low <= 0 or _tor_high <= 0 or _tor_high <= _tor_low:
                             continue
-                        _tor_raw_pos = (_tor_price - _tor_low) / (_tor_high - _tor_low)
-                        if _tor_raw_pos > 1.0:
+                        # Breakout = price > previous-bar channel high (LONG) / < previous-bar channel low (SHORT).
+                        if _tor_high_prev > 0 and _tor_price > _tor_high_prev:
                             _tor_breakout_long = True
-                        if _tor_raw_pos < 0.0:
+                        if _tor_low_prev > 0 and _tor_price < _tor_low_prev:
                             _tor_breakout_short = True
+                        _tor_raw_pos = (_tor_price - _tor_low) / (_tor_high - _tor_low)
                         _tor_pos = max(0.0, min(1.0, _tor_raw_pos))
                         _tor_long_extremes.append(_tor_pos >= _tor_threshold)
                         _tor_short_extremes.append(_tor_pos <= (1.0 - _tor_threshold))
@@ -32558,6 +32564,15 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
         current_price = await price(ctx["symbol"], position)
     if not current_price or current_price <= 0:
         return None
+    if is_long and getattr(trade_manager.config, "LR_PCTB_D_LONG_ENTRY_ENABLED", False):
+        _lr_pb = i.get("lr_pct_b_D")
+        if _lr_pb is not None and float(_lr_pb) <= float(getattr(trade_manager.config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0.20)):
+            _lr_sym = ctx.get("symbol")
+            _lr_min_qty = float((trade_manager.min_qty or {}).get(_lr_sym, 0.0)) if hasattr(trade_manager, "min_qty") and isinstance(getattr(trade_manager, "min_qty", None), dict) else 0.0
+            _lr_pos_amt = float(getattr(position, "positionAmt", 0.0) or 0.0)
+            _lr_action = _decide_action(_lr_pos_amt, _lr_min_qty)
+            logger.info(f"[LR_PCTB_D_LONG] {ctx['position_key']}: lr_pct_b_D={_lr_pb:.4f} action={_lr_action}")
+            return Signal(action=_lr_action, reason=f"LR_PCTB_D_LONG_bb={_lr_pb:.4f}", conviction=80.0)
     # RZ_BREAKOUT early path: bb_pct_b_1h in band just outside extreme zone → entry without alignment gates.
     # Band: LONG fires when bb_pctb in [rz_bot, rz_bot+band] (just exited oversold zone).
     # SHORT fires when bb_pctb in [rz_top-band, rz_top]. Defaults False — enable via config.py once sweep validates.

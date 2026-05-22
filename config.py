@@ -976,6 +976,8 @@ class Config:
     LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
     LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = False
     LIVE_VEC_QUARANTINE_STRATEGY_ENABLED: bool = False
+    LR_PCTB_D_LONG_ENTRY_ENABLED: bool = False
+    LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
     FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO: float = -10.0  # crypto more volatile than stocks; loosen vs -8 default. Sweep range: -5/-8/-10/-15.
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):

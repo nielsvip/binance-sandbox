@@ -2834,6 +2834,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         conf = 70.0
                         reason = f"RZ_BREAKOUT_{'L' if is_long else 'S'}_bb={_rz_bb_1h:.2f}"
                         logger.info(f"[RZ_BREAKOUT] {account_key}:{symbol} {'L' if is_long else 'S'}: bb_pctb_1h={_rz_bb_1h:.2f} band=[{_rz_bot_b if is_long else _rz_top_b - _rz_band_b:.2f},{(_rz_bot_b + _rz_band_b) if is_long else _rz_top_b:.2f}]")
+                if action_type != "OPEN" and getattr(config, 'LR_PCTB_D_LONG_ENTRY_ENABLED', False):
+                    if is_long:
+                        _lr_pb = i.get("lr_pct_b_D")
+                        if _lr_pb is not None and float(_lr_pb) <= float(getattr(config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0.20)):
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 80.0
+                            reason = f"LR_PCTB_D_LONG_bb={_lr_pb:.4f}"
+                            logger.info(f"[LR_PCTB_D_LONG] {symbol}: lr_pct_b_D={_lr_pb:.4f} action={action_type}")
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.

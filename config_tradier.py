@@ -607,6 +607,8 @@ class TradierConfig:
     LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
     LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = False
     LIVE_VEC_QUARANTINE_STRATEGY_ENABLED: bool = False
+    LR_PCTB_D_LONG_ENTRY_ENABLED: bool = False
+    LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
     R1_USE_DC_4BAR: bool = True                    # True=dc_low4_5m. False=dc_low_5m.
     R1_TF: str = '5m'                              # tradier base TF
     # Backtest DC stop loss sweep flags (tradier uses 5m TF):

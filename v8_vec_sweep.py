@@ -1645,6 +1645,7 @@ def simulate_one_symbol(
                         state.augmented_count = 0
                         state.max_gain = 0.0
                         state.last_augment_ts = bar_ts
+                        state.breakout_entry = bool(_breakout_long_any[i] if is_long else _breakout_short_any[i])
                     elif _trxe["action"] == "ADD":
                         # 2026-05-22 B3: MAX_AUGMENTS cap (live=20). Mandate 2026-05-21:
                         # winners compound; losers don't pile up.
@@ -1762,6 +1763,7 @@ def simulate_one_symbol(
                 state.last_open_attempt_ts = bar_ts; state.last_augment_ts = bar_ts
                 state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
                 state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                state.breakout_entry = bool(_breakout_long_any[i] if is_long else _breakout_short_any[i])
             continue  # MTF active — skip all legacy entry logic
 
         # ─── 2026-05-17 VEC_OVERTRADE_FIX — POST-CLOSE COOLDOWN ──────────────

@@ -1661,7 +1661,7 @@ class TradierPositionManager:
                 _reason = f"tradier_api_absence_{count}x_{THRESHOLD}_lastgain={_ghost_gain:.2f}%_entry={_ghost_entry:.2f}"
                 self._api_absence_count.pop(pk, None)
                 try:
-                    await self.handle_reduction(pos, pk, _ghost_qty, abs(_ghost_qty), abs(_ghost_qty), _ghost_price, _ghost_entry, reduction_source="api_absence_confirmed", reason=_reason)
+                    await self.handle_reduction(pos, pk, _ghost_qty, 0.0, abs(_ghost_qty), _ghost_price, _ghost_entry, reduction_source="api_absence_confirmed", reason=_reason)
                 except Exception as _red_err:
                     logger.error(f"[GHOST_CLOSE_CONFIRMED] {pk}: handle_reduction raised: {_red_err} — falling back to direct zero")
                     pos.positionAmt = 0.0
@@ -2014,7 +2014,7 @@ class TradierPositionManager:
         min_qty = self.min_qty.get(symbol, 0.0001)*1.2
         is_tiny_reduction = reduce_qty * current_price <= max( 4 * config.MIN_POSITION_SIZE * 2, min_qty * current_price)
         was_tiny_position = positionAmt * current_price <= max(4 * config.MIN_POSITION_SIZE * 2, min_qty * current_price)
-        if position is not None and reduce_qty > 0:
+        if position is not None and reduce_qty > 0 and reduction_source != "api_absence_confirmed":
             position.last_reduction_amount = reduce_qty
             position.last_reduction_price = current_price
             position.last_reduction_time = now 
@@ -2030,10 +2030,10 @@ class TradierPositionManager:
                 if hasattr(self, 'order_queue') and self.order_queue:
                     self.order_queue.last_executed_time[(position_key, side)] = time.time()
                 logger.debug(f"[{position_key}] Order confirmed - removed from limbo, cooldown set: {reduce_qty:.6f}")
-        if position is not None and reduce_qty > 0:
+        if position is not None and reduce_qty > 0 and reduction_source != "api_absence_confirmed":
             await self.create_ladder_levels_for_reentry(position_key, account_key, position, current_price, now)
         is_tiny_position = positionAmt - reduce_qty < max(config.MIN_POSITION_SIZE * 3, min_qty * current_price)
-        if position.entry_price > 0 and reduce_qty > 0:
+        if position.entry_price > 0 and reduce_qty > 0 and reduction_source != "api_absence_confirmed":
             gain_at_reduction = position.gain
             reduction_ratio = reduce_qty / positionAmt if positionAmt > 0 else 1.0
             realized_gain = gain_at_reduction * reduction_ratio
