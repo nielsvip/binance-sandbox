@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-22 07:17:32 UTC
+# Copilot Status — 2026-05-22 07:32:44 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-22T07:14:16
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T07:14:16
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T07:14:16
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T07:14:16
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T07:14:16
-- **STALE_INDICATORS** [tradier]  — 2026-05-22T07:16:19
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T07:16:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T07:16:19
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T07:16:19
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T07:16:19
+- **STALE_INDICATORS** [tradier]  — 2026-05-22T07:30:39
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T07:30:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T07:30:39
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T07:30:39
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T07:30:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-22T07:32:42
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-22T07:32:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-22T07:32:42
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-22T07:32:42
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-22T07:32:42
 
 ## Missed Trades (trader comparison)
 
