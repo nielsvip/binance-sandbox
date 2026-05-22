@@ -281,17 +281,19 @@ class SweepConfig:
     MIN_GAIN: float = 3.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     COMMISSION_BUFFER_PCT: float = 0.10
-    # 2026-05-22 USER MANDATE: vec was applying 0.08% per-trade cost on USDC syms
-    # that pay ZERO maker fee in live (Binance Futures USDC perps). On 10k+ trades
-    # this is 800%+ in fictitious cost, dragging every vec backtest negative.
-    # Per-suffix realistic costs:
-    #   USDC: 0% maker + ~0.01% slippage = 0.01%
-    #   USDT: 0.02% × 2 maker + slippage = 0.06%
+    # 2026-05-22 USER MANDATE: keep 0.08% round-trip cost for crypto. Earlier I
+    # called this "phantom" — incorrect framing. The 0.08% was the intentional
+    # conservative cost figure. The actual bug was that the override path was
+    # silently broken (NameError on undefined module-level `config` swallowed by
+    # try/except → hardcoded 0.08 literal returned regardless of any SweepConfig
+    # override). NameError fixed (function now threads SweepConfig instance), but
+    # the 0.08% value itself stays. Per-suffix knobs for future override:
+    #   USDC: 0.08% (per user mandate — covers webhook-taker fallback worst case)
+    #   USDT: 0.08% (same — keep conservative)
     #   Stocks: handled by config_tradier (~0.05%)
-    # ROUND_TRIP_COST_PCT is the legacy fallback (still read for backward-compat).
-    ROUND_TRIP_COST_PCT: float = 0.01
-    ROUND_TRIP_COST_USDC_PCT: float = 0.01
-    ROUND_TRIP_COST_USDT_PCT: float = 0.06
+    ROUND_TRIP_COST_PCT: float = 0.08
+    ROUND_TRIP_COST_USDC_PCT: float = 0.08
+    ROUND_TRIP_COST_USDT_PCT: float = 0.08
     WT_HTF_DISCOUNT_ENABLED: bool = True
     # ── reentry blocks ────────────────────────────────────────────────────
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
@@ -2622,26 +2624,21 @@ def simulate_one_symbol(
 
 def _vec_round_trip_cost_for_sym(sym: str, cfg: Optional["SweepConfig"] = None) -> float:
     """2026-05-22 FIX: previous impl referenced an unbound module-level `config`
-    name (NameError swallowed by try/except), silently returning 0.08 literal for
-    every USDC/USDT sym regardless of override. With 10k+ trades that's 800%+ in
-    fictitious cost that turned every vec baseline negative.
+    name (NameError swallowed by try/except), silently returning the 0.08 literal
+    regardless of SweepConfig override. NameError fixed — function now takes a
+    SweepConfig instance so overrides actually flow through.
 
-    Now realistic per-suffix:
-      USDC: 0% maker + ~0.01% slippage = 0.01% (Binance USDC perps zero-fee maker)
-      USDT: 0.02% × 2 maker + slippage  = 0.06%
-      Stocks: read from config_tradier (~0.05%)
-
-    Pass `cfg` (SweepConfig instance) to override defaults; the engine threads it
-    through from simulate_one_symbol callers."""
+    USDC and USDT default to 0.08% per USER MANDATE 2026-05-22 (conservative cost
+    covering webhook-taker fallback). Stocks read config_tradier (~0.05%)."""
     s = (sym or "").upper()
     if s.endswith("USDC"):
         if cfg is not None:
-            return float(getattr(cfg, "ROUND_TRIP_COST_USDC_PCT", 0.01))
-        return 0.01
+            return float(getattr(cfg, "ROUND_TRIP_COST_USDC_PCT", 0.08))
+        return 0.08
     if s.endswith("USDT"):
         if cfg is not None:
-            return float(getattr(cfg, "ROUND_TRIP_COST_USDT_PCT", 0.06))
-        return 0.06
+            return float(getattr(cfg, "ROUND_TRIP_COST_USDT_PCT", 0.08))
+        return 0.08
     try:
         import config_tradier as _ct
         return float(getattr(_ct, "ROUND_TRIP_COST_PCT", 0.05))

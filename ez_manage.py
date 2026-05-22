@@ -22631,8 +22631,9 @@ class MultiAccountTradeManager:
                 _tor_require_all = bool(getattr(config, "TOP_OF_RANGE_BLOCK_REQUIRE_ALL", True))
                 _tor_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
                 _tor_is_long = (position_side or "LONG") == "LONG"
-                if _tor_sym and _tor_tfs and current_price and current_price > 0:
-                    _tor_ind = _pp_shared_ind if _pp_shared_ind else (await ii(self, _tor_sym) or {})
+                _tor_price = float(old_price) if old_price else 0.0
+                if _tor_sym and _tor_tfs and _tor_price > 0:
+                    _tor_ind = await ii(self, _tor_sym) or {}
                     _tor_long_extremes = []
                     _tor_short_extremes = []
                     for _tor_tf in _tor_tfs:
@@ -22640,7 +22641,7 @@ class MultiAccountTradeManager:
                         _tor_high = safe_fetch_float(_tor_ind.get(f"dc_high_{_tor_tf}"), 0.0)
                         if _tor_low <= 0 or _tor_high <= 0 or _tor_high <= _tor_low:
                             continue
-                        _tor_pos = (current_price - _tor_low) / (_tor_high - _tor_low)
+                        _tor_pos = (_tor_price - _tor_low) / (_tor_high - _tor_low)
                         _tor_pos = max(0.0, min(1.0, _tor_pos))
                         _tor_long_extremes.append(_tor_pos >= _tor_threshold)
                         _tor_short_extremes.append(_tor_pos <= (1.0 - _tor_threshold))
@@ -22652,8 +22653,8 @@ class MultiAccountTradeManager:
                             _tor_blocked = all(_tor_short_extremes) if _tor_require_all else any(_tor_short_extremes)
                             _tor_side_str = "SHORT"
                         if _tor_blocked:
-                            _tor_levels = ",".join([f"{tf}={lvl:.2f}" for tf, lvl in zip(_tor_tfs, [(current_price - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) / max(1e-9, safe_fetch_float(_tor_ind.get(f'dc_high_{tf}'), 1.0) - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) for tf in _tor_tfs])])
-                            logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key} act={action} side={_tor_side_str}: BLOCKED price={current_price:.6f} dc_pos[{_tor_levels}] threshold={_tor_threshold} reason={(reason or '')[:50]}")
+                            _tor_levels = ",".join([f"{tf}={lvl:.2f}" for tf, lvl in zip(_tor_tfs, [(_tor_price - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) / max(1e-9, safe_fetch_float(_tor_ind.get(f'dc_high_{tf}'), 1.0) - safe_fetch_float(_tor_ind.get(f'dc_low_{tf}'), 0.0)) for tf in _tor_tfs])])
+                            logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key} act={action} side={_tor_side_str}: BLOCKED price={_tor_price:.6f} dc_pos[{_tor_levels}] threshold={_tor_threshold} reason={(reason or '')[:50]}")
                             return f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}"
         except Exception as _tor_e:
             logger.warning(f"[TOP_OF_RANGE_BLOCK] {position_key}: check error (fail-open): {_tor_e}")
