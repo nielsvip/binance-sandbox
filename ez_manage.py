@@ -31014,6 +31014,35 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 return None
         except Exception as _gre:
             logger.warning(f"[GR_HTF_REENTRY] {position_key}: {_gre}")
+    # B00: PRICE ABOVE EXIT — if price recovered above last reduction/exit price → re-enter.
+    # Uses actual position state (last_reduction_price), not indicator proxy.
+    # Independent of WT state — catches recoveries that B-blocks miss.
+    if getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", True):
+        _exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+        if _exit_px > 0:
+            _buf = float(getattr(config, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.05)) / 100.0
+            _above = (is_long and current_price >= _exit_px * (1.0 + _buf)) or (
+                not is_long and current_price <= _exit_px * (1.0 - _buf)
+            )
+            if _above:
+                _wt1_15 = float(i.get("wt1_15m", 0) or 0)
+                _wt2_15 = float(i.get("wt2_15m", 0) or 0)
+                _vel_15 = float(i.get("wt_velocity_15m", 0) or 0)
+                _k_15 = float(i.get("stoch_k_15m", 50) or 50)
+                _wt_ok = (is_long and _wt1_15 > _wt2_15 and _vel_15 > 0 and _k_15 < 80) or (
+                    not is_long and _wt1_15 < _wt2_15 and _vel_15 < 0 and _k_15 > 20
+                )
+                if _wt_ok:
+                    _dist_pct = abs(current_price - _exit_px) / max(_exit_px, 1e-9) * 100
+                    logger.warning(
+                        f"[REENTRY_B00] {position_key}: PRICE_ABOVE_EXIT cur={current_price:.4f} exit={_exit_px:.4f} (+{_dist_pct:.2f}%) wt15m={_wt1_15:.1f}>{_wt2_15:.1f} vel={_vel_15:.1f}"
+                    )
+                    return Signal(
+                        action="REENTRY",
+                        reason=f"B00_PRICE_ABOVE_EXIT_cur{current_price:.4f}_exit{_exit_px:.4f}_dist{_dist_pct:.2f}pct",
+                        conviction=78.0,
+                        quantity=re_qty,
+                    )
     from position_evaluator import evaluate_reentry_core
 
     sig = evaluate_reentry_core(i, is_long, current_price, config, re_qty_base=re_qty)

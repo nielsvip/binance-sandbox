@@ -1473,6 +1473,9 @@ class Config:
     REENTRY_B12_WT_MOM_ENABLED: bool = True  # ABLATION: Sharpe 0.15/0.17, 112K/73K trades. Volume king.
     REENTRY_B14_HA_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.11/0.13. Moderate.
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.89/0.72, 94-97% WR. Sniper.
+    REENTRY_B16_MIDRANGE_ENABLED: bool = True  # DC midrange reclaim + 15m WT cross — fires when trend resumes after reduction
+    REENTRY_EXIT_RECLAIM_ENABLED: bool = True  # B00: price recovered above last_reduction_price + 15m WT momentum (live only)
+    REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.05  # B00: price must be this % above exit price before firing
     # === AUGMENT BLOCKS (2026-04-16) — 4 blocks switch-gated for sweep ===
     # 2026-04-25 rapid-grid finding: AUGMENT_WT_4H_BOUNCE (v8_quick_engine) → +0.029 pool_sharpe on crypto 50-sym. No live equivalent yet — wire as AUGMENT_WT_4H_BOUNCE_ENABLED when sweep validates on full 50-sym.
     AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.

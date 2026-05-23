@@ -217,6 +217,15 @@ def evaluate_reentry_core(
             return ReentrySignal(reason='B09_SNAPBACK_LONG', conviction=65.0, quantity=re_qty_base)
         if not is_long and dc_high_15m > 0 and current_price > dc_high_15m * 0.997 and wt_vel_3m < -0.5 and k_3m > 70:
             return ReentrySignal(reason='B09_SNAPBACK_SHORT', conviction=65.0, quantity=re_qty_base)
+    # B16: DC MIDRANGE RECLAIM — price in upper half of 1h DC channel + 15m WT momentum
+    # Proxy for "price recovered above exit level"; fires when trend resumes after reduction.
+    if getattr(config, 'REENTRY_B16_MIDRANGE_ENABLED', True):
+        _dc_span_1h = max(dc_high_1h - dc_low_1h, 1e-9) if dc_high_1h > 0 and dc_low_1h > 0 else 0
+        _dc_pos_1h = (current_price - dc_low_1h) / _dc_span_1h if _dc_span_1h > 0 else 0.5
+        if is_long and _dc_pos_1h > 0.5 and wt1_15m > wt2_15m and wt_vel_15m > 0 and k_15m < 78:
+            return ReentrySignal(reason=f'B16_MIDRANGE_LONG_dcpos={_dc_pos_1h:.2f}_wt15={wt1_15m:.0f}_k15={k_15m:.0f}', conviction=68.0, quantity=re_qty_base)
+        if not is_long and _dc_pos_1h < 0.5 and wt1_15m < wt2_15m and wt_vel_15m < 0 and k_15m > 22:
+            return ReentrySignal(reason=f'B16_MIDRANGE_SHORT_dcpos={_dc_pos_1h:.2f}_wt15={wt1_15m:.0f}_k15={k_15m:.0f}', conviction=68.0, quantity=re_qty_base)
     return None
 
 
@@ -230,6 +239,7 @@ B14_HA_TREND = 14
 B10_STOCH_REV = 10
 B01_WT_2OF3 = 1
 B09_SNAPBACK = 9
+B16_MIDRANGE = 16
 
 
 def evaluate_reentry_vec(
@@ -356,6 +366,14 @@ def evaluate_reentry_vec(
             commit((dc_low_15m > 0) & (cp < dc_low_15m * 1.003) & (wt_vel_3m > 0.5) & (k_3m < 30), B09_SNAPBACK, 65.0, 1.0)
         else:
             commit((dc_high_15m > 0) & (cp > dc_high_15m * 0.997) & (wt_vel_3m < -0.5) & (k_3m > 70), B09_SNAPBACK, 65.0, 1.0)
+    # B16: DC MIDRANGE RECLAIM — proxy for "price recovered above exit level"
+    if getattr(config, 'REENTRY_B16_MIDRANGE_ENABLED', True):
+        dc_span_1h = np.maximum(dc_high_1h - dc_low_1h, np.float32(1e-9))
+        dc_pos_1h_v = np.where((dc_high_1h > 0) & (dc_low_1h > 0), (cp - dc_low_1h) / dc_span_1h, np.float32(0.5))
+        if is_long:
+            commit((dc_pos_1h_v > 0.5) & (wt1_15m > wt2_15m) & (wt_vel_15m > 0) & (k_15m < 78), B16_MIDRANGE, 68.0, 1.0)
+        else:
+            commit((dc_pos_1h_v < 0.5) & (wt1_15m < wt2_15m) & (wt_vel_15m < 0) & (k_15m > 22), B16_MIDRANGE, 68.0, 1.0)
 
     return {
         'fire': fire,
@@ -379,6 +397,7 @@ BLOCK_NAMES = {
     B10_STOCH_REV: 'B10_STOCH_REV',
     B01_WT_2OF3: 'B01_WT_2of3',
     B09_SNAPBACK: 'B09_SNAPBACK',
+    B16_MIDRANGE: 'B16_MIDRANGE',
 }
 
 
