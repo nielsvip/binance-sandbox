@@ -31014,17 +31014,24 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 return None
         except Exception as _gre:
             logger.warning(f"[GR_HTF_REENTRY] {position_key}: {_gre}")
-    # B00: PRICE ABOVE EXIT — if price recovered above last reduction/exit price → re-enter.
-    # Uses actual position state (last_reduction_price), not indicator proxy.
-    # Independent of WT state — catches recoveries that B-blocks miss.
+    # B00: PRICE ABOVE EXIT — price recovered above exit + meaningful buffer, trend
+    # confirmed by SMA200, momentum confirmed by 3m stoch rising + 15m WT cross.
+    # Only fires when all 3 conditions hold to avoid noise-triggered re-entries.
     if getattr(config, "REENTRY_EXIT_RECLAIM_ENABLED", True):
         _exit_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
         if _exit_px > 0:
-            _buf = float(getattr(config, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.05)) / 100.0
+            _buf = float(getattr(config, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.2)) / 100.0
             _above = (is_long and current_price >= _exit_px * (1.0 + _buf)) or (
                 not is_long and current_price <= _exit_px * (1.0 - _buf)
             )
             if _above:
+                _sma_200 = float(i.get("sma_200_1m", 0) or 0)
+                _sma_ok = _sma_200 <= 0 or (
+                    (is_long and current_price > _sma_200) or (not is_long and current_price < _sma_200)
+                )
+                _k_3m = float(i.get("stoch_k_3m", 50) or 50)
+                _k_3m_prev = float(i.get("k_3m_prev", _k_3m) or _k_3m)
+                _mom_ok = (is_long and _k_3m > _k_3m_prev) or (not is_long and _k_3m < _k_3m_prev)
                 _wt1_15 = float(i.get("wt1_15m", 0) or 0)
                 _wt2_15 = float(i.get("wt2_15m", 0) or 0)
                 _vel_15 = float(i.get("wt_velocity_15m", 0) or 0)
@@ -31032,14 +31039,14 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 _wt_ok = (is_long and _wt1_15 > _wt2_15 and _vel_15 > 0 and _k_15 < 80) or (
                     not is_long and _wt1_15 < _wt2_15 and _vel_15 < 0 and _k_15 > 20
                 )
-                if _wt_ok:
+                if _sma_ok and _mom_ok and _wt_ok:
                     _dist_pct = abs(current_price - _exit_px) / max(_exit_px, 1e-9) * 100
                     logger.warning(
-                        f"[REENTRY_B00] {position_key}: PRICE_ABOVE_EXIT cur={current_price:.4f} exit={_exit_px:.4f} (+{_dist_pct:.2f}%) wt15m={_wt1_15:.1f}>{_wt2_15:.1f} vel={_vel_15:.1f}"
+                        f"[REENTRY_B00] {position_key}: PRICE_ABOVE_EXIT cur={current_price:.4f} exit={_exit_px:.4f} (+{_dist_pct:.2f}%) sma200={_sma_200:.4f} k3m={_k_3m:.1f}>{_k_3m_prev:.1f} wt15m={_wt1_15:.1f}>{_wt2_15:.1f}"
                     )
                     return Signal(
                         action="REENTRY",
-                        reason=f"B00_PRICE_ABOVE_EXIT_cur{current_price:.4f}_exit{_exit_px:.4f}_dist{_dist_pct:.2f}pct",
+                        reason=f"B00_PRICE_ABOVE_EXIT_cur{current_price:.4f}_exit{_exit_px:.4f}_dist{_dist_pct:.2f}pct_sma{_sma_200:.0f}",
                         conviction=78.0,
                         quantity=re_qty,
                     )
