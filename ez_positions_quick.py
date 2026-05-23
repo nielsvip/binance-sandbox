@@ -13629,13 +13629,24 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             hedge_for = _cand_hedge_for
 
                 hard_exit_reason = ""
+                _trend_veto_active = False
+                if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", True)):
+                    _v_adx = safe_fetch_float(indicators.get("adx_1h"), 0.0)
+                    _v_wt1 = safe_fetch_float(indicators.get("wt1_1h"), 0.0)
+                    _v_wt2 = safe_fetch_float(indicators.get("wt2_1h"), 0.0)
+                    _is_st_adx = (_v_adx > 25.0)
+                    _is_st_wt = (_v_wt1 > _v_wt2) if is_long else (_v_wt1 < _v_wt2)
+                    if _is_st_adx or _is_st_wt:
+                        _trend_veto_active = True
                 # ═══ K1M EXTREME REVERSE EXIT (USER RULE 2026-04-27) ═══
                 # Simple top-level: k_1m at overbought/oversold extreme AND turning back = trade is OUT.
                 # Fires ONLY when in profit (current_gain >= 0) per universal "never close at loss" rule.
                 # At loss the same-symbol hedge engine handles the position; this gate skips silently.
                 # Uses live Redis fields stoch_k_1m + k_1m_prev (both published by ez_market_data).
                 # Skips hedges (they're managed by hedge engine's own gates).
-                if not hard_exit_reason and not is_hedge and current_gain >= 0:
+                if _trend_veto_active and not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
+                    logger.info(f"🛡️ [TREND_REGIME_VETO_K1M] {position_key}: Strong 1h trend detected — vetoing K1M stochastic reverse exit")
+                if not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)) and not _trend_veto_active:
                     _k1m_now = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50)
                     _k1m_prev_v = safe_fetch_float(indicators.get('k_1m_prev', _k1m_now), _k1m_now)
                     if is_long and _k1m_now > 90 and _k1m_now < _k1m_prev_v:
@@ -14054,7 +14065,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         else:
                             _hv_aligned = int(_hv_w1_1h < _hv_w2_1h) + int(_hv_w1_4h < _hv_w2_4h) + int(_hv_w1_D < _hv_w2_D)
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)):
+                if _trend_veto_active and not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)):
+                    logger.info(f"🛡️ [TREND_REGIME_VETO_BE] {position_key}: Strong 1h trend detected — vetoing breakeven gain erosion stop")
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)) and not _trend_veto_active:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
                     # 2026-04-28 USER RULE: commission-aware. Close must net positive after fees+slippage.
                     # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% earlier today.

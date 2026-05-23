@@ -30998,22 +30998,22 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
     # Phase 2 vectorization: pure block logic lives in position_evaluator.py.
     # Live and v8 backtest now share one code path — sweep parity guaranteed.
-    _gr_htf_min_tfs = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
+    _gr_htf_min_tfs = int(getattr(config, "REENTRY_GR_HTF_MIN_TFS", 0))
     if _gr_htf_min_tfs > 0:
         try:
             from golden_rule_htf import score_entry_htf as _gr_score_entry
 
-            _gr_min_ind = int(getattr(config, "GOLDEN_RULE_MIN_IND", 2))
+            _gr_min_ind = int(getattr(config, "REENTRY_GR_MIN_IND", 2))
             _gr_ok, _gr_ntfs, _gr_detail = _gr_score_entry(
                 i, is_long, "crypto", _gr_htf_min_tfs, _gr_min_ind, current_price
             )
             if not _gr_ok:
                 logger.debug(
-                    f"[GR_HTF_BLOCK] {position_key}: {_gr_ntfs}of{_gr_htf_min_tfs}tfs {_gr_detail}"
+                    f"[GR_HTF_BLOCK_REENTRY] {position_key}: {_gr_ntfs}of{_gr_htf_min_tfs}tfs {_gr_detail}"
                 )
                 return None
         except Exception as _gre:
-            logger.warning(f"[GR_HTF] {position_key}: {_gre}")
+            logger.warning(f"[GR_HTF_REENTRY] {position_key}: {_gre}")
     from position_evaluator import evaluate_reentry_core
 
     sig = evaluate_reentry_core(i, is_long, current_price, config, re_qty_base=re_qty)
