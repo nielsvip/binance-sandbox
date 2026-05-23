@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-23 07:58:28 UTC
+# Copilot Status — 2026-05-23 08:13:47 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T07:54:52
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T07:55:54
-- **STALE_INDICATORS** [tradier]  — 2026-05-23T07:56:55
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T07:56:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T07:56:55
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T07:56:55
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T07:56:55
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T07:56:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T07:56:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T07:57:57
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T08:11:19
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T08:11:20
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T08:12:22
+- **STALE_INDICATORS** [tradier]  — 2026-05-23T08:13:23
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T08:13:23
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T08:13:23
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T08:13:23
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T08:13:23
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T08:13:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-23T08:13:26
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +0.3%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.9%
@@ -45,7 +45,6 @@ _None_
 - WATCHING: **INXUSDT** SHORT (crypto) peaked +5.0%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +4.4%, exited 0m ago
 - WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 0m ago
-- WATCHING: **FARTCOINUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 
 ## Supervisor
 
