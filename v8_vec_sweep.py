@@ -339,6 +339,7 @@ class SweepConfig:
     REENTRY_B10_STOCH_REV_ENABLED: bool = True
     REENTRY_B01_WT_2of3_ENABLED: bool = False
     REENTRY_B09_SNAPBACK_ENABLED: bool = False
+    REENTRY_B16_MIDRANGE_ENABLED: bool = True
     # ── exit gates ────────────────────────────────────────────────────────
     WT_4H_VEL_EXIT_ENABLED: bool = True
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0
