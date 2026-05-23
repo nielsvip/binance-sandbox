@@ -1497,6 +1497,14 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt1_{tf}"] = wt1_val
     result[f"wt2_{tf}"] = wt2_val
     result[f"wt_score_{tf}"] = wt1_val - wt2_val
+    # 2026-05-23 USER MANDATE: expose prev-bar WT for MTF rehydrate. Lets update_armed_state
+    # arm WT-band on first call (no need to wait 2 bars for state-persisted priors).
+    if n >= 2:
+        result[f"wt1_{tf}_prev"] = float(wt1_arr[-2])
+        result[f"wt2_{tf}_prev"] = float(wt2_arr[-2])
+    else:
+        result[f"wt1_{tf}_prev"] = wt1_val
+        result[f"wt2_{tf}_prev"] = wt2_val
     # --- Cross Detection & Memory ---
     cross_above = (wt1_arr[1:] > wt2_arr[1:]) & (wt1_arr[:-1] <= wt2_arr[:-1])
     cross_below = (wt1_arr[1:] < wt2_arr[1:]) & (wt1_arr[:-1] >= wt2_arr[:-1])
@@ -2276,6 +2284,25 @@ class IndicatorCalculator:
                 _prev_close = float(close_series.iloc[-2]) if len(close_series) > 1 else float(close_series.iloc[-1])
                 _prev_pb = round(max(0.0, min(1.5, (_prev_close - _at_l) / _bw)), 4) if _bw > 0 else 0.5
                 result[f"bb_pct_b_{timeframe}_prev"] = _prev_pb
+                # 2026-05-23 USER MANDATE: expose prev-bar BB upper/lower for MTF rehydrate.
+                # Recompute from close_series prior bar so update_armed_state can detect breakouts
+                # on the first call without waiting 2 bars for state-persisted priors.
+                if len(close_series) > 20:
+                    try:
+                        _prev_window = close_series.iloc[:-1]
+                        _prev_fb = bb_features(_prev_window, length=20, std_mult=_at_mult)
+                        if _prev_fb[0] is not None and _prev_fb[1] is not None:
+                            result[f"bb_upper_{timeframe}_prev"] = float(_prev_fb[0])
+                            result[f"bb_lower_{timeframe}_prev"] = float(_prev_fb[1])
+                        else:
+                            result[f"bb_upper_{timeframe}_prev"] = _at_u
+                            result[f"bb_lower_{timeframe}_prev"] = _at_l
+                    except Exception:
+                        result[f"bb_upper_{timeframe}_prev"] = _at_u
+                        result[f"bb_lower_{timeframe}_prev"] = _at_l
+                else:
+                    result[f"bb_upper_{timeframe}_prev"] = _at_u
+                    result[f"bb_lower_{timeframe}_prev"] = _at_l
             _lr_u, _lr_l, _lr_pb = linreg_channel(close_series, LINREG_LENGTH, std_mult=2.5)
             if _lr_pb is not None:
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb

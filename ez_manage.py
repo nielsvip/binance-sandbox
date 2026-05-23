@@ -17095,15 +17095,20 @@ class MultiAccountTradeManager:
             in [
                 "CLOSE",
                 "REDUCE",
+                "STRONG_REDUCE",
                 "QUICK_CLOSE",
+                "QUICK_QUICK_CLOSE",
                 "FULL_CLOSE",
                 "PROFIT_TAKE",
                 "STOP_MAJOR_LOSS_REDUCE",
                 "STOP_FUNCTIONS_KILL",
                 "HEDGE_CLOSE",
             ]
-            or "CLOSE" in reason
-            or "REDUCE" in reason
+            or (
+                "CLOSE" in reason
+                and "QUICK_OPEN" not in reason
+                and "RATIO_" not in reason
+            )
         )
         is_augment = not is_reduce
         # ═══ 2026-05-21 USER MANDATE: ZEC_FLZ_LONG 5x sizing ═══

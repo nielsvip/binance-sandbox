@@ -6051,11 +6051,13 @@ class PositionService:
                     if not pos_data or not isinstance(pos_data, dict):
                         continue
                     backup_amt = abs(safe_fetch_float(pos_data.get("positionAmt", 0), 0))
-                    pos_data["positionAmt"] = 0.0
+                    # 2026-05-23 USER MANDATE: positionAmt writes removed. Restored object carries
+                    # backup positionAmt; handle_account_update (WS/API sync within ~5s) will
+                    # reconcile to real value. DUP_OPEN_GUARD (ez_manage:44213) refuses OPENs on
+                    # stale >0 in the meantime.
                     restored = Position.from_dict(pos_data)
-                    restored.positionAmt = 0.0
                     ep = safe_fetch_float(pos_data.get("entry_price", 0), 0)
-                    logger.critical(f"[RESTORE_FROM_BACKUP] {position_key}: Recovered from {os.path.basename(bf)} — backup_amt={backup_amt} (SET TO 0) entry={ep} max_gain={getattr(restored, 'max_gain', 0)}")
+                    logger.critical(f"[RESTORE_FROM_BACKUP] {position_key}: Recovered from {os.path.basename(bf)} — backup_amt={backup_amt} (KEPT, awaiting API sync) entry={ep} max_gain={getattr(restored, 'max_gain', 0)}")
                     return restored
                 except Exception as bf_err:
                     logger.debug(f"[RESTORE_BACKUP] Failed to parse {os.path.basename(bf)} for {position_key}: {bf_err}")
@@ -6069,10 +6071,9 @@ class PositionService:
                         data = data["positions"]
                     pos_data = data.get(position_key)
                     if pos_data and isinstance(pos_data, dict):
-                        pos_data["positionAmt"] = 0.0
+                        # 2026-05-23 USER MANDATE: positionAmt writes removed. Trust API sync.
                         restored = Position.from_dict(pos_data)
-                        restored.positionAmt = 0.0
-                        logger.critical(f"[RESTORE_FROM_MAIN_FILE] {position_key}: Recovered from main file (positionAmt SET TO 0)")
+                        logger.critical(f"[RESTORE_FROM_MAIN_FILE] {position_key}: Recovered from main file (positionAmt KEPT from file, awaiting API sync)")
                         return restored
                 except Exception:
                     pass
@@ -6093,10 +6094,10 @@ class PositionService:
                         if pos_data and isinstance(pos_data, dict):
                             pos_data["symbol"] = symbol
                             pos_data["position_side"] = position_side
-                            pos_data["positionAmt"] = 0.0
+                            # 2026-05-23 USER MANDATE: positionAmt writes removed.
+                            # Cross-acct copy is structural template only — API sync sets real value.
                             restored = Position.from_dict(pos_data)
-                            restored.positionAmt = 0.0
-                            logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT] {position_key}: Copied structure from {other_acct} (amt zeroed, all other fields preserved)")
+                            logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT] {position_key}: Copied structure from {other_acct} (positionAmt from source dict, awaiting API sync)")
                             return restored
                     except Exception:
                         continue
@@ -6116,10 +6117,9 @@ class PositionService:
                             if pos_data and isinstance(pos_data, dict):
                                 pos_data["symbol"] = symbol
                                 pos_data["position_side"] = position_side
-                                pos_data["positionAmt"] = 0.0
+                                # 2026-05-23 USER MANDATE: positionAmt writes removed.
                                 restored = Position.from_dict(pos_data)
-                                restored.positionAmt = 0.0
-                                logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT_BACKUP] {position_key}: Copied from {other_acct} backup {os.path.basename(obf)}")
+                                logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT_BACKUP] {position_key}: Copied from {other_acct} backup {os.path.basename(obf)} (positionAmt awaiting API sync)")
                                 return restored
                         except Exception:
                             continue
@@ -12126,8 +12126,17 @@ class PositionService:
                 old_amt = abs(float(getattr(pos, 'positionAmt', 0) or 0))
                 if old_amt == 0:
                     continue
-                logger.critical(f"[PHANTOM_KILL] {pk}: disk positionAmt={old_amt}, missing from API {count}x (threshold={threshold}). ZEROED.")
-                pos.positionAmt = 0
+                # 2026-05-23 USER MANDATE: phantom_kill should NOT direct-write positionAmt.
+                # On bootstrap, missing-from-API IS the API↔JSON↔Redis reconciliation signal —
+                # route through handle_reduction (the sanctioned writer) so all downstream
+                # state (PnL, last_signal, persisted JSON, Redis snapshot) updates atomically.
+                _cur_px = float(getattr(pos, 'mark_price', 0) or 0.0) or float(getattr(pos, 'entry_price', 0) or 0.0)
+                logger.critical(f"[PHANTOM_RECONCILE] {pk}: disk positionAmt={old_amt}, missing from API {count}x (threshold={threshold}). Routing through handle_reduction.")
+                try:
+                    await self.handle_reduction(pos, pk, old_amt, 0.0, old_amt, _cur_px, pos.entry_price or _cur_px, reduction_source="phantom_reconcile_bootstrap")
+                except Exception as _phr_err:
+                    logger.error(f"[PHANTOM_RECONCILE] {pk}: handle_reduction failed: {_phr_err}", exc_info=True)
+                    continue
                 pos.last_updated = datetime.now(timezone.utc)
                 account_positions[pk] = pos
                 self.positions[pk] = pos

@@ -92,6 +92,12 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
     """Update per-(TF, bandtype) ARMED flags from current indicator bar.
 
     Call ONCE per bar update for each symbol (regardless of position open/closed).
+
+    2026-05-23 USER MANDATE: read <field>_prev directly from indicators (added in
+    ez_indicators.py for wt1/wt2/bb_upper/bb_lower; dc_high/dc_low_prev existed already).
+    This means arming fires on FIRST call with no need to wait for state-persisted priors
+    to accumulate. Fixes the chokepoint where 88.9% of fin entries blocked by MTF_NO_ARMED_STATE.
+    State-persistence remains as fallback for indicator sources that don't expose _prev.
     """
     if not bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False)):
         return
@@ -108,8 +114,15 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
             bt = bt.strip()
             key = f"{tf}_{bt}"
             if bt == "dc":
-                prev_up = state["prior_dc_high"].get(tf, 0.0) if is_long else state["prior_dc_low"].get(tf, 0.0)
-                prev_dn = state["prior_dc_low"].get(tf, 0.0) if is_long else state["prior_dc_high"].get(tf, 0.0)
+                # PREFER indicator _prev field, fall back to state-persisted prior
+                _ind_dc_high_prev = _f(indicators, f"dc_high_{tf}_prev")
+                _ind_dc_low_prev = _f(indicators, f"dc_low_{tf}_prev")
+                if _ind_dc_high_prev > 0 and _ind_dc_low_prev > 0:
+                    prev_up = _ind_dc_high_prev if is_long else _ind_dc_low_prev
+                    prev_dn = _ind_dc_low_prev if is_long else _ind_dc_high_prev
+                else:
+                    prev_up = state["prior_dc_high"].get(tf, 0.0) if is_long else state["prior_dc_low"].get(tf, 0.0)
+                    prev_dn = state["prior_dc_low"].get(tf, 0.0) if is_long else state["prior_dc_high"].get(tf, 0.0)
                 cur_up = _f(indicators, f"dc_high_{tf}") if is_long else _f(indicators, f"dc_low_{tf}")
                 cur_dn = _f(indicators, f"dc_low_{tf}") if is_long else _f(indicators, f"dc_high_{tf}")
                 if is_long:
@@ -124,8 +137,15 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
                     state["prior_dc_low"][tf]  = cur_up
                     state["prior_dc_high"][tf] = cur_dn
             elif bt == "bb":
-                prev_up = state["prior_bb_upper"].get(tf, 0.0) if is_long else state["prior_bb_lower"].get(tf, 0.0)
-                prev_dn = state["prior_bb_lower"].get(tf, 0.0) if is_long else state["prior_bb_upper"].get(tf, 0.0)
+                # PREFER indicator _prev field
+                _ind_bb_upper_prev = _f(indicators, f"bb_upper_{tf}_prev")
+                _ind_bb_lower_prev = _f(indicators, f"bb_lower_{tf}_prev")
+                if _ind_bb_upper_prev > 0 and _ind_bb_lower_prev > 0:
+                    prev_up = _ind_bb_upper_prev if is_long else _ind_bb_lower_prev
+                    prev_dn = _ind_bb_lower_prev if is_long else _ind_bb_upper_prev
+                else:
+                    prev_up = state["prior_bb_upper"].get(tf, 0.0) if is_long else state["prior_bb_lower"].get(tf, 0.0)
+                    prev_dn = state["prior_bb_lower"].get(tf, 0.0) if is_long else state["prior_bb_upper"].get(tf, 0.0)
                 cur_up = _f(indicators, f"bb_upper_{tf}") if is_long else _f(indicators, f"bb_lower_{tf}")
                 cur_dn = _f(indicators, f"bb_lower_{tf}") if is_long else _f(indicators, f"bb_upper_{tf}")
                 if is_long:
@@ -137,18 +157,26 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
                 state["prior_bb_upper"][tf] = cur_up if is_long else state["prior_bb_upper"].get(tf, cur_up)
                 state["prior_bb_lower"][tf] = cur_dn if is_long else state["prior_bb_lower"].get(tf, cur_dn)
             elif bt == "wt":
-                # 2026-05-22 USER MANDATE: instead of "fresh cross THIS bar only", arm on directional
-                # condition (wt1>wt2 for LONG). This persists the armed flag across the whole leg
-                # rather than resetting every bar. Cross-down still disarms. NEAR +83% rally proved
-                # the cross-only logic blocked entries after the first cross faded out of "fresh" state.
+                # 2026-05-22 USER MANDATE: directional arming (wt1>wt2 for LONG) replaces cross-only.
+                # 2026-05-23 USER MANDATE: WT armed flag persists. Disarm only when wt1<wt2 (LONG)
+                # AND wt1 fell below wt2 BETWEEN bars (true cross-down), not just current-bar
+                # noise. Uses indicator wt1_<tf>_prev / wt2_<tf>_prev for first-call arming.
                 wt1 = _f(indicators, f"wt1_{tf}")
                 wt2 = _f(indicators, f"wt2_{tf}")
+                _ind_wt1_prev = _f(indicators, f"wt1_{tf}_prev")
+                _ind_wt2_prev = _f(indicators, f"wt2_{tf}_prev")
+                if _ind_wt1_prev != 0 or _ind_wt2_prev != 0:
+                    wt1_p = _ind_wt1_prev
+                    wt2_p = _ind_wt2_prev
+                else:
+                    wt1_p = state["prior_wt1"].get(tf, wt1)
+                    wt2_p = state["prior_wt2"].get(tf, wt2)
                 if is_long:
                     on = (wt1 > wt2)
-                    off = (wt1 < wt2)
+                    off = (wt1 < wt2 and wt1_p >= wt2_p)
                 else:
                     on = (wt1 < wt2)
-                    off = (wt1 > wt2)
+                    off = (wt1 > wt2 and wt1_p <= wt2_p)
                 state["prior_wt1"][tf] = wt1
                 state["prior_wt2"][tf] = wt2
             else:
