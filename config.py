@@ -739,6 +739,7 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
+    REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0
     # Queue consumer: reads daemon command files, calls execute_now.
     EZ_REENTRY_QUEUE_CONSUMER_ENABLED: bool = True
     EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S: float = 5.0

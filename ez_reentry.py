@@ -524,6 +524,24 @@ def _is_soft_exit(reason: str) -> bool:
     return bool(_SOFT_EXIT_REASON_RE.search(reason))
 
 
+def _invalidate_stale_reentry_record(base_path: Path, pk: str, account_key: str, is_long: bool, trade_manager: Any) -> None:
+    src_mem = trade_manager.service.reentry_data if getattr(trade_manager, "service", None) else getattr(trade_manager, "reentry_data", {})
+    if isinstance(src_mem, dict) and pk in src_mem and isinstance(src_mem[pk], dict):
+        src_mem[pk]["reentry_level"] = 0.0
+        src_mem[pk]["exit_price"] = 0.0
+        src_mem[pk]["reentry_amount"] = 0.0
+    f = base_path / account_key / f"{'long' if is_long else 'short'}_reentry.json"
+    if f.exists():
+        try:
+            with open(f, "r") as fp: data = json.load(fp)
+            if isinstance(data, dict) and pk in data and isinstance(data[pk], dict):
+                data[pk]["reentry_level"] = 0.0
+                data[pk]["exit_price"] = 0.0
+                data[pk]["reentry_amount"] = 0.0
+                with open(f, "w") as fp: json.dump(data, fp, indent=2)
+        except Exception: pass
+
+
 async def enforce_price_cross_reentry(trade_manager) -> int:
     """Safety net (2026-04-28, user-mandated): for every position with a recorded
     exit price (disk JSON file OR in-memory reentry_data), fire a partial reentry
@@ -606,6 +624,11 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             continue
         cur_px = _lookup_mark_price(trade_manager, pk, sym, mkt)
         if cur_px <= 0:
+            continue
+        divergence = abs(cur_px - exit_px) / exit_px
+        max_div = float(getattr(_cfg, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
+        if divergence > max_div:
+            _invalidate_stale_reentry_record(base_path, pk, account_key, is_long, trade_manager)
             continue
         if cross_pct > 0:
             crossed = (

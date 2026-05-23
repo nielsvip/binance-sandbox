@@ -28988,7 +28988,11 @@ class MultiAccountTradeManager:
                                 )
                         else:
                             _price_crossed_since.pop(position_key, None)
-                            if _full_stack and _safety_ok:
+                            _div = abs(current_price - exit_price) / exit_price
+                            _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
+                            if _div > _max_div:
+                                pass
+                            elif _full_stack and _safety_ok:
                                 should_reenter = True
                                 _qty_mult = 1.35
                                 _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}_SAFE"
@@ -33979,6 +33983,20 @@ async def process_single_reentry_evaluation(
             or 0.0,
             0.0,
         )
+        if reentry_level > 0 and current_price > 0:
+            _div = abs(current_price - reentry_level) / reentry_level
+            _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
+            if _div > _max_div:
+                if isinstance(reentry_data, dict):
+                    reentry_data["reentry_level"] = 0.0
+                    reentry_data["exit_price"] = 0.0
+                    reentry_data["reentry_amount"] = 0.0
+                try:
+                    from ez_reentry import _invalidate_stale_reentry_record
+                    _base_path = Path(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"))
+                    _invalidate_stale_reentry_record(_base_path, position_key, account_key, is_long, trade_manager)
+                except Exception: pass
+                return
         reentry_amount = float(position.max_quantity or 0.0) if position else 0.0
         reentry_timestamp = (
             safe_datetime(reentry_data.get("timestamp"))
@@ -35186,6 +35204,19 @@ async def evaluate_reentry_2(trade_manager):
             reentry_level = safe_fetch_float(reentry_data.get("reentry_level", 0.0))
             if not reentry_level or reentry_level <= 0:
                 reentry_level = position.last_reduction_price if position else 0.0
+            if reentry_level > 0 and current_price > 0:
+                _div = abs(current_price - reentry_level) / reentry_level
+                _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
+                if _div > _max_div:
+                    reentry_data["reentry_level"] = 0.0
+                    reentry_data["exit_price"] = 0.0
+                    reentry_data["reentry_amount"] = 0.0
+                    try:
+                        from ez_reentry import _invalidate_stale_reentry_record
+                        _base_path = Path(getattr(config, "BASE_PATH", "/Users/niels/Documents/binance"))
+                        _invalidate_stale_reentry_record(_base_path, position_key, account_key, is_long, trade_manager)
+                    except Exception: pass
+                    continue
             rd_ts = safe_datetime(reentry_data.get("timestamp"))
             time_since_exit_min = (
                 (now - rd_ts).total_seconds() / 60.0 if rd_ts else 999.0
