@@ -1406,6 +1406,17 @@ def simulate_one_symbol(
         except Exception as _qb_exc:
             _qb_fire_mask = np.zeros(n, dtype=bool)
 
+    # ─── QUALITY_TOP_EXIT precompute (2026-05-23 USER MANDATE "in at bottom, out at top") ─
+    # Symmetric exit partner for quality_bottom_entry. LONG exit fires on top-short mask;
+    # SHORT exit fires on bottom-long mask. Default OFF.
+    _qt_exit_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "QUALITY_TOP_EXIT_ENABLED", False)):
+        try:
+            from vec_paths.quality_top_exit import precompute_quality_top_exit_mask as _qte
+            _qt_exit_mask = _qte(npz, config, is_long).astype(bool)
+        except Exception:
+            _qt_exit_mask = np.zeros(n, dtype=bool)
+
     # ─── DC_LOW / BB FROZEN STOP precompute ─────────────────────────────────────
     _dc_fstop_arr = np.zeros(n, dtype=np.float32)
     _bb_fstop_arr = np.zeros(n, dtype=np.float32)
@@ -2192,6 +2203,27 @@ def simulate_one_symbol(
         # ─── EXIT GATES (indicator-only first, then state-aware) ────────
         exit_id = EXIT_NONE
         exit_reason = ""
+
+        # ─── QUALITY_TOP_EXIT (2026-05-23 USER MANDATE "in at bottom, out at top") ────
+        # Symmetric partner to QUALITY_BOTTOM_ENTRY. Closes full position when the
+        # quality-top mask fires (LONG: top-short criteria; SHORT: bottom-long). Optional
+        # gain floor via QUALITY_TOP_EXIT_MIN_GAIN_PCT suppresses early closes on noise.
+        # Default OFF; opt-in via QUALITY_TOP_EXIT_ENABLED.
+        if state.qty > 0.0001 and _qt_exit_mask[i]:
+            _qt_min_gain = float(getattr(config, "QUALITY_TOP_EXIT_MIN_GAIN_PCT", 0.0))
+            if gain >= _qt_min_gain:
+                pnl_pct = gain
+                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=f"QUALITY_TOP_EXIT_g{gain:.2f}%", pnl_pct=pnl_pct)
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                _pos.gain_pct = 0.0
+                continue
 
         # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
         if check_r1_emergency_exit is not None and state.qty > 0.0001:

@@ -16561,6 +16561,25 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             elif _age_gate == 'extreme':
                 if not (_ag_wt3m and _ag_wt15m and _ag_wt1h and _ag_wt4h): return
         # STANDARD GATES
+        _price_above_red_epq = (reentry_level > 0.0) and ((is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level))
+        if _price_above_red_epq:
+            _epq_force_mult = 0.55 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
+            _epq_force_qty = max(reentry_amount * _epq_force_mult, getattr(config_obj, 'START_POSITION_SIZE', 45.0) / current_price)
+            _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.2f}"
+            _dbs_wt3m = (is_long and wt1_3m > wt2_3m) or (not is_long and wt1_3m < wt2_3m)
+            _dbs_wt15m = (is_long and wt1_15m > wt2_15m) or (not is_long and wt1_15m < wt2_15m)
+            _dbs_wt1_1h = float(i.get('wt1_1h', 0) or 0); _dbs_wt2_1h = float(i.get('wt2_1h', 0) or 0)
+            _dbs_wt1_4h = float(i.get('wt1_4h', 0) or 0); _dbs_wt2_4h = float(i.get('wt2_4h', 0) or 0)
+            _dbs_wt1h = (is_long and _dbs_wt1_1h > _dbs_wt2_1h) or (not is_long and _dbs_wt1_1h < _dbs_wt2_1h)
+            _dbs_wt4h = (is_long and _dbs_wt1_4h > _dbs_wt2_4h) or (not is_long and _dbs_wt1_4h < _dbs_wt2_4h)
+            _dbs_htf = int(_dbs_wt1h) + int(_dbs_wt4h)
+            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f} 3m={_dbs_wt3m} 15m={_dbs_wt15m} HTF={_dbs_htf}/2)")
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+            _epq_force_qty = _epq_force_qty * _ee_mult; _epq_force_reason = _epq_force_reason + _ee_tag
+            result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _epq_force_reason, 99.0, override_qty=_epq_force_qty)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[MANDATORY_PRICE_CROSS_EPQ] {position_key}: QUEUED qty={_epq_force_qty:.4f} at ${current_price:.4f}")
+            return
         # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend (mirrors ez_manage version).
         if getattr(config_obj, 'PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED', True):
             _wt1_1h_v = _sf(i.get('wt1_1h', 0), 0); _wt2_1h_v = _sf(i.get('wt2_1h', 0), 0)
@@ -16591,19 +16610,6 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         _dbs_cont = min_since_exit < 5 and _dbs_wt3m and _dbs_htf >= 1
         if not ((_dbs_wt3m and _dbs_wt15m and _dbs_htf >= 1) or _dbs_cont):
             logger.warning(f"🛡️[MANDATORY_EPQ_DBS] {position_key}: 3m={_dbs_wt3m} 15m={_dbs_wt15m} HTF={_dbs_htf}/2 cont={_dbs_cont} k15m={k_15m:.0f} k1h={k_1h:.0f} — blocking stupid reentry")
-            return
-        _price_above_red_epq = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
-        if _price_above_red_epq:
-            _epq_force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
-            _epq_force_qty = max(reentry_amount * _epq_force_mult, getattr(config_obj, 'START_POSITION_SIZE', 45.0) / current_price)
-            _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.1f}"
-            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f} 3m={_dbs_wt3m} 15m={_dbs_wt15m} HTF={_dbs_htf}/2)")
-            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
-            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
-            _epq_force_qty = _epq_force_qty * _ee_mult; _epq_force_reason = _epq_force_reason + _ee_tag
-            result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _epq_force_reason, 99.0, override_qty=_epq_force_qty)
-            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
-                logger.warning(f"[MANDATORY_PRICE_CROSS_EPQ] {position_key}: QUEUED qty={_epq_force_qty:.4f} at ${current_price:.4f}")
             return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):

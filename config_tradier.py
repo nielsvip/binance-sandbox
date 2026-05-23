@@ -1713,18 +1713,18 @@ class TradierConfig:
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
     AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
     BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
-    BB_BREAKOUT_ENABLED: bool = True  # 2026-05-23: FIXED — pullback (bb<0.3) not breakout (bb>1.0)
+    BB_BREAKOUT_ENABLED: bool = False  # 2026-05-23: SWEEP VERDICT — trigger HARMFUL (ΔSharpe -0.0025). Use GATE instead.
     BB_BREAKOUT_SCORE: int = 20
     BB_BREAKOUT_TF: str = '15m'  # 2026-05-23: 1h→15m per vec_top_combos bb15_lt30 winner
     BB_ENTRY_LONG_THRESHOLD: float = 0.30  # 2026-05-23: FIXED — was -0.2 (overbought). Now 0.30 (pullback)
     BB_ENTRY_SHORT_THRESHOLD: float = 0.70  # 2026-05-23: FIXED — was 1.0 (oversold). Now 0.70 (pullback)
-    BB_RSI_STOCH_SCALP_ENABLED: bool = True  # 2026-05-23: FIXED — configurable TF+thresholds
+    BB_RSI_STOCH_SCALP_ENABLED: bool = False  # 2026-05-23: SWEEP VERDICT — COMBO (gate+trigger) worse than GATE alone (ΔSharpe -0.0022)
     BB_RSI_STOCH_SCALP_SCORE: int = 12
     BB_RSI_STOCH_SCALP_TF: str = '15m'  # 2026-05-23: was hardcoded 5m
     BB_RSI_STOCH_BB_MAX: float = 0.30  # 2026-05-23: was 0.2
     BB_RSI_STOCH_RSI_MAX: float = 40.0  # 2026-05-23: was 30
     BB_RSI_STOCH_K_MAX: float = 30.0  # 2026-05-23: was 20
-    BB_PULLBACK_GATE_ENABLED: bool = False  # 2026-05-23: NEW gate — sweep first before live
+    BB_PULLBACK_GATE_ENABLED: bool = True  # 2026-05-23: SWEEP WINNER — ΔSharpe +0.0056 vs baseline, only positive arm
     BB_PULLBACK_GATE_TF: str = '15m'
     BB_PULLBACK_GATE_LONG_MAX: float = 0.30
     BB_PULLBACK_GATE_SHORT_MIN: float = 0.70
