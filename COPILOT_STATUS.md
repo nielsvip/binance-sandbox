@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-23 14:14:46 UTC
+# Copilot Status — 2026-05-23 14:30:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-23T14:10:51
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-23T14:11:52
-- **STALE_INDICATORS** [tradier]  — 2026-05-23T14:12:53
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T14:12:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:12:53
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:12:53
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:12:53
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:12:53
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-23T14:12:54
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-23T14:13:56
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:27:15
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:27:15
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:27:15
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:27:15
+- **STALE_INDICATORS** [tradier]  — 2026-05-23T14:29:18
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T14:29:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:29:18
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:29:18
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:29:18
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:29:18
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 8 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 9 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +0.3%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.9%
@@ -47,6 +47,7 @@ _None_
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +4.4%, exited 0m ago
 - WATCHING: **FIDAUSDT** LONG (crypto) peaked +3.7%, exited 0m ago
 - WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 0m ago
+- WATCHING: **NEARUSDC** LONG (crypto) peaked +3.5%, exited 0m ago
 
 ## Supervisor
 

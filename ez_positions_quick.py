@@ -13752,7 +13752,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         if _ba_near_d_low and _ba_k_oversold and _ba_k_turning:
                             _ba_cd_key = f"{position_key}:bounce_aug"
                             _ba_cd = getattr(config, 'BOUNCE_AUGMENT_COOLDOWN_S', 14400.0)
-                            _ba_last = _open_cooldowns.get(_ba_cd_key, 0)
+                            _ba_last = _bounce_augment_cooldowns.get(_ba_cd_key, 0)
                             if time.time() - _ba_last >= _ba_cd:
                                 _ba_pos_val = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * current_price
                                 _ba_mult = getattr(config, 'BOUNCE_AUGMENT_SIZE_MULT', 2.0)
@@ -13767,7 +13767,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                         logger.critical(f"📋 [BOUNCE_AUGMENT_PAPER] {position_key}: WOULD augment ${_ba_aug_usd:.1f} — {_ba_reason}")
                                     else:
                                         logger.critical(f"🚀 [BOUNCE_AUGMENT_LIVE] {position_key}: Augmenting ${_ba_aug_usd:.1f} — {_ba_reason}")
-                                        _open_cooldowns[_ba_cd_key] = time.time()
+                                        _bounce_augment_cooldowns[_ba_cd_key] = time.time()
                                         _ba_qty = _ba_aug_usd / current_price if current_price > 0 else 0
                                         _ba_side = "BUY" if is_long else "SELL"
                                         _ba_pos_side = "LONG" if is_long else "SHORT"
@@ -16887,6 +16887,7 @@ async def monitor_market_mode(config: Config):
         await asyncio.sleep(90)
 
 _hedge_scanner_cooldowns: Dict[str, float] = {}
+_bounce_augment_cooldowns: Dict[str, float] = {}
 
 async def aggressive_hedge_scanner(trade_manager, account_key: str, tracker_manager: TrackerManager, hedge_engine: HedgeEngine):
     # FIX 2026-04-07: PERMANENTLY DISABLED — caused multi-hedge cascade on RAYSOLUSDT.
