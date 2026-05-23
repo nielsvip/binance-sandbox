@@ -392,7 +392,7 @@ _ABSOLUTE_WEBHOOK_LOCK: Dict[
     str, float
 ] = {}  # (account:symbol_side:orderside) → expiry
 _ABSOLUTE_WEBHOOK_TTL: float = 30.0
-_DUPLICATE_OPEN_COOLDOWN = 0.0  # 2026-05-22 USER MANDATE: time-cooldown destroys reentry on parabolic moves. REENTRY on positionAmt=0 already gated by gain-based DUP_GUARD_GAIN (1.5% floor for AUGMENT); time-cooldown was redundant + harmful.
+_DUPLICATE_OPEN_COOLDOWN = 900.0  # 2026-05-23 USER CORRECTION: keep cooldown as safety net but MUST be ERASED on REDUCE/CLOSE so reentry can fire immediately. Cleared at HANDLE_FILLED_MAKER_REDUCTION (line 22336) + clear_on_close paths added 2026-05-23. The actual fix for "fires OPEN on already-open positions" is the positionAmt>0 early-return at the OPEN decision site (see dup_open_early_return).
 # 2026-05-09: FOOTHOLD pile-on guard. The free-pass FOOTHOLD branch (pos<=$45) was bypassing both DUP_GUARD paths,
 # letting the system fire $10 opens once a minute when the position never grew (Finandy success-with-empty-data,
 # broker rejecting, or some other downstream silent failure). Tracks per position_key the (timestamp, pos_val) of each
@@ -22599,6 +22599,12 @@ class MultiAccountTradeManager:
         )
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
+        # 2026-05-23 USER MANDATE — clear dup-open cooldown on CLOSE/REDUCE intent so reentry can fire
+        # immediately after the close completes. Safe even on close-failure because DUP_OPEN_GUARD
+        # (queue_trade_action:~44213) refuses any OPEN/REENTRY when positionAmt>0 — the safety net.
+        if position_key and (is_full_close or (action and ("CLOSE" in action.upper() or "REDUCE" in action.upper()))):
+            _recent_opens.pop(position_key, None)
+            _AUGMENT_LOCK.pop(position_key, None)
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛑🛑🛑 USER ABSOLUTE 2026-04-28 02:24 UTC — STOP THE BLEEDING 🛑🛑🛑
         # User screenshot showed ADAUSDC_SHORT with 13× -24 SELL TP-Limit orders accumulating
@@ -44197,6 +44203,22 @@ async def queue_trade_action(
             if position
             else 0.0
         )
+        # ═══════════════════════════════════════════════════════════════════════
+        # 2026-05-23 USER MANDATE — dup-open root-cause fix.
+        # "you do NOT CHECK FOR OPENS ON A POSITION if positionAmt > 0 stop wasting CPU"
+        # This single canonical guard at queue_trade_action prevents the 5 OPEN-fire
+        # sites in ez_manage.py + 1 REENTRY site in ez_positions_quick.py from firing
+        # on already-open positions. AUGMENT is the right action for existing positions
+        # (gain-gate handles its own protection above). REENTRY on nonzero is already
+        # refused by execute_now:17158 (BLOCKED_REENTRY_POS_AMT_NONZERO); duplicated
+        # here as defense-in-depth.
+        # ═══════════════════════════════════════════════════════════════════════
+        if positionAmt > 0 and action in ("OPEN", "QUICK_OPEN", "REENTRY"):
+            logger.warning(
+                f"🚫 [DUP_OPEN_GUARD] {position_key}: REFUSED {action} — positionAmt={positionAmt:.8f} > 0. "
+                f"Existing position should be AUGMENT/REDUCE/CLOSE, never OPEN. reason={(reason or '')[:80]}"
+            )
+            return f"SKIPPED_ALREADY_OPEN_{action}_{positionAmt:.8f}"
         if action in ("AUGMENT", "QUICK_AUGMENT") and position and current_price > 0:
             _pos_gain = safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
             _pos_notional = (

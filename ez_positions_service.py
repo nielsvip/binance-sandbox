@@ -5711,9 +5711,10 @@ class PositionService:
                             logger.critical(f"[STUCK_ZERO_RECONCILE][{pk}] Zero report stuck for {age_seconds:.0f}s (count={rec.get('count')}/{config.ZERO_CONFIRMATION_THRESHOLD_WS}). Auto-confirming and zeroing. prev_amt={prev_amt}")
                             try:
                                 await self.handle_reduction(position, pk, prev_amt, 0.0, prev_amt, current_price, position.entry_price or current_price, reduction_source="stuck_zero_reconcile")
-                                _old = position.positionAmt
-                                position.positionAmt = 0.0
-                                logger.critical(f"[POSAMT_WRITE][STUCK_ZERO][{pk}] {_old} -> 0.0 (stuck_zero_reconcile after {age_seconds:.0f}s)")
+                                # 2026-05-23 USER MANDATE: handle_reduction owns the positionAmt write.
+                                # Redundant direct write removed (was: position.positionAmt = 0.0). Other fields
+                                # in this _periodic_update_zero_positions loop continue as intended.
+                                logger.critical(f"[POSAMT_WRITE][STUCK_ZERO][{pk}] {prev_amt} -> 0.0 (stuck_zero_reconcile after {age_seconds:.0f}s, via handle_reduction)")
                                 self._clear_zero_report(pk)
                                 updated_count += 1
                             except Exception as e:
@@ -6917,7 +6918,9 @@ class PositionService:
                                         final_price, position_obj.entry_price,
                                         reduction_source="api_absence_confirmed"),
                                     timeout=30.0)
-                                position_obj.positionAmt = 0.0
+                                # 2026-05-23 USER MANDATE: handle_reduction owns the positionAmt write.
+                                # Redundant direct write removed (was: position_obj.positionAmt = 0.0).
+                                # process_account_update routes through handle_* — that is sanctioned.
                                 position_obj.last_updated = now
                                 updated_keys_in_api.add(pk_ghost)
                                 self._clear_zero_report(pk_ghost)

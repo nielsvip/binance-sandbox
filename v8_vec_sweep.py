@@ -573,8 +573,19 @@ class SweepConfig:
     WT_15M_BOUNCE_REQUIRE_BOTH_HTF: bool = False  # False=OR(4h,1h), True=AND(4h,1h)
     # ── BB_BREAKOUT + BB_RSI_STOCH SCALP (Phase 9 — WIRED 2026-05-22) ─────
     BB_BREAKOUT_ENABLED: bool = False             # price outside BB on TF → entry trigger
-    BB_BREAKOUT_TF: str = '1h'                   # which TF bb_pct_b to check
+    BB_BREAKOUT_TF: str = '15m'                  # which TF bb_pct_b to check
+    BB_ENTRY_LONG_THRESHOLD: float = 0.30        # LONG trigger fires when bb_pct_b < this (pullback)
+    BB_ENTRY_SHORT_THRESHOLD: float = 0.70       # SHORT trigger fires when bb_pct_b > this (pullback)
     BB_RSI_STOCH_SCALP_ENABLED: bool = False     # triple confirmation: BB + RSI + Stoch
+    BB_RSI_STOCH_SCALP_TF: str = '15m'           # TF for triple confirmation (was hardcoded 5m)
+    BB_RSI_STOCH_BB_MAX: float = 0.30            # bb_pct_b threshold (was 0.2)
+    BB_RSI_STOCH_RSI_MAX: float = 40.0           # rsi threshold (was 30)
+    BB_RSI_STOCH_K_MAX: float = 30.0             # stoch_k threshold (was 20)
+    # ── BB PULLBACK GATE — pre-entry filter for ALL triggers (2026-05-23) ────
+    BB_PULLBACK_GATE_ENABLED: bool = False       # gate ALL entries on BB position
+    BB_PULLBACK_GATE_TF: str = '15m'             # timeframe for BB %B check
+    BB_PULLBACK_GATE_LONG_MAX: float = 0.30      # LONG blocked when bb_pct_b > this
+    BB_PULLBACK_GATE_SHORT_MIN: float = 0.70     # SHORT blocked when bb_pct_b < this
     # ── STRUCTURAL-PATTERN GATES (2026-05-15) — default OFF, sweep-A/B before live ──
     # A1: SPY > 200SMA top-level regime gate (Faber/Antonacci/Clenow/Connors universal)
     SPY_REGIME_GATE_ENABLED: bool = False
@@ -1109,26 +1120,33 @@ def simulate_one_symbol(
                 else (~_b15_rising_4h | ~_b15_rising_1h)
         _b15_open_mask = _b15_fresh & _b15_bb_ok & _b15_dir_ok & _b15_htf_ok
 
-    # BB_BREAKOUT — price outside BB on configured TF → entry trigger (2026-05-22)
+    # BB_BREAKOUT — pullback into BB on configured TF → entry trigger (2026-05-23 FIXED)
+    # OLD logic (HARMFUL): fire when bb_pct_b > 1.0 (overbought momentum chase)
+    # NEW logic (PROVEN): fire when bb_pct_b < threshold (oversold pullback)
     _bb_break_mask = np.zeros(n, dtype=bool)
     if config.BB_BREAKOUT_ENABLED:
         _bb_tf = config.BB_BREAKOUT_TF
         _bb_pct = np.nan_to_num(npz.get(f'bb_pct_b_{_bb_tf}', np.full(n, 0.5, dtype=np.float32))).astype(np.float32)
         if is_long:
-            _bb_break_mask = _bb_pct > 1.0
+            _bb_break_mask = _bb_pct < float(getattr(config, 'BB_ENTRY_LONG_THRESHOLD', 0.30))
         else:
-            _bb_break_mask = _bb_pct < 0.0
+            _bb_break_mask = _bb_pct > float(getattr(config, 'BB_ENTRY_SHORT_THRESHOLD', 0.70))
 
-    # BB_RSI_STOCH_SCALP — triple confirmation at extremes → entry trigger (2026-05-22)
+    # BB_RSI_STOCH_SCALP — triple confirmation at extremes → entry trigger (2026-05-23 FIXED)
+    # NOW configurable TF + thresholds (was hardcoded 5m/0.2/30/20)
     _brs_mask = np.zeros(n, dtype=bool)
     if config.BB_RSI_STOCH_SCALP_ENABLED:
-        _brs_bb = np.nan_to_num(npz.get('bb_pct_b_5m', np.full(n, 0.5, dtype=np.float32))).astype(np.float32)
-        _brs_rsi = np.nan_to_num(npz.get('rsi_5m', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
-        _brs_k = np.nan_to_num(npz.get('stoch_k_5m', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
+        _brs_tf = str(getattr(config, 'BB_RSI_STOCH_SCALP_TF', '15m'))
+        _brs_bb = np.nan_to_num(npz.get(f'bb_pct_b_{_brs_tf}', np.full(n, 0.5, dtype=np.float32))).astype(np.float32)
+        _brs_rsi = np.nan_to_num(npz.get(f'rsi_{_brs_tf}', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
+        _brs_k = np.nan_to_num(npz.get(f'stoch_k_{_brs_tf}', np.full(n, 50.0, dtype=np.float32))).astype(np.float32)
+        _brs_bb_max = float(getattr(config, 'BB_RSI_STOCH_BB_MAX', 0.30))
+        _brs_rsi_max = float(getattr(config, 'BB_RSI_STOCH_RSI_MAX', 40.0))
+        _brs_k_max = float(getattr(config, 'BB_RSI_STOCH_K_MAX', 30.0))
         if is_long:
-            _brs_mask = (_brs_bb < 0.2) & (_brs_rsi < 30) & (_brs_k < 20)
+            _brs_mask = (_brs_bb < _brs_bb_max) & (_brs_rsi < _brs_rsi_max) & (_brs_k < _brs_k_max)
         else:
-            _brs_mask = (_brs_bb > 0.8) & (_brs_rsi > 70) & (_brs_k > 80)
+            _brs_mask = (_brs_bb > (1.0 - _brs_bb_max)) & (_brs_rsi > (100.0 - _brs_rsi_max)) & (_brs_k > (100.0 - _brs_k_max))
 
     # ─── STRUCTURAL GATES PRECOMPUTE (2026-05-15) ─────────────────────────────
     # A1: SPY > 200SMA regime mask (aligned to this symbol's ts).
@@ -1301,6 +1319,10 @@ def simulate_one_symbol(
             _htfv_aligned = _htfv_w1_D < _htfv_w2_D
         # Fail-open when data missing (mirrors live behaviour: _htfv_data_ok=False → no block)
         _htf_trend_veto_ok = (~_htfv_data_ok) | _htfv_aligned
+
+    # ─── BB_PULLBACK_GATE precompute (2026-05-23) ───────────────────────────────
+    from vec_paths.bb_pullback_gate import precompute_bb_pullback_gate
+    _bb_pullback_ok = precompute_bb_pullback_gate(npz, config, is_long, n, mode)
 
     # ─── R3_HTF_FLIP precompute (2026-05-18 4-FLAG REWIRE) ──────────────────────
     # Mirrors ez_manage.py:38260+. EXIT when (a) Daily tier: px breaks dc_basis_D
@@ -1871,9 +1893,10 @@ def simulate_one_symbol(
             if not bool(_htf_dir_open_ok[i]):
                 continue
             # HTF_TREND_VETO (2026-05-18 REWIRE) — daily WT trend gate.
-            # Mirrors ez_manage.py:18660+. Same direction semantics as HTF_DIRECTION_GATE
-            # but ships under a separate config knob (live treats them independently).
             if not bool(_htf_trend_veto_ok[i]):
+                continue
+            # BB_PULLBACK_GATE (2026-05-23) — block entries when BB %B unfavorable.
+            if not bool(_bb_pullback_ok[i]):
                 continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
