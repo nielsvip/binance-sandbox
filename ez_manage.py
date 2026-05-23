@@ -24355,15 +24355,20 @@ class MultiAccountTradeManager:
             in [
                 "CLOSE",
                 "REDUCE",
+                "STRONG_REDUCE",
                 "QUICK_CLOSE",
+                "QUICK_QUICK_CLOSE",
                 "FULL_CLOSE",
                 "PROFIT_TAKE",
                 "STOP_MAJOR_LOSS_REDUCE",
                 "STOP_FUNCTIONS_KILL",
                 "HEDGE_CLOSE",
             ]
-            or "CLOSE" in reason_upper
-            or "REDUCE" in reason_upper
+            or (
+                "CLOSE" in reason_upper
+                and "QUICK_OPEN" not in reason_upper
+                and "RATIO_" not in reason_upper
+            )
         )
         is_augment = act_upper in [
             "OPEN",
@@ -25528,6 +25533,11 @@ class MultiAccountTradeManager:
                 pass
             if is_sandbox_account(config, account_key):
                 sandbox_fill_price = current_price
+                # 2026-05-23 USER MANDATE: execute_trade_action MUST NOT touch positionAmt.
+                # Sandbox-fill state must be set by handle_filled_maker below (sanctioned path
+                # routing through handle_augmentation / handle_reduction). entryPrice + mark_price
+                # writes kept (they're not under the mandate, only positionAmt is). Only "sbx"
+                # account triggers this branch — no live account impact.
                 if is_augment:
                     old_notional = current_real_amt * (
                         getattr(position, "entryPrice", sandbox_fill_price)
@@ -25540,9 +25550,6 @@ class MultiAccountTradeManager:
                         if new_amt > 0
                         else sandbox_fill_price
                     )
-                    position.positionAmt = new_amt
-                elif is_reduce:
-                    position.positionAmt = max(0.0, current_real_amt - quantity)
                 position.mark_price = sandbox_fill_price
                 position.last_updated = datetime.now(timezone.utc)
                 if (
@@ -25550,8 +25557,7 @@ class MultiAccountTradeManager:
                     and position_key in self.positions_service.positions
                 ):
                     sp = self.positions_service.positions[position_key]
-                    sp.positionAmt, sp.mark_price, sp.entryPrice = (
-                        position.positionAmt,
+                    sp.mark_price, sp.entryPrice = (
                         sandbox_fill_price,
                         getattr(position, "entryPrice", sandbox_fill_price),
                     )
@@ -38175,8 +38181,13 @@ async def process_position(
     # ═══════════════════════════════════════════════════════════════════════════
     # R1 — DC_LOW4_3M EMERGENCY CLOSE (USER 2026-05-09).
     # Fixed stop price set at open/augment time (dc_low4_3m LONG / dc_high4_3m SHORT).
-    # No time window — fires whenever current_price breaches the recorded stop level.
-    # Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL log naming the entry signal.
+    # 2026-05-23 USER MANDATE: R1 only fires for OVERBOUGHT-BREAKOUT entries (entries made
+    # in the top of HTF range that might be about to crash). For those, R1 uses dc_low4_3m
+    # AND 3x ATR_3m AND lower-high+lower-low 3m bar pattern (ANY of the 3 triggers close).
+    # For all OTHER entries (mid-range opens, reentries, RZ_BOUNCE without breakout), R1 is
+    # SKIPPED — the entry is bottom-zone, not overbought, so a small dip is not a crash signal.
+    # No-questions-asked reentry on breakout through prior high handled by existing
+    # FAVORABLE_MOVE pathway (ez_manage:28881+) now uninhibited by REENTRY_MIN_GAP_MINUTES=0.
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-05-18 per-sym overlay
     if (
@@ -38185,13 +38196,30 @@ async def process_position(
         and bool(_psym_get(symbol, position_side, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
     ):
         try:
-            _r1_stop = float(getattr(position, "r1_stop_price", 0.0) or 0.0)
+            # 2026-05-23 USER MANDATE: check entry context. Skip R1 unless overbought-breakout.
+            _r1_restrict = bool(getattr(config, "R1_RESTRICT_TO_OVERBOUGHT_BREAKOUT", True))
+            _r1_entry_sig_for_check = (
+                str(getattr(position, "last_signal", "") or getattr(position, "open_reason", "") or "")
+            ).upper()
+            _r1_overbought_breakout_markers = (
+                "STRONG_BUY", "DC_BREAK", "BREAKOUT", "_BREAK_", "PARABOLIC", "MOMENTUM_RIDER",
+                "TOR_BREAK", "WT_DC_HTF", "HIGH_BREAK", "PEAK_BREAK"
+            )
+            _r1_is_overbought_breakout = any(m in _r1_entry_sig_for_check for m in _r1_overbought_breakout_markers)
+            if _r1_restrict and not _r1_is_overbought_breakout:
+                # Non-overbought entry → SKIP R1 entirely per user mandate.
+                # MTF/HTF exit logic + ATR trail manage the close instead.
+                _r1_stop = 0.0  # forces the `if _r1_stop > 0` check below to skip breach detection
+            else:
+                _r1_stop = float(getattr(position, "r1_stop_price", 0.0) or 0.0)
             # 2026-05-18 BUG FIX (USER AUTHORIZED): r1_stop_price only set at 3 of 11
             # open sites — QUICK_OPEN_STRONG / QUICK_HEDGE_PROTECT / GOLDEN_RULE /
             # DAEMON_PRICE_CROSS_REENTRY / GUARANTEED_REENTRY / QUICK_SCALP_V3 skipped it.
             # Lazy-set fallback mirrors tradier_manage.py:1892-1898 so R1 fires for every
             # open position by reading live dc_low4_3m / dc_high4_3m.
-            if _r1_stop <= 0:
+            # 2026-05-23 USER MANDATE: lazy-set only fires for overbought-breakout entries.
+            # For non-overbought entries, _r1_stop is intentionally 0 and stays 0 (R1 skipped).
+            if _r1_stop <= 0 and (not _r1_restrict or _r1_is_overbought_breakout):
                 _r1_live_key = "dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m"
                 if _pp_shared_ind is None:
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
@@ -38211,6 +38239,52 @@ async def process_position(
                 _r1_breached = (_r1_is_long and current_price <= _r1_stop) or (
                     (not _r1_is_long) and current_price >= _r1_stop
                 )
+                # 2026-05-23 USER MANDATE: for overbought-breakout entries, R1 fires on ANY of
+                # 3 conditions: (a) dc_low4_3m breach [original], (b) 3x ATR_3m breach,
+                # (c) lower-high + lower-low 3m bar pattern. We OR them all together so the
+                # earliest crash signal wins.
+                _r1_breach_reason = "DC_LOW4_3M" if _r1_breached else None
+                if not _r1_breached:
+                    # (b) 3x ATR_3m fixed stop from entry
+                    try:
+                        _r1_atr_mult = float(getattr(config, "R1_ATR_3M_MULT", 3.0))
+                        if _pp_shared_ind is None:
+                            _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                        _r1_atr_3m = safe_fetch_float(_pp_shared_ind.get("atr_3m"), 0.0)
+                        _r1_entry_px = safe_fetch_float(getattr(position, "entry_price", 0), 0.0)
+                        if _r1_atr_3m > 0 and _r1_entry_px > 0:
+                            _r1_atr_stop = (
+                                _r1_entry_px - _r1_atr_mult * _r1_atr_3m
+                                if _r1_is_long
+                                else _r1_entry_px + _r1_atr_mult * _r1_atr_3m
+                            )
+                            if (_r1_is_long and current_price <= _r1_atr_stop) or (
+                                (not _r1_is_long) and current_price >= _r1_atr_stop
+                            ):
+                                _r1_breached = True
+                                _r1_breach_reason = f"3xATR_3M_{_r1_atr_mult}"
+                                _r1_stop = _r1_atr_stop  # for log clarity
+                    except Exception:
+                        pass
+                if not _r1_breached:
+                    # (c) lower-high + lower-low 3m bar pattern (structural breakdown)
+                    try:
+                        if _pp_shared_ind is None:
+                            _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                        _r1_h_3m = safe_fetch_float(_pp_shared_ind.get("high_3m"), 0.0)
+                        _r1_l_3m = safe_fetch_float(_pp_shared_ind.get("low_3m"), 0.0)
+                        _r1_h_3m_prev = safe_fetch_float(_pp_shared_ind.get("high_3m_prev"), 0.0)
+                        _r1_l_3m_prev = safe_fetch_float(_pp_shared_ind.get("low_3m_prev"), 0.0)
+                        if _r1_h_3m > 0 and _r1_h_3m_prev > 0 and _r1_l_3m > 0 and _r1_l_3m_prev > 0:
+                            if _r1_is_long:
+                                _r1_lh_ll = (_r1_h_3m < _r1_h_3m_prev and _r1_l_3m < _r1_l_3m_prev)
+                            else:
+                                _r1_lh_ll = (_r1_h_3m > _r1_h_3m_prev and _r1_l_3m > _r1_l_3m_prev)
+                            if _r1_lh_ll:
+                                _r1_breached = True
+                                _r1_breach_reason = "LH_LL_3M"
+                    except Exception:
+                        pass
                 if _r1_breached:
                     _r1_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _r1_close_side = "SELL" if _r1_is_long else "BUY"
@@ -38221,8 +38295,9 @@ async def process_position(
                         or "?"
                     )
                     _r1_entry_ts = str(getattr(position, "opened_at", ""))[:19]
+                    _r1_breach_tag = _r1_breach_reason or "DC_LOW4_3M"
                     logger.error(
-                        f"⛔ [R1_DC_LOW4_3M_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.6f} {'<=' if _r1_is_long else '>='} r1_stop={_r1_stop:.6f} entry={_r1_entry_sig[:40]} → CLOSE"
+                        f"⛔ [R1_OVERBOUGHT_BREAKOUT_STOP:{_r1_breach_tag}] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.6f} stop={_r1_stop:.6f} entry={_r1_entry_sig[:40]} → CLOSE"
                     )
                     # 2026-05-10 USER MANDATE: action-first. Try CLOSE; alert ONLY if it
                     # fails for an unexplained reason. Min-notional / qty=0 / blacklist /
@@ -38239,8 +38314,8 @@ async def process_position(
                             position_side=position_side,
                             quantity=_r1_amt,
                             old_price=current_price,
-                            unique_id=f"R1_DC_LOW4_3M_{int(time.time())}",
-                            reason=f"R1_DC_LOW4_3M_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}",
+                            unique_id=f"R1_{_r1_breach_tag}_{int(time.time())}",
+                            reason=f"R1_DC_LOW4_3M_EMERGENCY_via_{_r1_breach_tag}_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}",
                             is_full_close=True,
                             action="CLOSE",
                         )
