@@ -18764,21 +18764,21 @@ class MultiAccountTradeManager:
                         return f"{position_key}_BLOCKED_DELTA_NO_SIGNAL_htf={_htf_gate}"
                 if _htf_gate != "none":
                     if _htf_gate == "hh_hl_4h":
-                        _dch4h = _sf(i.get("dc_high_4h", 0), 0)
-                        _dcl4h = _sf(i.get("dc_low_4h", 0), 0)
-                        _dch4h_p = _sf(i.get("dc_high_4h_prev", 0), 0)
-                        _dcl4h_p = _sf(i.get("dc_low_4h_prev", 0), 0)
+                        _h4h = _sf(i.get("high_4h", 0), 0)
+                        _l4h = _sf(i.get("low_4h", 0), 0)
+                        _h4h_p = _sf(i.get("high_4h_prev", 0), 0)
+                        _l4h_p = _sf(i.get("low_4h_prev", 0), 0)
                         _ha4h = str(i.get("ha_4h", "") or "")
-                        _hh = _dch4h > _dch4h_p > 0
-                        _hl = _dcl4h > _dcl4h_p > 0
-                        _lh = _dch4h < _dch4h_p
-                        _ll = _dcl4h < _dcl4h_p
+                        _hh = _h4h > _h4h_p > 0
+                        _hl = _l4h > _l4h_p > 0
+                        _lh = _h4h < _h4h_p > 0
+                        _ll = _l4h < _l4h_p > 0
                         if is_long:
                             _struct_ok = (_hh and _hl) or (_ha4h == "green")
                         else:
                             _struct_ok = (_lh and _ll) or (_ha4h == "red")
                         if not _struct_ok:
-                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HH_HL_4h hh={_hh} hl={_hl} lh={_lh} ll={_ll} ha={_ha4h} is_long={is_long}")
+                            logger.warning(f"[DELTA_GATE] {position_key}: BLOCKED HH_HL_4h hh={_hh}(h={_h4h:.2f}>p={_h4h_p:.2f}) hl={_hl}(l={_l4h:.2f}>p={_l4h_p:.2f}) ha={_ha4h} is_long={is_long}")
                             return f"{position_key}_BLOCKED_DELTA_HH_HL_4h"
                     else:
                         _wt1_4h = _sf(i.get("wt1_4h", 0), 0)
