@@ -13631,12 +13631,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 hard_exit_reason = ""
                 _trend_veto_active = False
                 if bool(getattr(config, "TREND_REGIME_VETO_ENABLED", True)):
-                    _v_adx = safe_fetch_float(indicators.get("adx_1h"), 0.0)
-                    _v_wt1 = safe_fetch_float(indicators.get("wt1_1h"), 0.0)
-                    _v_wt2 = safe_fetch_float(indicators.get("wt2_1h"), 0.0)
-                    _is_st_adx = (_v_adx > 25.0)
-                    _is_st_wt = (_v_wt1 > _v_wt2) if is_long else (_v_wt1 < _v_wt2)
-                    if _is_st_adx or _is_st_wt:
+                    _v_w1_1h = safe_fetch_float(indicators.get('wt1_1h'), 0.0); _v_w2_1h = safe_fetch_float(indicators.get('wt2_1h'), 0.0)
+                    _v_w1_4h = safe_fetch_float(indicators.get('wt1_4h'), 0.0); _v_w2_4h = safe_fetch_float(indicators.get('wt2_4h'), 0.0)
+                    _v_w1_D = safe_fetch_float(indicators.get('wt1_D'), 0.0); _v_w2_D = safe_fetch_float(indicators.get('wt2_D'), 0.0)
+                    if is_long:
+                        _v_aligned = (_v_w1_1h > _v_w2_1h) and (_v_w1_4h > _v_w2_4h) and (_v_w1_D > _v_w2_D)
+                    else:
+                        _v_aligned = (_v_w1_1h < _v_w2_1h) and (_v_w1_4h < _v_w2_4h) and (_v_w1_D < _v_w2_D)
+                    if _v_aligned:
                         _trend_veto_active = True
                 # ═══ K1M EXTREME REVERSE EXIT (USER RULE 2026-04-27) ═══
                 # Simple top-level: k_1m at overbought/oversold extreme AND turning back = trade is OUT.

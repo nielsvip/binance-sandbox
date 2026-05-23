@@ -1729,6 +1729,14 @@ def grid_wt3m_min_gain_axis():
     return combos
 
 
+def grid_trend_regime_veto_axis():
+    """Test the Trend Regime Veto on/off impact."""
+    return [
+        ("baseline_veto_off", {"TREND_REGIME_VETO_ENABLED": False}),
+        ("trend_veto_on", {"TREND_REGIME_VETO_ENABLED": True})
+    ]
+
+
 def grid_hedge_strictness_axis():
     """Tier C: vary hedge close strictness — R6 trigger, OBLIGATORY_HEDGE_MIN_LOSS, lockout.
     Tests whether returning to Apr-13 strictness (3-of-3 TF wt flip, 3600s lockout) helps."""
@@ -1830,6 +1838,7 @@ TIER_MAP = {
     "gr_vote_score": grid_gr_vote_score,
     "wt3m_force_open_gr_tune": grid_wt3m_force_open_gr_tune,
     "wt3m_min_gain_axis": grid_wt3m_min_gain_axis,
+    "trend_regime_veto_axis": grid_trend_regime_veto_axis,
     "hedge_strictness_axis": grid_hedge_strictness_axis,
     "exit_logic_axis": grid_exit_logic_axis,
     "position_sizing_axis": grid_position_sizing_axis,
