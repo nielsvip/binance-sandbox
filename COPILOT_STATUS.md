@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-23 14:30:10 UTC
+# Copilot Status — 2026-05-23 14:45:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:27:15
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:27:15
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:27:15
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:27:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-23T14:29:18
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T14:29:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:29:18
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:29:18
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:29:18
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:29:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:41:35
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:41:35
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:41:35
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:41:35
+- **STALE_INDICATORS** [tradier]  — 2026-05-23T14:43:38
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-23T14:43:38
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-23T14:43:38
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-23T14:43:38
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-23T14:43:38
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-23T14:43:38
 
 ## Missed Trades (trader comparison)
 
@@ -42,12 +42,12 @@ _None_
 - WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
 - WATCHING: **GDX** SHORT (tradier) peaked +7.8%, exited 0m ago
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.0%, exited 0m ago
+- WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.6%, exited 0m ago
 - WATCHING: **INXUSDT** SHORT (crypto) peaked +5.0%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +4.4%, exited 0m ago
+- WATCHING: **NEARUSDC** LONG (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **FIDAUSDT** LONG (crypto) peaked +3.7%, exited 0m ago
 - WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 0m ago
-- WATCHING: **NEARUSDC** LONG (crypto) peaked +3.5%, exited 0m ago
 
 ## Supervisor
 
