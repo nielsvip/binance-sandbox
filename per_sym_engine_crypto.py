@@ -490,14 +490,13 @@ def build_tf_data(base: Dict[str, np.ndarray]) -> Dict[str, Dict[str, np.ndarray
         n_hf15 = len(base['close']) // ratio15
         cut15 = n_hf15 * ratio15
         for tf in ('3m', '15m', '1h', '4h', 'D'):
-            for fld in (f'wt1_{tf}', f'wt2_{tf}', f'dc_high_{tf}', f'dc_low_{tf}', f'bb_upper_{tf}', f'bb_lower_{tf}', f'bb_pctb_{tf}'):
-                base_fld = fld.replace('bb_pctb', 'bb_pct_b')
-                if base_fld in base:
-                    d15[fld] = base[base_fld][:cut15][ratio15 - 1::ratio15][:n_hf15]
-            if f'bb_pctb_{tf}' not in d15 and f'bb_upper_{tf}' in d15 and f'bb_lower_{tf}' in d15:
+            for fld in (f'wt1_{tf}', f'wt2_{tf}', f'dc_high_{tf}', f'dc_low_{tf}', f'bb_upper_{tf}', f'bb_lower_{tf}'):
+                if fld in base:
+                    d15[fld] = base[fld][:cut15][ratio15 - 1::ratio15][:n_hf15]
+            if f'bb_upper_{tf}' in d15 and f'bb_lower_{tf}' in d15:
                 diff = d15[f'bb_upper_{tf}'] - d15[f'bb_lower_{tf}']
-                diff_safe = np.where(diff > 1e-12, diff, 1e-12)
-                d15[f'bb_pctb_{tf}'] = np.clip((d15['close'] - d15[f'bb_lower_{tf}']) / diff_safe, -2.0, 3.0)
+                diff_safe = np.where(diff > 1e-8, diff, 1e-8)
+                d15[f'bb_pctb_{tf}'] = (d15['close'] - d15[f'bb_lower_{tf}']) / diff_safe
     return out
 
 
@@ -516,9 +515,8 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
         wt1, wt2 = ohlc[f'wt1_{tf}'], ohlc[f'wt2_{tf}']
         bb_u, bb_l, bb_pctb = ohlc[f'bb_upper_{tf}'], ohlc[f'bb_lower_{tf}'], ohlc[f'bb_pctb_{tf}']
         dc_h, dc_l = ohlc[f'dc_high_{tf}'], ohlc[f'dc_low_{tf}']
-        dc_h_prev, dc_l_prev = np.empty_like(dc_h), np.empty_like(dc_l)
-        dc_h_prev[0], dc_l_prev[0] = np.nan, np.nan
-        dc_h_prev[1:], dc_l_prev[1:] = dc_h[:-1], dc_l[:-1]
+        dc_h_prev = np.concatenate([[dc_h[0]], dc_h[:-1]])
+        dc_l_prev = np.concatenate([[dc_l[0]], dc_l[:-1]])
     else:
         if getattr(params, 'BB_AUTO_TUNE_ENABLED', False): bb_std = bb_auto_tune_mult(h, l, c, bb_len, lookback=int(getattr(params, 'BB_AUTO_TUNE_LOOKBACK', 200)), mult_min=float(getattr(params, 'BB_AUTO_TUNE_MIN_MULT', 1.5)), mult_max=float(getattr(params, 'BB_AUTO_TUNE_MAX_MULT', 3.5)))
         bb_u, bb_l, bb_pctb = compute_bb(c, bb_len, bb_std)
@@ -649,7 +647,7 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
             wt_ok = pa_long  # HH-based gate replaces WT-cross
         else:
             wt_ok = (wt1 > wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
-        dc_break = (c > dc_h_prev)
+        dc_break = (c > dc_h_prev) & (dc_h_prev > 0)
         pullback = (bb_pctb < params.BB_LONG_ENTRY_MAX)
         if params.ENTRY_MODE == 'dc_break':
             base_path = dc_break
@@ -672,7 +670,7 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
         entry = wt_ok & any_path & ceiling_ok
         wt_bear_strong = (wt1 < wt2) & (wt1 < np.concatenate([[wt1[0]], wt1[:-1]])) if params.EXIT_WT_ACCEL_ONLY else (wt1 < wt2)
         bb_extreme = bb_pctb > params.BB_TOP_THRESHOLD
-        breakdown = c < dc_l_prev
+        breakdown = (c < dc_l_prev) & (dc_l_prev > 0)
         if params.EXIT_REQUIRE_BOTH:
             exit_ = (wt_bear_strong & bb_extreme) | breakdown
         else:
@@ -682,7 +680,7 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
             wt_ok = pa_short
         else:
             wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
-        dc_break = (c < dc_l_prev)
+        dc_break = (c < dc_l_prev) & (dc_l_prev > 0)
         pullback = (bb_pctb > params.BB_SHORT_ENTRY_MIN)
         if params.ENTRY_MODE == 'dc_break':
             base_path = dc_break
@@ -705,7 +703,7 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
         entry = wt_ok & any_path & ceiling_ok
         wt_bull_strong = (wt1 > wt2) & (wt1 > np.concatenate([[wt1[0]], wt1[:-1]])) if params.EXIT_WT_ACCEL_ONLY else (wt1 > wt2)
         bb_extreme = bb_pctb < params.BB_BOT_THRESHOLD
-        breakup = c > dc_h_prev
+        breakup = (c > dc_h_prev) & (dc_h_prev > 0)
         if params.EXIT_REQUIRE_BOTH:
             exit_ = (wt_bull_strong & bb_extreme) | breakup
         else:
@@ -1417,37 +1415,40 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         # Break-UP kills SHORT positions, break-DOWN kills LONG
         leave_short = leave_short | _ss_3m_to_15m(d_break_up_3m)
         leave_long = leave_long | _ss_3m_to_15m(d_break_dn_3m)
-    # Compute wt1_15m/wt2_15m for peak-protect.
     h15 = tf_data['15m']['high']
     l15 = tf_data['15m']['low']
     c15_close = tf_data['15m']['close']
-    wt1_15m_arr, wt2_15m_arr = compute_wt(h15, l15, c15_close,
-                                            int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-    # Hedge WT trigger TF (sweepable per user 2026-05-05): compute WT on chosen TF, map to 15m grid.
+    if 'wt1_15m' in tf_data['15m']:
+        wt1_15m_arr = tf_data['15m']['wt1_15m']
+        wt2_15m_arr = tf_data['15m']['wt2_15m']
+    else:
+        wt1_15m_arr, wt2_15m_arr = compute_wt(h15, l15, c15_close, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
     n_15m = len(c15_close)
     hedge_tf = getattr(params, 'HEDGE_WT_TF', '3m')
-    if hedge_tf == '3m':
-        h_src, l_src, c_src = base['high'], base['low'], base['close']
-        wt1_full, wt2_full = compute_wt(h_src, l_src, c_src, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-        ratio = 5  # 5 × 3m = 15m
-        cut = (len(c_src) // ratio) * ratio
-        wt1_at_15m = wt1_full[:cut][ratio - 1::ratio][:n_15m]
-        wt2_at_15m = wt2_full[:cut][ratio - 1::ratio][:n_15m]
-    elif hedge_tf in ('15m', '1h', '4h', 'D'):
-        tfd = tf_data[hedge_tf]
-        wt1_tf, wt2_tf = compute_wt(tfd['high'], tfd['low'], tfd['close'],
-                                      int(getattr(params, f'WT_CHAN_{hedge_tf}')),
-                                      int(getattr(params, f'WT_AVG_{hedge_tf}')))
-        repeat_ratio = TF_BARS_3M[hedge_tf] // TF_BARS_3M['15m']
-        if repeat_ratio == 1:
-            wt1_at_15m = wt1_tf[:n_15m]
-            wt2_at_15m = wt2_tf[:n_15m]
-        else:
-            wt1_at_15m = np.repeat(wt1_tf, repeat_ratio)[:n_15m]
-            wt2_at_15m = np.repeat(wt2_tf, repeat_ratio)[:n_15m]
+    if f'wt1_{hedge_tf}' in tf_data['15m']:
+        wt1_at_15m = tf_data['15m'][f'wt1_{hedge_tf}']
+        wt2_at_15m = tf_data['15m'][f'wt2_{hedge_tf}']
     else:
-        wt1_at_15m = wt1_15m_arr.copy()
-        wt2_at_15m = wt2_15m_arr.copy()
+        if hedge_tf == '3m':
+            h_src, l_src, c_src = base['high'], base['low'], base['close']
+            wt1_full, wt2_full = compute_wt(h_src, l_src, c_src, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+            ratio = 5
+            cut = (len(c_src) // ratio) * ratio
+            wt1_at_15m = wt1_full[:cut][ratio - 1::ratio][:n_15m]
+            wt2_at_15m = wt2_full[:cut][ratio - 1::ratio][:n_15m]
+        elif hedge_tf in ('15m', '1h', '4h', 'D'):
+            tfd = tf_data[hedge_tf]
+            wt1_tf, wt2_tf = compute_wt(tfd['high'], tfd['low'], tfd['close'], int(getattr(params, f'WT_CHAN_{hedge_tf}')), int(getattr(params, f'WT_AVG_{hedge_tf}')))
+            repeat_ratio = TF_BARS_3M[hedge_tf] // TF_BARS_3M['15m']
+            if repeat_ratio == 1:
+                wt1_at_15m = wt1_tf[:n_15m]
+                wt2_at_15m = wt2_tf[:n_15m]
+            else:
+                wt1_at_15m = np.repeat(wt1_tf, repeat_ratio)[:n_15m]
+                wt2_at_15m = np.repeat(wt2_tf, repeat_ratio)[:n_15m]
+        else:
+            wt1_at_15m = wt1_15m_arr.copy()
+            wt2_at_15m = wt2_15m_arr.copy()
     if len(wt1_at_15m) < n_15m:
         pad = n_15m - len(wt1_at_15m)
         wt1_at_15m = np.concatenate([np.zeros(pad), wt1_at_15m])
