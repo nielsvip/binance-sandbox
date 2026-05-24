@@ -103,6 +103,12 @@ def load_15m_signals(sym: str, years_back: float = 7.0 / 365.25) -> Optional[Dic
     n_3m = len(sliced_3m["close_3m"])
     if n_3m < 10:
         return None
+    sliced_3m["open"] = sliced_3m["open_3m"].astype(np.float64)
+    sliced_3m["high"] = sliced_3m["high_3m"].astype(np.float64)
+    sliced_3m["low"] = sliced_3m["low_3m"].astype(np.float64)
+    sliced_3m["close"] = sliced_3m["close_3m"].astype(np.float64)
+    sliced_3m["volume"] = sliced_3m.get("volume_3m", np.ones(n_3m)).astype(np.float64)
+    sliced_3m["ts"] = ts_3m[si_3m:]
     tf_data = build_tf_data(sliced_3m)
     if "15m" not in tf_data or len(tf_data["15m"]["close"]) < 10:
         return None

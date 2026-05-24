@@ -484,11 +484,24 @@ def build_tf_data(base: Dict[str, np.ndarray]) -> Dict[str, Dict[str, np.ndarray
         d = resample_3m_to_htf(base, ratio)
         if len(d['close']) > 0:
             out[tf] = d
+    if '15m' in out:
+        d15 = out['15m']
+        ratio15 = 5
+        n_hf15 = len(base['close']) // ratio15
+        cut15 = n_hf15 * ratio15
+        for tf in ('3m', '15m', '1h', '4h', 'D'):
+            for fld in (f'wt1_{tf}', f'wt2_{tf}', f'dc_high_{tf}', f'dc_low_{tf}', f'bb_upper_{tf}', f'bb_lower_{tf}', f'bb_pctb_{tf}'):
+                base_fld = fld.replace('bb_pctb', 'bb_pct_b')
+                if base_fld in base:
+                    d15[fld] = base[base_fld][:cut15][ratio15 - 1::ratio15][:n_hf15]
+            if f'bb_pctb_{tf}' not in d15 and f'bb_upper_{tf}' in d15 and f'bb_lower_{tf}' in d15:
+                diff = d15[f'bb_upper_{tf}'] - d15[f'bb_lower_{tf}']
+                diff_safe = np.where(diff > 1e-12, diff, 1e-12)
+                d15[f'bb_pctb_{tf}'] = np.clip((d15['close'] - d15[f'bb_lower_{tf}']) / diff_safe, -2.0, 3.0)
     return out
 
 
 # ───────────────────────── per-TF directional signal ───────────────────────
-
 def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymParams) -> Tuple[np.ndarray, np.ndarray]:
     """Return (entry_sig, exit_sig) boolean arrays for this TF and side."""
     o, h, l, c = ohlc['open'], ohlc['high'], ohlc['low'], ohlc['close']
@@ -499,15 +512,18 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     wt_chan = int(getattr(params, f'WT_CHAN_{tf}'))
     wt_avg = int(getattr(params, f'WT_AVG_{tf}'))
     dc_per = int(getattr(params, f'DC_PERIOD_{tf}'))
-
-    if getattr(params, 'BB_AUTO_TUNE_ENABLED', False):
-        bb_std = bb_auto_tune_mult(h, l, c, bb_len,
-                                     lookback=int(getattr(params, 'BB_AUTO_TUNE_LOOKBACK', 200)),
-                                     mult_min=float(getattr(params, 'BB_AUTO_TUNE_MIN_MULT', 1.5)),
-                                     mult_max=float(getattr(params, 'BB_AUTO_TUNE_MAX_MULT', 3.5)))
-    bb_u, bb_l, bb_pctb = compute_bb(c, bb_len, bb_std)
-    wt1, wt2 = compute_wt(h, l, c, wt_chan, wt_avg)
-    dc_h, dc_l, dc_h_prev, dc_l_prev = compute_dc(h, l, dc_per)
+    if f'wt1_{tf}' in ohlc:
+        wt1, wt2 = ohlc[f'wt1_{tf}'], ohlc[f'wt2_{tf}']
+        bb_u, bb_l, bb_pctb = ohlc[f'bb_upper_{tf}'], ohlc[f'bb_lower_{tf}'], ohlc[f'bb_pctb_{tf}']
+        dc_h, dc_l = ohlc[f'dc_high_{tf}'], ohlc[f'dc_low_{tf}']
+        dc_h_prev, dc_l_prev = np.empty_like(dc_h), np.empty_like(dc_l)
+        dc_h_prev[0], dc_l_prev[0] = np.nan, np.nan
+        dc_h_prev[1:], dc_l_prev[1:] = dc_h[:-1], dc_l[:-1]
+    else:
+        if getattr(params, 'BB_AUTO_TUNE_ENABLED', False): bb_std = bb_auto_tune_mult(h, l, c, bb_len, lookback=int(getattr(params, 'BB_AUTO_TUNE_LOOKBACK', 200)), mult_min=float(getattr(params, 'BB_AUTO_TUNE_MIN_MULT', 1.5)), mult_max=float(getattr(params, 'BB_AUTO_TUNE_MAX_MULT', 3.5)))
+        bb_u, bb_l, bb_pctb = compute_bb(c, bb_len, bb_std)
+        wt1, wt2 = compute_wt(h, l, c, wt_chan, wt_avg)
+        dc_h, dc_l, dc_h_prev, dc_l_prev = compute_dc(h, l, dc_per)
 
     # ── Internet-research strategy paths ──────────────────────────────────
     # 1) Liquidity sweep: low taps below rolling-N low then close reclaims (LONG); mirror SHORT.
@@ -1187,23 +1203,9 @@ def _build_signals(tf_data: Dict, side: str, params: SymParams) -> Tuple[np.ndar
     e_count = np.zeros(n_15m, dtype=np.int16)
     x_count = np.zeros(n_15m, dtype=np.int16)
     for tf in DECISION_TFS:
-        e_sig, x_sig = per_tf_signals(tf_data[tf], side, tf, params)
-        ratio = TF_BARS_3M[tf] // TF_BARS_3M['15m']
-        if ratio == 1:
-            e15 = e_sig
-            x15 = x_sig
-        else:
-            e15 = np.repeat(e_sig, ratio)
-            x15 = np.repeat(x_sig, ratio)
-            if len(e15) < n_15m:
-                e15 = np.concatenate([e15, np.zeros(n_15m - len(e15), dtype=bool)])
-                x15 = np.concatenate([x15, np.zeros(n_15m - len(x15), dtype=bool)])
-            else:
-                e15 = e15[:n_15m]
-                x15 = x15[:n_15m]
-        e_count += e15.astype(np.int16)
-        x_count += x15.astype(np.int16)
-    # Per-action MIN_TFS_AGREE split (user 2026-05-05): entry tightest, exit/reentry looser.
+        e_sig, x_sig = per_tf_signals(tf_data['15m'], side, tf, params)
+        e_count += e_sig.astype(np.int16)
+        x_count += x_sig.astype(np.int16)
     min_tfs_entry = max(MIN_TFS_AGREE_FLOOR, int(getattr(params, 'MIN_TFS_AGREE_ENTRY', params.MIN_TFS_AGREE)))
     min_tfs_exit = max(MIN_TFS_AGREE_FLOOR, int(getattr(params, 'MIN_TFS_AGREE_EXIT', params.MIN_TFS_AGREE)))
     enter = e_count >= min_tfs_entry
@@ -1690,62 +1692,30 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
 
 def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
     """Returns dict with per-(sym,side) trades + canonical metrics, or None on data miss."""
-    if side not in ('LONG', 'SHORT'):
-        raise ValueError(f"side must be LONG or SHORT, got {side}")
+    if side not in ('LONG', 'SHORT'): raise ValueError(f"side must be LONG or SHORT, got {side}")
     base = load_3m_base(sym, years_back=years_back)
-    if base is None or len(base['close']) < 5000:
-        return None
+    if base is None or len(base['close']) < 5000: return None
     tf_data = build_tf_data(base)
     needed = list(DECISION_TFS) + ['D']
     for tf in needed:
-        if tf not in tf_data or len(tf_data[tf]['close']) < 50:
-            return None
-
+        if tf not in tf_data or len(tf_data[tf]['close']) < 50: return None
     n_15m = len(tf_data['15m']['close'])
     e_count = np.zeros(n_15m, dtype=np.int16)
     x_count = np.zeros(n_15m, dtype=np.int16)
     for tf in DECISION_TFS:
-        e_sig, x_sig = per_tf_signals(tf_data[tf], side, tf, params)
-        ratio = TF_BARS_3M[tf] // TF_BARS_3M['15m']
-        if ratio == 1:
-            e15 = e_sig
-            x15 = x_sig
-        else:
-            e15 = np.repeat(e_sig, ratio)
-            x15 = np.repeat(x_sig, ratio)
-            if len(e15) < n_15m:
-                e15 = np.concatenate([e15, np.zeros(n_15m - len(e15), dtype=bool)])
-                x15 = np.concatenate([x15, np.zeros(n_15m - len(x15), dtype=bool)])
-            else:
-                e15 = e15[:n_15m]
-                x15 = x15[:n_15m]
-        e_count += e15.astype(np.int16)
-        x_count += x15.astype(np.int16)
-
+        e_sig, x_sig = per_tf_signals(tf_data['15m'], side, tf, params)
+        e_count += e_sig.astype(np.int16)
+        x_count += x_sig.astype(np.int16)
     min_tfs = max(MIN_TFS_AGREE_FLOOR, int(params.MIN_TFS_AGREE))
     enter = e_count >= min_tfs
-    # Per user 2026-05-05: "no decision based on single TF" — exits also require ≥MIN_TFS_AGREE_FLOOR.
-    # This holds positions longer than single-TF-flip exit (the live-system root cause of 0.0001%-0.01% closes).
     leave = x_count >= MIN_TFS_AGREE_FLOOR
-
     htf_pass = htf_trend_pass(tf_data['D'], tf_data.get('W'), side, params, n_15m)
     enter = enter & htf_pass
-
     c15 = tf_data['15m']['close']
     ts15 = tf_data['15m']['ts']
-    trades = walk_trades(enter, leave, c15, ts15, side,
-                         int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m))
-
+    trades = walk_trades(enter, leave, c15, ts15, side, int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m))
     bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
-    if not trades:
-        return {'sym': sym, 'side': side, 'trades': 0, 'trades_per_day': 0.0,
-                'pool_sharpe': 0.0, 'sym_sharpe': 0.0, 'wr_pct': 0.0,
-                'max_dd_pct': 0.0, 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0,
-                'gain_per_yr': 0.0, 'gain_per_week': 0.0, 'bh_pct_window': bh_pct,
-                'gain_sym_yr': 0.0, 'years': (ts15[-1] - ts15[0]) / 86400 / 365.25,
-                'n_syms': 1, 'tag': f'per_sym_{sym}_{side}',
-                'trade_list': [], 'params': params.to_dict()}
-
+    if not trades: return {'sym': sym, 'side': side, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0, 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0, 'gain_per_week': 0.0, 'bh_pct_window': bh_pct, 'gain_sym_yr': 0.0, 'years': (ts15[-1] - ts15[0]) / 86400 / 365.25, 'n_syms': 1, 'tag': f'per_sym_{sym}_{side}', 'trade_list': [], 'params': params.to_dict()}
     rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
     n = len(rets)
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
@@ -1758,17 +1728,7 @@ def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) ->
     peak = np.maximum.accumulate(eq)
     dd = float((peak - eq).max())
     total = float(rets.sum())
-
-    return {
-        'sym': sym, 'side': side, 'trades': n, 'trades_per_day': n / span_days,
-        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
-        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
-        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
-        'gain_per_week': total / weeks, 'bh_pct_window': bh_pct,
-        'years': yrs, 'n_syms': 1,
-        'tag': f'per_sym_{sym}_{side}',
-        'trade_list': trades, 'params': params.to_dict(),
-    }
+    return {'sym': sym, 'side': side, 'trades': n, 'trades_per_day': n / span_days, 'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)), 'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total, 'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs, 'gain_per_week': total / weeks, 'bh_pct_window': bh_pct, 'years': yrs, 'n_syms': 1, 'tag': f'per_sym_{sym}_{side}', 'trade_list': trades, 'params': params.to_dict()}
 
 
 # ───────────────────────── CLI smoke test ──────────────────────────────────
