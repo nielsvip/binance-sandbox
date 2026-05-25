@@ -14380,7 +14380,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     should_close = False  # rate() said HOLD/WAIT — RESPECT IT
                 elif hard_exit_reason is not None:
                     should_close = True
-                elif "CLOSE" in rec_exit or "REDUCE" in rec_exit or "PROFIT" in rec_exit or "EXIT" in rec_exit or "DECAY" in rec_exit or score_exit < -4:
+                elif ("CLOSE" in rec_exit or "REDUCE" in rec_exit or "PROFIT" in rec_exit or "EXIT" in rec_exit or "DECAY" in rec_exit or score_exit < -4) and not _in_grace_period:
                     should_close = True
                 # ═══ USE TRACKER FIELDS FOR SMARTER DECISIONS ═══
                 _cand = tracker_manager.exit_candidates.get(position_key, {})
