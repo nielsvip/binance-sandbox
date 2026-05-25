@@ -13613,10 +13613,40 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 is_hedge = False
                 hedge_for = None
                 hedge_result = None
-                _last_aug_time = getattr(position, 'last_augmentation_time', None)
-                _was_augmented = _last_aug_time is not None and minutes_since(_last_aug_time) < 9999
+                _sim_ts = safe_fetch_float(indicators.get('_tick_ts', 0), 0)
+                _now_dt = datetime.fromtimestamp(_sim_ts, tz=timezone.utc) if _sim_ts > 0 else datetime.now(timezone.utc)
                 _opened_at = getattr(position, 'opened_at', None)
-                _pos_age_min = minutes_since(_opened_at) if _opened_at else 9999
+                if isinstance(_opened_at, str):
+                    try: _opened_at_dt = isoparse(_opened_at)
+                    except Exception: _opened_at_dt = None
+                elif isinstance(_opened_at, datetime):
+                    _opened_at_dt = _opened_at
+                elif isinstance(_opened_at, (int, float)):
+                    try: _opened_at_dt = datetime.fromtimestamp(_opened_at, tz=timezone.utc)
+                    except Exception: _opened_at_dt = None
+                else:
+                    _opened_at_dt = None
+                if _opened_at_dt:
+                    if _opened_at_dt.tzinfo is None: _opened_at_dt = _opened_at_dt.replace(tzinfo=timezone.utc)
+                    _pos_age_min = (_now_dt - _opened_at_dt).total_seconds() / 60.0
+                else:
+                    _pos_age_min = 9999
+                _last_aug_time = getattr(position, 'last_augmentation_time', None)
+                if isinstance(_last_aug_time, str):
+                    try: _last_aug_dt = isoparse(_last_aug_time)
+                    except Exception: _last_aug_dt = None
+                elif isinstance(_last_aug_time, datetime):
+                    _last_aug_dt = _last_aug_time
+                elif isinstance(_last_aug_time, (int, float)):
+                    try: _last_aug_dt = datetime.fromtimestamp(_last_aug_time, tz=timezone.utc)
+                    except Exception: _last_aug_dt = None
+                else:
+                    _last_aug_dt = None
+                if _last_aug_dt:
+                    if _last_aug_dt.tzinfo is None: _last_aug_dt = _last_aug_dt.replace(tzinfo=timezone.utc)
+                    _was_augmented = (_now_dt - _last_aug_dt).total_seconds() / 60.0 < 9999
+                else:
+                    _was_augmented = False
                 _is_reentered = getattr(position, 'was_reentered', False) or "REENTRY" in getattr(position, 'augment_reason', "") or "REENTRY" in getattr(position, 'last_signal', "")
                 _grace_time = float(getattr(config, 'REENTRY_GRACE_MINUTES', 30.0)) if _is_reentered else 3.0
                 _in_grace_period = (_pos_age_min < _grace_time) and not _was_augmented
