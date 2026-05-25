@@ -563,10 +563,11 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 
 ---
 
-## HANDS_FREE / HANDS_OFF Modes
-- **`HANDS_FREE`** in message: no confirmations, auto-approve edits, chain steps, handle errors silently, full report at end.
-- **`HANDS_OFF`** in message: no questions, no confirmation prompts, full autonomy until final result.
-Both: do NOT override LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
+## HANDS_FREE / HANDS_OFF Modes — GLOBAL DEFAULT
+- **GLOBAL DEFAULT (ACTIVE AT ALL TIMES)**: The agent MUST run in **`HANDS_OFF`** and **`HANDS_FREE`** modes by default on every turn, regardless of whether these keywords are present in the chat message.
+- **ABSOLUTE PROHIBITION ON YES/NO QUESTIONS**: The agent is FORBIDDEN from asking yes/no questions, asking for confirmation, requesting feedback on plans, or prompting the user to approve simple steps. Fulfill all tasks completely with 100% autonomy until final results are achieved.
+- **NO `ask_question` TOOL CALLS**: The agent MUST NOT use the `ask_question` tool or block execution. Assume full responsibility for all decisions within scope.
+- Both modes: do NOT override LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 
 ---
 
@@ -575,6 +576,7 @@ Both: do NOT override LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 - **Context compaction**: Before compacting, save full conversation to disk + note path.
 - **100.md condense**: Keep last 7 days perf rows. Merge "Applied Today" after 3 days. Move raw test data to CSV. Never delete Parts 1–5, active BC entries, "Not Yet Applied" priorities.
 - **Auto-Confirm**: Proceed without asking for "Command contains empty quotes before dash" or "Command contains `$()` substitution".
+- **Proposing Push/Sync/Server Commands**: Whenever a sync, push to the server, or terminal command is required, propose the command using the `run_command` tool immediately. Never ask the user 'Should I run this command?' or 'Do you want me to sync now?'. Propose the command directly for execution.
 
 ---
 

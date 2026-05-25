@@ -165,6 +165,26 @@ def load_15m_signals(sym: str, years_back: float = 7.0 / 365.25) -> Optional[Dic
             else: d_break_dn_3m |= (close_3m < prev) & (prev > 0)
     out["d_break_up_15m"] = _ss_3m_to_15m(d_break_up_3m, n_15m)
     out["d_break_dn_15m"] = _ss_3m_to_15m(d_break_dn_3m, n_15m)
+    if "D" in tf_data and len(tf_data["D"]["close"]) > 0:
+        c_d = tf_data["D"]["close"].astype(np.float64)
+        def _rm_cs(arr, w):
+            if len(arr) < w: return np.zeros_like(arr)
+            cs = np.cumsum(arr)
+            o_rm = np.zeros_like(arr)
+            o_rm[w - 1:] = (cs[w - 1:] - np.concatenate([[0.0], cs[:-w]])) / w
+            for idx in range(min(w - 1, len(arr))): o_rm[idx] = arr[:idx + 1].mean()
+            return o_rm
+        m_d = _rm_cs(c_d, 20)
+        rep_long = np.repeat(c_d > m_d, 96)
+        rep_short = np.repeat(c_d < m_d, 96)
+        if len(rep_long) < n_15m:
+            rep_long = np.concatenate([rep_long, np.zeros(n_15m - len(rep_long), dtype=bool)])
+            rep_short = np.concatenate([rep_short, np.zeros(n_15m - len(rep_short), dtype=bool)])
+        out["d_trend_long"] = rep_long[:n_15m]
+        out["d_trend_short"] = rep_short[:n_15m]
+    else:
+        out["d_trend_long"] = np.ones(n_15m, dtype=bool)
+        out["d_trend_short"] = np.ones(n_15m, dtype=bool)
     out["volume_15m"] = tf_data["15m"].get("volume", np.ones(n_15m, dtype=np.float32)).astype(np.float32)
     _npz_cache_vec[cache_key] = out
     return out
@@ -265,8 +285,8 @@ def _build_entry_exit_masks_chunk(
     """For a chunk of variants [var_slice], return four (n_bars, chunk_size) bool arrays: enter_long, leave_long, enter_short, leave_short."""
     n = sig["n_15m"]
     decision_tfs = ("15m", "1h", "4h", "D")
-    d_wt_long = tf_sigs["D"]["wt_long"]
-    d_wt_short = tf_sigs["D"]["wt_short"]
+    d_trend_long = sig["d_trend_long"]
+    d_trend_short = sig["d_trend_short"]
     min_e = vararr["MIN_TFS_AGREE_ENTRY"][var_slice]
     min_x = vararr["MIN_TFS_AGREE_EXIT"][var_slice]
     mode_idx = vararr["ENTRY_MODE_IDX"][var_slice]
@@ -304,8 +324,8 @@ def _build_entry_exit_masks_chunk(
     leave_short = x_short_count >= min_x[None, :]
     rdt = vararr["REQUIRE_D_TREND"][var_slice]
     rdt_b = rdt[None, :]
-    enter_long = enter_long & (~rdt_b | d_wt_long[:, None])
-    enter_short = enter_short & (~rdt_b | d_wt_short[:, None])
+    enter_long = enter_long & (~rdt_b | d_trend_long[:, None])
+    enter_short = enter_short & (~rdt_b | d_trend_short[:, None])
     all_against_long = np.ones(n, dtype=bool)
     all_against_short = np.ones(n, dtype=bool)
     for tf_name in ("3m", "15m", "1h", "4h", "D"):
