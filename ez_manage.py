@@ -34383,7 +34383,7 @@ async def process_single_reentry_evaluation(
         price_above_reduction = (is_long and current_price >= reentry_level) or (
             not is_long and current_price <= reentry_level
         )
-        if price_above_reduction and position.positionAmt == 0.0:
+        if reentry_level > 0.0 and price_above_reduction and position.positionAmt == 0.0:
             from ez_reentry import check_reentry_confirmation as _chk_re
             _gate_ok, _gate_reason = _chk_re(i, is_long, config)
             if not _gate_ok:
