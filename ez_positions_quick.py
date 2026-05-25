@@ -13617,9 +13617,15 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 _now_dt = datetime.fromtimestamp(_sim_ts, tz=timezone.utc) if _sim_ts > 0 else datetime.now(timezone.utc)
                 _opened_at = getattr(position, 'opened_at', None)
                 if isinstance(_opened_at, str):
-                    try: _opened_at_dt = isoparse(_opened_at)
-                    except Exception: _opened_at_dt = None
-                elif isinstance(_opened_at, datetime):
+                    try:
+                        if ' ' in _opened_at and 'T' not in _opened_at: _opened_at_dt = isoparse(_opened_at.replace(' ', 'T'))
+                        else: _opened_at_dt = isoparse(_opened_at)
+                    except Exception:
+                        try:
+                            from dateutil.parser import parse as parse_dt
+                            _opened_at_dt = parse_dt(_opened_at)
+                        except Exception: _opened_at_dt = None
+                elif hasattr(_opened_at, 'tzinfo'):
                     _opened_at_dt = _opened_at
                 elif isinstance(_opened_at, (int, float)):
                     try: _opened_at_dt = datetime.fromtimestamp(_opened_at, tz=timezone.utc)
@@ -13633,9 +13639,15 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     _pos_age_min = 9999
                 _last_aug_time = getattr(position, 'last_augmentation_time', None)
                 if isinstance(_last_aug_time, str):
-                    try: _last_aug_dt = isoparse(_last_aug_time)
-                    except Exception: _last_aug_dt = None
-                elif isinstance(_last_aug_time, datetime):
+                    try:
+                        if ' ' in _last_aug_time and 'T' not in _last_aug_time: _last_aug_dt = isoparse(_last_aug_time.replace(' ', 'T'))
+                        else: _last_aug_dt = isoparse(_last_aug_time)
+                    except Exception:
+                        try:
+                            from dateutil.parser import parse as parse_dt
+                            _last_aug_dt = parse_dt(_last_aug_time)
+                        except Exception: _last_aug_dt = None
+                elif hasattr(_last_aug_time, 'tzinfo'):
                     _last_aug_dt = _last_aug_time
                 elif isinstance(_last_aug_time, (int, float)):
                     try: _last_aug_dt = datetime.fromtimestamp(_last_aug_time, tz=timezone.utc)
