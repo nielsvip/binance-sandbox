@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-25 14:24:17 UTC
+# Copilot Status — 2026-05-25 14:34:28 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T14:23:26
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T14:23:26
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T14:23:26
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T14:23:26
-- **STALE_INDICATORS** [tradier]  — 2026-05-25T14:23:57
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-25T14:23:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T14:23:57
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T14:23:57
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T14:23:57
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T14:23:57
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T14:33:37
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T14:33:37
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T14:33:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-25T14:33:37
+- **STALE_INDICATORS** [tradier]  — 2026-05-25T14:34:08
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-25T14:34:08
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T14:34:08
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T14:34:08
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T14:34:08
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T14:34:08
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +0.3%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.9%
@@ -40,6 +40,7 @@ _None_
 - HELD: **WDAY** SHORT (tradier) peak +3.1%, now +-4.8%
 
 - WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 1m ago
+- WATCHING: **RENDERUSDT** LONG (crypto) peaked +5.3%, exited 1m ago
 - WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 1m ago
 - WATCHING: **NEARUSDC** LONG (crypto) peaked +3.1%, exited 1m ago
 
@@ -47,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 48
-- [HIGH] ez_prices.py is NOT running
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+**Issues (last 1h):** 12
 - [HIGH] ez_prices.py is NOT running
 - [MEDIUM] tradier_rankings.py running but log stale (10min)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_prices.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
