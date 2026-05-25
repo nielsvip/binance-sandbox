@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-25 08:23:23 UTC
+# Copilot Status — 2026-05-25 08:38:41 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T08:22:01
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T08:22:01
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-25T08:22:01
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-25T08:22:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-25T08:22:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-25T08:22:01
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-25T08:23:03
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-25T08:23:03
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-25T08:23:03
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-25T08:23:03
+- **STALE_INDICATORS** [tradier]  — 2026-05-25T08:38:20
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-25T08:38:20
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T08:38:20
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T08:38:20
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T08:38:20
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T08:38:20
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-25T08:38:21
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-25T08:38:21
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-25T08:38:21
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-25T08:38:21
 
 ## Missed Trades (trader comparison)
 
@@ -27,14 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 10 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +0.3%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.9%
 - HELD: **LEXX** LONG (tradier) peak +7.3%, now +3.3%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
 - HELD: **FIVN** LONG (tradier) peak +5.3%, now +2.9%
-- HELD: **INXUSDT** SHORT (crypto) peak +5.2%, now +1.0%
 - HELD: **ROBO** LONG (tradier) peak +4.8%, now +2.3%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-8.8%
 - HELD: **GM** LONG (tradier) peak +3.3%, now +-0.0%
