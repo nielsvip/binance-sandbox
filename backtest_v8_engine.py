@@ -2313,6 +2313,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
         is_aug_action = (not is_red) and (not is_hedge)
+        if "REENTRY" in (act or "").upper() or "REENTRY" in (reason or "").upper():
+            try:
+                with open("/tmp/backtest_reentry.log", "a") as _df:
+                    _df.write(f"ETA_CALL: ts={_sim_ts[0] if _sim_ts else 0} act={action} reason={reason} bt_act={act}\n")
+            except Exception: pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — V8_DECISION_ONLY FAST PATH (crypto)
         # Skip ALL _v8ns_* sizing scalars and most heavy gates. Keep:

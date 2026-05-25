@@ -342,3 +342,12 @@ Task pending: enumerate and verify each is honored. User assertion: ~10 of these
 | MacBook | ez_manage --account {ang,inf,fin,flz,men}, tradier_manage --account {trb,trc} | live trading |
 | S1 | backtest_v8_sweep crypto (8 syms ang) + tradier (20 syms trb) — system_combo + tradier_param_hunt — start=2026-01-01 (4 months — should be 4 weeks) | running |
 | S2 | dead since 2026-05-08 | do not touch |
+
+## Session — 2026-05-25 20:10 UTC (Hands-Free Trades Visualizer Compilation)
+- **MacBook Trades Visualizer Compilation**: Developed and shipped `import_sweep_trades.py` to compile massive raw backtest transaction logs into completed paired trades per symbol recursively.
+- **Compilations Shipped**:
+  - `v8_vec_sweep_1779734381_3351867` (Tradier Stocks sweep, 2.5yr, 112K transaction lines compiled into 50K paired trades for MSFT, AAPL, NVDA, TSLA, META, AMD, AMZN).
+  - `v8_vec_sweep_1779394665_85902` (Crypto sweep, 2yr, compiled into paired trades for ETHUSDC, BTCUSDC, SOLUSDC, XRPUSDC).
+  - `v8_vec_sweep_1779237329_154451` (Huge 4.5yr Crypto sweep, 3.96GB raw file compiled on S1 into 22 symbols containing hundreds of thousands of trades, and rsynced locally).
+- **Parity Checked**: Ran `python3 check_sandbox_parity.py` — verified all MacBook vs S1 sandbox parity checks passed perfectly.
+- **Status of :5077 Trades visualizer**: Dynamic registry scans every 30s and automatically discovers compiled runs as `bigsweep::<run_id>`. Direct overlay on lightweight charts fully functional.

@@ -51,7 +51,8 @@ def main():
         print(f"Error: {input_path} not found", flush=True)
         sys.exit(1)
     run_id = sys.argv[2] if len(sys.argv) > 2 else input_path.stem.replace("_trades", "")
-    output_dir = Path("/Users/niels/Documents/binance/data/canonical_trades") / run_id
+    script_parent = Path(__file__).resolve().parent
+    output_dir = script_parent / "data" / "canonical_trades" / run_id
     print(f"Compiling trades from {input_path} into {output_dir}...", flush=True)
     compile_trades(input_path, output_dir)
     print("Compilation complete!", flush=True)
