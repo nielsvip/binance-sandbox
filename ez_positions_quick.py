@@ -13613,6 +13613,13 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 is_hedge = False
                 hedge_for = None
                 hedge_result = None
+                _last_aug_time = getattr(position, 'last_augmentation_time', None)
+                _was_augmented = _last_aug_time is not None and minutes_since(_last_aug_time) < 9999
+                _opened_at = getattr(position, 'opened_at', None)
+                _pos_age_min = minutes_since(_opened_at) if _opened_at else 9999
+                _is_reentered = getattr(position, 'was_reentered', False) or "REENTRY" in getattr(position, 'augment_reason', "") or "REENTRY" in getattr(position, 'last_signal', "")
+                _grace_time = float(getattr(config, 'REENTRY_GRACE_MINUTES', 30.0)) if _is_reentered else 3.0
+                _in_grace_period = (_pos_age_min < _grace_time) and not _was_augmented
                 async with tracker_manager._hedges_lock:
                     for h in tracker_manager.active_hedges:
                         if h.get('position_key') == position_key:
@@ -13648,7 +13655,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # Skips hedges (they're managed by hedge engine's own gates).
                 if _trend_veto_active and not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)):
                     logger.info(f"🛡️ [TREND_REGIME_VETO_K1M] {position_key}: Strong 1h trend detected — vetoing K1M stochastic reverse exit")
-                if not hard_exit_reason and not is_hedge and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)) and not _trend_veto_active:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and current_gain >= 0 and bool(getattr(config, "K1M_EXTREME_REVERSE_ENABLED", False)) and not _trend_veto_active:
                     _k1m_now = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50)
                     _k1m_prev_v = safe_fetch_float(indicators.get('k_1m_prev', _k1m_now), _k1m_now)
                     if is_long and _k1m_now > 90 and _k1m_now < _k1m_prev_v:
@@ -13660,7 +13667,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
                 # Even when delta says hold and the move looks unstoppable, if the LTF (3m) makes a wrong-way structure
                 # break (lower-low for LONG / higher-high for SHORT), get out NOW. Catches parabolic tops/bottoms.
-                if not hard_exit_reason and not is_hedge:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period:
                     _pe_k15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50)
                     _pe_dc_high_3m = safe_fetch_float(indicators.get('dc_high_3m', 0), 0)
                     _pe_dc_low_3m = safe_fetch_float(indicators.get('dc_low_3m', 0), 0)
@@ -13691,7 +13698,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 #        within proximity band of lower, AND wt 3m bullish cross fires → local low.
                 # Configurable TF (crypto default dc_4h) + cascade knobs in config.
                 # SRS reason explicitly bypasses UNIVERSAL_NOLOSS_GATE + STRICT_NO_LOSS guards.
-                if not hard_exit_reason and not is_hedge and getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
                     _srs_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                     _srs_tf = getattr(config, 'STRUCTURAL_RANGE_SHIFT_TF', 'dc_4h')
                     _srs_field_map = {
@@ -13772,13 +13779,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                         _ba_side = "BUY" if is_long else "SELL"
                                         _ba_pos_side = "LONG" if is_long else "SHORT"
                                         await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=tracker_manager, hedge_engine=self, account_key=account_key, position_key=position_key, positionAmt=_ba_qty, action='AUGMENT', current_price=current_price, qty=_ba_qty, reason=_ba_reason, is_hedge=False, data_manager=self.data_manager)
-                # MINIMUM HOLD TIME: 3 minutes for NEW/REENTERED positions only.
-                # After AUGMENT: NO grace period. You augmented at a gain — you MUST exit before loss. NO MERCY.
-                _last_aug_time = getattr(position, 'last_augmentation_time', None)
-                _was_augmented = _last_aug_time is not None and minutes_since(_last_aug_time) < 9999
-                _opened_at = getattr(position, 'opened_at', None)
-                _pos_age_min = minutes_since(_opened_at) if _opened_at else 9999
-                _in_grace_period = (_pos_age_min < 3.0) and not _was_augmented
+                # Grace period already computed above
                 is_original_being_hedged = False
                 hedge_to_promote = None
                 if not is_hedge:
@@ -14069,7 +14070,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
                 if _trend_veto_active and not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)):
                     logger.info(f"🛡️ [TREND_REGIME_VETO_BE] {position_key}: Strong 1h trend detected — vetoing breakeven gain erosion stop")
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)) and not _trend_veto_active:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_ENABLED', True)) and not _trend_veto_active:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
                     # 2026-04-28 USER RULE: commission-aware. Close must net positive after fees+slippage.
                     # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% earlier today.
@@ -14096,7 +14097,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% max_peak={_pos_max_g_be:.2f}% — taking near-breakeven exit")
                     elif _pos_age_min >= _be_grace and current_gain < 0:
                         logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED, holding for technical exit")
-                if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
+                if not hard_exit_reason and not _in_grace_period and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
                     # 2026-04-29 USER A/B: BREAKEVEN_DC_FIELD_MODE selects the emergency-exit Donchian basis.
                     # 'DC4' = dc_low4_3m / dc_high4_3m (4-bar low/high — current default, fires often, smaller losses but churn)
                     # 'DC'  = dc_low_3m  / dc_high_3m  (20-bar low/high — looser, bigger loss when fires but less churn)
@@ -14127,7 +14128,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
                 # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
                 # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'WT_CROSS_EXIT_ENABLED', True)) and position.gain>0.015:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and bool(getattr(config, 'WT_CROSS_EXIT_ENABLED', True)) and position.gain>0.015:
                     _wtx_min_age = float(getattr(config, 'WT_CROSS_EXIT_MIN_AGE_MINUTES', 2.0))
                     _wtx_losers_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_LOSERS', True))
                     _wtx_winners_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_WINNERS', True))
@@ -14160,13 +14161,13 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                     hard_exit_reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}_wt1={_wtx_w1_1h:.1f}_wt2={_wtx_w2_1h:.1f}_15m{_wtx_w1_15m:.1f}/{_wtx_w2_15m:.1f}_g{current_gain:.2f}%"
                                     logger.critical(f"🔥[WT_CROSS_EXIT] {position_key}: 1h WT flipped against {'LONG' if is_long else 'SHORT'} (wt1={_wtx_w1_1h:.1f} vs wt2={_wtx_w2_1h:.1f}) + 15m confirm={_wtx_15m_confirm} age={_pos_age_min:.0f}m gain={current_gain:.2f}% 3m={'with' if _wtx_3m_with_pos else 'against'} — technical exit")
                 # ═══ STDEV BREAKOUT FAILURE EXIT: HTF pctb retreated back inside bands ═══
-                if not hard_exit_reason and not is_hedge and getattr(config, "STDEV_BREAKOUT_ENABLED", False):
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and getattr(config, "STDEV_BREAKOUT_ENABLED", False):
                     _sbe_reason = check_stdev_breakout_exit(symbol, is_long, indicators)
                     if _sbe_reason:
                         hard_exit_reason = _sbe_reason
                         logger.warning(f"[STDEV_BREAKOUT_EXIT] {position_key}: {_sbe_reason} gain={current_gain:.2f}%")
                 # ═══ STDEV REJECT EXIT: pctb approached band but retreated (failed band approach) ═══
-                if not hard_exit_reason and not is_hedge:
+                if not hard_exit_reason and not is_hedge and not _in_grace_period:
                     _sre_reason = check_stdev_reject_exit(symbol, is_long, indicators, current_gain)
                     if _sre_reason:
                         hard_exit_reason = _sre_reason
@@ -14177,7 +14178,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # profit takes precedence over HTF trend alignment.
                 # 2026-04-26 reorder: now runs AFTER WT_CROSS_EXIT + STDEV_BREAKOUT so technicals get first
                 # chance to close the position. PEAK_GIVEBACK is the % safety-net for cases technicals miss.
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+                if not hard_exit_reason and not is_hedge and not _in_grace_period and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
                     _pgp_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
                     _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.5))
                     if _pgp_max_g >= _pgp_min_peak:
@@ -14212,7 +14213,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                 already_hedged = True
                                 break
                 
-                if not hard_exit_reason and is_augmented and dc_broken and current_gain > 0.1 and not already_hedged:
+                if not hard_exit_reason and not _in_grace_period and is_augmented and dc_broken and current_gain > 0.1 and not already_hedged:
                     hard_exit_reason = f"AUGMENTED_DC_BREAK_REDUCE_TO_MIN_{current_gain:.2f}%"
                 # STOCH_PROFIT_EXIT REMOVED: was killing winners at 0.03-0.50% on stoch flips. Let positions develop.
                 

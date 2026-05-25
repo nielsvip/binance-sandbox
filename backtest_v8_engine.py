@@ -2398,6 +2398,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _do_pos.entry_price = px
                         try: _do_pos.opened_at = _sim_datetime_now(timezone.utc)
                         except Exception: pass
+                        if _bt_act_do == 'REENTRY':
+                            _do_pos.was_reentered = True; _do_pos.augment_reason = 'REENTRY'
                     _do_pos.augmented_count = getattr(_do_pos, 'augmented_count', 0) + 1
                     try: _do_pos.last_augmentation_time = _sim_datetime_now(timezone.utc)
                     except Exception: pass
@@ -2410,7 +2412,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             s.opened_at=_sim_datetime_now(timezone.utc); s.last_updated=_sim_datetime_now(timezone.utc)
                             s.last_augmentation_time=None; s.last_reduction_time=None; s.last_reduction_price=0
                             s.was_reduced=False; s.augmented_count=0; s.max_quantity=q; s.mark_price_last_updated=None
+                            s.was_reentered=False; s.augment_reason=""
                     _np = _DP(sym, ps, abs(qty), px)
+                    _np.augment_reason = (reason or "")
+                    if _bt_act_do == 'REENTRY':
+                        _np.was_reentered = True
                     trade_manager.positions[pk] = _np
                     trade_manager.positions_by_account.setdefault(acct, {})[pk] = _np
                     _V8_DECISION_COUNTERS["opens" if not is_hedge else "hedges"] += 1
