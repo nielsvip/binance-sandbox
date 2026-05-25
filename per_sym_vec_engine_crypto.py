@@ -153,6 +153,18 @@ def load_15m_signals(sym: str, years_back: float = 7.0 / 365.25) -> Optional[Dic
             arr = sliced_3m.get(nm)
             if arr is not None and len(arr) > 0:
                 out[nm] = _ss_3m_to_15m(arr.astype(np.float32), n_15m)
+    close_3m = sliced_3m["close"]
+    n_3m = len(close_3m)
+    d_break_up_3m = np.zeros(n_3m, dtype=np.bool_)
+    d_break_dn_3m = np.zeros(n_3m, dtype=np.bool_)
+    for fld, is_up in [("dc_high_D", True), ("dc_low_D", False), ("bb_upper_D", True), ("bb_lower_D", False)]:
+        arr = sliced_3m.get(fld)
+        if arr is not None and len(arr) == n_3m:
+            prev = np.roll(arr, 1); prev[0] = arr[0]
+            if is_up: d_break_up_3m |= (close_3m > prev) & (prev > 0)
+            else: d_break_dn_3m |= (close_3m < prev) & (prev > 0)
+    out["d_break_up_15m"] = _ss_3m_to_15m(d_break_up_3m, n_15m)
+    out["d_break_dn_15m"] = _ss_3m_to_15m(d_break_dn_3m, n_15m)
     out["volume_15m"] = tf_data["15m"].get("volume", np.ones(n_15m, dtype=np.float32)).astype(np.float32)
     _npz_cache_vec[cache_key] = out
     return out
@@ -319,20 +331,8 @@ def _build_entry_exit_masks_chunk(
     dc_lo_d = sig.get("dc_low_D")
     bb_up_d = sig.get("bb_upper_D")
     bb_lo_d = sig.get("bb_lower_D")
-    d_break_up = np.zeros(n, dtype=bool)
-    d_break_dn = np.zeros(n, dtype=bool)
-    if dc_hi_d is not None and len(dc_hi_d) == n:
-        prev = np.roll(dc_hi_d, 1); prev[0] = dc_hi_d[0]
-        d_break_up |= (close > prev) & (prev > 0)
-    if dc_lo_d is not None and len(dc_lo_d) == n:
-        prev = np.roll(dc_lo_d, 1); prev[0] = dc_lo_d[0]
-        d_break_dn |= (close < prev) & (prev > 0)
-    if bb_up_d is not None and len(bb_up_d) == n:
-        prev = np.roll(bb_up_d, 1); prev[0] = bb_up_d[0]
-        d_break_up |= (close > prev) & (prev > 0)
-    if bb_lo_d is not None and len(bb_lo_d) == n:
-        prev = np.roll(bb_lo_d, 1); prev[0] = bb_lo_d[0]
-        d_break_dn |= (close < prev) & (prev > 0)
+    d_break_up = sig.get("d_break_up_15m", np.zeros(n, dtype=bool))
+    d_break_dn = sig.get("d_break_dn_15m", np.zeros(n, dtype=bool))
     wt1_15m = sig.get("wt1_15m")
     bearish_div = np.zeros(n, dtype=bool)
     bullish_div = np.zeros(n, dtype=bool)
