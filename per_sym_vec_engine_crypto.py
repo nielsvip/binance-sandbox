@@ -402,7 +402,7 @@ def _walk_one_variant(
             side = -1
         if entry_i >= n - 1:
             break
-        x_start = entry_i + min_hold
+        x_start = entry_i + max(min_hold, 1)
         if x_start >= n:
             break
         if side == 1:
