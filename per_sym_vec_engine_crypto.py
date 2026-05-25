@@ -250,9 +250,7 @@ def _build_entry_exit_masks_chunk(
     vararr: Dict[str, np.ndarray],
     var_slice: slice,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """For a chunk of variants [var_slice], return four (n_bars, chunk_size) bool arrays:
-      enter_long, leave_long, enter_short, leave_short.
-    """
+    """For a chunk of variants [var_slice], return four (n_bars, chunk_size) bool arrays: enter_long, leave_long, enter_short, leave_short."""
     n = sig["n_15m"]
     decision_tfs = ("15m", "1h", "4h", "D")
     d_wt_long = tf_sigs["D"]["wt_long"]
@@ -296,6 +294,66 @@ def _build_entry_exit_masks_chunk(
     rdt_b = rdt[None, :]
     enter_long = enter_long & (~rdt_b | d_wt_long[:, None])
     enter_short = enter_short & (~rdt_b | d_wt_short[:, None])
+    all_against_long = np.ones(n, dtype=bool)
+    all_against_short = np.ones(n, dtype=bool)
+    for tf_name in ("3m", "15m", "1h", "4h", "D"):
+        w1 = sig.get(f"wt1_{tf_name}")
+        w2 = sig.get(f"wt2_{tf_name}")
+        if w1 is not None and w2 is not None:
+            all_against_long &= (w1 < w2)
+            all_against_short &= (w1 > w2)
+        else:
+            all_against_long = np.zeros(n, dtype=bool)
+            all_against_short = np.zeros(n, dtype=bool)
+            break
+    wt15_1 = sig.get("wt1_15m")
+    wt15_2 = sig.get("wt2_15m")
+    if wt15_1 is not None and wt15_2 is not None:
+        wt15_against_long = wt15_1 < wt15_2
+        wt15_against_short = wt15_1 > wt15_2
+    else:
+        wt15_against_long = np.zeros(n, dtype=bool)
+        wt15_against_short = np.zeros(n, dtype=bool)
+    close = sig["close_15m"]
+    dc_hi_d = sig.get("dc_high_D")
+    dc_lo_d = sig.get("dc_low_D")
+    bb_up_d = sig.get("bb_upper_D")
+    bb_lo_d = sig.get("bb_lower_D")
+    d_break_up = np.zeros(n, dtype=bool)
+    d_break_dn = np.zeros(n, dtype=bool)
+    if dc_hi_d is not None and len(dc_hi_d) == n:
+        prev = np.roll(dc_hi_d, 1); prev[0] = dc_hi_d[0]
+        d_break_up |= (close > prev) & (prev > 0)
+    if dc_lo_d is not None and len(dc_lo_d) == n:
+        prev = np.roll(dc_lo_d, 1); prev[0] = dc_lo_d[0]
+        d_break_dn |= (close < prev) & (prev > 0)
+    if bb_up_d is not None and len(bb_up_d) == n:
+        prev = np.roll(bb_up_d, 1); prev[0] = bb_up_d[0]
+        d_break_up |= (close > prev) & (prev > 0)
+    if bb_lo_d is not None and len(bb_lo_d) == n:
+        prev = np.roll(bb_lo_d, 1); prev[0] = bb_lo_d[0]
+        d_break_dn |= (close < prev) & (prev > 0)
+    wt1_15m = sig.get("wt1_15m")
+    bearish_div = np.zeros(n, dtype=bool)
+    bullish_div = np.zeros(n, dtype=bool)
+    if wt1_15m is not None:
+        lb = 20
+        from numpy.lib.stride_tricks import sliding_window_view
+        price_max_lb = np.full(n, np.nan, dtype=np.float64)
+        price_min_lb = np.full(n, np.nan, dtype=np.float64)
+        wt_max_lb = np.full(n, np.nan, dtype=np.float64)
+        wt_min_lb = np.full(n, np.nan, dtype=np.float64)
+        if n >= lb:
+            price_max_lb[lb - 1:] = sliding_window_view(close.astype(np.float64), lb).max(axis=1)
+            price_min_lb[lb - 1:] = sliding_window_view(close.astype(np.float64), lb).min(axis=1)
+            wt_max_lb[lb - 1:] = sliding_window_view(wt1_15m.astype(np.float64), lb).max(axis=1)
+            wt_min_lb[lb - 1:] = sliding_window_view(wt1_15m.astype(np.float64), lb).min(axis=1)
+        bearish_div = (close >= price_max_lb) & (wt1_15m < wt_max_lb)
+        bullish_div = (close <= price_min_lb) & (wt1_15m > wt_min_lb)
+    enter_long = enter_long & ~bearish_div[:, None]
+    enter_short = enter_short & ~bullish_div[:, None]
+    leave_long = leave_long | (all_against_long | wt15_against_long | d_break_dn)[:, None]
+    leave_short = leave_short | (all_against_short | wt15_against_short | d_break_up)[:, None]
     return enter_long, leave_long, enter_short, leave_short
 
 
