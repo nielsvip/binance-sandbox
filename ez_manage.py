@@ -18721,6 +18721,7 @@ class MultiAccountTradeManager:
             _is_force_open_eta = (
                 "WT_3M_FORCE_OPEN" in _reason_up_eta
                 or "TRADEABLE_KEYS_MANDATORY" in _reason_up_eta
+                or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_eta
             ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             if (
                 not _tp_entry_ok
@@ -22747,11 +22748,11 @@ class MultiAccountTradeManager:
             # -truth-20260521]] mandate: tradeable_keys is hand-picked, never auto-expand.
             _reason_up_mtf = (reason or "").upper()
             _mtf_strong_buy_quick_bypass = (
-                ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf)
+                ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_mtf)
                 and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
-            if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+            if ((("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act) and "REENTRY" not in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
                     and not _mtf_strong_buy_quick_bypass):
                 import mtf_live_evaluator as _mle
@@ -32827,6 +32828,24 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
     k_D = float(i.get("stoch_k_D", 50))
     d_D = float(i.get("stoch_d_D", 50))
     ha_D = i.get("ha_D", "neutral")
+    _ha_4h_q = str(i.get("ha_4h", "neutral")).lower()
+    _dc_basis_4h_q = float(i.get("dc_basis_4h") or 0.0)
+    _basis_4h_q = float(i.get("basis_4h") or i.get("bb_basis_4h") or 0.0)
+    _basis_ref_q = _dc_basis_4h_q if _dc_basis_4h_q > 0 else _basis_4h_q
+    _wt1_3m_q = float(i.get("wt1_3m") or 0.0)
+    _wt2_3m_q = float(i.get("wt2_3m") or 0.0)
+    _wt1_5m_q = float(i.get("wt1_5m") or 0.0)
+    _wt2_5m_q = float(i.get("wt2_5m") or 0.0)
+    _force_entry_q = False
+    if is_long:
+        if _ha_4h_q == "green" and _basis_ref_q > 0 and current_price > _basis_ref_q and (_wt1_3m_q > _wt2_3m_q or _wt1_5m_q > _wt2_5m_q):
+            _force_entry_q = True
+    else:
+        if _ha_4h_q == "red" and _basis_ref_q > 0 and current_price < _basis_ref_q and (_wt1_3m_q < _wt2_3m_q or _wt1_5m_q < _wt2_5m_q):
+            _force_entry_q = True
+    if _force_entry_q:
+        logger.critical(f"🚀 [FORCE_HA_4H_ABOVE_BASIS] {position_key}: price={current_price:.6f} basis={_basis_ref_q:.6f} ha_4h={_ha_4h_q} — BYPASSING ALL ALIGNMENT GATES FOR FORCE ENTRY")
+        return Signal(action="OPEN", reason=f"FORCE_HA_4H_ABOVE_BASIS_px{current_price:.4f}_basis{_basis_ref_q:.4f}", conviction=99.0)
     _tp_aligned, _tp_align_reason = trading_policy.check_entry_alignment(i, is_long)
     if not _tp_aligned:
         return None
@@ -34365,6 +34384,11 @@ async def process_single_reentry_evaluation(
             not is_long and current_price <= reentry_level
         )
         if price_above_reduction and position.positionAmt == 0.0:
+            from ez_reentry import check_reentry_confirmation as _chk_re
+            _gate_ok, _gate_reason = _chk_re(i, is_long, config)
+            if not _gate_ok:
+                logger.info(f"[MANDATORY_PRICE_CROSS_BLOCKED] {position_key}: gate refused ({_gate_reason})")
+                return
             # 2026-04-26 RATE LIMIT (rogue-loop fix): refuse to fire MANDATORY_PRICE_CROSS
             # twice on the same position_key within MIN_INTERVAL seconds. The original bug
             # was that this fires every cycle while price > exit_level, even AFTER a
@@ -34390,7 +34414,7 @@ async def process_single_reentry_evaluation(
                 reentry_amount * _force_mult,
                 getattr(config, "START_POSITION_SIZE", 45.0) / current_price,
             )
-            _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}"
+            _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}_{_gate_reason}"
             logger.critical(
                 f"🚀 [MANDATORY_PRICE_CROSS_REENTRY] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})"
             )

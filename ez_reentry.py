@@ -345,6 +345,71 @@ def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: flo
     return True, size_mult, reason, score
 
 
+def check_reentry_confirmation(ind: dict, is_long: bool, cfg=None, current_price: float = 0.0) -> tuple[bool, str]:
+    """Centralized reentry confirmation gate. Prevents suicide reentries at peaks while guaranteeing reentry on trend flip."""
+    if cfg is None:
+        import config as cfg
+    if not bool(getattr(cfg, 'REENTRY_CONFIRMATION_GATES_ENABLED', True)):
+        return True, "CONFIRMATION_GATES_DISABLED"
+    def _f(k, d=50.0):
+        try: return float(ind.get(k, d) or d)
+        except Exception: return d
+    k_3m = _f("stoch_k_3m") or _f("stoch_k_5m")
+    kp_3m = _f("stoch_k_3m_prev") or _f("stoch_k_5m_prev", k_3m)
+    wt1_3m = _f("wt1_3m") or _f("wt1_5m")
+    wt2_3m = _f("wt2_3m") or _f("wt2_5m")
+    k_15m = _f("stoch_k_15m")
+    kp_15m = _f("stoch_k_15m_prev", k_15m)
+    wt1_15m = _f("wt1_15m")
+    wt2_15m = _f("wt2_15m")
+    k_1h = _f("stoch_k_1h")
+    wt1_1h = _f("wt1_1h")
+    wt2_1h = _f("wt2_1h")
+    ha_4h = str(ind.get("ha_4h", "neutral")).lower()
+    dc_basis_4h = _f("dc_basis_4h", 0.0)
+    basis_4h = _f("basis_4h", 0.0) or _f("bb_basis_4h", 0.0)
+    _basis_ref = dc_basis_4h if dc_basis_4h > 0 else basis_4h
+    if current_price > 0 and _basis_ref > 0:
+        if is_long:
+            if ha_4h == "green" and current_price > _basis_ref and (wt1_3m > wt2_3m or _f("wt1_5m") > _f("wt2_5m")):
+                return True, f"FORCE_HA_4H_ABOVE_BASIS_LONG_px{current_price:.4f}_basis{_basis_ref:.4f}"
+        else:
+            if ha_4h == "red" and current_price < _basis_ref and (wt1_3m < wt2_3m or _f("wt1_5m") < _f("wt2_5m")):
+                return True, f"FORCE_HA_4H_BELOW_BASIS_SHORT_px{current_price:.4f}_basis{_basis_ref:.4f}"
+    k_high_thr = float(getattr(cfg, "REENTRY_STOCH_K_MAX_LONG", 85.0))
+    k_low_thr = float(getattr(cfg, "REENTRY_STOCH_K_MIN_SHORT", 15.0))
+    if is_long:
+        _is_extreme = k_15m >= k_high_thr or k_1h >= 90.0
+        _wt_cross_3m = wt1_3m > wt2_3m
+        _wt_cross_15m = wt1_15m > wt2_15m
+        _wt_cross_1h = wt1_1h > wt2_1h
+        _k_bounce_15m = k_15m > kp_15m or k_15m > 50.0
+        if _is_extreme:
+            _ok = _wt_cross_3m and _wt_cross_15m and _k_bounce_15m
+            _reason = f"EXTREME_LONG_wt3m={_wt_cross_3m}_wt15m={_wt_cross_15m}_kb={_k_bounce_15m}"
+        else:
+            _ok = _wt_cross_3m or _wt_cross_15m or _wt_cross_1h
+            _reason = f"SAFE_LONG_wt3m={_wt_cross_3m}_wt15m={_wt_cross_15m}_wt1h={_wt_cross_1h}"
+        if not _wt_cross_3m and not _wt_cross_15m and not _wt_cross_1h:
+            return False, "WT_ALL_AGAINST_LONG"
+        return _ok, _reason
+    else:
+        _is_extreme = k_15m <= k_low_thr or k_1h <= 10.0
+        _wt_cross_3m = wt1_3m < wt2_3m
+        _wt_cross_15m = wt1_15m < wt2_15m
+        _wt_cross_1h = wt1_1h < wt2_1h
+        _k_bounce_15m = k_15m < kp_15m or k_15m < 50.0
+        if _is_extreme:
+            _ok = _wt_cross_3m and _wt_cross_15m and _k_bounce_15m
+            _reason = f"EXTREME_SHORT_wt3m={_wt_cross_3m}_wt15m={_wt_cross_15m}_kb={_k_bounce_15m}"
+        else:
+            _ok = _wt_cross_3m or _wt_cross_15m or _wt_cross_1h
+            _reason = f"SAFE_SHORT_wt3m={_wt_cross_3m}_wt15m={_wt_cross_15m}_wt1h={_wt_cross_1h}"
+        if not _wt_cross_3m and not _wt_cross_15m and not _wt_cross_1h:
+            return False, "WT_ALL_AGAINST_SHORT"
+        return _ok, _reason
+
+
 def is_reentry_eligible(trade_manager, position_key: str, account_key: str, symbol: str, cfg=None) -> tuple:
     """Pre-flight check: would execute_now refuse this REENTRY/AUGMENT call?
 
@@ -650,9 +715,11 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             pos_amt = 0.0
         if pos_amt != 0.0:
             continue
-        # ─── Sizing per user 2026-05-06 ───
         # Indicators from Redis indicators:<SYM>. WT-favor → 150%; rally-extended → 50%; else 100%.
         ind = _lookup_indicators(trade_manager, sym) if sym else {}
+        _gate_ok, _gate_reason = check_reentry_confirmation(ind, is_long, _cfg, cur_px)
+        if not _gate_ok:
+            continue
         def _f(k, default=None):
             try:
                 v = ind.get(k)
@@ -700,7 +767,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             uid = f"PRICE_CROSS_GUARANTEE_{int(now)}"
             reason = (
                 f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
-                f"_cur{cur_px:.6f}_{sizing_tag}_xr{(exit_reason[:40] or 'unk').replace(' ','_')}"
+                f"_cur{cur_px:.6f}_{sizing_tag}_{_gate_reason}_xr{(exit_reason[:40] or 'unk').replace(' ','_')}"
             )
             await trade_manager.execute_now(
                 position_key=pk,
@@ -777,4 +844,5 @@ __all__ = [
     "price_cross_reentry_safety_loop",
     "effective_gain_pct",
     "is_reentry_eligible",
+    "check_reentry_confirmation",
 ]

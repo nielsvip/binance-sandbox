@@ -60,7 +60,7 @@ logging.basicConfig(
 logger = logging.getLogger("ez_reentry_daemon")
 
 _HOLD_GLOBAL = Path("/tmp/REENTRY_DAEMON_HOLD")
-_CMD_TTL_S = 300.0  # command files expire after 5 minutes if not consumed
+_CMD_TTL_S = 10.0 * 365.0 * 86400.0  # command files expire after 10 years (effectively infinite)
 _MIN_GAP_S = 60.0   # per-position dedup: don't re-queue within 60s
 _MAX_FIRES_PER_TICK = 20
 _SOFT_EXIT_RE = None  # compiled on first use
@@ -351,13 +351,10 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
             continue
         if _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True):
             _ind = _get_indicators(redis_client, symbol)
-            _k = float(_ind.get("stoch_k_3m") or _ind.get("stoch_k_5m") or _ind.get("stoch_k_15m") or 50.0)
-            _kp = float(_ind.get("stoch_k_3m_prev") or _ind.get("stoch_k_5m_prev") or _ind.get("stoch_k_15m_prev") or 50.0)
-            _w1 = float(_ind.get("wt1_3m") or _ind.get("wt1_5m") or _ind.get("wt1_15m") or 0.0)
-            _w2 = float(_ind.get("wt2_3m") or _ind.get("wt2_5m") or _ind.get("wt2_15m") or 0.0)
-            _gate_ok = (_k < _cfg_float("REENTRY_STOCH_K_MAX_LONG", 40.0)) or (_k > _kp and _w1 > _w2) if is_long else (_k > _cfg_float("REENTRY_STOCH_K_MIN_SHORT", 60.0)) or (_k < _kp and _w1 < _w2)
+            from ez_reentry import check_reentry_confirmation as _chk_re
+            _gate_ok, _gate_reason = _chk_re(_ind, is_long)
             if not _gate_ok:
-                logger.info(f"[DAEMON] Reentry gate BLOCKED {pk}: k={_k:.1f} kp={_kp:.1f} wt1={_w1:.1f} wt2={_w2:.1f}")
+                logger.info(f"[DAEMON] Reentry gate BLOCKED {pk}: {_gate_reason}")
                 continue
         positions = _get_positions_from_redis(redis_client, account_key)
         pos_amt = positions.get(pk, 0.0)
@@ -386,7 +383,8 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
         if fire_qty <= 0:
             continue
         xr_tag = (exit_reason[:40] or "unk").replace(" ", "_")
-        reason = f"DAEMON_PRICE_CROSS_REENTRY_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_xr{xr_tag}"
+        _gate_reason_tag = _gate_reason if '_gate_reason' in locals() else "CONFIRM_DISABLED"
+        reason = f"DAEMON_PRICE_CROSS_REENTRY_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_{_gate_reason_tag}_xr{xr_tag}"
         queue_dir = queue_base / account_key
         if dry_run:
             logger.info(f"[DAEMON DRY-RUN] would queue {pk} qty={fire_qty:.4f} {sizing_tag} cross={exit_px:.6f}→{cur_px:.6f}")

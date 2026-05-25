@@ -6845,6 +6845,23 @@ class StockStrategy:
             
         can_short = symbol not in config.NON_SHORTABLE
         is_long = (position_side == "LONG")
+        _ha_4h_q = str(i.get("ha_4h", "neutral")).lower()
+        _dc_basis_4h_q = float(i.get("dc_basis_4h") or 0.0)
+        _basis_4h_q = float(i.get("basis_4h") or i.get("bb_basis_4h") or 0.0)
+        _basis_ref_q = _dc_basis_4h_q if _dc_basis_4h_q > 0 else _basis_4h_q
+        _wt1_3m_q = float(i.get("wt1_3m") or i.get("wt1_5m") or 0.0)
+        _wt2_3m_q = float(i.get("wt2_3m") or i.get("wt2_5m") or 0.0)
+        _force_entry_q = False
+        if is_long:
+            if _ha_4h_q == "green" and _basis_ref_q > 0 and current_price > _basis_ref_q and _wt1_3m_q > _wt2_3m_q:
+                _force_entry_q = True
+        else:
+            if _ha_4h_q == "red" and _basis_ref_q > 0 and current_price < _basis_ref_q and _wt1_3m_q < _wt2_3m_q:
+                _force_entry_q = True
+        if _force_entry_q:
+            final_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+            logger.critical(f"🚀 [FORCE_HA_4H_ABOVE_BASIS] {symbol}_{position_side}: price={current_price:.6f} basis={_basis_ref_q:.6f} ha_4h={_ha_4h_q} — FORCE OPEN BYPASS")
+            return ("OPEN_LONG" if is_long else "OPEN_SHORT"), f"FORCE_HA_4H_ABOVE_BASIS_px{current_price:.4f}_basis{_basis_ref_q:.4f}", current_price, final_qty
         # 0. FIRST-HOUR MOMENTUM (BACKTEST_CHANGE_MT3) — fires FIRST, before all other entries
         # Research: 30min after open, if move > 0.5% → 82% day follows direction
         _fh_enabled = _cfg('FH_MOMENTUM_ENABLED', False, account_key, symbol, position_side)
@@ -7488,14 +7505,11 @@ class StockStrategy:
                 _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
                 _xb_within_band = _xb_dist_pct <= _xb_band_pct
                 if _xb_favorable or _xb_within_band:
-                    _xb_gate_ok = True
-                    if bool(getattr(config, 'REENTRY_CONFIRMATION_GATES_ENABLED', True)):
-                        _k5 = float(i.get('stoch_k_5m', 50) or 50); _kp5 = float(i.get('stoch_k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
-                        if is_long: _xb_gate_ok = (_k5 < float(getattr(config, 'REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
-                        else: _xb_gate_ok = (_k5 > float(getattr(config, 'REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
+                    from ez_reentry import check_reentry_confirmation as _chk_re
+                    _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
                     if _xb_gate_ok:
                         _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-                        _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
+                        _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}"
                         logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")
                         return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}", 90.0, _xb_qty
         # ═══ RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ═══════
@@ -10379,7 +10393,7 @@ class TradierTradeManager:
                 # PRICE_CROSS_BACK fires from both BRANCH A (action='REENTRY', positionAmt>0 evaluate_reentry) and
                 # BRANCH B (action='OPEN', positionAmt==0 _evaluate_for_account_and_symbol). Reason substring is
                 # the discriminator either way.
-                _pxc_back_reentry = 'PRICE_CROSS_BACK' in (reason or '').upper() or 'RECOVERY_AUG' in (reason or '').upper()
+                _pxc_back_reentry = 'PRICE_CROSS_BACK' in (reason or '').upper() or 'RECOVERY_AUG' in (reason or '').upper() or 'REENTRY' in (action or '').upper()
                 if is_entry_action and not _pxc_back_reentry and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
