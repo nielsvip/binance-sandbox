@@ -13650,6 +13650,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 _is_reentered = getattr(position, 'was_reentered', False) or "REENTRY" in getattr(position, 'augment_reason', "") or "REENTRY" in getattr(position, 'last_signal', "")
                 _grace_time = float(getattr(config, 'REENTRY_GRACE_MINUTES', 30.0)) if _is_reentered else 3.0
                 _in_grace_period = (_pos_age_min < _grace_time) and not _was_augmented
+                if "BTC" in symbol:
+                    try:
+                        with open("/tmp/backtest_reentry.log", "a") as _df:
+                            _df.write(f"TS={_sim_ts} PK={position_key} opened_at={_opened_at} now={_now_dt} age={_pos_age_min:.2f} is_reentered={_is_reentered} was_reentered={getattr(position, 'was_reentered', None)} grace={_grace_time} in_grace={_in_grace_period} was_aug={_was_augmented}\n")
+                    except Exception: pass
                 async with tracker_manager._hedges_lock:
                     for h in tracker_manager.active_hedges:
                         if h.get('position_key') == position_key:
