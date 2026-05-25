@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-25 15:35:40 UTC
+# Copilot Status — 2026-05-25 15:51:00 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T15:34:49
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T15:34:49
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T15:34:49
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-25T15:34:49
-- **STALE_INDICATORS** [tradier]  — 2026-05-25T15:35:20
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-25T15:35:20
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T15:35:20
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T15:35:20
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T15:35:20
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T15:35:20
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T15:50:30
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T15:50:30
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T15:50:30
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T15:50:30
+- **STALE_INDICATORS** [tradier]  — 2026-05-25T15:51:00
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-25T15:51:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-25T15:51:00
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-25T15:51:00
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-25T15:51:00
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-25T15:51:00
 
 ## Missed Trades (trader comparison)
 
@@ -44,9 +44,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 16
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_prices.py is NOT running
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
-- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+**Issues (last 1h):** 27
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_prices.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_manage.py for men is NOT running
