@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""per_sym_vec_engine_crypto — VARIANT-AXIS vectorized per-symbol crypto backtester.
+"""per_sym_vec_engine_crypto — QUARANTINED 2026-05-25 BY USER MANDATE.
+
+Mirrors per_sym_engine_crypto's signal universe and inherits its ~0% live parity.
+Both engines route through OPUS_VOMIT (formerly v8_quick_engine) when the
+USE_V8_AGGREGATORS flag is on, and fall back to a narrow native signal path when
+it's off — which is how the agents (per_sym_7d_agent, optimize_crypto_baselines)
+run them. Result: 4yr backtest numbers are simulator artifacts, not live forecasts.
+
+USE INSTEAD:
+  - v8_vec_sweep.py + vec_paths/*  ← the new vectorizers (~69 modules)
+  - vec_paths/validate_against_live.py  ← the parity validator
+  - backtest_v8_engine.py  ← Tier-2 real-code replica
+
+Override (one-time): export ALLOW_QUARANTINED_PER_SYM=1.
+
+Original docstring preserved below for reference.
+─────────────────────────────────────────────────────────────────────────────
+per_sym_vec_engine_crypto — VARIANT-AXIS vectorized per-symbol crypto backtester.
 
 Goal per user 2026-05-18: "millions of tests per symbol". The legacy per_sym_engine_crypto
 is bar-vectorized but variant-scalar: each variant walks the bars in a Python while-loop,
@@ -37,6 +54,14 @@ USAGE:
   top10 = scoreboard.nlargest(10, 'time_weighted_sharpe')
 """
 from __future__ import annotations
+
+import os as _qe_os
+if _qe_os.environ.get("ALLOW_QUARANTINED_PER_SYM") != "1":
+    raise SystemExit(
+        "[QUARANTINED 2026-05-25] per_sym_vec_engine_crypto routes through OPUS_VOMIT "
+        "and produces ~0% live parity. Use vec_paths/* + v8_vec_sweep.py instead. "
+        "Override: export ALLOW_QUARANTINED_PER_SYM=1"
+    )
 
 import math
 import os
