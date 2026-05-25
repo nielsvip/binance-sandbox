@@ -39057,6 +39057,35 @@ async def process_position(
                     f"[R3_HTF_FLIP_ERR] {position_key}: {_r3hf_outer}"
                 )
     # ═══ END R3_HTF_FLIP ═══
+    # Breakout Short Leash Exit (2026-05-25, user-authorized)
+    _leash_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0))) if position else 0.0
+    if _leash_pos_amt > 0.0 and bool(getattr(config, "BREAKOUT_LEASH_ENABLED", True)):
+        _leash_aug_reason = str(getattr(position, "augment_reason", "") or "").upper()
+        if "BREAKOUT" in _leash_aug_reason or "GOLDEN_RULE" in _leash_aug_reason:
+            try:
+                _leash_tf = str(getattr(config, "BREAKOUT_LEASH_TF", "3m"))
+                _lh_now = safe_fetch_float(i.get(f"high_{_leash_tf}"), 0.0)
+                _ll_now = safe_fetch_float(i.get(f"low_{_leash_tf}"), 0.0)
+                _lh_prev = safe_fetch_float(i.get(f"high_{_leash_tf}_prev"), 0.0)
+                _ll_prev = safe_fetch_float(i.get(f"low_{_leash_tf}_prev"), 0.0)
+                _dc_h_prev = safe_fetch_float(i.get(f"dc_high_{_leash_tf}_prev"), 0.0)
+                _dc_l_prev = safe_fetch_float(i.get(f"dc_low_{_leash_tf}_prev"), 0.0)
+                _lh_ll = False; _dropped_back = False
+                if position_side == "LONG":
+                    if _lh_now > 0.0 and _lh_prev > 0.0 and _lh_now < _lh_prev and _ll_now < _ll_prev: _lh_ll = True
+                    if _dc_h_prev > 0.0 and current_price < _dc_h_prev: _dropped_back = True
+                else:
+                    if _ll_now > 0.0 and _ll_prev > 0.0 and _ll_now > _ll_prev and _lh_now > _lh_prev: _lh_ll = True
+                    if _dc_l_prev > 0.0 and current_price > _dc_l_prev: _dropped_back = True
+                if _lh_ll or _dropped_back:
+                    _leash_reason = f"BREAKOUT_LEASH_EXIT_{'LH_LL' if _lh_ll else 'DROPPED_BACK'}"
+                    _close_side = "SELL" if position_side == "LONG" else "BUY"
+                    logger.warning(f"⚡ [BREAKOUT_LEASH_EXIT] {position_key}: Closing positionAmt={_leash_pos_amt:.4f} reason={_leash_reason} px={current_price:.6f}")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_leash_pos_amt, side=_close_side, position_side=position_side, quantity=_leash_pos_amt, old_price=current_price, unique_id=f"LEASH_EXIT_{int(time.time())}", reason=_leash_reason, is_full_close=True, action="CLOSE")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:{_leash_reason}"
+            except Exception as _leash_err:
+                logger.error(f"[BREAKOUT_LEASH_EXIT_ERR] {position_key}: {_leash_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # MTF COMPOUND EXIT — Path A Phase 1 wiring 2026-05-19 (USER MANDATE)
     # Source: vec_paths/mtf_armed_entries.py:127-235 + data/_diagnostic/protection_stack_2026051*.md.

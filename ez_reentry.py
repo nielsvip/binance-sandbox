@@ -345,7 +345,7 @@ def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: flo
     return True, size_mult, reason, score
 
 
-def check_reentry_confirmation(ind: dict, is_long: bool, cfg=None, current_price: float = 0.0) -> tuple[bool, str]:
+def check_reentry_confirmation(ind: dict, is_long: bool, cfg=None, current_price: float = 0.0, is_leash_re: bool = False) -> tuple[bool, str]:
     """Centralized reentry confirmation gate. Prevents suicide reentries at peaks while guaranteeing reentry on trend flip."""
     if cfg is None:
         import config as cfg
@@ -354,6 +354,10 @@ def check_reentry_confirmation(ind: dict, is_long: bool, cfg=None, current_price
     def _f(k, d=50.0):
         try: return float(ind.get(k, d) or d)
         except Exception: return d
+    if is_leash_re:
+        wt1_3m = _f("wt1_3m") or _f("wt1_5m"); wt2_3m = _f("wt2_3m") or _f("wt2_5m"); wt1_15m = _f("wt1_15m"); wt2_15m = _f("wt2_15m")
+        if is_long and (wt1_3m > wt2_3m or wt1_15m > wt2_15m): return True, "LEASH_REENTRY_BOUNCE_LONG"
+        if (not is_long) and (wt1_3m < wt2_3m or wt1_15m < wt2_15m): return True, "LEASH_REENTRY_BOUNCE_SHORT"
     k_3m = _f("stoch_k_3m") or _f("stoch_k_5m")
     kp_3m = _f("stoch_k_3m_prev") or _f("stoch_k_5m_prev", k_3m)
     wt1_3m = _f("wt1_3m") or _f("wt1_5m")
@@ -717,7 +721,9 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             continue
         # Indicators from Redis indicators:<SYM>. WT-favor → 150%; rally-extended → 50%; else 100%.
         ind = _lookup_indicators(trade_manager, sym) if sym else {}
-        _gate_ok, _gate_reason = check_reentry_confirmation(ind, is_long, _cfg, cur_px)
+        _reason_str = str(exit_reason or "").upper()
+        _is_leash_re = "BREAKOUT_LEASH" in _reason_str
+        _gate_ok, _gate_reason = check_reentry_confirmation(ind, is_long, _cfg, cur_px, is_leash_re=_is_leash_re)
         if not _gate_ok:
             continue
         def _f(k, default=None):
@@ -739,7 +745,9 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         rally_extended = False
         if k_1h is not None:
             rally_extended = (is_long and k_1h > 90.0) or ((not is_long) and k_1h < 10.0)
-        if wt_favor:
+        if _is_leash_re:
+            sizing_frac = float(getattr(_cfg, "BREAKOUT_LEASH_REENTRY_MULT", 1.50)); sizing_tag = f"breakout_leash_reentry_{sizing_frac:.2f}"
+        elif wt_favor:
             sizing_frac = 1.5; sizing_tag = "wt_bounce_150"
         elif rally_extended:
             sizing_frac = 0.5; sizing_tag = f"rally_ext_k1h{k_1h:.0f}_50"
@@ -760,7 +768,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
                     _start_size_psym = float(_entry_psm["START_POSITION_SIZE"])
         except Exception:
             _start_size_psym = start_size
-        fire_qty = (exit_amt if exit_amt > 0 else (_start_size_psym / max(cur_px, 1e-9))) * sizing_frac
+        fire_qty = ((_start_size_psym / max(cur_px, 1e-9)) if _is_leash_re else (exit_amt if exit_amt > 0 else (_start_size_psym / max(cur_px, 1e-9)))) * sizing_frac
         if fire_qty <= 0:
             continue
         try:
