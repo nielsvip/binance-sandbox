@@ -741,6 +741,7 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED: bool = False
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
     BREAKOUT_LEASH_ENABLED: bool = True
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
     BREAKOUT_LEASH_REENTRY_MULT: float = 1.50
@@ -1318,7 +1319,7 @@ class Config:
     # Sweep variants queued on S1 sweep_coordinator/queue.json 2026-05-17.
     # ═══════════════════════════════════════════════════════════════════
     # REVERTED 2026-05-18 18:30: all 4 flips below had no sample-floor evidence (DEAD KNOB / BLOCKED_NON_VEC sweeps only). Isolated vec sweeps queued on S1.
-    HTF_TREND_VETO_ENABLED: bool = False                 # was True 2026-05-17; reverted — no sample-floor proof
+    HTF_TREND_VETO_ENABLED: bool = True                  # 2026-05-26 USER MANDATE — re-enabled after BTCDOM autopsy + switch_hunt arm htf_veto_on showed ΔPS +0.020 / -57% trades vs baseline. Mirrors tradier (line 2238 in config_tradier.py)
     # 2026-05-22 USER MANDATE: bottom entries hold until HTF flips. Block reduce/close when Daily WT supports position.
     HTF_TREND_VETO_ON_REDUCE_ENABLED: bool = True
     R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
