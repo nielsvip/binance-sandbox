@@ -951,6 +951,17 @@ class SweepConfig:
     BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30         # LONG fires when stoch_k_3m_prev < this
     BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2          # 2 = AND (live); 1 = OR over {15m, 1h}
 
+    # 2026-05-26 Vec-engine live-parity knobs (mirror of config.py additions).
+    # Default OFF/0 preserves bit-exact vec behaviour. Flip via --override for A/B sweeps.
+    VEC_LIVE_REDUCE_PARITY_ENABLED: bool = False
+    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0        # 0 → fall through to 1/RATIO_MULTIPLIER
+    VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
+    VEC_RATIO_REDUCE_PROXY_ENABLED: bool = False
+    RATIO_TRIM_MIN_INTERVAL_S: float = 14400.0      # 4h between proxy trims
+    RATIO_TRIM_MIN_AGE_S: float = 7200.0            # 2h min age before first trim
+    RATIO_TRIM_GAIN_FLOOR: float = 0.5              # trim when gain <= 0.5%
+    VEC_FIRST_OPEN_THROTTLE_BARS: int = 0           # 0 = OFF
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # NPZ + klines loader

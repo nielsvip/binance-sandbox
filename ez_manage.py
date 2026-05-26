@@ -49404,10 +49404,33 @@ async def main():
             for task in background_tasks:
                 task.cancel()
             if "order_monitor" in locals():
-                await order_monitor.stop()
-            await asyncio.gather(*background_tasks, return_exceptions=True)
-            logger.info("All background tasks cancelled.")
-            await cleanup(trade_manager, websocket_managers)
+                try:
+                    await asyncio.wait_for(order_monitor.stop(), timeout=5.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError) as _e:
+                    logger.warning(f"order_monitor.stop timed out / cancelled: {_e!r}")
+                except Exception as _e:
+                    logger.warning(f"order_monitor.stop error: {_e!r}")
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*background_tasks, return_exceptions=True),
+                    timeout=15.0,
+                )
+                logger.info("All background tasks cancelled.")
+            except asyncio.TimeoutError:
+                _stuck = [t for t in background_tasks if not t.done()]
+                logger.warning(
+                    f"Background-task gather timed out after 15s; {len(_stuck)}/{len(background_tasks)} tasks still pending — proceeding to cleanup. Names: {[getattr(t.get_coro(), '__qualname__', '?') for t in _stuck[:10]]}"
+                )
+            except Exception as _e:
+                logger.warning(f"Background-task gather error: {_e!r}")
+            try:
+                await asyncio.wait_for(
+                    cleanup(trade_manager, websocket_managers), timeout=10.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("cleanup() timed out after 10s — exiting anyway.")
+            except Exception as _e:
+                logger.warning(f"cleanup() error: {_e!r}")
             if shutdown_event.is_set():
                 break
             try:

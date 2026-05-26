@@ -45,6 +45,8 @@ LIVE_SHARPE_WINDOW_DAYS = 7
 LIVE_SHARPE_MIN_TRADES = 30
 CRYPTO_ACCOUNTS = ("ang", "inf", "flz", "men", "fin")
 TRADIER_ACCOUNTS = ("trb", "trc")
+PARITY_STATUS_DIR = BASE / "data" / "_diagnostic"
+PARITY_SNAPSHOT_DIR = BASE / "backups"
 
 
 def ssh_run(cmd: str, timeout: int = 45) -> tuple[int, str, str]:
@@ -204,8 +206,62 @@ def collect_state() -> dict:
         _check_top_combos(state)
     except Exception as e:
         state["checks"]["top_combos_check_error"] = str(e)[:160]
+    try:
+        _check_vec_live_parity(state)
+    except Exception as e:
+        state["checks"]["parity_check_error"] = str(e)[:160]
 
     return _finalize(state)
+
+
+def _check_vec_live_parity(state: dict) -> None:
+    """Surface the latest vec-parity status file + parity test results, alert
+    on drift > 0.10 pool_sharpe between vec and live, and (when 100% reached)
+    snapshot the parity-critical files for posterity.
+    """
+    if not PARITY_STATUS_DIR.is_dir():
+        return
+    status_files = sorted(PARITY_STATUS_DIR.glob("vec_parity_status_*.md"))
+    final_files = sorted(PARITY_STATUS_DIR.glob("vec_parity_FINAL_*.md"))
+    wireup_files = sorted(PARITY_STATUS_DIR.glob("vec_parity_wireup_landed_*.md"))
+    latest_status = (
+        max(status_files + final_files + wireup_files, key=lambda p: p.stat().st_mtime)
+        if (status_files or final_files or wireup_files) else None
+    )
+    if latest_status:
+        age_h = (time.time() - latest_status.stat().st_mtime) / 3600.0
+        state["checks"]["parity_latest_report"] = {
+            "path": str(latest_status),
+            "age_hours": round(age_h, 2),
+        }
+        if age_h > 48:
+            state["alerts"].append(("WARN", "PARITY_REPORT_STALE",
+                                    f"latest vec-parity report is {age_h:.1f}h old"))
+
+    snap_dirs = sorted(PARITY_SNAPSHOT_DIR.glob("PARITY_100PCT_*"))
+    state["checks"]["parity_100pct_snapshots"] = [d.name for d in snap_dirs]
+
+    delta_file = PARITY_STATUS_DIR / "vec_live_pool_sharpe_delta.json"
+    if delta_file.exists():
+        try:
+            d = json.loads(delta_file.read_text())
+            vec_ps = float(d.get("vec_pool_sharpe", 0.0))
+            live_ps = float(d.get("live_pool_sharpe", 0.0))
+            delta = vec_ps - live_ps
+            state["checks"]["vec_live_delta"] = {
+                "vec_pool_sharpe": vec_ps,
+                "live_pool_sharpe": live_ps,
+                "delta": round(delta, 4),
+                "abs_delta": round(abs(delta), 4),
+                "ts": d.get("ts"),
+            }
+            if abs(delta) > 0.10:
+                state["alerts"].append((
+                    "WARN", "VEC_LIVE_PARITY_DRIFT",
+                    f"|vec - live| = {abs(delta):.4f} > 0.10 (vec={vec_ps:+.4f} live={live_ps:+.4f})"
+                ))
+        except Exception:
+            pass
 
 
 def _check_live_sharpe(state: dict) -> None:
