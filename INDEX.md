@@ -16,7 +16,7 @@ This file acts as the primary "continue from last time" index, ensuring 100% acc
 
 ## 🎯 Immediate Next Steps
 
-1. **Obtain User Approval**: Wait for user review and explicit approval of the master plan in `implementation_plan.md`.
-2. **Parity Check**: Run `check_sandbox_parity.py` at the start of the execution phase.
-3. **Parameter Tuning**: Ensure `config_tradier.py` and `config.py` reflect the Pareto-optimal parameters (e.g., `ATR_5m_x2.0` stocks trail) without any "Lying Sharpe" or "Suicide Reentry" regressions.
-4. **S1 Sweeping**: Ensure S1 is running both crypto and stocks sweeps, alternating CPU shares hourly and maintaining >60-70% system utilization.
+1. **Remove Hold File**: Remove `/tmp/REENTRY_DAEMON_HOLD` once you are ready to resume live reentry evaluation.
+2. **Restart Services**: Restart the account services to load the new files from disk (e.g. `ez_manage.py`, `tradier_manage.py`, and `ez_reentry_daemon.py`).
+3. **Verify Performance**: Watch active logs for any reentry confirmation decisions and ensure they align with the stochastic and WT indicators.
+4. **Sweeps**: Ensure S1 continues sweeps correctly now that the codebase matches MacBook perfectly.

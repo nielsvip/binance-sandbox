@@ -14407,7 +14407,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 if _btc_exit_dec is not None:
                     score_exit, rec_exit, reason_exit = _btc_exit_dec
                 else:
-                    score_exit, rec_exit, reason_exit = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=True, is_allowed=True, scalping_mode=should_scalp, tracker_manager=tracker_manager, data_manager=data_manager)
+                    score_exit, rec_exit, reason_exit = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=True, is_allowed=True, avg_entry=safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0), scalping_mode=should_scalp, tracker_manager=tracker_manager, data_manager=data_manager)
                 if isinstance(rec_exit, bool): rec_exit = "CLOSE" if rec_exit else "HOLD"
                 if is_long and tracker_manager.registry.market_panic:
                     if current_gain < 0.2: 
