@@ -2190,10 +2190,11 @@ class Config:
     # Step 3 (SL hit: price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
     # 2026-05-22 DISABLED: closes 50% at +0.5% with zero HTF check — kills bottom entries.
     # Already disabled for tradier. Hold until HTF flips per user mandate.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    # 2026-05-26 RE-ENABLED at 1.5%/1.75% per PPL × MIN_GAIN grid winner (ΔPS +0.0212 vs default 0.5%, monotonic 1.5>1.0>0.5).
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger. 2026-04-25 rapid-grid: vectorized optimum 1.125%; 0.8%→2.02, 0.5%→1.52, 0.3%→1.25 pool_sharpe (vs 2.66 at 1.125%). Live stays 0.5% (Finandy latency limits); do not lower further.
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75     # At this gain, upgrade stop from BE+buffer to first_exit_price (0.5% level)
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.5          # 2026-05-26 GRID WINNER (was 0.5). 1.5% > 1.0% > 0.5% monotonic; lets winners run before harvesting.
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 1.75     # 2026-05-26 proportional to GAIN_PCT (+0.25%). Upgrade stop to first_exit_price when remainder hits 1.75%
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10    # 2026-04-28 user: bumped from 0.02 → 0.10 to cover commissions (round-trip ~0.04% maker + ~0.06% slippage). Stop now fires only when remainder is net-positive after fees.
     # 2026-04-28 USER RULE: maker CLOSE orders rest at a commission-positive price.
     # When market is below the floor (LONG close) / above the floor (SHORT close), the post-only

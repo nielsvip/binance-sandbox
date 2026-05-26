@@ -531,13 +531,13 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = True   # 2026-05-26 ON per crypto PPL × MIN_GAIN grid (relative ranking robust)
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
-    # TRADEOFF: lower threshold → higher Sharpe, lower total gain. 0.5% = risk-adjusted winner (+0.40 vs baseline). 0.9375% = user-preferred for total returns.
+    # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.
     # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3      # 2026-04-27 EMERGENCY: was 0.5 — close 50% sooner, lock profits before reversal. User: "get out quicker".
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5  # 2026-04-27 EMERGENCY: was 0.75 — upgrade stop to first_exit price ASAP after partial.
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 1.5      # 2026-05-26 mirrored from crypto grid winner (was 0.3). Tradier-specific sweep pending.
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 1.75 # 2026-05-26 proportional to GAIN_PCT (+0.25%)
     # P2-G: PPL sweep test — vary close and arm thresholds with commission-aware testing
     # Sweep range: close=[0.1,0.2,0.3,0.5,0.75], arm=[0.3,0.5,0.75,1.0]
     # NOTE: at 0.1% close trigger, round-trip commission ~0.12% makes trade economically borderline
