@@ -25,8 +25,13 @@ PATTERNS = [
     re.compile(r"store\.get\s*\(\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]"),
     re.compile(r"store\.arrays\s*\[\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]\s*\]"),
     re.compile(r"['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]\s+in\s+store\.arrays"),
+    re.compile(r"store\.f\s*\(\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]"),
+    re.compile(r"store\.b\s*\(\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]"),
+    re.compile(r"store\.a\s*\(\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]"),
+    re.compile(r"arrays\.get\s*\(\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]"),
+    re.compile(r"\barrays\s*\[\s*['\"]([a-zA-Z][a-zA-Z0-9_]*)['\"]\s*\]"),
 ]
-TEMPLATE_PATTERN = re.compile(r"_safe\s*\(\s*\w+\s*,\s*f['\"]([a-zA-Z_][^'\"]*\{[^}]+\}[^'\"]*)['\"]")
+TEMPLATE_PATTERN = re.compile(r"(?:_safe|store\.f|store\.b|store\.a|arrays\.get)\s*\(\s*f['\"]([a-zA-Z_][^'\"]*\{[^}]+\}[^'\"]*)['\"]")
 TFS = ["3m", "5m", "15m", "1h", "4h", "D", "W", "M"]
 
 
