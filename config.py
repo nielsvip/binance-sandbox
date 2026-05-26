@@ -3750,6 +3750,19 @@ class Config:
     RATIO_TRIM_GAIN_FLOOR: float = 0.5            # trim when gain <= 0.5%
     # vec_paths/first_open_throttle.py — block first OPEN until bar_idx >= N
     VEC_FIRST_OPEN_THROTTLE_BARS: int = 0         # 0 = OFF
+    # 2026-05-26 BATCH 3 — WT_CROSSUNDER_FINAL per-sym-side cooldown (vec only).
+    # Live `_recent_reduces` Redis floor prevents this exit from firing >1×/3600s
+    # per sym-side; live audit shows 0 fires. Vec emits 41,597 fires across 11
+    # syms in 1yr without this gate. Default 0.0 = inert (baseline preservation).
+    WT_CROSSUNDER_FINAL_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 3 — PPL fire cooldown (vec only) per sym-side.
+    # Mirrors live's _recent_ppl_fires Redis key (~24h). Survives close/reopen
+    # cycles because the cooldown lives on SymState, not on _pos (which resets).
+    PPL_FIRE_COOLDOWN_S: float = 0.0
+    # MIN_GAIN_TO_BUY_AGGRESSIVELY: vec/Tier2 UAG fallback. Crypto Config uses
+    # MIN_GAIN=3.0 (line 59); UAG references MIN_GAIN_TO_BUY_AGGRESSIVELY but
+    # falls back to 3.0 if absent. Mirror it explicitly for clarity.
+    MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
 
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))

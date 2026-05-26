@@ -2535,6 +2535,33 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if _dg_pos_val > _dg_min_pos_val and _dg_gain <= _dg_thr:
                     return f"BLOCKED_DUP_GUARD_GAIN_{_dg_gain:.2f}pct_lt_{_dg_thr:.2f}pct"
         # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-26 BATCH 3 — UNIVERSAL_AUGMENT_GAIN_GATE — mirror ez_manage.py:23956
+        # Live default ON (config.py:744). Blocks AUGMENT when gain since last
+        # augmentation price < MIN_GAIN_TO_BUY_AGGRESSIVELY (default 3.0%).
+        # Strict superset of DUP_GUARD_GAIN: this checks price delta since the
+        # *last add* (not since entry), so it blocks pyramiding-down even when
+        # cumulative gain happens to be positive due to an earlier rally.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_aug_action and bool(getattr(config, 'UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED', True)):
+            _uag_pos = trade_manager.positions.get(pk)
+            if _uag_pos is not None:
+                _uag_amt = abs(float(getattr(_uag_pos, 'positionAmt', 0) or 0))
+                _uag_min_qty = float(trade_manager.min_qty.get(sym, 0.0001)) if hasattr(trade_manager, 'min_qty') else 0.0001
+                if _uag_amt > _uag_min_qty:
+                    _uag_min_gain = float(getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0))
+                    _uag_last_px = float(getattr(_uag_pos, 'last_augmentation_price', 0) or 0)
+                    if _uag_last_px <= 0:
+                        _uag_last_px = float(getattr(_uag_pos, 'entry_price', 0) or 0)
+                    if _uag_last_px > 0 and px > 0:
+                        _uag_is_long = (str(ps).upper() == 'LONG') if ps else pk.endswith('_LONG')
+                        _uag_gain_since = (
+                            (px - _uag_last_px) / _uag_last_px * 100.0
+                            if _uag_is_long
+                            else (_uag_last_px - px) / _uag_last_px * 100.0
+                        )
+                        if _uag_gain_since < _uag_min_gain:
+                            return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
+        # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — HARD_AUGMENT_LOCK — mirror ez_manage.py:13946-13955
         # Live blocks AUGMENT/OPEN/REENTRY within 900s of last position-increase unless
         # gain >= MIN_GAIN. Per today's user mandate also fires on TRUE OPEN on empty.

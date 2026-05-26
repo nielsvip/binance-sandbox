@@ -99,6 +99,17 @@ def run_vec_on_sym(sym: str, mode: str, start_ts: int, cfg: VecConfig | None = N
         "events": [],  # placeholder — needs engine instrumentation
     }
 
+def load_active_overrides(sym: str, side: str) -> dict:
+    fp = BASE / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+    if not fp.exists(): return {}
+    try:
+        with open(fp) as f:
+            data = json.load(f)
+            return data.get(f"{sym}_{side}", {}).get("overrides", {})
+    except Exception as e:
+        print(f"Error loading active overrides: {e}")
+        return {}
+
 
 # ───────────────────────────────────────────────────────────
 # Per-sym match analysis
@@ -107,7 +118,9 @@ def compare_sym(sym: str, side: str, mode: str, account: str, days: int = 7):
     now_ts = int(time.time())
     since_ts = now_ts - days * 86400
     live = load_live_events(sym, side, account, since_ts)
-    vec = run_vec_on_sym(sym, mode, since_ts)
+    overrides = load_active_overrides(sym, side)
+    cfg = VecConfig().update_from_dict(overrides) if overrides else VecConfig()
+    vec = run_vec_on_sym(sym, mode, since_ts, cfg=cfg)
     return {
         "sym": sym,
         "side": side,

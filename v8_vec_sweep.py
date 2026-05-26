@@ -968,6 +968,26 @@ class SweepConfig:
     RATIO_TRIM_MIN_AGE_S: float = 7200.0            # 2h min age before first trim
     RATIO_TRIM_GAIN_FLOOR: float = 0.5              # trim when gain <= 0.5%
     VEC_FIRST_OPEN_THROTTLE_BARS: int = 0           # 0 = OFF
+    # 2026-05-26 BATCH 3 — UNIVERSAL_AUGMENT_GAIN_GATE mirror of config.py:744.
+    # Live default is True (ez_manage.py:23956 gate active). VEC default kept
+    # False to preserve Arm A switch_hunt baseline bit-exactly (the live default
+    # diverges intentionally — flip via override in A/B arms). Block any AUGMENT
+    # when (mark vs last_augmentation_price) gain <
+    # MIN_GAIN_TO_BUY_AGGRESSIVELY (3.0% default).
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False
+    MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
+    # 2026-05-26 BATCH 3 — WT_CROSSUNDER_FINAL per-sym-side cooldown.
+    # Live `_recent_reduces` Redis floor effectively prevents this exit from
+    # firing >1×/3600s per sym-side (live = 0 fires; vec = 41,597 fires across
+    # 11 syms in 1yr). VEC default kept 0.0 to preserve Arm A baseline.
+    # Flip to 3600.0 to mirror live floor.
+    WT_CROSSUNDER_FINAL_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 3 — PPL fire cooldown per sym-side (mirrors live's
+    # _recent_ppl_fires Redis key, ~24h). After full close, the next OPEN
+    # creates a new _pos which has ppl_fired=False, so STEP1 fires again
+    # immediately on the next position lifetime. Live blocks via Redis key
+    # for ~24h. VEC default kept 0.0 to preserve baseline.
+    PPL_FIRE_COOLDOWN_S: float = 0.0
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1086,6 +1106,19 @@ class SymState:
     # 2026-05-22 SURGICAL NLK: tag entry as breakout when it bypassed TOR_BLOCK
     # via raw_dc_pos>1.0 exception. Surgical NLK only fires on these positions.
     breakout_entry: bool = False
+    # 2026-05-26 BATCH 3 UAG: last augmentation price for UNIVERSAL_AUGMENT_GAIN_GATE.
+    # Mirrors live position.last_augmentation_price (ez_manage.py:23971). Set on
+    # OPEN + every AUGMENT. UAG gate blocks augment when
+    # gain_since_last_add < MIN_GAIN_TO_BUY_AGGRESSIVELY (default 3.0%).
+    last_augmentation_price: float = 0.0
+    # 2026-05-26 BATCH 3 — WT_CROSSUNDER_FINAL per-sym-side cooldown tracking.
+    # Live `_recent_reduces` Redis floor blocks this exit re-firing within
+    # WT_CROSSUNDER_FINAL_COOLDOWN_S seconds. Default 0.0 = inert.
+    wt_crossunder_last_fire_ts: float = 0.0
+    # 2026-05-26 BATCH 3 — PPL fire cooldown tracking (sym-side persistent).
+    # Mirrors live's _recent_ppl_fires Redis key ~24h. Survives full close
+    # → reopen cycles (lives on SymState, not on _pos).
+    ppl_last_fire_ts: float = 0.0
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -1972,13 +2005,29 @@ def simulate_one_symbol(
                         state.augmented_count = 0
                         state.max_gain = 0.0
                         state.last_augment_ts = bar_ts
+                        state.last_augmentation_price = mark  # UAG anchor
                         state.breakout_entry = bool(_breakout_long_any[i] if is_long else _breakout_short_any[i])
                     elif _trxe["action"] == "ADD":
                         # 2026-05-22 B3: MAX_AUGMENTS cap (live=20). Mandate 2026-05-21:
                         # winners compound; losers don't pile up.
                         _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
-                        if state.augmented_count >= _max_aug:
-                            pass  # skip augment — cap reached
+                        # 2026-05-26 BATCH 3 UAG: mirror live ez_manage.py:23956
+                        _uag_block_trx = False
+                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                                and state.qty > 0.0001):
+                            _uag_last_px = (state.last_augmentation_price
+                                if state.last_augmentation_price > 0 else state.entry_price)
+                            if _uag_last_px > 0:
+                                _uag_gain_since = (
+                                    (mark - _uag_last_px) / _uag_last_px * 100.0
+                                    if is_long
+                                    else (_uag_last_px - mark) / _uag_last_px * 100.0
+                                )
+                                _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                                if _uag_gain_since < _uag_min_gain:
+                                    _uag_block_trx = True
+                        if state.augmented_count >= _max_aug or _uag_block_trx:
+                            pass  # skip augment — cap reached or UAG-blocked
                         else:
                             denom = state.qty + qty_to_add
                             new_entry = (state.qty * state.entry_price + qty_to_add * mark) / denom if denom > 0 else mark
@@ -1991,6 +2040,7 @@ def simulate_one_symbol(
                             state.entry_price = new_entry
                             state.augmented_count += 1
                             state.last_augment_ts = bar_ts
+                            state.last_augmentation_price = mark
             continue  # TR_TREND_v1 handles this bar fully — skip all legacy logic
 
         # ─── PHASE E 2026-05-19 MTF protocol short-circuit ───────────────────
@@ -2085,8 +2135,23 @@ def simulate_one_symbol(
                     if _big_fire:
                         # 2026-05-22 B3: MAX_AUGMENTS cap
                         _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
-                        if state.augmented_count >= _max_aug:
-                            pass  # cap reached
+                        # 2026-05-26 BATCH 3 UAG: mirror live ez_manage.py:23956
+                        _uag_block_mtf = False
+                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                                and state.qty > 0.0001):
+                            _uag_last_px = (state.last_augmentation_price
+                                if state.last_augmentation_price > 0 else state.entry_price)
+                            if _uag_last_px > 0:
+                                _uag_gain_since = (
+                                    (mark - _uag_last_px) / _uag_last_px * 100.0
+                                    if is_long
+                                    else (_uag_last_px - mark) / _uag_last_px * 100.0
+                                )
+                                _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                                if _uag_gain_since < _uag_min_gain:
+                                    _uag_block_mtf = True
+                        if state.augmented_count >= _max_aug or _uag_block_mtf:
+                            pass  # cap reached or UAG-blocked
                         else:
                             add_qty = state.qty * (_mtf_big_mult - 1.0)
                             if add_qty > 0:
@@ -2097,6 +2162,7 @@ def simulate_one_symbol(
                                 events.append(ev)
                                 state.qty = denom; state.entry_price = new_entry
                                 state.augmented_count += 1; state.last_augment_ts = bar_ts
+                                state.last_augmentation_price = mark
                                 state._mtf_big_added = True
                 continue  # MTF holds position — skip legacy logic
             # No position: check for SMALL entry (gated by GR filter)
@@ -2111,6 +2177,7 @@ def simulate_one_symbol(
                 state.qty = new_qty; state.entry_price = mark; state.initial_qty = new_qty
                 state.opened_at = bar_ts; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_open_attempt_ts = bar_ts; state.last_augment_ts = bar_ts
+                state.last_augmentation_price = mark  # UAG anchor
                 state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
                 state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
                 state.breakout_entry = bool(_breakout_long_any[i] if is_long else _breakout_short_any[i])
@@ -2338,6 +2405,7 @@ def simulate_one_symbol(
             state.augmented_count = 0
             state.max_gain = 0.0
             state.last_open_attempt_ts = bar_ts
+            state.last_augmentation_price = mark  # UAG anchor
             # 2026-05-22 SURGICAL NLK — tag entry as breakout-bypassed if either
             # breakout mask fires at this bar for this side. Used by surgical NLK
             # to only close newborn losers that were breakout entries.
@@ -2384,7 +2452,15 @@ def simulate_one_symbol(
         # ─── PARTIAL PROFIT LOCK (PPL) — fires as REDUCE, then protects remainder ─
         if check_ppl_step1 is not None and config.PARTIAL_PROFIT_LOCK_ENABLED:
             _ppl1 = check_ppl_step1(_store, i, _pos, config)
-            if _ppl1 is not None:
+            # 2026-05-26 BATCH 3 — PPL_FIRE_COOLDOWN_S gate (mirrors live's
+            # _recent_ppl_fires Redis key ~24h). state.ppl_last_fire_ts lives
+            # on SymState so it survives full-close + reopen cycles (where
+            # _pos.ppl_fired would reset). Default 0.0 = inert.
+            _ppl_cd_s = float(getattr(config, "PPL_FIRE_COOLDOWN_S", 0.0))
+            _ppl_cd_ok = True
+            if _ppl_cd_s > 0.0 and state.ppl_last_fire_ts > 0.0:
+                _ppl_cd_ok = (bar_ts - state.ppl_last_fire_ts) >= _ppl_cd_s
+            if _ppl1 is not None and _ppl_cd_ok:
                 reduce_qty = state.qty * float(_ppl1.get("frac", config.PARTIAL_PROFIT_LOCK_FRAC))
                 if reduce_qty > 0:
                     ev = TradeEvent(ts=bar_ts, type="REDUCE", qty=reduce_qty, price=mark,
@@ -2396,6 +2472,7 @@ def simulate_one_symbol(
                     _pos.ppl_first_exit_price = mark
                     _pos.ppl_stop_level = float(_ppl1.get("stop_level", state.entry_price))
                     state.last_reduce_ts = bar_ts
+                    state.ppl_last_fire_ts = bar_ts
             elif check_ppl_step2 is not None and _pos.ppl_fired and not _pos.ppl_stop_upgraded:
                 _ppl2 = check_ppl_step2(_store, i, _pos, config)
                 if _ppl2 is not None:
@@ -3067,11 +3144,19 @@ def simulate_one_symbol(
                 _wtcf_base_tf_s = 300.0 if mode == "tradier" else 180.0
                 _wtcf_bars_held = (bar_ts - state.opened_at) / _wtcf_base_tf_s
                 _wtcf_hold_ok = _wtcf_bars_held >= _wtcf_min_hold
-            if _wtcf_hold_ok and (gain >= _min_gain_bar or gain < comm_buf):
+            # 2026-05-26 BATCH 3 — WT_CROSSUNDER_FINAL_COOLDOWN_S gate (mirrors
+            # live `_recent_reduces` Redis floor — sym-side persistent across
+            # close/reopen). Default 0.0 = inert (baseline preservation).
+            _wtcf_cooldown_s = float(getattr(config, "WT_CROSSUNDER_FINAL_COOLDOWN_S", 0.0))
+            _wtcf_cooldown_ok = True
+            if _wtcf_cooldown_s > 0.0 and state.wt_crossunder_last_fire_ts > 0.0:
+                _wtcf_cooldown_ok = (bar_ts - state.wt_crossunder_last_fire_ts) >= _wtcf_cooldown_s
+            if _wtcf_hold_ok and _wtcf_cooldown_ok and (gain >= _min_gain_bar or gain < comm_buf):
                 _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
                 if _wtcf is not None:
                     exit_id = 91
                     exit_reason = _wtcf["reason"]
+                    state.wt_crossunder_last_fire_ts = bar_ts
 
         # R2 WT VELOCITY SLOW (near-breakeven slowdown — matches live R2_WT_VEL_SLOW)
         if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001:
@@ -3296,6 +3381,21 @@ def simulate_one_symbol(
             _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
             if state.augmented_count >= _max_aug:
                 continue
+            # 2026-05-26 BATCH 3 UAG: mirrors ez_manage.py:23956 — block AUGMENT
+            # when gain_since_last_add < MIN_GAIN_TO_BUY_AGGRESSIVELY.
+            if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                    and state.qty > 0.0001):
+                _uag_last_px = (state.last_augmentation_price
+                    if state.last_augmentation_price > 0 else state.entry_price)
+                if _uag_last_px > 0:
+                    _uag_gain_since = (
+                        (mark - _uag_last_px) / _uag_last_px * 100.0
+                        if is_long
+                        else (_uag_last_px - mark) / _uag_last_px * 100.0
+                    )
+                    _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                    if _uag_gain_since < _uag_min_gain:
+                        continue
             # New blended entry
             denom = state.qty + aug_qty
             new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
@@ -3308,6 +3408,7 @@ def simulate_one_symbol(
             state.entry_price = new_entry
             state.augmented_count += 1
             state.last_augment_ts = bar_ts
+            state.last_augmentation_price = mark
 
         # ─── 2026-05-17 VEC_OVERTRADE_FIX — GR-AUGMENT HARD_AUGMENT_LOCK ─────
         # Mirrors slow engine backtest_v8_engine.py:2473-2486. The reentry
@@ -3357,7 +3458,23 @@ def simulate_one_symbol(
                 if _gr_aug is not None and _gr_aug.get("action") == "AUGMENT":
                     # 2026-05-22 B3: MAX_AUGMENTS cap
                     _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
-                    if state.augmented_count < _max_aug:
+                    # 2026-05-26 BATCH 3 UAG: mirrors ez_manage.py:23956 — block
+                    # AUGMENT when gain_since_last_add < MIN_GAIN_TO_BUY_AGGRESSIVELY.
+                    _uag_block = False
+                    if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                            and state.qty > 0.0001):
+                        _uag_last_px = (state.last_augmentation_price
+                            if state.last_augmentation_price > 0 else state.entry_price)
+                        if _uag_last_px > 0:
+                            _uag_gain_since = (
+                                (mark - _uag_last_px) / _uag_last_px * 100.0
+                                if is_long
+                                else (_uag_last_px - mark) / _uag_last_px * 100.0
+                            )
+                            _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                            if _uag_gain_since < _uag_min_gain:
+                                _uag_block = True
+                    if state.augmented_count < _max_aug and not _uag_block:
                         aug_mult = float(_gr_aug.get("mult", 1.0))
                         aug_qty = (config.START_POSITION_SIZE * aug_mult) / mark
                         if aug_qty > 0:
@@ -3370,6 +3487,7 @@ def simulate_one_symbol(
                             state.entry_price = new_entry
                             state.augmented_count += 1
                             state.last_augment_ts = bar_ts
+                            state.last_augmentation_price = mark
                             state.gr_last_fire_ts = bar_ts
 
         # 2026-05-22 USER: end-of-bar bookkeeping — capture current bar's gain as prev_gain
