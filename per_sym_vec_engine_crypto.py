@@ -519,24 +519,131 @@ def _walk_one_variant(
     return np.array(pnl_buf, dtype=np.float32), np.array(ts_buf, dtype=np.int64), np.array(bars_buf, dtype=np.int32), np.array(sides_buf, dtype=np.int8)
 
 
-def _time_weighted_sharpe(pnls: np.ndarray, ets: np.ndarray, ref_ts: int) -> float:
-    if len(pnls) < 2:
-        return 0.0
-    decay = 1.0 - np.clip((ref_ts - ets) / (365.25 * 86400.0 * 2.0), 0.0, 1.0)
-    w = decay / decay.sum()
-    mean = float((pnls * w).sum())
-    var = float((w * (pnls - mean) ** 2).sum())
-    std = math.sqrt(var)
-    return float(mean / std) if std > 1e-12 else 0.0
-
-
-def _max_dd_from_returns(pnls: np.ndarray) -> float:
-    if len(pnls) == 0:
-        return 0.0
-    cum = np.cumsum(pnls)
-    peaks = np.maximum.accumulate(cum)
-    dds = peaks - cum
-    return float(dds.max())
+def _run_variant_task_worker(args):
+    sym, start_ts, variant, years_back = args
+    import sys
+    from pathlib import Path
+    import numpy as np
+    import math
+    _ROOT = Path(__file__).resolve().parent
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+    from v8_vec_sweep import load_npz, simulate_one_symbol, SweepConfig
+    
+    try:
+        npz, ts = load_npz(sym, "crypto", start_ts=start_ts)
+        _npz_cache = (npz, ts)
+    except Exception:
+        return None
+        
+    cfg = SweepConfig()
+    
+    _VEC_LOCKED_FALSE_KNOBS = (
+        "UNIVERSAL_NOLOSS_GATE",
+        "VEC_NOLOSS_GATE_ENABLED",
+        "HEDGE_SCAN_ENABLED",
+        "HEDGE_MODE",
+        "OBLIGATORY_HEDGE_ENABLED",
+        "NOLOSS_ENABLED",
+    )
+    
+    for k, v in variant.items():
+        if k.startswith("_"):
+            continue
+        if k == "NOLOSS_ENABLED":
+            continue
+        if hasattr(cfg, k):
+            setattr(cfg, k, v)
+            
+    for locked in _VEC_LOCKED_FALSE_KNOBS:
+        if hasattr(cfg, locked):
+            setattr(cfg, locked, False)
+            
+    try:
+        long_events, long_rets, _ = simulate_one_symbol(
+            sym, "LONG", "crypto", cfg,
+            start_ts=start_ts,
+            _npz_cache=_npz_cache,
+        )
+    except Exception:
+        long_events, long_rets = [], []
+        
+    try:
+        short_events, short_rets, _ = simulate_one_symbol(
+            sym, "SHORT", "crypto", cfg,
+            start_ts=start_ts,
+            _npz_cache=_npz_cache,
+        )
+    except Exception:
+        short_events, short_rets = [], []
+        
+    long_ets = [int(ev.ts) for ev in long_events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]
+    short_ets = [int(ev.ts) for ev in short_events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]
+    
+    long_rets = long_rets[:len(long_ets)]
+    short_rets = short_rets[:len(short_ets)]
+    
+    pnls = np.array(long_rets + short_rets, dtype=np.float32)
+    ets = np.array(long_ets + short_ets, dtype=np.int64)
+    
+    if len(pnls) > 0:
+        sort_idx = np.argsort(ets)
+        pnls = pnls[sort_idx]
+        ets = ets[sort_idx]
+        
+    trades_n = len(pnls)
+    ref_ts = int(ts[-1]) if len(ts) else 0
+    yrs_for_pyr = max(0.01, float(years_back))
+    
+    if trades_n >= 2:
+        std = float(pnls.std())
+        pool_s = float(pnls.mean() / std) if std > 1e-12 else 0.0
+        
+        decay = 1.0 - np.clip((ref_ts - ets) / (365.25 * 86400.0 * 2.0), 0.0, 1.0)
+        decay_sum = decay.sum()
+        if decay_sum > 1e-12:
+            w = decay / decay_sum
+            mean = float((pnls * w).sum())
+            var = float((w * (pnls - mean) ** 2).sum())
+            std_w = math.sqrt(var)
+            tw_s = float(mean / std_w) if std_w > 1e-12 else 0.0
+        else:
+            tw_s = 0.0
+            
+        wr = float((pnls > 0).mean() * 100.0)
+        avg_g = float(pnls.mean())
+        gain_yr = float(pnls.sum()) / yrs_for_pyr
+        
+        cum = np.cumsum(pnls)
+        peaks = np.maximum.accumulate(cum)
+        dds = peaks - cum
+        dd = float(dds.max()) if len(dds) else 0.0
+    elif trades_n == 1:
+        pool_s = 0.0
+        tw_s = 0.0
+        wr = 100.0 if pnls[0] > 0 else 0.0
+        avg_g = float(pnls[0])
+        gain_yr = float(pnls[0]) / yrs_for_pyr
+        dd = 0.0
+    else:
+        pool_s = 0.0
+        tw_s = 0.0
+        wr = 0.0
+        avg_g = 0.0
+        gain_yr = 0.0
+        dd = 0.0
+        
+    return {
+        "pool_sharpe": pool_s,
+        "time_weighted_sharpe": tw_s,
+        "trades": trades_n,
+        "win_rate_pct": wr,
+        "avg_gain_trade_pct": avg_g,
+        "gain_per_yr_pct": gain_yr,
+        "max_dd_pct": dd,
+        "long_trades": len(long_rets),
+        "short_trades": len(short_rets),
+    }
 
 
 def sweep_variants(
@@ -548,16 +655,19 @@ def sweep_variants(
     n_years_for_yr_metrics: Optional[float] = None,
 ) -> Dict[str, np.ndarray]:
     t0 = time.time()
-    sig = _precompute_signals(sym, years_back)
-    if sig is None:
+    from v8_vec_sweep import load_npz
+    try:
+        npz, ts = load_npz(sym, "crypto", start_ts=None)
+        if len(ts) < 50:
+            if verbose:
+                print(f"[vec_sweep {sym}] Insufficient bars", flush=True)
+            return _empty_scoreboard(len(variants))
+    except Exception:
         if verbose:
-            print(f"[vec_sweep {sym}] NO NPZ or insufficient bars", flush=True)
+            print(f"[vec_sweep {sym}] NO NPZ found", flush=True)
         return _empty_scoreboard(len(variants))
-    tf_sigs = _build_tf_signals(sig)
-    if verbose:
-        print(f"[vec_sweep {sym}] precompute {time.time()-t0:.2f}s | n_bars={sig['n_15m']}", flush=True)
+        
     n_v = len(variants)
-    vararr = _variants_to_arrays(variants)
     pool_sharpe = np.zeros(n_v, dtype=np.float32)
     tw_sharpe = np.zeros(n_v, dtype=np.float32)
     trades = np.zeros(n_v, dtype=np.int32)
@@ -567,75 +677,41 @@ def sweep_variants(
     max_dd = np.zeros(n_v, dtype=np.float32)
     long_trades = np.zeros(n_v, dtype=np.int32)
     short_trades = np.zeros(n_v, dtype=np.int32)
-    yrs_for_pyr = float(n_years_for_yr_metrics if n_years_for_yr_metrics is not None else years_back)
-    yrs_for_pyr = max(yrs_for_pyr, 1e-6)
-    close_15m = sig["close_15m"]
-    ts_15m = sig["ts_15m"]
-    wt1_15m = sig.get("wt1_15m", np.zeros_like(close_15m))
-    wt2_15m = sig.get("wt2_15m", np.zeros_like(close_15m))
-    ref_ts = int(ts_15m.max()) if len(ts_15m) else 0
-    n_chunks = (n_v + chunk_size - 1) // chunk_size
-    for ck in range(n_chunks):
-        lo = ck * chunk_size
-        hi = min(lo + chunk_size, n_v)
-        sl = slice(lo, hi)
-        tk = time.time()
-        e_l, x_l, e_s, x_s = _build_entry_exit_masks_chunk(tf_sigs, sig, vararr, sl)
-        mask_dt = time.time() - tk
-        tw = time.time()
-        chunk_size_actual = hi - lo
-        for j_local in range(chunk_size_actual):
-            j_global = lo + j_local
-            el_col = e_l[:, j_local]
-            es_col = e_s[:, j_local]
-            el_idx = np.flatnonzero(el_col)
-            es_idx = np.flatnonzero(es_col)
-            xl_idx = np.flatnonzero(x_l[:, j_local])
-            xs_idx = np.flatnonzero(x_s[:, j_local])
-            pnls, ets, bars, sides = _walk_one_variant(
-                el_idx, xl_idx, es_idx, xs_idx,
-                close_15m, ts_15m,
-                int(vararr["MIN_HOLD_BARS"][j_global]), int(vararr["COOLDOWN_BARS"][j_global]),
-                bool(vararr["REVERSE_ON_EXIT"][j_global]),
-                bool(vararr["HARD_LOSS_ENABLED"][j_global]),
-                float(vararr["HARD_LOSS_PCT"][j_global]),
-                bool(vararr["PEAK_PROTECT_ENABLED"][j_global]),
-                bool(vararr["PEAK_GIVEBACK_ENABLED"][j_global]),
-                float(vararr["PEAK_GIVEBACK_DROP_PCT"][j_global]),
-                bool(vararr["RIDICULOUS_HOLD_ENABLED"][j_global]),
-                float(vararr["RIDICULOUS_LOSS_PCT"][j_global]),
-                float(vararr["RIDICULOUS_HOLD_HOURS"][j_global]),
-                wt1_15m, wt2_15m,
-                RT_COMM,
-                el_col, es_col,
-            )
-            trades[j_global] = len(pnls)
-            if len(pnls) >= 2:
-                std = float(pnls.std())
-                pool_sharpe[j_global] = float(pnls.mean() / std) if std > 1e-12 else 0.0
-                tw_sharpe[j_global] = _time_weighted_sharpe(pnls, ets, ref_ts=ref_ts)
-                win_rate[j_global] = float((pnls > 0).mean() * 100.0)
-                avg_gain[j_global] = float(pnls.mean())
-                gain_per_yr[j_global] = float(pnls.sum()) / yrs_for_pyr
-                max_dd[j_global] = _max_dd_from_returns(pnls)
-                long_trades[j_global] = int((sides == 1).sum())
-                short_trades[j_global] = int((sides == -1).sum())
-            elif len(pnls) == 1:
-                pool_sharpe[j_global] = 0.0
-                tw_sharpe[j_global] = 0.0
-                win_rate[j_global] = 100.0 if pnls[0] > 0 else 0.0
-                avg_gain[j_global] = float(pnls[0])
-                gain_per_yr[j_global] = float(pnls[0]) / yrs_for_pyr
-                long_trades[j_global] = int((sides == 1).sum())
-                short_trades[j_global] = int((sides == -1).sum())
-        walk_dt = time.time() - tw
-        if verbose:
-            elapsed = time.time() - t0
-            print(f"  chunk {ck+1}/{n_chunks} ({hi-lo} vars) mask={mask_dt:.2f}s walk={walk_dt:.2f}s | total={elapsed:.1f}s", flush=True)
+    
+    ts_3m = ts.astype(np.int64)
+    cutoff = ts_3m[-1] - int(years_back * 365.25 * 86400)
+    start_ts = int(cutoff)
+    
+    import multiprocessing
+    n_workers = max(1, min(16, (multiprocessing.cpu_count() or 4) - 1))
     if verbose:
-        elapsed = time.time() - t0
-        rate = n_v / max(elapsed, 1e-6)
-        print(f"[vec_sweep {sym}] DONE {n_v} variants in {elapsed:.1f}s ({rate:.0f} variants/s)", flush=True)
+        print(f"[vec_sweep {sym}] starting high-parity variant sweep over {n_v} combinations | workers={n_workers} | start_ts={start_ts}", flush=True)
+        
+    tasks = [(sym, start_ts, var, years_back) for var in variants]
+    
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = {executor.submit(_run_variant_task_worker, t): idx for idx, t in enumerate(tasks)}
+        for fut in as_completed(futures):
+            idx = futures[fut]
+            try:
+                res = fut.result()
+                if res is not None:
+                    pool_sharpe[idx] = res["pool_sharpe"]
+                    tw_sharpe[idx] = res["time_weighted_sharpe"]
+                    trades[idx] = res["trades"]
+                    win_rate[idx] = res["win_rate_pct"]
+                    avg_gain[idx] = res["avg_gain_trade_pct"]
+                    gain_per_yr[idx] = res["gain_per_yr_pct"]
+                    max_dd[idx] = res["max_dd_pct"]
+                    long_trades[idx] = res["long_trades"]
+                    short_trades[idx] = res["short_trades"]
+            except Exception as e:
+                pass
+                
+    if verbose:
+        print(f"[vec_sweep {sym}] DONE {n_v} variants in {time.time()-t0:.1f}s", flush=True)
+        
     return {
         "pool_sharpe": pool_sharpe,
         "time_weighted_sharpe": tw_sharpe,

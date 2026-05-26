@@ -23952,6 +23952,7 @@ class MultiAccountTradeManager:
             or "CLOSE" in (reason or "").upper()
             or "REDUCE" in (reason or "").upper()
         )
+        _force_webhook_reduces = False
         if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
             _last_red_ts = _recent_reduces.get(position_key, 0)
             _since_red = time.time() - _last_red_ts
@@ -39064,12 +39065,14 @@ async def process_position(
         if "BREAKOUT" in _leash_aug_reason or "GOLDEN_RULE" in _leash_aug_reason:
             try:
                 _leash_tf = str(getattr(config, "BREAKOUT_LEASH_TF", "3m"))
-                _lh_now = safe_fetch_float(i.get(f"high_{_leash_tf}"), 0.0)
-                _ll_now = safe_fetch_float(i.get(f"low_{_leash_tf}"), 0.0)
-                _lh_prev = safe_fetch_float(i.get(f"high_{_leash_tf}_prev"), 0.0)
-                _ll_prev = safe_fetch_float(i.get(f"low_{_leash_tf}_prev"), 0.0)
-                _dc_h_prev = safe_fetch_float(i.get(f"dc_high_{_leash_tf}_prev"), 0.0)
-                _dc_l_prev = safe_fetch_float(i.get(f"dc_low_{_leash_tf}_prev"), 0.0)
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _lh_now = safe_fetch_float(_pp_shared_ind.get(f"high_{_leash_tf}"), 0.0)
+                _ll_now = safe_fetch_float(_pp_shared_ind.get(f"low_{_leash_tf}"), 0.0)
+                _lh_prev = safe_fetch_float(_pp_shared_ind.get(f"high_{_leash_tf}_prev"), 0.0)
+                _ll_prev = safe_fetch_float(_pp_shared_ind.get(f"low_{_leash_tf}_prev"), 0.0)
+                _dc_h_prev = safe_fetch_float(_pp_shared_ind.get(f"dc_high_{_leash_tf}_prev"), 0.0)
+                _dc_l_prev = safe_fetch_float(_pp_shared_ind.get(f"dc_low_{_leash_tf}_prev"), 0.0)
                 _lh_ll = False; _dropped_back = False
                 if position_side == "LONG":
                     if _lh_now > 0.0 and _lh_prev > 0.0 and _lh_now < _lh_prev and _ll_now < _ll_prev: _lh_ll = True

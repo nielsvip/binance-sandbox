@@ -181,6 +181,22 @@ try:
 except ImportError:
     check_golden_rule_enforce = None
 try:
+    from vec_paths.btc_dedicated import (
+        build_btc_long_entry_mask,
+        build_btc_short_entry_mask,
+        build_btc_breakout_mask,
+        build_btc_exit_mask,
+        build_btc_divergence_block_mask,
+        is_btc_symbol,
+    )
+except ImportError:
+    build_btc_long_entry_mask = None
+    build_btc_short_entry_mask = None
+    build_btc_breakout_mask = None
+    build_btc_exit_mask = None
+    build_btc_divergence_block_mask = None
+    is_btc_symbol = None
+try:
     from vec_paths.peak_giveback_be_erosion import check_peak_giveback_exit, check_be_erosion_exit
 except ImportError:
     check_peak_giveback_exit = None
@@ -190,10 +206,46 @@ try:
 except ImportError:
     check_profit_take_reduce = None
     check_strong_reduce_k = None
+# WT exit family (2026-05-26) — WT_DIV / WT_ACCEL / WT_MOMENTUM / WT_EXHAUST cfg.
+# Source: ez_positions_quick.py:3461-3464 (WT_EXHAUST+DIV_EXIT), 3523-3542
+# (MI_DIV+MI_VELOCITY), and the cluster of WT_*_EXIT_ENABLED knobs the
+# autonomous search has been writing into per-sym overrides for months.
+# Pulled out of unknown-knob limbo so v8_vec_sweep stops silently ignoring them.
+try:
+    from vec_paths.wt_exits import build_wt_exit_masks as _build_wt_exit_masks
+except ImportError:
+    _build_wt_exit_masks = None
 try:
     from vec_paths.delta_engine import check_delta_entry
 except ImportError:
     check_delta_entry = None
+# REGIME engine (live ez_regime.py vectorised) — adapts noloss/exit_gain_min per bar
+# based on RANGING vs TRENDING classification. Reads 7 REGIME_* knobs from
+# config.py:2423-2455 (REGIME_BTC_MARKET_WEIGHT, REGIME_RANGING_EXIT_GAIN_MIN,
+# REGIME_RANGING_NOLOSS_MIN, REGIME_RANGING_WT_REDUCE_FRAC_LOW,
+# REGIME_TRENDING_EXIT_GAIN_MIN, REGIME_TRENDING_K_RESET_THRESHOLD,
+# REGIME_TRENDING_SLOT_RESERVE_PCT) plus master switch REGIME_DETECTION_ENABLED.
+try:
+    from vec_paths.regime_engine import build_regime_arrays as build_regime_arrays_vec
+    from vec_paths.regime_engine import regime_adapted_min_gain as _regime_adapted_min_gain
+except ImportError:
+    build_regime_arrays_vec = None
+    _regime_adapted_min_gain = None
+# RZ cascade (Reverse Zone) — RZ_BREAKOUT entry + EXIT_SCORER N-of-5 exit + RZ_CASCADE
+# multi-TF breakout/reverse signals. Source: ez_manage.py:32735+,
+# wt_dc_exit_scorer.py:39+, old/v8_quick_engine.py:1802+. Defaults OFF except where
+# the source's live default differs (RZ_CASCADE_ENABLED defaults False so existing
+# sweeps unchanged until explicitly toggled).
+try:
+    from vec_paths.rz_cascade import (
+        check_rz_breakout_entry_vec,
+        check_rz_exit_vec,
+        compute_rz_cascade_signals_vec,
+    )
+except ImportError:
+    check_rz_breakout_entry_vec = None
+    check_rz_exit_vec = None
+    compute_rz_cascade_signals_vec = None
 # TR_TREND_v1 — Daily-decision breakout-retest stock strategy (spec: data/research_20260516/strategy_plan.md §4)
 # Default-OFF per CLAUDE.md NEW STRATEGY PROHIBITION; sweep-validate before any live enable.
 try:
@@ -437,6 +489,25 @@ class SweepConfig:
     SHARPE_HOUR_FLOOR_ENABLED: bool = False
     REGIME_FLOOR_ENABLED: bool = False
     VOLUME_FLOOR_ENABLED: bool = False
+    # ── 2026-05-26 MARKET REGIME DETECTION (vec_paths/regime_engine.py) ──
+    # Mirrors live ez_regime.py defaults (config.py:2423-2455). 7 knobs
+    # promoted to SweepConfig so they no longer appear in UNKNOWN telemetry
+    # when a per-task override flips them on. RANGING vs TRENDING per-bar
+    # exit floor is wired into v8_vec_sweep simulate loop (_min_gain_bar).
+    REGIME_DETECTION_ENABLED: bool = False
+    REGIME_ENTER_TRENDING_THRESHOLD: float = 30.0
+    REGIME_EXIT_TRENDING_THRESHOLD: float = 15.0
+    REGIME_MIN_DWELL_BARS: int = 16
+    REGIME_BTC_MARKET_WEIGHT: float = 0.5
+    REGIME_RANGING_NOLOSS_MIN: float = 0.05
+    REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15
+    REGIME_RANGING_WT_REDUCE_FRAC_LOW: float = 0.40
+    REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.60
+    REGIME_TRENDING_NOLOSS_MIN: float = 0.50
+    REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.10
+    REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.40
+    REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0
     # ── quarantine ────────────────────────────────────────────────────────
     QUARANTINE_ENFORCE_ENABLED: bool = False  # backtest = no quarantine list
     QUARANTINE_BYPASS_HEDGE: bool = True
@@ -665,6 +736,28 @@ class SweepConfig:
     TR_TREND_V1_SPY_SLOPE_LOOKBACK_D: int = 10
     TR_TREND_V1_RISK_PCT: float = 0.5
     TR_TREND_V1_ACCOUNT_USD: float = 35000.0
+    # ── RZ CASCADE (Reverse Zone) — vectorized 2026-05-26 ──────────────────────
+    # Vec ports of: ez_manage.py:32735+ RZ_BREAKOUT entry; wt_dc_exit_scorer.py
+    # score_exit() (EXIT_SCORER_*); old/v8_quick_engine.py:1802 cascade signals.
+    # Defaults match live config.py / config_tradier.py / flz active_config.json.
+    RZ_BREAKOUT_ENTRY_ENABLED: bool = False         # ez_manage.py:32738 default OFF
+    RZ_TOP_BB_THRESHOLD: float = 0.85               # live default
+    RZ_BOT_BB_THRESHOLD: float = 0.15               # live default
+    RZ_BREAKOUT_BAND: float = 0.05                  # ez_manage.py:32742 default
+    EXIT_SCORER_ENABLED: bool = False               # wt_dc_exit_scorer used only when True
+    EXIT_SCORER_MIN_CONDITIONS: int = 5             # 5=strict (default), 3=loose
+    EXIT_SCORER_K_EXTREME: float = 75.0             # stoch K extreme floor (LONG) / ceiling (SHORT)
+    EXIT_SCORER_DC_EXTREME: float = 0.80            # dc_position extreme floor / ceiling
+    RZ_CASCADE_ENABLED: bool = False                # gate for multi-TF cascade
+    RZ_CASCADE_MIN_TF_ALIGN: int = 1                # number of non-LTF TFs aligned for entry
+    RZ_CASCADE_EXIT_MIN_REV_TFS: int = 2            # reverse-TF count for exit
+    RZ_CASCADE_EXIT_ANY_TF: bool = True             # True=count any-TF reverse; False=LTF-only
+    RZ_CASCADE_WT_DELTA_MIN: float = 0.1            # min |wt1-wt2| to count breakout
+    RZ_CASCADE_VEL_MIN: float = 0.1                 # min |wt_velocity| to count breakout
+    RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0          # % band around dc_high/low for at_upper/at_lower
+    RZ_CASCADE_HIGH_LOOKBACK: int = 20              # lookback bars for new-high requirement
+    RZ_CASCADE_REQUIRE_NEW_HIGH: bool = False       # require new close-high to count breakout
+    RZ_CASCADE_USE_W_M: bool = False                # add W/M TFs to alignment count
     # ── DEAD-KNOB REWIRE (2026-05-18 18:00 UTC mandate) ─────────────────────────
     # Flags previously honoured only in backtest_v8_engine.py / tradier_manage.py
     # but ignored by the vec path → every V8_USE_VEC_ALL=1 sweep that toggled
@@ -1018,6 +1111,23 @@ def simulate_one_symbol(
     reentry = evaluate_reentry_vec(npz, is_long, config, ltf=_ltf)
     # 2. Exit gates (indicator-only)
     exit_gates = evaluate_exit_gates_vec(npz, is_long, config, ltf=_ltf)
+    # 2b. WT exit family (DIV/ACCEL/MOMENTUM/EXHAUST_cfg) — 2026-05-26.
+    # Auto-loaded into exit_gates so the simulate loop can check via mask[i].
+    if _build_wt_exit_masks is not None:
+        _wtex = _build_wt_exit_masks(npz, n, is_long, config)
+        exit_gates['wt_div_exit'] = _wtex['div']['mask']
+        exit_gates['wt_accel_exit'] = _wtex['accel']['mask']
+        exit_gates['wt_momentum_exit'] = _wtex['momentum']['mask']
+        # exhaust_cfg gives caller two masks: live-equivalent (mask) and BTC N-TF (mask_btc)
+        exit_gates['wt_exhaust_cfg'] = _wtex['exhaust_cfg']['mask']
+        exit_gates['wt_exhaust_btc'] = _wtex['exhaust_cfg']['mask_btc']
+    else:
+        _zero = np.zeros(n, dtype=bool)
+        exit_gates['wt_div_exit'] = _zero
+        exit_gates['wt_accel_exit'] = _zero
+        exit_gates['wt_momentum_exit'] = _zero
+        exit_gates['wt_exhaust_cfg'] = _zero
+        exit_gates['wt_exhaust_btc'] = _zero
     # 3. Pre-compute hedge cascade WT-against arrays (we'll call noloss vec
     #    per-need, but precompute reuses these too).
     wt1_3m = np.nan_to_num(npz.get("wt1_3m", np.zeros(n)).astype(np.float32))
@@ -1152,6 +1262,34 @@ def simulate_one_symbol(
             _brs_mask = (_brs_bb < _brs_bb_max) & (_brs_rsi < _brs_rsi_max) & (_brs_k < _brs_k_max)
         else:
             _brs_mask = (_brs_bb > (1.0 - _brs_bb_max)) & (_brs_rsi > (100.0 - _brs_rsi_max)) & (_brs_k > (100.0 - _brs_k_max))
+
+    # ─── RZ CASCADE PRECOMPUTE (2026-05-26) ───────────────────────────────────
+    _rz_break_mask = np.zeros(n, dtype=bool)
+    _rz_cascade_entry = np.zeros(n, dtype=bool)
+    _rz_cascade_exit = np.zeros(n, dtype=bool)
+    _rz_scorer_exit = np.zeros(n, dtype=bool)
+    if check_rz_breakout_entry_vec is not None:
+        try:
+            _rz_break_mask = check_rz_breakout_entry_vec(npz, n, is_long, config)
+        except Exception as _e_rz1:
+            sys.stderr.write(f"RZ_BREAKOUT vec precompute failed: {_e_rz1}\n")
+            _rz_break_mask = np.zeros(n, dtype=bool)
+    if compute_rz_cascade_signals_vec is not None:
+        try:
+            _rz_ltf = "3m" if mode == "crypto" else "5m"
+            _rz_cascade_entry, _rz_cascade_exit = compute_rz_cascade_signals_vec(
+                npz, n, is_long, config, ltf=_rz_ltf,
+            )
+        except Exception as _e_rz2:
+            sys.stderr.write(f"RZ_CASCADE vec precompute failed: {_e_rz2}\n")
+            _rz_cascade_entry = np.zeros(n, dtype=bool)
+            _rz_cascade_exit = np.zeros(n, dtype=bool)
+    if check_rz_exit_vec is not None:
+        try:
+            _rz_scorer_exit = check_rz_exit_vec(npz, n, is_long, config)
+        except Exception as _e_rz3:
+            sys.stderr.write(f"RZ EXIT_SCORER vec precompute failed: {_e_rz3}\n")
+            _rz_scorer_exit = np.zeros(n, dtype=bool)
 
     # ─── STRUCTURAL GATES PRECOMPUTE (2026-05-15) ─────────────────────────────
     # A1: SPY > 200SMA regime mask (aligned to this symbol's ts).
@@ -1410,6 +1548,35 @@ def simulate_one_symbol(
         except Exception as _qb_exc:
             _qb_fire_mask = np.zeros(n, dtype=bool)
 
+    # ─── 2026-05-26 BTC_DEDICATED precompute (USER MANDATE: vectorize live btc_loop) ──
+    # Mirrors btc_loop.should_enter_btc_long/short + detect_btc_breakout + should_exit_btc.
+    # Only fires for BTC symbols (BTCUSDC/BTCUSDT) per live `_btc_dedicated_disabled`.
+    # See vec_paths/btc_dedicated.py.
+    _btc_entry_mask = np.zeros(n, dtype=bool)
+    _btc_breakout_mask = np.zeros(n, dtype=bool)
+    _btc_exit_mask = np.zeros(n, dtype=bool)
+    if (
+        bool(getattr(config, "BTC_DEDICATED_ENABLED", False))
+        and build_btc_long_entry_mask is not None
+        and is_btc_symbol is not None
+        and is_btc_symbol(symbol)
+    ):
+        try:
+            if is_long:
+                _btc_entry_mask = build_btc_long_entry_mask(npz, n, config).astype(bool)
+            else:
+                _btc_entry_mask = build_btc_short_entry_mask(npz, n, config).astype(bool)
+        except Exception:
+            _btc_entry_mask = np.zeros(n, dtype=bool)
+        try:
+            _btc_breakout_mask = build_btc_breakout_mask(npz, n, is_long, config).astype(bool)
+        except Exception:
+            _btc_breakout_mask = np.zeros(n, dtype=bool)
+        try:
+            _btc_exit_mask = build_btc_exit_mask(npz, n, is_long, config).astype(bool)
+        except Exception:
+            _btc_exit_mask = np.zeros(n, dtype=bool)
+
     # ─── QUALITY_TOP_EXIT precompute (2026-05-23 USER MANDATE "in at bottom, out at top") ─
     # Symmetric exit partner for quality_bottom_entry. LONG exit fires on top-short mask;
     # SHORT exit fires on bottom-long mask. Default OFF.
@@ -1526,6 +1693,20 @@ def simulate_one_symbol(
     comm_buf = float(config.COMMISSION_BUFFER_PCT)
     min_gain = float(config.MIN_GAIN)
     grace_s = float(config.NEWBORN_PROTECT_GRACE_SECONDS)
+    # 2026-05-26 REGIME engine vectorised — when REGIME_DETECTION_ENABLED=True,
+    # the per-bar exit_gain_min replaces the scalar `min_gain` for non-emergency
+    # exits. Mirrors live ez_regime.get_regime_params() noloss/exit_gain_min selection.
+    # See vec_paths/regime_engine.py. Reads 7 user-mandated REGIME_* knobs.
+    if build_regime_arrays_vec is not None:
+        try:
+            _regime_arrays = build_regime_arrays_vec(npz, n, config)
+        except Exception as _re:
+            sys.stderr.write(f"regime_engine precompute failed {symbol}/{side}: {_re}\n")
+            _regime_arrays = {"enabled": False}
+    else:
+        _regime_arrays = {"enabled": False}
+    _regime_active = bool(_regime_arrays.get("enabled", False))
+    _regime_exit_gain = _regime_arrays.get("exit_gain_min")
     # Side-asymmetric sizing — applied as RETURN MULTIPLIER (treats SIZE_MULT as leverage).
     # Without this, pool_sharpe is computed from per-trade % which is qty-independent —
     # changing LONG_SIZE_MULT 1.0→3.0 has zero effect on metrics (bug repro 2026-05-17).
@@ -1671,6 +1852,16 @@ def simulate_one_symbol(
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
             continue
+        # 2026-05-26 REGIME-ADAPTED per-bar exit floor — replaces scalar `min_gain`
+        # in non-emergency exit gates when REGIME_DETECTION_ENABLED=True. In
+        # RANGING regime the floor drops to REGIME_RANGING_EXIT_GAIN_MIN (~0.15%)
+        # so vec captures fast mean-reversion exits; in TRENDING regime it stays
+        # at REGIME_TRENDING_EXIT_GAIN_MIN (~2.0%) to let winners run. When the
+        # master switch is False, _min_gain_bar == min_gain (no behaviour change).
+        if _regime_active and _regime_exit_gain is not None and i < _regime_exit_gain.shape[0]:
+            _min_gain_bar = float(_regime_exit_gain[i])
+        else:
+            _min_gain_bar = min_gain
 
         # ─── TR_TREND_v1 short-circuit (2026-05-17 NEW STRATEGY) ─────────────
         # When the daily-decision breakout-retest strategy is enabled, ALL legacy
@@ -1942,6 +2133,12 @@ def simulate_one_symbol(
             # BB_BREAKOUT + BB_RSI_STOCH — eighth + ninth triggers (2026-05-22)
             _bb_break_ok = bool(_bb_break_mask[i])
             _brs_ok = bool(_brs_mask[i])
+            # 2026-05-26 BTC_DEDICATED — vectorised btc_loop.should_enter_btc_long/short
+            # + detect_btc_breakout. Only fires for BTC syms; mask is all-False otherwise.
+            _btc_ok = bool(_btc_entry_mask[i]) or bool(_btc_breakout_mask[i])
+            # 2026-05-26 RZ cluster — RZ_BREAKOUT + RZ_CASCADE entry triggers
+            _rz_break_ok = bool(_rz_break_mask[i])
+            _rz_cascade_ok = bool(_rz_cascade_entry[i])
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
             # Daily-cap on quality entries (~1-2/day target)
@@ -1959,7 +2156,7 @@ def simulate_one_symbol(
                 # quality entry fires — count it
                 state.quality_entries_today += 1
             else:
-                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok):
+                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok):
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1
@@ -2039,6 +2236,12 @@ def simulate_one_symbol(
             elif fire_block:
                 block_id = int(reentry["block_id"][i])
                 reason = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN")
+            elif _btc_ok and not (wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _bb_break_ok or _brs_ok or _qb_ok):
+                # 2026-05-26 BTC_DEDICATED — primary entry or breakout (matches live btc_loop reasons)
+                if bool(_btc_breakout_mask[i]):
+                    reason = f"BTC_LOOP_ENTRY_{'LONG' if is_long else 'SHORT'}_BREAKOUT"
+                else:
+                    reason = f"BTC_LOOP_ENTRY_{'LONG' if is_long else 'SHORT'}_PRIMARY"
             else:
                 reason = "WT_3M_FORCE_OPEN"
             ev = TradeEvent(
@@ -2228,6 +2431,48 @@ def simulate_one_symbol(
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 _pos.gain_pct = 0.0
                 continue
+
+        # ─── BTC_DEDICATED exit gate (2026-05-26 vectorised btc_loop.should_exit_btc) ──
+        # Fires on WT-against count >= BTC_TECH_EXIT_WT_MIN_TFS, OR accel-reversal,
+        # OR divergence-against. Only active when BTC_DEDICATED_ENABLED for BTC syms.
+        if state.qty > 0.0001 and bool(_btc_exit_mask[i]):
+            pnl_pct = gain
+            ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                value=state.qty * mark, reason=f"BTC_LOOP_EXIT_{'LONG' if is_long else 'SHORT'}_TECH",
+                pnl_pct=pnl_pct)
+            events.append(ev)
+            trade_returns.append(pnl_pct)
+            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+            state.last_reduce_ts = bar_ts; state.hedge_active = False
+            state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+            state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+            _pos.gain_pct = 0.0
+            continue
+
+        # ─── RZ EXIT gates (2026-05-26) ─────────────────────────────────────
+        # EXIT_SCORER N-of-5 (wt_dc_exit_scorer.py) AND/OR RZ_CASCADE multi-TF
+        # reverse. Both gated by their own master flags; mask is all-False
+        # otherwise, so this block is a no-op for existing sweeps.
+        if state.qty > 0.0001 and (bool(_rz_scorer_exit[i]) or bool(_rz_cascade_exit[i])):
+            pnl_pct = gain
+            _rz_reason_parts = []
+            if bool(_rz_scorer_exit[i]):
+                _rz_reason_parts.append("EXIT_SCORER_STRICT")
+            if bool(_rz_cascade_exit[i]):
+                _rz_reason_parts.append("RZ_CASCADE_REV")
+            _rz_reason = "_".join(_rz_reason_parts) + f"_g{gain:.2f}%"
+            ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                value=state.qty * mark, reason=_rz_reason, pnl_pct=pnl_pct)
+            events.append(ev)
+            trade_returns.append(pnl_pct)
+            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+            state.last_reduce_ts = bar_ts; state.hedge_active = False
+            state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+            state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+            _pos.gain_pct = 0.0
+            continue
 
         # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
         if check_r1_emergency_exit is not None and state.qty > 0.0001:
@@ -2449,7 +2694,7 @@ def simulate_one_symbol(
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
         # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency, requires gain >= MIN_GAIN.
-        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_exit_passes is not None and gain >= min_gain:
+        if exit_id == EXIT_NONE and config.GR_EXIT_ENABLED and _gr_exit_passes is not None and gain >= _min_gain_bar:
             if bool(_wt3m_against[i]) and bool(_gr_exit_passes[i]):
                 exit_id = 99
                 exit_reason = f"GR_EXIT_{config.GR_EXIT_MIN_TFS}tf_x_{config.GR_EXIT_MIN_IND}ind"
@@ -2458,7 +2703,7 @@ def simulate_one_symbol(
         # 2026-05-17 MIN_GAIN_EXIT_GATE: was `gain >= comm_buf` (0.10%) which closed
         # at micro-gains, dragging avg_gain_trade to 0.37%. Now requires real gain
         # (>= config.MIN_GAIN = 3.0%) before this non-emergency exit can fire.
-        if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= min_gain:
+        if exit_id == EXIT_NONE and exit_gates["wt_4h_vel_full"][i] and age_s > 360 and gain >= _min_gain_bar:
             exit_id = EXIT_WT_4H_VEL
             exit_reason = f"WT_4H_VEL_g={gain:.2f}%"
 
@@ -2471,31 +2716,51 @@ def simulate_one_symbol(
             dh = float(dc_h_4h[i]); dl = float(dc_l_4h[i])
             if dh > 0 and dl > 0 and age_s > float(config.DC_HOPELESS_EXIT_MIN_AGE_S):
                 if (is_long and state.entry_price > dh) or ((not is_long) and state.entry_price < dl):
-                    if gain >= min_gain or gain < comm_buf:
+                    if gain >= _min_gain_bar or gain < comm_buf:
                         exit_id = EXIT_DC_HOPELESS
                         exit_reason = f"DC_HOPELESS_entry={state.entry_price:.4f}"
 
         # 2026-05-17 MIN_GAIN_EXIT_GATE: was `gain > 0` (allowed close at +0.1%);
         # now requires gain >= MIN_GAIN to avoid micro-gain closes.
         if exit_id == EXIT_NONE and config.WT_EXHAUST_EXIT_ENABLED and exit_gates["wt_exhaust"][i] and age_s > grace_s:
-            if gain >= min_gain:
+            if gain >= _min_gain_bar:
                 exit_id = EXIT_WT_EXHAUST
                 exit_reason = "WT_EXHAUST"
 
         # 2026-05-17 MIN_GAIN_EXIT_GATE: WT_PERCENTILE / E_1_WT_DELTA / E_3_STRUCTURE
         # are non-emergency exits — gate behind gain >= MIN_GAIN to prevent
         # micro-gain closes (R1/R2/HEDGE_FAILED handle the real loss paths).
-        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i] and age_s > grace_s and gain >= min_gain:
+        if exit_id == EXIT_NONE and exit_gates["wt_percentile"][i] and age_s > grace_s and gain >= _min_gain_bar:
             exit_id = EXIT_WT_PERCENTILE
             exit_reason = "WT_PERCENTILE"
 
-        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i] and age_s > grace_s and gain >= min_gain:
+        if exit_id == EXIT_NONE and exit_gates["e1_wt_delta"][i] and age_s > grace_s and gain >= _min_gain_bar:
             exit_id = EXIT_E1_WT_DELTA
             exit_reason = "E_1_WT_DELTA"
 
-        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i] and age_s > grace_s and gain >= min_gain:
+        if exit_id == EXIT_NONE and exit_gates["e3_structure"][i] and age_s > grace_s and gain >= _min_gain_bar:
             exit_id = EXIT_E3_STRUCTURE
             exit_reason = "E_3_STRUCTURE"
+
+        # WT exit family (vec_paths/wt_exits.py — 2026-05-26). Sentinel exit_ids
+        # mirror the GR_EXIT=99 convention. All four are non-emergency exits gated
+        # behind gain >= MIN_GAIN and grace age, same as the surrounding cohort.
+        if exit_id == EXIT_NONE and exit_gates["wt_div_exit"][i] and age_s > grace_s and gain >= _min_gain_bar:
+            exit_id = 110
+            exit_reason = "WT_DIV_EXIT"
+        if exit_id == EXIT_NONE and exit_gates["wt_accel_exit"][i] and age_s > grace_s and gain >= _min_gain_bar:
+            exit_id = 111
+            exit_reason = "WT_ACCEL_EXIT"
+        if exit_id == EXIT_NONE and exit_gates["wt_momentum_exit"][i] and age_s > grace_s and gain >= _min_gain_bar:
+            exit_id = 112
+            exit_reason = "WT_MOMENTUM_EXIT"
+        # Configurable N-TFs variant of WT_EXHAUST (used by BTC_TECH_EXIT_WT_MIN_TFS).
+        # Only fires when caller explicitly sets WT_EXHAUST_EXIT_MIN_TFS > 0 (else the
+        # default live-equivalent mask above at exit_gates["wt_exhaust"] handles it).
+        if exit_id == EXIT_NONE and int(getattr(config, 'WT_EXHAUST_EXIT_MIN_TFS', 0)) > 0 \
+                and exit_gates["wt_exhaust_cfg"][i] and age_s > grace_s and gain >= _min_gain_bar:
+            exit_id = 113
+            exit_reason = f"WT_EXHAUST_CFG_minTFs={int(getattr(config, 'WT_EXHAUST_EXIT_MIN_TFS', 0))}"
 
         # PEAK_GIVEBACK exit (gain decaying from peak — full close, bypasses noloss)
         if exit_id == EXIT_NONE and check_peak_giveback_exit is not None and state.qty > 0.0001:
@@ -2535,7 +2800,7 @@ def simulate_one_symbol(
         # ha_1h/ha_15m in NPZ are int8: 1=green, -1=red (NOT strings)
         # 2026-05-17 MIN_GAIN_EXIT_GATE: floor at max(IN_GAIN_TREND_MIN_GAIN, MIN_GAIN)
         # so this profit-harvest never closes below 3% real gain.
-        if exit_id == EXIT_NONE and config.IN_GAIN_TREND_EXIT_ENABLED and gain >= max(float(config.IN_GAIN_TREND_MIN_GAIN), min_gain):
+        if exit_id == EXIT_NONE and config.IN_GAIN_TREND_EXIT_ENABLED and gain >= max(float(config.IN_GAIN_TREND_MIN_GAIN), _min_gain_bar):
             _igt_fired = False
             _igt_reason = ""
             if gain >= float(config.IN_GAIN_TREND_BIG_WINNER_PCT):
@@ -2578,7 +2843,7 @@ def simulate_one_symbol(
                 _wtcf_base_tf_s = 300.0 if mode == "tradier" else 180.0
                 _wtcf_bars_held = (bar_ts - state.opened_at) / _wtcf_base_tf_s
                 _wtcf_hold_ok = _wtcf_bars_held >= _wtcf_min_hold
-            if _wtcf_hold_ok and (gain >= min_gain or gain < comm_buf):
+            if _wtcf_hold_ok and (gain >= _min_gain_bar or gain < comm_buf):
                 _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
                 if _wtcf is not None:
                     exit_id = 91

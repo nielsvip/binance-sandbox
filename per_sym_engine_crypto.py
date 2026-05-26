@@ -1211,525 +1211,64 @@ def _build_signals(tf_data: Dict, side: str, params: SymParams) -> Tuple[np.ndar
     return enter, leave
 
 
-def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
-                  only_side: Optional[str] = None) -> Optional[Dict]:
-    """Run BOTH LONG and SHORT through unified walker. Supports REVERSE_ON_EXIT + FOLLOW_THROUGH.
-    Returns symbol-level metrics + per-side breakdown.
-    `only_side='LONG'/'SHORT'` disables the other side at signal level (true per-side isolation).
-    """
-    base = load_3m_base(sym, years_back=years_back)
-    # Min bars proportional to window: ~500/day at 3m. 7-day window = 3360 OK; require ≥1000 minimum.
-    min_bars = max(1000, int(min(years_back, 0.05) * 365.25 * 480 * 0.7))
-    if base is None or len(base['close']) < min_bars:
-        return None
-    tf_data = build_tf_data(base)
-    # Min HTF bars proportional. 7-day window has D=7, 4h=42, 1h=168, 15m=672. Be lenient.
-    if years_back < 0.1:
-        # short-window: just need D≥5 and 4h≥20 (otherwise no signal)
-        min_per_tf = {'15m': 100, '1h': 50, '4h': 20, 'D': 5}
-    else:
-        min_per_tf = {tf: 50 for tf in list(DECISION_TFS) + ['D']}
-    for tf in list(DECISION_TFS) + ['D']:
-        if tf not in tf_data or len(tf_data[tf]['close']) < min_per_tf.get(tf, 50):
-            return None
-    # User 2026-05-05 mandate: NOLOSS without HEDGE = account-killer. Force-couple here.
-    if params.NOLOSS_ENABLED and not params.HEDGE_ENABLED:
-        params = params.copy()
-        params.NOLOSS_ENABLED = False
-        params.__dict__['_noloss_auto_disabled'] = 'NOLOSS requires HEDGE — auto-disabled'
-    # WT_DC HIERARCHY (vectorized cascade state machine — primary entry/exit when enabled).
-    # Use 'tradier' MODE for crypto so hierarchy skips 3m (no close_5m for crypto → auto-skipped to 15m as LTF).
-    # This aligns hierarchy signals with my 15m walker grid.
-    # RZ_CASCADE — v8_quick_engine vectorized port. Adds LTF-breakout-with-HTF-alignment entries.
-    if getattr(params, 'USE_RZ_CASCADE', False):
-        global _rz_cascade_signals
-        if _rz_cascade_signals is None:
-            _rz_cascade_signals = _import_rz_cascade()
-        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
-        # Use LTF=15m for crypto in RZ cascade (matches walker grid, avoids 3m noise per hierarchy fix)
-        rz_cfg = params.copy()
-        rz_cfg.LTF = '15m'
-        rz_long_3m, _rz_long_exit = _rz_cascade_signals(base, n_3m, True, rz_cfg)
-        rz_short_3m, _rz_short_exit = _rz_cascade_signals(base, n_3m, False, rz_cfg)
-        # Subsample 3m → 15m grid
-        n_15m = len(tf_data['15m']['close'])
-        def _ss_rz(arr_3m: np.ndarray) -> np.ndarray:
-            cut = (len(arr_3m) // 5) * 5
-            sub = arr_3m[:cut][4::5]
-            if len(sub) >= n_15m: return sub[:n_15m]
-            return np.concatenate([np.zeros(n_15m - len(sub), dtype=bool), sub])
-        rz_long_15m = _ss_rz(rz_long_3m)
-        rz_short_15m = _ss_rz(rz_short_3m)
-    else:
-        rz_long_15m = None
-        rz_short_15m = None
+def events_to_trades(events: list, trade_returns: list, side: str) -> list:
+    trades, last_open, last_hedge_open, close_idx, n_trades = [], None, None, 0, min(len([ev for ev in events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]), len(trade_returns))
+    for ev in events:
+        if ev.type == "OPEN": last_open = ev
+        elif ev.type == "HEDGE_OPEN": last_hedge_open = ev
+        elif ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE"):
+            if close_idx >= n_trades: break
+            pnl_net, is_hedge = float(trade_returns[close_idx]), (ev.type == "HEDGE_CLOSE" or "hedge" in ev.reason.lower())
+            close_idx += 1
+            trigger_open = last_hedge_open if is_hedge else last_open
+            entry_ts, entry_price = float(trigger_open.ts) if trigger_open else float(ev.ts - 3600), float(trigger_open.price) if trigger_open else float(ev.price)
+            trades.append({'side': side, 'entry_ts': int(entry_ts), 'exit_ts': int(ev.ts), 'entry_price': entry_price, 'exit_price': float(ev.price), 'pnl_pct': pnl_net, 'pnl_gross_pct': float(ev.pnl_pct), 'bars_held': max(1, int((ev.ts - entry_ts) / 900)), 'origin': ev.reason})
+    return trades
 
-    # USE_V8_AGGREGATORS — pull entry/exit from v8_quick_engine which already has ALL paths integrated.
-    # This is the single biggest jump in entry quality — bringing in ALL of BTC_BREAKOUT, ACCEL_RAMP,
-    # DELTA, SATOSHIT, K_ZONE, MFI, VWAP, STDEV, RZ_BREAKOUT, ATR_SIZING, WINNER_PROTECT, etc.
-    if getattr(params, 'USE_V8_AGGREGATORS', False):
-        _ensure_v8_loaded()
-        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
-        # Build a QuickConfig and overlay our params
-        qcfg = _v8_QuickConfig()
-        qcfg.MODE = 'crypto'
-        qcfg.LTF = '3m'
-        # 1. Apply baseline override (proven config from sweep — e.g. override_btc_BEST.json keys)
-        baseline_ovr = getattr(params, 'BASELINE_OVERRIDES', {}) or {}
-        for k, v in baseline_ovr.items():
-            if k.startswith('_'): continue
-            try: setattr(qcfg, k, v)
-            except Exception: pass
-        # If BTC_DEDICATED_ENABLED is True (override_btc_BEST sets this), per-sym scope it.
-        # Mirrors flz8 profile pattern: cfg.BTC_DEDICATED_SYMBOLS = (sym,) so each sym uses
-        # its own BTC-dedicated config in isolation, not the global tuple.
-        if getattr(qcfg, 'BTC_DEDICATED_ENABLED', False):
-            qcfg.BTC_DEDICATED_SYMBOLS = (sym,)
-        # 2. Then overlay SymParams (per-sym sweep variations on top of baseline)
-        for pk, pv in params.to_dict().items():
-            if pk == 'BASELINE_OVERRIDES': continue
-            if hasattr(qcfg, pk):
-                try: setattr(qcfg, pk, pv)
-                except Exception: pass
+def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0, only_side: Optional[str] = None) -> Optional[Dict]:
+    from v8_vec_sweep import load_npz, simulate_one_symbol, SweepConfig
+    try: npz, ts = load_npz(sym, "crypto")
+    except Exception: return None
+    if len(ts) == 0: return None
+    cutoff, _npz_cache, cfg = int(ts[-1] - years_back * 365.25 * 86400), (npz, ts), SweepConfig()
+    for k, v in params.to_dict().items():
+        if hasattr(cfg, k): setattr(cfg, k, v)
+    for locked in ("UNIVERSAL_NOLOSS_GATE", "VEC_NOLOSS_GATE_ENABLED", "HEDGE_SCAN_ENABLED", "HEDGE_MODE", "OBLIGATORY_HEDGE_ENABLED", "NOLOSS_ENABLED"):
+        if hasattr(cfg, locked): setattr(cfg, locked, False)
+    long_trades = []
+    if only_side != "SHORT":
         try:
-            v8_enter_long = _v8_compute_entry(base, n_3m, True, qcfg, sym=sym)
-            v8_enter_short = _v8_compute_entry(base, n_3m, False, qcfg, sym=sym)
-            v8_leave_long = _v8_compute_exit(base, n_3m, True, qcfg)
-            v8_leave_short = _v8_compute_exit(base, n_3m, False, qcfg)
-        except Exception as e:
-            print(f"[per_sym_engine] v8 aggregators error: {e}", flush=True)
-            v8_enter_long = v8_enter_short = v8_leave_long = v8_leave_short = None
-        # Subsample 3m → 15m (every 5th index)
-        n_15m = len(tf_data['15m']['close'])
-        def _ss_v8(arr_3m: np.ndarray) -> np.ndarray:
-            cut = (len(arr_3m) // 5) * 5
-            sub = arr_3m[:cut][4::5]
-            if len(sub) >= n_15m: return sub[:n_15m]
-            return np.concatenate([np.zeros(n_15m - len(sub), dtype=bool), sub])
-        if v8_enter_long is not None:
-            enter_long = _ss_v8(v8_enter_long)
-            enter_short = _ss_v8(v8_enter_short)
-            leave_long = _ss_v8(v8_leave_long)
-            leave_short = _ss_v8(v8_leave_short)
-        else:
-            enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
-            enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
-    elif getattr(params, 'USE_WT_DC_HIERARCHY', False):
-        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
-        # Trick: clone params with MODE='tradier' so _resolve_tfs returns ('5m','15m','1h','4h','D');
-        # crypto NPZ has no close_5m → hierarchy auto-skips 5m, effectively LTF=15m.
-        hier_cfg = params.copy()
-        hier_cfg.MODE = 'tradier'
-        hier_long = compute_hierarchy_full(base, n_3m, True, hier_cfg)
-        hier_short = compute_hierarchy_full(base, n_3m, False, hier_cfg)
-        # Subsample 3m → 15m (every 5th index is the 15m bar close)
-        def _ss(arr_3m: np.ndarray) -> np.ndarray:
-            cut = (len(arr_3m) // 5) * 5
-            sub = arr_3m[:cut][4::5]
-            n_target = len(tf_data['15m']['close'])
-            if len(sub) >= n_target:
-                return sub[:n_target]
-            return np.concatenate([np.zeros(n_target - len(sub), dtype=bool), sub])
-        if hier_long.get('tfs'):
-            enter_long = _ss(hier_long['entry'])
-            leave_long = _ss(hier_long['exit'])
-        else:
-            enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
-        if hier_short.get('tfs'):
-            enter_short = _ss(hier_short['entry'])
-            leave_short = _ss(hier_short['exit'])
-        else:
-            enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
-    else:
-        enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
-        enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
-    # OR in RZ_CASCADE entry signals if enabled (additive entry path)
-    if rz_long_15m is not None:
-        if len(rz_long_15m) == len(enter_long):
-            enter_long = enter_long | rz_long_15m
-    if rz_short_15m is not None:
-        if len(rz_short_15m) == len(enter_short):
-            enter_short = enter_short | rz_short_15m
-    if only_side == 'LONG':
-        enter_short = np.zeros_like(enter_short)
-    elif only_side == 'SHORT':
-        enter_long = np.zeros_like(enter_long)
-    # ─── USER 2026-05-06 mandate: backtest must mirror live safety guards ───
-    # Compute bar-level forced-exit masks for: ALL_TF_AGAINST, WT15M_AGAINST, DC_BB_D_BREAK_REVERSE.
-    # OR'd into the leave masks so the walker treats them as exit signals (with origin tagged).
-    n_15m_safety = len(tf_data['15m']['close'])
-    def _ss_3m_to_15m(arr_3m):
-        """Subsample 3m npz array to 15m grid by taking every 5th bar."""
-        if arr_3m is None or len(arr_3m) == 0:
-            return np.zeros(n_15m_safety, dtype=bool)
-        cut = (len(arr_3m) // 5) * 5
-        sub = arr_3m[:cut][4::5]
-        if len(sub) >= n_15m_safety: return sub[:n_15m_safety]
-        return np.concatenate([np.zeros(n_15m_safety - len(sub), dtype=bool), sub])
-    # All TF against (LONG: every TF wt1<wt2; SHORT mirror)
-    if getattr(params, 'BT_ALL_TF_AGAINST_CLOSE_ENABLED', True):
-        tf_npz_keys = [('wt1_3m','wt2_3m'),('wt1_15m','wt2_15m'),('wt1_1h','wt2_1h'),('wt1_4h','wt2_4h'),('wt1_D','wt2_D')]
-        n_3m_loc = len(base.get('close_3m', base['close']))
-        all_against_long_3m = np.ones(n_3m_loc, dtype=bool)
-        all_against_short_3m = np.ones(n_3m_loc, dtype=bool)
-        for w1k, w2k in tf_npz_keys:
-            w1 = base.get(w1k); w2 = base.get(w2k)
-            if w1 is None or w2 is None or len(w1) != n_3m_loc:
-                all_against_long_3m = np.zeros(n_3m_loc, dtype=bool); break
-            all_against_long_3m &= (w1 < w2)
-            all_against_short_3m &= (w1 > w2)
-        all_against_long_15m = _ss_3m_to_15m(all_against_long_3m)
-        all_against_short_15m = _ss_3m_to_15m(all_against_short_3m)
-        leave_long = leave_long | all_against_long_15m
-        leave_short = leave_short | all_against_short_15m
-    # WT15M against (looser than ALL_TF — just 15m)
-    if getattr(params, 'BT_WT15M_AGAINST_FORCE_HEDGE_ENABLED', True):
-        w1_15m = base.get('wt1_15m'); w2_15m = base.get('wt2_15m')
-        if w1_15m is not None and w2_15m is not None and len(w1_15m) == len(base.get('close_3m', base['close'])):
-            wt15_against_long_3m = w1_15m < w2_15m
-            wt15_against_short_3m = w1_15m > w2_15m
-            leave_long = leave_long | _ss_3m_to_15m(wt15_against_long_3m)
-            leave_short = leave_short | _ss_3m_to_15m(wt15_against_short_3m)
-    # DC_BB_D_BREAK_REVERSE — close wrong-side on D-band break
-    if getattr(params, 'BT_DC_BB_D_BREAK_REVERSE_ENABLED', True):
-        close_3m = base.get('close_3m', base['close'])
-        n_3m_loc = len(close_3m)
-        dc_hi_d = base.get('dc_high_D')
-        dc_lo_d = base.get('dc_low_D')
-        bb_up_d = base.get('bb_upper_D')
-        bb_lo_d = base.get('bb_lower_D')
-        d_break_up_3m = np.zeros(n_3m_loc, dtype=bool)
-        d_break_dn_3m = np.zeros(n_3m_loc, dtype=bool)
-        if dc_hi_d is not None and len(dc_hi_d) == n_3m_loc:
-            prev = np.roll(dc_hi_d, 1); prev[0] = dc_hi_d[0]
-            d_break_up_3m |= (close_3m > prev) & (prev > 0)
-        if dc_lo_d is not None and len(dc_lo_d) == n_3m_loc:
-            prev = np.roll(dc_lo_d, 1); prev[0] = dc_lo_d[0]
-            d_break_dn_3m |= (close_3m < prev) & (prev > 0)
-        if bb_up_d is not None and len(bb_up_d) == n_3m_loc:
-            prev = np.roll(bb_up_d, 1); prev[0] = bb_up_d[0]
-            d_break_up_3m |= (close_3m > prev) & (prev > 0)
-        if bb_lo_d is not None and len(bb_lo_d) == n_3m_loc:
-            prev = np.roll(bb_lo_d, 1); prev[0] = bb_lo_d[0]
-            d_break_dn_3m |= (close_3m < prev) & (prev > 0)
-        # Break-UP kills SHORT positions, break-DOWN kills LONG
-        leave_short = leave_short | _ss_3m_to_15m(d_break_up_3m)
-        leave_long = leave_long | _ss_3m_to_15m(d_break_dn_3m)
-    h15 = tf_data['15m']['high']
-    l15 = tf_data['15m']['low']
-    c15_close = tf_data['15m']['close']
-    if 'wt1_15m' in tf_data['15m']:
-        wt1_15m_arr = tf_data['15m']['wt1_15m']
-        wt2_15m_arr = tf_data['15m']['wt2_15m']
-    else:
-        wt1_15m_arr, wt2_15m_arr = compute_wt(h15, l15, c15_close, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-    n_15m = len(c15_close)
-    hedge_tf = getattr(params, 'HEDGE_WT_TF', '3m')
-    if f'wt1_{hedge_tf}' in tf_data['15m']:
-        wt1_at_15m = tf_data['15m'][f'wt1_{hedge_tf}']
-        wt2_at_15m = tf_data['15m'][f'wt2_{hedge_tf}']
-    else:
-        if hedge_tf == '3m':
-            h_src, l_src, c_src = base['high'], base['low'], base['close']
-            wt1_full, wt2_full = compute_wt(h_src, l_src, c_src, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-            ratio = 5
-            cut = (len(c_src) // ratio) * ratio
-            wt1_at_15m = wt1_full[:cut][ratio - 1::ratio][:n_15m]
-            wt2_at_15m = wt2_full[:cut][ratio - 1::ratio][:n_15m]
-        elif hedge_tf in ('15m', '1h', '4h', 'D'):
-            tfd = tf_data[hedge_tf]
-            wt1_tf, wt2_tf = compute_wt(tfd['high'], tfd['low'], tfd['close'], int(getattr(params, f'WT_CHAN_{hedge_tf}')), int(getattr(params, f'WT_AVG_{hedge_tf}')))
-            repeat_ratio = TF_BARS_3M[hedge_tf] // TF_BARS_3M['15m']
-            if repeat_ratio == 1:
-                wt1_at_15m = wt1_tf[:n_15m]
-                wt2_at_15m = wt2_tf[:n_15m]
-            else:
-                wt1_at_15m = np.repeat(wt1_tf, repeat_ratio)[:n_15m]
-                wt2_at_15m = np.repeat(wt2_tf, repeat_ratio)[:n_15m]
-        else:
-            wt1_at_15m = wt1_15m_arr.copy()
-            wt2_at_15m = wt2_15m_arr.copy()
-    if len(wt1_at_15m) < n_15m:
-        pad = n_15m - len(wt1_at_15m)
-        wt1_at_15m = np.concatenate([np.zeros(pad), wt1_at_15m])
-        wt2_at_15m = np.concatenate([np.zeros(pad), wt2_at_15m])
-    wt1_3m_at_15m = wt1_at_15m
-    wt2_3m_at_15m = wt2_at_15m
-    htf_long = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'LONG', params, len(enter_long))
-    htf_short = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'SHORT', params, len(enter_short))
-    enter_long = enter_long & htf_long
-    enter_short = enter_short & htf_short
-    # Booster gates from NPZ-precomputed fields (subsample 3m→15m: every 5th index aligned with 15m bar end).
-    n_15m = len(enter_long)
-    def _resample_3m_to_15m(arr_3m: np.ndarray) -> np.ndarray:
-        if arr_3m is None or len(arr_3m) == 0:
-            return np.zeros(n_15m, dtype=np.float64)
-        # tf_data['15m']['ts'][i] corresponds to (i+1)*5-1 in the 3m index (the 5th 3m bar of the 15m window).
-        # base['ts'] was sliced to last_N_years; tf_data resamples to the same year range.
-        # Simplest: take last n_15m × 5 of arr_3m; resample by taking close-of-bin (every 5th).
-        cut = (len(arr_3m) // 5) * 5
-        out = arr_3m[:cut][4::5]
-        if len(out) >= n_15m:
-            return out[:n_15m]
-        # Pad short
-        return np.concatenate([np.zeros(n_15m - len(out), dtype=np.float64), out])
-
-    fund_3m = base.get('funding_rate_3m')
-    if params.FUNDING_GATE_ENABLED and fund_3m is not None:
-        f15 = _resample_3m_to_15m(fund_3m)
-        long_fund_ok = f15 <= params.FUNDING_GATE_LONG_MAX
-        short_fund_ok = f15 >= params.FUNDING_GATE_SHORT_MIN
-        enter_long = enter_long & long_fund_ok
-        enter_short = enter_short & short_fund_ok
-
-    oi_chg_3m = base.get('oi_change_1h_3m')
-    if params.OI_GATE_ENABLED and oi_chg_3m is not None:
-        oi15 = _resample_3m_to_15m(oi_chg_3m)
-        # LONG: skip when OI dropping hard (signals long unwind/distribution)
-        # SHORT: skip when OI dropping hard the other way (short squeeze setup)
-        long_oi_ok = oi15 >= params.OI_GATE_OI_CHANGE_MIN
-        short_oi_ok = oi15 >= params.OI_GATE_OI_CHANGE_MIN
-        enter_long = enter_long & long_oi_ok
-        enter_short = enter_short & short_oi_ok
-
-    accel_field = f'wt_acceleration_{params.WT_ACCEL_GATE_TF}'
-    wt_acc = base.get(accel_field)
-    if params.WT_ACCEL_GATE_ENABLED and wt_acc is not None:
-        a15 = _resample_3m_to_15m(wt_acc)
-        long_acc_ok = a15 > 0  # wt accelerating up
-        short_acc_ok = a15 < 0
-        enter_long = enter_long & long_acc_ok
-        enter_short = enter_short & short_acc_ok
-
-    # Divergence block: bearish div = price HH but WT LH over LB bars → block LONG entry
-    if params.DIVERGENCE_BLOCK_ENABLED:
-        c15 = tf_data['15m']['close']
-        h15 = tf_data['15m']['high']
-        l15 = tf_data['15m']['low']
-        wt1_15m, _ = compute_wt(h15, l15, c15,
-                                 int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-        lb = int(params.DIVERGENCE_LB)
-        # Rolling max/min of price and WT over LB bars
-        price_max_lb = _rolling_max(c15, lb)
-        price_min_lb = _rolling_min(c15, lb)
-        wt_max_lb = _rolling_max(wt1_15m, lb)
-        wt_min_lb = _rolling_min(wt1_15m, lb)
-        # Bearish div: current bar at price max but WT NOT at max → bearish
-        bearish_div = (c15 >= price_max_lb) & (wt1_15m < wt_max_lb)
-        bullish_div = (c15 <= price_min_lb) & (wt1_15m > wt_min_lb)
-        # Block LONG when bearish div present (price topping but momentum weakening)
-        enter_long = enter_long & ~bearish_div
-        # Block SHORT when bullish div (price bottoming but momentum strengthening)
-        enter_short = enter_short & ~bullish_div
-    c15 = tf_data['15m']['close']
-    ts15 = tf_data['15m']['ts']
-    # ─── Phase 2A patch 3: REQUIRE_ABOVE_SMA50_D (LT-direction filter) ───
-    if getattr(params, 'REQUIRE_ABOVE_SMA50_D', False):
-        sma50_3m = base.get('sma_50_D')
-        if sma50_3m is not None:
-            sma50_15m = _resample_3m_to_15m(sma50_3m)
-            if len(sma50_15m) >= len(c15):
-                above50 = c15 > sma50_15m[:len(c15)]
-                enter_long = enter_long & above50
-                enter_short = enter_short & ~above50
-    # ─── Phase 2A patch 4: HTF_TREND_VETO (block entries against Daily WT) ───
-    if getattr(params, 'HTF_TREND_VETO_ENABLED', False):
-        wt1_d_3m = base.get('wt1_D')
-        wt2_d_3m = base.get('wt2_D')
-        if wt1_d_3m is not None and wt2_d_3m is not None:
-            wt1_d_15m = _resample_3m_to_15m(wt1_d_3m)
-            wt2_d_15m = _resample_3m_to_15m(wt2_d_3m)
-            n_min = min(len(wt1_d_15m), len(wt2_d_15m), len(enter_long))
-            if n_min > 0:
-                bull_d = wt1_d_15m[:n_min] > wt2_d_15m[:n_min]
-                # pad to enter_long length if shorter
-                if n_min < len(enter_long):
-                    pad = len(enter_long) - n_min
-                    bull_d = np.concatenate([np.zeros(pad, dtype=bool), bull_d])
-                enter_long = enter_long & bull_d
-                enter_short = enter_short & ~bull_d
-    # ─── Phase 2A patch 4: HEDGE_HTF_VETO precompute (Daily wt supports hedge?) ───
-    hedge_htf_ok_long = None
-    hedge_htf_ok_short = None
-    if getattr(params, 'HEDGE_HTF_VETO_ENABLED', False):
-        wt1_d_3m = base.get('wt1_D')
-        wt2_d_3m = base.get('wt2_D')
-        if wt1_d_3m is not None and wt2_d_3m is not None:
-            wt1_d_15m_h = _resample_3m_to_15m(wt1_d_3m)
-            wt2_d_15m_h = _resample_3m_to_15m(wt2_d_3m)
-            n_min_h = min(len(wt1_d_15m_h), len(wt2_d_15m_h), len(c15))
-            if n_min_h > 0:
-                bull_d_h = wt1_d_15m_h[:n_min_h] > wt2_d_15m_h[:n_min_h]
-                # hedge-of-LONG = SHORT, needs HTF bearish (wt1_D < wt2_D)
-                hedge_htf_ok_long = ~bull_d_h
-                # hedge-of-SHORT = LONG, needs HTF bullish
-                hedge_htf_ok_short = bull_d_h
-                if n_min_h < len(c15):
-                    pad = len(c15) - n_min_h
-                    hedge_htf_ok_long = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_long])
-                    hedge_htf_ok_short = np.concatenate([np.zeros(pad, dtype=bool), hedge_htf_ok_short])
-    # ─── Phase 2A patch 2: X7 frozen-DC precompute (subsample to 15m grid) ───
-    x7_dc_freeze_15m = None
-    x7_bb_freeze_15m = None
-    if getattr(params, 'X7_FROZEN_DC_STOP_ENABLED', False):
-        dc_field = f'dc_low_{params.X7_FREEZE_DC_TF}' if 'LONG' or True else None  # both sides use dc_low for stop; SHORT uses dc_high
-        # NOTE: for SHORT, the natural stop is dc_high. But our walker uses one freeze array per call.
-        # Solution: walker reads frozen_dc and decides side semantics there. We just supply both.
-        dc_lo_3m = base.get(f'dc_low_{params.X7_FREEZE_DC_TF}')
-        dc_hi_3m = base.get(f'dc_high_{params.X7_FREEZE_DC_TF}')
-        # Walker uses single freeze: for crypto we use dc_low for LONG; SHORT uses dc_high. But walker takes one array.
-        # Compromise: build a side-aware freeze inside walker; here we pass dc_low (for LONG) and let walker mirror via abs_floor only for SHORT,
-        # OR set freeze=None for SHORT. Simpler: just pass dc_lo; abs_floor still applies symmetrically.
-        if dc_lo_3m is not None:
-            x7_dc_freeze_15m = _resample_3m_to_15m(dc_lo_3m)
-            if len(x7_dc_freeze_15m) < len(c15):
-                pad = len(c15) - len(x7_dc_freeze_15m)
-                x7_dc_freeze_15m = np.concatenate([np.zeros(pad), x7_dc_freeze_15m])
-        bb_tf = getattr(params, 'X7_FREEZE_BB_TF', '') or ''
-        if bb_tf:
-            bb_lo_3m = base.get(f'bb_lower_{bb_tf}')
-            if bb_lo_3m is not None:
-                x7_bb_freeze_15m = _resample_3m_to_15m(bb_lo_3m)
-                if len(x7_bb_freeze_15m) < len(c15):
-                    pad = len(c15) - len(x7_bb_freeze_15m)
-                    x7_bb_freeze_15m = np.concatenate([np.zeros(pad), x7_bb_freeze_15m])
-    trades = walk_trades_dual(
-        enter_long, leave_long, enter_short, leave_short, c15, ts15,
-        int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m),
-        wt1_15m=wt1_15m_arr, wt2_15m=wt2_15m_arr,
-        wt1_3m_at_15m=wt1_3m_at_15m, wt2_3m_at_15m=wt2_3m_at_15m,
-        reverse_on_exit=params.REVERSE_ON_EXIT_ENABLED,
-        follow_through=params.FOLLOW_THROUGH_REENTRY_ENABLED,
-        ft_min_move_pct=float(params.FOLLOW_THROUGH_MIN_MOVE_PCT),
-        ft_window_bars=int(params.FOLLOW_THROUGH_WINDOW_BARS),
-        augment_enabled=params.AUGMENT_ENABLED,
-        augment_levels_pct=tuple(params.AUGMENT_LEVELS_PCT),
-        mean_rev_enabled=params.REENTRY_MEAN_REV_ENABLED,
-        mean_rev_tol_pct=float(params.REENTRY_MEAN_REV_TOLERANCE_PCT),
-        mean_rev_window=int(params.REENTRY_MEAN_REV_WINDOW_BARS),
-        hedge_enabled=params.HEDGE_ENABLED,
-        hedge_size_frac=float(params.HEDGE_SIZE_FRAC),
-        noloss_enabled=params.NOLOSS_ENABLED,
-        peak_protect_enabled=params.PEAK_PROTECT_ENABLED,
-        peak_protect_require_gain=params.PEAK_PROTECT_REQUIRE_GAIN,
-        hard_loss_enabled=params.HARD_LOSS_PCT_ENABLED,
-        hard_loss_pct=float(params.HARD_LOSS_PCT),
-        peak_giveback_fixed_enabled=params.PEAK_GIVEBACK_FIXED_PCT_ENABLED,
-        peak_giveback_fixed_drop_pct=float(params.PEAK_GIVEBACK_FIXED_DROP_PCT),
-        peak_giveback_fixed_min_peak_pct=float(params.PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT),
-        ppl_v2_enabled=getattr(params, 'PARTIAL_PROFIT_LOCK_ENABLED', False),
-        ppl_v2_step1_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5)),
-        ppl_v2_arm_gain_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.75)),
-        ppl_v2_be_buffer_pct=float(getattr(params, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.10)),
-        ppl_v2_frac=float(getattr(params, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5)),
-        x7_dc_freeze_15m=x7_dc_freeze_15m,
-        x7_bb_freeze_15m=x7_bb_freeze_15m,
-        x7_abs_floor_pct=float(getattr(params, 'X7_ABS_FLOOR_PCT', -8.0)),
-        hedge_htf_ok_long=hedge_htf_ok_long,
-        hedge_htf_ok_short=hedge_htf_ok_short,
-    )
-    span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
-    yrs = max(0.01, span_days / 365.25)
-    # Buy-and-hold baseline over the same window (short-horizon agents need this).
-    bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
-    if not trades:
-        empty = {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
-                 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0,
-                 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0,
-                 'gain_per_week': 0.0, 'bh_pct_window': bh_pct,
-                 'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1,
-                 'tag': f'per_sym_dual_{sym}', 'trade_list': [],
-                 'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
-        return empty
-    # Mark-to-market: any trade where exit_idx == n-1 is a position that didn't have a real exit signal —
-    # it was force-closed at last bar. Tag those for transparency. The pnl_pct already reflects MTM since
-    # walker uses xp = c15[exit_i] = last bar close. User 2026-05-05: "always add gain/loss of open positions".
-    n_15m_total = len(c15)
-    open_at_end = [t for t in trades if t.get('exit_idx', 0) == n_15m_total - 1]
-    for t in trades:
-        t['mtm_at_end'] = (t.get('exit_idx', 0) == n_15m_total - 1)
+            long_events, long_rets, _ = simulate_one_symbol(sym, "LONG", "crypto", cfg, start_ts=cutoff, _npz_cache=_npz_cache)
+            long_trades = events_to_trades(long_events, long_rets, "LONG")
+        except Exception: pass
+    short_trades = []
+    if only_side != "LONG":
+        try:
+            short_events, short_rets, _ = simulate_one_symbol(sym, "SHORT", "crypto", cfg, start_ts=cutoff, _npz_cache=_npz_cache)
+            short_trades = events_to_trades(short_events, short_rets, "SHORT")
+        except Exception: pass
+    trades = long_trades + short_trades
+    trades.sort(key=lambda t: t['exit_ts'])
+    span_days, n = max(1.0, (ts[-1] - ts[0]) / 86400.0), len(trades)
+    yrs, weeks = max(0.01, span_days / 365.25), max(1.0 / 7.0, span_days / 7.0)
+    close_array = npz.get("close", npz.get("close_3m", np.zeros(1)))
+    bh_pct = float((close_array[-1] / close_array[0] - 1.0) * 100.0) if len(close_array) and close_array[0] > 0 else 0.0
+    if n == 0: return {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0, 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0, 'gain_per_week': 0.0, 'bh_pct_window': bh_pct, 'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1, 'tag': f'per_sym_dual_{sym}', 'trade_list': [], 'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
     rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
-    n = len(rets)
     sd = float(rets.std())
     pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
-    wr = float((rets > 0).mean() * 100.0)
-    eq = np.cumsum(rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
-    total = float(rets.sum())
-    n_long = sum(1 for t in trades if t['side'] == 'LONG')
-    n_short = n - n_long
-    n_open_at_end = len(open_at_end)
-    mtm_pnl_open = float(sum(t['pnl_pct'] for t in open_at_end))
-    n_reverse = sum(1 for t in trades if t.get('origin') == 'reverse_on_exit')
-    n_ft = sum(1 for t in trades if t.get('origin') == 'follow_through')
-    n_aug = sum(1 for t in trades if (t.get('origin') or '').startswith('augment_'))
-    n_hedge = sum(1 for t in trades if (t.get('origin') or '').startswith('hedge'))
-    n_hedge_wt3m = sum(1 for t in trades if (t.get('origin') or '').startswith('hedge_wt'))
-    n_peak_protect = sum(1 for t in trades if t.get('origin') == 'peak_protect_wt15m')
-    n_mtm_end = sum(1 for t in trades if t.get('origin') == 'mtm_at_end')
-    n_hard_loss = sum(1 for t in trades if t.get('origin') == 'hard_loss_pct')
-    n_peak_giveback_fixed = sum(1 for t in trades if t.get('origin') == 'peak_giveback_fixed')
-    n_mr = sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry')
-    weeks = max(1.0 / 7.0, span_days / 7.0)
-    return {
-        'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
-        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
-        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
-        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
-        'gain_per_week': total / weeks, 'bh_pct_window': bh_pct,
-        'years': yrs, 'n_syms': 1, 'tag': f'per_sym_dual_{sym}',
-        'trade_list': trades, 'params': params.to_dict(),
-        'long_trades': n_long, 'short_trades': n_short,
-        'reverse_on_exit_count': n_reverse, 'follow_through_count': n_ft,
-        'augment_count': n_aug, 'hedge_count': n_hedge, 'mean_rev_reentry_count': n_mr,
-        'open_at_end_count': n_open_at_end, 'mtm_pnl_open_pct': mtm_pnl_open,
-        'hedge_wt3m_count': n_hedge_wt3m,
-        'peak_protect_count': n_peak_protect,
-        'mtm_at_end_count': n_mtm_end,
-        'hard_loss_count': n_hard_loss,
-        'peak_giveback_fixed_count': n_peak_giveback_fixed,
-        'noloss_auto_disabled': params.__dict__.get('_noloss_auto_disabled', ''),
-    }
-
-
-def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
-    """Returns dict with per-(sym,side) trades + canonical metrics, or None on data miss."""
-    if side not in ('LONG', 'SHORT'): raise ValueError(f"side must be LONG or SHORT, got {side}")
-    base = load_3m_base(sym, years_back=years_back)
-    if base is None or len(base['close']) < 5000: return None
-    tf_data = build_tf_data(base)
-    needed = list(DECISION_TFS) + ['D']
-    for tf in needed:
-        if tf not in tf_data or len(tf_data[tf]['close']) < 50: return None
-    n_15m = len(tf_data['15m']['close'])
-    e_count = np.zeros(n_15m, dtype=np.int16)
-    x_count = np.zeros(n_15m, dtype=np.int16)
-    for tf in DECISION_TFS:
-        e_sig, x_sig = per_tf_signals(tf_data['15m'], side, tf, params)
-        e_count += e_sig.astype(np.int16)
-        x_count += x_sig.astype(np.int16)
-    min_tfs = max(MIN_TFS_AGREE_FLOOR, int(params.MIN_TFS_AGREE))
-    enter = e_count >= min_tfs
-    leave = x_count >= MIN_TFS_AGREE_FLOOR
-    htf_pass = htf_trend_pass(tf_data['D'], tf_data.get('W'), side, params, n_15m)
-    enter = enter & htf_pass
-    c15 = tf_data['15m']['close']
-    ts15 = tf_data['15m']['ts']
-    trades = walk_trades(enter, leave, c15, ts15, side, int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m))
-    bh_pct = float((c15[-1] / c15[0] - 1.0) * 100.0) if c15[0] > 0 else 0.0
-    if not trades: return {'sym': sym, 'side': side, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0, 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0, 'gain_per_week': 0.0, 'bh_pct_window': bh_pct, 'gain_sym_yr': 0.0, 'years': (ts15[-1] - ts15[0]) / 86400 / 365.25, 'n_syms': 1, 'tag': f'per_sym_{sym}_{side}', 'trade_list': [], 'params': params.to_dict()}
-    rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
-    n = len(rets)
-    span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
-    yrs = max(0.01, span_days / 365.25)
-    weeks = max(1.0 / 7.0, span_days / 7.0)
-    sd = float(rets.std())
-    pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
-    wr = float((rets > 0).mean() * 100.0)
+    wr, total = float((rets > 0).mean() * 100.0), float(rets.sum())
     eq = np.cumsum(rets)
     peak = np.maximum.accumulate(eq)
     dd = float((peak - eq).max())
-    total = float(rets.sum())
-    return {'sym': sym, 'side': side, 'trades': n, 'trades_per_day': n / span_days, 'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)), 'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total, 'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs, 'gain_per_week': total / weeks, 'bh_pct_window': bh_pct, 'years': yrs, 'n_syms': 1, 'tag': f'per_sym_{sym}_{side}', 'trade_list': trades, 'params': params.to_dict()}
+    return {'sym': sym, 'trades': n, 'trades_per_day': n / span_days, 'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)), 'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total, 'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs, 'gain_per_week': total / weeks, 'bh_pct_window': bh_pct, 'years': yrs, 'n_syms': 1, 'tag': f'per_sym_dual_{sym}', 'trade_list': trades, 'params': params.to_dict(), 'long_trades': len(long_trades), 'short_trades': len(short_trades), 'reverse_on_exit_count': sum(1 for t in trades if t.get('origin') == 'reverse_on_exit'), 'follow_through_count': sum(1 for t in trades if t.get('origin') == 'follow_through'), 'augment_count': sum(1 for t in trades if (t.get('origin') or '').startswith('augment_')), 'hedge_count': sum(1 for t in trades if (t.get('origin') or '').startswith('hedge')), 'mean_rev_reentry_count': sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry'), 'hard_loss_count': sum(1 for t in trades if t.get('origin') == 'hard_loss_pct')}
+
+def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
+    if side not in ('LONG', 'SHORT'): raise ValueError(f"side must be LONG or SHORT, got {side}")
+    res = simulate_dual(sym, params, years_back=years_back, only_side=side)
+    if res is None: return None
+    res['tag'] = f'per_sym_{sym}_{side}'
+    return res
 
 
 # ───────────────────────── CLI smoke test ──────────────────────────────────
