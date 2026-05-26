@@ -1140,6 +1140,20 @@ class SymState:
     # Mirrors live's _recent_ppl_fires Redis key ~24h. Survives full close
     # → reopen cycles (lives on SymState, not on _pos).
     ppl_last_fire_ts: float = 0.0
+    # 2026-05-26 BATCH 4 — GR OPEN-on-empty cooldown anchor (sym-side
+    # persistent). Mirrors live `_recent_opens` Redis floor 900s. Survives
+    # close/reopen cycles — set on every GR OPEN, never reset in
+    # position-close blocks. Independent from gr_last_fire_ts (which is
+    # the GR-only cooldown for AUGMENT path at 600s default).
+    gr_last_open_ts: float = 0.0
+    # 2026-05-26 BATCH 4 — refined WT_CROSSUNDER cooldown state.
+    # last_reduce_was_loss: set on every REDUCE/CLOSE event;
+    # urgent loss-cuts may bypass the cooldown to avoid compounding losses.
+    # wt_state_last_fire: signed WT bias at last fire (+1=LONG aligned,
+    # -1=SHORT aligned, 0=unset). Bypass triggers when current bias flips
+    # opposite vs the recorded value.
+    last_reduce_was_loss: bool = False
+    wt_state_last_fire: int = 0
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -2047,8 +2061,17 @@ def simulate_one_symbol(
                                 _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
                                 if _uag_gain_since < _uag_min_gain:
                                     _uag_block_trx = True
-                        if state.augmented_count >= _max_aug or _uag_block_trx:
-                            pass  # skip augment — cap reached or UAG-blocked
+                        # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
+                        # Mirrors live _recent_augments Redis floor 60-300s.
+                        # Independent of UAG (gain gate); both must pass.
+                        _aug_cd_s_trx = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
+                        _aug_cd_block_trx = (
+                            _aug_cd_s_trx > 0.0
+                            and state.last_augment_ts > 0.0
+                            and (bar_ts - state.last_augment_ts) < _aug_cd_s_trx
+                        )
+                        if state.augmented_count >= _max_aug or _uag_block_trx or _aug_cd_block_trx:
+                            pass  # skip augment — cap reached or UAG/AUG_CD-blocked
                         else:
                             denom = state.qty + qty_to_add
                             new_entry = (state.qty * state.entry_price + qty_to_add * mark) / denom if denom > 0 else mark
@@ -2171,8 +2194,15 @@ def simulate_one_symbol(
                                 _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
                                 if _uag_gain_since < _uag_min_gain:
                                     _uag_block_mtf = True
-                        if state.augmented_count >= _max_aug or _uag_block_mtf:
-                            pass  # cap reached or UAG-blocked
+                        # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
+                        _aug_cd_s_mtf = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
+                        _aug_cd_block_mtf = (
+                            _aug_cd_s_mtf > 0.0
+                            and state.last_augment_ts > 0.0
+                            and (bar_ts - state.last_augment_ts) < _aug_cd_s_mtf
+                        )
+                        if state.augmented_count >= _max_aug or _uag_block_mtf or _aug_cd_block_mtf:
+                            pass  # cap reached or UAG/AUG_CD-blocked
                         else:
                             add_qty = state.qty * (_mtf_big_mult - 1.0)
                             if add_qty > 0:
@@ -2287,7 +2317,14 @@ def simulate_one_symbol(
             if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED:
                 _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
                 _gr_htf_ok = (_gr_htf_entry_mask is None) or bool(_gr_htf_entry_mask[i])
-                if _gr_cooldown_ok and _gr_htf_ok:
+                # 2026-05-26 BATCH 4 — GR_OPEN_COOLDOWN_S gate. Mirrors live's
+                # _recent_opens Redis floor (ez_manage.py:395, 900s default).
+                # Default 0.0 = inert (Arm A bit-exact preserved).
+                _gr_open_cd_s = float(getattr(config, "GR_OPEN_COOLDOWN_S", 0.0))
+                _gr_open_cd_ok = True
+                if _gr_open_cd_s > 0.0 and state.gr_last_open_ts > 0.0:
+                    _gr_open_cd_ok = (bar_ts - state.gr_last_open_ts) >= _gr_open_cd_s
+                if _gr_cooldown_ok and _gr_htf_ok and _gr_open_cd_ok:
                     _gr_result = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
             # DELTA_ENGINE entry check (fourth trigger when flat)
             _delta_result = None
@@ -2442,6 +2479,10 @@ def simulate_one_symbol(
             _pos.reset_ppl()
             if _gr_result is not None:
                 state.gr_last_fire_ts = bar_ts
+                # 2026-05-26 BATCH 4 — stamp GR_OPEN_COOLDOWN anchor (sym-side
+                # persistent; survives close/reopen). Mirrors live _recent_opens
+                # Redis key set on GR open at ez_manage.py:22313 / 23670.
+                state.gr_last_open_ts = bar_ts
             # Record DC stop price at entry time
             if config.DC_LOW4_STOP_ENABLED:
                 _s = float(_dc4_stop_long[i] if is_long else _dc4_stop_short[i])
@@ -3172,12 +3213,38 @@ def simulate_one_symbol(
             _wtcf_cooldown_ok = True
             if _wtcf_cooldown_s > 0.0 and state.wt_crossunder_last_fire_ts > 0.0:
                 _wtcf_cooldown_ok = (bar_ts - state.wt_crossunder_last_fire_ts) >= _wtcf_cooldown_s
+                # 2026-05-26 BATCH 4 — refined bypass semantics. The Batch 3
+                # cooldown was too aggressive (Arm C -0.0535 vs Arm B +0.0151)
+                # because valid loss-cut exits got blocked. When enabled, the
+                # cooldown is bypassed if (a) last reduce was a loss (urgent
+                # loss-cut — must cut bleeding) OR (b) the WT bias flipped
+                # opposite vs the recorded value at last fire.
+                if (not _wtcf_cooldown_ok
+                        and bool(getattr(config, "WT_CROSSUNDER_REFINED_BYPASS_ENABLED", False))):
+                    # (a) loss-cut bypass
+                    if state.last_reduce_was_loss:
+                        _wtcf_cooldown_ok = True
+                    else:
+                        # (b) WT-bias-flip bypass — current bias sign vs recorded
+                        _wt1_3m_cur = float(npz.get("wt1_3m", np.zeros(n))[i]) if "wt1_3m" in npz else 0.0
+                        _wt2_3m_cur = float(npz.get("wt2_3m", np.zeros(n))[i]) if "wt2_3m" in npz else 0.0
+                        # +1 = LONG-aligned (wt1 > wt2), -1 = SHORT-aligned
+                        _wt_bias_cur = 1 if _wt1_3m_cur > _wt2_3m_cur else (-1 if _wt1_3m_cur < _wt2_3m_cur else 0)
+                        if (state.wt_state_last_fire != 0
+                                and _wt_bias_cur != 0
+                                and _wt_bias_cur != state.wt_state_last_fire):
+                            _wtcf_cooldown_ok = True
             if _wtcf_hold_ok and _wtcf_cooldown_ok and (gain >= _min_gain_bar or gain < comm_buf):
                 _wtcf = check_wt_crossunder_final_exit(_store, i, _pos, mode, config)
                 if _wtcf is not None:
                     exit_id = 91
                     exit_reason = _wtcf["reason"]
                     state.wt_crossunder_last_fire_ts = bar_ts
+                    # 2026-05-26 BATCH 4 — record WT bias sign at fire (for
+                    # refined-bypass flip detection on subsequent fires).
+                    _wt1_fire = float(npz.get("wt1_3m", np.zeros(n))[i]) if "wt1_3m" in npz else 0.0
+                    _wt2_fire = float(npz.get("wt2_3m", np.zeros(n))[i]) if "wt2_3m" in npz else 0.0
+                    state.wt_state_last_fire = 1 if _wt1_fire > _wt2_fire else (-1 if _wt1_fire < _wt2_fire else 0)
 
         # R2 WT VELOCITY SLOW (near-breakeven slowdown — matches live R2_WT_VEL_SLOW)
         if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001:
@@ -3417,6 +3484,13 @@ def simulate_one_symbol(
                     _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
                     if _uag_gain_since < _uag_min_gain:
                         continue
+            # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
+            # Mirrors live _recent_augments Redis floor 60-300s.
+            _aug_cd_s_re = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
+            if (_aug_cd_s_re > 0.0
+                    and state.last_augment_ts > 0.0
+                    and (bar_ts - state.last_augment_ts) < _aug_cd_s_re):
+                continue
             # New blended entry
             denom = state.qty + aug_qty
             new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
@@ -3495,7 +3569,14 @@ def simulate_one_symbol(
                             _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
                             if _uag_gain_since < _uag_min_gain:
                                 _uag_block = True
-                    if state.augmented_count < _max_aug and not _uag_block:
+                    # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
+                    _aug_cd_s_gr = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
+                    _aug_cd_block_gr = (
+                        _aug_cd_s_gr > 0.0
+                        and state.last_augment_ts > 0.0
+                        and (bar_ts - state.last_augment_ts) < _aug_cd_s_gr
+                    )
+                    if state.augmented_count < _max_aug and not _uag_block and not _aug_cd_block_gr:
                         aug_mult = float(_gr_aug.get("mult", 1.0))
                         aug_qty = (config.START_POSITION_SIZE * aug_mult) / mark
                         if aug_qty > 0:

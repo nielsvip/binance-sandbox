@@ -3763,6 +3763,17 @@ class Config:
     # MIN_GAIN=3.0 (line 59); UAG references MIN_GAIN_TO_BUY_AGGRESSIVELY but
     # falls back to 3.0 if absent. Mirror it explicitly for clarity.
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
+    # 2026-05-26 BATCH 4 — GR_OPEN per-sym-side cooldown (vec + Tier 2).
+    # Live `_recent_opens` Redis floor: GR mult=1.0 OPEN-on-empty fires ≤22/yr/sym.
+    # Vec emits 7,975 GR OPENs across 11 syms in 1yr without this gate — UAG only
+    # covers AUGMENT, OPEN-on-empty bypasses it. Default 0.0 = inert (baseline preserved).
+    # Mirror live: 3600.0 = 1h cooldown after every GR OPEN, persistent across close/reopen.
+    GR_OPEN_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 4 — time-axis sibling to UAG. Live `_recent_augments` Redis
+    # floor blocks repeat AUGMENT within 60-300s regardless of gain. UAG gates by
+    # gain progression; AUG_COOLDOWN_S gates by time. Both required to mirror live.
+    # Default 0.0 = inert (baseline preserved). Mirror live: 300.0 = 5-min floor.
+    AUG_COOLDOWN_S: float = 0.0
 
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
