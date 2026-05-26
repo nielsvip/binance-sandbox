@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""forward_test_vec_vs_live.py — compare vec_engine_v1 decisions vs live trades
+"""forward_test_vec_vs_live.py — compare v8_vec_sweep decisions vs live trades
 on the most recent N days. Goal: confirm vec and live make IDENTICAL decisions
 when given the same data + config.
 
@@ -32,12 +32,12 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE))
 
-# Lazy imports — fail loud if vec engine missing
+# Lazy imports — fail loud if v8_vec_sweep missing
 try:
-    import vec_engine_v1
-    from vec_engine_v1 import VecEngine, VecConfig
+    import v8_vec_sweep
+    from v8_vec_sweep import simulate_one_symbol, SweepConfig
 except ImportError as e:
-    print(f"ERROR: vec_engine_v1 import failed: {e}")
+    print(f"ERROR: v8_vec_sweep import failed: {e}")
     sys.exit(1)
 
 
@@ -76,28 +76,39 @@ def load_live_events(sym: str, side: str, account: str, since_ts: int):
 # ───────────────────────────────────────────────────────────
 # Vec engine event harvester
 # ───────────────────────────────────────────────────────────
-def run_vec_on_sym(sym: str, mode: str, start_ts: int, cfg: VecConfig | None = None):
-    """Run vec_engine_v1 on a single sym, return all trade events as dicts."""
+def run_vec_on_sym(sym: str, side: str, mode: str, start_ts: int, cfg: SweepConfig | None = None):
+    """Run v8_vec_sweep.simulate_one_symbol on a single sym, return trades counts/events."""
     if cfg is None:
-        cfg = VecConfig()
-    engine = VecEngine(mode=mode)
-    # Run as single-sym simulation
+        cfg = SweepConfig()
+    for locked in ("UNIVERSAL_NOLOSS_GATE", "VEC_NOLOSS_GATE_ENABLED", "HEDGE_SCAN_ENABLED", "HEDGE_MODE", "OBLIGATORY_HEDGE_ENABLED", "NOLOSS_ENABLED"):
+        if hasattr(cfg, locked): setattr(cfg, locked, False)
     try:
-        result = engine.simulate(symbols=[sym], cfg=cfg, start_ts=start_ts)
+        events, rets, n_bars = simulate_one_symbol(sym, side, mode, cfg, start_ts=start_ts)
+        trades = events_to_trades(events, rets, side)
     except Exception as e:
-        return {"error": str(e), "events": []}
-    # vec_engine returns aggregate result — we need per-bar trade events.
-    # For now, approximate by reading store and replaying entry/exit logic
-    # would require deeper instrumentation. As a v1 forward test, return the
-    # aggregate counts so user can see "vec made N trades, live made M trades".
+        return {"error": str(e), "trades": 0, "events": []}
     return {
-        "trades": int(result.get("trades", 0) or 0),
-        "wins": int(result.get("wins", 0) or 0),
-        "losses": int(result.get("losses", 0) or 0),
-        "pool_sharpe": float(result.get("pool_sharpe", 0) or 0),
-        "max_dd_pct": float(result.get("max_dd_pct", 0) or 0),
-        "events": [],  # placeholder — needs engine instrumentation
+        "trades": len(trades),
+        "wins": sum(1 for t in trades if t["pnl_pct"] > 0),
+        "losses": sum(1 for t in trades if t["pnl_pct"] <= 0),
+        "events": events,
     }
+
+
+def events_to_trades(events: list, trade_returns: list, side: str) -> list:
+    trades, last_open, last_hedge_open, close_idx, n_trades = [], None, None, 0, min(len([ev for ev in events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]), len(trade_returns))
+    for ev in events:
+        if ev.type == "OPEN": last_open = ev
+        elif ev.type == "HEDGE_OPEN": last_hedge_open = ev
+        elif ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE"):
+            if close_idx >= n_trades: break
+            pnl_net, is_hedge = float(trade_returns[close_idx]), (ev.type == "HEDGE_CLOSE" or "hedge" in ev.reason.lower())
+            close_idx += 1
+            trigger_open = last_hedge_open if is_hedge else last_open
+            entry_ts, entry_price = float(trigger_open.ts) if trigger_open else float(ev.ts - 3600), float(trigger_open.price) if trigger_open else float(ev.price)
+            trades.append({'side': side, 'entry_ts': int(entry_ts), 'exit_ts': int(ev.ts), 'entry_price': entry_price, 'exit_price': float(ev.price), 'pnl_pct': pnl_net, 'pnl_gross_pct': float(ev.pnl_pct), 'bars_held': max(1, int((ev.ts - entry_ts) / 900)), 'origin': ev.reason})
+    return trades
+
 
 def load_active_overrides(sym: str, side: str) -> dict:
     fp = BASE / "data" / "hourly_reconfig" / "per_sym_active_config.json"
@@ -119,8 +130,11 @@ def compare_sym(sym: str, side: str, mode: str, account: str, days: int = 7):
     since_ts = now_ts - days * 86400
     live = load_live_events(sym, side, account, since_ts)
     overrides = load_active_overrides(sym, side)
-    cfg = VecConfig().update_from_dict(overrides) if overrides else VecConfig()
-    vec = run_vec_on_sym(sym, mode, since_ts, cfg=cfg)
+    cfg = SweepConfig()
+    if overrides:
+        for k, v in overrides.items():
+            if hasattr(cfg, k): setattr(cfg, k, v)
+    vec = run_vec_on_sym(sym, side, mode, since_ts, cfg=cfg)
     return {
         "sym": sym,
         "side": side,
@@ -175,7 +189,7 @@ def main():
 
     # Write Markdown
     with open(md_path, "w") as f:
-        f.write(f"# Forward Test: vec_engine_v1 vs LIVE history\n\n")
+        f.write(f"# Forward Test: v8_vec_sweep vs LIVE history\n\n")
         f.write(f"**Generated**: {dt.datetime.utcnow().isoformat()}Z\n")
         f.write(f"**Mode**: {args.mode} | **Account**: {account} | **Days**: {args.days}\n\n")
         f.write(f"**TAG**: [VEC ONLY - UNVALIDATED] decision-parity test only\n\n")
