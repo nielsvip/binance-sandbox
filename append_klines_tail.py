@@ -104,12 +104,22 @@ def main():
 
     print(f"\nTradier: total bars appended = {total_appended}")
 
-    crypto_syms = [
-        "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC",
-        "ADAUSDC", "LINKUSDC", "LTCUSDC", "AVAXUSDC", "UNIUSDC",
-        "DOGEUSDC",
-        "ZECUSDC", "BTCDOMUSDT", "TONUSDT",
-    ]
+    tk_path = os.path.join(BASE_PATH, "tradeable_keys.json")
+    if os.path.exists(tk_path):
+        with open(tk_path) as f:
+            tk = json.load(f)
+        crypto_syms = sorted({
+            k.split(":", 1)[1].rsplit("_", 1)[0]
+            for k in tk if ":" in k and (k.endswith("_LONG") or k.endswith("_SHORT"))
+        })
+        crypto_syms = [s for s in crypto_syms if s.endswith("USDT") or s.endswith("USDC")]
+        print(f"  (loaded {len(crypto_syms)} crypto syms from tradeable_keys.json)")
+    else:
+        crypto_syms = [
+            "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC",
+            "ADAUSDC", "LINKUSDC", "LTCUSDC", "AVAXUSDC", "UNIUSDC",
+            "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT", "TONUSDT",
+        ]
 
     print(f"\n=== Crypto tail-append: {len(crypto_syms)} symbols ===")
     crypto_appended = 0
