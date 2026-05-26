@@ -3729,9 +3729,18 @@ class Config:
     # Default OFF/0 preserves current vec behaviour bit-exactly. Enable for an A/B
     # sweep to measure CLOSE-vs-REDUCE structural-parity ΔSharpe.
     # ════════════════════════════════════════════════════════════════════════════
-    # vec_paths/exit_to_reduce_adapter.py — convert vec CLOSE → fractional REDUCE
+    # vec_paths/exit_to_reduce_adapter.py — convert vec CLOSE → REDUCE-labeled event.
+    # 2026-05-26 22:00 BATCH 2 — user-clarified architecture (see
+    # data/_diagnostic/REDUCE_VS_CLOSE_ARCHITECTURE.md):
+    # every live REDUCE on the main Finandy webhook is a FULL CLOSE (state.qty→0).
+    # Only PPL step 1 (via <acct>_WEBHOOK_URL2) is genuinely partial (50%).
+    # Default frac=1.0 = REDUCE label + full close (same P&L as legacy CLOSE).
     VEC_LIVE_REDUCE_PARITY_ENABLED: bool = False
-    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0  # 0 → fall through to 1/RATIO_MULTIPLIER (=25%)
+    VEC_LIVE_REDUCE_DEFAULT_FRAC: float = 1.0     # non-PPL exits → full close (REDUCE-labeled)
+    VEC_LIVE_REDUCE_PPL_STEP1_FRAC: float = 0.5   # PPL step 1 → genuine 50% partial
+    VEC_LIVE_REDUCE_PPL_REASONS: tuple = ("PARTIAL_PROFIT_LOCK_STEP1", "PPL_STEP1")
+    VEC_REDUCE_CASCADE_COOLDOWN_S: float = 0.0    # 0 = OFF; live's Redis _recent_reduces floor (~15-60s)
+    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0      # legacy override (still respected if >0)
     VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
     # vec_paths/ratio_reduce_sym_proxy.py — per-sym ratio-trim approximation
     VEC_RATIO_REDUCE_PROXY_ENABLED: bool = False

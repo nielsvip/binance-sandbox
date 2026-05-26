@@ -547,17 +547,29 @@ def _run_variant_task_worker(args):
         "NOLOSS_ENABLED",
     )
     
+    # 2026-05-26 FIX: setattr ALL keys (not just hasattr ones) so vec_paths/* that
+    # read knobs via getattr(config, "K", default) honor dynamic-attr overrides.
+    # Bug before: hasattr-filter dropped 80% of variant knobs because variant names
+    # come from per_sym_engine_crypto SymParams namespace (ENTRY_MODE, BB_LONG_ENTRY_MAX,
+    # HARD_LOSS_PCT, etc.) which are NOT SweepConfig fields. Result: every variant
+    # produced identical SweepConfig-default behavior — sweep was a no-op for syms
+    # where defaults didn't fire entries (ANKRUSDT, BELUSDT, GRTUSDT, KAVAUSDT, LRCUSDT,
+    # etc. — all "no trades" syms in the 4-shard grind).
     for k, v in variant.items():
         if k.startswith("_"):
             continue
         if k == "NOLOSS_ENABLED":
             continue
-        if hasattr(cfg, k):
+        try:
             setattr(cfg, k, v)
-            
+        except Exception:
+            pass
+
     for locked in _VEC_LOCKED_FALSE_KNOBS:
-        if hasattr(cfg, locked):
+        try:
             setattr(cfg, locked, False)
+        except Exception:
+            pass
             
     try:
         long_events, long_rets, _ = simulate_one_symbol(
@@ -565,7 +577,10 @@ def _run_variant_task_worker(args):
             start_ts=start_ts,
             _npz_cache=_npz_cache,
         )
-    except Exception:
+    except Exception as _vec_e_long:
+        import os, sys
+        if os.environ.get("VEC_DEBUG_EXC") == "1":
+            sys.stderr.write(f"[VEC_WORKER_EXC] LONG {sym}: {type(_vec_e_long).__name__}: {_vec_e_long}\n")
         long_events, long_rets = [], []
         
     try:
@@ -574,7 +589,10 @@ def _run_variant_task_worker(args):
             start_ts=start_ts,
             _npz_cache=_npz_cache,
         )
-    except Exception:
+    except Exception as _vec_e_short:
+        import os, sys
+        if os.environ.get("VEC_DEBUG_EXC") == "1":
+            sys.stderr.write(f"[VEC_WORKER_EXC] SHORT {sym}: {type(_vec_e_short).__name__}: {_vec_e_short}\n")
         short_events, short_rets = [], []
         
     long_ets = [int(ev.ts) for ev in long_events if ev.type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")]

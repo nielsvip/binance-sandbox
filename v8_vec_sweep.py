@@ -953,8 +953,15 @@ class SweepConfig:
 
     # 2026-05-26 Vec-engine live-parity knobs (mirror of config.py additions).
     # Default OFF/0 preserves bit-exact vec behaviour. Flip via --override for A/B sweeps.
+    # 2026-05-26 22:00 BATCH 2 — user-clarified architecture (see
+    # data/_diagnostic/REDUCE_VS_CLOSE_ARCHITECTURE.md). Default frac=1.0 = REDUCE
+    # label + full close. PPL step 1 routes to STEP1_FRAC=0.5.
     VEC_LIVE_REDUCE_PARITY_ENABLED: bool = False
-    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0        # 0 → fall through to 1/RATIO_MULTIPLIER
+    VEC_LIVE_REDUCE_DEFAULT_FRAC: float = 1.0       # non-PPL exits → full close
+    VEC_LIVE_REDUCE_PPL_STEP1_FRAC: float = 0.5     # PPL step 1 → genuine 50% partial
+    VEC_LIVE_REDUCE_PPL_REASONS: tuple = ("PARTIAL_PROFIT_LOCK_STEP1", "PPL_STEP1")
+    VEC_REDUCE_CASCADE_COOLDOWN_S: float = 0.0      # 0 = OFF; mirrors live _recent_reduces
+    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0        # legacy override (still respected if >0)
     VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
     VEC_RATIO_REDUCE_PROXY_ENABLED: bool = False
     RATIO_TRIM_MIN_INTERVAL_S: float = 14400.0      # 4h between proxy trims
