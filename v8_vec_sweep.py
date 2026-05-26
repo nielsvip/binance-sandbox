@@ -361,7 +361,13 @@ class SweepConfig:
     E_1_EXIT_DELTA_THR: float = 50.0
     E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0
     # ── noloss + hedge ────────────────────────────────────────────────────
-    UNIVERSAL_NOLOSS_GATE: bool = True
+    # 2026-05-26 USER MANDATE: NO_LOSS dead, hedge dead — REENTRY is the only protection.
+    # Earlier 2026-05-22 partial fix set HEDGE_MODE/OBLIGATORY_HEDGE_ENABLED False but
+    # missed HEDGE_SCAN_ENABLED (line ~548, a separate sweep-model bypass) and
+    # UNIVERSAL_NOLOSS_GATE here — they kept hedge + no-loss alive in vec, producing
+    # 6104 phantom HEDGE_OPEN events on flz BTCUSDC LONG proof (2026-05-26 02:56).
+    # Both now False to match live config.py 2026-05-20 mandate.
+    UNIVERSAL_NOLOSS_GATE: bool = False
     UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL: bool = True
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: tuple = (
         "R1_DC_LOW4_3M_EMERGENCY", "R2_WT_VEL_SLOW", "WT_15M_VEL_SLOW",
@@ -411,16 +417,13 @@ class SweepConfig:
     # HARD_AUGMENT_LOCK_SECONDS). Mirror live config.py default (900s = 15min).
     AUGMENT_LOCK_MIN_SECONDS: float = 900.0
     # ── 2026-05-17 VEC_NOLOSS_GATE (master kill flag) ─────────────────────
-    # First-honest-tradier sweep showed mtm_n=63 open losers (avg -22%) caught
-    # only at simulation end by MTM_FINAL_BAR_NOLIES_RULE2 — a CLAUDE.md sacred-rule
-    # violation ("WE HEDGE OR WE CLOSE — WE NEVER HOLD"). evaluate_noloss_gate_vec
-    # was IMPORTED at L55 but only consulted INSIDE `if exit_id != EXIT_NONE:`
-    # (L1254-1276); positions sitting in -22% with no exit trigger sailed past it.
-    # When True (default), every bar where state.qty>0 AND gain<comm_buf calls
-    # the noloss gate inline; HEDGE_FAILED_FALLBACK_CLOSE returns from gate
-    # close the position immediately, OBLIGATORY_HEDGE returns open a vec hedge.
-    # Set False to reproduce pre-fix MtM-only behaviour.
-    VEC_NOLOSS_GATE_ENABLED: bool = True
+    # 2026-05-26 USER MANDATE: NO_LOSS dead, hedging dead — REENTRY is the only
+    # protection. The 2026-05-17 every-bar noloss gate was the SOURCE of 6,104
+    # OBLIGATORY_HEDGE_VEC events on flz BTCUSDC LONG (line 2674) — it called
+    # evaluate_noloss_gate_vec which returned hedge_fire=True regardless of
+    # HEDGE_SCAN_ENABLED / HEDGE_MODE / OBLIGATORY_HEDGE_ENABLED defaults. KILLED.
+    # MtM losses now caught by R1/R2 emergency + organic exits + REENTRY.
+    VEC_NOLOSS_GATE_ENABLED: bool = False
     # ── newborn protect ───────────────────────────────────────────────────
     NEWBORN_PROTECT_ENABLED: bool = True
     NEWBORN_PROTECT_GRACE_SECONDS: float = 900.0
@@ -545,7 +548,8 @@ class SweepConfig:
     SRK_REDUCE_FRAC: float = 0.5
     K1M_EXTREME_REVERSE_ENABLED: bool = False          # default OFF
     # ── Hedge engine (sweep model) ───────────────────────────────────────────
-    HEDGE_SCAN_ENABLED: bool = True         # master switch for sweep hedge model
+    # 2026-05-26 USER MANDATE: hedging declared dead weeks ago. Master switch off.
+    HEDGE_SCAN_ENABLED: bool = False        # master switch for sweep hedge model
     HEDGE_MIN_LOSS_PCT: float = -0.5        # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
     HEDGE_QTY_PCT: float = 1.0              # hedge qty as fraction of main qty
     HEDGE_CLOSE_ON_WT3M_FLIP: bool = True   # close hedge when wt1_3m turns back
