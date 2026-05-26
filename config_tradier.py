@@ -1356,7 +1356,11 @@ class TradierConfig:
     # "REBALANCE → invalid_api_response → REBALANCE" loop the broker rejected
     # with phantom 58/36-share sells.
     TRADIER_QUEUE_DEDUPE_SEC: float = 60.0       # global queue_trade_action dedupe
-    REBAL_ATTEMPT_COOLDOWN_SEC: float = 300.0    # SENTIMENT_FADE rebalance per-position cooldown (success or fail)
+    REBAL_ATTEMPT_COOLDOWN_SEC: float = 3600.0   # 2026-05-26 USER MANDATE — was 300s; bumped to 60min after trc/IBIT_LONG autopsy (40 SENTIMENT_BOOST + 119 SENTIMENT_FADE in 32 realized rounds, -77.85% gain on +26% UP-trending asset; rebalancer pyramided into highs and panic-sold at small dips)
+    SENTIMENT_REBALANCER_ENABLED: bool = False   # 2026-05-26 USER MANDATE — KILLED after trc/IBIT_LONG -$80k/mo bleed. periodic_sentiment_rebalancing pyramids into winners + flushes on noise. Re-enable only after sample-floor backtest with proper cooldowns + dead zone proves positive Sharpe.
+    SENTIMENT_REBAL_REDUCE_DEVIATION_THR: float = 0.50   # was 0.20 — require qty 50% over ideal before any FADE reduce
+    SENTIMENT_REBAL_AUGMENT_DEVIATION_THR: float = 1.0   # was 0.25 — require qty 50% under ideal before any BOOST add
+    SENTIMENT_REBAL_COOLDOWN_MIN: float = 240.0          # was 30min — sentiment doesn't move that fast
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.

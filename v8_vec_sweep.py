@@ -988,6 +988,27 @@ class SweepConfig:
     # immediately on the next position lifetime. Live blocks via Redis key
     # for ~24h. VEC default kept 0.0 to preserve baseline.
     PPL_FIRE_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 4 — GR OPEN-on-empty cooldown per sym-side.
+    # Mirrors live `_recent_opens` Redis floor (default 900s,
+    # ez_manage.py:395) which blocks OPEN re-fires within the window even
+    # when GR_COOLDOWN_S (600s) has elapsed. Vec was missing this gate, so
+    # GR fired 7,975× on 11-sym ang 1yr vs live's 22. Default 0.0 = OFF
+    # (preserves Arm A bit-exact baseline). Recommend 3600.0 for full
+    # parity (catches live's 4× safety floor on top of the 900s Redis).
+    GR_OPEN_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 4 — AUGMENT time cooldown per sym-side.
+    # Mirrors live `_recent_augments` Redis floor (60-300s) which gates
+    # AUGMENT independent of gain. UAG (gain gate) runs in parallel; this
+    # is the time-axis sibling. Default 0.0 = OFF. Recommend 300.0.
+    AUG_COOLDOWN_S: float = 0.0
+    # 2026-05-26 BATCH 4 — refined WT_CROSSUNDER cooldown semantics.
+    # When True, the cooldown is bypassed if state.last_reduce_was_loss is
+    # True (urgent loss-cut — must not be blocked) OR the WT bias has
+    # flipped opposite since the last fire (state.wt_state_last_fire).
+    # Without this, Batch 3's cooldown blocked valid loss-cut exits and
+    # degraded Sharpe (-0.0535 in Arm C). Default False keeps Batch 3
+    # semantics (time-only) for backward-compat A/B comparison.
+    WT_CROSSUNDER_REFINED_BYPASS_ENABLED: bool = False
 
 
 # ════════════════════════════════════════════════════════════════════════════════

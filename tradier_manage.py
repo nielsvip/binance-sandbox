@@ -8482,7 +8482,15 @@ class TradierTradeManager:
         """
         Scans all positions. Calculates ideal size based on CURRENT sentiment.
         Reduces size if sentiment degrades. Augments if sentiment improves.
+
+        2026-05-26 KILL SWITCH: gated by config.SENTIMENT_REBALANCER_ENABLED (default False).
+        Autopsy of trc/IBIT_LONG showed 40 SENTIMENT_BOOST + 119 SENTIMENT_FADE in 32 realized
+        rounds, -77.85% gain on a +26% UP-trending asset — the rebalancer pyramided into highs
+        and panic-sold at small dips. Re-enable only after sample-floor backtest proves positive.
         """
+        if not bool(getattr(config, 'SENTIMENT_REBALANCER_ENABLED', False)):
+            logger.warning("[sentiment_rebalancer] DISABLED via config.SENTIMENT_REBALANCER_ENABLED=False — task exits immediately")
+            return
         logger.info("[sentiment_rebalancer] Task started")
         while self.running:
             try:
@@ -8508,8 +8516,8 @@ class TradierTradeManager:
                         if current_price <= 0: current_price,ts=await self.get_current_price(symbol)
                         current_price = float(current_price)
 
-                        # Cooldown: skip if reduced or augmented within last 30 min
-                        _rebal_cooldown_s = 30 * 60
+                        # Cooldown: skip if reduced or augmented within last N min (default 240; user 2026-05-26 after IBIT autopsy)
+                        _rebal_cooldown_s = float(getattr(config, 'SENTIMENT_REBAL_COOLDOWN_MIN', 240.0)) * 60.0
                         _last_red = getattr(pos, 'last_reduction_time', None)
                         _last_aug = getattr(pos, 'last_augmentation_time', None)
                         _now_ts = time.time()
@@ -8552,7 +8560,8 @@ class TradierTradeManager:
                             symbol, "REBALANCE", side, base_qty, i, pos)
                         if current_qty == 0: continue
                         deviation_pct = (ideal_qty - current_qty) / current_qty
-                        if deviation_pct < -0.20:
+                        _reduce_thr = -float(getattr(config, 'SENTIMENT_REBAL_REDUCE_DEVIATION_THR', 0.50))
+                        if deviation_pct < _reduce_thr:
                             qty_to_reduce = current_qty - ideal_qty
                             if qty_to_reduce * current_price > 100: # Only if moving > $100
                                 # STRICT_NO_LOSS: Never reduce at a loss — IBIT disaster -$3,148 on Mar 5-11
@@ -8598,17 +8607,28 @@ class TradierTradeManager:
                                     "SELL" if side == "LONG" else "BUY",
                                     side, f"rebal_{int(time.time())}",
                                     action="REDUCE", reason=reason, override_qty=qty_to_reduce)
-                        elif deviation_pct > 0.25:
-                            # Use higher threshold for adding to be conservative
+                        elif deviation_pct > float(getattr(config, 'SENTIMENT_REBAL_AUGMENT_DEVIATION_THR', 1.0)):
+                            # Use higher threshold for adding to be conservative (default 100% under-sized)
                             qty_to_add = ideal_qty - current_qty
 
                             # Check Profitability Gate (don't add to losers usually, unless deep value strategy)
                             # Assuming trend following: only add to winners
                             pnl_pct = getattr(pos, 'gain', 0)
+                            # 2026-05-26 USER: require MIN_GAIN_TO_BUY_AGGRESSIVELY ABOVE last_augmentation_price (mirror of UAG live gate)
+                            _last_aug_px = float(getattr(pos, 'last_augmentation_price', 0) or 0)
+                            if _last_aug_px <= 0:
+                                _last_aug_px = float(getattr(pos, 'entry_price', 0) or 0)
+                            _min_gain_aug = float(getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0))
+                            _gain_since = ((current_price - _last_aug_px) / _last_aug_px * 100) if (_last_aug_px > 0 and side == 'LONG') else (((_last_aug_px - current_price) / _last_aug_px * 100) if _last_aug_px > 0 else 0.0)
+                            if _last_aug_px > 0 and _gain_since < _min_gain_aug:
+                                logger.info(f"[REBAL_UAG_BLOCK] {symbol} {side}: gain_since_last_add={_gain_since:+.2f}% < MIN_GAIN_TO_BUY_AGGRESSIVELY={_min_gain_aug:.1f}% — HOLDING")
+                                continue
                             if pnl_pct > 0.5: # Only add if slightly green
                                 if qty_to_add * current_price > 100:
                                     reason = f"SENTIMENT_BOOST ideal={int(ideal_qty)} cur={int(current_qty)} loc={i.get('0market_sentiment_local',0):.1f}"
                                     logger.info(f"📈 {symbol} REBALANCE AUGMENT: {reason}")
+                                    # 2026-05-26 USER: stamp attempt BEFORE firing (was missing — only REDUCE branch had this) so failed/rejected orders still block re-fire for cooldown
+                                    self._rebal_attempt_ts[pk] = _now_ts
                                     await self.execute_trade_action(
                                         'tra', pk, symbol, qty_to_add, current_price,
                                         "BUY" if side == "LONG" else "SELL",

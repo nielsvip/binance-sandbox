@@ -701,13 +701,25 @@ def sweep_variants(
     start_ts = int(cutoff)
     
     import multiprocessing
-    n_workers = max(1, min(16, (multiprocessing.cpu_count() or 4) - 1))
+    # 2026-05-26 FIX: workers count was OOMing on S1 (BrokenProcessPool on every variant
+    # when 15+ workers × ~365MB NPZ each + concurrent shards exceeded 31GB RAM). Cap
+    # default at 4 and let VEC_SWEEP_WORKERS env var override for ample-memory boxes.
+    _cpu = (multiprocessing.cpu_count() or 4) - 1
+    _env_w = os.environ.get("VEC_SWEEP_WORKERS")
+    if _env_w and _env_w.isdigit():
+        n_workers = max(1, int(_env_w))
+    else:
+        n_workers = max(1, min(4, _cpu))
     if verbose:
         print(f"[vec_sweep {sym}] starting high-parity variant sweep over {n_v} combinations | workers={n_workers} | start_ts={start_ts}", flush=True)
         
     tasks = [(sym, start_ts, var, years_back) for var in variants]
     
     from concurrent.futures import ProcessPoolExecutor, as_completed
+    _debug_exc = os.environ.get("VEC_DEBUG_EXC") == "1"
+    _none_n = 0
+    _exc_n = 0
+    _ok_n = 0
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         futures = {executor.submit(_run_variant_task_worker, t): idx for idx, t in enumerate(tasks)}
         for fut in as_completed(futures):
@@ -724,8 +736,17 @@ def sweep_variants(
                     max_dd[idx] = res["max_dd_pct"]
                     long_trades[idx] = res["long_trades"]
                     short_trades[idx] = res["short_trades"]
+                    _ok_n += 1
+                else:
+                    _none_n += 1
+                    if _debug_exc:
+                        sys.stderr.write(f"[VEC_RESULT_NONE] {sym} idx={idx}\n")
             except Exception as e:
-                pass
+                _exc_n += 1
+                if _debug_exc:
+                    sys.stderr.write(f"[VEC_RESULT_EXC] {sym} idx={idx}: {type(e).__name__}: {e}\n")
+    if verbose:
+        print(f"[vec_sweep {sym}] result-collection: ok={_ok_n} none={_none_n} exc={_exc_n}", flush=True)
                 
     if verbose:
         print(f"[vec_sweep {sym}] DONE {n_v} variants in {time.time()-t0:.1f}s", flush=True)
