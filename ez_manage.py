@@ -23953,6 +23953,36 @@ class MultiAccountTradeManager:
             or "REDUCE" in (reason or "").upper()
         )
         _force_webhook_reduces = False
+        # UNIVERSAL_AUGMENT_GAIN_GATE — 2026-05-26 USER MANDATE
+        # MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0% must enforce as a HARD gate on all augments.
+        # Prior check at line 18472 used 0.3*MIN_GAIN (0.9%) and exempted REENTRY/HEDGE/
+        # QUICK paths via string match — letting CRVUSDC eat 27 augments below threshold.
+        # This gate fires at the choke point, BEFORE any reason/action routing.
+        if (
+            not _is_reduce
+            and position is not None
+            and position_key
+            and bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True))
+        ):
+            _uag_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+            _uag_min_qty = float(self.min_qty.get(symbol, 0.0001))
+            if _uag_amt > _uag_min_qty:
+                _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                _uag_last_px = safe_fetch_float(getattr(position, "last_augmentation_price", 0.0), 0.0)
+                if _uag_last_px <= 0:
+                    _uag_last_px = safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
+                if _uag_last_px > 0 and current_price > 0:
+                    _uag_is_long = (str(position_side).upper() == "LONG")
+                    _uag_gain_since = (
+                        (current_price - _uag_last_px) / _uag_last_px * 100.0
+                        if _uag_is_long
+                        else (_uag_last_px - current_price) / _uag_last_px * 100.0
+                    )
+                    if _uag_gain_since < _uag_min_gain:
+                        logger.warning(
+                            f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < MIN_GAIN_TO_BUY_AGGRESSIVELY={_uag_min_gain:.1f}% — action={action} reason={(reason or '')[:60]}"
+                        )
+                        return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
         if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
             _last_red_ts = _recent_reduces.get(position_key, 0)
             _since_red = time.time() - _last_red_ts
