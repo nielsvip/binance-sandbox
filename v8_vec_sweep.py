@@ -3055,14 +3055,23 @@ def _apply_per_task_overrides(
     cfg = _dc_replace(base_config)
     applied = 0
     unknown_keys: List[str] = []
+    # 2026-05-26 FIX: setattr ALL keys, not just hasattr ones. v8_vec_sweep and
+    # vec_paths/* read knobs via `getattr(config, "KEY", default)` — dynamically
+    # added attributes are honored. Filtering by hasattr threw away 110 of 114
+    # active_config overrides per cell (BTC_DEDICATED, REGIME_*, RZ_*, BB_SQUEEZE,
+    # WT_DIV_EXIT, etc.) producing Sharpe -0.15 on flz proof. Tracking unknowns
+    # for telemetry only; they DO take effect on the cfg object.
     for k, v in overrides.items():
-        if hasattr(cfg, k):
-            try:
-                setattr(cfg, k, v)
-                applied += 1
-            except Exception:
+        if k.startswith("_"):
+            # Skip metadata keys (_meta, _score, _wsharpe, _trades_in_7d, _promoted_at)
+            continue
+        try:
+            setattr(cfg, k, v)
+            applied += 1
+            if not hasattr(type(cfg), k) and k not in {f.name for f in __import__("dataclasses").fields(cfg)}:
+                # Track dynamic-attr knobs separately for visibility (they still WORK via getattr)
                 unknown_keys.append(k)
-        else:
+        except Exception:
             unknown_keys.append(k)
     # USER MANDATE 2026-05-20 + 2026-05-26: hedge + no_loss are DEAD. Force locks
     # back to False even if a per-sym override tried to flip them on.

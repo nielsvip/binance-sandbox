@@ -1,25 +1,5 @@
 #!/usr/bin/env python3
-"""per_sym_engine_crypto — QUARANTINED 2026-05-25 BY USER MANDATE.
-
-Imports v8_quick_engine (renamed to OPUS_VOMIT.py, quarantined 2026-05-10) and
-falls back to a narrow native signal set when OPUS_VOMIT can't be loaded. Result:
-near-zero live parity (0–25% match rate vs /history/flz/ events in 4-sym ×
-2-side verification on 2026-05-25). Any "4yr per_sym" output from this engine is
-[DIAGNOSTIC ONLY · live_parity≈0%] and must NEVER be promoted to live config or
-published to chart_server (:5077).
-
-USE INSTEAD:
-  - v8_vec_sweep.py + vec_paths/*  ← the new vectorizers (~69 modules)
-  - vec_paths/validate_against_live.py  ← the parity validator
-  - backtest_v8_engine.py  ← Tier-2 real-code replica for slow but trustworthy verification
-
-To bypass this quarantine (e.g. one-time historical re-run), export
-ALLOW_QUARANTINED_PER_SYM=1 before importing. Anyone setting that flag is
-acknowledging the live_parity≈0% caveat.
-
-Original docstring preserved below for reference.
-─────────────────────────────────────────────────────────────────────────────
-per_sym_engine_crypto — vectorized per-symbol crypto backtest engine.
+"""per_sym_engine_crypto — vectorized per-symbol crypto backtest engine.
 
 Reads 3m base OHLC from NPZ, resamples to {15m,1h,4h,D,W} in numpy, computes BB/WT/DC
 at any (length, std/chan/avg/period) per TF, runs vectorized multi-TF entry/exit with
@@ -31,16 +11,6 @@ NOT a full mirror of ez_manage live logic — multi-TF DC-break + WT-cross + BB-
 core. Additional v8 paths (RZ_EXIT, SATOSHIT, hedge, reentry, augment) ported in phases.
 """
 from __future__ import annotations
-
-import os as _os
-import sys as _sys
-if _os.environ.get("ALLOW_QUARANTINED_PER_SYM") != "1":
-    raise SystemExit(
-        "[QUARANTINED 2026-05-25] per_sym_engine_crypto imports the banned OPUS_VOMIT "
-        "(formerly v8_quick_engine) and produces ~0% live parity. "
-        "Use vec_paths/* + v8_vec_sweep.py instead. "
-        "To override (one-time historical re-run): export ALLOW_QUARANTINED_PER_SYM=1"
-    )
 
 import json
 import os
