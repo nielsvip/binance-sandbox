@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-26 05:42:38 UTC
+# Copilot Status — 2026-05-26 05:57:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T05:40:33
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T05:40:33
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:40:34
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:41:35
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-26T05:42:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-26T05:42:36
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-26T05:42:36
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T05:42:36
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T05:42:36
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:42:37
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T05:54:51
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:54:51
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:55:52
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-26T05:56:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-26T05:56:53
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-26T05:56:53
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T05:56:53
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T05:56:53
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:56:53
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-26T05:57:55
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 12 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 12 | **Watching for reentry:** 3 | **Reentered:** 0
 
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +0.3%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +2.9%
@@ -36,13 +36,11 @@ _None_
 - HELD: **FIVN** LONG (tradier) peak +5.3%, now +2.9%
 - HELD: **ROBO** LONG (tradier) peak +4.8%, now +2.3%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-8.8%
-- HELD: **RENDERUSDT** LONG (crypto) peak +4.3%, now +3.9%
+- HELD: **RENDERUSDT** LONG (crypto) peak +4.3%, now +3.2%
 - HELD: **INXUSDT** SHORT (crypto) peak +4.3%, now +2.8%
-- HELD: **IOUSDT** LONG (crypto) peak +3.6%, now +3.2%
+- HELD: **IOUSDT** LONG (crypto) peak +3.7%, now +3.5%
 
-- WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
-- WATCHING: **GDX** SHORT (tradier) peaked +7.8%, exited 0m ago
 - WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 0m ago
 - WATCHING: **WLDUSDC** LONG (crypto) peaked +3.6%, exited 0m ago
 
@@ -50,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 14
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 17
 - [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] tradier_positions.py running but log stale (10min)
