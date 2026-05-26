@@ -40,6 +40,11 @@ USELESS_RATE_CRIT = 0.85
 DUPLICATE_RATE_WARN = 0.60
 MEM_FREE_MB_WARN = 2048
 USELESS_THRESHOLD = 0.4
+LIVE_SHARPE_FLOOR = 0.5
+LIVE_SHARPE_WINDOW_DAYS = 7
+LIVE_SHARPE_MIN_TRADES = 30
+CRYPTO_ACCOUNTS = ("ang", "inf", "flz", "men", "fin")
+TRADIER_ACCOUNTS = ("trb", "trc")
 
 
 def ssh_run(cmd: str, timeout: int = 45) -> tuple[int, str, str]:
@@ -191,7 +196,100 @@ def collect_state() -> dict:
                                 f"no row pool_sharpe>={USELESS_THRESHOLD} in last {WINDOW} rows" if good_age_hr is None
                                 else f"last good result {good_age_hr:.1f}hr ago > {STALE_GOOD_HRS}hr"))
 
+    try:
+        _check_live_sharpe(state)
+    except Exception as e:
+        state["checks"]["live_sharpe_check_error"] = str(e)[:160]
+    try:
+        _check_top_combos(state)
+    except Exception as e:
+        state["checks"]["top_combos_check_error"] = str(e)[:160]
+
     return _finalize(state)
+
+
+def _check_live_sharpe(state: dict) -> None:
+    sys.path.insert(0, str(BASE))
+    from metrics_guard import pool_sharpe  # type: ignore
+    from tools.live_account_sharpe_audit import trade_returns_from_jsonl  # type: ignore
+
+    since = datetime.now(timezone.utc) - timedelta(days=LIVE_SHARPE_WINDOW_DAYS)
+    by_acct: dict[str, dict] = {}
+    for acct in CRYPTO_ACCOUNTS + TRADIER_ACCOUNTS:
+        base = BASE / "data" / "history" / acct
+        if not base.is_dir():
+            continue
+        rets: list[float] = []
+        n_syms = 0
+        for fp in base.glob("*_LONG.jsonl"):
+            r = trade_returns_from_jsonl(fp, since, "LONG")
+            if r:
+                rets.extend(r)
+                n_syms += 1
+        for fp in base.glob("*_SHORT.jsonl"):
+            r = trade_returns_from_jsonl(fp, since, "SHORT")
+            if r:
+                rets.extend(r)
+                n_syms += 1
+        ps = pool_sharpe(rets) if rets else 0.0
+        by_acct[acct] = {"trades": len(rets), "n_syms": n_syms, "pool_sharpe": round(ps, 4)}
+    state["checks"]["live_sharpe"] = {
+        "window_days": LIVE_SHARPE_WINDOW_DAYS,
+        "floor": LIVE_SHARPE_FLOOR,
+        "by_account": by_acct,
+    }
+    for acct, m in by_acct.items():
+        if m["trades"] < LIVE_SHARPE_MIN_TRADES:
+            continue
+        if m["pool_sharpe"] < LIVE_SHARPE_FLOOR:
+            level = "CRITICAL" if m["pool_sharpe"] < 0.0 else "WARN"
+            state["alerts"].append((level, f"LIVE_LOW_SHARPE_{acct}",
+                                    f"pool_sharpe={m['pool_sharpe']:+.4f} < {LIVE_SHARPE_FLOOR} on {m['trades']} trades / {m['n_syms']} syms in last {LIVE_SHARPE_WINDOW_DAYS}d"))
+
+
+def _check_top_combos(state: dict) -> None:
+    rc, out, _ = ssh_run(
+        "ls -t /home/niels/binance-sandbox/data/sweep_results/vec_top_combos_crypto_*.csv 2>/dev/null | head -1; "
+        "echo '|'; "
+        "ls -t /home/niels/binance-sandbox/data/sweep_results/vec_top_combos_tradier_*.csv 2>/dev/null | head -1"
+    )
+    if rc != 0:
+        return
+    paths = [p.strip() for p in out.replace("|", "\n").splitlines() if p.strip()]
+    if not paths:
+        state["alerts"].append(("WARN", "TOP_COMBOS_MISSING", "no vec_top_combos_*.csv found on S1"))
+        return
+    rc, out, _ = ssh_run("for p in " + " ".join(paths) + "; do echo \"@@$p\"; cat \"$p\"; done")
+    if rc != 0:
+        return
+    cur_mode = None
+    cur_max = {}
+    for line in out.splitlines():
+        if line.startswith("@@"):
+            p = line[2:]
+            cur_mode = "crypto" if "crypto" in p else ("tradier" if "tradier" in p else "?")
+            cur_max[cur_mode] = (None, p)
+            continue
+        if cur_mode is None or line.startswith("pool_sharpe"):
+            continue
+        try:
+            ps = float(line.split(",", 1)[0])
+        except Exception:
+            continue
+        cur_best = cur_max[cur_mode][0]
+        if cur_best is None or ps > cur_best:
+            cur_max[cur_mode] = (ps, cur_max[cur_mode][1])
+    state["checks"]["top_combos_max_pool_sharpe"] = {
+        m: (round(v[0], 4) if v[0] is not None else None) for m, v in cur_max.items()
+    }
+    for mode, (best, path) in cur_max.items():
+        if best is None:
+            state["alerts"].append(("WARN", f"TOP_COMBOS_EMPTY_{mode.upper()}",
+                                    f"{path} had no parseable pool_sharpe rows"))
+            continue
+        if best < LIVE_SHARPE_FLOOR:
+            state["alerts"].append(("WARN", f"SWEEP_TOP_BELOW_FLOOR_{mode.upper()}",
+                                    f"best arm pool_sharpe={best:+.4f} < {LIVE_SHARPE_FLOOR} in {Path(path).name}"))
 
 
 def _finalize(state: dict) -> dict:

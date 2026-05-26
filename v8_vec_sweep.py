@@ -412,6 +412,20 @@ class SweepConfig:
     E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False
     E_1_EXIT_DELTA_THR: float = 50.0
     E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0
+    # WT exit family (2026-05-26) — vec_paths/wt_exits.py.
+    # All default OFF: existing sweeps unchanged until the per-task override flips them.
+    WT_DIV_EXIT_ENABLED: bool = False
+    WT_DIV_EXIT_TF: str = "1h"
+    WT_DIV_EXIT_REQUIRE_EXHAUST: bool = True
+    WT_DIV_EXIT_MOM_TF: str = "1h"
+    WT_ACCEL_EXIT_ENABLED: bool = False
+    WT_ACCEL_EXIT_MIN_TFS: int = 2
+    WT_ACCEL_EXIT_LONG_THR: float = -0.5
+    WT_ACCEL_EXIT_SHORT_THR: float = 0.5
+    WT_MOMENTUM_EXIT_ENABLED: bool = False
+    WT_MOMENTUM_EXIT_THRESHOLD: int = 2
+    WT_EXHAUST_EXIT_MIN_TFS: int = 0  # 0 = use live-equivalent (4h AND (1h OR 15m)) mask
+    BTC_TECH_EXIT_WT_MIN_TFS: int = 3
     # ── noloss + hedge ────────────────────────────────────────────────────
     # 2026-05-26 USER MANDATE: NO_LOSS dead, hedge dead — REENTRY is the only protection.
     # Earlier 2026-05-22 partial fix set HEDGE_MODE/OBLIGATORY_HEDGE_ENABLED False but
