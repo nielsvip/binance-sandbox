@@ -1691,6 +1691,23 @@ def simulate_one_symbol(
         except Exception:
             _btc_exit_mask = np.zeros(n, dtype=bool)
 
+    # ─── 2026-05-26 MOMENTUM_BREAKOUT precompute (USER MANDATE: fire entry the bar of
+    # the breakout, not 4-16hr after — diagnostic showed 30 sustained 5%+ moves missed
+    # by 250-963 min on BTCUSDC). Vec_paths/momentum_breakout.py: close > prior 1h DC
+    # high (LONG) / < prior 1h DC low (SHORT) confirmed by 3m WT direction. Default OFF.
+    _mom_break_long_mask = np.zeros(n, dtype=bool)
+    _mom_break_short_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "MOMENTUM_BREAKOUT_ENABLED", False)):
+        try:
+            from vec_paths.momentum_breakout import build_momentum_breakout_masks
+            _mb_long, _mb_short = build_momentum_breakout_masks(npz, config)
+            if is_long:
+                _mom_break_long_mask = _mb_long.astype(bool)
+            else:
+                _mom_break_short_mask = _mb_short.astype(bool)
+        except Exception:
+            pass
+
     # ─── QUALITY_TOP_EXIT precompute (2026-05-23 USER MANDATE "in at bottom, out at top") ─
     # Symmetric exit partner for quality_bottom_entry. LONG exit fires on top-short mask;
     # SHORT exit fires on bottom-long mask. Default OFF.
@@ -2346,6 +2363,8 @@ def simulate_one_symbol(
             # 2026-05-26 RZ cluster — RZ_BREAKOUT + RZ_CASCADE entry triggers
             _rz_break_ok = bool(_rz_break_mask[i])
             _rz_cascade_ok = bool(_rz_cascade_entry[i])
+            # 2026-05-26 MOMENTUM_BREAKOUT — fires the bar of the breakout (USER MANDATE).
+            _mom_break_ok = bool(_mom_break_long_mask[i]) if is_long else bool(_mom_break_short_mask[i])
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
             # Daily-cap on quality entries (~1-2/day target)
@@ -2363,7 +2382,7 @@ def simulate_one_symbol(
                 # quality entry fires — count it
                 state.quality_entries_today += 1
             else:
-                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok):
+                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok):
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1
@@ -2449,6 +2468,13 @@ def simulate_one_symbol(
                     reason = f"BTC_LOOP_ENTRY_{'LONG' if is_long else 'SHORT'}_BREAKOUT"
                 else:
                     reason = f"BTC_LOOP_ENTRY_{'LONG' if is_long else 'SHORT'}_PRIMARY"
+            elif _mom_break_ok:
+                # 2026-05-26 MOMENTUM_BREAKOUT — at-the-breakout entry (USER mandate: fix 4-16hr lag)
+                _tf = str(getattr(config, "MOMENTUM_BREAKOUT_TF", "1h"))
+                _prev_key = f"dc_high_{_tf}" if is_long else f"dc_low_{_tf}"
+                _prev_arr = npz.get(_prev_key)
+                _prev_v = float(_prev_arr[i-1]) if (_prev_arr is not None and i > 0) else 0.0
+                reason = f"MOMENTUM_BREAKOUT_{'LONG' if is_long else 'SHORT'}_{_tf}_px{mark:.4f}_dc{_prev_v:.4f}"
             else:
                 reason = "WT_3M_FORCE_OPEN"
             ev = TradeEvent(
