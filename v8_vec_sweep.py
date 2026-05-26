@@ -40,7 +40,7 @@ import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, replace as _dc_replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -2975,6 +2975,104 @@ def _max_dd_pct(trade_returns: List[float]) -> float:
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+# Per-account active_config.json override loader (2026-05-26 grind-orchestrator)
+# ════════════════════════════════════════════════════════════════════════════════
+# Live per-account/per-sym/per-side configs live at:
+#   data/hourly_reconfig/<account>/active_config.json
+# Schema (one entry per "SYM_SIDE" key):
+#   { "BTCUSDC_LONG": { "winning_tag":..., "wsharpe":..., "trades":...,
+#                       "sample_tag":..., "overrides": { knob: val, ... },
+#                       "cycle_id":... }, ... }
+# Per-task overrides are applied to a per-task SweepConfig copy INSIDE the worker
+# so each (sym, side) cell sees ONLY its own overrides — base process config is
+# untouched. Unknown knobs (not on SweepConfig dataclass) skip silently and are
+# reported once-per-run by run_sweep at top-level.
+# USER MANDATE 2026-05-20/2026-05-26: hedge + no-loss are DEAD. Even if a per-sym
+# override sets HEDGE_MODE/NOLOSS_ENABLED True, we force these False AFTER the
+# override is applied — REENTRY is the only allowed protection.
+
+# Mandate-locked knobs — ALWAYS False regardless of active_config override value.
+_VEC_LOCKED_FALSE_KNOBS = (
+    "UNIVERSAL_NOLOSS_GATE",
+    "VEC_NOLOSS_GATE_ENABLED",
+    "HEDGE_SCAN_ENABLED",
+    "HEDGE_MODE",
+    "OBLIGATORY_HEDGE_ENABLED",
+    "NOLOSS_ENABLED",
+)
+
+
+def _load_active_config_overrides(account: str) -> Dict[str, Dict[str, Any]]:
+    """Read data/hourly_reconfig/<account>/active_config.json and return
+    {(sym_side_key): overrides_dict}. Fail-open: missing file → empty dict (log warn).
+    Entries with no 'overrides' subdict are skipped.
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    if not account:
+        return out
+    try:
+        repo_root = Path(__file__).resolve().parent
+        ac_path = repo_root / "data" / "hourly_reconfig" / account / "active_config.json"
+        if not ac_path.exists():
+            sys.stderr.write(
+                f"V8_VEC_ACTIVE_CONFIG: WARN no per-account override file at {ac_path} — "
+                f"continuing with global SweepConfig defaults\n"
+            )
+            return out
+        with ac_path.open("r") as f:
+            raw = json.load(f)
+        if not isinstance(raw, dict):
+            sys.stderr.write(
+                f"V8_VEC_ACTIVE_CONFIG: WARN {ac_path} not a dict — skipping\n"
+            )
+            return out
+        for key, entry in raw.items():
+            if not isinstance(entry, dict):
+                continue
+            ov = entry.get("overrides")
+            if isinstance(ov, dict) and ov:
+                out[str(key).upper()] = dict(ov)
+        sys.stderr.write(
+            f"V8_VEC_ACTIVE_CONFIG: loaded {len(out)} per-(sym,side) override sets from {ac_path}\n"
+        )
+    except Exception as e:
+        sys.stderr.write(
+            f"V8_VEC_ACTIVE_CONFIG: ERROR loading per-account overrides for {account}: "
+            f"{type(e).__name__}: {e} — continuing with global defaults\n"
+        )
+    return out
+
+
+def _apply_per_task_overrides(
+    base_config: "SweepConfig",
+    overrides: Dict[str, Any],
+) -> Tuple["SweepConfig", int, int, List[str]]:
+    """Apply overrides to a SweepConfig copy. Returns (new_cfg, applied_n, unknown_n, unknown_keys).
+    Mandate-locked knobs (NOLOSS/HEDGE family) are FORCED False afterwards regardless of
+    what the override dict says — user mandate 2026-05-20 + 2026-05-26.
+    """
+    # dataclass shallow copy so base config stays untouched
+    cfg = _dc_replace(base_config)
+    applied = 0
+    unknown_keys: List[str] = []
+    for k, v in overrides.items():
+        if hasattr(cfg, k):
+            try:
+                setattr(cfg, k, v)
+                applied += 1
+            except Exception:
+                unknown_keys.append(k)
+        else:
+            unknown_keys.append(k)
+    # USER MANDATE 2026-05-20 + 2026-05-26: hedge + no_loss are DEAD. Force locks
+    # back to False even if a per-sym override tried to flip them on.
+    for locked in _VEC_LOCKED_FALSE_KNOBS:
+        if hasattr(cfg, locked):
+            setattr(cfg, locked, False)
+    return cfg, applied, len(unknown_keys), unknown_keys
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 # Multi-symbol sweep entry
 # ════════════════════════════════════════════════════════════════════════════════
 
@@ -2982,11 +3080,32 @@ def _run_sweep_worker(args_tuple):
     """Worker for parallel run_sweep — simulates ONE (sym, side) cell in a subprocess.
 
     Returns (sym, side, n_bars, elapsed_s, status, payload):
-        status == "ok":      payload = (events, returns)
+        status == "ok":      payload = (events, returns, applied_n, unknown_keys)
         status == "skip":    payload = error_message (FileNotFoundError)
         status == "fail":    payload = "TypeName: error_message"
+
+    2026-05-26 PER-TASK OVERRIDES: args_tuple now carries an optional per-task
+    overrides dict (7th field). The worker applies it to a fresh SweepConfig copy
+    before simulation so each (sym, side) cell sees ITS OWN per-account active
+    config, not just the global defaults. Mandate-locked knobs (NOLOSS/HEDGE
+    family) are forced False after the override pass regardless.
     """
-    sym, side, mode, config, start_ts, max_bars = args_tuple
+    # Back-compat unpack: tolerate the legacy 6-tuple (no per_task_overrides).
+    if len(args_tuple) >= 7:
+        sym, side, mode, config, start_ts, max_bars, per_task_overrides = args_tuple[:7]
+    else:
+        sym, side, mode, config, start_ts, max_bars = args_tuple
+        per_task_overrides = None
+
+    applied_n = 0
+    unknown_keys: List[str] = []
+    if per_task_overrides:
+        config, applied_n, _unk_n, unknown_keys = _apply_per_task_overrides(config, per_task_overrides)
+        # one-line per-cell log so we can see overrides being applied in the run log
+        sys.stderr.write(
+            f"V8_VEC_OVERRIDES: {sym}_{side} applied {applied_n} / unknown {_unk_n}\n"
+        )
+
     t0 = time.perf_counter()
     try:
         events, returns, n_bars = simulate_one_symbol(
@@ -2999,7 +3118,7 @@ def _run_sweep_worker(args_tuple):
         return (sym, side, 0, time.perf_counter() - t0, "fail",
                 f"{type(e).__name__}: {e}")
     elapsed = time.perf_counter() - t0
-    return (sym, side, n_bars, elapsed, "ok", (events, returns))
+    return (sym, side, n_bars, elapsed, "ok", (events, returns, applied_n, unknown_keys))
 
 
 def _resolve_workers(workers: int) -> int:
@@ -3087,20 +3206,34 @@ def run_sweep(
     returns_by_sym: Dict[str, List[float]] = {}
     total_bars = 0
     elapsed_per_sym = []
+    # 2026-05-26 PER-TASK OVERRIDES: aggregate unknown-knob set across all cells
+    # so we can report once-per-run instead of spamming per-cell.
+    _aggregated_unknown_knobs: set = set()
 
     n_workers = _resolve_workers(workers)
+
+    # 2026-05-26 PER-ACCOUNT ACTIVE_CONFIG OVERRIDE LOADER
+    # Load data/hourly_reconfig/<account>/active_config.json ONCE here and pass the
+    # per-(sym,side) overrides into each worker task tuple. Worker applies them to
+    # a fresh SweepConfig copy so each cell uses ITS OWN per-sym/per-side knobs.
+    # Without this every cell ran on global SweepConfig defaults (BTCUSDC LONG flz
+    # proof 2026-05-26: pool_sharpe -0.12 vs flz8_BEST 0.518 — root cause was
+    # missing per-account overrides).
+    _per_acct_overrides = _load_active_config_overrides(account)
     tasks = [
-        (sym, side, mode, config, start_ts, max_bars)
+        (sym, side, mode, config, start_ts, max_bars,
+         _per_acct_overrides.get(f"{sym}_{side}".upper()))
         for sym in symbols
         for side in sides
         if _vec_side_allowed(sym, side)
     ]
     n_tasks = len(tasks)
     _vec_skipped = len(symbols) * len(sides) - n_tasks
+    _n_with_overrides = sum(1 for t in tasks if t[6])
     print(
         f"V8_VEC_SWEEP_START: mode={mode} account={account} symbols={len(symbols)} "
         f"sides={sides} tasks={n_tasks} (per_side_skipped={_vec_skipped}) "
-        f"workers={n_workers} start={start}",
+        f"workers={n_workers} start={start} per_task_overrides_loaded={_n_with_overrides}",
         flush=True,
     )
 
@@ -3123,7 +3256,14 @@ def run_sweep(
             if status == "fail":
                 sys.stderr.write(f"FAIL {sym}_{side}: {payload}\n")
                 continue
-            events, returns = payload
+            # 2026-05-26 worker payload extended to (events, returns, applied_n, unknown_keys)
+            # Back-compat: tolerate the legacy 2-tuple format if some other caller path runs.
+            if len(payload) >= 4:
+                events, returns, _applied_n, _unknown_keys = payload[:4]
+                if _unknown_keys:
+                    _aggregated_unknown_knobs.update(_unknown_keys)
+            else:
+                events, returns = payload
             elapsed_per_sym.append((sym, side, n_bars, elapsed))
             total_bars += n_bars
             key = f"{sym}_{side}"
@@ -3321,6 +3461,15 @@ def run_sweep(
         except Exception:
             pass
 
+    # 2026-05-26 PER-TASK OVERRIDES: log unknown-config-keys once per run so the
+    # caller can see which active_config knobs the vec engine doesn't yet wire.
+    if _aggregated_unknown_knobs:
+        _uk_sorted = sorted(_aggregated_unknown_knobs)
+        sys.stderr.write(
+            f"V8_VEC_UNKNOWN_KNOBS: {len(_uk_sorted)} keys not on SweepConfig "
+            f"(skipped in workers, none crashed): {','.join(_uk_sorted)}\n"
+        )
+
     summary = {
         "ts_run": ts_run,
         "mode": mode,
@@ -3343,6 +3492,7 @@ def run_sweep(
         "trades_path": str(trades_path),
         "agg_csv": str(agg_csv),
         "elapsed_per_sym": elapsed_per_sym,
+        "unknown_override_knobs": sorted(_aggregated_unknown_knobs),
     }
     return summary
 

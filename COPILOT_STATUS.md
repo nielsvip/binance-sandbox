@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-26 03:40:40 UTC
+# Copilot Status — 2026-05-26 03:56:00 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-26T03:38:36
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T03:38:36
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T03:38:36
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-26T03:38:37
-- **STALE_INDICATORS** [tradier]  — 2026-05-26T03:40:39
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-26T03:40:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-26T03:40:39
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-26T03:40:39
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T03:40:39
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T03:40:39
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-26T03:52:55
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-26T03:53:57
+- **STALE_INDICATORS** [tradier]  — 2026-05-26T03:54:58
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-26T03:54:58
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-26T03:54:58
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-26T03:54:58
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-26T03:54:58
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-26T03:54:58
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-26T03:54:58
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-26T03:55:59
 
 ## Missed Trades (trader comparison)
 
@@ -36,7 +36,7 @@ _None_
 - HELD: **FIVN** LONG (tradier) peak +5.3%, now +2.9%
 - HELD: **ROBO** LONG (tradier) peak +4.8%, now +2.3%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-8.8%
-- HELD: **INXUSDT** SHORT (crypto) peak +4.3%, now +3.8%
+- HELD: **INXUSDT** SHORT (crypto) peak +4.3%, now +3.3%
 - HELD: **GM** LONG (tradier) peak +3.3%, now +-0.0%
 - HELD: **WDAY** SHORT (tradier) peak +3.1%, now +-4.8%
 
@@ -47,9 +47,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 17
-- [LOW] tradier_rankings.py is NOT running
-- [MEDIUM] ez_prices.py running but log stale (10min)
-- [HIGH] ez_prices.py is NOT running
+**Issues (last 1h):** 13
 - [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
