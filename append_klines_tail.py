@@ -104,11 +104,11 @@ def main():
 
     print(f"\nTradier: total bars appended = {total_appended}")
 
-    # Crypto symbols
     crypto_syms = [
         "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC",
         "ADAUSDC", "LINKUSDC", "LTCUSDC", "AVAXUSDC", "UNIUSDC",
         "DOGEUSDC",
+        "ZECUSDC", "BTCDOMUSDT", "TONUSDT",
     ]
 
     print(f"\n=== Crypto tail-append: {len(crypto_syms)} symbols ===")
