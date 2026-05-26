@@ -85,6 +85,20 @@ try:
 except ImportError:
     evaluate_cooldown_locks_vec = None
 
+# 2026-05-26 — Vec live-parity adapter trio. Default OFF preserves behaviour.
+try:
+    from vec_paths.exit_to_reduce_adapter import exit_to_reduce as _vec_exit_to_reduce
+except Exception:
+    _vec_exit_to_reduce = None
+try:
+    from vec_paths.ratio_reduce_sym_proxy import check_ratio_reduce_proxy as _vec_check_ratio_proxy
+except Exception:
+    _vec_check_ratio_proxy = None
+try:
+    from vec_paths.first_open_throttle import is_first_open_throttled as _vec_first_open_throttled
+except Exception:
+    _vec_first_open_throttled = None
+
 # 2026-05-17 VEC_OVERTRADE_FIX — live-parity HARD_AUGMENT_LOCK + DUP_GUARD gate.
 # vec_paths/dup_guard.py:check_dup_guard_block() mirrors ez_manage.py:10970-10988
 # + 14062-14081 and is already used by backtest_v8_engine via _v8_vec_short_circuit.
@@ -1894,19 +1908,29 @@ def simulate_one_symbol(
                 )
                 if _trx is not None:
                     pnl_pct = _gain_pct(state.entry_price, mark, is_long)
-                    ev = TradeEvent(
-                        ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                        value=state.qty * mark, reason=_trx["reason"], pnl_pct=pnl_pct,
-                    )
-                    events.append(ev)
-                    trade_returns.append(pnl_pct)
-                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                    state.last_reduce_ts = bar_ts; state.hedge_active = False
-                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                    state.hedge_completed_ts = bar_ts
-                    _tr_state = {}  # reset per-position state
-                    continue
+                    if _vec_exit_to_reduce is not None:
+                        _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                            trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                            gain=pnl_pct, reason=_trx["reason"], is_long=is_long,
+                            cfg=config, TradeEvent=TradeEvent)
+                        if _closed:
+                            _tr_state = {}  # reset per-position state on full close
+                            continue
+                        # REDUCE: position still open — fall through to next exit/augment block
+                    else:
+                        ev = TradeEvent(
+                            ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_trx["reason"], pnl_pct=pnl_pct,
+                        )
+                        events.append(ev)
+                        trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                        state.hedge_completed_ts = bar_ts
+                        _tr_state = {}  # reset per-position state
+                        continue
             # OPEN / ADD
             _trxe = evaluate_tr_trend_v1_entry(
                 _tr_trend_arrays, i, _tr_state, is_long, config,
@@ -1975,16 +1999,28 @@ def simulate_one_symbol(
                     state._mtf_ever_outside_dc = _new_ever_dc
                     if _ce_fire:
                         pnl_pct = _mtf_gain
-                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                            value=state.qty * mark, reason=_ce_reason, pnl_pct=pnl_pct)
-                        events.append(ev); trade_returns.append(pnl_pct)
-                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                        state.last_reduce_ts = bar_ts; state.hedge_active = False
-                        state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
-                        state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
-                        state._mtf_atr_trail = 0.0; state._mtf_ever_outside_dc = False
-                        continue
+                        if _vec_exit_to_reduce is not None:
+                            _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                                trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                                gain=pnl_pct, reason=_ce_reason, is_long=is_long,
+                                cfg=config, TradeEvent=TradeEvent)
+                            if _closed:
+                                state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                                state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                                state._mtf_atr_trail = 0.0; state._mtf_ever_outside_dc = False
+                                continue
+                            # REDUCE: position still open — fall through
+                        else:
+                            ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                                value=state.qty * mark, reason=_ce_reason, pnl_pct=pnl_pct)
+                            events.append(ev); trade_returns.append(pnl_pct)
+                            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                            state.last_reduce_ts = bar_ts; state.hedge_active = False
+                            state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                            state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                            state._mtf_atr_trail = 0.0; state._mtf_ever_outside_dc = False
+                            continue
                 # Phase H2 — TF-selectable slowdown trigger inputs
                 _slow_tf = str(getattr(config, "MTF_SLOWDOWN_TF", "3m"))
                 _k3 = float(npz.get(f"k_{_slow_tf}", np.zeros(n))[i]) if f"k_{_slow_tf}" in npz else 0.0
@@ -2002,15 +2038,26 @@ def simulate_one_symbol(
                 state._mtf_max_k_seen = _new_max_k
                 if _slow_fire:
                     pnl_pct = _mtf_gain
-                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                        value=state.qty * mark, reason=_slow_reason, pnl_pct=pnl_pct)
-                    events.append(ev); trade_returns.append(pnl_pct)
-                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                    state.last_reduce_ts = bar_ts; state.hedge_active = False
-                    state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
-                    state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
-                    continue
+                    if _vec_exit_to_reduce is not None:
+                        _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                            trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                            gain=pnl_pct, reason=_slow_reason, is_long=is_long,
+                            cfg=config, TradeEvent=TradeEvent)
+                        if _closed:
+                            state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                            state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                            continue
+                        # REDUCE: position still open — fall through
+                    else:
+                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_slow_reason, pnl_pct=pnl_pct)
+                        events.append(ev); trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state._mtf_prior_bounce_price = 0.0; state._mtf_stall_count = 0
+                        state._mtf_max_k_seen = 0.0; state._mtf_big_added = False
+                        continue
                 # BIG ADD check (only once per position)
                 if not state._mtf_big_added and check_mtf_big_add is not None:
                     _big_fire, _big_reason, _new_prior = check_mtf_big_add(
@@ -2084,6 +2131,9 @@ def simulate_one_symbol(
 
         # ─── FLAT: consider OPEN ──────────────────────────────────────────
         if state.qty <= 0.0001:
+            # 2026-05-26 first-OPEN throttle (VEC_FIRST_OPEN_THROTTLE_BARS=0 → no-op)
+            if _vec_first_open_throttled is not None and _vec_first_open_throttled(i, state, config):
+                continue
             # A1 SPY-regime gate: block side per gate config (default OFF for both sides)
             if config.SPY_REGIME_GATE_ENABLED:
                 if is_long and not bool(_spy_long_ok[i]):
@@ -2337,16 +2387,25 @@ def simulate_one_symbol(
                 _ppl3 = check_ppl_step3(_store, i, _pos, config)
                 if _ppl3 is not None:
                     pnl_pct = gain
-                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                        value=state.qty * mark, reason=_ppl3["reason"], pnl_pct=pnl_pct)
-                    events.append(ev)
-                    trade_returns.append(pnl_pct)
-                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                    state.last_reduce_ts = bar_ts; state.hedge_active = False
-                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                    _pos.reset_ppl(); _pos.gain_pct = 0.0
-                    continue
+                    if _vec_exit_to_reduce is not None:
+                        _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                            trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                            gain=pnl_pct, reason=_ppl3["reason"], is_long=is_long,
+                            cfg=config, TradeEvent=TradeEvent)
+                        if _closed:
+                            continue
+                        # REDUCE: position still open — fall through
+                    else:
+                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_ppl3["reason"], pnl_pct=pnl_pct)
+                        events.append(ev)
+                        trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                        _pos.reset_ppl(); _pos.gain_pct = 0.0
+                        continue
 
         # ─── PROFIT_TAKE REDUCE (partial close at profit target) ────────
         if check_profit_take_reduce is not None and config.PROFIT_TAKE_REDUCE_ENABLED and state.qty > 0.0001:
@@ -2434,8 +2493,46 @@ def simulate_one_symbol(
             _qt_min_gain = float(getattr(config, "QUALITY_TOP_EXIT_MIN_GAIN_PCT", 0.0))
             if gain >= _qt_min_gain:
                 pnl_pct = gain
+                _reason = f"QUALITY_TOP_EXIT_g{gain:.2f}%"
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    _pos.gain_pct = 0.0
+                    continue
+
+        # ─── BTC_DEDICATED exit gate (2026-05-26 vectorised btc_loop.should_exit_btc) ──
+        # Fires on WT-against count >= BTC_TECH_EXIT_WT_MIN_TFS, OR accel-reversal,
+        # OR divergence-against. Only active when BTC_DEDICATED_ENABLED for BTC syms.
+        if state.qty > 0.0001 and bool(_btc_exit_mask[i]):
+            pnl_pct = gain
+            _reason = f"BTC_LOOP_EXIT_{'LONG' if is_long else 'SHORT'}_TECH"
+            if _vec_exit_to_reduce is not None:
+                _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                    trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                    gain=pnl_pct, reason=_reason, is_long=is_long,
+                    cfg=config, TradeEvent=TradeEvent)
+                if _closed:
+                    continue
+                # REDUCE: position still open — fall through
+            else:
                 ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=f"QUALITY_TOP_EXIT_g{gain:.2f}%", pnl_pct=pnl_pct)
+                    value=state.qty * mark, reason=_reason,
+                    pnl_pct=pnl_pct)
                 events.append(ev)
                 trade_returns.append(pnl_pct)
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
@@ -2445,24 +2542,6 @@ def simulate_one_symbol(
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 _pos.gain_pct = 0.0
                 continue
-
-        # ─── BTC_DEDICATED exit gate (2026-05-26 vectorised btc_loop.should_exit_btc) ──
-        # Fires on WT-against count >= BTC_TECH_EXIT_WT_MIN_TFS, OR accel-reversal,
-        # OR divergence-against. Only active when BTC_DEDICATED_ENABLED for BTC syms.
-        if state.qty > 0.0001 and bool(_btc_exit_mask[i]):
-            pnl_pct = gain
-            ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                value=state.qty * mark, reason=f"BTC_LOOP_EXIT_{'LONG' if is_long else 'SHORT'}_TECH",
-                pnl_pct=pnl_pct)
-            events.append(ev)
-            trade_returns.append(pnl_pct)
-            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-            state.last_reduce_ts = bar_ts; state.hedge_active = False
-            state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-            state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-            _pos.gain_pct = 0.0
-            continue
 
         # ─── RZ EXIT gates (2026-05-26) ─────────────────────────────────────
         # EXIT_SCORER N-of-5 (wt_dc_exit_scorer.py) AND/OR RZ_CASCADE multi-TF
@@ -2476,25 +2555,17 @@ def simulate_one_symbol(
             if bool(_rz_cascade_exit[i]):
                 _rz_reason_parts.append("RZ_CASCADE_REV")
             _rz_reason = "_".join(_rz_reason_parts) + f"_g{gain:.2f}%"
-            ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                value=state.qty * mark, reason=_rz_reason, pnl_pct=pnl_pct)
-            events.append(ev)
-            trade_returns.append(pnl_pct)
-            state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-            state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-            state.last_reduce_ts = bar_ts; state.hedge_active = False
-            state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-            state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-            _pos.gain_pct = 0.0
-            continue
-
-        # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
-        if check_r1_emergency_exit is not None and state.qty > 0.0001:
-            _r1 = check_r1_emergency_exit(_store, i, _pos, mode, config)
-            if _r1 is not None:
-                pnl_pct = gain
+            if _vec_exit_to_reduce is not None:
+                _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                    trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                    gain=pnl_pct, reason=_rz_reason, is_long=is_long,
+                    cfg=config, TradeEvent=TradeEvent)
+                if _closed:
+                    continue
+                # REDUCE: position still open — fall through
+            else:
                 ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_r1["reason"], pnl_pct=pnl_pct)
+                    value=state.qty * mark, reason=_rz_reason, pnl_pct=pnl_pct)
                 events.append(ev)
                 trade_returns.append(pnl_pct)
                 state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
@@ -2504,6 +2575,32 @@ def simulate_one_symbol(
                 state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
                 _pos.gain_pct = 0.0
                 continue
+
+        # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
+        if check_r1_emergency_exit is not None and state.qty > 0.0001:
+            _r1 = check_r1_emergency_exit(_store, i, _pos, mode, config)
+            if _r1 is not None:
+                pnl_pct = gain
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_r1["reason"], is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_r1["reason"], pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    _pos.gain_pct = 0.0
+                    continue
 
         # ─── MICRO_SCALP_USDC_CLOSE (USER 2026-05-22 wire-in — matches ez_manage:40000+) ───
         # Fires when gain >= threshold AND gain < prev_gain (first decel past threshold).
@@ -2522,18 +2619,28 @@ def simulate_one_symbol(
             if gain >= _ms_thr and gain < state.prev_gain:
                 pnl_pct = gain
                 _ms_reason = f"MICRO_SCALP_USDC_CLOSE_g{gain:.3f}%_prev{state.prev_gain:.3f}%"
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_ms_reason, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                state.prev_gain = 0.0
-                _pos.gain_pct = 0.0
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_ms_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        state.prev_gain = 0.0
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_ms_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    state.prev_gain = 0.0
+                    _pos.gain_pct = 0.0
+                    continue
 
         # ─── NEWBORN_LOSS_KILL (USER 2026-05-21 post-ORDI mandate) ───────────────
         # Closes newborn position the moment gain drops below threshold.
@@ -2542,17 +2649,26 @@ def simulate_one_symbol(
             _nlk = check_newborn_loss_kill_exit(_store, i, _pos, mode, config)
             if _nlk is not None:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_nlk["reason"], pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                _pos.gain_pct = 0.0
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_nlk["reason"], is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_nlk["reason"], pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    _pos.gain_pct = 0.0
+                    continue
 
         # R3_HTF_FLIP (2026-05-18 REWIRE) — Daily + 4h structural close.
         # Mirrors ez_manage.py:38260+. Reason in LOSS_EXIT_TECHNICAL_BYPASS so
@@ -2570,19 +2686,28 @@ def simulate_one_symbol(
             if _r3_fire:
                 pnl_pct = gain
                 _r3_reason = f"R3_HTF_FLIP{'_4H' if _r3_tier == '4H' else ''}_{_r3_tier}_px{mark:.6f}"
-                ev = TradeEvent(
-                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_r3_reason, pnl_pct=pnl_pct,
-                )
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                _pos.gain_pct = 0.0
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_r3_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(
+                        ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_r3_reason, pnl_pct=pnl_pct,
+                    )
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    _pos.gain_pct = 0.0
+                    continue
 
         # DC_STOP: fixed stop price recorded at entry — bypasses noloss (R1 spec)
         # NOTE: This is a SWEEP-ONLY approximation (DC_FIXED_STOP). Not in live.
@@ -2591,20 +2716,30 @@ def simulate_one_symbol(
             _dc_breached = (is_long and mark <= state.r1_stop_price) or ((not is_long) and mark >= state.r1_stop_price)
             if _dc_breached:
                 pnl_pct = gain
-                ev = TradeEvent(
-                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark,
-                    reason=f"DC_STOP_px{mark:.4f}_stop{state.r1_stop_price:.4f}",
-                    pnl_pct=pnl_pct,
-                )
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                continue
+                _reason = f"DC_STOP_px{mark:.4f}_stop{state.r1_stop_price:.4f}"
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(
+                        ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark,
+                        reason=_reason,
+                        pnl_pct=pnl_pct,
+                    )
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    continue
 
         # DC_LOW / BB FROZEN STOP — price recorded at entry, exit when breached
         if state.qty > 0.0001:
@@ -2624,16 +2759,25 @@ def simulate_one_symbol(
                         _fs_reason = f"BB_FROZEN_STOP_{config.BB_FROZEN_STOP_TF}_px{mark:.4f}_stop{state._bb_fstop_entry:.4f}"
             if _fs_hit:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_fs_reason, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_fs_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_fs_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    continue
 
         # ─── PHASE B 2026-05-19 candle-pattern stops (PSTOP_*) ─────────────────
         # LH / LL / IB / PULLBACK / BB_TAG_FAIL — all configurable per TF.
@@ -2644,17 +2788,27 @@ def simulate_one_symbol(
                 _ps_fire, _ps_reason = check_pattern_stops_at_bar(_pattern_stop_arrays, i, config)
                 if _ps_fire:
                     pnl_pct = gain
-                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                        value=state.qty * mark, reason=_ps_reason, pnl_pct=pnl_pct)
-                    events.append(ev)
-                    trade_returns.append(pnl_pct)
-                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                    state.last_reduce_ts = bar_ts; state.hedge_active = False
-                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                    state._ever_outside_channel = False
-                    continue
+                    if _vec_exit_to_reduce is not None:
+                        _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                            trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                            gain=pnl_pct, reason=_ps_reason, is_long=is_long,
+                            cfg=config, TradeEvent=TradeEvent)
+                        if _closed:
+                            state._ever_outside_channel = False
+                            continue
+                        # REDUCE: position still open — fall through
+                    else:
+                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_ps_reason, pnl_pct=pnl_pct)
+                        events.append(ev)
+                        trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                        state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                        state._ever_outside_channel = False
+                        continue
 
         # ─── PHASE C 2026-05-19 USER MANDATE tight breakout stops ──────────────
         # NEVER_GO_RED: closes if gain crosses below 0 after max_gain >= peak threshold.
@@ -2669,17 +2823,27 @@ def simulate_one_symbol(
             state._ever_outside_channel = _new_ever_exh
             if _exh_fire:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_exh_reason, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                state._ever_outside_channel = False
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_exh_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        state._ever_outside_channel = False
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_exh_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    state._ever_outside_channel = False
+                    continue
         if (_ngr_active or _chre_active) and state.qty > 0.0001:
             _tb_fire = False
             _tb_reason = ""
@@ -2694,17 +2858,27 @@ def simulate_one_symbol(
                 state._ever_outside_channel = _new_ever
             if _tb_fire:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_tb_reason, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
-                state._ever_outside_channel = False
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_tb_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        state._ever_outside_channel = False
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_tb_reason, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts; state.r1_stop_price = 0.0
+                    state._ever_outside_channel = False
+                    continue
 
         # GR multiplier exit: against-score >= threshold AND wt1_3m against
         # 2026-05-17 MIN_GAIN_EXIT_GATE: non-emergency, requires gain >= MIN_GAIN.
@@ -2781,34 +2955,52 @@ def simulate_one_symbol(
             _pgb = check_peak_giveback_exit(_store, i, _pos, mode, config)
             if _pgb is not None:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_pgb, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts
-                _pos.gain_pct = 0.0; _pos.reset_ppl()
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_pgb, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_pgb, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _pos.gain_pct = 0.0; _pos.reset_ppl()
+                    continue
 
         # BE_EROSION exit (gain eroded to loss after being profitable — bypasses noloss)
         if exit_id == EXIT_NONE and check_be_erosion_exit is not None and state.qty > 0.0001:
             _beg = check_be_erosion_exit(_store, i, _pos, mode, config)
             if _beg is not None:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_beg, pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts
-                _pos.gain_pct = 0.0; _pos.reset_ppl()
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_beg, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_beg, pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _pos.gain_pct = 0.0; _pos.reset_ppl()
+                    continue
 
         # IN_GAIN_TREND_EXIT (profit harvesting on strong winners — mirrors live ez_manage logic)
         # ha_1h/ha_15m in NPZ are int8: 1=green, -1=red (NOT strings)
@@ -2869,17 +3061,26 @@ def simulate_one_symbol(
             if _r2 is not None:
                 # R2 bypasses noloss gate — execute close directly
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=_r2["reason"], pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts
-                _pos.gain_pct = 0.0
-                continue
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_r2["reason"], is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_r2["reason"], pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _pos.gain_pct = 0.0
+                    continue
 
         # R4 STDEV_MACRO — long-window log-price z-score on D AND W extreme + LTF
         # flip. Additive to R1/R2/R3 — runs AFTER R2. Default OFF behind
@@ -2900,17 +3101,26 @@ def simulate_one_symbol(
                 if _r4_close_vec:
                     pnl_pct = gain
                     _r4_full_reason = f"{_r4_reason_vec}_pctbD={_r4_state_vec.get('bb_pct_b_D', 0.5):.2f}_pctb4h={_r4_state_vec.get('bb_pct_b_4h', 0.5):.2f}"
-                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                        value=state.qty * mark, reason=_r4_full_reason, pnl_pct=pnl_pct)
-                    events.append(ev)
-                    trade_returns.append(pnl_pct)
-                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                    state.last_reduce_ts = bar_ts; state.hedge_active = False
-                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                    state.hedge_completed_ts = bar_ts
-                    _pos.gain_pct = 0.0
-                    continue
+                    if _vec_exit_to_reduce is not None:
+                        _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                            trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                            gain=pnl_pct, reason=_r4_full_reason, is_long=is_long,
+                            cfg=config, TradeEvent=TradeEvent)
+                        if _closed:
+                            continue
+                        # REDUCE: position still open — fall through
+                    else:
+                        ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                            value=state.qty * mark, reason=_r4_full_reason, pnl_pct=pnl_pct)
+                        events.append(ev)
+                        trade_returns.append(pnl_pct)
+                        state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                        state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                        state.last_reduce_ts = bar_ts; state.hedge_active = False
+                        state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                        state.hedge_completed_ts = bar_ts
+                        _pos.gain_pct = 0.0
+                        continue
             except Exception:
                 pass
 
@@ -2961,18 +3171,28 @@ def simulate_one_symbol(
             # HEDGE_FAILED_FALLBACK_CLOSE: close at loss (sacred rule — never hold open loser)
             if _vng_action == 2:
                 pnl_pct = gain
-                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                    value=state.qty * mark, reason=f"HEDGE_FAILED_FALLBACK_CLOSE_g{gain:.2f}",
-                    pnl_pct=pnl_pct)
-                events.append(ev)
-                trade_returns.append(pnl_pct)
-                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
-                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
-                state.last_reduce_ts = bar_ts; state.hedge_active = False
-                state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
-                state.hedge_completed_ts = bar_ts
-                _pos.gain_pct = 0.0
-                continue
+                _hf_reason = f"HEDGE_FAILED_FALLBACK_CLOSE_g{gain:.2f}"
+                if _vec_exit_to_reduce is not None:
+                    _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                        trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                        gain=pnl_pct, reason=_hf_reason, is_long=is_long,
+                        cfg=config, TradeEvent=TradeEvent)
+                    if _closed:
+                        continue
+                    # REDUCE: position still open — fall through
+                else:
+                    ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                        value=state.qty * mark, reason=_hf_reason,
+                        pnl_pct=pnl_pct)
+                    events.append(ev)
+                    trade_returns.append(pnl_pct)
+                    state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                    state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                    state.last_reduce_ts = bar_ts; state.hedge_active = False
+                    state.hedge_qty = 0.0; state.hedge_entry_price = 0.0
+                    state.hedge_completed_ts = bar_ts
+                    _pos.gain_pct = 0.0
+                    continue
             # action_id 0 (HOLD) or 1 (ALLOW_REDUCE) → fall through to normal exit/augment flow
 
         if exit_id != EXIT_NONE:
@@ -3000,24 +3220,33 @@ def simulate_one_symbol(
                 # 1 = ALLOW_REDUCE, 2 = HEDGE_FAIL fallback close — both close
             # Execute close
             pnl_pct = gain
-            ev = TradeEvent(
-                ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
-                value=state.qty * mark, reason=reason_str, pnl_pct=pnl_pct,
-            )
-            events.append(ev)
-            trade_returns.append(pnl_pct)
-            state.qty = 0.0
-            state.entry_price = 0.0
-            state.initial_qty = 0.0
-            state.opened_at = 0.0
-            state.augmented_count = 0
-            state.max_gain = 0.0
-            state.last_reduce_ts = bar_ts
-            state.hedge_active = False
-            state.hedge_qty = 0.0
-            state.hedge_entry_price = 0.0
-            state.hedge_completed_ts = bar_ts
-            continue
+            if _vec_exit_to_reduce is not None:
+                _closed = _vec_exit_to_reduce(state=state, pos=_pos, events=events,
+                    trade_returns=trade_returns, ts=bar_ts, mark=mark,
+                    gain=pnl_pct, reason=reason_str, is_long=is_long,
+                    cfg=config, TradeEvent=TradeEvent)
+                if _closed:
+                    continue
+                # REDUCE: position still open — fall through
+            else:
+                ev = TradeEvent(
+                    ts=bar_ts, type="CLOSE", qty=state.qty, price=mark,
+                    value=state.qty * mark, reason=reason_str, pnl_pct=pnl_pct,
+                )
+                events.append(ev)
+                trade_returns.append(pnl_pct)
+                state.qty = 0.0
+                state.entry_price = 0.0
+                state.initial_qty = 0.0
+                state.opened_at = 0.0
+                state.augmented_count = 0
+                state.max_gain = 0.0
+                state.last_reduce_ts = bar_ts
+                state.hedge_active = False
+                state.hedge_qty = 0.0
+                state.hedge_entry_price = 0.0
+                state.hedge_completed_ts = bar_ts
+                continue
 
         # ─── AUGMENT path (reentry fires while holding) ────────────────
         if reentry["fire"][i]:
@@ -3083,6 +3312,23 @@ def simulate_one_symbol(
             )
             if _vof_gr_block is not None:
                 continue
+
+        # 2026-05-26 RATIO_REDUCE_PROXY — per-sym proxy for live ratio-trim REDUCE.
+        # Default OFF (VEC_RATIO_REDUCE_PROXY_ENABLED=False) → check returns None.
+        if _vec_check_ratio_proxy is not None and state.qty > 0.0001:
+            _rrp = _vec_check_ratio_proxy(state, bar_ts, mark, gain, config)
+            if _rrp is not None:
+                frac = float(_rrp.get("frac", 0.0))
+                if 0.0 < frac <= 1.0:
+                    reduce_qty = state.qty * frac
+                    if reduce_qty > 0:
+                        ev = TradeEvent(ts=bar_ts, type="REDUCE", qty=reduce_qty, price=mark,
+                            value=reduce_qty * mark, reason=_rrp.get("reason", "RATIO_REDUCE_PROXY"),
+                            pnl_pct=gain)
+                        events.append(ev)
+                        trade_returns.append(gain * frac)
+                        state.qty -= reduce_qty
+                        state.last_reduce_ts = bar_ts
 
         # GOLDEN_RULE augment while holding
         if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:

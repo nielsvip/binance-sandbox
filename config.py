@@ -3724,6 +3724,23 @@ class Config:
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True                              # 2026-04-27: was missing reverse opportunities per chart audit
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
 
+    # ════════════════════════════════════════════════════════════════════════════
+    # 2026-05-26 — Vec-engine live-parity knobs.
+    # Default OFF/0 preserves current vec behaviour bit-exactly. Enable for an A/B
+    # sweep to measure CLOSE-vs-REDUCE structural-parity ΔSharpe.
+    # ════════════════════════════════════════════════════════════════════════════
+    # vec_paths/exit_to_reduce_adapter.py — convert vec CLOSE → fractional REDUCE
+    VEC_LIVE_REDUCE_PARITY_ENABLED: bool = False
+    VEC_LIVE_REDUCE_PARITY_FRAC: float = 0.0  # 0 → fall through to 1/RATIO_MULTIPLIER (=25%)
+    VEC_LIVE_REDUCE_PARITY_KEEP_DUST: bool = False
+    # vec_paths/ratio_reduce_sym_proxy.py — per-sym ratio-trim approximation
+    VEC_RATIO_REDUCE_PROXY_ENABLED: bool = False
+    RATIO_TRIM_MIN_INTERVAL_S: float = 14400.0   # 4h between proxy trims
+    RATIO_TRIM_MIN_AGE_S: float = 7200.0          # 2h min age before first trim
+    RATIO_TRIM_GAIN_FLOOR: float = 0.5            # trim when gain <= 0.5%
+    # vec_paths/first_open_throttle.py — block first OPEN until bar_idx >= N
+    VEC_FIRST_OPEN_THROTTLE_BARS: int = 0         # 0 = OFF
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))
