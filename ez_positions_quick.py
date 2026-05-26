@@ -7091,6 +7091,10 @@ class HedgeEngine:
                                 _is_last_resort = (effective_ratio >= 1.0 and not elected_success)
                                 # ═══ 2026-04-16 CHANGE 2+4: LAST_RESORT gates ═══
                                 _lr_block = None
+                                if _is_last_resort and not bool(getattr(self.config, 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED', True)):
+                                    logger.critical(f"🚫 [LAST_RESORT_DISABLED] {hedge_position_key}: QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED=False — skipping same-symbol last-resort hedge (avoids martingale-against-trend)")
+                                    results['actual_symbol'] = {'status': 'blocked_disabled', 'reason': 'QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED=False'}
+                                    _lr_block = 'disabled'
                                 if _is_last_resort:
                                     # 2026-04-17: K-zone gate kept but can be overridden for OBLIGATORY hedge.
                                     # "candidates_searched < 3" pipeline gate REMOVED — inverted logic (fewer
