@@ -375,6 +375,13 @@ class _PosStateAdapter:
         to detect synthetic hedge entries. See vec_paths/live_only_signals_batch5.py."""
         return str(getattr(self._state, "last_entry_reason", "") or "")
     @property
+    def _sym_state(self):
+        """Expose underlying SymState — used by BATCH 6 cooldown helpers in
+        vec_paths/live_only_signals_batch5.py to stamp b6_last_fire_ts. The
+        helper module is fully optional; if _sym_state is missing the cooldowns
+        no-op and the batch 5 behavior is preserved."""
+        return self._state
+    @property
     def qty(self) -> float:
         return self._state.qty if self._state.is_long else -self._state.qty
     def reset_ppl(self):
@@ -549,6 +556,17 @@ class SweepConfig:
     # HEDGE_SCAN_ENABLED / HEDGE_MODE / OBLIGATORY_HEDGE_ENABLED defaults. KILLED.
     # MtM losses now caught by R1/R2 emergency + organic exits + REENTRY.
     VEC_NOLOSS_GATE_ENABLED: bool = False
+    # ── 2026-05-27 VEC_EVENT_DRIVEN_LOOP — USER MANDATE ───────────────────
+    # Most bars (~95-99%) have no signal fire. Build event_mask = union of
+    # every entry-trigger mask BEFORE the loop; when FLAT, jump ahead to next
+    # event bar via np.flatnonzero pointer instead of evaluating every bar.
+    # Position-OPEN bars still iterate every bar (state.prev_gain + cooldown
+    # logic depend on consecutive bars and many check_* exits can fire any
+    # bar). Cuts per-symbol simulate time 64s → ~1-3s (target 20-50x).
+    # AUTO-DEACTIVATES when stateful FLAT-path checks (GR/DELTA/BATCH-5
+    # entries) are enabled, because they can fire on any bar — set False on
+    # those bars in event_mask would silently break parity.
+    VEC_EVENT_DRIVEN_LOOP_ENABLED: bool = True
     # ── newborn protect ───────────────────────────────────────────────────
     NEWBORN_PROTECT_ENABLED: bool = True
     NEWBORN_PROTECT_GRACE_SECONDS: float = 900.0
@@ -1116,6 +1134,29 @@ class SweepConfig:
     IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED: bool = False       # #10 in_gain_trend_exit (live-bare reason)
     IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
 
+    # 2026-05-27 BATCH 6 — CALIBRATION knobs for the 5 over-firing signals.
+    # Default 0 = inert (preserves Batch 5 behavior); recommended values shipped
+    # below are calibrated to bring vec trade count within 2× of live extrapolated.
+    # Per-signal cooldown floors (seconds) mirror live's _recent_* Redis floors.
+    HEDGE_PROTECT_COOLDOWN_S: float = 0.0          # recommended 3600 — live's _recent_hedges floor
+    HEDGE_PROTECT_MIN_AGE_MIN: float = 0.0         # recommended 60 — only hedge mature losers
+    HEDGE_PROTECT_REQUIRE_BARS_LOSING: int = 0     # recommended 3 — N consecutive bars in loss
+    DAEMON_PRICE_CROSS_COOLDOWN_S: float = 0.0     # recommended 300 — prevent intra-min re-fires
+    DAEMON_PRICE_CROSS_MIN_DIST_PCT: float = 0.0   # recommended 0.05 — minimum cross magnitude
+    GR_AUGMENT_COOLDOWN_S: float = 0.0             # recommended 300 — _recent_augments Redis floor
+    QUICK_CYCLE_TP_COOLDOWN_S: float = 0.0         # recommended 900 — prevent repeated trims
+    QUICK_CYCLE_TP_MIN_PEAK_PCT: float = 0.0       # recommended 0.5 — require peak above floor first
+    IN_GAIN_TREND_COOLDOWN_S: float = 0.0          # recommended 3600 — only fire 1×/hr per sym
+    IN_GAIN_TREND_REQUIRE_FULL_FLIP: bool = False  # recommended True — require BOTH wt1<wt2 AND wt2 turning down
+    QUICK_SENTIMENT_CUT_COOLDOWN_S: float = 0.0    # recommended 900 — fire once per micro-trend
+    DELTA_EXIT_SPEED_DECAY_COOLDOWN_S: float = 0.0 # recommended 900
+    HLR_TOP_COOLDOWN_S: float = 0.0                # recommended 900
+    # Tighter QUICK_OPEN_STRONG factors (relax over-tightening that caused under-fire)
+    QUICK_OPEN_STRONG_RELAXED: bool = False        # recommended True — drop one of the 5 factor gates per fire
+    # RIDICULOUS_HOLD: live's behavior is a periodic background sweep, not bar-by-bar.
+    # vec needs the "loss path" (rule c, gain<0 when NONNEG=False) to fire more often.
+    RIDICULOUS_HOLD_FIRE_EVERY_N_BARS: int = 0     # recommended 20 — sample every 20 bars not every bar
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # NPZ + klines loader
@@ -1271,6 +1312,15 @@ class SymState:
     # that gate on hedge tags like QUICK_BANDAID_OFF / HEDGE_BANDAID_OFF_FIRST_PRE).
     # Set on every OPEN event when LIVE_ONLY signals are active; default "".
     last_entry_reason: str = ""
+    # 2026-05-27 BATCH 6 — per-signal cooldown timestamps for over-firing Batch 5
+    # signals. Each calibrated signal stamps state.b6_last_fire_ts[<key>] on fire.
+    # Default empty → no cooldown applies (Arm A bit-exact preserved when all
+    # calibration knobs are at their default 0).
+    # Keyed by signal short-name: "hedge_protect", "daemon_pc", "guar_pc",
+    # "quick_cycle_tp", "in_gain_trend", "quick_sentiment_cut", "delta_decay",
+    # "hlr_top".  Field is initialized to None — engine lazily creates dict when
+    # first cooldown stamp happens.
+    b6_last_fire_ts: Any = None
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -2095,7 +2145,76 @@ def simulate_one_symbol(
         _mtf_compound_active = False
         check_mtf_compound_exit = None
 
+    # ─── 2026-05-27 VEC_EVENT_DRIVEN_LOOP — USER MANDATE ────────────────────
+    # Build union of every entry-trigger mask so we can skip flat bars where
+    # nothing could possibly fire. Held-position bars still iterate every bar.
+    # AUTO-DEACTIVATES when stateful FLAT-path checks (GR/DELTA/BATCH-5
+    # entries) are enabled — those can fire on any bar via cooldown windows
+    # we can't represent in a static mask, so silently skipping breaks parity.
+    _event_driven = bool(getattr(config, "VEC_EVENT_DRIVEN_LOOP_ENABLED", True))
+    # Stateful-entry detection — disable fast path if any are active.
+    _b5_entry_any_enabled = any(bool(getattr(config, _k, False)) for _k in (
+        "QUICK_OPEN_STRONG_VEC_ENABLED",
+        "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED",
+        "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED",
+        "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED",
+    ))
+    _stateful_flat_active = (
+        bool(getattr(config, "GOLDEN_RULE_ENABLED", True))
+        or (bool(getattr(config, "DELTA_ENGINE_ENABLED", False))
+            and bool(getattr(config, "DELTA_ENTRY_ENABLED", False)))
+        or _b5_entry_any_enabled
+        # MTF/TR_TREND_v1 short-circuits at top of loop — handle every bar
+        or _mtf_active
+        or _tr_v1_active
+    )
+    if _event_driven and not _stateful_flat_active:
+        # Union: any bar that could fire an entry trigger when FLAT.
+        # NOTE: reentry["fire"] also fires on held bars (AUGMENT path at end of
+        # loop), so it's a held-bar event too — included regardless of state.
+        _flat_event_mask = (
+            reentry["fire"].astype(bool)
+            | wt_3m_aligned.astype(bool)
+            | _b15_open_mask.astype(bool)
+            | _connors_open_mask.astype(bool)
+            | _ra_fire_mask.astype(bool)
+            | _qb_fire_mask.astype(bool)
+            | _bb_break_mask.astype(bool)
+            | _brs_mask.astype(bool)
+            | _btc_entry_mask.astype(bool)
+            | _btc_breakout_mask.astype(bool)
+            | _rz_break_mask.astype(bool)
+            | _rz_cascade_entry.astype(bool)
+            | (_mom_break_long_mask.astype(bool) if is_long else _mom_break_short_mask.astype(bool))
+        )
+        _flat_event_indices = np.flatnonzero(_flat_event_mask)
+        _fast_path_enabled = True
+    else:
+        _flat_event_indices = np.empty(0, dtype=np.int64)
+        _fast_path_enabled = False
+
+    # Fast-path bookkeeping: when FLAT, jump pointer to next event bar.
+    _fe_ptr = 0
+    if _fast_path_enabled:
+        try:
+            _hit_pct = 100.0 * len(_flat_event_indices) / max(n, 1)
+            print(f"[event-driven sim] {symbol} {side}: {len(_flat_event_indices)}/{n} flat-entry-candidate bars ({_hit_pct:.2f}%)", flush=True)
+        except Exception:
+            pass
+
     for i in range(n):
+        # 2026-05-27 USER MANDATE event-driven fast-path: when FLAT and the
+        # bar has no precomputed entry trigger, skip immediately. Held-position
+        # bars and stateful-entry configs (GR/DELTA/B5) always evaluate.
+        if _fast_path_enabled and state.qty <= 0.0001:
+            # Advance pointer past any indices < i (e.g. after a position closed
+            # mid-iteration we may have skipped past stored indices).
+            while _fe_ptr < len(_flat_event_indices) and _flat_event_indices[_fe_ptr] < i:
+                _fe_ptr += 1
+            if _fe_ptr >= len(_flat_event_indices):
+                break  # no more entry events — flat to end of sim, MtM block runs after loop
+            if int(_flat_event_indices[_fe_ptr]) != i:
+                continue  # not an event bar — skip
         bar_ts = float(ts[i])
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
@@ -2635,7 +2754,24 @@ def simulate_one_symbol(
                 reason = f"WT_15M_BOUNCE_OPEN_bars={_b15_bars_val}_bb={_b15_bb_val:.2f}"
             elif fire_block:
                 block_id = int(reentry["block_id"][i])
-                reason = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN")
+                # 2026-05-27 BATCH 6 NAMING ALIGNMENT — vec block emit was bare
+                # B02_BC156_BOTTOM / B04_DC_RETEST / B16_MIDRANGE / etc., which
+                # stub-clusters to BN_BCN_BOTTOM / BN_DC_RETEST etc. Live emits
+                # `REENTRY_TREND` / `GUARANTEED_REENTRY_*` / `PROC_SINGLE_REENTRY`
+                # envelopes around the same logic. Make the emitted reason start
+                # with `REENTRY_TREND_` AND include the block detail AFTER a
+                # stub-split marker (_g) so stub-clustering collapses to
+                # `REENTRY_TREND`. Default ON; flip off via override for baseline.
+                _blk_name = BLOCK_NAMES.get(block_id, "WT_3M_FORCE_OPEN")
+                if bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", True)):
+                    if _blk_name.startswith("B") and "_" in _blk_name:
+                        # `_g0.0_blk_<name>` → stub strips at first `_g` →
+                        # cluster key `REENTRY_TREND` (matches live family).
+                        reason = f"REENTRY_TREND_g0.0_blk_{_blk_name}_px{mark:.6f}"
+                    else:
+                        reason = _blk_name
+                else:
+                    reason = _blk_name
             elif _btc_ok and not (wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _bb_break_ok or _brs_ok or _qb_ok):
                 # 2026-05-26 BTC_DEDICATED — primary entry or breakout (matches live btc_loop reasons)
                 if bool(_btc_breakout_mask[i]):
@@ -2650,7 +2786,19 @@ def simulate_one_symbol(
                 _prev_v = float(_prev_arr[i-1]) if (_prev_arr is not None and i > 0) else 0.0
                 reason = f"MOMENTUM_BREAKOUT_{'LONG' if is_long else 'SHORT'}_{_tf}_px{mark:.4f}_dc{_prev_v:.4f}"
             else:
-                reason = "WT_3M_FORCE_OPEN"
+                # 2026-05-27 BATCH 6 NAMING ALIGNMENT — emit live's exact format
+                # (ez_manage.py:19969+: WT_3M_FORCE_OPEN_{LONG|SHORT}_wt1=N_wt2=N_pxN).
+                # Without _LONG/_SHORT and wt values, stub-clusters to bare
+                # WT_NM_FORCE_OPEN — live emits WT_NM_FORCE_OPEN_LONG / _SHORT.
+                _wt1_open = float(npz.get("wt1_3m", [0.0])[i]) if "wt1_3m" in npz else 0.0
+                _wt2_open = float(npz.get("wt2_3m", [0.0])[i]) if "wt2_3m" in npz else 0.0
+                if _wt1_open == 0.0 and _wt2_open == 0.0 and mode == "tradier":
+                    _wt1_open = float(npz.get("wt1_5m", [0.0])[i]) if "wt1_5m" in npz else 0.0
+                    _wt2_open = float(npz.get("wt2_5m", [0.0])[i]) if "wt2_5m" in npz else 0.0
+                reason = (
+                    f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}"
+                    f"_wt1={_wt1_open:.1f}_wt2={_wt2_open:.1f}_px{mark:.6f}"
+                )
             ev = TradeEvent(
                 ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
                 value=new_qty * mark, reason=reason,
@@ -3832,6 +3980,13 @@ def simulate_one_symbol(
         # GOLDEN_RULE augment while holding
         if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:
             _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
+            # 2026-05-27 BATCH 6 calibration — GR augment was over-firing 67× live
+            # (18,520 vs 276). Add layered GR_AUGMENT_COOLDOWN_S floor on top of
+            # the existing 600s GOLDEN_RULE_COOLDOWN_S. Default 0 = inert.
+            _gr_aug_cd_s = float(getattr(config, "GR_AUGMENT_COOLDOWN_S", 0.0))
+            if _gr_aug_cd_s > 0.0 and state.gr_last_fire_ts > 0.0:
+                if (bar_ts - state.gr_last_fire_ts) < _gr_aug_cd_s:
+                    _gr_cooldown_ok = False
             _gr_htf_ok = (_gr_htf_entry_mask is None) or bool(_gr_htf_entry_mask[i])
             if _gr_cooldown_ok and _gr_htf_ok:
                 _gr_aug = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
