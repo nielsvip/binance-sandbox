@@ -2882,49 +2882,25 @@ class AdvancedSignalRater:
         lower_high_3m = bool(high_3m > 0 and high_3m_prev > 0 and high_3m < high_3m_prev)
         higher_high_3m = bool(high_3m > 0 and high_3m_prev > 0 and high_3m > high_3m_prev)
         lower_low_3m = bool(low_3m > 0 and low_3m_prev > 0 and low_3m < low_3m_prev)
-        if ((is_long and current_price > last_reduction_price) or (not is_long and current_price < last_reduction_price)) and min_since_red < 35: score += 8
-        if not is_exit and last_reduction_price > 0 and dc_low_D > 0:
-            if is_long and dc_wD > 4.0 and current_price > dc_low_D and current_price < dc_basis_D: score += 20; reasons.append("DC_REENTRY_PB_D(+20)")
-            elif is_long and dc_w4h > 3.0 and dc_low_4h > 0 and current_price > dc_low_4h and current_price < dc_basis_4h: score += 15; reasons.append("DC_REENTRY_PB_4H(+15)")
-            if not is_long and dc_wD > 4.0 and current_price < dc_high_D and current_price > dc_basis_D: score += 20; reasons.append("DC_REENTRY_PB_D(+20)")
-            elif not is_long and dc_w4h > 3.0 and dc_high_4h > 0 and current_price < dc_high_4h and current_price > dc_basis_4h: score += 15; reasons.append("DC_REENTRY_PB_4H(+15)")
-        if (is_long and k_1mco) or (not is_long and k_1mcu) and true_lag < 10.0 :
-            score += 1
-            if (is_long and current_price > crossover_price_3m) or (not is_long and current_price < crossunder_price_3m):
-                score += 2
-                if (is_long and crossover_price_3m > crossover_price_previous_3m) or (not is_long and crossunder_price_3m < crossunder_price_previous_3m): score += 3
-            if min_since_red < 25: score += 3
-        if ((is_long and k_1mcu) or (not is_long and k_1mco)) and true_lag < 10.0 :
-            score -= 1
-            if (is_long and current_price < crossover_price_3m) or (not is_long and current_price > crossunder_price_3m):
-                score -= 1
-                if (is_long and crossover_price_3m < crossover_price_previous_3m) or (not is_long and crossunder_price_3m > crossunder_price_previous_3m): score -= 4
-            if gain < 0.1: score -= 5
-        if (is_long and k_3mco) or (not is_long and k_3mcu):
-            score += 4
-            if (is_long and current_price > crossover_price_3m) or (not is_long and current_price < crossunder_price_3m):
-                score += 2
-                if (is_long and crossover_price_3m > crossover_price_previous_3m) or (not is_long and crossunder_price_3m < crossunder_price_previous_3m): score += 2
-            if gain < 0.1: score -= 8
-            if min_since_red < 35: score += 3
-        if (is_long and k_3mcu) or (not is_long and k_3mco):
-            score -= 3
-            if (is_long and current_price < crossover_price_3m) or (not is_long and current_price > crossunder_price_3m):
-                score -= 2
-                if (is_long and crossover_price_3m < crossover_price_previous_3m) or (not is_long and crossunder_price_3m > crossunder_price_previous_3m): score -= 3
-            if gain < 0.1: score -= 7
-        if (is_long and k_15mco) or (not is_long and k_15mcu):
-            score += 7
-            if (is_long and current_price > crossover_price_15m) or (not is_long and current_price < crossunder_price_15m):
-                score += 5
-                if (is_long and crossover_price_15m > crossover_price_previous_15m) or (not is_long and crossunder_price_15m < crossunder_price_previous_15m): score += 3
-            if gain < 0.1: score -= 9
-        if (is_long and k_15mcu) or (not is_long and k_15mco):
-            score -= 9
-            if (is_long and current_price < crossover_price_15m) or (not is_long and current_price > crossunder_price_15m):
-                score -= 4
-                if (is_long and crossover_price_15m < crossover_price_previous_15m) or (not is_long and crossunder_price_15m > crossunder_price_previous_15m): score -= 4
-            if gain < 0.1: score -= 19
+        # 2026-05-27 SHARED-FUNCTION refactor (user mandate "VECTORIZE EVERYTHING SO NOTHING
+        # CAN EVER BE OUT OF SYNC"): K-cross scoring extracted to vec_paths/stoch_kx_scorer.py.
+        # Same module called by v8_vec_sweep / vec backtest → bit-identical scoring per 3m bar.
+        from vec_paths.stoch_kx_scorer import score_stoch_kx as _vec_score_stoch_kx
+        _kx_dscore, _kx_reasons = _vec_score_stoch_kx(
+            is_long=is_long, is_exit=is_exit, current_price=current_price,
+            last_reduction_price=last_reduction_price, min_since_red=min_since_red,
+            gain=gain, true_lag=true_lag,
+            dc_basis_D=dc_basis_D, dc_low_D=dc_low_D, dc_high_D=dc_high_D, dc_wD=dc_wD,
+            dc_basis_4h=dc_basis_4h, dc_low_4h=dc_low_4h, dc_high_4h=dc_high_4h, dc_w4h=dc_w4h,
+            k_1mco=k_1mco, k_1mcu=k_1mcu, k_3mco=k_3mco, k_3mcu=k_3mcu,
+            k_15mco=k_15mco, k_15mcu=k_15mcu,
+            crossover_price_3m=crossover_price_3m, crossover_price_previous_3m=crossover_price_previous_3m,
+            crossunder_price_3m=crossunder_price_3m, crossunder_price_previous_3m=crossunder_price_previous_3m,
+            crossover_price_15m=crossover_price_15m, crossover_price_previous_15m=crossover_price_previous_15m,
+            crossunder_price_15m=crossunder_price_15m, crossunder_price_previous_15m=crossunder_price_previous_15m,
+        )
+        score += _kx_dscore
+        reasons.extend(_kx_reasons)
         # BACKTEST_CHANGE_102: HARD ALL-TF WAVETREND STRUCTURE — ABSOLUTE, NO BYPASS
         # WT higher-troughs / lower-peaks + cross values + direction + velocity + divergence across ALL TFs
         # LONG: WT troughs rising (higher lows in WT) on ALL TFs = bullish structure
