@@ -3927,9 +3927,19 @@ def simulate_one_symbol(
             # New blended entry
             denom = state.qty + aug_qty
             new_entry = (state.qty * state.entry_price + aug_qty * mark) / denom if denom > 0 else mark
+            # 2026-05-27 BATCH 6 NAMING ALIGNMENT — see fire_block branch above.
+            # Stub-cluster reentry block AUGMENTs to live's REENTRY_TREND family.
+            _aug_blk_name = BLOCK_NAMES.get(block_id, "AUGMENT")
+            if bool(getattr(config, "PARITY_REENTRY_NAMING_ENABLED", True)):
+                if _aug_blk_name.startswith("B") and "_" in _aug_blk_name:
+                    _aug_reason = f"REENTRY_TREND_g{gain:.2f}_blk_{_aug_blk_name}_px{mark:.6f}"
+                else:
+                    _aug_reason = _aug_blk_name
+            else:
+                _aug_reason = _aug_blk_name
             ev = TradeEvent(
                 ts=bar_ts, type="AUGMENT", qty=aug_qty, price=mark,
-                value=aug_qty * mark, reason=BLOCK_NAMES.get(block_id, "AUGMENT"),
+                value=aug_qty * mark, reason=_aug_reason,
             )
             events.append(ev)
             state.qty = denom
