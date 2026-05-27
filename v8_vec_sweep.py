@@ -1019,7 +1019,10 @@ class SweepConfig:
     # diverges intentionally — flip via override in A/B arms). Block any AUGMENT
     # when (mark vs last_augmentation_price) gain <
     # MIN_GAIN_TO_BUY_AGGRESSIVELY (3.0% default).
-    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = False
+    # 2026-05-27 USER MANDATE: OPEN positions do NOT get revised for entry until
+    # gain > MIN_GAIN. Default ON per mandate; reduces wasted CPU on bad augments
+    # AND prevents pyramiding into losers.
+    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     # 2026-05-26 BATCH 3 — WT_CROSSUNDER_FINAL per-sym-side cooldown.
     # Live `_recent_reduces` Redis floor effectively prevents this exit from
@@ -2179,7 +2182,7 @@ def simulate_one_symbol(
                         _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
                         # 2026-05-26 BATCH 3 UAG: mirror live ez_manage.py:23956
                         _uag_block_trx = False
-                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True))
                                 and state.qty > 0.0001):
                             _uag_last_px = (state.last_augmentation_price
                                 if state.last_augmentation_price > 0 else state.entry_price)
@@ -2312,7 +2315,7 @@ def simulate_one_symbol(
                         _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
                         # 2026-05-26 BATCH 3 UAG: mirror live ez_manage.py:23956
                         _uag_block_mtf = False
-                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                        if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True))
                                 and state.qty > 0.0001):
                             _uag_last_px = (state.last_augmentation_price
                                 if state.last_augmentation_price > 0 else state.entry_price)
@@ -3722,10 +3725,37 @@ def simulate_one_symbol(
 
         # ─── AUGMENT path (reentry fires while holding) ────────────────
         if reentry["fire"][i]:
+            # 2026-05-27 USER MANDATE: short-circuit BEFORE the expensive
+            # evaluate_augment_eligibility_vec() call when gain < MIN_GAIN.
+            # OPEN positions don't get revised for entry until gain > MIN_GAIN.
+            # Cuts wasted CPU on bad augments AND prevents pyramiding into losers.
+            if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True))
+                    and state.qty > 0.0001):
+                _uag_last_px = (state.last_augmentation_price
+                    if state.last_augmentation_price > 0 else state.entry_price)
+                if _uag_last_px > 0:
+                    _uag_gain_since = (
+                        (mark - _uag_last_px) / _uag_last_px * 100.0
+                        if is_long
+                        else (_uag_last_px - mark) / _uag_last_px * 100.0
+                    )
+                    _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                    if _uag_gain_since < _uag_min_gain:
+                        continue  # fast-path: skip eligibility eval entirely
+            # 2026-05-22 B3: MAX_AUGMENTS cap — second fast check before heavy eval
+            _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
+            if state.augmented_count >= _max_aug:
+                continue
+            # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
+            _aug_cd_s_re = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
+            if (_aug_cd_s_re > 0.0
+                    and state.last_augment_ts > 0.0
+                    and (bar_ts - state.last_augment_ts) < _aug_cd_s_re):
+                continue
             block_id = int(reentry["block_id"][i])
             qty_mult = float(reentry["qty_mult"][i])
             proposed = (config.START_POSITION_SIZE * qty_mult) / mark
-            # Augment eligibility
+            # Augment eligibility (heavy eval — only reached when fast gates pass)
             elig = evaluate_augment_eligibility_vec(
                 action="AUGMENT",
                 position_amt_arr=np.array([state.qty if is_long else -state.qty], dtype=np.float32),
@@ -3745,32 +3775,6 @@ def simulate_one_symbol(
                 continue
             aug_qty = float(elig["augment_qty"][0])
             if aug_qty <= 0:
-                continue
-            # 2026-05-22 B3: MAX_AUGMENTS cap
-            _max_aug = int(getattr(config, "MAX_AUGMENTS_PER_POSITION", 20))
-            if state.augmented_count >= _max_aug:
-                continue
-            # 2026-05-26 BATCH 3 UAG: mirrors ez_manage.py:23956 — block AUGMENT
-            # when gain_since_last_add < MIN_GAIN_TO_BUY_AGGRESSIVELY.
-            if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
-                    and state.qty > 0.0001):
-                _uag_last_px = (state.last_augmentation_price
-                    if state.last_augmentation_price > 0 else state.entry_price)
-                if _uag_last_px > 0:
-                    _uag_gain_since = (
-                        (mark - _uag_last_px) / _uag_last_px * 100.0
-                        if is_long
-                        else (_uag_last_px - mark) / _uag_last_px * 100.0
-                    )
-                    _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
-                    if _uag_gain_since < _uag_min_gain:
-                        continue
-            # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
-            # Mirrors live _recent_augments Redis floor 60-300s.
-            _aug_cd_s_re = float(getattr(config, "AUG_COOLDOWN_S", 0.0))
-            if (_aug_cd_s_re > 0.0
-                    and state.last_augment_ts > 0.0
-                    and (bar_ts - state.last_augment_ts) < _aug_cd_s_re):
                 continue
             # New blended entry
             denom = state.qty + aug_qty
@@ -3837,7 +3841,7 @@ def simulate_one_symbol(
                     # 2026-05-26 BATCH 3 UAG: mirrors ez_manage.py:23956 — block
                     # AUGMENT when gain_since_last_add < MIN_GAIN_TO_BUY_AGGRESSIVELY.
                     _uag_block = False
-                    if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", False))
+                    if (bool(getattr(config, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", True))
                             and state.qty > 0.0001):
                         _uag_last_px = (state.last_augmentation_price
                             if state.last_augmentation_price > 0 else state.entry_price)

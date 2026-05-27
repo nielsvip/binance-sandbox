@@ -11,7 +11,7 @@ from forward_test_vec_vs_live import load_active_overrides, events_to_trades
 
 def main():
     cfg = SweepConfig()
-    overrides = load_active_overrides("NEARUSDC", "LONG")
+    overrides = load_active_overrides("ZECUSDC", "LONG")
     print(f"Loaded overrides count: {len(overrides)}")
     for k, v in overrides.items():
         if hasattr(cfg, k):
@@ -22,7 +22,7 @@ def main():
             setattr(cfg, locked, False)
 
     start_ts = int(dt.datetime(2026, 5, 19, tzinfo=dt.timezone.utc).timestamp())
-    events, rets, n_bars = simulate_one_symbol("NEARUSDC", "LONG", "crypto", cfg, start_ts=start_ts)
+    events, rets, n_bars = simulate_one_symbol("ZECUSDC", "LONG", "crypto", cfg, start_ts=start_ts)
     trades = events_to_trades(events, rets, "LONG")
     print(f"Total simulated trades: {len(trades)}")
     
