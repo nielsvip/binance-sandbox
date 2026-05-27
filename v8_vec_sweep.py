@@ -2256,6 +2256,41 @@ def simulate_one_symbol(
         _mtf_compound_active = False
         check_mtf_compound_exit = None
 
+    # ─── 2026-05-27 BULK-PRECOMPUTE qty_per_bar — USER MANDATE ───────────────
+    # compute_trade_qty_vec was being called once per FLAT entry attempt with a
+    # 100+ key dict-comprehension `{k: v[i:i+1] for k, v in npz.items()}` — that
+    # was the dominant cost in profile (10s out of 65s). Move the entire qty
+    # pipeline to ONE bulk call here, then index per bar.
+    try:
+        from position_evaluator import compute_trade_qty_vec as _pe_compute_qty
+    except Exception:
+        _pe_compute_qty = None
+    if _pe_compute_qty is not None:
+        _start_pos_size = float(getattr(config, "START_POSITION_SIZE", 0.0))
+        _side_mult_pre = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else float(getattr(config, "SHORT_SIZE_MULT", 1.0))
+        _cp_for_qty = np.where(close > 0, close, 1.0).astype(np.float32)
+        if str(getattr(config, "SIZING_MODE", "")).upper() == "ATR_PARITY":
+            # _atr_parity_qty was already precomputed above (line ~1666).
+            _ap_qty_arr = np.asarray(_atr_parity_qty, dtype=np.float32)
+            _cap_arr = float(getattr(config, "ATR_PARITY_QTY_CAP_MULT", 1.0)) * _start_pos_size / _cp_for_qty
+            _ap_used = np.minimum(_ap_qty_arr, _cap_arr)
+            _default_qty = _start_pos_size / _cp_for_qty
+            _base_qty_arr_pre = np.where(_ap_qty_arr > 0, _ap_used, _default_qty).astype(np.float32)
+        else:
+            _base_qty_arr_pre = (_start_pos_size / _cp_for_qty).astype(np.float32)
+        if _side_mult_pre != 1.0:
+            _base_qty_arr_pre = _base_qty_arr_pre * _side_mult_pre
+        try:
+            _qty_full = _pe_compute_qty(
+                npz, _base_qty_arr_pre, is_long=is_long, config=config, is_hedge=False,
+            )
+            _qty_per_bar = np.asarray(_qty_full["qty"], dtype=np.float32)
+        except Exception as _qe:
+            sys.stderr.write(f"compute_trade_qty_vec bulk-precompute failed {symbol}/{side}: {_qe}\n")
+            _qty_per_bar = None
+    else:
+        _qty_per_bar = None
+
     # ─── 2026-05-27 BULK-MASK EXIT PRECOMPUTE — USER MANDATE ─────────────────
     # Each held-bar scalar exit check has an NPZ-only "candidate" mask that is
     # a NECESSARY condition for the scalar to return non-None. When the mask
@@ -2938,27 +2973,31 @@ def simulate_one_symbol(
                 )
                 if not _ee_passes:
                     continue
-            # Compute size via qty pipeline (single-bar call into vec for parity)
-            base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
-            # A3 ATR-parity sizing override: replace base qty with ATR-parity qty
-            if str(config.SIZING_MODE).upper() == "ATR_PARITY":
-                _ap_qty = float(_atr_parity_qty[i])
-                if _ap_qty > 0:
-                    _cap = float(config.ATR_PARITY_QTY_CAP_MULT) * float(config.START_POSITION_SIZE) / mark
-                    _ap_qty = min(_ap_qty, _cap)
-                    base_qty_arr = np.array([_ap_qty], dtype=np.float32)
-            # Side-asymmetric sizing — apply LONG/SHORT multiplier to base qty
-            _side_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else float(getattr(config, "SHORT_SIZE_MULT", 1.0))
-            if _side_mult != 1.0:
-                base_qty_arr = base_qty_arr * _side_mult
-            qty_dict = compute_trade_qty_vec(
-                {k: v[i:i+1] for k, v in npz.items()},
-                base_qty_arr,
-                is_long=is_long,
-                config=config,
-                is_hedge=False,
-            )
-            new_qty = float(qty_dict["qty"][0])
+            # 2026-05-27 USER MANDATE: bulk-precomputed qty_per_bar replaces the
+            # per-bar dict-comprehension + scalar compute_trade_qty_vec call
+            # (saves ~10s on BTCUSDC 2yr). Falls back to per-bar call if the
+            # bulk precompute failed (silent NPZ shape mismatch).
+            if _qty_per_bar is not None:
+                new_qty = float(_qty_per_bar[i])
+            else:
+                base_qty_arr = np.array([config.START_POSITION_SIZE / mark], dtype=np.float32)
+                if str(config.SIZING_MODE).upper() == "ATR_PARITY":
+                    _ap_qty = float(_atr_parity_qty[i])
+                    if _ap_qty > 0:
+                        _cap = float(config.ATR_PARITY_QTY_CAP_MULT) * float(config.START_POSITION_SIZE) / mark
+                        _ap_qty = min(_ap_qty, _cap)
+                        base_qty_arr = np.array([_ap_qty], dtype=np.float32)
+                _side_mult = float(getattr(config, "LONG_SIZE_MULT", 1.0)) if is_long else float(getattr(config, "SHORT_SIZE_MULT", 1.0))
+                if _side_mult != 1.0:
+                    base_qty_arr = base_qty_arr * _side_mult
+                qty_dict = compute_trade_qty_vec(
+                    {k: v[i:i+1] for k, v in npz.items()},
+                    base_qty_arr,
+                    is_long=is_long,
+                    config=config,
+                    is_hedge=False,
+                )
+                new_qty = float(qty_dict["qty"][0])
             if new_qty <= 0:
                 continue
             # 2026-05-22 TOP_OF_RANGE_BLOCK — skip entries when price is at extreme
@@ -4059,21 +4098,27 @@ def simulate_one_symbol(
             # on a SINGLE-BAR slice to leverage parity-tested logic.
             reason_str = EXIT_NAMES.get(exit_id, exit_reason)
             if gain < comm_buf:
-                # Loss exit → noloss gate decides HOLD vs ALLOW_REDUCE vs HEDGE_FAIL
-                ngd = evaluate_noloss_gate_vec(
-                    {k: v[i:i+1] for k, v in npz.items()},
-                    is_long=is_long,
-                    real_gain_pct=np.array([gain], dtype=np.float32),
-                    positionAmt=np.array([state.qty if is_long else -state.qty], dtype=np.float32),
-                    mark_price=np.array([mark], dtype=np.float32),
-                    reason=reason_str,
-                    config=config,
-                    is_hedge=False,
-                    is_reduce=True,
-                    hedge_already_active=np.array([state.hedge_active], dtype=bool),
-                    hedge_attempt_succeeded=np.array([True], dtype=bool),
-                )
-                action_id = int(ngd["action_id"][0])
+                # 2026-05-27 USER MANDATE: short-circuit when gate is disabled
+                # (saves ~3s on BTCUSDC 2yr per the dict-comp + vec call).
+                if not bool(getattr(config, "UNIVERSAL_NOLOSS_GATE", True)):
+                    action_id = 1  # ALLOW_REDUCE (gate inert)
+                    ngd = None
+                else:
+                    # Loss exit → noloss gate decides HOLD vs ALLOW_REDUCE vs HEDGE_FAIL
+                    ngd = evaluate_noloss_gate_vec(
+                        {k: v[i:i+1] for k, v in npz.items()},
+                        is_long=is_long,
+                        real_gain_pct=np.array([gain], dtype=np.float32),
+                        positionAmt=np.array([state.qty if is_long else -state.qty], dtype=np.float32),
+                        mark_price=np.array([mark], dtype=np.float32),
+                        reason=reason_str,
+                        config=config,
+                        is_hedge=False,
+                        is_reduce=True,
+                        hedge_already_active=np.array([state.hedge_active], dtype=bool),
+                        hedge_attempt_succeeded=np.array([True], dtype=bool),
+                    )
+                    action_id = int(ngd["action_id"][0])
                 if action_id == 0:  # HOLD
                     continue
                 # 1 = ALLOW_REDUCE, 2 = HEDGE_FAIL fallback close — both close
@@ -4256,6 +4301,21 @@ def simulate_one_symbol(
                 if (bar_ts - state.gr_last_fire_ts) < _gr_aug_cd_s:
                     _gr_cooldown_ok = False
             _gr_htf_ok = (_gr_htf_entry_mask is None) or bool(_gr_htf_entry_mask[i])
+            # 2026-05-27 USER MANDATE — quick state-only GR-target precheck.
+            # GR returns None when cur_notional >= target_max * 0.8. Compute the
+            # maximum target_usd (D-mult) and skip if position is already past it.
+            # Mirrors GR scalar L237 EXACTLY — uses cur_qty * price not cur_qty*mark.
+            _gr_max_mult = max(
+                float(getattr(config, "GOLDEN_RULE_MULT_15M", 1.0)),
+                float(getattr(config, "GOLDEN_RULE_MULT_1H", 1.5)),
+                float(getattr(config, "GOLDEN_RULE_MULT_4H", 2.0)),
+                float(getattr(config, "GOLDEN_RULE_MULT_D", 3.0)),
+            )
+            _gr_target_max = float(getattr(config, "GOLDEN_RULE_BASE_USD", 5.0)) * _gr_max_mult
+            _gr_cur_notional = state.qty * mark
+            if _gr_cur_notional >= _gr_target_max * 0.8:
+                # Already at max target; GR scalar would return None.
+                _gr_cooldown_ok = False  # short-circuit
             if _gr_cooldown_ok and _gr_htf_ok:
                 _gr_aug = check_golden_rule_enforce(_store, i, symbol, side, _pos, config, mode)
                 if _gr_aug is not None and _gr_aug.get("action") == "AUGMENT":
