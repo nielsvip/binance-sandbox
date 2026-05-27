@@ -370,6 +370,11 @@ class _PosStateAdapter:
     @property
     def breakout_entry(self) -> bool: return bool(getattr(self._state, "breakout_entry", False))
     @property
+    def reason(self) -> str:
+        """Last entry reason — read by BANDAID_OFF / HEDGE_BANDAID_OFF_FIRST_PRE
+        to detect synthetic hedge entries. See vec_paths/live_only_signals_batch5.py."""
+        return str(getattr(self._state, "last_entry_reason", "") or "")
+    @property
     def qty(self) -> float:
         return self._state.qty if self._state.is_long else -self._state.qty
     def reset_ppl(self):
@@ -1252,6 +1257,17 @@ class SymState:
     # opposite vs the recorded value.
     last_reduce_was_loss: bool = False
     wt_state_last_fire: int = 0
+    # 2026-05-27 BATCH 5 — tracking for DAEMON / GUARANTEED / DIRECTION_FAVORABLE reentries.
+    # Set on every REDUCE-final / CLOSE event; consumed by check_*_reentry signals
+    # when state.qty <= 0.0001 (position flat). last_close_reason is used by
+    # GUARANTEED_PRICE_CROSS_REENTRY_DISK to thread the exit reason through.
+    last_close_price: float = 0.0
+    last_close_ts: float = 0.0
+    last_close_reason: str = ""
+    # 2026-05-27 BATCH 5 — synthetic entry-reason tracking (used by EXIT signals
+    # that gate on hedge tags like QUICK_BANDAID_OFF / HEDGE_BANDAID_OFF_FIRST_PRE).
+    # Set on every OPEN event when LIVE_ONLY signals are active; default "".
+    last_entry_reason: str = ""
 
 
 def _gain_pct(entry: float, mark: float, is_long: bool) -> float:
@@ -2473,14 +2489,67 @@ def simulate_one_symbol(
                 state.quality_entries_today = 0
             if _qb_ok and state.quality_entries_today >= _qb_max_per_day:
                 _qb_ok = False  # daily cap reached
+            # 2026-05-27 BATCH 5 — LIVE_ONLY signal triggers (top 10 entry signals).
+            # All knobs default OFF → these are NO-OPs (Arm A bit-exact baseline).
+            # When enabled, they act as ADDITIONAL triggers on top of the organic
+            # cascade below. Reason strings match live exactly so the diff tool's
+            # stub clustering merges them with the live family.
+            _b5_entry_result: Optional[Dict[str, Any]] = None
+            _b5_entry_tag = ""
+            if state.qty <= 0.0001:
+                # ENTRY #3+#8 QUICK_OPEN_STRONG_BUY / QUICK_OPEN_STRONG_SELL
+                if _vec_check_quick_open_strong is not None and bool(getattr(config, "QUICK_OPEN_STRONG_VEC_ENABLED", False)):
+                    _b5_qos = _vec_check_quick_open_strong(_store, i, _pos, mode, config)
+                    if _b5_qos:
+                        _b5_entry_result = _b5_qos
+                        _b5_entry_tag = "quick_open_strong"
+                # ENTRY #6 DAEMON_PRICE_CROSS_REENTRY
+                if (_b5_entry_result is None and _vec_check_daemon_pc_reentry is not None
+                        and bool(getattr(config, "DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED", False))):
+                    _b5_dpc = _vec_check_daemon_pc_reentry(
+                        _store, i, _pos, mode, config,
+                        last_close_price=state.last_close_price,
+                        last_close_ts=state.last_close_ts,
+                    )
+                    if _b5_dpc:
+                        _b5_entry_result = _b5_dpc
+                        _b5_entry_tag = "daemon_pc_reentry"
+                # ENTRY #9 GUARANTEED_PRICE_CROSS_REENTRY_DISK
+                if (_b5_entry_result is None and _vec_check_guar_pc_reentry is not None
+                        and bool(getattr(config, "GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED", False))):
+                    _b5_gpc = _vec_check_guar_pc_reentry(
+                        _store, i, _pos, mode, config,
+                        last_close_price=state.last_close_price,
+                        last_close_ts=state.last_close_ts,
+                        exit_reason=state.last_close_reason,
+                    )
+                    if _b5_gpc:
+                        _b5_entry_result = _b5_gpc
+                        _b5_entry_tag = "guar_pc_reentry"
+                # ENTRY #10 DIRECTION_FAVORABLE_REENTRY
+                if (_b5_entry_result is None and _vec_check_dir_fav_reentry is not None
+                        and bool(getattr(config, "DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED", False))):
+                    _b5_dfr = _vec_check_dir_fav_reentry(
+                        _store, i, _pos, mode, config,
+                        last_close_price=state.last_close_price,
+                        last_close_ts=state.last_close_ts,
+                    )
+                    if _b5_dfr:
+                        _b5_entry_result = _b5_dfr
+                        _b5_entry_tag = "direction_favorable_reentry"
+                # ENTRY #1/2/5/7 HEDGE_PROTECT — only fires when there IS a position (modeled
+                # via synthetic loser). Skip on flat path. See exit-block hooks below.
             # When DISABLE_SCATTERGUN: quality gate is the ONLY trigger; suppress all others.
             if bool(getattr(config, "QUALITY_BOTTOM_DISABLE_SCATTERGUN", True)) and bool(getattr(config, "QUALITY_BOTTOM_ENTRY_ENABLED", True)):
-                if not _qb_ok:
+                if _b5_entry_result is not None:
+                    pass  # fall through to OPEN below
+                elif not _qb_ok:
                     continue
-                # quality entry fires — count it
-                state.quality_entries_today += 1
+                else:
+                    # quality entry fires — count it
+                    state.quality_entries_today += 1
             else:
-                if not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok):
+                if not (_b5_entry_result is not None or fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok):
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1
@@ -2544,7 +2613,11 @@ def simulate_one_symbol(
             # range position on all listed TFs (USER ORDI-prevention mandate).
             if (is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i]):
                 continue
-            if _ra_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
+            # 2026-05-27 BATCH 5 — LIVE_ONLY trigger has highest precedence so its
+            # reason string (matching live family exactly) hits the trade ledger.
+            if _b5_entry_result is not None:
+                reason = _b5_entry_result["reason"]
+            elif _ra_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok):
                 reason = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"
             elif _connors_ok and not (fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok):
                 _crsi_val = float(_crsi_d[i]) if config.CONNORS_RSI2_OVERLAY_ENABLED else 0.0
@@ -2600,6 +2673,8 @@ def simulate_one_symbol(
             # cooldown above never engages — state.last_augment_ts stays 0.
             if getattr(config, "VEC_OVERTRADE_FIX_ENABLED", True):
                 state.last_augment_ts = bar_ts
+            # 2026-05-27 BATCH 5 — record entry reason for BANDAID_OFF gating.
+            state.last_entry_reason = reason
             _pos.reset_ppl()
             if _gr_result is not None:
                 state.gr_last_fire_ts = bar_ts
@@ -2634,6 +2709,88 @@ def simulate_one_symbol(
             state.max_gain = gain
         _pos.gain_pct = gain
         age_s = bar_ts - state.opened_at
+
+        # ─── 2026-05-27 BATCH 5 — LIVE_ONLY EXIT signals (top 10) ────────
+        # Check live-parity exits FIRST so their reason strings hit ledger.
+        # All knobs default OFF → no-op (Arm A bit-exact baseline).
+        _b5_exit_result: Optional[Dict[str, Any]] = None
+        # EXIT #1 RIDICULOUS_HOLD
+        if _vec_check_ridiculous_hold is not None and bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_ridiculous_hold(_store, i, _pos, mode, config)
+        # EXIT #2 QUICK_REDUCE_STRONG_REDUCE (HLR_TOP_EXIT)
+        if _b5_exit_result is None and _vec_check_quick_reduce_strong is not None and bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_quick_reduce_strong(_store, i, _pos, mode, config)
+        # EXIT #3 QUICK_BREAKEVEN_GAIN_EROSION_STOP (HISTORICAL — DISABLED live)
+        if _b5_exit_result is None and _vec_check_breakeven_erosion is not None and bool(getattr(config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_breakeven_erosion(_store, i, _pos, mode, config)
+        # EXIT #4 QUICK_CYCLE_TP_STOCH_AGAINST
+        if _b5_exit_result is None and _vec_check_cycle_tp_stoch is not None and bool(getattr(config, "QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_cycle_tp_stoch(_store, i, _pos, mode, config)
+        # EXIT #5 QUICK_BANDAID_OFF
+        if _b5_exit_result is None and _vec_check_quick_bandaid is not None and bool(getattr(config, "QUICK_BANDAID_OFF_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_quick_bandaid(_store, i, _pos, mode, config)
+        # EXIT #6 DELTA_EXIT_speed_decay
+        if _b5_exit_result is None and _vec_check_delta_speed_decay is not None and bool(getattr(config, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_delta_speed_decay(_store, i, _pos, mode, config)
+        # EXIT #7 QUICK_SENTIMENT_CUT_GAIN
+        if _b5_exit_result is None and _vec_check_sentiment_cut is not None and bool(getattr(config, "QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_sentiment_cut(_store, i, _pos, mode, config)
+        # EXIT #8 HEDGE_BANDAID_OFF_FIRST_PRE
+        if _b5_exit_result is None and _vec_check_hedge_bandaid_pre is not None and bool(getattr(config, "HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED", False)):
+            _b5_exit_result = _vec_check_hedge_bandaid_pre(_store, i, _pos, mode, config)
+        # EXIT #10 IN_GAIN_TREND_EXIT (live-parity bare reason — coexists with vec's "_MED_WINNER" emit)
+        if _b5_exit_result is None and _vec_check_in_gain_trend is not None and bool(getattr(config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False)):
+            _b5_exit_result = _vec_check_in_gain_trend(_store, i, _pos, mode, config)
+        # ENTRY #1+#2+#5+#7 HEDGE_PROTECT — fires hedge OPEN against losing position
+        if _b5_exit_result is None and _vec_check_hedge_protect_entry is not None and bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)):
+            _b5_hp = _vec_check_hedge_protect_entry(_store, i, _pos, mode, config, quick=True)
+            if _b5_hp:
+                _b5_exit_result = _b5_hp  # routed via exit-pass since it depends on position state
+        # ENTRY #4 QUICK_HEDGE_SAME_SYM_LAST_RESORT (HISTORICAL)
+        if _b5_exit_result is None and _vec_check_quick_hedge_lr is not None and bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)):
+            _b5_lr = _vec_check_quick_hedge_lr(_store, i, _pos, mode, config)
+            if _b5_lr:
+                _b5_exit_result = _b5_lr
+
+        # Dispatch the LIVE_ONLY signal — emit the matching TradeEvent.
+        if _b5_exit_result is not None:
+            _b5_reason = _b5_exit_result.get("reason", "BATCH5_LIVE_ONLY")
+            _b5_action = _b5_exit_result.get("action", "CLOSE")
+            _b5_qty_pct = float(_b5_exit_result.get("qty_pct", 1.0))
+            if _b5_action in ("CLOSE", "REDUCE"):
+                # Emit exit event. CLOSE clears the position; REDUCE trims.
+                reduce_qty = state.qty * _b5_qty_pct if _b5_action == "REDUCE" else state.qty
+                ev_type = "REDUCE" if (_b5_action == "REDUCE" and _b5_qty_pct < 1.0) else "CLOSE"
+                ev = TradeEvent(ts=bar_ts, type=ev_type, qty=reduce_qty, price=mark,
+                    value=reduce_qty * mark, reason=_b5_reason, pnl_pct=gain)
+                events.append(ev)
+                trade_returns.append(gain * _b5_qty_pct)
+                if ev_type == "CLOSE":
+                    state.last_close_price = mark
+                    state.last_close_ts = bar_ts
+                    state.last_close_reason = _b5_reason
+                    state.qty = 0.0
+                    _pos.reset_ppl()
+                else:
+                    state.qty -= reduce_qty
+                    state.last_reduce_ts = bar_ts
+                continue
+            elif _b5_action == "HEDGE_OPEN":
+                # Synthetic hedge OPEN against losing position — emit as HEDGE_OPEN
+                # to match the live ledger family. Note: vec models this as a hedge
+                # of the existing position (not a separate symbol — synthetic Option A).
+                # We do not actually open a new opposite position in vec (would require
+                # multi-sym state). Just emit the event so the diff tool can match.
+                hedge_qty = state.qty * _b5_qty_pct
+                ev = TradeEvent(ts=bar_ts, type="HEDGE_OPEN", qty=hedge_qty, price=mark,
+                    value=hedge_qty * mark, reason=_b5_reason)
+                events.append(ev)
+                state.hedge_active = True
+                state.hedge_qty = hedge_qty
+                state.hedge_entry_price = mark
+                state.hedge_opened_at = bar_ts
+                state.hedge_gain_at_open = gain
+                continue
 
         # ─── PARTIAL PROFIT LOCK (PPL) — fires as REDUCE, then protects remainder ─
         if check_ppl_step1 is not None and config.PARTIAL_PROFIT_LOCK_ENABLED:

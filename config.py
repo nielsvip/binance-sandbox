@@ -3775,6 +3775,57 @@ class Config:
     # Default 0.0 = inert (baseline preserved). Mirror live: 300.0 = 5-min floor.
     AUG_COOLDOWN_S: float = 0.0
 
+    # 2026-05-27 BATCH 5 — top 20 LIVE_ONLY signals port (vec_paths/live_only_signals_batch5.py).
+    # All knobs default OFF / 0 to preserve Arm A bit-exact baseline. These are
+    # ALL vec-side knobs — live code does not read them (live's behavior is
+    # already what the vec is now modeling).
+    # Entry signals:
+    HEDGE_PROTECT_LOSS_VEC_ENABLED: bool = False
+    HEDGE_PROTECT_TRIGGER_GAIN_PCT: float = -0.5
+    HEDGE_PROTECT_QTY_PCT: float = 1.0
+    SYNTHETIC_LOSER_THRESHOLD_PCT: float = -2.0
+    SYNTHETIC_LOSER_MIN_AGE_MIN: float = 30.0
+    QUICK_OPEN_STRONG_VEC_ENABLED: bool = False
+    QUICK_OPEN_STRONG_VEL_MIN: float = 1.0
+    QUICK_OPEN_STRONG_K_LONG_MAX: float = 25.0
+    QUICK_OPEN_STRONG_K_SHORT_MIN: float = 75.0
+    QUICK_OPEN_STRONG_BB_LONG_MAX: float = 0.30
+    QUICK_OPEN_STRONG_BB_SHORT_MIN: float = 0.70
+    QUICK_OPEN_STRONG_DC_LONG_MAX: float = 0.40
+    QUICK_OPEN_STRONG_DC_SHORT_MIN: float = 0.60
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED: bool = False
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_GAIN_PCT: float = -3.0
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_AGE_MIN: float = 240.0
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_QTY_PCT: float = 1.0
+    DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False
+    DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS: float = 48.0
+    DAEMON_PRICE_CROSS_PCT: float = 0.0
+    GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED: bool = False
+    DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED: bool = False
+    DIRECTION_FAVORABLE_MAX_MINUTES: float = 30.0
+    # Exit signals:
+    RIDICULOUS_HOLD_VEC_ENABLED: bool = False
+    QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED: bool = False
+    HLR_MIN_GAIN_PCT: float = 1.0
+    HLR_MIN_TFS: int = 2
+    HLR_REENTRY_MULT: float = 1.5
+    HLR_REDUCE_FRAC: float = 0.5
+    QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED: bool = False
+    QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED: bool = False
+    QUICK_CYCLE_TP_MIN_GAIN_PCT: float = 1.0
+    QUICK_CYCLE_TP_REDUCE_FRAC: float = 0.5
+    QUICK_BANDAID_OFF_VEC_ENABLED: bool = False
+    DELTA_EXIT_SPEED_DECAY_VEC_ENABLED: bool = False
+    DELTA_EXIT_SPEED_DECAY_MIN_GAIN: float = 0.5
+    DELTA_EXIT_SPEED_DECAY_MIN_TFS: int = 2
+    QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED: bool = False
+    QUICK_SENTIMENT_CUT_MIN_GAIN: float = 0.5
+    QUICK_SENTIMENT_CUT_REDUCE_FRAC: float = 0.5
+    HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED: bool = False
+    VEC_FIX_R1_REASON_STRING_FOR_DIFF: bool = False
+    IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED: bool = False
+    IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))
