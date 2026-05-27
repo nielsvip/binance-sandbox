@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-27 05:19:03 UTC
+# Copilot Status — 2026-05-27 05:29:14 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-27T05:15:58
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T05:15:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T05:15:58
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T05:15:58
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T05:15:58
-- **STALE_INDICATORS** [tradier]  — 2026-05-27T05:18:01
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T05:18:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T05:18:01
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T05:18:01
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T05:18:01
+- **STALE_INDICATORS** [tradier]  — 2026-05-27T05:26:10
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T05:26:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T05:26:10
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T05:26:10
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T05:26:10
+- **STALE_INDICATORS** [tradier]  — 2026-05-27T05:28:12
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T05:28:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T05:28:12
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T05:28:12
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T05:28:12
 
 ## Missed Trades (trader comparison)
 
@@ -31,14 +31,14 @@ _None_
 
 - HELD: **ROBO** LONG (tradier) peak +31.0%, now +2.5%
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +2.1%
-- HELD: **INXUSDT** SHORT (crypto) peak +10.1%, now +9.6%
+- HELD: **INXUSDT** SHORT (crypto) peak +10.1%, now +9.5%
 - HELD: **LEXX** LONG (tradier) peak +10.1%, now +7.8%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +-0.4%
 - HELD: **FIVN** LONG (tradier) peak +7.2%, now +-1.9%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +1.1%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-7.7%
 - HELD: **MU** LONG (tradier) peak +3.7%, now +2.1%
-- HELD: **TIAUSDC** LONG (crypto) peak +3.5%, now +-1.9%
+- HELD: **TIAUSDC** LONG (crypto) peak +3.5%, now +-1.0%
 
 - WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
