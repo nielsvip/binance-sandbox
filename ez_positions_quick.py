@@ -3166,74 +3166,35 @@ class AdvancedSignalRater:
         _mfi_1h = sf(mfi_1h) if mfi_1h else 50.0
         _mfi_4h = sf(mfi_4h) if mfi_4h else 50.0
         _mfi_D  = sf(mfi_D)  if mfi_D  else 50.0
+        # 2026-05-27 SHARED-FUNCTION refactor chunk 2: RSI/MFI scoring → vec_paths/rsi_mfi_scorer.py
+        from vec_paths.rsi_mfi_scorer import score_rsi_mfi as _vec_score_rsi_mfi
+        _rm_dscore, _rm_reasons = _vec_score_rsi_mfi(
+            is_long=is_long, is_exit=is_exit,
+            rsi_1h=_rsi_1h, rsi_4h=_rsi_4h,
+            mfi_1h=_mfi_1h, mfi_4h=_mfi_4h, mfi_D=_mfi_D,
+        )
+        score += _rm_dscore
+        reasons.extend(_rm_reasons)
+        # 2026-05-27 SHARED-FUNCTION refactor chunk 3: DC_MOMENTUM + BOTA + DECENT_GAIN_PUSH
+        from vec_paths.dc_momentum_bota_scorer import score_dc_momentum_bota as _vec_dc_bota
+        _dcb_dscore, _dcb_reasons, dc_expansion_pct, is_massive_expansion = _vec_dc_bota(
+            is_long=is_long, is_exit=is_exit, current_price=current_price, pnl_pct=pnl_pct,
+            dc_low_15m=dc_low_15m, dc_high_15m=dc_high_15m,
+            dc_high_3m=dc_high_3m, dc_low_3m=dc_low_3m,
+            k_3m=k_3m, k_3m_prev=k_3m_prev, k_1m=k_1m, k_1m_prev=k_1m_prev,
+            d_1m=d_1m, d_3m=d_3m, k_15m=k_15m, true_lag=true_lag,
+            ema_50_15m=ema_50_15m, sma_200_15m=sma_200_15m,
+        )
+        score += _dcb_dscore
+        reasons.extend(_dcb_reasons)
         if not is_exit:
-            if is_long:
-                if _rsi_1h < 50: score += 6; reasons.append(f"RSI1H_MR({_rsi_1h:.0f}+6)")
-                if _rsi_4h < 50: score += 10; reasons.append(f"RSI4H_MR({_rsi_4h:.0f}+10)")
-                if _rsi_1h > 70: score -= 6; reasons.append(f"RSI1H_OB({_rsi_1h:.0f}-6)")
-                if _rsi_4h > 70: score -= 10; reasons.append(f"RSI4H_OB({_rsi_4h:.0f}-10)")
-                if _rsi_1h < 50 and _rsi_4h < 50: score += 8; reasons.append(f"RSI_BOTH_MR(+8)")
-                # MFI scoring — backtested: 4h MFI<40 = 63-96% win rate, >90% avg return
-                if _mfi_1h < 50: score += 7; reasons.append(f"MFI1H_OS({_mfi_1h:.0f}+7)")
-                if _mfi_4h < 40: score += 14; reasons.append(f"MFI4H_OS({_mfi_4h:.0f}+14)")
-                if _mfi_4h < 50: score += 6; reasons.append(f"MFI4H_LOW({_mfi_4h:.0f}+6)")
-                if _mfi_D  < 40: score += 8; reasons.append(f"MFID_OS({_mfi_D:.0f}+8)")
-                if _mfi_1h < 40 and _mfi_4h < 40: score += 10; reasons.append(f"MFI_BOTH_OS(+10)")
-                if _mfi_1h > 70: score -= 8; reasons.append(f"MFI1H_OB({_mfi_1h:.0f}-8)")
-                if _mfi_4h > 70: score -= 14; reasons.append(f"MFI4H_OB({_mfi_4h:.0f}-14)")
-            else:
-                if _rsi_1h > 50: score += 6; reasons.append(f"RSI1H_EXH({_rsi_1h:.0f}+6)")
-                if _rsi_4h > 50: score += 10; reasons.append(f"RSI4H_EXH({_rsi_4h:.0f}+10)")
-                if _rsi_1h < 30: score -= 6; reasons.append(f"RSI1H_OS({_rsi_1h:.0f}-6)")
-                if _rsi_4h < 30: score -= 10; reasons.append(f"RSI4H_OS({_rsi_4h:.0f}-10)")
-                if _rsi_1h > 50 and _rsi_4h > 50: score += 8; reasons.append(f"RSI_BOTH_EXH(+8)")
-                # MFI scoring — backtested: D MFI>60 = 93-100% win rate for shorts
-                if _mfi_1h > 60: score += 7; reasons.append(f"MFI1H_EXH({_mfi_1h:.0f}+7)")
-                if _mfi_4h > 60: score += 14; reasons.append(f"MFI4H_EXH({_mfi_4h:.0f}+14)")
-                if _mfi_4h > 50: score += 6; reasons.append(f"MFI4H_HIGH({_mfi_4h:.0f}+6)")
-                if _mfi_D  > 60: score += 10; reasons.append(f"MFID_EXH({_mfi_D:.0f}+10)")
-                if _mfi_1h > 60 and _mfi_4h > 60: score += 10; reasons.append(f"MFI_BOTH_EXH(+10)")
-                if _mfi_1h < 30: score -= 8; reasons.append(f"MFI1H_OS({_mfi_1h:.0f}-8)")
-                if _mfi_4h < 30: score -= 14; reasons.append(f"MFI4H_OS({_mfi_4h:.0f}-14)")
-        dc_expansion_pct = 0.0
-        if dc_low_15m > 0:
-            dc_expansion_pct = ((dc_high_15m - dc_low_15m) / dc_low_15m) * 100.0
-        is_massive_expansion = dc_expansion_pct > 4.5
-        if not is_exit:
-            in_dc_breakout_long = dc_high_3m > 0 and current_price >= dc_high_3m
-            in_dc_breakout_short = dc_low_3m > 0 and current_price <= dc_low_3m
-            if is_long and in_dc_breakout_long:
-                if k_3m > k_3m_prev or (k_1m > d_1m and true_lag < 10.0):
-                    score += 25.0
-                    reasons.append("DC_MOMENTUM_SCALP_REENTRY_LONG(+25)")
-            elif not is_long and in_dc_breakout_short:
-                if k_3m < k_3m_prev or (k_1m < d_1m and true_lag < 10.0):
-                    score += 25.0
-                    reasons.append("DC_MOMENTUM_SCALP_REENTRY_SHORT(+25)")
-            if is_massive_expansion and "DC_MOMENTUM_SCALP" not in str(reasons):
-                if is_long:
-                    near_sma = current_price <= (ema_50_15m * 1.03) or current_price <= (sma_200_15m * 1.03)
-                    stoch_15m_reset = k_15m < 35
-                    micro_turn = k_1m > d_1m and k_1m > k_1m_prev and k_3m > d_3m
-                    if near_sma and stoch_15m_reset and micro_turn:
-                        score += 30.0
-                        reasons.append("BOTA_PULLBACK_REENTRY_LONG(+30)")
-                else:
-                    near_sma = current_price >= (ema_50_15m * 0.97) or current_price >= (sma_200_15m * 0.97)
-                    stoch_15m_reset = k_15m > 65
-                    micro_turn = k_1m < d_1m and k_1m < k_1m_prev and k_3m < d_3m
-                    if near_sma and stoch_15m_reset and micro_turn:
-                        score += 30.0
-                        reasons.append("BOTA_PULLBACK_REENTRY_SHORT(+30)")
-            if 2.8 < pnl_pct < 3.5:
-                is_bullish = (is_long and k_1m > d_1m and k_3m > d_3m) or (not is_long and k_1m < d_1m and k_3m < d_3m)
-                if is_bullish:
-                    score += 15.0
-                    reasons.append("DECENT_GAIN_PUSH_3PCT")
-            elif 1.8 < pnl_pct < 2.3:
+            # NOTE: DECENT_GAIN_PROTECT_2PCT NOT extracted (early return — stays inline).
+            # Mirrors the original `elif 1.8 < pnl_pct < 2.3` branch that was paired with
+            # the 2.8<pnl_pct<3.5 DECENT_GAIN_PUSH block (now in vec_paths/dc_momentum_bota_scorer).
+            if 1.8 < pnl_pct < 2.3:
                 is_reverting = (is_long and (k_1m < d_1m or k_3m < d_3m)) or (not is_long and (k_1m > d_1m or k_3m > d_3m))
                 if is_reverting:
-                    return -10.0, "SCALP_REDUCE", f"DECENT_GAIN_PROTECT_2PCT_{pnl_pct:.2f}%" 
+                    return -10.0, "SCALP_REDUCE", f"DECENT_GAIN_PROTECT_2PCT_{pnl_pct:.2f}%"
             if "BOTA" not in str(reasons) and "DC_MOMENTUM_SCALP" not in str(reasons):
                 if is_long:
                     good_entry = k_3m < 25 or (((k_1m < 15 and k_1m > k_1m_prev) or k_1mco) and true_lag < 10.0) or k_3mco or force_reentry
@@ -3291,24 +3252,17 @@ class AdvancedSignalRater:
                     return -10.0, "SCALP_REDUCE", "TIGHT_LEASH_PROFIT_SAVE"
                 elif not is_long and (k_1m > k_1m_prev or current_price > dc_basis_3m):
                     return -10.0, "SCALP_REDUCE", "TIGHT_LEASH_PROFIT_SAVE"
-            if is_long:
-                if avg_entry > (dc_high_15m * 0.985):
-                    if k_1m < d_1m and k_1m < k_1m_prev and k_3m < 75:
-                        score -= 20.0
-                        reasons.append("TIGHT_BREAKOUT_STOP_LONG(-20)")
-                if k_15m < d_15m and k_1h < d_1h: score -= 5; reasons.append("HTF_MOM_AGAINST(-5)")
-                if (k_1m < d_1m and true_lag < 10.0) or k_3m < d_3m:
-                    if pnl_pct > 0.3 or current_price >= dc_high_15m: score -= 3; reasons.append("PROFIT_STALL(-3)")
-                    elif pnl_pct < -0.5 and k_3m < d_3m: score -= 2; reasons.append("LOSS_MOM_CUT(-2)")
-            else:
-                if avg_entry < (dc_low_15m * 1.015):
-                    if k_1m > d_1m and k_1m > k_1m_prev and k_3m > 25:
-                        score -= 20.0
-                        reasons.append("TIGHT_BREAKOUT_STOP_SHORT(-20)")
-                if k_15m > d_15m and k_1h > d_1h: score -= 5; reasons.append("HTF_MOM_AGAINST(-5)")
-                if (k_1m > d_1m and true_lag < 10.0) or k_3m > d_3m:
-                    if pnl_pct > 0.3 or current_price <= dc_low_15m: score -= 3; reasons.append("PROFIT_STALL(-3)")
-                    elif pnl_pct < -0.5 and k_3m > d_3m: score -= 2; reasons.append("LOSS_MOM_CUT(-2)")
+            # 2026-05-27 SHARED-FUNCTION refactor chunk 4: exit-mode TIGHT_BREAKOUT + HTF_MOM + PROFIT_STALL
+            from vec_paths.exit_tight_breakout_scorer import score_exit_tight_breakout as _vec_exit_tb
+            _etb_ds, _etb_rs = _vec_exit_tb(
+                is_long=is_long, avg_entry=avg_entry, current_price=current_price, pnl_pct=pnl_pct,
+                dc_high_15m=dc_high_15m, dc_low_15m=dc_low_15m,
+                k_1m=k_1m, k_1m_prev=k_1m_prev, d_1m=d_1m,
+                k_3m=k_3m, d_3m=d_3m, k_15m=k_15m, d_15m=d_15m,
+                k_1h=k_1h, d_1h=d_1h, true_lag=true_lag,
+            )
+            score += _etb_ds
+            reasons.extend(_etb_rs)
             if time_in_trade < 5 and -1.0 < pnl_pct < 0.1 and "TIGHT" not in str(reasons) and "SCALP_CUT" not in str(reasons):
                 score += 10
                 reasons.append("breathing_room")
