@@ -275,6 +275,46 @@ except ImportError:
     evaluate_tr_trend_v1_exit = None
     compute_tr_trend_v1_full_unit_qty = None
 
+# 2026-05-27 BATCH 5 — port of 20 top LIVE_ONLY signals (see
+# data/_diagnostic/signal_parity_diff_all.md). All knobs default OFF/0;
+# Arm A bit-exact baseline preserved when none of the *_VEC_ENABLED knobs flip.
+try:
+    from vec_paths.live_only_signals_batch5 import (
+        check_hedge_protect_loss_entry as _vec_check_hedge_protect_entry,
+        check_quick_open_strong_entry as _vec_check_quick_open_strong,
+        check_quick_hedge_same_sym_last_resort as _vec_check_quick_hedge_lr,
+        check_daemon_price_cross_reentry as _vec_check_daemon_pc_reentry,
+        check_guaranteed_price_cross_reentry_disk as _vec_check_guar_pc_reentry,
+        check_direction_favorable_reentry as _vec_check_dir_fav_reentry,
+        check_ridiculous_hold_exit as _vec_check_ridiculous_hold,
+        check_quick_reduce_strong_reduce_exit as _vec_check_quick_reduce_strong,
+        check_quick_breakeven_gain_erosion_stop as _vec_check_breakeven_erosion,
+        check_quick_cycle_tp_stoch_against as _vec_check_cycle_tp_stoch,
+        check_quick_bandaid_off_exit as _vec_check_quick_bandaid,
+        check_delta_exit_speed_decay as _vec_check_delta_speed_decay,
+        check_quick_sentiment_cut_gain as _vec_check_sentiment_cut,
+        check_hedge_bandaid_off_first_pre as _vec_check_hedge_bandaid_pre,
+        check_in_gain_trend_exit as _vec_check_in_gain_trend,
+        fix_r1_reason_string_for_diff as _vec_fix_r1_reason,
+    )
+except ImportError:
+    _vec_check_hedge_protect_entry = None
+    _vec_check_quick_open_strong = None
+    _vec_check_quick_hedge_lr = None
+    _vec_check_daemon_pc_reentry = None
+    _vec_check_guar_pc_reentry = None
+    _vec_check_dir_fav_reentry = None
+    _vec_check_ridiculous_hold = None
+    _vec_check_quick_reduce_strong = None
+    _vec_check_breakeven_erosion = None
+    _vec_check_cycle_tp_stoch = None
+    _vec_check_quick_bandaid = None
+    _vec_check_delta_speed_decay = None
+    _vec_check_sentiment_cut = None
+    _vec_check_hedge_bandaid_pre = None
+    _vec_check_in_gain_trend = None
+    _vec_fix_r1_reason = None
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # Adapters: bridge v8_vec_sweep's npz dict / SymState to vec_paths store/pos_state API
@@ -1009,6 +1049,64 @@ class SweepConfig:
     # degraded Sharpe (-0.0535 in Arm C). Default False keeps Batch 3
     # semantics (time-only) for backward-compat A/B comparison.
     WT_CROSSUNDER_REFINED_BYPASS_ENABLED: bool = False
+
+    # 2026-05-27 BATCH 5 — Top-20 LIVE_ONLY signals port (vec_paths/live_only_signals_batch5.py).
+    # Each knob default OFF/0 preserves Arm A bit-exact baseline. Flip via --override KEY=True
+    # for A/B sweeps that test whether the new signals close the live/vec gap.
+    #   Entry signals (top 10 LIVE_ONLY by volume):
+    HEDGE_PROTECT_LOSS_VEC_ENABLED: bool = False               # #1+#2+#5+#7 hedge_protect_loss_entry
+    HEDGE_PROTECT_TRIGGER_GAIN_PCT: float = -0.5               # gain threshold for hedge to fire
+    HEDGE_PROTECT_QTY_PCT: float = 1.0                         # hedge qty as fraction of main
+    SYNTHETIC_LOSER_THRESHOLD_PCT: float = -2.0                # synthetic portfolio_losers cutoff
+    SYNTHETIC_LOSER_MIN_AGE_MIN: float = 30.0                  # min position age to qualify as loser
+    QUICK_OPEN_STRONG_VEC_ENABLED: bool = False                # #3+#8 quick_open_strong (composite>=80)
+    QUICK_OPEN_STRONG_VEL_MIN: float = 1.0
+    QUICK_OPEN_STRONG_K_LONG_MAX: float = 25.0
+    QUICK_OPEN_STRONG_K_SHORT_MIN: float = 75.0
+    QUICK_OPEN_STRONG_BB_LONG_MAX: float = 0.30
+    QUICK_OPEN_STRONG_BB_SHORT_MIN: float = 0.70
+    QUICK_OPEN_STRONG_DC_LONG_MAX: float = 0.40
+    QUICK_OPEN_STRONG_DC_SHORT_MIN: float = 0.60
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED: bool = False # #4 (DISABLED live — historical-only)
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_GAIN_PCT: float = -3.0
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_AGE_MIN: float = 240.0
+    QUICK_HEDGE_SAME_SYM_LAST_RESORT_QTY_PCT: float = 1.0
+    DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False       # #6 daemon_price_cross_reentry
+    DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS: float = 48.0
+    DAEMON_PRICE_CROSS_PCT: float = 0.0                        # 0 = strict cross
+    REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0             # mirror live's 20% divergence guard
+    GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED: bool = False  # #9 guar_pc_disk reentry
+    DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED: bool = False      # #10 direction_favorable_reentry
+    DIRECTION_FAVORABLE_MAX_MINUTES: float = 30.0
+    # Exit signals (top 10 LIVE_ONLY by volume):
+    RIDICULOUS_HOLD_VEC_ENABLED: bool = False                  # #1 ridiculous_hold (DISABLED live, historical)
+    RIDICULOUS_LOSS_PCT: float = -15.0
+    RIDICULOUS_HOLD_HOURS: float = 48.0
+    RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG: bool = True
+    QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED: bool = False       # #2 HLR_TOP_EXIT family
+    HLR_MIN_GAIN_PCT: float = 1.0
+    HLR_MIN_TFS: int = 2
+    HLR_REENTRY_MULT: float = 1.5
+    HLR_REDUCE_FRAC: float = 0.5
+    QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED: bool = False     # #3 (DISABLED live, historical)
+    BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 0.10
+    HARD_BREAKEVEN_MIN_PEAK_PCT: float = 0.5
+    QUICK_CYCLE_TP_STOCH_AGAINST_VEC_ENABLED: bool = False     # #4 cycle_tp_stoch_against
+    QUICK_CYCLE_TP_MIN_GAIN_PCT: float = 1.0
+    QUICK_CYCLE_TP_REDUCE_FRAC: float = 0.5
+    QUICK_BANDAID_OFF_VEC_ENABLED: bool = False                # #5 bandaid_off_first
+    DELTA_EXIT_SPEED_DECAY_VEC_ENABLED: bool = False           # #6 delta_exit_speed_decay
+    DELTA_EXIT_SPEED_DECAY_MIN_GAIN: float = 0.5
+    DELTA_EXIT_SPEED_DECAY_MIN_TFS: int = 2
+    QUICK_SENTIMENT_CUT_GAIN_VEC_ENABLED: bool = False         # #7 sentiment_cut_gain
+    QUICK_SENTIMENT_CUT_MIN_GAIN: float = 0.5
+    QUICK_SENTIMENT_CUT_REDUCE_FRAC: float = 0.5
+    HEDGE_BANDAID_OFF_FIRST_PRE_VEC_ENABLED: bool = False      # #8 hedge_bandaid_off_first_pre
+    # #9 R1 reason-string fix (no knob — applied to vec event reasons via _vec_fix_r1_reason
+    # at event-emit time when VEC_FIX_R1_REASON_STRING_FOR_DIFF=True).
+    VEC_FIX_R1_REASON_STRING_FOR_DIFF: bool = False
+    IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED: bool = False       # #10 in_gain_trend_exit (live-bare reason)
+    IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
 
 
 # ════════════════════════════════════════════════════════════════════════════════
