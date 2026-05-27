@@ -9384,9 +9384,49 @@ class TradierTradeManager:
                                 return p, t
                     except Exception: pass
 
-            # --- FINAL FALLBACK ---
+            # --- LAYER 5: YAHOO FINANCE (15-min staleness guard) ---
+            # Fires when all Tradier sources failed/stale — process restart, API outage, etc.
+            _cached = (self.price_cache.get(symbol, {}) if hasattr(self, 'price_cache') else {})
+            _cached_ts = safe_parse_ts(_cached.get('timestamp'))
+            _cached_age = (now - _cached_ts).total_seconds() if _cached_ts else 9999
+            if _cached_age > 900:
+                try:
+                    _yf_throttle = getattr(self, '_yahoo_price_cache', {})
+                    _yf_last = _yf_throttle.get(symbol, {})
+                    _yf_last_age = (now - _yf_last.get('fetched_at', now - timedelta(seconds=999))).total_seconds()
+                    if _yf_last_age >= 60:
+                        def _yf_sync():
+                            try:
+                                import yfinance as yf
+                                fast = yf.Ticker(symbol).fast_info
+                                p = float(getattr(fast, 'last_price', 0) or 0)
+                                if p <= 0:
+                                    hist = yf.Ticker(symbol).history(period='1d', interval='1m')
+                                    if not hist.empty:
+                                        p = float(hist['Close'].iloc[-1])
+                                return p
+                            except Exception:
+                                return 0.0
+                        loop = asyncio.get_event_loop()
+                        _yf_price = await loop.run_in_executor(None, _yf_sync)
+                        if not hasattr(self, '_yahoo_price_cache'):
+                            self._yahoo_price_cache = {}
+                        self._yahoo_price_cache[symbol] = {'price': _yf_price, 'fetched_at': now}
+                        if _yf_price > 0:
+                            logger.warning(f"[PRICE_FALLBACK_YAHOO] {symbol}: Tradier stale {_cached_age:.0f}s — Yahoo=${_yf_price:.4f}")
+                            self.price_cache[symbol] = {'price': _yf_price, 'timestamp': now}
+                            return _yf_price, now
+                    elif _yf_last.get('price', 0) > 0:
+                        return float(_yf_last['price']), _yf_last.get('fetched_at')
+                except Exception:
+                    pass
+
+            # --- FINAL FALLBACK: return stale cache value with warning ---
             if hasattr(self, 'price_cache') and symbol in self.price_cache:
                 entry = self.price_cache[symbol]
+                _stale_age = (now - safe_parse_ts(entry.get('timestamp'))).total_seconds() if safe_parse_ts(entry.get('timestamp')) else 9999
+                if _stale_age > 900:
+                    logger.warning(f"[PRICE_STALE] {symbol}: returning price {_stale_age:.0f}s old — all sources failed")
                 return float(entry.get('price', 0.0)), safe_parse_ts(entry.get('timestamp'))
 
             return None, None
