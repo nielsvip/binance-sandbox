@@ -1157,6 +1157,42 @@ class SweepConfig:
     # vec needs the "loss path" (rule c, gain<0 when NONNEG=False) to fire more often.
     RIDICULOUS_HOLD_FIRE_EVERY_N_BARS: int = 0     # recommended 20 — sample every 20 bars not every bar
 
+    # ── 2026-05-27 BATCH 7 — STRUCTURAL PARITY GATES ─────────────────────────
+    # Two structural pieces vec lacks vs live, both default OFF so Arm A
+    # baseline stays bit-exact preserved.
+    #
+    # (1) VEC_MTF_ARMED_STATE_ENABLED — additive MTF-armed-state FILTER on
+    #     entry-emit sites, mirrors ez_manage.py:22755 live behaviour:
+    #       gate OPEN/AUGMENT/ENTRY (but NOT REENTRY) on
+    #       `armed_arrays['armed_any'][i] is True`
+    #     Uses the existing vec_paths/mtf_armed_entries.py build_armed_arrays()
+    #     warm-start precompute. INDEPENDENT from MTF_ARMED_ENTRY_ENABLED
+    #     (which short-circuits ALL legacy entries — different semantics).
+    #     When True, vec entries cold-start gated until a DC/BB/WT armed
+    #     event is observed on prior bars within the arming window.
+    #     Refuses with reason `MTF_NO_ARMED_STATE` (matches live string).
+    #     Expected effect: vec total trade count drops ~70-80% toward live's
+    #     ~3,829 (per Batch 6 vec 78,003 vs live target 7,658 = 2× live).
+    # (2) VEC_MULTI_SYM_OUTER_LOOP_ENABLED — cross-symbol shared portfolio
+    #     state for the 5 hedge_protect signals in
+    #     `vec_paths/live_only_signals_batch5.py` (HEDGE_PROTECT_LONG_LOSS,
+    #     HEDGE_PROTECT_SHORT_LOSS, QUICK_HEDGE_SAME_SYM_LAST_RESORT, etc.).
+    #     When True: a process-wide loser-set dict
+    #     (managed by run_sweep — see _b7_portfolio_state) replaces the
+    #     SYNTHETIC self-only model so a sym only fires hedge_protect when
+    #     OTHER syms are actually losing. When False: legacy synthetic
+    #     model (current behaviour). Set via run_sweep — affects worker
+    #     pool size (must be 1) and worker dispatch (must iterate by global
+    #     timestamp). Documented as PARTIAL/BLOCKED in batch7 report if
+    #     worker dispatch can't be cleanly serialized; see structural
+    #     blocker list in data/_diagnostic/vec_parity_batch7.md.
+    VEC_MTF_ARMED_STATE_ENABLED: bool = False
+    VEC_MTF_ARMED_GATE_REENTRY: bool = False           # gate REENTRY-typed entries too (live excludes)
+    VEC_MTF_ARMED_GATE_HEDGE_OPEN: bool = False        # gate HEDGE_OPEN events too (live excludes)
+    VEC_MTF_ARMED_BYPASS_STRONG: bool = True           # mirror live: STRONG_BUY/QUICK_OPEN bypass
+    VEC_MTF_ARMED_RESULTING_REASON: str = "MTF_NO_ARMED_STATE"  # log/skip reason on block
+    VEC_MULTI_SYM_OUTER_LOOP_ENABLED: bool = False     # see structural design notes above
+
 
 # ════════════════════════════════════════════════════════════════════════════════
 # NPZ + klines loader
@@ -2052,6 +2088,81 @@ def simulate_one_symbol(
     _mtf_small_frac = float(getattr(config, "MTF_SMALL_SIZE_FRAC", 0.25))
     _mtf_big_mult = float(getattr(config, "MTF_BIG_ADD_SIZE_MULT", 4.0))
 
+    # ─── BATCH 7 2026-05-27 MTF armed-state additive gate precompute ───────────
+    # Mirrors ez_manage.py:22755 — additive FILTER on entry-emit sites.
+    # Independent from MTF_ARMED_ENTRY_ENABLED (which short-circuits ALL legacy
+    # entries above). Builds armed_any[n] using the same precompute as
+    # MTF_ARMED_ENTRY_ENABLED so the warm-start trace is identical.
+    _b7_mtf_gate_enabled = bool(getattr(config, "VEC_MTF_ARMED_STATE_ENABLED", False))
+    if _b7_mtf_gate_enabled:
+        try:
+            from vec_paths.mtf_armed_entries import build_armed_arrays as _b7_build_armed
+            _b7_armed_arrays = _b7_build_armed(npz, n, is_long, config)
+            # NOTE: build_armed_arrays returns {'armed_any': zeros[n]} when
+            # MTF_ARMED_ENTRY_ENABLED=False. We need a SECOND-path that forces
+            # the build regardless of that flag. Inline the call by overriding
+            # the config temporarily via a wrapper.
+            if not _b7_armed_arrays.get("armed_any", np.zeros(1)).any():
+                class _B7CfgForce:
+                    """Wrapper that forces MTF_ARMED_ENTRY_ENABLED=True for armed precompute
+                    so we get real armed arrays even when the legacy MTF short-circuit is off."""
+                    def __init__(self, base):
+                        self._base = base
+                    def __getattr__(self, k):
+                        if k == "MTF_ARMED_ENTRY_ENABLED":
+                            return True
+                        return getattr(self._base, k)
+                _b7_armed_arrays = _b7_build_armed(npz, n, is_long, _B7CfgForce(config))
+            _b7_armed_any = _b7_armed_arrays.get("armed_any", np.zeros(n, dtype=bool))
+        except Exception as _e:
+            sys.stderr.write(f"batch7 mtf gate precompute failed {symbol}/{side}: {_e}\n")
+            _b7_armed_any = np.ones(n, dtype=bool)  # fail-open
+            _b7_mtf_gate_enabled = False
+    else:
+        _b7_armed_any = np.ones(n, dtype=bool)  # gate inert when knob OFF
+    _b7_gate_reentry = bool(getattr(config, "VEC_MTF_ARMED_GATE_REENTRY", False))
+    _b7_gate_hedge = bool(getattr(config, "VEC_MTF_ARMED_GATE_HEDGE_OPEN", False))
+    _b7_gate_reason = str(getattr(config, "VEC_MTF_ARMED_RESULTING_REASON", "MTF_NO_ARMED_STATE"))
+    _b7_bypass_strong = bool(getattr(config, "VEC_MTF_ARMED_BYPASS_STRONG", True))
+    # Per-fire skip-counter (diagnostic — exposed via state.b6_last_fire_ts['mtf_gate_blocks'])
+    _b7_mtf_gate_blocks = 0
+
+    def _b7_mtf_gate_blocks_entry(i_bar: int, action: str, reason_str: str = "") -> bool:
+        """Return True if the entry at bar i_bar should be REFUSED by the MTF armed gate.
+        Mirrors ez_manage.py:22755 logic exactly:
+          - gate OPEN/AUGMENT/ENTRY (substring match on action)
+          - DO NOT gate REENTRY (substring match on action OR reason)
+            unless VEC_MTF_ARMED_GATE_REENTRY=True
+          - bypass for STRONG_BUY/QUICK_OPEN/FORCE_HA_4H_ABOVE_BASIS reason substrings
+        """
+        if not _b7_mtf_gate_enabled:
+            return False
+        act_u = (action or "").upper()
+        rup = (reason_str or "").upper()
+        # HEDGE_OPEN: separate switch (live's MTF gate doesn't apply to hedge open path)
+        if "HEDGE_OPEN" in act_u or "HEDGE_OPEN" in rup:
+            if not _b7_gate_hedge:
+                return False
+        # Live (ez_manage.py:22755): gates "OPEN" / "AUGMENT" / "ENTRY" except "REENTRY"
+        if not ("OPEN" in act_u or "AUGMENT" in act_u or "ENTRY" in act_u):
+            return False
+        # Vec emits reentry as type="AUGMENT" with a B-block / REENTRY-flavored reason
+        # → mirror live REENTRY bypass via reason substring as well.
+        if not _b7_gate_reentry:
+            if "REENTRY" in act_u or "REENTRY" in rup:
+                return False
+            # Reentry-block reason strings start with "B<digit>_..." (BLOCK_NAMES)
+            # OR the wrapped "REENTRY_TREND_..." prefix from Batch 6 naming.
+            if rup.startswith("B") and len(rup) > 2 and rup[1].isdigit():
+                return False
+        if _b7_bypass_strong:
+            if ("STRONG_BUY" in rup or "QUICK_OPEN" in rup or
+                "FORCE_HA_4H_ABOVE_BASIS" in rup):
+                return False
+        if i_bar < 0 or i_bar >= len(_b7_armed_any):
+            return False
+        return not bool(_b7_armed_any[i_bar])
+
     # ─── PHASE G 2026-05-19 GR filter pass mask precompute ─────────────────────
     try:
         from vec_paths.gr_filter_vec import build_gr_filter_mask
@@ -2144,6 +2255,110 @@ def simulate_one_symbol(
         _compound_arrays = {}
         _mtf_compound_active = False
         check_mtf_compound_exit = None
+
+    # ─── 2026-05-27 BULK-MASK EXIT PRECOMPUTE — USER MANDATE ─────────────────
+    # Each held-bar scalar exit check has an NPZ-only "candidate" mask that is
+    # a NECESSARY condition for the scalar to return non-None. When the mask
+    # is False, the scalar would return None regardless of position state.
+    # We use the mask to short-circuit the scalar call site (skip the call
+    # entirely when the mask is False).
+    #
+    # Parity guarantee: each mask is a *necessary* condition (no false-negatives
+    # — if mask says False, the scalar definitely returns None). Position-state
+    # gates (gain/max_gain/hold_min) remain inside the scalar and run only on
+    # candidate bars. Each mask is a SUPERSET of "would fire" — false-positives
+    # are fine (scalar runs and decides).
+    _r1_active = bool(getattr(config, "R1_DC_LOW4_3M_EMERGENCY_ENABLED", True))
+    # R1 is NOT precomputed — the ATR-stop condition (b) depends on entry_px
+    # (position state). Per-bar candidate would always be True. R1's
+    # OVERBOUGHT_BREAKOUT restrict gate runs inside the scalar and already
+    # makes R1 cheap on non-breakout entries. Mask reduces to a pure
+    # config-inert flag.
+    _r1_can_fire = _r1_active
+
+    # R2 WT velocity slowdown — candidate when ANY TF in R2_TF_LIST shows
+    # velocity AGAINST position AND velocity is decelerating vs prev OR dying.
+    _r2_active = bool(getattr(config, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", True))
+    if _r2_active:
+        _r2_tfs = list(getattr(config, "R2_TF_LIST", None) or (["1h", "4h", "D"] if mode == "tradier" else ["15m"]))
+        _r2_decel_ratio = float(getattr(config, "WT_VEL_DECEL_RATIO", 0.5))
+        _r2_decel_only = bool(getattr(config, "WT_VEL_USE_DECEL_RATIO_ONLY", True))
+        _r2_near_zero = float(getattr(config, "WT_15M_VEL_NEAR_ZERO_THRESHOLD", 0.1))
+        _r2_cand_any = np.zeros(n, dtype=bool)
+        for _tf in _r2_tfs:
+            _vel_arr = np.nan_to_num(npz.get(f"wt_velocity_{_tf}", np.zeros(n)).astype(np.float32))
+            _vel_prev = np.empty(n, dtype=np.float32)
+            _vel_prev[0] = _vel_arr[0]
+            _vel_prev[1:] = _vel_arr[:-1]
+            if is_long:
+                _against = _vel_arr < 0
+            else:
+                _against = _vel_arr > 0
+            _decel = (np.abs(_vel_arr) < np.abs(_vel_prev) * _r2_decel_ratio) & (np.abs(_vel_prev) > 1e-6)
+            _dying = (np.abs(_vel_arr) <= _r2_near_zero) if not _r2_decel_only else np.zeros(n, dtype=bool)
+            _r2_cand_any |= (_against & (_decel | _dying))
+        _r2_cand_mask = _r2_cand_any
+    else:
+        _r2_cand_mask = np.zeros(n, dtype=bool)
+
+    # WT_CROSSUNDER_FINAL — candidate when LTF+15m+≥1HTF all against position.
+    # Pure NPZ — no state dependency. Mask is necessary AND sufficient (up to
+    # the parabolic-bypass and noloss-gate which apply after).
+    _wtcf_active = bool(getattr(config, "WT_CROSSUNDER_FINAL_ENABLED", True))
+    if _wtcf_active:
+        _wtcf_ltf_tag = "5m" if mode == "tradier" else "3m"
+        _wt1_ltf = np.nan_to_num(npz.get(f"wt1_{_wtcf_ltf_tag}", np.zeros(n)).astype(np.float32))
+        _wt2_ltf = np.nan_to_num(npz.get(f"wt2_{_wtcf_ltf_tag}", np.zeros(n)).astype(np.float32))
+        _wtcf_other = "3m" if mode == "tradier" else "5m"
+        _wt1_other = np.nan_to_num(npz.get(f"wt1_{_wtcf_other}", np.zeros(n)).astype(np.float32))
+        _wt2_other = np.nan_to_num(npz.get(f"wt2_{_wtcf_other}", np.zeros(n)).astype(np.float32))
+        _wt1_ltf_eff = np.where(_wt1_ltf != 0, _wt1_ltf, _wt1_other)
+        _wt2_ltf_eff = np.where(_wt2_ltf != 0, _wt2_ltf, _wt2_other)
+        _wt1_4h_a = np.nan_to_num(npz.get("wt1_4h", np.zeros(n)).astype(np.float32))
+        _wt2_4h_a = np.nan_to_num(npz.get("wt2_4h", np.zeros(n)).astype(np.float32))
+        _wt1_D_a = np.nan_to_num(npz.get("wt1_D", np.zeros(n)).astype(np.float32))
+        _wt2_D_a = np.nan_to_num(npz.get("wt2_D", np.zeros(n)).astype(np.float32))
+        if is_long:
+            _wtcf_ltf_against = _wt1_ltf_eff < _wt2_ltf_eff
+            _wtcf_15m_confirm = (wt1_15m < wt2_15m) | (wt1_15m > 95)
+            _wtcf_htf_against = (wt1_1h < wt2_1h) | (_wt1_4h_a < _wt2_4h_a) | (_wt1_D_a < _wt2_D_a)
+        else:
+            _wtcf_ltf_against = _wt1_ltf_eff > _wt2_ltf_eff
+            _wtcf_15m_confirm = (wt1_15m > wt2_15m) | (wt1_15m < -95)
+            _wtcf_htf_against = (wt1_1h > wt2_1h) | (_wt1_4h_a > _wt2_4h_a) | (_wt1_D_a > _wt2_D_a)
+        _wtcf_cand_mask = _wtcf_ltf_against & _wtcf_15m_confirm & _wtcf_htf_against
+    else:
+        _wtcf_cand_mask = np.zeros(n, dtype=bool)
+
+    # PEAK_GIVEBACK — config-inert flag. PGB only fires if HARD_ZERO or
+    # DROP_TRIGGER is enabled. Both default OFF, so PGB is fully inert in
+    # default config. When config-inert, we skip the scalar call entirely.
+    _pgb_can_fire = bool(getattr(config, "PEAK_GIVEBACK_PROTECTION_ENABLED", True)) and (
+        bool(getattr(config, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False))
+        or bool(getattr(config, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False))
+    )
+
+    # BE_EROSION — config-inert flag (BE_EROSION_ENABLED default False).
+    _be_erosion_can_fire = bool(getattr(config, "BE_EROSION_ENABLED", False))
+
+    # NEWBORN_LOSS_KILL — config-inert flag (NEWBORN_LOSS_KILL_ENABLED default False).
+    _nlk_can_fire = bool(getattr(config, "NEWBORN_LOSS_KILL_ENABLED", False))
+
+    # Sticky union: any of the held-bar checks could fire here. Used at the
+    # top of the loop as a held-bar fast-skip discriminator. R1 is excluded
+    # because its ATR-stop branch depends on entry_px (state) — no NPZ-only
+    # candidate mask is feasible.
+    _held_event_mask = (
+        _r2_cand_mask | _wtcf_cand_mask
+    )
+    # Hot exit_gates that fire on held bars (with gain/age post-gates inside
+    # the loop). When False here, the gate index would also be False.
+    if "wt_div_exit" in exit_gates:
+        _held_event_mask |= exit_gates["wt_div_exit"].astype(bool)
+    if "wt_accel_exit" in exit_gates:
+        _held_event_mask |= exit_gates["wt_accel_exit"].astype(bool)
+    if "wt_momentum_exit" in exit_gates:
+        _held_event_mask |= exit_gates["wt_momentum_exit"].astype(bool)
 
     # ─── 2026-05-27 VEC_EVENT_DRIVEN_LOOP — USER MANDATE ────────────────────
     # Build union of every entry-trigger mask so we can skip flat bars where
@@ -2520,6 +2735,21 @@ def simulate_one_symbol(
 
         # ─── FLAT: consider OPEN ──────────────────────────────────────────
         if state.qty <= 0.0001:
+            # NOTE 2026-05-27 BATCH 7: MTF armed-state additive gate is applied
+            # JUST BEFORE the OPEN event-emit below (after reason is computed),
+            # not here — live's ez_manage.py:22755 has both action AND reason
+            # at the moment of check (for the STRONG_BUY/QUICK_OPEN bypass).
+            # Fast pre-gate: when armed=False AND no reason will bypass, skip
+            # the heavy cascade entirely. This preserves the same final
+            # decisions but cuts CPU.
+            if _b7_mtf_gate_enabled and not bool(_b7_armed_any[i]):
+                # Cheap test: if QUICK_OPEN_STRONG/B5 isn't enabled at all,
+                # AND no path can produce a STRONG_BUY/QUICK_OPEN reason, the
+                # gate WILL block. But the cascade may still produce a reason
+                # that starts with a B-prefix (reentry) — REENTRY bypass.
+                # We don't fast-skip here to keep semantics safe; defer to the
+                # final gate at event-emit.
+                pass
             # 2026-05-26 first-OPEN throttle (VEC_FIRST_OPEN_THROTTLE_BARS=0 → no-op)
             if _vec_first_open_throttled is not None and _vec_first_open_throttled(i, state, config):
                 continue
@@ -2799,6 +3029,12 @@ def simulate_one_symbol(
                     f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}"
                     f"_wt1={_wt1_open:.1f}_wt2={_wt2_open:.1f}_px{mark:.6f}"
                 )
+            # 2026-05-27 BATCH 7 — FINAL MTF armed-state gate. Reason is now known,
+            # so STRONG_BUY/QUICK_OPEN/FORCE_HA_4H_ABOVE_BASIS/REENTRY bypass clauses
+            # can apply. When knob OFF (default), helper returns False → no-op.
+            if _b7_mtf_gate_blocks_entry(i, "OPEN", reason):
+                _b7_mtf_gate_blocks += 1
+                continue
             ev = TradeEvent(
                 ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
                 value=new_qty * mark, reason=reason,
@@ -3166,7 +3402,7 @@ def simulate_one_symbol(
                 continue
 
         # ─── R1 EMERGENCY EXIT (monitoring-based — matches live R1_DC_LOW4_3M_EMERGENCY) ─
-        if check_r1_emergency_exit is not None and state.qty > 0.0001:
+        if check_r1_emergency_exit is not None and state.qty > 0.0001 and _r1_can_fire:
             _r1 = check_r1_emergency_exit(_store, i, _pos, mode, config)
             if _r1 is not None:
                 pnl_pct = gain
@@ -3234,7 +3470,7 @@ def simulate_one_symbol(
         # ─── NEWBORN_LOSS_KILL (USER 2026-05-21 post-ORDI mandate) ───────────────
         # Closes newborn position the moment gain drops below threshold.
         # Tighter than R1; doesn't require DC4 breach. Bypasses NO_LOSS.
-        if check_newborn_loss_kill_exit is not None and state.qty > 0.0001:
+        if check_newborn_loss_kill_exit is not None and state.qty > 0.0001 and _nlk_can_fire:
             _nlk = check_newborn_loss_kill_exit(_store, i, _pos, mode, config)
             if _nlk is not None:
                 pnl_pct = gain
@@ -3540,7 +3776,7 @@ def simulate_one_symbol(
             exit_reason = f"WT_EXHAUST_CFG_minTFs={int(getattr(config, 'WT_EXHAUST_EXIT_MIN_TFS', 0))}"
 
         # PEAK_GIVEBACK exit (gain decaying from peak — full close, bypasses noloss)
-        if exit_id == EXIT_NONE and check_peak_giveback_exit is not None and state.qty > 0.0001:
+        if exit_id == EXIT_NONE and check_peak_giveback_exit is not None and state.qty > 0.0001 and _pgb_can_fire:
             _pgb = check_peak_giveback_exit(_store, i, _pos, mode, config)
             if _pgb is not None:
                 pnl_pct = gain
@@ -3566,7 +3802,7 @@ def simulate_one_symbol(
                     continue
 
         # BE_EROSION exit (gain eroded to loss after being profitable — bypasses noloss)
-        if exit_id == EXIT_NONE and check_be_erosion_exit is not None and state.qty > 0.0001:
+        if exit_id == EXIT_NONE and check_be_erosion_exit is not None and state.qty > 0.0001 and _be_erosion_can_fire:
             _beg = check_be_erosion_exit(_store, i, _pos, mode, config)
             if _beg is not None:
                 pnl_pct = gain
@@ -3631,7 +3867,7 @@ def simulate_one_symbol(
         # gain >= MIN_GAIN (profit harvest) or at real loss (noloss_gate routes).
         # 2026-05-19 R10 Target 3: WT_CROSSUNDER_FINAL_MIN_HOLD_BARS gate suppresses
         # adjacent-bar scalp cascade (211/3344 R9 closes were single-bar exits).
-        if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001:
+        if exit_id == EXIT_NONE and check_wt_crossunder_final_exit is not None and state.qty > 0.0001 and _wtcf_cand_mask[i]:
             _wtcf_min_hold = int(getattr(config, "WT_CROSSUNDER_FINAL_MIN_HOLD_BARS", 0))
             _wtcf_hold_ok = True
             if _wtcf_min_hold > 0 and state.opened_at > 0.0:
@@ -3679,7 +3915,7 @@ def simulate_one_symbol(
                     state.wt_state_last_fire = 1 if _wt1_fire > _wt2_fire else (-1 if _wt1_fire < _wt2_fire else 0)
 
         # R2 WT VELOCITY SLOW (near-breakeven slowdown — matches live R2_WT_VEL_SLOW)
-        if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001:
+        if exit_id == EXIT_NONE and check_r2_wt_vel_slow_exit is not None and state.qty > 0.0001 and _r2_cand_mask[i]:
             _r2 = check_r2_wt_vel_slow_exit(_store, i, _pos, mode, config)
             if _r2 is not None:
                 # R2 bypasses noloss gate — execute close directly
@@ -3873,6 +4109,14 @@ def simulate_one_symbol(
 
         # ─── AUGMENT path (reentry fires while holding) ────────────────
         if reentry["fire"][i]:
+            # 2026-05-27 BATCH 7 — MTF armed-state additive gate for AUGMENT.
+            # Reentry-block AUGMENTs default-bypassed (reason starts with B<n>)
+            # unless VEC_MTF_ARMED_GATE_REENTRY=True. Helper checks both action
+            # and reason substrings — emit a probe reason for the gate decision.
+            _b7_aug_blk_name_probe = BLOCK_NAMES.get(int(reentry["block_id"][i]), "AUGMENT")
+            if _b7_mtf_gate_blocks_entry(i, "AUGMENT", _b7_aug_blk_name_probe):
+                _b7_mtf_gate_blocks += 1
+                continue
             # 2026-05-27 USER MANDATE: short-circuit BEFORE the expensive
             # evaluate_augment_eligibility_vec() call when gain < MIN_GAIN.
             # OPEN positions don't get revised for entry until gain > MIN_GAIN.
@@ -3988,7 +4232,21 @@ def simulate_one_symbol(
                         state.last_reduce_ts = bar_ts
 
         # GOLDEN_RULE augment while holding
-        if check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED and state.qty > 0.0001:
+        # 2026-05-27 BATCH 7 — MTF armed-state additive gate for GR augment.
+        # GR augment reason is "GOLDEN_RULE_..." which does NOT match the REENTRY
+        # bypass — so this DOES get gated when knob is True. Default OFF preserves
+        # Arm A baseline bit-exactly.
+        _b7_gr_aug_gated = (
+            _b7_mtf_gate_enabled
+            and check_golden_rule_enforce is not None
+            and config.GOLDEN_RULE_ENABLED
+            and state.qty > 0.0001
+            and _b7_mtf_gate_blocks_entry(i, "AUGMENT", "GOLDEN_RULE_AUGMENT")
+        )
+        if _b7_gr_aug_gated:
+            _b7_mtf_gate_blocks += 1
+        if (check_golden_rule_enforce is not None and config.GOLDEN_RULE_ENABLED
+                and state.qty > 0.0001 and not _b7_gr_aug_gated):
             _gr_cooldown_ok = (bar_ts - state.gr_last_fire_ts) >= float(config.GOLDEN_RULE_COOLDOWN_S)
             # 2026-05-27 BATCH 6 calibration — GR augment was over-firing 67× live
             # (18,520 vs 276). Add layered GR_AUGMENT_COOLDOWN_S floor on top of

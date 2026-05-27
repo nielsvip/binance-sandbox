@@ -3826,6 +3826,16 @@ class Config:
     IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED: bool = False
     IN_GAIN_TREND_REDUCE_FRAC: float = 0.5
 
+    # 2026-05-27 BATCH 7 — STRUCTURAL PARITY GATES (mirror of v8_vec_sweep.py SweepConfig)
+    # Vec-only knobs; live code does NOT read these. Default OFF preserves Arm A bit-exact.
+    # See v8_vec_sweep.py header docs at SweepConfig.VEC_MTF_ARMED_STATE_ENABLED for details.
+    VEC_MTF_ARMED_STATE_ENABLED: bool = False
+    VEC_MTF_ARMED_GATE_REENTRY: bool = False
+    VEC_MTF_ARMED_GATE_HEDGE_OPEN: bool = False
+    VEC_MTF_ARMED_BYPASS_STRONG: bool = True
+    VEC_MTF_ARMED_RESULTING_REASON: str = "MTF_NO_ARMED_STATE"
+    VEC_MULTI_SYM_OUTER_LOOP_ENABLED: bool = False
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))

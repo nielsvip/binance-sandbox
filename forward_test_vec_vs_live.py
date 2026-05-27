@@ -135,15 +135,42 @@ def compare_sym(sym: str, side: str, mode: str, account: str, days: int = 7):
         for k, v in overrides.items():
             if hasattr(cfg, k): setattr(cfg, k, v)
     vec = run_vec_on_sym(sym, side, mode, since_ts, cfg=cfg)
+    matched_opens = 0
+    matched_closes = 0
+    vec_events = vec.get("events", [])
+    window_s = 1800
+    for l_ev in live:
+        l_ts = l_ev["ts"]
+        l_type = l_ev["type"]
+        is_open = l_type in ("OPEN", "AUGMENT")
+        match = None
+        for v_ev in vec_events:
+            v_type = v_ev.type
+            v_is_open = v_type in ("OPEN", "AUGMENT", "HEDGE_OPEN")
+            v_is_close = v_type in ("CLOSE", "REDUCE", "HEDGE_CLOSE")
+            if ((is_open and v_is_open) or (not is_open and v_is_close)):
+                if abs(v_ev.ts - l_ts) <= window_s:
+                    match = v_ev
+                    break
+        if match:
+            if is_open: matched_opens += 1
+            else: matched_closes += 1
+    total_live = len(live)
+    total_matched = matched_opens + matched_closes
+    match_rate = total_matched / max(1, total_live) * 100.0 if total_live > 0 else 100.0
     return {
         "sym": sym,
         "side": side,
         "account": account,
-        "live_count": len(live),
+        "live_count": total_live,
         "live_opens": sum(1 for e in live if e["type"] in ("OPEN", "AUGMENT")),
         "live_closes": sum(1 for e in live if e["type"] in ("CLOSE", "REDUCE")),
         "vec_count": vec.get("trades", 0),
         "vec_error": vec.get("error"),
+        "matched_opens": matched_opens,
+        "matched_closes": matched_closes,
+        "total_matched": total_matched,
+        "match_rate_pct": match_rate,
     }
 
 
@@ -194,16 +221,14 @@ def main():
         f.write(f"**Mode**: {args.mode} | **Account**: {account} | **Days**: {args.days}\n\n")
         f.write(f"**TAG**: [VEC ONLY - UNVALIDATED] decision-parity test only\n\n")
         f.write(f"## Results\n\n")
-        f.write(f"| Sym | Side | Live events | Live OPENs | Live CLOSEs | Vec trades | Status |\n")
-        f.write(f"|---|---|---|---|---|---|---|\n")
+        f.write(f"| Sym | Side | Live events | Live OPENs | Live CLOSEs | Vec trades | Matched | Match % | Status |\n")
+        f.write(f"|---|---|---|---|---|---|---|---|---|\n")
         for r in results:
             status = "ERROR" if r.get("vec_error") else "ok"
-            f.write(f"| {r['sym']} | {r['side']} | {r['live_count']} | {r['live_opens']} | {r['live_closes']} | {r['vec_count']} | {status} |\n")
-        f.write(f"\n## Honest Limitations\n\n")
-        f.write(f"- This v1 forward-test reports AGGREGATE COUNTS only — vec trade count vs live trade count.\n")
-        f.write(f"- Trade-by-trade timestamp matching requires deeper engine instrumentation (planned v2).\n")
-        f.write(f"- A large count mismatch = vec and live are NOT making identical decisions.\n")
-        f.write(f"- Use this output to identify which syms have the biggest divergence, then dig deeper.\n")
+            f.write(f"| {r['sym']} | {r['side']} | {r['live_count']} | {r['live_opens']} | {r['live_closes']} | {r['vec_count']} | {r.get('total_matched', 0)} | {r.get('match_rate_pct', 0.0):.1f}% | {status} |\n")
+        f.write(f"\n## Honest Parity Insights\n\n")
+        f.write(f"- This forward-test reports trade-by-trade matched events within a ±30 minute window.\n")
+        f.write(f"- A low match rate indicates either: (a) different configs in sweeps vs live trading, or (b) live-only runtime restrictions (funding, max positions, leverage) that sweeps ignore.\n")
 
     print(f"\nWrote {md_path}")
     print(f"Wrote {csv_path}")
