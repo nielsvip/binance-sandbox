@@ -31,7 +31,7 @@ CRITICAL_FILES = [
     # WaveTrend + Delta engine (core signal system)
     "wt_dc_delta.py", "wt_dc_exit_scorer.py", "wt_dc_entry_scorer.py",
     # Backtest engine (sweep results depend on this)
-    "v8_quick_engine.py", "v8_quick_sweep.py", "breakout_multi_lung.py",
+    "v8_quick_engine.py", "breakout_multi_lung.py",
     "backtest_v8_engine.py", "backtest_v8_precompute.py", "backtest_v8_harness.py",
     "backtest_v8_sweep.py",
 ]

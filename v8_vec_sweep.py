@@ -532,6 +532,8 @@ class SweepConfig:
     HARD_REDUCE_LOCK_SECONDS: float = 60.0
     AUGMENTATION_COOLDOWN_SECONDS: float = 540.0
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # 2026-05-22 parity: live False
+    WT_3M_FORCE_OPEN_ENABLED: bool = True  # 2026-05-27 kill-switch for the WT 3m+15m|1h force-open trigger; False zeroes wt_open_ok and routes all entries through GR/DELTA/B-blocks
+    GR_VOTE_FALLBACK_MIN: int = 7  # 2026-05-27 surfaced so --override can tune (was getattr'd via vec_paths/golden_rule_enforce.py)
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
     # ── 2026-05-17 VEC_OVERTRADE_FIX (master kill flag) ──────────────────
@@ -2828,7 +2830,7 @@ def simulate_one_symbol(
                 continue
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
-            wt_open_ok = bool(wt_3m_aligned[i])
+            wt_open_ok = bool(wt_3m_aligned[i]) and bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", True))
             # WT_DC_HTF_GATE — block wt_open_ok when HTF WT is against the trade.
             # Mirrors tradier_manage:2751-2762. Does NOT block GR/DELTA/B15/etc.
             if wt_open_ok and _wt_dc_htf_gate_block[i]:
