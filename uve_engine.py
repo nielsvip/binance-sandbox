@@ -137,11 +137,14 @@ def simulate_uve(npz: Dict[str, np.ndarray], is_long: bool, mode: str, config: A
     augment_gain_pct = float(getattr(config, "UVE_AUGMENT_GAIN_PCT", 3.0) or 3.0)
     tight_breakout_exit = bool(getattr(config, "UVE_TIGHT_BREAKOUT_EXIT", True))
     slippage_buffer_pct = float(getattr(config, "UVE_BREAKOUT_SLIPPAGE_BUFFER_PCT", 0.1) or 0.1)
+    # Cooldown: minimum bars between sequential entries (prevents over-trading on every tick)
+    min_cooldown_bars = int(getattr(config, "UVE_MIN_COOLDOWN_BARS", 12) or 12)
+    last_close_idx = -(min_cooldown_bars + 1)
     for i in range(n):
         mark, current_atr = float(close[i]), (float(atr[i]) if i < len(atr) else 0.0)
         ts_val = float(ts_arr[i]) if ts_arr is not None and i < len(ts_arr) else float(i)
         if not position_active:
-            if entry_allowed[i]:
+            if (i - last_close_idx >= min_cooldown_bars) and entry_allowed[i]:
                 position_active, entry_price, peak_price, ppl_fired, qty, last_augment_price = True, mark, mark, False, 1.0, mark
                 entered_via_breakout = bool(is_breakout_entry[i])
                 events.append(TradeEvent(idx=i, ts=ts_val, type="OPEN", price=mark, qty=qty, reason="UVE_WT_ENTRY" if not entered_via_breakout else "UVE_BREAKOUT_ENTRY"))
@@ -170,6 +173,7 @@ def simulate_uve(npz: Dict[str, np.ndarray], is_long: bool, mode: str, config: A
                     reason_str = "UVE_WT_CORRECTION_EXIT"
                 events.append(TradeEvent(idx=i, ts=ts_val, type="CLOSE", price=mark, qty=qty, reason=reason_str))
                 position_active, entry_price, peak_price, ppl_fired, qty, entered_via_breakout = False, 0.0, 0.0, False, 0.0, False
+                last_close_idx = i
             elif entry_allowed[i] and not ppl_fired:
                 augment_gain = (mark - last_augment_price) / last_augment_price * 100.0 if is_long else (last_augment_price - mark) / last_augment_price * 100.0
                 if augment_gain >= augment_gain_pct:
