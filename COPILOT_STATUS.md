@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-27 03:11:31 UTC
+# Copilot Status — 2026-05-27 03:26:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T03:07:36
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T03:07:36
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:08:06
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:09:07
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T03:09:38
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T03:09:38
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T03:09:38
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T03:09:38
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:10:08
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:11:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T03:23:59
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T03:23:59
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T03:23:59
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:24:30
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:25:33
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T03:26:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T03:26:04
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T03:26:04
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T03:26:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T03:26:34
 
 ## Missed Trades (trader comparison)
 
@@ -38,7 +38,7 @@ _None_
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +1.1%
 - HELD: **ACN** SHORT (tradier) peak +4.4%, now +-7.7%
 - HELD: **MU** LONG (tradier) peak +3.7%, now +2.1%
-- HELD: **TIAUSDC** LONG (crypto) peak +3.5%, now +-0.7%
+- HELD: **TIAUSDC** LONG (crypto) peak +3.5%, now +-0.5%
 
 - WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
@@ -51,8 +51,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
