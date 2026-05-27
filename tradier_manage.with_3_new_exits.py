@@ -2247,7 +2247,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 # 2026-04-29 USER ABSOLUTE: NEVER queue a SELL/CLOSE for more shares than we own.
                 # Today user saw "Sell 81" pending order when positionAmt=38 → 43 phantom shares.
                 # If override_qty exceeds actual position by >1 share, ABORT (not silent clamp).
-                if override_qty and position_qty > 0 and float(override_qty) > position_qty + 1:
+                # 2026-05-27 FIX: ignore the 999999 "close-all" sentinel so emergency stops can exit.
+                if override_qty and override_qty != 999999 and position_qty > 0 and float(override_qty) > position_qty + 1:
                     logger.critical(f"🚫 [QTY_OVERSHOOT_ABORT] {position_key}: override_qty={override_qty} > positionAmt={position_qty}+1 — REFUSING to place {action}. Real bug — find the source. Reason='{reason[:80]}'")
                     return False
                 if quantity > 0 and position_qty > 0 and quantity > position_qty + 1:
