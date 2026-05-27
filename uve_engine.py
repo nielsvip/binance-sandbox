@@ -30,12 +30,16 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
     wt2_D = np.asarray(npz.get("wt2_D", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt1_W = np.asarray(npz.get("wt1_W", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt2_W = np.asarray(npz.get("wt2_W", np.zeros(n, dtype=np.float32)), dtype=np.float32)
-    # Daily trend is the macro filter — never trade against it
+    # Daily + Weekly trend — never short against the weekly macro trend
     daily_bullish = wt1_D > wt2_D
     daily_bearish = wt1_D < wt2_D
-    # HTF alignment: Daily AND (4h OR 1h) moving in same direction
+    weekly_bullish = wt1_W > wt2_W
+    weekly_bearish = wt1_W < wt2_W
+    # LONG: Daily bullish AND (4h OR 1h) — allows entries on dips within uptrend
     htf_bullish = daily_bullish & ((wt1_4h > wt2_4h) | (wt1_1h > wt2_1h))
-    htf_bearish = daily_bearish & ((wt1_4h < wt2_4h) | (wt1_1h < wt2_1h))
+    # SHORT: Daily AND Weekly both bearish AND (4h OR 1h) — triple confirmation to prevent
+    # shorting during corrections inside a bull trend (SNDK style bull-run SHORT disaster)
+    htf_bearish = daily_bearish & weekly_bearish & ((wt1_4h < wt2_4h) | (wt1_1h < wt2_1h))
     macro_trend = htf_bullish if is_long else htf_bearish
     stoch_k_15m = np.asarray(npz.get("stoch_k_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     stoch_k_1h = np.asarray(npz.get("stoch_k_1h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
