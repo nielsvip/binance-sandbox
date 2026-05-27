@@ -532,7 +532,7 @@ class SweepConfig:
     HARD_REDUCE_LOCK_SECONDS: float = 60.0
     AUGMENTATION_COOLDOWN_SECONDS: float = 540.0
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # 2026-05-22 parity: live False
-    WT_3M_FORCE_OPEN_ENABLED: bool = True  # 2026-05-27 kill-switch for the WT 3m+15m|1h force-open trigger; False zeroes wt_open_ok and routes all entries through GR/DELTA/B-blocks
+    WT_3M_FORCE_OPEN_ENABLED: bool = False  # USER 2026-05-21 04:45 DISABLED in config.py + config_tradier.py (ZECUSDC parabolic suicide trade); sweep default now mirrors live. Re-enable only after SMA_15 pullback pyramid vec-validation.
     GR_VOTE_FALLBACK_MIN: int = 7  # 2026-05-27 surfaced so --override can tune (was getattr'd via vec_paths/golden_rule_enforce.py)
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-27 18:03:10 UTC
+# Copilot Status — 2026-05-27 18:18:26 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T18:02:29
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-27T18:02:29
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T18:02:29
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T18:02:29
-- **STALE_INDICATORS** [tradier]  — 2026-05-27T18:03:00
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T18:03:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T18:03:00
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-27T18:03:00
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T18:03:00
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T18:03:00
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T18:17:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T18:17:45
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-27T18:17:45
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T18:17:45
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T18:17:45
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T18:18:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T18:18:16
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-27T18:18:16
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T18:18:16
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T18:18:16
 
 ## Missed Trades (trader comparison)
 
@@ -29,30 +29,30 @@ _None_
 
 **Held:** 6 | **Watching for reentry:** 10 | **Reentered:** 0
 
-- HELD: **ROBO** LONG (tradier) peak +31.0%, now +-1.0%
+- HELD: **ROBO** LONG (tradier) peak +31.0%, now +-0.9%
 - HELD: **INXUSDT** SHORT (crypto) peak +10.9%, now +10.4%
 - HELD: **LEXX** LONG (tradier) peak +10.1%, now +2.4%
-- HELD: **GM** LONG (tradier) peak +9.9%, now +7.5%
+- HELD: **GM** LONG (tradier) peak +9.9%, now +7.6%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +-1.6%
-- HELD: **SLV** LONG (tradier) peak +5.6%, now +-2.6%
+- HELD: **SLV** LONG (tradier) peak +5.6%, now +-2.4%
 
-- WATCHING: **NUKZ** LONG (tradier) peaked +17.6%, exited 177m ago
-- WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 0m ago
-- WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 0m ago
-- WATCHING: **GDX** SHORT (tradier) peaked +7.8%, exited 0m ago
-- WATCHING: **FIVN** LONG (tradier) peaked +7.2%, exited 177m ago
-- WATCHING: **ACN** SHORT (tradier) peaked +4.4%, exited 177m ago
-- WATCHING: **OLED** LONG (tradier) peaked +3.7%, exited 0m ago
-- WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 0m ago
-- WATCHING: **SNDK** LONG (tradier) peaked +3.4%, exited 0m ago
-- WATCHING: **WDAY** SHORT (tradier) peaked +3.1%, exited 96m ago
+- WATCHING: **NUKZ** LONG (tradier) peaked +17.6%, exited 192m ago
+- WATCHING: **UUUU** SHORT (tradier) peaked +15.3%, exited 1m ago
+- WATCHING: **USO** LONG (tradier) peaked +12.1%, exited 1m ago
+- WATCHING: **GDX** SHORT (tradier) peaked +7.8%, exited 1m ago
+- WATCHING: **FIVN** LONG (tradier) peaked +7.2%, exited 192m ago
+- WATCHING: **ACN** SHORT (tradier) peaked +4.4%, exited 192m ago
+- WATCHING: **OLED** LONG (tradier) peaked +3.7%, exited 1m ago
+- WATCHING: **PBF** LONG (tradier) peaked +3.6%, exited 1m ago
+- WATCHING: **SNDK** LONG (tradier) peaked +3.4%, exited 1m ago
+- WATCHING: **WDAY** SHORT (tradier) peaked +3.1%, exited 111m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 7
-- [MEDIUM] tradier_rankings.py running but log stale (10min)
+**Issues (last 1h):** 5
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
