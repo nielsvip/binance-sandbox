@@ -660,7 +660,7 @@ class SweepConfig:
     # ── TOP_OF_RANGE_BLOCK (2026-05-22 USER post-ORDI prevention mandate) ────
     # Block OPEN/AUGMENT when dc_position is extreme on ALL listed TFs.
     # ORDI was bought at dc_h1h — this prevents repeat. Default OFF until A/B proves +ΔSharpe.
-    TOP_OF_RANGE_BLOCK_ENABLED: bool = False
+    TOP_OF_RANGE_BLOCK_ENABLED: bool = True   # 2026-05-22 live: True (ORDI prevention)
     TOP_OF_RANGE_BLOCK_THRESHOLD: float = 0.95
     TOP_OF_RANGE_BLOCK_TF_LIST: str = "1h,4h,D"
     TOP_OF_RANGE_BLOCK_REQUIRE_ALL: bool = True
@@ -1041,7 +1041,7 @@ class SweepConfig:
     # :35454+ (BREAKOUT_RETEST_ARMED). Previously all 4 were reverted by A3 and
     # produced baseline-identical sweep results when re-enabled because vec path
     # had no implementation. Default OFF per current config.py/config_tradier.py.
-    HTF_TREND_VETO_ENABLED: bool = False                  # mirrors ez_manage.py:18660
+    HTF_TREND_VETO_ENABLED: bool = True   # 2026-05-26 live: True (BTCDOM autopsy + switch_hunt ΔPS +0.020). mirrors ez_manage.py:18660
     HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0             # 2026-05-21 wired knob (engine-only — vec uses binary alignment)
     R3_HTF_FLIP_EXIT_ENABLED: bool = False                # mirrors ez_manage.py:38260
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = False             # mirrors ez_manage.py:38290
@@ -1224,7 +1224,7 @@ class SweepConfig:
     #     timestamp). Documented as PARTIAL/BLOCKED in batch7 report if
     #     worker dispatch can't be cleanly serialized; see structural
     #     blocker list in data/_diagnostic/vec_parity_batch7.md.
-    VEC_MTF_ARMED_STATE_ENABLED: bool = False
+    VEC_MTF_ARMED_STATE_ENABLED: bool = True   # 2026-05-27 parity: live MTF_ARMED_ENTRY_ENABLED=True gates entries via armed state; vec batch7 additive gate mirrors ez_manage.py:22755
     VEC_MTF_ARMED_GATE_REENTRY: bool = False           # gate REENTRY-typed entries too (live excludes)
     VEC_MTF_ARMED_GATE_HEDGE_OPEN: bool = False        # gate HEDGE_OPEN events too (live excludes)
     VEC_MTF_ARMED_BYPASS_STRONG: bool = True           # mirror live: STRONG_BUY/QUICK_OPEN bypass
@@ -1485,8 +1485,8 @@ def simulate_one_symbol(
         exit_gates['wt_exhaust_btc'] = _zero
     # 3. Pre-compute hedge cascade WT-against arrays (we'll call noloss vec
     #    per-need, but precompute reuses these too).
-    wt1_3m = np.nan_to_num(npz.get("wt1_3m", np.zeros(n)).astype(np.float32))
-    wt2_3m = np.nan_to_num(npz.get("wt2_3m", np.zeros(n)).astype(np.float32))
+    wt1_3m = np.nan_to_num(npz.get("wt1_3m", npz.get("wt1_5m", np.zeros(n))).astype(np.float32))
+    wt2_3m = np.nan_to_num(npz.get("wt2_3m", npz.get("wt2_5m", np.zeros(n))).astype(np.float32))
     wt1_15m = np.nan_to_num(npz.get("wt1_15m", np.zeros(n)).astype(np.float32))
     wt2_15m = np.nan_to_num(npz.get("wt2_15m", np.zeros(n)).astype(np.float32))
     wt1_1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))

@@ -1194,8 +1194,8 @@ class TradierConfig:
     # 🚩 NEW BASELINE 2026-05-12 — 3 additional gates for tradier WT_DC_ENTRY path.
     # Wired in tradier_manage.py:2027-2068. Source: vec_sweep dc45_h1_s40_grOFF.
     # ROLLBACK each to disabled value (commented inline).
-    HTF_ALIGN_REQUIRED_TRADIER: int = 1     # NEW. Min # of {1h,4h,D} that must align WT-direction. ROLLBACK: 0
-    COMBINED_STOCH_GATE_TRADIER: float = 40.0  # NEW. LONG blocked if k5m >= this; SHORT blocked if k5m <= 100-this. ROLLBACK: 100.0
+    HTF_ALIGN_REQUIRED_TRADIER: int = 2     # CLAUDE.md stocks ≥2 (was 1 — crypto value; fixed 2026-05-27). ROLLBACK: 1
+    COMBINED_STOCH_GATE_TRADIER: float = 60.0  # CLAUDE.md stocks=60 (was 40 — sub-crypto value; fixed 2026-05-27). ROLLBACK: 40.0
     GR_HTF_GATE_ENABLED: bool = False       # NEW. Adds GR HTF alignment gate (uses wt_bull_alignment/wt_bear_alignment). ROLLBACK: False (no change — gate stays off until validated)
     GR_HTF_REQUIRE_BULL: int = 1            # Used only when GR_HTF_GATE_ENABLED=True
     GR_HTF_REQUIRE_BEAR: int = 1            # Used only when GR_HTF_GATE_ENABLED=True
@@ -2297,7 +2297,7 @@ class TradierConfig:
     # ═══════════════════════════════════════════════════════════════════
     MTF_ARMED_ENTRY_ENABLED: bool = True             # MASTER
     REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
-    REENTRY_STOCH_K_MAX_LONG: float = 40.0
+    REENTRY_STOCH_K_MAX_LONG: float = 80.0  # CLAUDE.md stocks K<80 (was 40 — crypto value copied 2026-05-22; fixed 2026-05-27)
     REENTRY_STOCH_K_MIN_SHORT: float = 60.0
     REENTRY_WAVETREND_CONFIRM_ENABLED: bool = True
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'

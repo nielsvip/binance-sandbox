@@ -69,7 +69,10 @@ def main():
     fwd = fwd_returns(close, [4, 8, 16, 32, 64, 128, 256])
     n_syms = len(loaded)
     base_tf = 3 if args.mode == "crypto" else 5
-    years = n_bars * base_tf / 60 / 24 / 365.25
+    if args.mode == "tradier":
+        years = n_bars * base_tf / 60 / 6.5 / 252
+    else:
+        years = n_bars * base_tf / 60 / 24 / 365.25
     print(f"[VAL] {time.time()-t0:.1f}s built {len(C)} conditions, {n_syms} syms × {years:.2f} years", flush=True)
 
     out_path = Path(args.out)
@@ -99,6 +102,25 @@ def main():
         eff_wr = (100.0 - m["wr"]) if side == "S" else m["wr"]
         eff_mean_pct = sign * m["mean"] * 100
         eff_score = eff_sh * math.sqrt(max(m["n"]/1000, 0.001))
+        # Per-symbol sharpe (average across syms with ≥30 trades)
+        sym_sharpe_vals = []
+        fwd_h = fwd[h]
+        for _si in range(fwd_h.shape[1] if fwd_h.ndim == 2 else mask.shape[1] if mask.ndim == 2 else 0):
+            _sm = mask[:, _si] if mask.ndim == 2 else mask
+            _sr = fwd_h[:, _si] if fwd_h.ndim == 2 else fwd_h
+            _rets = _sr[_sm]
+            if len(_rets) < 30: continue
+            _std = float(_rets.std())
+            if _std <= 0: continue
+            sym_sharpe_vals.append(sign * float(_rets.mean()) / _std)
+        sym_sharpe = round(float(np.mean(sym_sharpe_vals)), 4) if sym_sharpe_vals else 0.0
+        # max_dd_pct: worst-1st-percentile trade loss as proxy
+        all_rets = fwd_h[mask]
+        if len(all_rets) > 0:
+            worst_frac = float(np.percentile(sign * all_rets, 1))
+            max_dd_pct = round(abs(min(0.0, worst_frac)) * 100, 2)
+        else:
+            max_dd_pct = 0.0
         pub_results.append({
             "rank": rank, "side": side, "combo": r["combo"], "horizon": h,
             "n": m["n"], "eff_sh": eff_sh, "eff_wr": eff_wr,
@@ -110,12 +132,12 @@ def main():
         try:
             write_sharpe_row(out_path, {
                 "pool_sharpe": round(eff_sh, 4),
-                "sym_sharpe": 0.0,
+                "sym_sharpe": sym_sharpe,
                 "avg_gain_trade": round(eff_mean_pct, 4),
-                "gain_per_yr": round(eff_mean_pct * m["n"] / max(years, 0.01), 2),
+                "gain_per_yr": round(eff_mean_pct * m["n"] / max(years, 0.01) / max(n_syms, 1), 2),
                 "gain_sym_yr": round(eff_mean_pct * m["n"] / max(years, 0.01) / max(n_syms, 1), 4),
                 "trades": m["n"],
-                "max_dd_pct": 0.0,
+                "max_dd_pct": max_dd_pct,
                 "n_syms": n_syms, "years": round(years, 2),
                 "ts_utc": ts_iso, "mode": args.mode,
                 "iter": f"{r['side']}_{r['combo']}_h{h}", "side": side, "horizon": h,
