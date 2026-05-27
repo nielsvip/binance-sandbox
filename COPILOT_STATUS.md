@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-27 11:01:01 UTC
+# Copilot Status — 2026-05-27 11:16:21 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T10:58:57
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T10:58:57
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T10:58:58
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T10:59:59
-- **STALE_INDICATORS** [tradier]  — 2026-05-27T11:01:00
-- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T11:01:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T11:01:00
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T11:01:00
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T11:01:00
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T11:01:00
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T11:13:16
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T11:13:17
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T11:14:18
+- **STALE_INDICATORS** [tradier]  — 2026-05-27T11:15:19
+- **BIG_LOSER** [tradier] trb:ASTS_SHORT — 2026-05-27T11:15:19
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-27T11:15:19
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-27T11:15:19
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-27T11:15:19
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T11:15:19
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-27T11:16:21
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **ROBO** LONG (tradier) peak +31.0%, now +2.5%
 - HELD: **NUKZ** LONG (tradier) peak +17.6%, now +2.1%
-- HELD: **INXUSDT** SHORT (crypto) peak +10.9%, now +10.3%
+- HELD: **INXUSDT** SHORT (crypto) peak +10.9%, now +10.2%
 - HELD: **LEXX** LONG (tradier) peak +10.1%, now +7.8%
 - HELD: **CIBR** LONG (tradier) peak +8.6%, now +-0.4%
 - HELD: **FIVN** LONG (tradier) peak +7.2%, now +-1.9%
