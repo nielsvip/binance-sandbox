@@ -19,14 +19,14 @@ import metrics_guard
 from v8_vec_sweep import load_npz
 from uve_engine import simulate_uve
 
-def run_uve_backtest(symbols: List[str], mode: str, is_long: bool, start_ts: int | None = None) -> Dict[str, Any]:
+def run_uve_backtest(symbols: List[str], mode: str, is_long: bool, start_ts: int | None = None, config: Any = None) -> Dict[str, Any]:
     returns_by_sym = {}
     total_trades = 0
     all_returns = []
     for sym in symbols:
         try:
             npz, ts = load_npz(sym, mode, start_ts=start_ts)
-            res = simulate_uve(npz, is_long, mode)
+            res = simulate_uve(npz, is_long, mode, config=config)
             rets = res["returns"]
             returns_by_sym[sym] = rets
             all_returns.extend(rets)
