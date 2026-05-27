@@ -24,7 +24,19 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
     atr = np.asarray(npz.get("atr_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt1_1h = np.asarray(npz.get("wt1_1h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt2_1h = np.asarray(npz.get("wt2_1h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
-    macro_trend = (wt1_1h > wt2_1h) if is_long else (wt1_1h < wt2_1h)
+    wt1_4h = np.asarray(npz.get("wt1_4h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    wt2_4h = np.asarray(npz.get("wt2_4h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    wt1_D = np.asarray(npz.get("wt1_D", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    wt2_D = np.asarray(npz.get("wt2_D", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    wt1_W = np.asarray(npz.get("wt1_W", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    wt2_W = np.asarray(npz.get("wt2_W", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    # Daily trend is the macro filter — never trade against it
+    daily_bullish = wt1_D > wt2_D
+    daily_bearish = wt1_D < wt2_D
+    # HTF alignment: Daily AND (4h OR 1h) moving in same direction
+    htf_bullish = daily_bullish & ((wt1_4h > wt2_4h) | (wt1_1h > wt2_1h))
+    htf_bearish = daily_bearish & ((wt1_4h < wt2_4h) | (wt1_1h < wt2_1h))
+    macro_trend = htf_bullish if is_long else htf_bearish
     stoch_k_15m = np.asarray(npz.get("stoch_k_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     stoch_k_1h = np.asarray(npz.get("stoch_k_1h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     stoch_thresh = float(getattr(config, "UVE_STOCH_THRESH", 90.0) or 90.0)
@@ -33,17 +45,24 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
     wt2_base = np.asarray(npz.get("wt2_3m" if mode == "crypto" else "wt2_5m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt1_15m = np.asarray(npz.get("wt1_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     wt2_15m = np.asarray(npz.get("wt2_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
-    wt1_4h = np.asarray(npz.get("wt1_4h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
-    wt2_4h = np.asarray(npz.get("wt2_4h", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     dc_high_15m = np.asarray(npz.get("dc_high_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     dc_low_15m = np.asarray(npz.get("dc_low_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     dc_basis_15m = np.asarray(npz.get("dc_basis_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
     strat_mode = getattr(config, "UVE_STRATEGY_MODE", "legacy")
     if strat_mode == "legacy":
         wt_cross = (wt1_base > wt2_base) if is_long else (wt1_base < wt2_base)
-        entry_allowed = macro_trend & anti_parabolic & wt_cross
+        # For LONG: breakout bypasses anti_parabolic (rally entries are valid even when overbought)
+        dc_high_15m_prev = np.roll(dc_high_15m, 1); dc_high_15m_prev[0] = dc_high_15m[0]
+        dc_low_15m_prev = np.roll(dc_low_15m, 1); dc_low_15m_prev[0] = dc_low_15m[0]
+        if is_long:
+            is_breakout = (close > dc_high_15m_prev) & (np.roll(close, 1) <= dc_high_15m_prev)
+            entry_allowed = macro_trend & (anti_parabolic | is_breakout) & wt_cross
+            is_breakout_entry = is_breakout & entry_allowed
+        else:
+            # SHORT: macro_trend already requires daily_bearish — no breakout bypass
+            entry_allowed = macro_trend & anti_parabolic & wt_cross
+            is_breakout_entry = np.zeros(n, dtype=bool)
         exit_signal = np.zeros(n, dtype=bool)
-        is_breakout_entry = np.zeros(n, dtype=bool)
     else:
         wt1_base_prev = np.roll(wt1_base, 1)
         wt1_base_prev[0] = wt1_base[0]
@@ -53,15 +72,16 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
             wt_crossover = (wt1_base > wt2_base) & (wt1_base_prev <= wt2_base_prev)
             wt_crossunder = (wt1_base < wt2_base) & (wt1_base_prev >= wt2_base_prev)
             oversold_val = float(getattr(config, "UVE_OVERSOLD_THRES", -40.0) or -40.0)
-            buy_bottom = wt_crossover & (wt1_base < oversold_val)
-            bounce_agree_15m = wt1_15m > wt2_15m
-            bounce_moving_htf = (wt1_1h > wt2_1h) | (wt1_4h > wt2_4h)
-            reenter_bounce = wt_crossover & bounce_agree_15m & bounce_moving_htf
+            # Bottom buy: oversold WT cross with 15m agreement
+            buy_bottom = wt_crossover & (wt1_base < oversold_val) & (wt1_15m > wt2_15m)
+            bounce_moving_htf = htf_bullish
+            reenter_bounce = wt_crossover & (wt1_15m > wt2_15m) & bounce_moving_htf
             dc_high_15m_prev = np.roll(dc_high_15m, 1)
             dc_high_15m_prev[0] = dc_high_15m[0]
             is_breakout = (close > dc_high_15m_prev) & (np.roll(close, 1) <= dc_high_15m_prev)
             breakout_enabled = bool(getattr(config, "UVE_BREAKOUT_ENABLED", True))
-            buy_breakout = is_breakout if breakout_enabled else np.zeros(n, dtype=bool)
+            # Breakout entry: valid when daily is bullish (allows entries even when overbought)
+            buy_breakout = (is_breakout & daily_bullish) if breakout_enabled else np.zeros(n, dtype=bool)
             entry_allowed = buy_bottom | reenter_bounce | buy_breakout
             is_breakout_entry = buy_breakout & entry_allowed
             overbought_val = float(getattr(config, "UVE_OVERBOUGHT_THRES", 40.0) or 40.0)
@@ -70,20 +90,33 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
             wt_crossover = (wt1_base < wt2_base) & (wt1_base_prev >= wt2_base_prev)
             wt_crossunder = (wt1_base > wt2_base) & (wt1_base_prev <= wt2_base_prev)
             oversold_val = float(getattr(config, "UVE_OVERSOLD_THRES", 40.0) or 40.0)
-            buy_bottom = wt_crossover & (wt1_base > oversold_val)
-            bounce_agree_15m = wt1_15m < wt2_15m
-            bounce_moving_htf = (wt1_1h < wt2_1h) | (wt1_4h < wt2_4h)
-            reenter_bounce = wt_crossover & bounce_agree_15m & bounce_moving_htf
+            # SHORT bottom: overbought cross-under with Daily AND 4h/1h bearish confirmation
+            buy_bottom = wt_crossover & (wt1_base > oversold_val) & htf_bearish
+            # SHORT reenter: requires Daily bearish AND 15m bearish AND HTF confirms
+            reenter_bounce = wt_crossover & (wt1_15m < wt2_15m) & htf_bearish
             dc_low_15m_prev = np.roll(dc_low_15m, 1)
             dc_low_15m_prev[0] = dc_low_15m[0]
             is_breakout = (close < dc_low_15m_prev) & (np.roll(close, 1) >= dc_low_15m_prev)
             breakout_enabled = bool(getattr(config, "UVE_BREAKOUT_ENABLED", True))
-            buy_breakout = is_breakout if breakout_enabled else np.zeros(n, dtype=bool)
+            # SHORT breakout: only valid when daily is bearish
+            buy_breakout = (is_breakout & daily_bearish) if breakout_enabled else np.zeros(n, dtype=bool)
             entry_allowed = buy_bottom | reenter_bounce | buy_breakout
             is_breakout_entry = buy_breakout & entry_allowed
             overbought_val = float(getattr(config, "UVE_OVERBOUGHT_THRES", -40.0) or -40.0)
             exit_signal = wt_crossunder & (wt1_base < overbought_val)
-    return {"entry_allowed": entry_allowed, "close": close, "atr": atr, "macro_trend": macro_trend, "exit_signal": exit_signal, "is_breakout_entry": is_breakout_entry, "dc_basis_15m": dc_basis_15m, "dc_high_15m": dc_high_15m, "dc_low_15m": dc_low_15m}
+    return {
+        "entry_allowed": entry_allowed,
+        "close": close,
+        "atr": atr,
+        "macro_trend": macro_trend,
+        "daily_bullish": daily_bullish,
+        "daily_bearish": daily_bearish,
+        "exit_signal": exit_signal,
+        "is_breakout_entry": is_breakout_entry,
+        "dc_basis_15m": dc_basis_15m,
+        "dc_high_15m": dc_high_15m,
+        "dc_low_15m": dc_low_15m,
+    }
 
 def simulate_uve(npz: Dict[str, np.ndarray], is_long: bool, mode: str, config: Any = None) -> Dict[str, Any]:
     signals = evaluate_uve_signals(npz, is_long, mode, config)
