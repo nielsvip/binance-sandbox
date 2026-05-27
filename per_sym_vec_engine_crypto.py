@@ -528,7 +528,8 @@ def _run_variant_task_worker(args):
     _ROOT = Path(__file__).resolve().parent
     if str(_ROOT) not in sys.path:
         sys.path.insert(0, str(_ROOT))
-    from v8_vec_sweep import load_npz, simulate_one_symbol, SweepConfig
+    from v8_vec_sweep import load_npz, SweepConfig
+    from uve_engine import simulate_uve
     
     try:
         npz, ts = load_npz(sym, "crypto", start_ts=start_ts)
@@ -572,11 +573,8 @@ def _run_variant_task_worker(args):
             pass
             
     try:
-        long_events, long_rets, _ = simulate_one_symbol(
-            sym, "LONG", "crypto", cfg,
-            start_ts=start_ts,
-            _npz_cache=_npz_cache,
-        )
+        long_res = simulate_uve(npz, is_long=True, mode="crypto", config=cfg)
+        long_events, long_rets = long_res["events"], long_res["returns"]
     except Exception as _vec_e_long:
         import os, sys
         if os.environ.get("VEC_DEBUG_EXC") == "1":
@@ -584,11 +582,8 @@ def _run_variant_task_worker(args):
         long_events, long_rets = [], []
         
     try:
-        short_events, short_rets, _ = simulate_one_symbol(
-            sym, "SHORT", "crypto", cfg,
-            start_ts=start_ts,
-            _npz_cache=_npz_cache,
-        )
+        short_res = simulate_uve(npz, is_long=False, mode="crypto", config=cfg)
+        short_events, short_rets = short_res["events"], short_res["returns"]
     except Exception as _vec_e_short:
         import os, sys
         if os.environ.get("VEC_DEBUG_EXC") == "1":
