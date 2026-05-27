@@ -1,9 +1,32 @@
-"""v8_vec_sweep.py — fast pure-vectorized sweep engine.
+"""v8_vec_sweep.py — THE primary vectorized backtest engine.
+
+═══════════════════════════════════════════════════════════════════════════
+PRIMARY BACKTEST ENGINE — FOR BOTH per-sym AND SWEEP USE CASES
+═══════════════════════════════════════════════════════════════════════════
+  • USE THIS for all parameter sweeps, per-symbol optimization, and A/B tests.
+  • backtest_v8_engine.py — OFF THE TABLE. Too slow (no advances in 6 months).
+  • uve_engine.py — scratch/diagnostic only. 189 lines, not a sweep engine.
+  • vec_paths/*.py — parity-tested gate modules consumed by this engine.
 
 Standalone replacement for backtest_v8_engine.py when running millions of
 parameter variations. Uses ONLY the parity-tested vec_paths modules and
 position_evaluator vec functions — no imports from ez_manage / ez_positions_quick
 / tradier_manage / live code at all.
+
+PARITY vs LIVE (2026-05-27)
+===========================
+  MATCHED (default ON):
+    - WT_3M_ALIGNED, REENTRY (B04/B11/B15), GOLDEN_RULE (all TFs incl. W),
+      DELTA_ENGINE, QUALITY_BOTTOM_ENTRY, R1/R2, WT_CROSSUNDER_FINAL,
+      PEAK_GIVEBACK, PPL v2, DUP_GUARD, AUGMENT_LOCK, NEWBORN_PROTECT
+  MANDATE-DEAD (locked False — matches live 2026-05-20/26):
+    - UNIVERSAL_NOLOSS_GATE, VEC_NOLOSS_GATE_ENABLED, HEDGE_MODE,
+      OBLIGATORY_HEDGE_ENABLED, HEDGE_SCAN_ENABLED
+  TRADIER-ONLY OVERRIDE REQUIRED:
+    - DELTA_ENTRY_ENABLED must be False for tradier (config_tradier.py=False;
+      SweepConfig default=True for crypto). Pass --override DELTA_ENTRY_ENABLED=False.
+  NOT REPLICATED (portfolio-level, unfeasible per-symbol):
+    - RATIO_SIZE / RATIO_REDUCE (requires live L/S portfolio state across 30+ syms)
 
 DESIGN
 ======
@@ -671,19 +694,29 @@ class SweepConfig:
     GOLDEN_RULE_BB_4H_ENABLED: bool = True
     GOLDEN_RULE_DC_D_ENABLED: bool = True
     GOLDEN_RULE_BB_D_ENABLED: bool = True
+    # 2026-05-17 live config.py added Weekly TF to GR cascade. Vec parity fix 2026-05-27.
+    GOLDEN_RULE_DC_W_ENABLED: bool = True
+    GOLDEN_RULE_BB_W_ENABLED: bool = True
     GOLDEN_RULE_MULT_15M: float = 1.0
     GOLDEN_RULE_MULT_1H: float = 1.5
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
+    GOLDEN_RULE_MULT_W: float = 4.0       # 2026-05-17 live: 4.0 (cascade 1.0/1.5/2.0/3.0/4.0)
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
-    GOLDEN_RULE_MIN_IND: int = 2  # 2026-05-22 parity: live 2
-    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-05-22 parity: live 1
+    # 2026-05-22 live RESTORED: HTF_MIN_TFS 1→3, MIN_IND 2→5. Vec was using triage values.
+    GOLDEN_RULE_MIN_IND: int = 5
+    GOLDEN_RULE_HTF_MIN_TFS: int = 3
+    # 2026-05-22 live: REQUIRE_ACTIVATION=True gates GR to D/4h breakout TFs only.
+    # Vec default was False → fired far more GR entries than live.
+    GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True
+    GOLDEN_RULE_ACTIVATION_TF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])
+    GOLDEN_RULE_ENTRY_TF_LIST: List[str] = field(default_factory=lambda: ["1h", "15m", "3m"])
     GR_DC_EXTENDED_LONG: float = 0.65  # DC extension threshold for HTF confirmation (0=use module default)
     GR_BB_EXTENDED_LONG: float = 0.75  # BB pct-b threshold for HTF confirmation (0=use module default)
     # ── Partial Profit Lock (PPL) ────────────────────────────────────────────
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
-    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.5       # 2026-05-26 live GRID WINNER: 1.5% (was 0.5%)
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 1.75  # 2026-05-26 live: 1.75% proportional (+0.25)
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10
     # ── peak giveback / BE erosion exits ─────────────────────────────────────
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True
@@ -727,13 +760,16 @@ class SweepConfig:
     IN_GAIN_TREND_MIN_GAIN: float = 2.0           # minimum gain to even check
     # ── DELTA_ENGINE entries ──────────────────────────────────────────────────
     # 2026-05-22 B4: adapter .b() method added — DELTA_ENGINE can now run. Re-flipped to True.
+    # PARITY NOTE: config.py (crypto) has DELTA_ENTRY_ENABLED=True; config_tradier.py has
+    # DELTA_ENTRY_ENABLED=False (T25 sweep confirmed -4% avg Sharpe with True for stocks).
+    # Tradier sweeps MUST pass --override DELTA_ENTRY_ENABLED=False to match live.
     DELTA_ENGINE_ENABLED: bool = True
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_ENTRY_MIN_TF: int = 3
     DELTA_ENTRY_Z_THRESHOLD: float = 2.5
     DELTA_SPEED_SMOOTH: int = 5
     DELTA_TF_Z_THRESHOLD: float = 1.5
-    DELTA_HTF_GATE: str = "none"
+    DELTA_HTF_GATE: str = "hh_hl_4h"  # 2026-05-22 live: HH/HL 4h structure gate (was "none" in vec)
     # ── WT_15M_BOUNCE_OPEN — fresh 15m cross within BB + 4h/1h HTF in favor ─────
     WT_15M_BOUNCE_OPEN_ENABLED: bool = False
     WT_15M_BOUNCE_MAX_BARS_AGO: int = 2       # bars since 15m cross (2 bars = 30min)
