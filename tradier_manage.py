@@ -1871,12 +1871,22 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             # Update breakout state continuously so it's ready when entry branch fires
             _update_stdev_state(symbol, indicators_raw)
         if not macro_fresh:
-            # INDICATORS ARE DEAD (>1200s) — but NEVER close positions on stale data
-            # Only block NEW entries. Existing positions hold until fresh data returns.
-            if has_position:
+            _fa_floor_hit, _fa_breach, _r1_breached = False, False, False
+            if has_position and position:
+                try:
+                    _is_long = position_side == 'LONG'
+                    _fa_floor_pct = float(getattr(config, 'FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER', -8.0))
+                    _fa_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    _fa_floor_hit = _fa_gain <= _fa_floor_pct
+                    _fa_frozen = getattr(position, '_frozen_dc_act', None)
+                    if _fa_frozen is not None: _fa_breach = ((_is_long and current_price < _fa_frozen) or (not _is_long and current_price > _fa_frozen)) and _fa_gain < 0
+                    _r1_stop = getattr(position, 'r1_stop_price', 0.0) or 0.0
+                    if _r1_stop > 0: _r1_breached = (_is_long and current_price <= _r1_stop) or (not _is_long and current_price >= _r1_stop)
+                except Exception: pass
+            if has_position and not (_fa_floor_hit or _fa_breach or _r1_breached):
                 logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits)")
                 return "STALE_INDICATORS_HELD"
-            else:
+            elif not has_position:
                 return "STALE_ABSOLUTE_NO_POS"
         if not force and (now_ts - last_mon < 30):
             return "THROTTLED"
