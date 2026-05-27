@@ -1453,6 +1453,14 @@ def simulate_one_symbol(
     wt2_15m = np.nan_to_num(npz.get("wt2_15m", np.zeros(n)).astype(np.float32))
     wt1_1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))
     wt2_1h = np.nan_to_num(npz.get("wt2_1h", np.zeros(n)).astype(np.float32))
+    # 2026-05-27 USER MANDATE: WT trigger must use crossover EDGE on 3m + 5-HTF
+    # alignment (3m, 15m, 1h, 4h, D) — not just alignment state (which is true 50%
+    # of bars and fires entries every fkn second). 5-of-5 alignment is rare (~0.5%
+    # of bars) and crossover edge on the entry TF makes it a real signal.
+    wt1_4h = np.nan_to_num(npz.get("wt1_4h", np.zeros(n)).astype(np.float32))
+    wt2_4h = np.nan_to_num(npz.get("wt2_4h", np.zeros(n)).astype(np.float32))
+    wt1_D = np.nan_to_num(npz.get("wt1_D", np.zeros(n)).astype(np.float32))
+    wt2_D = np.nan_to_num(npz.get("wt2_D", np.zeros(n)).astype(np.float32))
     dc_h_4h = exit_gates["dc_h_4h"]
     dc_l_4h = exit_gates["dc_l_4h"]
     # DC stop loss arrays (mode-aware TF, overridable via DC_STOP_TF)
@@ -1461,10 +1469,27 @@ def simulate_one_symbol(
     _dc4_stop_short = np.nan_to_num(npz.get(f"dc_high4_{_dc_stop_tf}", np.zeros(n)).astype(np.float32))
     _dc1_stop_long  = np.nan_to_num(npz.get(f"dc_low_{_dc_stop_tf}",   np.zeros(n)).astype(np.float32))
     _dc1_stop_short = np.nan_to_num(npz.get(f"dc_high_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
-    # WT force-open: 3m PLUS (15m OR 1h) aligned — matches live spec
+    # WT force-open: 5-HTF alignment + crossover EDGE on 3m (USER MANDATE 2026-05-27).
+    # Old: 3m alignment AND (15m OR 1h) — fires on ~50% of bars (alignment is dense state).
+    # New: 3m CROSSOVER (event) AND 5-of-5 HTF alignment — fires on ~0.1-0.5% of bars.
     wt_15m_aligned = (wt1_15m > wt2_15m) if is_long else (wt1_15m < wt2_15m)
     wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
-    wt_3m_aligned  = ((wt1_3m > wt2_3m) if is_long else (wt1_3m < wt2_3m)) & (wt_15m_aligned | wt_1h_aligned)
+    wt_4h_aligned  = (wt1_4h  > wt2_4h)  if is_long else (wt1_4h  < wt2_4h)
+    wt_D_aligned   = (wt1_D   > wt2_D)   if is_long else (wt1_D   < wt2_D)
+    _prev_wt1_3m = np.roll(wt1_3m, 1); _prev_wt1_3m[0] = wt1_3m[0]
+    _prev_wt2_3m = np.roll(wt2_3m, 1); _prev_wt2_3m[0] = wt2_3m[0]
+    if is_long:
+        _wt_3m_now  = wt1_3m > wt2_3m
+        _wt_3m_prev = _prev_wt1_3m > _prev_wt2_3m
+    else:
+        _wt_3m_now  = wt1_3m < wt2_3m
+        _wt_3m_prev = _prev_wt1_3m < _prev_wt2_3m
+    _wt_3m_cross_edge = _wt_3m_now & (~_wt_3m_prev)  # first-bar of new alignment
+    # Master switch — allow rollback to alignment-only via SweepConfig knob
+    if bool(getattr(config, "WT_TRIGGER_REQUIRE_CROSS_EDGE", True)):
+        wt_3m_aligned = _wt_3m_cross_edge & wt_15m_aligned & wt_1h_aligned & wt_4h_aligned & wt_D_aligned
+    else:
+        wt_3m_aligned = _wt_3m_now & (wt_15m_aligned | wt_1h_aligned)
     # wt1_3m against the trade (required by GR exit and hedge trigger)
     _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
     # WT against for hedge trigger (15m and 1h)

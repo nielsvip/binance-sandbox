@@ -18389,12 +18389,13 @@ class MultiAccountTradeManager:
             _htfv_has_size = position and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) > self.min_qty.get(symbol, 0.0001)
             _htfv_open_excl = ("OPEN" not in action.upper()) if _htfv_fix_on else True
             _htfv_size_req = _htfv_has_size if _htfv_fix_on else True
+            # 2026-05-27 USER MANDATE: REENTRY must respect HTF_TREND_VETO too. Removed
+            # prior `"REENTRY" not in action` bypass — no path opens without HTF alignment.
             if (
                 is_augment
                 and _htfv_size_req
                 and "HEDGE" not in action
                 and "QUICK" not in action
-                and "REENTRY" not in action
                 and _htfv_open_excl
             ):
                 _htf_min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 3.0), 3.0)
@@ -18723,11 +18724,11 @@ class MultiAccountTradeManager:
                 or "TRADEABLE_KEYS_MANDATORY" in _reason_up_eta
                 or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_eta
             ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+            # 2026-05-27 USER MANDATE: REENTRY respects ENTRY_VET. Bypass removed.
             if (
                 not _tp_entry_ok
                 and "HEDGE" not in action
                 and "QUICK" not in action
-                and "REENTRY" not in _reason_up_eta
                 and not _is_force_open_eta
             ):
                 logger.warning(f"[ENTRY_VET] {position_key}: BLOCKED — reason={_tp_entry_reason} action={action} r={(reason or '')[:60]}")
@@ -22752,7 +22753,14 @@ class MultiAccountTradeManager:
                 and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
-            if ((("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act) and "REENTRY" not in _kill_act)
+            # 2026-05-27 USER MANDATE: REENTRY MUST respect MTF alignment.
+            # Prior 2026-05-21 02:20 bypass (`"REENTRY" not in _kill_act`) was leaking
+            # 82% of reentry events to fire without armed-state confirmation. Removed.
+            # Cold-start armed-state must be solved by warm-start from history bars at
+            # proc init, NOT by bypassing the gate. Until warm-start ships, expect more
+            # MTF_NO_ARMED_STATE blocks for ~30-60 min after restart — that's correct
+            # behaviour, NOT a regression.
+            if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
                     and not _mtf_strong_buy_quick_bypass):
                 import mtf_live_evaluator as _mle

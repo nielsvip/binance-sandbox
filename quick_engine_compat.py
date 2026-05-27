@@ -36,6 +36,8 @@ from typing import Any, Dict, List, Optional
 _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+if str(_ROOT / "old") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "old"))
 
 from vec_engine_v1 import VecConfig, VecEngine
 
