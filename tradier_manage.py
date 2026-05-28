@@ -2486,6 +2486,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _mss_dict = trade_manager._micro_scalp_state_stocks
                 _mss_st = _mss_dict.get(position_key, {})
                 _mss_threshold = float(getattr(config, 'MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT', 0.05))
+                _mss_peak_floor = float(getattr(config, 'MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT', 0.5))  # 2026-05-28 USER: micro-scalp may only close a position whose gain has ALREADY been >= this floor.
+                _mss_max_gain = float(getattr(position, 'max_gain', 0) or 0) if position else 0.0
                 _mss_qty = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
                 # CLOSE branch — held position, gain past threshold AND first deceleration
                 if _mss_qty >= 1 and current_price > 0:
@@ -2497,9 +2499,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _mss_dict[position_key] = _mss_st_new
                         if _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
                             logger.info(f"[MICRO_SCALP_MIN_HOLD_BLOCK] {position_key}: hold={_mss_hold_min_check:.0f}m<{_mss_min_hold:.0f}m — micro-scalp close gated (user rule 2026-04-27)")
-                    elif _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
-                        _mss_reason = f"MICRO_SCALP_STOCKS_CLOSE_g{_mss_gain:.3f}%_prev{_mss_prev:.3f}%"
-                        logger.critical(f"⚡ [MICRO_SCALP_STOCKS_CLOSE] {position_key}: gain={_mss_gain:.3f}% < prev={_mss_prev:.3f}% (threshold={_mss_threshold}%) — limit close (chase→market fallback at 10s)")
+                    elif _mss_gain >= _mss_threshold and _mss_gain < _mss_prev and _mss_max_gain >= _mss_peak_floor:
+                        _mss_reason = f"MICRO_SCALP_STOCKS_CLOSE_g{_mss_gain:.3f}%_prev{_mss_prev:.3f}%_peak{_mss_max_gain:.3f}%"
+                        logger.critical(f"⚡ [MICRO_SCALP_STOCKS_CLOSE] {position_key}: gain={_mss_gain:.3f}% < prev={_mss_prev:.3f}% peak={_mss_max_gain:.3f}%>=floor{_mss_peak_floor:.3f}% (threshold={_mss_threshold}%) — limit close (chase→market fallback at 10s)")
                         # Cooldown bookkeeping (same key as evaluate_stop CLOSE path)
                         if not hasattr(trade_manager, '_pending_closes'):
                             trade_manager._pending_closes = {}
@@ -2713,7 +2715,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 conf = 0
                 _delta_entry = False
                 _xb_reentry_fired = False
-                if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)):
+                _entry_score = 0.0  # 2026-05-28 C1 FIX: bind before branches — reentry/GR/delta entry paths set action_type="OPEN" without running wt_dc_score_entry, so the ENTRY_SCORE_THRESHOLD veto (~3023) hit UnboundLocalError when a per-sym ENTRY_SCORE_THRESHOLD>0 override was present (41 crashes/day on IBIT/CIBR/DAR/ROBO).
+                if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)) and trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
                     _xb_last_t = trade_manager.last_exit_times.get(symbol, 0)
                     _xb_last_px = trade_manager.last_exit_prices.get(symbol, 0)
                     if _xb_last_t > 0 and _xb_last_px > 0 and current_price > 0:
@@ -9910,6 +9913,15 @@ class TradierTradeManager:
         if symbol not in same_side_syms:
             return False
 
+        # 3b. 2026-05-28 USER: honor per-sym LONG_ENABLED/SHORT_ENABLED=False (injected for
+        #     neg-Sharpe (sym,side) by _inject_neg_sharpe_no_trade). Was injected but NEVER
+        #     enforced — IBIT_LONG (LONG_ENABLED:False) kept churning. Gate NEW entries only;
+        #     exits/reduces bypass is_symbol_tradeable so existing positions can still be closed.
+        _ist_side_enabled = _cfg("LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED", True, account_key, symbol, side)
+        if _ist_side_enabled is False:
+            logger.info(f"[{account_key}] ⛔ {symbol} {side}: {'LONG' if side == 'LONG' else 'SHORT'}_ENABLED=False (neg-Sharpe/disabled) — no new entry/reentry")
+            return False
+
         # 4. ALWAYS_TRADEABLE/EXCEPTIONS are now only an enabler ON TOP of same_side_syms —
         #    they were already de-fanged in step 3, but kept here for any future restrictive use.
         return True
@@ -10613,6 +10625,19 @@ class TradierTradeManager:
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"BLOCKED_{_dg_tag}"
+
+            # ═══ PER_SYM_SIDE_DISABLED (2026-05-28 user mandate) ═══
+            # Respect LONG_ENABLED/SHORT_ENABLED from per_sym_active_config.json: a
+            # (symbol, side) with NO positive backtest (UVE results + SYMBOL_REPORT) is
+            # set False and refused at entry. Flag previously had no consumer. Exits/reduces
+            # pass (gated by is_entry_action / not _is_exit_or_reduce). HEDGE reasons pass.
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and 'HEDGE' not in (reason or '').upper():
+                _psd_flag = "LONG_ENABLED" if position_side == "LONG" else "SHORT_ENABLED"
+                if not bool(_cfg(_psd_flag, True, account_key, symbol, position_side)):
+                    logger.critical(f"🚫 [PER_SYM_SIDE_DISABLED] {position_key}: BLOCKED {_psd_flag}=False (no positive backtest). reason={reason}")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
 
             # ═══ TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK (2026-05-11 user mandate) ═══
             # Tradier brokerage CANNOT hold both LONG and SHORT on the same equity in the
@@ -11686,6 +11711,9 @@ class TradierTradeManager:
                                 wt_support = sum(1 for w1, w2 in [(wt1_5m, wt2_5m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h)] if w1 < w2)
                             if wt_support >= 2 and htf_aligned:
                                 reenter = True
+                        if reenter and not self.is_symbol_tradeable(symbol, acc, side):
+                            logger.info(f"[REENTRY_MONITOR] {pk}: {side}_ENABLED=False / not tradeable (neg-Sharpe/disabled) — skipping reopen")
+                            reenter = False
                         if reenter:
                             pos_amt_at_exit = float(cand.get("position_amt_at_exit", 0))
                             reentry_qty = max(1, int(pos_amt_at_exit)) if pos_amt_at_exit > 0 else max(1, int(await self.calculate_position_size(symbol, current_price, account_key=acc)))
@@ -11723,6 +11751,14 @@ class TradierTradeManager:
                                 _pos.mark_price = current_price
                                 _pos.opened_at = now_utc
                                 logger.warning(f"[REENTRY_ENTRY_PRICE] {pk}: Set entry_price={_fill_price:.2f} from fill (was {cand.get('entry_price', 0):.2f})")
+                            # 2026-05-28 USER: this reopen path uses place_order() directly and bypassed
+                            # execute_trade_action's _append_to_history — every reopen was invisible in
+                            # /history/. Log it here on a real fill so the trade ledger is complete.
+                            if "GHOST" not in str(order_id) and order_id not in ("NONE", "N/A"):
+                                try:
+                                    await self._append_to_history(pk, "REENTRY", float(reentry_qty), float(_fill_price), reentry_reason)
+                                except Exception as _rm_hist_e:
+                                    logger.error(f"[REENTRY_MONITOR] {pk}: history write failed: {_rm_hist_e}")
                             logger.info(f"[REENTRY_MONITOR] {pk}: Result={result}")
                         elif cand["attempts"] % 20 == 0:
                             logger.info(f"[REENTRY_MONITOR] {pk}: Still waiting ({cand['attempts']} checks) price=${current_price:.2f} target=${exit_price:.2f} k5m={k_5m:.0f} wt_sup={wt_support if side == 'LONG' else wt_support}")

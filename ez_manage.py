@@ -22637,6 +22637,28 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 PER_SYM_SIDE_DISABLED (USER 2026-05-28) — respect LONG_ENABLED/SHORT_ENABLED.
+        # A (symbol, side) with NO positive backtest (UVE results + SYMBOL_REPORT) gets
+        # LONG_ENABLED:false / SHORT_ENABLED:false in per_sym_active_config.json overrides.
+        # This flag previously had NO consumer; now it refuses OPEN/AUGMENT/ENTRY/REENTRY.
+        # Exits (CLOSE/REDUCE) and HEDGE pass — never traps an existing position. Fail-open.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (
+                symbol
+                and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                and "CLOSE" not in _kill_act
+                and "REDUCE" not in _kill_act
+                and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper()
+            ):
+                _psd_flag = "LONG_ENABLED" if position_side == "LONG" else "SHORT_ENABLED"
+                if not bool(_psym_get(symbol, position_side, _psd_flag, True)):
+                    logger.critical(f"🚫 [PER_SYM_SIDE_DISABLED] {position_key}: BLOCKED {_psd_flag}=False (no positive backtest). action={action} reason={(reason or '')[:80]}")
+                    return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
+        except Exception as _psd_e:
+            logger.warning(f"[PER_SYM_SIDE_DISABLED] check error (fail-open): {_psd_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (USER 2026-05-22, post-ORDIUSDC mandate)
         # Block OPEN/AUGMENT when price is in the top THRESHOLD% of DC channel on
         # ALL listed TFs (default 1h,4h,D at 0.95). For LONG: blocks when at top.
