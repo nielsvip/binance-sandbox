@@ -46829,6 +46829,25 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                 )
                 if not _crossed:
                     continue
+                # 2026-05-28 USER anti-churn TEST: require a Donchian breakout, not just a
+                # touch of the stored level, before reentering. Default OFF (test switch).
+                if getattr(cfg, "REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED", False):
+                    try:
+                        _dcb_i = await ii(trade_manager, _sym) or {}
+                        _dcb_tf = str(getattr(cfg, "REENTRY_LIVE_MONITOR_DC_BREAK_TF", "3m"))
+                        _dcb_4 = bool(getattr(cfg, "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR", False))
+                        if _is_long:
+                            _dcb_key = f"dc_high4_{_dcb_tf}" if _dcb_4 else f"dc_high_{_dcb_tf}"
+                        else:
+                            _dcb_key = f"dc_low4_{_dcb_tf}" if _dcb_4 else f"dc_low_{_dcb_tf}"
+                        _dcb_lvl = safe_fetch_float(_dcb_i.get(_dcb_key), 0.0)
+                        if _dcb_lvl > 0:
+                            _dcb_broke = (_is_long and _cur_price > _dcb_lvl) or (not _is_long and _cur_price < _dcb_lvl)
+                            if not _dcb_broke:
+                                logger.info(f"[REENTRY_MONITOR_DC_BREAK_HOLD] {position_key}: cur={_cur_price:.6f} not past {_dcb_key}={_dcb_lvl:.6f} — churn guard, skip reentry")
+                                continue
+                    except Exception as _dcb_e:
+                        logger.debug(f"[REENTRY_MONITOR_DC_BREAK] {position_key}: {_dcb_e} (fail-open)")
                 # Dedup: don't re-fire the same level within 15min
                 _cache_key = f"{position_key}:{level_price:.8f}"
                 _last_fired = _reentry_monitor_fired.get(_cache_key, 0)

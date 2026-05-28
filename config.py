@@ -2888,6 +2888,14 @@ class Config:
     REENTRY_LIVE_MONITOR_ENABLED: bool = True
     REENTRY_LIVE_MONITOR_INTERVAL_S: int = 30          # check ladder + reentry files every 30s
     REENTRY_LIVE_MONITOR_PARTIAL_PCT: float = 0.5      # ladder level fires 50% of normal size
+    # 2026-05-28 USER anti-churn TEST SWITCH (default OFF): the level-cross reentry
+    # (price touches the stored exit/reentry level) churns. When ENABLED, reentry fires
+    # only if price ALSO breaks a Donchian level — dc_high_<TF> (long) / dc_low_<TF>
+    # (short), or dc_high4_<TF>/dc_low4_<TF> (latest 4-bar) when USE_4BAR=True — i.e. a
+    # real breakout, not a touch-back. Fail-open if the indicator is missing.
+    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = False
+    REENTRY_LIVE_MONITOR_DC_BREAK_TF: str = "3m"
+    REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = False
     # ═══════════════════════════════════════════════════════════════════════
     # END REENTRY GUARANTEE SWITCHES
     # ═══════════════════════════════════════════════════════════════════════
