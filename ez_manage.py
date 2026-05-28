@@ -38170,26 +38170,19 @@ async def process_position(
                     # "hold" should not suppress taking partial gains.
                     _ag_ppl_on = bool(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ENABLED", False))
                     _ag_is_hedge_check = bool(getattr(position, "is_hedge", False))
-                    _ag_pos_gain_pre = safe_float(getattr(position, "gain", 0))
-                    _ag_ppl_min_g_pre = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 1.5))
-                    _ag_ppl_fired_pre = getattr(trade_manager, "partial_profit_lock_state", {}).get(position_key, {}).get("fired", False)
-                    logger.info(
-                        f"[PPL_HOLD_DIAG] {position_key}: ppl_on={_ag_ppl_on} in_accts={account_key in getattr(config,'PARTIAL_PROFIT_LOCK_ACCOUNTS',[])} is_hedge={_ag_is_hedge_check} gain={_ag_pos_gain_pre:.2f}% min={_ag_ppl_min_g_pre}% fired={_ag_ppl_fired_pre}"
-                    )
                     if (
                         _ag_ppl_on
                         and account_key in getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS", [])
                         and not _ag_is_hedge_check
                     ):
-                        _ag_pos_gain = _ag_pos_gain_pre
-                        _ag_ppl_min_g = _ag_ppl_min_g_pre
+                        _ag_pos_gain = safe_float(getattr(position, "gain", 0))
+                        _ag_ppl_min_g = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 1.5))
                         _ag_ppl_st = getattr(trade_manager, "partial_profit_lock_state", {}).get(position_key, {})
                         if not _ag_ppl_st.get("fired", False) and _ag_pos_gain >= _ag_ppl_min_g:
                             try:
                                 _ag_cur_px, _ = await get_current_price(symbol)
                                 _ag_cur_px = float(_ag_cur_px) if _ag_cur_px else 0.0
                                 _ag_entry_px = safe_float(getattr(position, "entry_price", 0))
-                                logger.info(f"[PPL_HOLD_DIAG2] {position_key}: cur_px={_ag_cur_px:.4f} entry={_ag_entry_px:.4f} pos_amt={_ag_pos_amt:.4f}")
                                 if _ag_cur_px > 0 and _ag_entry_px > 0:
                                     _ag_ppl_frac = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
                                     _ag_be_buf = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT", 0.10))
