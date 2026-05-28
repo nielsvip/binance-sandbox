@@ -483,24 +483,54 @@ _global_per_sym_cfgs_mtime: float = 0.0
 _global_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 
 
-def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict) -> dict:
-    """2026-05-22 USER MANDATE: any (sym, side) entry with wsharpe < 0 gets
-    LONG_ENABLED/SHORT_ENABLED=False and HTF_TREND_VETO_ENABLED=True injected
-    into its overrides so live trading refuses to OPEN/AUGMENT. Self-clearing:
-    next time the optimizer writes wsharpe>=0, the injects are gone."""
+def _collect_sharpe_sources(entry: dict) -> list:
+    """All backtest sharpe values carried on a per-sym entry: top-level wsharpe,
+    _promoted_wsharpe, and _recent_diagnostic.wsharpe. Unparseable/absent are skipped.
+    0.0 is kept (counts as neither positive nor negative = no-data)."""
+    if not isinstance(entry, dict):
+        return []
+    out = []
+    def _f(x):
+        try:
+            return float(x)
+        except Exception:
+            return None
+    for _v in (entry.get("wsharpe"), entry.get("_promoted_wsharpe")):
+        _fv = _f(_v)
+        if _fv is not None:
+            out.append(_fv)
+    _rd = entry.get("_recent_diagnostic")
+    if isinstance(_rd, dict):
+        _fv = _f(_rd.get("wsharpe"))
+        if _fv is not None:
+            out.append(_fv)
+    return out
+
+
+def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict, baseline_entry: dict = None) -> dict:
+    """2026-05-28 USER 3-SOURCE RULE (supersedes 2026-05-22 single-wsharpe ban):
+    NEVER ban on one bad test. A (sym, side) is disabled (LONG_ENABLED/SHORT_ENABLED=False
+    + HTF_TREND_VETO_ENABLED=True) ONLY if NO positive sharpe exists in ANY backtest source,
+    checked across BOTH this entry (the 7D overlay — LEAST authoritative) AND the 4yr
+    baseline (per_sym_active_config.json, passed as baseline_entry). If ANY source is
+    positive, the symbol/side is KEPT ENABLED (that backtest is the config to use): a
+    negative 7D must never ban a symbol whose baseline/recent backtest is positive.
+    0.0 = no-data (ignored). Ban requires >=1 strictly-negative source AND zero positive."""
     if not isinstance(entry, dict):
         return {}
     ovr = dict(entry.get("overrides", {}) or {})
-    try:
-        ws = float(entry.get("wsharpe", 0.0))
-    except Exception:
-        ws = 0.0
-    if ws < 0.0:
+    srcs = _collect_sharpe_sources(entry) + _collect_sharpe_sources(baseline_entry)
+    has_pos = any(s > 0.0 for s in srcs)
+    has_neg = any(s < 0.0 for s in srcs)
+    _side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    if has_neg and not has_pos:
         ovr["HTF_TREND_VETO_ENABLED"] = True
-        if sym_key.endswith("_LONG"):
-            ovr["LONG_ENABLED"] = False
-        elif sym_key.endswith("_SHORT"):
-            ovr["SHORT_ENABLED"] = False
+        if _side_flag:
+            ovr[_side_flag] = False
+    elif has_pos and _side_flag and ovr.get(_side_flag) is False:
+        # Positive backtest somewhere → un-ban (clear a stale disable written by the 7D
+        # reconfig writer; the positive baseline/recent source wins per the 3-source rule).
+        ovr[_side_flag] = True
     return ovr
 
 
@@ -513,7 +543,16 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
         if mtime != _tradier_per_sym_cfgs_mtime:
             with path.open() as _f:
                 raw = json.load(_f)
-            _tradier_per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v) for k, v in raw.items() if isinstance(v, dict)}
+            # 2026-05-28 3-source rule: pass the 4yr baseline entry so the 7D injector
+            # never bans a symbol whose baseline/recent backtest is positive.
+            _baseline_raw = {}
+            try:
+                if _global_per_sym_cfgs_path.exists():
+                    with _global_per_sym_cfgs_path.open() as _bf:
+                        _baseline_raw = json.load(_bf)
+            except Exception:
+                _baseline_raw = {}
+            _tradier_per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v, _baseline_raw.get(k)) for k, v in raw.items() if isinstance(v, dict)}
             _tradier_per_sym_cfgs_mtime = mtime
     except Exception as _exc:
         pass
