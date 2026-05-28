@@ -17543,14 +17543,19 @@ class MultiAccountTradeManager:
                 else:
                     _eta_3m_ok = _eta_w13 < _eta_w23
                     _eta_15m_ok = _eta_w115 < _eta_w215
-                if not (_eta_3m_ok and _eta_15m_ok):
+                # WINNER (gain >= MIN_GAIN): 3m alignment sufficient — augmenting dips on
+                # profitable positions is the user's intent ("add at a dip").
+                # PULLBACK (0.5×MIN_GAIN to MIN_GAIN): still require both 3m+15m
+                # to avoid adding into 15m-reversal while below full-gain threshold.
+                _need_15m = not _eta_winner
+                if not _eta_3m_ok or (_need_15m and not _eta_15m_ok):
                     _aug_tag = "WINNER" if _eta_winner else "PULLBACK"
                     logger.warning(
-                        f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — wt_3m_ok={_eta_3m_ok} wt_15m_ok={_eta_15m_ok} (need both, no falling knife). gain={_eta_pos_gain:.2f}%"
+                        f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — wt_3m_ok={_eta_3m_ok} wt_15m_ok={_eta_15m_ok} ({'winner_3m_only' if _eta_winner else 'need both'}). gain={_eta_pos_gain:.2f}%"
                     )
                     return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_15m={_eta_15m_ok}"
                 logger.info(
-                    f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — wt_3m+wt_15m aligned, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
+                    f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — {'3m-only' if _eta_winner and not _eta_15m_ok else 'wt_3m+wt_15m'} aligned, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
                 )
         account_key, parsed_symbol, parsed_position_side = parse_position_key(
             position_key
@@ -38160,6 +38165,72 @@ async def process_position(
                             f"{EvalStatus.NO_ACTION}:{_ag_tag}_AGENT_FORCE_HEDGE_FAILED"
                         )
                 if _ag_action == "hold" and _ag_pos_amt > 0:
+                    # PPL (partial profit lock) fires even during AGENT_HOLD —
+                    # it's a profit lock, not a full exit, and the agent saying
+                    # "hold" should not suppress taking partial gains.
+                    _ag_ppl_on = bool(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_ENABLED", False))
+                    _ag_is_hedge_check = bool(getattr(position, "is_hedge", False))
+                    _ag_pos_gain_pre = safe_float(getattr(position, "gain", 0))
+                    _ag_ppl_min_g_pre = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_GAIN_PCT", 1.5))
+                    _ag_ppl_fired_pre = getattr(trade_manager, "partial_profit_lock_state", {}).get(position_key, {}).get("fired", False)
+                    logger.info(
+                        f"[PPL_HOLD_DIAG] {position_key}: ppl_on={_ag_ppl_on} in_accts={account_key in getattr(config,'PARTIAL_PROFIT_LOCK_ACCOUNTS',[])} is_hedge={_ag_is_hedge_check} gain={_ag_pos_gain_pre:.2f}% min={_ag_ppl_min_g_pre}% fired={_ag_ppl_fired_pre}"
+                    )
+                    if (
+                        _ag_ppl_on
+                        and account_key in getattr(config, "PARTIAL_PROFIT_LOCK_ACCOUNTS", [])
+                        and not _ag_is_hedge_check
+                    ):
+                        _ag_pos_gain = _ag_pos_gain_pre
+                        _ag_ppl_min_g = _ag_ppl_min_g_pre
+                        _ag_ppl_st = getattr(trade_manager, "partial_profit_lock_state", {}).get(position_key, {})
+                        if not _ag_ppl_st.get("fired", False) and _ag_pos_gain >= _ag_ppl_min_g:
+                            try:
+                                _ag_cur_px, _ = await get_current_price(symbol)
+                                _ag_cur_px = float(_ag_cur_px) if _ag_cur_px else 0.0
+                                _ag_entry_px = safe_float(getattr(position, "entry_price", 0))
+                                logger.info(f"[PPL_HOLD_DIAG2] {position_key}: cur_px={_ag_cur_px:.4f} entry={_ag_entry_px:.4f} pos_amt={_ag_pos_amt:.4f}")
+                                if _ag_cur_px > 0 and _ag_entry_px > 0:
+                                    _ag_ppl_frac = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+                                    _ag_be_buf = float(_psym_get(symbol, position_side, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT", 0.10))
+                                    _ag_ppl_qty = _ag_pos_amt * _ag_ppl_frac
+                                    _ag_ppl_min_qty = max(
+                                        getattr(config, "MIN_POSITION_SIZE", 1.0) / _ag_cur_px,
+                                        trade_manager.min_qty.get(symbol, 0.0001) * 1.2,
+                                    )
+                                    if _ag_ppl_qty > _ag_ppl_min_qty and (_ag_pos_amt - _ag_ppl_qty) > _ag_ppl_min_qty:
+                                        _ag_is_long_ppl = position_side == "LONG"
+                                        _ag_ppl_side = "SELL" if _ag_is_long_ppl else "BUY"
+                                        _ag_be_stop = (
+                                            _ag_entry_px * (1.0 + _ag_be_buf / 100.0) if _ag_is_long_ppl
+                                            else _ag_entry_px * (1.0 - _ag_be_buf / 100.0)
+                                        )
+                                        _ag_ppl_uid = f"PPL_HOLD_{position_key}_{int(time.time())}"
+                                        _ag_ppl_rsn = f"PPL_TP_HOLD_BYPASS_gain{_ag_pos_gain:.2f}_URL2_50pct"
+                                        logger.warning(
+                                            f"[PPL_IN_AGENT_HOLD] {position_key}: firing PPL despite HOLD — gain={_ag_pos_gain:.2f}% >= {_ag_ppl_min_g}%"
+                                        )
+                                        _ag_ppl_res = await trade_manager.execute_now(
+                                            position_key, account_key, symbol,
+                                            _ag_pos_amt, _ag_ppl_side, position_side,
+                                            _ag_ppl_qty, _ag_cur_px, _ag_ppl_uid, _ag_ppl_rsn,
+                                            False, "QUICK_REDUCE", url_variant="2",
+                                        )
+                                        if "SUCCESS" in str(_ag_ppl_res or "").upper():
+                                            if not hasattr(trade_manager, "partial_profit_lock_state"):
+                                                trade_manager.partial_profit_lock_state = {}
+                                            _ag_ppl_eff = (
+                                                _ag_entry_px * (1.0 - _ag_ppl_frac * (1.0 + _ag_pos_gain / 100.0)) / (1.0 - _ag_ppl_frac)
+                                                if _ag_is_long_ppl
+                                                else _ag_entry_px * (1.0 - _ag_ppl_frac * (1.0 - _ag_pos_gain / 100.0)) / (1.0 - _ag_ppl_frac)
+                                            )
+                                            trade_manager.partial_profit_lock_state[position_key] = {
+                                                "fired": True, "first_exit_price": _ag_cur_px,
+                                                "stop_level": _ag_be_stop, "stop_upgraded": False,
+                                                "effective_entry": _ag_ppl_eff,
+                                            }
+                            except Exception as _ag_ppl_e:
+                                logger.warning(f"[PPL_IN_AGENT_HOLD_ERR] {position_key}: {_ag_ppl_e}")
                     _ag_adv.log_application(
                         account_key, symbol, position_side, "process", "hold", _ag_obj
                     )
