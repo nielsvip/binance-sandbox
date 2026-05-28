@@ -1728,6 +1728,54 @@ _per_sym_cfgs_mtime: float = 0.0
 _per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 
 
+def _collect_sharpe_sources(entry: dict) -> list:
+    """All backtest sharpe values carried on a per-sym entry: top-level wsharpe,
+    _promoted_wsharpe, and _recent_diagnostic.wsharpe. Unparseable/absent skipped.
+    0.0 kept (counts as neither positive nor negative = no-data). Mirror of
+    tradier_manage._collect_sharpe_sources (2026-05-28 3-source rule)."""
+    if not isinstance(entry, dict):
+        return []
+    out = []
+    def _f(x):
+        try:
+            return float(x)
+        except Exception:
+            return None
+    for _v in (entry.get("wsharpe"), entry.get("_promoted_wsharpe")):
+        _fv = _f(_v)
+        if _fv is not None:
+            out.append(_fv)
+    _rd = entry.get("_recent_diagnostic")
+    if isinstance(_rd, dict):
+        _fv = _f(_rd.get("wsharpe"))
+        if _fv is not None:
+            out.append(_fv)
+    return out
+
+
+def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict) -> dict:
+    """2026-05-28 USER 3-SOURCE RULE — crypto mirror of tradier_manage._inject_neg_sharpe_no_trade.
+    NEVER ban on one bad test. Disable (LONG_ENABLED/SHORT_ENABLED=False + HTF_TREND_VETO_ENABLED=True)
+    ONLY if NO positive sharpe exists in ANY backtest source on the entry (wsharpe / _promoted_wsharpe /
+    _recent_diagnostic.wsharpe). Any positive source → keep enabled (force-clear a stale disable). 0.0 =
+    no-data. Ban requires >=1 strictly-negative AND zero positive. Returns the overrides dict (consumed
+    by the PER_SYM_SIDE_DISABLED gate in ez_manage via _psym_get)."""
+    if not isinstance(entry, dict):
+        return {}
+    ovr = dict(entry.get("overrides", {}) or {})
+    srcs = _collect_sharpe_sources(entry)
+    has_pos = any(s > 0.0 for s in srcs)
+    has_neg = any(s < 0.0 for s in srcs)
+    _side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    if has_neg and not has_pos:
+        ovr["HTF_TREND_VETO_ENABLED"] = True
+        if _side_flag:
+            ovr[_side_flag] = False
+    elif has_pos and _side_flag and ovr.get(_side_flag) is False:
+        ovr[_side_flag] = True
+    return ovr
+
+
 def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     """Return per-sym override dict from global per_sym_active_config.json.
     Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
@@ -1741,7 +1789,9 @@ def _get_per_sym_overrides(symbol: str, side: str) -> dict:
         if mtime != _per_sym_cfgs_mtime:
             with _per_sym_cfgs_path.open() as _f:
                 raw = json.load(_f)
-            _per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            # 2026-05-28 3-source rule (parity with tradier_manage): never ban on one bad
+            # test — disable a side only if no positive sharpe in any source on the entry.
+            _per_sym_cfgs = {k: _inject_neg_sharpe_no_trade(k, v) for k, v in raw.items() if isinstance(v, dict)}
             _per_sym_cfgs_mtime = mtime
     except FileNotFoundError:
         pass
