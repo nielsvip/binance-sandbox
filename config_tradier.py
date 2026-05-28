@@ -2563,9 +2563,10 @@ class TradierConfig:
     WT_REDUCE_FRAC_HIGH: float = 0.5  # V4: at gains 1-3%, reduce 50% (was 70%).
     WT_REDUCE_FRAC_LOW: float = 0.15  # V4: was 0.30. At gains 0.3-0.5%, only reduce 15% (was 30%).
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
-    ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 22% needed restore. 5 = compromise. FIX 2026-03-29: was 1, killed real hedges.
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # DEPRECATED — no longer used after 2026-05-28 ghost-close abolition
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
-    GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = True   # 2026-05-16 FLIPPED TRUE for live shadow-log validation: _handle_missing_positions now uses ZERO_CONFIRMATION_THRESHOLD_API (=5) + handle_reduction() instead of THRESHOLD=1 direct zero. Until count reaches 5 the new path emits [GHOST_ABSENT] logs without state mutation = safe observability. Fixes 697 phantom ghost-closes/30d on NVDA/GOOGL/GLD.
+    GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = True   # DEPRECATED — ghost-close zeroing abolished 2026-05-28 (ASTS disaster)
+    GHOST_ABSENT_ALERT_THRESHOLD: int = 3  # 2026-05-28: fire desktop alert after N consecutive API misses (state NEVER zeroed)
 
     # ====================================================================
     # 2026-04-26 RESEARCH SCAN — SWEEP-ONLY OVERLAYS + STRATEGY GATES
