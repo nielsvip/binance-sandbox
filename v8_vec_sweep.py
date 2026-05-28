@@ -787,7 +787,7 @@ class SweepConfig:
     BB_RSI_STOCH_RSI_MAX: float = 40.0           # rsi threshold (was 30)
     BB_RSI_STOCH_K_MAX: float = 30.0             # stoch_k threshold (was 20)
     # ── BB PULLBACK GATE — pre-entry filter for ALL triggers (2026-05-23) ────
-    BB_PULLBACK_GATE_ENABLED: bool = False       # gate ALL entries on BB position
+    BB_PULLBACK_GATE_ENABLED: bool = True        # 2026-05-28: per-sym grid +0.066 global (36K vs 65K trades)
     BB_PULLBACK_GATE_TF: str = '15m'             # timeframe for BB %B check
     BB_PULLBACK_GATE_LONG_MAX: float = 0.30      # LONG blocked when bb_pct_b > this
     BB_PULLBACK_GATE_SHORT_MIN: float = 0.70     # SHORT blocked when bb_pct_b < this
