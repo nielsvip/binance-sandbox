@@ -17178,7 +17178,7 @@ class MultiAccountTradeManager:
         # WT_3M_FORCE_OPEN / TRADEABLE_KEYS_MANDATORY bypass entirely — pre-check
         # in the main loop guards cooldown; these are mandatory-foothold signals.
         if is_augment:
-            _wt3m_force_open = ("WT_3M_FORCE_OPEN" in (reason or "").upper() or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper() or _is_recovery_aug) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+            _wt3m_force_open = ("WT_3M_FORCE_OPEN" in (reason or "").upper() or "TRADEABLE_KEYS_MANDATORY" in (reason or "").upper()) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             if not _wt3m_force_open:
                 # 2026-05-18 per-sym overlay
                 if bool(_psym_get(symbol, position_side, "DUP_GUARD_USE_GAIN_GATE", True)):
@@ -17261,7 +17261,7 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]"
                     )
-            elif _pos_val > _min_pos_val and _gain < 3.0 and not _is_recovery_aug:
+            elif _pos_val > _min_pos_val and _gain < 3.0:
                 # ABSOLUTE: NO opens/augments/reentries/hedges on positions with gain < 3%. No exceptions.
                 if _gain < 0.0:
                     logger.critical(
@@ -17532,30 +17532,38 @@ class MultiAccountTradeManager:
             )
             _is_long_pos = position_key.endswith("_LONG")
             if _eta_winner or _eta_pullback:
-                # SIMPLE wt_3m + wt_15m alignment check (per user directive)
                 _eta_w13 = safe_fetch_float(i.get("wt1_3m"), 0)
                 _eta_w23 = safe_fetch_float(i.get("wt2_3m"), 0)
                 _eta_w115 = safe_fetch_float(i.get("wt1_15m"), 0)
                 _eta_w215 = safe_fetch_float(i.get("wt2_15m"), 0)
+                _eta_w11h = safe_fetch_float(i.get("wt1_1h"), 0)
+                _eta_w21h = safe_fetch_float(i.get("wt2_1h"), 0)
+                _eta_w14h = safe_fetch_float(i.get("wt1_4h"), 0)
+                _eta_w24h = safe_fetch_float(i.get("wt2_4h"), 0)
                 if _is_long_pos:
                     _eta_3m_ok = _eta_w13 > _eta_w23
                     _eta_15m_ok = _eta_w115 > _eta_w215
+                    _eta_1h_ok = _eta_w11h > _eta_w21h
+                    _eta_4h_ok = _eta_w14h > _eta_w24h
                 else:
                     _eta_3m_ok = _eta_w13 < _eta_w23
                     _eta_15m_ok = _eta_w115 < _eta_w215
-                # WINNER (gain >= MIN_GAIN): 3m alignment sufficient — augmenting dips on
-                # profitable positions is the user's intent ("add at a dip").
-                # PULLBACK (0.5×MIN_GAIN to MIN_GAIN): still require both 3m+15m
-                # to avoid adding into 15m-reversal while below full-gain threshold.
+                    _eta_1h_ok = _eta_w11h < _eta_w21h
+                    _eta_4h_ok = _eta_w14h < _eta_w24h
+                # HTF gate: at least 1h OR 4h WT must be aligned — prevents augmenting
+                # against both higher TFs (true counter-trend risk).
+                _eta_htf_ok = _eta_1h_ok or _eta_4h_ok
+                # WINNER (gain >= MIN_GAIN): 3m + HTF (1h or 4h). 15m dip allowed.
+                # PULLBACK (0.5×MIN_GAIN to MIN_GAIN): 3m + 15m + HTF all required.
                 _need_15m = not _eta_winner
-                if not _eta_3m_ok or (_need_15m and not _eta_15m_ok):
+                if not _eta_3m_ok or (_need_15m and not _eta_15m_ok) or not _eta_htf_ok:
                     _aug_tag = "WINNER" if _eta_winner else "PULLBACK"
                     logger.warning(
-                        f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — wt_3m_ok={_eta_3m_ok} wt_15m_ok={_eta_15m_ok} ({'winner_3m_only' if _eta_winner else 'need both'}). gain={_eta_pos_gain:.2f}%"
+                        f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok} htf={_eta_htf_ok}. gain={_eta_pos_gain:.2f}%"
                     )
-                    return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_15m={_eta_15m_ok}"
+                    return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_15m={_eta_15m_ok}_htf={_eta_htf_ok}"
                 logger.info(
-                    f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — {'3m-only' if _eta_winner and not _eta_15m_ok else 'wt_3m+wt_15m'} aligned, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
+                    f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok}, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
                 )
         account_key, parsed_symbol, parsed_position_side = parse_position_key(
             position_key
