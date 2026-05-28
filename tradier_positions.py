@@ -1614,19 +1614,12 @@ class TradierPositionManager:
     async def _handle_missing_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
         """Handle positions absent from Tradier API response.
 
-        2026-05-28 PERMANENT FIX: Ghost-close zeroing is ABOLISHED.
-        Root cause of ASTS_SHORT disaster: the old Mode A / Mode B paths zeroed positionAmt
-        in internal state without ever placing a real broker close order. The position stayed
-        open at Tradier while the system believed it was closed. ASTS went +83% unmanaged.
-
-        NEW BEHAVIOR: Never zero positionAmt based on API absence alone.
-        On repeated absence, fire a CRITICAL desktop alert and hold state.
-        The ONLY path that may zero positionAmt is a real broker fill confirmation
-        arriving via fetch_positions_from_api (positionAmt=0 returned by Tradier directly).
+        2-strike rule: absent once → warn and hold. Absent twice → zero positionAmt
+        and update reduction price/time/amount. The position object is kept intact.
+        These are real closes from tradier_manage — not ghosts.
         """
         if not hasattr(self, '_api_absence_count'):
             self._api_absence_count = {}
-        ALERT_THRESHOLD = int(getattr(config, 'GHOST_ABSENT_ALERT_THRESHOLD', 3) or 3)
         for pk, pos in list(account_positions.items()):
             if not pk.startswith(f"{account_key}:"):
                 continue
@@ -1639,29 +1632,23 @@ class TradierPositionManager:
                 continue
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
-            _ghost_entry = float(getattr(pos, 'entry_price', 0) or 0)
-            _ghost_gain = float(getattr(pos, 'gain', 0) or 0)
-            logger.error(
-                f"[GHOST_ABSENT_HOLD] {pk}: absent {count}x from Tradier API "
-                f"entry={_ghost_entry:.3f} gain={_ghost_gain:+.2f}% — "
-                f"STATE NOT ZEROED. Broker confirmation required to zero."
-            )
-            if count >= ALERT_THRESHOLD:
-                try:
-                    import subprocess
-                    _alert_msg = f"{pk} missing from Tradier API {count}x — VERIFY POSITION MANUALLY"
-                    subprocess.Popen(
-                        ["osascript", "-e",
-                         f'display notification "{_alert_msg}" with title "🚨 GHOST_ABSENT — CHECK TRADIER NOW" sound name "Basso"'],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
-                except Exception:
-                    pass
-                logger.critical(
-                    f"[GHOST_ABSENT_CRITICAL] {pk}: ABSENT {count}x — DESKTOP ALERT FIRED. "
-                    f"DO NOT ASSUME CLOSED. Check Tradier dashboard immediately. "
-                    f"entry={_ghost_entry:.3f} gain={_ghost_gain:+.2f}%"
-                )
+            if count == 1:
+                logger.warning(f"[ABSENT_ONCE] {pk}: absent from Tradier API — holding state, will zero next cycle if still absent (amt={amt:.4f})")
+                continue
+            current_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
+            entry_price = float(getattr(pos, 'entry_price', 0) or 0)
+            logger.warning(f"[ABSENT_CONFIRMED] {pk}: absent {count}x — zeroing positionAmt (closed at broker, amt={amt:.4f} price={current_price:.4f})")
+            try:
+                await self.handle_reduction(pos, pk, amt, 0.0, amt, current_price, entry_price, reduction_source="api_sync")
+            except Exception as _ze:
+                logger.error(f"[ABSENT_ZERO_ERR] {pk}: handle_reduction raised: {_ze} — zeroing directly")
+                pos.positionAmt = 0.0
+                if current_price > 0:
+                    pos.last_reduction_price = current_price
+                pos.last_reduction_time = now
+                pos.last_reduction_amount = amt
+            pos.last_updated = now
+            self._api_absence_count.pop(pk, None)
 
     async def _update_prices_for_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
         if not updated_keys_in_api: return
