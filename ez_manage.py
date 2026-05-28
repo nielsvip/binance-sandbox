@@ -17543,20 +17543,18 @@ class MultiAccountTradeManager:
                     _eta_15m_ok = _eta_w115 < _eta_w215
                     _eta_1h_ok = _eta_w11h < _eta_w21h
                     _eta_4h_ok = _eta_w14h < _eta_w24h
-                # HTF gate: at least 1h OR 4h WT must be aligned — prevents augmenting
-                # against both higher TFs (true counter-trend risk).
+                # Gate: 3m MUST be aligned + at least 1h OR 4h must be aligned.
+                # 15m dip is allowed for BOTH winner and pullback (the only exception
+                # for sub-MIN_GAIN augments) — 15m is informational only at this gate.
                 _eta_htf_ok = _eta_1h_ok or _eta_4h_ok
-                # WINNER (gain >= MIN_GAIN): 3m + HTF (1h or 4h). 15m dip allowed.
-                # PULLBACK (0.5×MIN_GAIN to MIN_GAIN): 3m + 15m + HTF all required.
-                _need_15m = not _eta_winner
-                if not _eta_3m_ok or (_need_15m and not _eta_15m_ok) or not _eta_htf_ok:
-                    _aug_tag = "WINNER" if _eta_winner else "PULLBACK"
+                _aug_tag = "WINNER" if _eta_winner else "PULLBACK"
+                if not _eta_3m_ok or not _eta_htf_ok:
                     logger.warning(
                         f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok} htf={_eta_htf_ok}. gain={_eta_pos_gain:.2f}%"
                     )
-                    return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_15m={_eta_15m_ok}_htf={_eta_htf_ok}"
+                    return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_htf={_eta_htf_ok}"
                 logger.info(
-                    f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok}, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
+                    f"✅ [15M_GATE_WT_PASS] {position_key}: {_aug_tag} aug — 3m={_eta_3m_ok} 15m={_eta_15m_ok} 1h={_eta_1h_ok} 4h={_eta_4h_ok}, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%"
                 )
         account_key, parsed_symbol, parsed_position_side = parse_position_key(
             position_key
@@ -23876,10 +23874,24 @@ class MultiAccountTradeManager:
                     _sg_gain = _sg_gain_raw
                 _sg_min_gain = safe_fetch_float(getattr(config, "MIN_GAIN", 1.2), 1.2)
                 if _sg_gain < _sg_min_gain:
-                    logger.critical(
-                        f"🚫 [HARD_SIZE_GATE] {position_key}: BLOCKED {action} — position ${_sg_val:.1f} >= START ${_sg_start:.0f} but gain {_sg_gain_raw:.2f}% (eff={_sg_gain:.2f}%) < MIN_GAIN {_sg_min_gain:.1f}%. reason={reason}"
+                    # PULLBACK exception: same conditions as other MIN_GAIN gates.
+                    _sg_max_gain = safe_fetch_float(getattr(_sg_pos, "max_gain", 0.0), 0.0) if _sg_pos else 0.0
+                    _sg_pb_floor = 0.5 * _sg_min_gain
+                    _sg_pb_rev = float(getattr(config, "PULLBACK_AUGMENT_REVERSAL_MIN", 1.0))
+                    _sg_pb_ok = (
+                        bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", True))
+                        and _sg_max_gain >= _sg_min_gain
+                        and _sg_gain >= _sg_pb_floor
+                        and (_sg_max_gain - _sg_gain) >= _sg_pb_rev
                     )
-                    return f"BLOCKED_HARD_SIZE_GATE_{_sg_gain_raw:.2f}_eff{_sg_gain:.2f}pct"
+                    if not _sg_pb_ok:
+                        logger.critical(
+                            f"🚫 [HARD_SIZE_GATE] {position_key}: BLOCKED {action} — ${_sg_val:.1f} >= START ${_sg_start:.0f}, gain {_sg_gain_raw:.2f}% (eff={_sg_gain:.2f}%) < MIN_GAIN {_sg_min_gain:.1f}%, pb_ok={_sg_pb_ok}. reason={reason}"
+                        )
+                        return f"BLOCKED_HARD_SIZE_GATE_{_sg_gain_raw:.2f}_eff{_sg_gain:.2f}pct"
+                    logger.info(
+                        f"✅ [PULLBACK_AUG_SIZE_GATE] {position_key}: max={_sg_max_gain:.2f}% → {_sg_gain:.2f}% — pullback aug bypassing HARD_SIZE_GATE"
+                    )
         # Smart circuit breaker: diagnose losing positions (bad entry vs market event), block bad paths
         if (
             position_key
@@ -23979,10 +23991,25 @@ class MultiAccountTradeManager:
                             else (_uag_last_px - _uag_cur_px) / _uag_last_px * 100.0
                         )
                         if _uag_gain_since < _uag_min_gain:
-                            logger.warning(
-                                f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < MIN_GAIN_TO_BUY_AGGRESSIVELY={_uag_min_gain:.1f}% — action={action} reason={(reason or '')[:60]}"
+                            # PULLBACK exception: matches LOSING_POSITION_HARD_BLOCK criteria.
+                            _uag_raw_gain = safe_fetch_float(getattr(_uag_position, "gain", 0.0), 0.0)
+                            _uag_max_gain = safe_fetch_float(getattr(_uag_position, "max_gain", 0.0), 0.0)
+                            _uag_pb_floor = 0.5 * _uag_min_gain
+                            _uag_pb_rev = float(getattr(config, "PULLBACK_AUGMENT_REVERSAL_MIN", 1.0))
+                            _uag_pb_ok = (
+                                bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", True))
+                                and _uag_max_gain >= _uag_min_gain
+                                and _uag_raw_gain >= _uag_pb_floor
+                                and (_uag_max_gain - _uag_raw_gain) >= _uag_pb_rev
                             )
-                            return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
+                            if not _uag_pb_ok:
+                                logger.warning(
+                                    f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% (max={_uag_max_gain:.2f}% raw={_uag_raw_gain:.2f}% pb_ok={_uag_pb_ok}) — action={action} reason={(reason or '')[:60]}"
+                                )
+                                return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
+                            logger.info(
+                                f"✅ [PULLBACK_AUG_UAGAIN] {position_key}: max={_uag_max_gain:.2f}% → {_uag_raw_gain:.2f}% (Δ={_uag_max_gain - _uag_raw_gain:.2f}%) — pullback aug bypassing UAGAIN"
+                            )
         if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
             _last_red_ts = _recent_reduces.get(position_key, 0)
             _since_red = time.time() - _last_red_ts
@@ -44482,10 +44509,25 @@ async def queue_trade_action(
             )
             _dd_bypass = "DD_BOUNCE_AUG" in (reason or "").upper()
             if _pos_notional > 0 and _pos_gain < config.MIN_GAIN and not _dd_bypass:
-                logger.warning(
-                    f"[AUGMENT_GATE_QUEUE] {position_key}: Blocked {action} at gain={_pos_gain:.3f}% < {config.MIN_GAIN:.3f}% before queuing. reason={reason} — NO BYPASS"
+                # PULLBACK exception: position WAS a winner (max_gain >= MIN_GAIN), pulled
+                # back to >= 0.5×MIN_GAIN with >= 1% reversal. Only sub-MIN_GAIN augment allowed.
+                _agq_max = safe_fetch_float(getattr(position, "max_gain", 0.0), 0.0)
+                _agq_floor = 0.5 * config.MIN_GAIN
+                _agq_rev = float(getattr(config, "PULLBACK_AUGMENT_REVERSAL_MIN", 1.0))
+                _agq_pb_ok = (
+                    bool(getattr(config, "PULLBACK_AUGMENT_ENABLED", True))
+                    and _agq_max >= config.MIN_GAIN
+                    and _pos_gain >= _agq_floor
+                    and (_agq_max - _pos_gain) >= _agq_rev
                 )
-                return f"BLOCKED_AUGMENT_QUEUE_LOW_GAIN_{_pos_gain:.3f}%"
+                if not _agq_pb_ok:
+                    logger.warning(
+                        f"[AUGMENT_GATE_QUEUE] {position_key}: Blocked {action} at gain={_pos_gain:.3f}% < {config.MIN_GAIN:.3f}% (max={_agq_max:.2f}% pb_ok={_agq_pb_ok}). reason={reason}"
+                    )
+                    return f"BLOCKED_AUGMENT_QUEUE_LOW_GAIN_{_pos_gain:.3f}%"
+                logger.info(
+                    f"✅ [PULLBACK_AUGMENT_QUEUE] {position_key}: max={_agq_max:.2f}% → {_pos_gain:.2f}% (Δ={_agq_max - _pos_gain:.2f}%) — pullback aug bypassing MIN_GAIN gate"
+                )
         pos_min_qty = max(
             config.MIN_POSITION_SIZE / current_price,
             1.2 * trade_manager.min_qty.get(symbol, 0.0001),

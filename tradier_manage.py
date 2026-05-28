@@ -596,6 +596,98 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     return getattr(config, param, default)
 
 
+# ────────────────────────────────────────────────────────────────────────────────
+# UVE ENGINE — per-symbol live rolling buffer + entry/exit helpers (2026-05-28)
+# UVE_LIVE_ENABLED=True per symbol in per_sym_active_config.json activates wiring.
+# ────────────────────────────────────────────────────────────────────────────────
+_uve_ind_buf: dict = {}
+_uve_last_ts: dict = {}
+_UVE_BUF_LEN = 30
+
+class _UVECfg:
+    def __init__(self, account_key, symbol, side):
+        for k, d in (
+            ("UVE_STRATEGY_MODE", "legacy"),
+            ("UVE_OVERSOLD_THRES", -40.0),
+            ("UVE_OVERBOUGHT_THRES", 40.0),
+            ("UVE_BREAKOUT_ENABLED", True),
+            ("UVE_STOCH_THRESH", 90.0),
+            ("UVE_PPL_GAIN_PCT", 1.5),
+            ("UVE_ATR_MULT", 2.0),
+            ("UVE_TIGHT_BREAKOUT_EXIT", True),
+            ("UVE_BREAKOUT_SLIPPAGE_BUFFER_PCT", 0.1),
+        ):
+            setattr(self, k, _cfg(k, d, account_key, symbol, side))
+
+def _uve_update_and_read(symbol, ind, price):
+    now_min = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+    if symbol not in _uve_ind_buf:
+        _uve_ind_buf[symbol] = {}
+    if _uve_last_ts.get(symbol) != now_min:
+        _uve_last_ts[symbol] = now_min
+        buf = _uve_ind_buf[symbol]
+        fields = {
+            "close_5m": float(price or 0),
+            "wt1_5m": float(ind.get("wt1_5m", 0) or 0),
+            "wt2_5m": float(ind.get("wt2_5m", 0) or 0),
+            "wt1_15m": float(ind.get("wt1_15m", 0) or 0),
+            "wt2_15m": float(ind.get("wt2_15m", 0) or 0),
+            "wt1_1h": float(ind.get("wt1_1h", 0) or 0),
+            "wt2_1h": float(ind.get("wt2_1h", 0) or 0),
+            "wt1_4h": float(ind.get("wt1_4h", 0) or 0),
+            "wt2_4h": float(ind.get("wt2_4h", 0) or 0),
+            "wt1_D": float(ind.get("wt1_D", 0) or 0),
+            "wt2_D": float(ind.get("wt2_D", 0) or 0),
+            "wt1_W": float(ind.get("wt1_W", 0) or 0),
+            "wt2_W": float(ind.get("wt2_W", 0) or 0),
+            "stoch_k_15m": float(ind.get("stoch_k_15m", 50) or 50),
+            "stoch_k_1h": float(ind.get("stoch_k_1h", 50) or 50),
+            "atr_15m": float(ind.get("atr_15m", ind.get("atr_1h", 0)) or 0),
+            "dc_high_15m": float(ind.get("dc_high_15m", ind.get("dc_high_1h", 0)) or 0),
+            "dc_low_15m": float(ind.get("dc_low_15m", ind.get("dc_low_1h", 0)) or 0),
+            "dc_basis_15m": float(ind.get("dc_basis_15m", ind.get("dc_basis_1h", 0)) or 0),
+        }
+        for k, v in fields.items():
+            if k not in buf:
+                buf[k] = deque(maxlen=_UVE_BUF_LEN)
+            buf[k].append(v)
+    return {k: np.array(list(q), dtype=np.float32) for k, q in _uve_ind_buf[symbol].items()}
+
+def _uve_entry_allowed(symbol, side, account_key, ind, price):
+    try:
+        if not bool(_cfg("UVE_LIVE_ENABLED", False, account_key, symbol, side)):
+            return True
+        npz = _uve_update_and_read(symbol, ind, price)
+        if len(npz.get("close_5m", [])) < 3:
+            return True
+        from uve_engine import evaluate_uve_signals
+        uve_cfg = _UVECfg(account_key, symbol, side)
+        sigs = evaluate_uve_signals(npz, is_long=(side == "LONG"), mode="tradier", config=uve_cfg)
+        allowed = bool(sigs["entry_allowed"][-1])
+        if not allowed:
+            logger.info(f"[UVE_ENTRY_BLOCK] {account_key}:{symbol}_{side}: UVE disagrees — entry blocked (mode={getattr(uve_cfg,'UVE_STRATEGY_MODE','?')})")
+        return allowed
+    except Exception as _uve_err:
+        logger.warning(f"[UVE_ENTRY] {symbol}_{side}: error {_uve_err} — pass-through")
+        return True
+
+def _uve_exit_signal(symbol, side, account_key, ind, price):
+    try:
+        if not bool(_cfg("UVE_LIVE_ENABLED", False, account_key, symbol, side)):
+            return False, ""
+        npz = _uve_update_and_read(symbol, ind, price)
+        if len(npz.get("close_5m", [])) < 3:
+            return False, ""
+        from uve_engine import evaluate_uve_signals
+        uve_cfg = _UVECfg(account_key, symbol, side)
+        sigs = evaluate_uve_signals(npz, is_long=(side == "LONG"), mode="tradier", config=uve_cfg)
+        fire = bool(sigs["exit_signal"][-1])
+        return fire, "UVE_WT_CORRECTION_EXIT" if fire else ""
+    except Exception as _uve_exit_err:
+        logger.warning(f"[UVE_EXIT] {symbol}_{side}: error {_uve_exit_err} — pass-through")
+        return False, ""
+
+
 # BACKTEST_CHANGE_T19-T25: time-of-day zone logic for entry thresholds and sizing
 def _get_trade_zone():
     now = datetime.now(timezone(timedelta(hours=-4)))  # ET
@@ -2840,7 +2932,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 if _bm_pos > _bm_thr and _bm_same_dir:
                                     _bar_maturity_block = True
                                     logger.info(f"[WT_DC_BAR_MATURITY_BLOCK] {symbol} {'L' if is_long else 'S'}: pos={_bm_pos:.2f}>thr={_bm_thr:.2f} bar_up={_bm_bar_up} px={current_price:.2f} open_D={_bm_open_d:.2f} atr_D={_bm_atr_d:.4f} score={_entry_score:.0f}")
-                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block and not _bar_maturity_block:
+                    _uve_block = not _uve_entry_allowed(symbol, "LONG" if is_long else "SHORT", account_key, _entry_ind or i, current_price)
+                    if _uve_block and _entry_score >= _entry_threshold:
+                        logger.info(f"[UVE_ENTRY_BLOCK] {symbol} {'L' if is_long else 'S'}: score={_entry_score:.0f} passed threshold but UVE signal not aligned")
+                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block and not _htf_align_block and not _stoch_gate_block and not _gr_htf_block and not _bar_maturity_block and not _uve_block:
                         _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
@@ -2976,6 +3071,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _veto = f"DC_ENTRY_GATE_L(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}>={_dc_th_vf:.2f})"
                         elif not is_long and not (_dc_1h_vf > (1.0 - _dc_th_vf) or _dc_4h_vf > (1.0 - _dc_th_vf)):
                             _veto = f"DC_ENTRY_GATE_S(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}<={(1.0 - _dc_th_vf):.2f})"
+                    if _veto is None and not _uve_entry_allowed(symbol, _side_vf, account_key, _entry_ind or i, current_price):
+                        _uve_mode = _cfg("UVE_STRATEGY_MODE", "legacy", account_key, symbol, _side_vf)
+                        _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
                     if _veto is not None:
                         logger.info(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto}")
                         action_type = "NO_ACTION"
@@ -6473,6 +6571,10 @@ class StockStrategy:
             # Scorer says HOLD — check max hold timeout if enabled
             if getattr(config, 'EXIT_MAX_HOLD_ENABLED', False) and hold_time_min > getattr(config, 'EXIT_MAX_HOLD_MINUTES', 99999):
                 return True, f"MAX_HOLD_TIMEOUT_{hold_time_min:.0f}min_scorer={_exit_score:.0f}", qty
+            _uve_fire, _uve_exit_reason = _uve_exit_signal(symbol, "LONG" if is_long else "SHORT", _vf_acct, _exit_ind, current_price)
+            if _uve_fire:
+                logger.warning(f"[UVE_EXIT] {symbol} {'L' if is_long else 'S'}: {_uve_exit_reason} g={gain:.2f}% — UVE WT correction exit")
+                return True, f"{_uve_exit_reason}_g={gain:.2f}%", qty
             return False, f"SCORER_HOLD(s={_exit_score:.0f}<{_exit_threshold})", 0
         # --------------------------------------------------
         # Below: legacy exit paths, each gated by config flag.
