@@ -2825,7 +2825,7 @@ class AdvancedSignalRater:
                 _hlr_size_mult = min(_hlr_size_mult, _hlr_sz_cap)
                 score += _hlr_rally_score
                 reasons.append(f"HLR_RALLY({'|'.join(_hlr_rally_tfs)},+{_hlr_rally_score:.0f},sz={_hlr_size_mult:.1f}x)")
-                logger.warning(f"[HLR_RALLY] {position_key}: tfs={_hlr_rally_tfs} score+{_hlr_rally_score:.0f} sz={_hlr_size_mult:.1f}x is_long={is_long}")
+                logger.debug(f"[HLR_RALLY] {position_key}: tfs={_hlr_rally_tfs} score+{_hlr_rally_score:.0f} sz={_hlr_size_mult:.1f}x is_long={is_long}")
         _15m_os_bypass = (is_long and k_15m < 30) or (not is_long and k_15m > 70)  # 15m deeply oversold/overbought = pullback entry
         if (is_long and not is_exit and not c1_long and not c3_long and not _15m_os_bypass and not _hlr_bypass) or (not is_long and not is_exit and not c1_short and not c3_short and not _15m_os_bypass and not _hlr_bypass) : return score, 'WAIT', 'SHIT IDEA'
         if (is_long and not is_exit and not c3_long) or (not is_long and not is_exit and not c3_short) : score -= 2
