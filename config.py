@@ -3836,6 +3836,36 @@ class Config:
     VEC_MTF_ARMED_RESULTING_REASON: str = "MTF_NO_ARMED_STATE"
     VEC_MULTI_SYM_OUTER_LOOP_ENABLED: bool = False
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-28 STRICT VEC PARITY (user mandate) + EXECUTE_NOW SINGLE-GATE
+    # ───────────────────────────────────────────────────────────────────────────
+    # STRICT_VEC_PARITY_MODE: when True, execute_now() blocks every entry/exit
+    #   whose reason is NOT achievable in the vectorized backtest engine (see
+    #   vec_paths/vec_parity_gate.py allowlist). Live then trades ONLY the switches
+    #   the vectorized per_sym backtest also trades -> closest reproducible parity.
+    #   Default False = current full-live behavior (the "on / trade all signals" arm
+    #   of the A/B). Flip True for the "off / parity-only" arm.
+    # STRICT_VEC_PARITY_SHADOW: when True (and MODE False), execute_now LOGS every
+    #   order it WOULD block but blocks nothing. Use this FIRST to validate the
+    #   allowlist against real live reasons before enforcing. Zero behavior change.
+    # EXECUTE_NOW_SINGLE_GATE_ENFORCE: when True (default), the direct-Finandy
+    #   bypass in ez_positions_quick.py TrackerManager.send_webhook is re-routed
+    #   through trade_manager.execute_now() (single gate). CLAUDE.md: execute_now
+    #   is the ONLY order gate. Set False only to restore the prohibited legacy
+    #   direct-post path (do not).
+    # EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: when True (default), the broker-wire sites
+    #   (futures_create_order in place_maker_order, Finandy session.post in
+    #   send_webhook) emit a diagnostic log if they fire >N seconds after the last
+    #   execute_now() entry — a future-bypass tripwire. Log-only, never blocks.
+    # ═══════════════════════════════════════════════════════════════════════════
+    STRICT_VEC_PARITY_MODE: bool = False
+    STRICT_VEC_PARITY_SHADOW: bool = False
+    STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
+    STRICT_VEC_PARITY_GATE_EXITS: bool = True
+    EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True
+    EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW: bool = True
+    EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S: float = 5.0
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))

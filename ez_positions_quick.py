@@ -8676,6 +8676,25 @@ class TrackerManager:
             account_key, symbol, position_side = parse_position_key(position_key)
             account_key = account_key.lower()
             # ═══════════════════════════════════════════════════════════════════════════
+            # 🔒 EXECUTE_NOW SINGLE-GATE (USER 2026-05-28) — NOTHING trades without execute_now.
+            # This direct-Finandy method (the 2026-04-17 BNBUSDC 80-SELL cascade source) is
+            # PROHIBITED per CLAUDE.md "EXECUTE_NOW IS THE ONLY GATE". Re-route every call
+            # through trade_manager.execute_now() (single gate + all preflight locks + STRICT
+            # VEC PARITY gate). If no execute_now reachable -> HARD REFUSE (fail-closed, NO
+            # direct post). Legacy direct-post code below is now unreachable (kept, not deleted).
+            # ═══════════════════════════════════════════════════════════════════════════
+            if bool(getattr(config, "EXECUTE_NOW_SINGLE_GATE_ENFORCE", True)):
+                _tm_sg = getattr(self, "trade_manager", None)
+                if _tm_sg is None or not hasattr(_tm_sg, "execute_now"):
+                    logger.critical(f"🚫 [EXECUTE_NOW_SINGLE_GATE] {position_key}: direct send_webhook REFUSED — no trade_manager.execute_now reachable. reason={(reason or '')[:80]}")
+                    return False
+                _is_long_sg = (position_side.upper() == "LONG")
+                _is_aug_sg = (side.upper() == "BUY" and _is_long_sg) or (side.upper() == "SELL" and not _is_long_sg)
+                _action_sg = "AUGMENT" if _is_aug_sg else ("CLOSE" if is_full_close else "REDUCE")
+                logger.critical(f"🔁 [EXECUTE_NOW_SINGLE_GATE] {position_key}: re-routing direct send_webhook -> execute_now action={_action_sg} reason={(reason or '')[:80]}")
+                _res_sg = await _tm_sg.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=positionAmt, side=side, position_side=position_side, quantity=quantity, old_price=current_price, unique_id=None, reason=reason, is_full_close=is_full_close, action=_action_sg)
+                return bool(_res_sg) and "BLOCK" not in str(_res_sg).upper()
+            # ═══════════════════════════════════════════════════════════════════════════
             # 🔒🔒🔒 ABSOLUTE WEBHOOK LOCK (2026-04-17) — bypass-proof rate limiter 🔒🔒🔒
             # This method is the path that caused the BNBUSDC 80-SELL cascade (bypassed
             # execute_now and its preflight locks). Unconditional 30s cap on same

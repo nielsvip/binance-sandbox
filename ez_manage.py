@@ -388,6 +388,25 @@ _recent_opens: Dict[
 # action, or is_hedge flag. Every OPEN/AUGMENT/HEDGE/ENTRY fails if prior fire was <60s ago.
 _ABSOLUTE_OPEN_LOCK: Dict[str, float] = {}  # (account:symbol_side) → expiry ts
 _ABSOLUTE_OPEN_LOCK_TTL: float = 300.0  # 2026-04-24 user directive: dedup at execute_now layer, not webhook. 5min = one open per (key:side) per 5min. Prevents NMR/TWT-style cascades where each cycle opens $5-10. Webhook lock removed; execute_now is the single gate.
+# 2026-05-28 EXECUTE_NOW SINGLE-GATE TRIPWIRE — stamped at the top of every
+# execute_now() call. The broker-wire sites (futures_create_order in
+# place_maker_order, Finandy session.post in send_webhook) check this; if a wire
+# fires long after the last execute_now() entry, a bypass is suspected. Shadow
+# (log-only) diagnostic — never blocks. CLAUDE.md: execute_now is the ONLY gate.
+_LAST_EXECUTE_NOW_ENTRY_TS: float = 0.0
+
+
+def _exec_now_wire_tripwire(site: str, position_key=None, reason=None) -> None:
+    """Log-only tripwire: warn if a broker wire fires outside an execute_now() window."""
+    try:
+        if not bool(getattr(config, "EXECUTE_NOW_WIRE_TRIPWIRE_SHADOW", True)):
+            return
+        _max_lag = float(getattr(config, "EXECUTE_NOW_WIRE_TRIPWIRE_MAX_LAG_S", 5.0))
+        _lag = time.time() - _LAST_EXECUTE_NOW_ENTRY_TS
+        if _LAST_EXECUTE_NOW_ENTRY_TS <= 0.0 or _lag > _max_lag:
+            logger.critical(f"🚨 [EXEC_NOW_WIRE_TRIPWIRE] broker wire '{site}' fired {_lag:.1f}s after last execute_now (>{_max_lag}s) — possible execute_now bypass. pk={position_key} reason={(str(reason) if reason else '')[:80]}")
+    except Exception:
+        pass
 _ABSOLUTE_WEBHOOK_LOCK: Dict[
     str, float
 ] = {}  # (account:symbol_side:orderside) → expiry
@@ -22030,6 +22049,7 @@ class MultiAccountTradeManager:
                             )
                         except Exception:
                             pass
+                    _exec_now_wire_tripwire("futures_create_order:place_maker_order", position_key, reason)
                     new_order = await asyncio.to_thread(
                         client.futures_create_order,
                         symbol=symbol,
@@ -22581,6 +22601,8 @@ class MultiAccountTradeManager:
         logger.warning(
             f"🔍 [WH_TRACE_3] execute_now_top pk={position_key} act={action} side={side} qty={quantity:.6f}"
         )
+        global _LAST_EXECUTE_NOW_ENTRY_TS
+        _LAST_EXECUTE_NOW_ENTRY_TS = time.time()
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # 2026-05-23 USER MANDATE — clear dup-open cooldown on CLOSE/REDUCE intent so reentry can fire
@@ -22658,6 +22680,35 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_PER_SYM_SIDE_DISABLED_{position_side}"
         except Exception as _psd_e:
             logger.warning(f"[PER_SYM_SIDE_DISABLED] check error (fail-open): {_psd_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🧬 STRICT_VEC_PARITY (USER 2026-05-28) — live trades ONLY vec-achievable routes.
+        # When STRICT_VEC_PARITY_MODE: block any entry/exit whose reason is NOT a
+        # strategy the vectorized backtest engine also produces (allowlist in
+        # vec_paths/vec_parity_gate.py). This is the "off / parity-only" A/B arm — live
+        # decisions reduce to the switches the per_sym vectorized backtest also trades.
+        # SHADOW mode logs every would-block WITHOUT blocking (validate allowlist first).
+        # Crypto only (this is execute_now / ez_manage). Fail-open on any exception.
+        # NOTE: in MODE, loss-exits reduce to vec-achievable paths only (R1/R2/WT/PPL/
+        # RIDICULOUS/etc. stay; live-only hedge-kills + HEDGE_FAILED fallback are blocked).
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _vp_mode = bool(getattr(config, "STRICT_VEC_PARITY_MODE", False))
+            _vp_shadow = bool(getattr(config, "STRICT_VEC_PARITY_SHADOW", False))
+            if _vp_mode or _vp_shadow:
+                _vp_is_entry = ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act) and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act
+                _vp_is_exit = ("CLOSE" in _kill_act or "REDUCE" in _kill_act)
+                _vp_applies = (_vp_is_entry and bool(getattr(config, "STRICT_VEC_PARITY_GATE_ENTRIES", True))) or (_vp_is_exit and bool(getattr(config, "STRICT_VEC_PARITY_GATE_EXITS", True)))
+                if _vp_applies:
+                    from vec_paths.vec_parity_gate import is_vec_achievable as _vp_ok, matched_token as _vp_tok
+                    if not _vp_ok(reason or ""):
+                        if _vp_mode:
+                            logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
+                            return f"BLOCKED_VEC_PARITY_{(_kill_act or 'NA')[:12]}"
+                        logger.warning(f"🧬 [STRICT_VEC_PARITY_SHADOW] {position_key}: WOULD-BLOCK (not vec-achievable). action={action} reason={(reason or '')[:90]}")
+                    elif _vp_shadow and not _vp_mode:
+                        logger.info(f"🧬 [STRICT_VEC_PARITY_SHADOW] {position_key}: allow (vec-achievable via '{_vp_tok(reason or '')}'). action={action}")
+        except Exception as _vp_e:
+            logger.warning(f"[STRICT_VEC_PARITY] check error (fail-open): {_vp_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (USER 2026-05-22, post-ORDIUSDC mandate)
         # Block OPEN/AUGMENT when price is in the top THRESHOLD% of DC channel on
@@ -26867,6 +26918,7 @@ class MultiAccountTradeManager:
                 )
             ) as session:
                 try:
+                    _exec_now_wire_tripwire("finandy_webhook:send_foothold_webhook", position_key, reason)
                     async with session.post(
                         webhook_url,
                         json=payload,
@@ -27180,6 +27232,7 @@ class MultiAccountTradeManager:
             f"🔍 [WH_TRACE_5] before_http_post pk={position_key} url={webhook_url[:60]} payload_kind={resolved_kind}"
         )
         try:
+            _exec_now_wire_tripwire("finandy_webhook:send_webhook", position_key, reason)
             async with self._webhook_semaphore:
                 async with aiohttp.ClientSession(
                     connector=aiohttp.TCPConnector(
