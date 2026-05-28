@@ -17152,24 +17152,17 @@ class MultiAccountTradeManager:
         # If positionAmt > 0 (even dust) → REFUSE. Never silently convert to AUGMENT.
         _is_reentry = False
         _original_action_was_reentry = action == "REENTRY"
-        _is_recovery_aug = "RECOVERY_AUG" in (reason or "").upper()
         if action == "REENTRY":
             if not position: position = await self.get_position(position_key)
             _re_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
             if _re_amt != 0.0:
-                if _is_recovery_aug:
-                    action = "AUGMENT"
-                    is_augment = True
-                    _is_reentry = False
-                else:
-                    logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}")
-                    return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
-            if not _is_recovery_aug:
-                _is_reentry = True
-                action = "OPEN"
-                is_reduce = False
-                is_augment = False
-                logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
+                logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}")
+                return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
+            _is_reentry = True
+            action = "OPEN"
+            is_reduce = False
+            is_augment = False
+            logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
         # ═══ HARD DUPLICATE OPEN GUARD — gain-based per USER 2026-05-09 ═══
         # Replaces the 900s time-cooldown with a gain gate. Augments require
         # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
@@ -19739,49 +19732,22 @@ class MultiAccountTradeManager:
                 or "GUARANTEED_BOTTOM" in (reason or "").upper()
             )
             if action == "AUGMENT" and not _is_reentry_for_sizing:
-                is_recovery_alignment = False
-                recovery_score = 0
-                if is_long:
-                    stoch_aligned = (k_1m > d_1m) and (k_3m > d_3m) and (k_15m > d_15m)
-                    ha_aligned = ha_3m == "green" or ha_15m == "green"
-                    oversold_turn = k_15m < 30 and k_15m > k_15m_prev
-                    if stoch_aligned and (ha_aligned or oversold_turn):
-                        is_recovery_alignment = True
-                        recovery_score = 10
-                else:
-                    stoch_aligned = (k_1m < d_1m) and (k_3m < d_3m) and (k_15m < d_15m)
-                    ha_aligned = ha_3m == "red" or ha_15m == "red"
-                    overbought_turn = k_15m > 70 and k_15m < k_15m_prev
-                    if stoch_aligned and (ha_aligned or overbought_turn):
-                        is_recovery_alignment = True
-                        recovery_score = 10
                 if position.gain < -0.3 and "QUICK" not in action:
-                    if is_recovery_alignment and is_hedge_account(config, account_key):
-                        logger.info(
-                            f"🔥 [RECOVERY_AUGMENT] {position_key}: Bypassing loss check (Gain: {position.gain:.2f}%) due to STRONG ALIGNMENT (Stoch 1/3/15 + HA)"
-                        )
-                        quantity = quantity * 1.25
-                    else:
-                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_LOSS (position.gain={position.gain:.2f}% < -0.3%)"
-                        logger.error(
-                            f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason}"
-                        )
-                        side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
-                        await self.clear_all_cooldowns_for_position(
-                            position_key, side_for_cooldown
-                        )
-                        return failure_reason
+                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_LOSS (position.gain={position.gain:.2f}% < -0.3%)"
+                    logger.error(
+                        f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason}"
+                    )
+                    side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
+                    await self.clear_all_cooldowns_for_position(
+                        position_key, side_for_cooldown
+                    )
+                    return failure_reason
                 if position.gain < -0.1 and "QUICK" not in action:
-                    if is_recovery_alignment and is_hedge_account(config, account_key):
-                        logger.info(
-                            f"🔥 [RECOVERY_AUGMENT] {position_key}: Bypassing negative gain check."
-                        )
-                    else:
-                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN"
-                        logger.warning(
-                            f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason}"
-                        )
-                        return failure_reason
+                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN"
+                    logger.warning(
+                        f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason}"
+                    )
+                    return failure_reason
             is_recovery_trade = "RECOVERY" in reason.upper()
             _is_reentry_for_sizing = (
                 _original_action_was_reentry
@@ -30981,43 +30947,6 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     is_long = ctx.get("position_side", "LONG") == "LONG"
     positionAmt = abs(safe_fetch_float(position.positionAmt, 0.0))
     if positionAmt > 0:
-        if bool(getattr(config, "RECOVERY_AUGMENT_ENABLED", False)):
-            _ra_last_px = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
-            _ra_last_t = getattr(position, "last_reduction_time", None)
-            _ra_recovery_fired = bool(getattr(position, "recovery_fired", False))
-            _ra_one_fire = bool(getattr(config, "RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE", True))
-            if _ra_last_px > 0 and _ra_last_t and not (_ra_one_fire and _ra_recovery_fired):
-                _ra_band_pct = float(getattr(config, "RECOVERY_AUGMENT_BAND_PCT", 0.3))
-                _ra_max_age_min = float(getattr(config, "RECOVERY_AUGMENT_MAX_AGE_MIN", 240.0))
-                _ra_age_min = 9999.0
-                try:
-                    _ra_lt = _ra_last_t if not isinstance(_ra_last_t, str) else datetime.fromisoformat(str(_ra_last_t).replace("Z", "+00:00"))
-                    if _ra_lt.tzinfo is None: _ra_lt = _ra_lt.replace(tzinfo=timezone.utc)
-                    _ra_age_min = (datetime.now(timezone.utc) - _ra_lt).total_seconds() / 60.0
-                except Exception: pass
-                if _ra_age_min < _ra_max_age_min:
-                    current_price = safe_fetch_float(ctx.get("current_price") or ctx.get("mark_price") or getattr(position, "mark_price", 0.0), 0.0)
-                    if not current_price: current_price = await price(symbol, position, 3)
-                    if current_price > 0:
-                        _ra_dist_pct = abs(current_price - _ra_last_px) / _ra_last_px * 100.0
-                        _ra_dir_ok = (is_long and current_price >= _ra_last_px) or ((not is_long) and current_price <= _ra_last_px)
-                        if _ra_dist_pct <= _ra_band_pct and _ra_dir_ok:
-                            _ra_require_wt = bool(getattr(config, "RECOVERY_AUGMENT_REQUIRE_WT_CROSS", False))
-                            _ra_wt_ok = True
-                            if _ra_require_wt:
-                                i = await ii(trade_manager, symbol)
-                                if i:
-                                    _ra_w1 = float(i.get("wt1_3m", 0.0) or 0.0); _ra_w2 = float(i.get("wt2_3m", 0.0) or 0.0)
-                                    _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
-                                else: _ra_wt_ok = False
-                            if _ra_wt_ok:
-                                _ra_size_pct = float(getattr(config, "RECOVERY_AUGMENT_SIZE_PCT", 1.0))
-                                _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
-                                try:
-                                    if _ra_one_fire: position.recovery_fired = True
-                                except Exception: pass
-                                logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m wt_ok={_ra_wt_ok} → REENTRY qty={_ra_qty:.4f}")
-                                return Signal(action="REENTRY", reason=f"RECOVERY_AUG_PARTIAL_exit{_ra_last_px:.4f}_cur{current_price:.4f}_dist{_ra_dist_pct:.3f}%_age{_ra_age_min:.0f}m", conviction=95.0, quantity=_ra_qty)
         return None
     # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
     # would BLOCK the resulting signal (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE).
