@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-28 02:12:30 UTC
+# Copilot Status — 2026-05-28 02:26:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,14 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-28T02:09:47
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-28T02:10:48
-- **STALE_INDICATORS** [tradier]  — 2026-05-28T02:11:49
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-28T02:11:49
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-28T02:11:49
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-28T02:11:49
-- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-28T02:11:49
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-28T02:11:49
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-28T02:11:49
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-28T02:11:49
+- **STALE_INDICATORS** [tradier]  — 2026-05-28T02:25:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-28T02:25:46
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-28T02:25:46
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-28T02:25:46
+- **BIG_LOSER** [tradier] trc:TTD_SHORT — 2026-05-28T02:25:46
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-28T02:25:46
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-28T02:25:46
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-28T02:25:46
 
 ## Missed Trades (trader comparison)
 
@@ -40,9 +38,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+**Issues (last 1h):** 11
 - [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
