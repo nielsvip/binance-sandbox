@@ -1141,6 +1141,11 @@ class SweepConfig:
     DAEMON_PRICE_CROSS_REENTRY_VEC_ENABLED: bool = False       # #6 daemon_price_cross_reentry
     DAEMON_PRICE_CROSS_REENTRY_MAX_AGE_HOURS: float = 48.0
     DAEMON_PRICE_CROSS_PCT: float = 0.0                        # 0 = strict cross
+    # 2026-05-28 anti-churn DC-break reentry gate (parity w/ ez_manage._price_level_reentry_monitor).
+    # Default OFF = touch-back baseline. Flip via --override for A/B.
+    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = False
+    REENTRY_LIVE_MONITOR_DC_BREAK_TF: str = "3m"
+    REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = False
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0             # mirror live's 20% divergence guard
     GUARANTEED_PRICE_CROSS_REENTRY_DISK_VEC_ENABLED: bool = False  # #9 guar_pc_disk reentry
     DIRECTION_FAVORABLE_REENTRY_VEC_ENABLED: bool = False      # #10 direction_favorable_reentry
