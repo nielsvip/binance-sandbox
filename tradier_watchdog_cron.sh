@@ -38,6 +38,7 @@ CRITICAL_SCRIPTS=(
     "tradier_indicators.py"
     "tradier_rankings.py"
     "tradier_manage.py.*trb"
+    "tradier_manage.py.*trc"
 )
 
 ALL_OK=true
@@ -104,6 +105,7 @@ TRADIER_RESTART_LIST=(
     "tradier_indicators.py|tradier_indicators.py"
     "tradier_rankings.py|tradier_rankings.py"
     "tradier_manage.py.*trb|tradier_manage.py --accounts trb"
+    "tradier_manage.py.*trc|tradier_manage.py --accounts trc"
 )
 for entry in "${TRADIER_RESTART_LIST[@]}"; do
     pattern="${entry%%|*}"
