@@ -96,20 +96,17 @@ S1_PLOTS="s1-int:/home/niels/binance-sandbox/plots/"
 MAC_PLOTS="$BASE/plots/"
 
 _merge_persym() {
-    # Pull S1 (crypto) and S2 (tradier) per_sym configs, merge into Mac.
-    # Key namespace is disjoint (crypto: *USDC/*USDT, tradier: plain tickers).
-    local s1_tmp=/tmp/per_sym_s1.json s2_tmp=/tmp/per_sym_s2.json
+    # 2026-05-28 S2 DEAD permanently — S1 now runs BOTH crypto AND tradier sweeps,
+    # so its per_sym_active_config.json holds everything. Pull S1 only.
+    local s1_tmp=/tmp/per_sym_s1.json
     rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$PER_SYM_CFG_S1" "$s1_tmp" 2>>"$LOG"
-    rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$PER_SYM_CFG_S2" "$s2_tmp" 2>>"$LOG"
-    /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOF' && echo "$(date -u +%FT%TZ) PER_SYM_CFG merged S1+S2→Mac" >>"$LOG"
+    /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOF' && echo "$(date -u +%FT%TZ) PER_SYM_CFG synced S1→Mac" >>"$LOG"
 import json, os, sys
 s1 = json.load(open('/tmp/per_sym_s1.json')) if os.path.exists('/tmp/per_sym_s1.json') else {}
-s2 = json.load(open('/tmp/per_sym_s2.json')) if os.path.exists('/tmp/per_sym_s2.json') else {}
-merged = {**s1, **s2}
 out = os.environ.get('PER_SYM_CFG_MAC', '/tmp/per_sym_merged.json')
 with open(out, 'w') as f:
-    json.dump(merged, f, indent=2, default=str)
-print(f'merged {len(s1)} crypto + {len(s2)} tradier = {len(merged)} total', flush=True)
+    json.dump(s1, f, indent=2, default=str)
+print(f'synced {len(s1)} entries from S1', flush=True)
 PYEOF
 }
 
@@ -118,20 +115,13 @@ _pull_tick=0
 _chart_tick=0
 while true; do
     push_to s1-int S1
-    push_to s2-int S2
-    # Merge per_sym_active_config.json from S1 (crypto) + S2 (tradier) every ~60 s
+    # 2026-05-28 S2 DEAD permanently — push_to s2-int removed
+    # Sync per_sym_active_config.json from S1 every ~60 s (S2 DEAD permanently 2026-05-28)
     _pull_tick=$(( (_pull_tick + 1) % 30 ))
     if [[ $_pull_tick -eq 0 ]]; then
         mkdir -p "$BASE/data/hourly_reconfig"
         export PER_SYM_CFG_MAC
         _merge_persym
-        # Also push Mac's active_config.json to S2 so S2 stays in sync
-        ACTIVE_TRB="$BASE/data/hourly_reconfig/trb/active_config.json"
-        if [[ -f "$ACTIVE_TRB" ]]; then
-            rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$ACTIVE_TRB" \
-                "s2-int:/home/niels/binance-sandbox/data/hourly_reconfig/trb/active_config.json" 2>>"$LOG" \
-                && echo "$(date -u +%FT%TZ) active_config.json pushed to S2" >>"$LOG"
-        fi
     fi
     # Pull OPT_*.png charts from S1 every ~5 min (per-sym profiler writes them)
     _chart_tick=$(( (_chart_tick + 1) % 150 ))

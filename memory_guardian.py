@@ -54,8 +54,8 @@ NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServ
 TRADING_SCRIPT_PATTERNS = ["ez_manage", "ez_positions", "ez_prices", "ez_prices_ws", "ez_klines", "ez_mark_prices", "ez_share_ind", "ez_indicators", "ez_market_data", "ez_indicators_merger", "ez_crosses", "ez_rankings", "ez_news_scanner", "ez_copilot", "ez_backup", "ez_positions_watchdog", "trade_analytics", "pa.py", "tradier_manage", "tradier_positions", "tradier_prices", "tradier_indicators", "tradier_rankings"]
 # Backtest scripts — throttle/kill these FIRST before touching anything else
 BACKTEST_PATTERNS = ["backtest_v5", "backtest_v4", "backtest_v3", "backtest_ablation", "backtest_sweep", "backtest_marathon", "backtest_continuous", "backtest_deep", "backtest_full", "ablation_backtest", "ablation_v2"]
-# Server to offload backtests to when memory is tight
-BACKTEST_SERVER = "s2-int"
+# Server to offload backtests to when memory is tight (2026-05-28 S2 DEAD → S1)
+BACKTEST_SERVER = "s1-int"
 BACKTEST_SERVER_PATH = "/home/niels/binance"
 # Non-essential apps to kill (browsers are NEVER killed)
 KILL_PRIORITY_APPS = ["Ollama", "Surfshark", "WhatsApp", "Slack", "Discord", "Spotify", "FileZilla", "TradingView", "Trade the Future.", "Comet", "Resilio Sync", "Google Drive", "ChatGPT", "ChatGPT Atlas", "Claude"]

@@ -1572,7 +1572,7 @@ def _read_sweep_status_from_disk() -> Dict[str, Any]:
     top = publishable[:10]
     # Probe S1+S2 for live sweep procs (short timeout)
     procs = {}
-    for host in ("s1-int", "s2-int"):
+    for host in ("s1-int",):  # 2026-05-28 S2 DEAD permanently — s2-int removed
         try:
             r = _sp.run(["ssh", "-o", "ConnectTimeout=2", "-o", "BatchMode=yes",
                          host, "pgrep -afc 'autonomous_search\\|v8_quick_sweep'"],

@@ -39,7 +39,7 @@ log = logging.getLogger("coord_v8")
 MACHINES = [
     {"name": "Local", "host": None, "sweep_dir": str(BASE / "backtest_v8" / "sweeps")},
     {"name": "S1", "host": "s1-int", "sweep_dir": "/home/niels/binance-sandbox/backtest_v8/sweeps"},
-    {"name": "S2", "host": "s2-int", "sweep_dir": "/home/niels/binance-sandbox/backtest_v8/sweeps"},
+    # 2026-05-28 S2 DEAD permanently — S2 machine entry removed
 ]
 
 

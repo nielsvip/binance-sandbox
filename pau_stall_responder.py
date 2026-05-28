@@ -384,10 +384,9 @@ RULES (NON-NEGOTIABLE — see CLAUDE.md):
 - BACKUP BEFORE EDITING: cp <file> backups/before_<desc>_$(date -u +%Y%m%d%H%M).py
 - Compile-check after edit: python3 -c "import py_compile; py_compile.compile('<file>', doraise=True)"
 - If you edit any of the 6 critical files (ez_manage / ez_positions_quick /
-  ez_positions_service / tradier_manage / config / config_tradier), rsync to S1+S2 and
-  verify md5 parity:
+  ez_positions_service / tradier_manage / config / config_tradier), rsync to S1 and
+  verify md5 parity (S2 DEAD permanently 2026-05-28):
     rsync -az --existing --update <file> s1-int:/home/niels/binance-sandbox/
-    rsync -az --existing --update <file> s2-int:/home/niels/binance-sandbox/
 - Do NOT git reset/restore/checkout. Only move forward.
 - Do NOT close positions at a loss (STRICT_NO_LOSS active).
 - After patching, restart the affected workers gracefully so the fix takes effect:

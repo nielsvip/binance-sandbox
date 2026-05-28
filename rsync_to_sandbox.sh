@@ -17,7 +17,7 @@ if [ -e /tmp/BACKTEST_HOLD ]; then
     exit 0
 fi
 LOCAL="/Users/niels/Documents/binance"
-SANDBOXES=("s1-int:/home/niels/binance-sandbox" "s2-int:/home/niels/binance-sandbox")
+SANDBOXES=("s1-int:/home/niels/binance-sandbox")  # 2026-05-28 S2 DEAD permanently — s2-int target removed
 FILES=(
     # live trading core (used by V8 engine which calls real code)
     ez_manage.py ez_positions_quick.py ez_positions_service.py ez_positions.py

@@ -41,15 +41,7 @@ PROBE_CONNECT_TIMEOUT = 20  # was 8 — heavy-CPU servers need more time to acce
 AUTOCHAIN_SCRIPT = "sweep_autochain.sh"
 
 SERVERS = {
-    "S2": {
-        "host": "s2-int",
-        "user": "niels",
-        "base": "/home/niels/binance-sandbox",
-        "python": "/home/niels/miniconda3/envs/binance_env/bin/python",
-        "autochain_screen": None,  # disabled 2026-04-22: autonomous search workers own S2 resources
-        "autochain_arg": "s2",
-        "run_sentinel": False,
-    },
+    # 2026-05-28 S2 DEAD permanently — S2 server entry removed (watchdog no longer probes/revives s2-int)
     "S1": {
         "host": "s1-int",
         "user": "niels",
