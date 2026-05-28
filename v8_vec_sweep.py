@@ -704,8 +704,10 @@ class SweepConfig:
     GOLDEN_RULE_MULT_W: float = 4.0       # 2026-05-17 live: 4.0 (cascade 1.0/1.5/2.0/3.0/4.0)
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = False
     # 2026-05-22 live RESTORED: HTF_MIN_TFS 1→3, MIN_IND 2→5. Vec was using triage values.
-    GOLDEN_RULE_MIN_IND: int = 5
-    GOLDEN_RULE_HTF_MIN_TFS: int = 3
+    # 2026-05-28 stocks sweep winner: HTF_MIN_TFS=2, MIN_IND=3 (+0.2195 vs +0.2043 at 3/5).
+    # Crypto-optimal levels TBD (sweep pending). Live=3/5 kept in config.py for now.
+    GOLDEN_RULE_MIN_IND: int = 3
+    GOLDEN_RULE_HTF_MIN_TFS: int = 2
     # 2026-05-22 live: REQUIRE_ACTIVATION=True gates GR to D/4h breakout TFs only.
     # Vec default was False → fired far more GR entries than live.
     GOLDEN_RULE_REQUIRE_ACTIVATION: bool = True
