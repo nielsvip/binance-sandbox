@@ -1492,7 +1492,10 @@ class Config:
     # === EVALUATE_REENTRY_2 (2026-04-16) — periodic reentry pass switches ===
     REENTRY_2_ENABLED: bool = True  # Master switch. ~$420 PnL per ablation.
     REENTRY2_DIR_FAV_ENABLED: bool = True  # BC_152 direction-favorable immediate reentry
-    REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
+    REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry — USER 2026-05-29 LOCKED ON: the live gate IGNORES this flag; DC-break reentry can NEVER be switched off (config/per_sym). dc_1h base is the permanent trigger. Only the sub-knobs below are testable.
+    REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = True   # require stoch k_3m>d_3m (LONG)/<(SHORT). Sweep OFF to drop the K gate.
+    REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: bool = False  # require wt1_3m>wt2_3m (LONG)/<(SHORT). Sweep ON to add a WT-momentum gate.
+    REENTRY2_DC_BREAK_ALLOW_15M: bool = True           # also fire on a dc_15m break. dc_1h ALWAYS fires (never off). Sweep OFF for 1h-only.
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
     QUICK_RECOVERY_WINDOW_MIN: float = 120.0  # 2026-04-26 NEW — was hardcoded 60.0 (ez_manage.py:18259, ez_positions_quick.py:14647). Widened to give K3m alignment more time. 9,386 NOT_ALLOWED rejects in 2d at 60.
     # === V8_QUICK v2 WINNER (2026-04-16 micro-experiments) ===

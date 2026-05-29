@@ -16548,19 +16548,23 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         _dc_reentry_breakout = False
         _buf = 0.001
         _dc_re_tf = ""
-        if not getattr(config_obj, 'REENTRY2_DC_BREAK_ENABLED', True):
-            _dc_reentry_breakout = None
-        if _dc_reentry_breakout is False:
-            if is_long:
-                if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
-                    if k_3m > d_3m:
-                        _dc_reentry_breakout = True
-                        _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
-            else:
-                if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
-                    if k_3m < d_3m:
-                        _dc_reentry_breakout = True
-                        _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
+        # USER 2026-05-29: REENTRY2_DC_BREAK LOCKED ON — never switched off (config/per_sym ignored).
+        # dc_1h base is the permanent trigger. Testable sub-knobs ONLY: K filter / WT filter / 15m.
+        _dc_allow_15m_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
+        _dc_req_k_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
+        _dc_req_wt_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
+        _dc_wt1_3m_re = _sf(i.get("wt1_3m", 0), 0.0)
+        _dc_wt2_3m_re = _sf(i.get("wt2_3m", 0), 0.0)
+        if is_long:
+            if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_allow_15m_re and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
+                if ((k_3m > d_3m) if _dc_req_k_re else True) and ((_dc_wt1_3m_re > _dc_wt2_3m_re) if _dc_req_wt_re else True):
+                    _dc_reentry_breakout = True
+                    _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
+        else:
+            if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_allow_15m_re and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
+                if ((k_3m < d_3m) if _dc_req_k_re else True) and ((_dc_wt1_3m_re < _dc_wt2_3m_re) if _dc_req_wt_re else True):
+                    _dc_reentry_breakout = True
+                    _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
         if _dc_reentry_breakout is True:
             _dcbr_pos_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
             if _dcbr_pos_notional >= config_obj.START_POSITION_SIZE:
