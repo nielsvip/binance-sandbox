@@ -16553,16 +16553,21 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         _dc_allow_15m_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt_re = bool(getattr(config_obj, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
-        _dc_wt1_3m_re = _sf(i.get("wt1_3m", 0), 0.0)
-        _dc_wt2_3m_re = _sf(i.get("wt2_3m", 0), 0.0)
+        _dc_ftf_re = str(getattr(config_obj, 'REENTRY2_DC_BREAK_FILTER_TF', '3m'))
+        _dc_fk_re = _sf(i.get(f"stoch_k_{_dc_ftf_re}", 0), 0.0)
+        _dc_fd_re = _sf(i.get(f"stoch_d_{_dc_ftf_re}", 0), 0.0)
+        _dc_fw1_re = _sf(i.get(f"wt1_{_dc_ftf_re}", 0), 0.0)
+        _dc_fw2_re = _sf(i.get(f"wt2_{_dc_ftf_re}", 0), 0.0)
+        _dc_kdata_re = abs(_dc_fk_re) > 1e-9 or abs(_dc_fd_re) > 1e-9
+        _dc_wtdata_re = abs(_dc_fw1_re) > 1e-9 or abs(_dc_fw2_re) > 1e-9
         if is_long:
             if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_allow_15m_re and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
-                if ((k_3m > d_3m) if _dc_req_k_re else True) and ((_dc_wt1_3m_re > _dc_wt2_3m_re) if _dc_req_wt_re else True):
+                if ((_dc_fk_re > _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re > _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True):
                     _dc_reentry_breakout = True
                     _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
         else:
             if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_allow_15m_re and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
-                if ((k_3m < d_3m) if _dc_req_k_re else True) and ((_dc_wt1_3m_re < _dc_wt2_3m_re) if _dc_req_wt_re else True):
+                if ((_dc_fk_re < _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re < _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True):
                     _dc_reentry_breakout = True
                     _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
         if _dc_reentry_breakout is True:

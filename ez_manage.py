@@ -34336,11 +34336,17 @@ async def process_single_reentry_evaluation(
         _dc_reentry_allow_15m = bool(getattr(config, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
-        _dc_wt2_3m = safe_fetch_float(i.get("wt2_3m", 0), 0.0)
+        _dc_ftf = str(getattr(config, 'REENTRY2_DC_BREAK_FILTER_TF', '3m'))
+        _dc_fk = safe_fetch_float(i.get(f"stoch_k_{_dc_ftf}", 0), 0.0)
+        _dc_fd = safe_fetch_float(i.get(f"stoch_d_{_dc_ftf}", 0), 0.0)
+        _dc_fw1 = safe_fetch_float(i.get(f"wt1_{_dc_ftf}", 0), 0.0)
+        _dc_fw2 = safe_fetch_float(i.get(f"wt2_{_dc_ftf}", 0), 0.0)
+        _dc_k_data = abs(_dc_fk) > 1e-9 or abs(_dc_fd) > 1e-9
+        _dc_wt_data = abs(_dc_fw1) > 1e-9 or abs(_dc_fw2) > 1e-9
         if is_long:
             _dc_re_long_ok = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_reentry_allow_15m and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
-            _dc_k_ok = (k_3m > d_3m) if _dc_req_k else True
-            _dc_wt_ok = (wt1_3m > _dc_wt2_3m) if _dc_req_wt else True
+            _dc_k_ok = (_dc_fk > _dc_fd) if (_dc_req_k and _dc_k_data) else True
+            _dc_wt_ok = (_dc_fw1 > _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
             if _dc_re_long_ok and _dc_k_ok and _dc_wt_ok:
                 _dc_reentry_breakout = True
                 _dc_re_tf = (
@@ -34350,8 +34356,8 @@ async def process_single_reentry_evaluation(
                 )
         else:
             _dc_re_short_ok = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_reentry_allow_15m and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
-            _dc_k_ok = (k_3m < d_3m) if _dc_req_k else True
-            _dc_wt_ok = (wt1_3m < _dc_wt2_3m) if _dc_req_wt else True
+            _dc_k_ok = (_dc_fk < _dc_fd) if (_dc_req_k and _dc_k_data) else True
+            _dc_wt_ok = (_dc_fw1 < _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
             if _dc_re_short_ok and _dc_k_ok and _dc_wt_ok:
                 _dc_reentry_breakout = True
                 _dc_re_tf = (

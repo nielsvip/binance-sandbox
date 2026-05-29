@@ -211,6 +211,27 @@ def grid_reentry_wide():
     ]
 
 
+def grid_reentry_dc_break_knobs():
+    """USER 2026-05-29: REENTRY2_DC_BREAK is LOCKED ON (master never off). Test its confirmation
+    sub-knobs to find the best combo: FILTER_TF (3m/15m/1h — user: '3m seems too short'),
+    REQUIRE_K_FILTER, REQUIRE_WT_FILTER, ALLOW_15M. Full 3×2×2×2 factorial + baseline.
+    dc_1h base trigger is NOT a sweep axis (never off). baseline = current live defaults
+    (tf=3m, K=on, WT=off, 15m=on). Run on 48-sym 4yr pool for promotable pool_sharpe."""
+    out = [("baseline", {})]
+    for tf in ("3m", "15m", "1h"):
+        for reqk in (True, False):
+            for reqwt in (True, False):
+                for a15 in (True, False):
+                    label = f"DCRE_tf{tf}_K{1 if reqk else 0}_WT{1 if reqwt else 0}_15m{1 if a15 else 0}"
+                    out.append((label, {
+                        "REENTRY2_DC_BREAK_FILTER_TF": tf,
+                        "REENTRY2_DC_BREAK_REQUIRE_K_FILTER": reqk,
+                        "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER": reqwt,
+                        "REENTRY2_DC_BREAK_ALLOW_15M": a15,
+                    }))
+    return out
+
+
 def grid_hedge_full():
     keys = {
         "HEDGE_EXIT_BYPASS_NOLOSS": [True, False],
@@ -1847,6 +1868,7 @@ TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
+    "reentry_dc_break_knobs": grid_reentry_dc_break_knobs,
     "reentry_optimize": grid_reentry_optimize,
     "reentry_all_real": grid_reentry_all_real,
     "reentry_killed_rerun": grid_reentry_killed_rerun,
