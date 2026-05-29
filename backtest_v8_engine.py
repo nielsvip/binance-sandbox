@@ -2314,6 +2314,62 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         act = action or ("CLOSE" if is_red else "OPEN")
         is_aug_action = (not is_red) and (not is_hedge)
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛡️ TOP_OF_RANGE_BLOCK (parity with ez_manage.py execute_now ~22720) —
+        # block OPEN/AUGMENT/ENTRY/REENTRY (NOT hedge) when price sits in the top
+        # THRESHOLD% of the DC channel on ALL listed TFs (default 1h,4h,D @ 0.95).
+        # LONG blocks at top, SHORT blocks at bottom. Fresh breakout (price beyond
+        # the PREVIOUS-bar channel via dc_high/low_{tf}_prev) is exempted. Crypto-only
+        # (this is _crypto_eta). Reads config.TOP_OF_RANGE_BLOCK_* so vec / per_sym /
+        # engine stay in lockstep. Placed BEFORE the V8_DECISION_ONLY fast path so it
+        # applies in both decision-only and full modes. Fail-open on any exception.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _act_up_tor = (act or "").upper()
+        if (
+            bool(getattr(config, "TOP_OF_RANGE_BLOCK_ENABLED", False))
+            and ("OPEN" in _act_up_tor or "AUGMENT" in _act_up_tor or "ENTRY" in _act_up_tor or "REENTRY" in _act_up_tor)
+            and not is_hedge
+            and "HEDGE" not in (reason or "").upper()
+        ):
+            try:
+                _tor_threshold = float(getattr(config, "TOP_OF_RANGE_BLOCK_THRESHOLD", 0.95) or 0.95)
+                _tor_tfs_raw = getattr(config, "TOP_OF_RANGE_BLOCK_TF_LIST", "1h,4h,D")
+                _tor_tfs = [t.strip() for t in (_tor_tfs_raw if isinstance(_tor_tfs_raw, (list, tuple)) else str(_tor_tfs_raw).split(","))]
+                _tor_tfs = [t for t in _tor_tfs if t]
+                _tor_require_all = bool(getattr(config, "TOP_OF_RANGE_BLOCK_REQUIRE_ALL", True))
+                _tor_is_long = (ps == "LONG") if ps else pk.endswith("_LONG")
+                _tor_price = float(px or 0)
+                _tor_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                if _tor_tfs and _tor_price > 0 and _tor_ind:
+                    _tor_long_extremes = []
+                    _tor_short_extremes = []
+                    _tor_breakout_long = False
+                    _tor_breakout_short = False
+                    for _tor_tf in _tor_tfs:
+                        _tor_low = float(_tor_ind.get(f"dc_low_{_tor_tf}", 0) or 0)
+                        _tor_high = float(_tor_ind.get(f"dc_high_{_tor_tf}", 0) or 0)
+                        _tor_high_prev = float(_tor_ind.get(f"dc_high_{_tor_tf}_prev", 0) or 0)
+                        _tor_low_prev = float(_tor_ind.get(f"dc_low_{_tor_tf}_prev", 0) or 0)
+                        if _tor_low <= 0 or _tor_high <= 0 or _tor_high <= _tor_low:
+                            continue
+                        if _tor_high_prev > 0 and _tor_price > _tor_high_prev:
+                            _tor_breakout_long = True
+                        if _tor_low_prev > 0 and _tor_price < _tor_low_prev:
+                            _tor_breakout_short = True
+                        _tor_pos = max(0.0, min(1.0, (_tor_price - _tor_low) / (_tor_high - _tor_low)))
+                        _tor_long_extremes.append(_tor_pos >= _tor_threshold)
+                        _tor_short_extremes.append(_tor_pos <= (1.0 - _tor_threshold))
+                    if _tor_long_extremes:
+                        if _tor_is_long:
+                            _tor_blocked = (all(_tor_long_extremes) if _tor_require_all else any(_tor_long_extremes)) and not _tor_breakout_long
+                            _tor_side_str = "LONG"
+                        else:
+                            _tor_blocked = (all(_tor_short_extremes) if _tor_require_all else any(_tor_short_extremes)) and not _tor_breakout_short
+                            _tor_side_str = "SHORT"
+                        if _tor_blocked:
+                            return f"BLOCKED_TOP_OF_RANGE_{_tor_side_str}_thr{_tor_threshold}"
+            except Exception:
+                pass
+        # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — V8_DECISION_ONLY FAST PATH (crypto)
         # Skip ALL _v8ns_* sizing scalars and most heavy gates. Keep:
         #   (a) Double-open reclassification: OPEN on existing position → AUGMENT

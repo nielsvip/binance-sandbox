@@ -3279,7 +3279,7 @@ def simulate_one_symbol(
 
         # ─── PARTIAL PROFIT LOCK (PPL) — fires as REDUCE, then protects remainder ─
         if check_ppl_step1 is not None and config.PARTIAL_PROFIT_LOCK_ENABLED:
-            _ppl1 = check_ppl_step1(_store, i, _pos, config)
+            _ppl1 = check_ppl_step1(_store, i, _pos, config, mode)
             # 2026-05-26 BATCH 3 — PPL_FIRE_COOLDOWN_S gate (mirrors live's
             # _recent_ppl_fires Redis key ~24h). state.ppl_last_fire_ts lives
             # on SymState so it survives full-close + reopen cycles (where
@@ -3302,12 +3302,12 @@ def simulate_one_symbol(
                     state.last_reduce_ts = bar_ts
                     state.ppl_last_fire_ts = bar_ts
             elif check_ppl_step2 is not None and _pos.ppl_fired and not _pos.ppl_stop_upgraded:
-                _ppl2 = check_ppl_step2(_store, i, _pos, config)
+                _ppl2 = check_ppl_step2(_store, i, _pos, config, mode)
                 if _ppl2 is not None:
                     _pos.ppl_stop_level = float(_ppl2.get("new_stop", _pos.ppl_stop_level))
                     _pos.ppl_stop_upgraded = True
             if check_ppl_step3 is not None and _pos.ppl_fired and state.qty > 0.0001:
-                _ppl3 = check_ppl_step3(_store, i, _pos, config)
+                _ppl3 = check_ppl_step3(_store, i, _pos, config, mode)
                 if _ppl3 is not None:
                     pnl_pct = gain
                     if _vec_exit_to_reduce is not None:
