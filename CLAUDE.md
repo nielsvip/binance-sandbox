@@ -571,6 +571,15 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 
 ---
 
+## 🔍 SEMANTIC CODE INTELLIGENCE — CODEGRAPH MANDATE
+- **CODEGRAPH FIRST**: Every session and exploration step **MUST query CodeGraph first** (using `npx @colbymchenry/codegraph`) before running generic `grep`, `find`, or reading files.
+- **Search symbols**: `npx @colbymchenry/codegraph query "<name>"`
+- **Find callers**: `npx @colbymchenry/codegraph callers "<name>"`
+- **Index maintenance**: Excludes are managed entirely by `.gitignore`. To sync changes: `npx @colbymchenry/codegraph sync`.
+- See full instructions in [CODEGRAPH.md](file:///Users/niels/Documents/binance/CODEGRAPH.md).
+
+---
+
 ## Misc Rules
 - **Strategy development**: Phase 1 = cross-symbol rules. Phase 2 = per-symbol. DO NOT skip to Phase 2.
 - **Context compaction**: Before compacting, save full conversation to disk + note path.

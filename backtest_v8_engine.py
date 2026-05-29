@@ -1465,6 +1465,22 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
                 }
             ez_positions_quick.HedgeEngine.execute_dual_hedge = _noop_execute_dual_hedge
 
+    # --- 2026-05-29 USER: HARD hedge kill for sweeps — no-op the SAME-SYMBOL hedge executor too.
+    # The runaway HEDGE_OPEN/HEDGE_CLOSE/REOPEN cycle (AVAXUSDC halt) is same-symbol hedging.
+    # Mirrors the dual-hedge short-circuit above so NO hedge knob (HEDGE_MODE/OBLIGATORY/SCAN) can
+    # emit a hedge in a backtest. Default ON; set V8_SWEEP_DISABLE_HEDGING=0 only for a dedicated
+    # hedge-validation run. Return shape matches dual no-op → callers fall through to close path.
+    if os.environ.get("V8_SWEEP_DISABLE_HEDGING", "1") == "1" and hasattr(ez_positions_quick, 'HedgeEngine'):
+        _orig_same_hedge = getattr(ez_positions_quick.HedgeEngine, 'execute_same_symbol_hedge', None)
+        if _orig_same_hedge is not None:
+            async def _noop_execute_same_symbol_hedge(self, *args, **kwargs):
+                return {
+                    'overall_status': 'hedging_disabled_sweep',
+                    'status': 'skipped',
+                    'reason': 'V8_SWEEP_DISABLE_HEDGING=1 (backtest hedge hard-kill)',
+                }
+            ez_positions_quick.HedgeEngine.execute_same_symbol_hedge = _noop_execute_same_symbol_hedge
+
     # --- Patch get_simple_redis_manager to return in-memory Redis ---
     _mem_redis = InMemoryRedis()
     import utils
@@ -4030,6 +4046,41 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             continue
                         _atr_is_long = _atr_pk.endswith('_LONG')
                         await trade_manager.execute_trade_action(account_key=account_key, position_key=_atr_pk, symbol=_atr_sym, quantity=abs(float(getattr(_atr_pos, 'positionAmt', 0))), current_price=_atr_px, side='SELL' if _atr_is_long else 'BUY', position_side='LONG' if _atr_is_long else 'SHORT', action='CLOSE', reason=_atr_result['reason'], is_full_close=True, is_hedge=False)
+            except Exception:
+                pass
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-MTF_ATR_TRAIL: live-parity MTF_ATR_TRAIL ratchet (2026-05-29 USER MANDATE)
+        # Faithful replication of tradier_manage.py:2318-2333 via shared
+        # vec_paths/mtf_atr_trail.py. NOT the sweep stub above (ATR_TRAIL_SWEEP_*).
+        # Gated on MTF_EXIT_USE_COMPOUND AND MTF_ATR_TRAIL_ENABLED (both live-default True).
+        # TF: crypto=MTF_ATR_TRAIL_TF(15m), stocks=MTF_ATR_TRAIL_TF_TRADIER(5m). mult=2.0.
+        # Reason MTF_ATR_TRAIL already in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS / LOSS_EXIT_TECHNICAL_BYPASS.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'MTF_EXIT_USE_COMPOUND', False)) and bool(getattr(config, 'MTF_ATR_TRAIL_ENABLED', False)):
+            try:
+                from vec_paths.mtf_atr_trail import update_and_check as _mtfat_check, mtf_atr_trail_tf as _mtfat_tf
+                if not hasattr(trade_manager, 'mtf_compound_exit_state'):
+                    trade_manager.mtf_compound_exit_state = {}
+                _mtfat_atr_tf = _mtfat_tf(config, mode)
+                _mtfat_mult = float(getattr(config, 'MTF_ATR_TRAIL_MULT', 2.0))
+                for _mtfat_pk, _mtfat_pos in list(trade_manager.positions.items()):
+                    if abs(getattr(_mtfat_pos, 'positionAmt', 0)) < 0.0001:
+                        continue
+                    _mtfat_sym = getattr(_mtfat_pos, 'symbol', '') or (_mtfat_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _mtfat_pk else _mtfat_pk[:-5] if _mtfat_pk.endswith('_LONG') else _mtfat_pk[:-6])
+                    _mtfat_ind = indicator_cache.get(_mtfat_sym, {})
+                    if not _mtfat_ind:
+                        continue
+                    _mtfat_px = price_cache.get(_mtfat_sym, 0)
+                    if _mtfat_px <= 0:
+                        continue
+                    _mtfat_atr = float(_mtfat_ind.get(f'atr_{_mtfat_atr_tf}', 0) or 0)
+                    _mtfat_entry = float(getattr(_mtfat_pos, 'entry_price', 0) or 0)
+                    _mtfat_is_long = _mtfat_pk.endswith('_LONG')
+                    _mtfat_state = trade_manager.mtf_compound_exit_state.setdefault(_mtfat_pk, {'trail': 0.0})
+                    _mtfat_fire, _mtfat_reason, _ = _mtfat_check(_mtfat_state, _mtfat_entry, _mtfat_px, _mtfat_atr, _mtfat_is_long, _mtfat_mult, _mtfat_atr_tf)
+                    if _mtfat_fire:
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_mtfat_pk, symbol=_mtfat_sym, quantity=abs(float(getattr(_mtfat_pos, 'positionAmt', 0))), current_price=_mtfat_px, side='SELL' if _mtfat_is_long else 'BUY', position_side='LONG' if _mtfat_is_long else 'SHORT', action='CLOSE', reason=_mtfat_reason, is_full_close=True, is_hedge=False)
             except Exception:
                 pass
 

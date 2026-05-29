@@ -8,6 +8,7 @@
 3. **No GitHub Required**: NO GitHub staging, committing, or pushing unless explicitly requested.
 4. **Local Sandbox**: The sandbox environment is on **S1** (`/home/niels/binance-sandbox`).
 5. **Update Docs**: Always keep `.md` files (100.md, GEMINI.md, TASKS_LOG.md, etc.) updated with session findings and state.
+6. **CodeGraph First**: Every session and exploration step **MUST query CodeGraph first** (using `npx @colbymchenry/codegraph`) before running generic `grep`, `find`, or reading files. See [CODEGRAPH.md](file:///Users/niels/Documents/binance/CODEGRAPH.md).
 
 ### 🚨🚨🚨 NO-LIES MANDATE — READ FIRST. ABSOLUTE. 🚨🚨🚨
 
