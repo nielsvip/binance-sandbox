@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-29 08:25:47 UTC
+# Copilot Status — 2026-05-29 08:41:07 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-29T08:22:43
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-29T08:22:43
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-29T08:22:43
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-29T08:22:43
-- **STALE_INDICATORS** [tradier]  — 2026-05-29T08:24:46
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-29T08:24:46
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-29T08:24:46
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-29T08:24:46
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-29T08:24:46
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-29T08:24:46
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-29T08:39:05
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-29T08:39:05
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-29T08:39:05
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-29T08:39:05
+- **STALE_INDICATORS** [tradier]  — 2026-05-29T08:41:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-29T08:41:07
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-29T08:41:07
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-29T08:41:07
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-29T08:41:07
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-29T08:41:07
 
 ## Missed Trades (trader comparison)
 
@@ -31,9 +31,9 @@ _None_
 
 - HELD: **CIBR** LONG (tradier) peak +6.4%, now +-0.9%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.2%
-- HELD: **IOTXUSDT** SHORT (crypto) peak +5.2%, now +-0.6%
-- HELD: **XLMUSDT** LONG (crypto) peak +3.7%, now +1.8%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-1.0%
+- HELD: **IOTXUSDT** SHORT (crypto) peak +5.2%, now +-0.3%
+- HELD: **XLMUSDT** LONG (crypto) peak +4.2%, now +3.3%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-0.9%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +1.7%
 
 - WATCHING: **UUUU** SHORT (tradier) peaked +3.5%, exited 0m ago
