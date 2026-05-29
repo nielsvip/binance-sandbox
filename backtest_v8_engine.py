@@ -2401,7 +2401,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _mtf_act_do = (act or "").upper()
             if (not V8_DISABLE_MTF_GATE
                     and ("OPEN" in _mtf_act_do or "AUGMENT" in _mtf_act_do or "ENTRY" in _mtf_act_do)
-                    and "REENTRY" not in _mtf_act_do
                     and not is_hedge and "HEDGE" not in (reason or "").upper()
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
                 try:
@@ -2672,7 +2671,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _mtf_act_full = (act or "").upper()
         if (not V8_DISABLE_MTF_GATE
                 and ("OPEN" in _mtf_act_full or "AUGMENT" in _mtf_act_full or "ENTRY" in _mtf_act_full)
-                and "REENTRY" not in _mtf_act_full
                 and not is_hedge and "HEDGE" not in (reason or "").upper()
                 and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
             try:
