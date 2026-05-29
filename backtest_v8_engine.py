@@ -7422,7 +7422,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # to current positionAmt. Run every ~12 bars (≈60s at 5m bars) to replicate
         # live cadence. Gate: V8_SENTIMENT_REBALANCER_ENABLED (default 1).
         # ═══════════════════════════════════════════════════════════════════════════
-        _v8_sent_rebal_enabled = os.environ.get("V8_SENTIMENT_REBALANCER_ENABLED", "1") == "1"
+        _v8_sent_rebal_enabled = os.environ.get("V8_SENTIMENT_REBALANCER_ENABLED", "1") == "1" and bool(getattr(config, "SENTIMENT_REBALANCER_ENABLED", True))  # 2026-05-29 PARITY FIX #1: mirror live — tradier config SENTIMENT_REBALANCER_ENABLED=False (rebalancer KILLED) => 0 phantom stock SENTIMENT_FADE/BOOST; crypto (attr undefined => True) unchanged
         _v8_sent_rebal_freq = int(os.environ.get("V8_SENTIMENT_REBALANCER_FREQ_BARS", "12"))
         if _v8_sent_rebal_enabled and step % _v8_sent_rebal_freq == 0 and hasattr(manager, 'periodic_sentiment_rebalancing'):
             try:
