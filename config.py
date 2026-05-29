@@ -480,7 +480,7 @@ class Config:
     HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
     ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
     # ═══ ROGUE HEDGE FIX 2026-04-16 — CRITICAL ═══════════════════════════════
-    WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
+    WT_15M_SAME_HEDGE_ENABLED: bool = False  # 2026-05-29 USER: ZERO hedging anywhere (was True; dead-gated by HEDGE_MODE=False but disabled explicitly).
     WT_15M_SAME_HEDGE_DAILY_CAP: int = 2  # 2026-04-16: max SAME_HEDGE opens per symbol per day. 45× BAT/DOT/ATOM firestorm = daily cap missing.
     WT_15M_SAME_HEDGE_COOLDOWN_SEC: int = 1800  # 2026-04-16: Redis-backed cooldown (survives restarts — old 300s in-memory wiped on process restart).
     # ═══════════════════════════════════════════════════════════════════════
@@ -568,7 +568,7 @@ class Config:
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
     HEDGE_SAME_SYMBOL_ENABLED: bool = False  # 2026-05-20 USER MANDATE: same-symbol hedge OFF — MTF compound exit replaces it. ROLLBACK: True restores 150% same-symbol hedge.
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
-    HEDGE_ALL_POSITIONS: bool = True   # 2026-05-10 USER MANDATE: if wt1_3m against trade → 100% same-symbol hedge. PERIOD. P/L irrelevant. Combined with HEDGE_TRIGGER_USE_WT_3M_ALONE=True + HEDGE_DETERIORATING_GAIN_ENABLED=False = scan_and_hedge_losers fires on wt1_3m flip alone, no loss precondition.
+    HEDGE_ALL_POSITIONS: bool = False   # 2026-05-29 USER: ZERO hedging anywhere (was True; superseded the 2026-05-10 100%-same-symbol-hedge mandate — no hedging now).
     # === 2026-04-17 HEDGE OVERHAUL — user directive: hedges close on wt_3m flip no matter the P/L ===
     # 2026-05-17 R6 ROLLBACK: was True. True = close hedge on 1-of-3 wt flip regardless of P/L (orphan-kill at loss). False = require 3-of-3 wt flip (Apr 13 working behavior).
     HEDGE_EXIT_BYPASS_NOLOSS: bool = False  # ROLLED BACK 2026-05-17 (was True)
@@ -614,7 +614,7 @@ class Config:
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     # 2026-05-17 R6 ROLLBACK: was False (fires on any wt-against). True = require deteriorating-gain prerequisite → fewer spurious hedges. May 28k/day hedges (WR 6%) vs Mar 1k/day (WR 87%).
-    HEDGE_DETERIORATING_GAIN_ENABLED: bool = True  # ROLLED BACK 2026-05-17 (was False)
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = False  # 2026-05-29 USER: ZERO hedging anywhere (was True).
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
     # 2026-04-27 USER (C98USDT incident): block hedge entries opening into adverse orderbook pressure.
     # ez_orderbook publishes ob_bid_ask_imb_10 (bid pressure / total). Block LONG hedge if imb < (1-bound), SHORT if imb > bound.
@@ -776,7 +776,7 @@ class Config:
     # WT flips to favor origin, hedge closes regardless of gain (that's the whole point of the rule).
     # Reopen handled by scan_and_hedge_losers when 15m WT goes against origin again.
     # Origin-close → hedge-close is _close_associated_hedge in ez_manage.py:14453 (always was on).
-    HEDGE_BANDAID_OFF_ENABLED: bool = True
+    HEDGE_BANDAID_OFF_ENABLED: bool = False  # 2026-05-29 USER: ZERO hedging anywhere. Only path emitting HEDGE-tagged events past HEDGE_MODE=False (legacy-hedge unwind); active_hedges=0 all accts → nothing to unwind → guaranteed zero hedge events.
     # USER 2026-05-05 mandate: when position underwater AND wt1_3m flipped against trade:
     #   if NO active hedge → fire hedge NOW
     #   if hedge already active → close primary IMMEDIATELY (don't bleed further)
@@ -829,7 +829,7 @@ class Config:
     EXTREME_OS_BB_PCT_B_4H_MAX: float = 0.0
     # USER 2026-05-06: wt1_15m flipped against trade → fire hedge IMMEDIATELY (no matter what).
     # If hedge already active and bleed continues → close primary. 30s per-position cooldown.
-    WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = True
+    WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = False  # 2026-05-29 USER: ZERO hedging anywhere (was True).
     WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC: float = 30.0
     # USER 2026-05-06: ALL TFs (3m/15m/1h/4h/D) against → close primary, hedge becomes main.
     # Strongest single signal — no other gate considered.
