@@ -46836,21 +46836,18 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                         _dcb_i = await ii(trade_manager, _sym) or {}
                         _dcb_tf = str(getattr(cfg, "REENTRY_LIVE_MONITOR_DC_BREAK_TF", "3m"))
                         _dcb_4 = bool(getattr(cfg, "REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR", False))
-                        # 2026-05-28 BUGFIX: use the PRIOR channel (_prev). dc_high_{tf} auto-extends
-                        # to include the current bar so cur>dc_high is ~never true (0% breakout — it just
-                        # blocks every reentry). dc_high_{tf}_prev = genuine breakout above the previous
-                        # channel (~5-6% of bars). 4-bar prior channel (dc_high4_{tf}_prev) is NOT
-                        # precomputed in NPZ → fall back to dc_high_{tf}_prev.
+                        # 2026-05-29: live indicators are computed on ALREADY-CLOSED bars (current
+                        # forming 3m bar is excluded), so dc_high4_{tf} here = the 4-bar high of the
+                        # last closed bars. Compare current price with >= / <= → genuine breakout
+                        # above/below that closed-bar channel. (Vec backtest replicates this by reading
+                        # dc_high4_{tf} at bar_idx-1, since the NPZ value at row i includes bar i.)
                         if _is_long:
-                            _dcb_key = f"dc_high4_{_dcb_tf}_prev" if _dcb_4 else f"dc_high_{_dcb_tf}_prev"
+                            _dcb_key = f"dc_high4_{_dcb_tf}" if _dcb_4 else f"dc_high_{_dcb_tf}"
                         else:
-                            _dcb_key = f"dc_low4_{_dcb_tf}_prev" if _dcb_4 else f"dc_low_{_dcb_tf}_prev"
+                            _dcb_key = f"dc_low4_{_dcb_tf}" if _dcb_4 else f"dc_low_{_dcb_tf}"
                         _dcb_lvl = safe_fetch_float(_dcb_i.get(_dcb_key), 0.0)
-                        if _dcb_lvl <= 0 and _dcb_4:
-                            _dcb_key = f"dc_high_{_dcb_tf}_prev" if _is_long else f"dc_low_{_dcb_tf}_prev"
-                            _dcb_lvl = safe_fetch_float(_dcb_i.get(_dcb_key), 0.0)
                         if _dcb_lvl > 0:
-                            _dcb_broke = (_is_long and _cur_price > _dcb_lvl) or (not _is_long and _cur_price < _dcb_lvl)
+                            _dcb_broke = (_is_long and _cur_price >= _dcb_lvl) or (not _is_long and _cur_price <= _dcb_lvl)
                             if not _dcb_broke:
                                 logger.info(f"[REENTRY_MONITOR_DC_BREAK_HOLD] {position_key}: cur={_cur_price:.6f} not past {_dcb_key}={_dcb_lvl:.6f} — churn guard, skip reentry")
                                 continue
