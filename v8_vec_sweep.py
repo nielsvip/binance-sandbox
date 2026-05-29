@@ -2763,6 +2763,12 @@ def simulate_one_symbol(
                                     else (_uag_last_px - mark) / _uag_last_px * 100.0
                                 )
                                 _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                                # 2026-05-29: PPL effective-gain (mirror of the TR_TREND ADD site).
+                                if (bool(getattr(config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", True))
+                                        and getattr(_pos, "ppl_fired", False)):
+                                    _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+                                    if 0.0 < _ppl_frac < 1.0:
+                                        _uag_gain_since = _uag_gain_since / (1.0 - _ppl_frac)
                                 if _uag_gain_since < _uag_min_gain:
                                     _uag_block_mtf = True
                         # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
