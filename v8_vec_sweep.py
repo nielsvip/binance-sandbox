@@ -2611,6 +2611,16 @@ def simulate_one_symbol(
                                     else (_uag_last_px - mark) / _uag_last_px * 100.0
                                 )
                                 _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
+                                # 2026-05-29: PPL effective-gain — after a partial profit-lock the
+                                # remaining position's gain% is amplified 1/(1-FRAC). Mirror of
+                                # ez_reentry.effective_gain_pct (used live by tradier; the crypto UAG
+                                # hard gate omitted it). Gated by EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED so
+                                # the A/B can measure whether the UAG gate should count realized PPL.
+                                if (bool(getattr(config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", True))
+                                        and getattr(_pos, "ppl_fired", False)):
+                                    _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+                                    if 0.0 < _ppl_frac < 1.0:
+                                        _uag_gain_since = _uag_gain_since / (1.0 - _ppl_frac)
                                 if _uag_gain_since < _uag_min_gain:
                                     _uag_block_trx = True
                         # 2026-05-26 BATCH 4 — AUG_COOLDOWN_S time-axis sibling.
