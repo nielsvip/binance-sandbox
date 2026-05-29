@@ -150,7 +150,7 @@ Plus backtest infra: `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, b
 ### Rules
 1. **Session start**: `python3 check_sandbox_parity.py` — DRIFT → STOP until fixed.
 2. **Before server sweep**: confirm 24 core files bit-match MacBook.
-3. **After editing critical file**: immediately rsync to S1, verify md5.
+3. **After editing critical file**: immediately rsync to S1, verify md
 4. **Automated edits count**: bots silently editing `v8_quick_engine.py` cause drift. Resync after any mtime change.
 5. **Never edit scripts on servers** — edit on MacBook, rsync.
 6. **Never use `push.py`** — use `rsync --existing --update` (preserves server-local files).
@@ -589,5 +589,5 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 | `RATIO_MULTIPLIER` | 3.0 | Ratio-only Sharpe 357 vs closing-losers 19 |
 | `HARD_STOP_LOSS_MAX_PAIN` | DISABLED | $500+ losses 2026-03-24 |
 | `STALE_DATA_PROFIT_SHIELD` | DISABLED | Was killing USO position |
-| `HEDGE_MODE` | True (inf/fin/men) | Re-enabled 2026-03-13 |
+| `HEDGE_MODE` | False  | 
 | `ATR_TRAIL_ENABLED` (tradier) | False | #1 stock PnL destroyer (-2557%) |
