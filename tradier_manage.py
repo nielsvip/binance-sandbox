@@ -5746,10 +5746,8 @@ class StockStrategy:
 
             # For AUGMENT actions
             if action == 'AUGMENT':
-                if position_gain < -2.0:
-                    qty = 0.0  # Don't add to big losers
-                elif position_gain < 0:
-                    qty *= 0.3  # Small add to recover
+                if position_gain < 0:
+                    qty = 0.0  # 2026-05-29 USER MANDATE "NO Martingale ever" — never add to a position at a loss (was qty*=0.3 'add to recover')
                 elif position_gain < 1.0:
                     qty *= 0.7  # Conservative add to small winners
                 elif position_gain < 3.0:
@@ -7712,6 +7710,10 @@ class StockStrategy:
         # RECOVERY_AUGMENT_ENABLED.  Single-fire per reduction cycle when
         # RECOVERY_AUGMENT_ONE_FIRE_PER_REDUCE=True via Position.recovery_fired.
         if positionAmt > 0 and bool(getattr(config, 'RECOVERY_AUGMENT_ENABLED', False)):
+            _ra_entry_px = float(getattr(position, 'entry_price', current_price) or current_price)
+            _ra_cur_gain = (current_price - _ra_entry_px) / _ra_entry_px * 100.0 if is_long else (_ra_entry_px - current_price) / _ra_entry_px * 100.0
+            _ra_min_gain_gate = 0.5 * float(getattr(config, 'MIN_GAIN', 3.0))
+            _ra_gain_ok = _ra_cur_gain >= _ra_min_gain_gate
             _ra_last_px = float(getattr(position, 'last_reduction_price', 0) or 0)
             _ra_last_t = getattr(position, 'last_reduction_time', None)
             _ra_recovery_fired = bool(getattr(position, 'recovery_fired', False))
@@ -7740,13 +7742,13 @@ class StockStrategy:
                             _k5 = float(i.get('stoch_k_5m', 50) or 50); _kp5 = float(i.get('stoch_k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
                             if is_long: _ra_gate_ok = (_k5 < float(getattr(config, 'REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
                             else: _ra_gate_ok = (_k5 > float(getattr(config, 'REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
-                        if _ra_wt_ok and _ra_gate_ok:
+                        if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
                             _ra_size_pct = float(getattr(config, 'RECOVERY_AUGMENT_SIZE_PCT', 1.0))
                             _ra_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9)) * _ra_size_pct
                             try:
                                 if _ra_one_fire: position.recovery_fired = True
                             except Exception: pass
-                            logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m wt_ok={_ra_wt_ok} → AUGMENT qty={_ra_qty:.4f}")
+                            logger.critical(f"[RECOVERY_AUG] {symbol} {'L' if is_long else 'S'}: PARTIAL_RECOVERY positionAmt={positionAmt:.4f} cur={current_price:.4f} ≈ exit={_ra_last_px:.4f} ({_ra_dist_pct:.3f}% within {_ra_band_pct:.2f}%) age={_ra_age_min:.0f}m gain={_ra_cur_gain:.2f}%>={_ra_min_gain_gate:.2f}% wt_ok={_ra_wt_ok} → AUGMENT qty={_ra_qty:.4f}")
                             return "REENTRY_OPEN", f"RECOVERY_AUG_PARTIAL_exit{_ra_last_px:.4f}_cur{current_price:.4f}_dist{_ra_dist_pct:.3f}%_age{_ra_age_min:.0f}m", 95.0, _ra_qty
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_positionSize', 0) or positionAmt)

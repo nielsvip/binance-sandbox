@@ -604,7 +604,7 @@ class TradierConfig:
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = False  # stocks: no auto-hedge engine yet
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = False
     # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
-    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = False  # 2026-05-20 USER MANDATE: DC_LOW_4 emergency close OFF — replaced by MTF compound exit. Name kept for parity; tradier uses 5m TF. ROLLBACK: True restores newborn-window emergency close.
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # 2026-05-29 USER MANDATE: RE-ENABLED. The 2026-05-20 OFF was a cross-platform copy error — the "_3M_" in the name is a crypto-borrowed label; stocks fire on 5m (R1_TF='5m', R1_USE_DC_4BAR=True → dc_low4_5m). Every test shows positive sharpe with it ON. This is the immediate out-at-a-loss when a bounce was fake and price continued down. ROLLBACK: False.
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — per stocks team finding: frozen dc_low_4h@entry + -8% floor.
     # Worst-case stocks loss capped at -9% (vs -12.6% baseline / -17% intra-trade). 250 stops × 30 syms × 2.1yr = 4/sym/yr.
@@ -1340,7 +1340,7 @@ class TradierConfig:
     # has a new bypass `_is_recovery_aug` (reason-based: 'RECOVERY_AUG' in reason).
     # Default OFF — flip to True only after backtest validation on the 7-day
     # "forgotten" set (713 closes, see data/today_bt_baseline diff).
-    RECOVERY_AUGMENT_ENABLED: bool = True  # 2026-05-21 USER MANDATE post-SNDK — "GET RIGHT BACK IN" on partial-close cross-back (sibling to PRICE_CROSS_BACK for positionAmt>0)
+    RECOVERY_AUGMENT_ENABLED: bool = True  # 2026-05-21 USER MANDATE post-SNDK — "GET RIGHT BACK IN" on partial-close cross-back (sibling to PRICE_CROSS_BACK for positionAmt>0). 2026-05-29 USER MANDATE: gated in tradier_manage.py to fire ONLY when current gain >= 0.5*MIN_GAIN (>=1.5%) — never a martingale add to a net loser.
     RECOVERY_AUGMENT_BAND_PCT: float = 1.0       # 2026-05-21 widened 0.3→1.0 (rally past 0.3% band was leaving positions stranded)
     RECOVERY_AUGMENT_MAX_AGE_MIN: float = 240.0  # mirrors PRICE_CROSS_BACK_MAX_AGE_MIN
     RECOVERY_AUGMENT_REQUIRE_WT_CROSS: bool = False  # if True, also require a favorable WT cross on 5m before firing
