@@ -2893,9 +2893,9 @@ class Config:
     # only if price ALSO breaks a Donchian level — dc_high_<TF> (long) / dc_low_<TF>
     # (short), or dc_high4_<TF>/dc_low4_<TF> (latest 4-bar) when USE_4BAR=True — i.e. a
     # real breakout, not a touch-back. Fail-open if the indicator is missing.
-    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = False
+    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = True   # 2026-05-29 ENABLED live — vec A/B winner (4-bar: pool_sharpe 0.1845 vs touch-back 0.1372, dd 9.3% vs 16.4%, gain/sym/yr 159 vs 147) [DIAGNOSTIC 20<48]
     REENTRY_LIVE_MONITOR_DC_BREAK_TF: str = "3m"
-    REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = False
+    REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = True  # 2026-05-29 4-bar prior high (dc_high4_3m) won over full-DC on every metric
     # ═══════════════════════════════════════════════════════════════════════
     # END REENTRY GUARANTEE SWITCHES
     # ═══════════════════════════════════════════════════════════════════════

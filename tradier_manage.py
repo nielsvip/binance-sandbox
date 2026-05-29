@@ -2771,7 +2771,25 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             # SHORT: cur<=exit). Within-band on the other side also allowed.
                             _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
                             _xb_within_band = _xb_dist_pct <= _xb_band_pct
-                            if _xb_favorable or _xb_within_band:
+                            # 2026-05-29 USER: stocks reentry also requires a 4-bar Donchian breakout
+                            # (dc_high4_5m / dc_low4_5m on already-closed bars) — not just a touch of the
+                            # exit price. Mirrors crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open if missing.
+                            _xb_dcb_ok = True
+                            _xb_dckey = ""
+                            _xb_dclvl = 0.0
+                            if bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
+                                _xb_tf = str(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_TF', '5m'))
+                                _xb_4 = bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', True))
+                                if is_long:
+                                    _xb_dckey = f"dc_high4_{_xb_tf}" if _xb_4 else f"dc_high_{_xb_tf}"
+                                else:
+                                    _xb_dckey = f"dc_low4_{_xb_tf}" if _xb_4 else f"dc_low_{_xb_tf}"
+                                _xb_dclvl = safe_fetch_float(i.get(_xb_dckey), 0.0)
+                                if _xb_dclvl > 0:
+                                    _xb_dcb_ok = (is_long and current_price >= _xb_dclvl) or ((not is_long) and current_price <= _xb_dclvl)
+                            if (_xb_favorable or _xb_within_band) and not _xb_dcb_ok:
+                                logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
+                            elif _xb_favorable or _xb_within_band:
                                 _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
                                 action_type = "OPEN"
                                 qty = max(1, int(_xb_qty))
@@ -7662,7 +7680,24 @@ class StockStrategy:
                 if _xb_favorable or _xb_within_band:
                     from ez_reentry import check_reentry_confirmation as _chk_re
                     _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
-                    if _xb_gate_ok:
+                    # 2026-05-29 USER: also require a 4-bar Donchian breakout (dc_high4_5m / dc_low4_5m
+                    # on already-closed bars). Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open.
+                    _xb_dcb_ok = True
+                    _xb_dckey = ""
+                    _xb_dclvl = 0.0
+                    if bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
+                        _xb_tf = str(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_TF', '5m'))
+                        _xb_4 = bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', True))
+                        if is_long:
+                            _xb_dckey = f"dc_high4_{_xb_tf}" if _xb_4 else f"dc_high_{_xb_tf}"
+                        else:
+                            _xb_dckey = f"dc_low4_{_xb_tf}" if _xb_4 else f"dc_low_{_xb_tf}"
+                        _xb_dclvl = safe_fetch_float(i.get(_xb_dckey), 0.0)
+                        if _xb_dclvl > 0:
+                            _xb_dcb_ok = (is_long and current_price >= _xb_dclvl) or ((not is_long) and current_price <= _xb_dclvl)
+                    if _xb_gate_ok and not _xb_dcb_ok:
+                        logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
+                    elif _xb_gate_ok:
                         _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
                         _xb_trigger = f"{'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'}_{_xb_gate_reason}"
                         logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} vs exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}%) age={_xb_age_min:.0f}m trigger={_xb_trigger} — REOPEN")

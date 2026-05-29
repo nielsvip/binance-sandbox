@@ -560,6 +560,12 @@ class TradierConfig:
     MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: ["trb", "trc", "tra"])
     MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.05
     MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT: float = 0.5  # 2026-05-28 USER: micro-scalp may only CLOSE a position whose gain has ALREADY peaked >= this floor. Stops 0.05-0.1% round-trip churn (IBIT g0.074% peak0.098% never near 0.5%).
+    # 2026-05-29 USER: stocks reentry anti-churn — require a 4-bar Donchian breakout (dc_high4_5m /
+    # dc_low4_5m, computed on already-closed 5m bars) before re-entering, not just a touch of the exit
+    # price. Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK (vec winner). Stocks base TF = 5m.
+    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = True
+    REENTRY_LIVE_MONITOR_DC_BREAK_TF: str = "5m"
+    REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = True
     # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
     # 2026-04-25 rapid-grid HVC sweep (114-sym, 4.3yr): CONFIRMED DAMAGING on all thresholds:
     #   3TF=0.880 Sharpe (-1.56 vs baseline, 3.76% DD) | 4TF=1.092 (-1.34, 2.79% DD) | 5TF=0.731 (-1.70, 8.3% DD).
