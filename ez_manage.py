@@ -22829,9 +22829,18 @@ class MultiAccountTradeManager:
             # proc init, NOT by bypassing the gate. Until warm-start ships, expect more
             # MTF_NO_ARMED_STATE blocks for ~30-60 min after restart — that's correct
             # behaviour, NOT a regression.
+            # USER 2026-05-29: guaranteed reentry/augment BYPASS the MTF armed-state filter
+            # (top live blocker — 200×/day BLOCKED_MTF_NO_ARMED_STATE). Reentry (reason carries
+            # REENTRY) is guaranteed; an AUGMENT reaching here already passed the upstream bounce
+            # gate (gain>=0.5*MIN_GAIN, LOSER_KILL on gain<0) in execute_trade_action. Fresh
+            # OPEN/QUICK_OPEN still gated. ROLLBACK: GUARANTEED_REENTRY_AUGMENT_ENABLED=False.
+            _guar_ra_en = bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)) and (
+                "REENTRY" in _kill_act or "REENTRY" in _reason_up_mtf or "AUGMENT" in _kill_act
+            )
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
-                    and not _mtf_strong_buy_quick_bypass):
+                    and not _mtf_strong_buy_quick_bypass
+                    and not _guar_ra_en):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):
                     self.mtf_states = {}

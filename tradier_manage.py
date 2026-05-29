@@ -10215,8 +10215,8 @@ class TradierTradeManager:
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain <= 0:
             logger.warning(f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)")
             return "BLOCKED_NO_GAIN"
-        # MIN GAIN AUGMENT GUARD — NEVER augment a position below MIN_GAIN%. No exceptions.
-        _min_aug_gain = getattr(config, 'MIN_GAIN', 3.0)
+        # MIN GAIN AUGMENT GUARD — USER 2026-05-29: augment guaranteed at bounce >= 0.5*MIN_GAIN (was MIN_GAIN). gain<=0 still BLOCKED_NO_GAIN above.
+        _min_aug_gain = (float(getattr(config, 'MIN_GAIN', 3.0)) * float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))) if bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) else getattr(config, 'MIN_GAIN', 3.0)
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
@@ -10645,7 +10645,9 @@ class TradierTradeManager:
                 # BRANCH B (action='OPEN', positionAmt==0 _evaluate_for_account_and_symbol). Reason substring is
                 # the discriminator either way.
                 _pxc_back_reentry = 'PRICE_CROSS_BACK' in (reason or '').upper() or 'RECOVERY_AUG' in (reason or '').upper() or 'REENTRY' in (action or '').upper()
-                if is_entry_action and not _pxc_back_reentry and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                # USER 2026-05-29: guaranteed reentry/augment bypass MTF (augment already passed bounce gain wall upstream).
+                _guar_ra_trd_mtf = bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) and ('AUGMENT' in (action or '').upper() or 'REENTRY' in (action or '').upper() or 'REENTRY' in (reason or '').upper())
+                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}
@@ -10753,9 +10755,11 @@ class TradierTradeManager:
             # this checks WT momentum on D. ROLLBACK: HTF_TREND_VETO_ENABLED=False.
             # ═══════════════════════════════════════════════════════════════════════
             # 2026-05-18 per-sym overlay
+            _guar_ra_trd_htf = bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) and ('AUGMENT' in (action or '').upper() or 'REENTRY' in (action or '').upper() or 'REENTRY' in (reason or '').upper() or 'PRICE_CROSS_BACK' in (reason or '').upper())
             if (bool(_cfg('HTF_TREND_VETO_ENABLED', False, account_key, symbol, position_side))
                 and is_entry_action
                 and not _is_exit_or_reduce
+                and not _guar_ra_trd_htf
                 and 'HEDGE' not in (reason or '').upper()
                 and 'RULE_C' not in (reason or '').upper()):
                 try:

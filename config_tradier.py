@@ -634,6 +634,10 @@ class TradierConfig:
     DC4_STOP_GR_SCORE_MIN_IND: int = 5
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     DUP_GUARD_USE_GAIN_GATE: bool = True
+    # USER 2026-05-29 (mirror of config.py): reentry/augment must NOT be blocked by MTF
+    # armed-state filter or HTF_TREND_VETO. Augment guaranteed at bounce >= 0.5*MIN_GAIN.
+    # Reentry guaranteed. Fresh OPENs still gated. ROLLBACK: set False.
+    GUARANTEED_REENTRY_AUGMENT_ENABLED: bool = True
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
