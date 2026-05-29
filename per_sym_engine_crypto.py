@@ -746,9 +746,7 @@ def htf_trend_pass(ohlc_d: Dict[str, np.ndarray], ohlc_w: Optional[Dict[str, np.
 # ───────────────────────── trade walker (vectorized state) ────────────────
 
 def walk_trades(enter_15m: np.ndarray, leave_15m: np.ndarray, c15: np.ndarray, ts15: np.ndarray,
-                side: str, min_hold: int, cooldown: int,
-                atr_trail_arr: Optional[np.ndarray] = None, atr_trail_enabled: bool = False,
-                atr_trail_mult: float = 2.0, atr_trail_tf: str = '15m') -> List[Dict]:
+                side: str, min_hold: int, cooldown: int) -> List[Dict]:
     """Walk the 15m grid with one position at a time. Returns trade list.
     O(num_trades) using np.flatnonzero scans.
     """
@@ -776,21 +774,6 @@ def walk_trades(enter_15m: np.ndarray, leave_15m: np.ndarray, c15: np.ndarray, t
         if ep <= 0 or xp <= 0:
             i = exit_i + cooldown + 1
             continue
-        # DISC-MTF_ATR_TRAIL (2026-05-29 USER MANDATE): live-parity ratchet via shared helper.
-        # Additive — only truncates exit_i earlier than the technical exit. Gated by caller.
-        if atr_trail_enabled and atr_trail_arr is not None and exit_i > entry_i + min_hold:
-            from vec_paths.mtf_atr_trail import update_and_check as _at_check
-            _at_is_long = (side == 'LONG')
-            _at_state = {'trail': 0.0}
-            _at_hi = min(exit_i, len(atr_trail_arr) - 1)
-            for _at_j in range(entry_i + min_hold, _at_hi + 1):
-                _at_atr = float(atr_trail_arr[_at_j]) if _at_j < len(atr_trail_arr) else 0.0
-                _at_fire, _at_reason, _ = _at_check(_at_state, ep, float(c15[_at_j]), _at_atr, _at_is_long, float(atr_trail_mult), atr_trail_tf)
-                if _at_fire:
-                    if _at_j < exit_i:
-                        exit_i = _at_j
-                        xp = float(c15[exit_i])
-                    break
         if side == 'LONG':
             pnl_gross = (xp - ep) / ep * 100.0
         else:
@@ -844,11 +827,7 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      x7_bb_freeze_15m: Optional[np.ndarray] = None,
                      x7_abs_floor_pct: float = -8.0,
                      hedge_htf_ok_long: Optional[np.ndarray] = None,
-                     hedge_htf_ok_short: Optional[np.ndarray] = None,
-                     atr_trail_arr: Optional[np.ndarray] = None,
-                     atr_trail_enabled: bool = False,
-                     atr_trail_mult: float = 2.0,
-                     atr_trail_tf: str = '15m') -> List[Dict]:
+                     hedge_htf_ok_short: Optional[np.ndarray] = None) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -972,29 +951,6 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                     exit_i = pp_exit_i
                     xp = float(c15[exit_i])
                     forced_exit_origin = 'peak_protect_wt15m'
-        # ── DISC-MTF_ATR_TRAIL: live-parity MTF_ATR_TRAIL ratchet (2026-05-29 USER MANDATE) ──
-        # Faithful replication of tradier_manage.py:2318-2333 via shared vec_paths/mtf_atr_trail.py.
-        # Stateful ratchet walked bar-by-bar across this trade's trajectory; single position per trade
-        # so the trail state is fresh per trade (mirror of mtf_compound_exit_state[pk]['trail']).
-        # Gated by caller on MTF_EXIT_USE_COMPOUND AND MTF_ATR_TRAIL_ENABLED (atr_trail_enabled). Additive:
-        # only truncates exit_i earlier than the technical exit, never extends. Reason in NOLOSS bypass list.
-        if atr_trail_enabled and atr_trail_arr is not None and exit_i > entry_i + min_hold:
-            from vec_paths.mtf_atr_trail import update_and_check as _at_check
-            _at_is_long = (side == 'LONG')
-            _at_state = {'trail': 0.0}
-            _at_exit_i = -1
-            _at_hi = min(exit_i, len(atr_trail_arr) - 1)
-            for _at_j in range(entry_i + min_hold, _at_hi + 1):
-                _at_atr = float(atr_trail_arr[_at_j]) if _at_j < len(atr_trail_arr) else 0.0
-                _at_px = float(c15[_at_j])
-                _at_fire, _at_reason, _ = _at_check(_at_state, ep, _at_px, _at_atr, _at_is_long, float(atr_trail_mult), atr_trail_tf)
-                if _at_fire:
-                    _at_exit_i = _at_j
-                    break
-            if _at_exit_i > entry_i and _at_exit_i < exit_i:
-                exit_i = _at_exit_i
-                xp = float(c15[exit_i])
-                forced_exit_origin = forced_exit_origin or 'mtf_atr_trail'
         # User 2026-05-05 rule: "close at a loss when technicals go against OR hedge on wt1_3m flip".
         # Technical exit (multi-TF leave) IS the legitimate cut-loss. Hedge runs in parallel below.
         # No NOLOSS recovery-walk — that would override the technical exit and bleed the position.
