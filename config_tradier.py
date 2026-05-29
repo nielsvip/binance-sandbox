@@ -563,7 +563,7 @@ class TradierConfig:
     # 2026-05-29 USER: stocks reentry anti-churn — require a 4-bar Donchian breakout (dc_high4_5m /
     # dc_low4_5m, computed on already-closed 5m bars) before re-entering, not just a touch of the exit
     # price. Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK (vec winner). Stocks base TF = 5m.
-    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = True
+    REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED: bool = False  # 2026-05-29 NEUTRALIZED to default-OFF: agent set True (live stock default-ON) on sub-floor DIAGNOSTIC — gate code preserved in tradier_manage.py; enable only after >=100-stock proof + user OK
     REENTRY_LIVE_MONITOR_DC_BREAK_TF: str = "5m"
     REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR: bool = True
     # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.

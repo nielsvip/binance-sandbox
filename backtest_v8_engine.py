@@ -264,6 +264,13 @@ V8_USE_VEC_QUARANTINE_STRATEGY = os.environ.get("V8_USE_VEC_QUARANTINE_STRATEGY"
 # decision point is also evaluated by the corresponding vec module and divergences
 # logged to /tmp/v8_vec_divergences.jsonl. Safe to leave on in CI / sweeps.
 V8_VEC_SHADOW_VALIDATE         = os.environ.get("V8_VEC_SHADOW_VALIDATE",         "0") == "1"
+# 2026-05-29 — MTF ARMED-STATE ENTRY GATE (parity with live ez_manage.py:22791-22839).
+# Live config.MTF_ARMED_ENTRY_ENABLED defaults True (active protection): every
+# OPEN/AUGMENT/ENTRY (NOT REENTRY/hedge) is gated by mtf_live_evaluator's armed-state
+# + GR multi-confirm filter. backtest_v8_engine had 0 MTF refs → it over-fired entries
+# the live system blocks. This env flag mirrors the live config default: the gate fires
+# whenever config.MTF_ARMED_ENTRY_ENABLED is True. Set V8_DISABLE_MTF_GATE=1 to A/B it OFF.
+V8_DISABLE_MTF_GATE            = os.environ.get("V8_DISABLE_MTF_GATE",            "0") == "1"
 V8_USE_VEC_ALL                 = os.environ.get("V8_USE_VEC_ALL",                 "0") == "1"
 V8_BACKTEST_END_DATE           = os.environ.get("V8_BACKTEST_END_DATE",            "")  # YYYY-MM-DD; if set, simulation stops at this date
 if V8_USE_VEC_ALL:
@@ -2388,6 +2395,45 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _V8_DECISION_COUNTERS["doubleopen_reclass"] += 1
                 act = "AUGMENT"
                 reason = f"DECISION_ONLY_DOUBLEOPEN_RECLASS|{reason}"[:200]
+            # (a2) MTF ARMED-STATE ENTRY GATE — mirror ez_manage.py:22791-22839.
+            # Gates OPEN/AUGMENT/ENTRY (NOT REENTRY/hedge) on armed-state + GR filter.
+            # Same STRONG_BUY/QUICK_OPEN parameter-bypass as live. Fail-open on exception.
+            _mtf_act_do = (act or "").upper()
+            if (not V8_DISABLE_MTF_GATE
+                    and ("OPEN" in _mtf_act_do or "AUGMENT" in _mtf_act_do or "ENTRY" in _mtf_act_do)
+                    and "REENTRY" not in _mtf_act_do
+                    and not is_hedge and "HEDGE" not in (reason or "").upper()
+                    and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
+                try:
+                    import mtf_live_evaluator as _mle_do
+                    _mtf_rup_do = (reason or "").upper()
+                    _mtf_bypass_do = (
+                        ("STRONG_BUY" in _mtf_rup_do or "QUICK_OPEN" in _mtf_rup_do or "FORCE_HA_4H_ABOVE_BASIS" in _mtf_rup_do)
+                        and "NOT A TRADEABLE KEY" not in _mtf_rup_do
+                        and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
+                    )
+                    if not _mtf_bypass_do:
+                        _mtf_states_do = trade_manager.__dict__.setdefault("_bt_mtf_states", {})
+                        _mtf_side_do = "LONG" if _do_is_long else "SHORT"
+                        _mtf_ind_do = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                        if _mtf_ind_do:
+                            _mtf_key_do = f"{sym.upper()}_{_mtf_side_do}"
+                            _mtf_st_do = _mle_do.ensure_state(_mtf_states_do, _mtf_key_do)
+                            _mle_do.update_armed_state(_mtf_st_do, _mtf_ind_do, _mtf_side_do, config)
+                            _mtf_block_do = False
+                            _mtf_rsn_do = ""
+                            if bool(getattr(config, "MTF_REQUIRE_ARMED_ANY", True)) and not _mle_do._armed_any_effective(_mtf_st_do, _mtf_ind_do, _mtf_side_do, config):
+                                _mtf_block_do = True; _mtf_rsn_do = "MTF_NO_ARMED_STATE"
+                            elif bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
+                                _gr_tfs_do = int(getattr(config, "MTF_GR_MIN_TFS", 3))
+                                _gr_ind_do = int(getattr(config, "MTF_GR_MIN_IND", 5))
+                                if not _mle_do.gr_filter_pass(_mtf_ind_do, _mtf_side_do, "crypto", config, min_tfs=_gr_tfs_do, min_ind=_gr_ind_do):
+                                    _mtf_block_do = True; _mtf_rsn_do = f"MTF_GR_FILTER_FAIL_{_gr_tfs_do}tf_{_gr_ind_do}ind"
+                            if _mtf_block_do:
+                                _V8_DECISION_COUNTERS["blocks"] += 1
+                                return f"BLOCKED_{_mtf_rsn_do}"
+                except Exception:
+                    pass
             # (b) UNIVERSAL_NOLOSS_GATE — compute real gain at this px, block if at loss
             if is_red and not is_hedge:
                 _do_ung_on = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
@@ -2617,6 +2663,43 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         )
                         if _uag_gain_since < _uag_min_gain:
                             return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-29 PARITY — MTF ARMED-STATE ENTRY GATE — mirror ez_manage.py:22791-22839.
+        # Gates OPEN/AUGMENT/ENTRY (NOT REENTRY/hedge) on armed-state + GR filter. Same
+        # STRONG_BUY/QUICK_OPEN parameter-bypass as live. Fires when config.MTF_ARMED_ENTRY_ENABLED
+        # (live default True). Fail-open on exception. Set V8_DISABLE_MTF_GATE=1 to A/B off.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _mtf_act_full = (act or "").upper()
+        if (not V8_DISABLE_MTF_GATE
+                and ("OPEN" in _mtf_act_full or "AUGMENT" in _mtf_act_full or "ENTRY" in _mtf_act_full)
+                and "REENTRY" not in _mtf_act_full
+                and not is_hedge and "HEDGE" not in (reason or "").upper()
+                and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))):
+            try:
+                import mtf_live_evaluator as _mle_f
+                _mtf_rup_f = (reason or "").upper()
+                _mtf_bypass_f = (
+                    ("STRONG_BUY" in _mtf_rup_f or "QUICK_OPEN" in _mtf_rup_f or "FORCE_HA_4H_ABOVE_BASIS" in _mtf_rup_f)
+                    and "NOT A TRADEABLE KEY" not in _mtf_rup_f
+                    and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
+                )
+                if not _mtf_bypass_f:
+                    _mtf_states_f = trade_manager.__dict__.setdefault("_bt_mtf_states", {})
+                    _mtf_side_f = ps if ps in ("LONG", "SHORT") else ("LONG" if pk.endswith("_LONG") else "SHORT")
+                    _mtf_ind_f = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                    if _mtf_ind_f:
+                        _mtf_key_f = f"{sym.upper()}_{_mtf_side_f}"
+                        _mtf_st_f = _mle_f.ensure_state(_mtf_states_f, _mtf_key_f)
+                        _mle_f.update_armed_state(_mtf_st_f, _mtf_ind_f, _mtf_side_f, config)
+                        if bool(getattr(config, "MTF_REQUIRE_ARMED_ANY", True)) and not _mle_f._armed_any_effective(_mtf_st_f, _mtf_ind_f, _mtf_side_f, config):
+                            return "BLOCKED_MTF_NO_ARMED_STATE"
+                        if bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
+                            _gr_tfs_f = int(getattr(config, "MTF_GR_MIN_TFS", 3))
+                            _gr_ind_f = int(getattr(config, "MTF_GR_MIN_IND", 5))
+                            if not _mle_f.gr_filter_pass(_mtf_ind_f, _mtf_side_f, "crypto", config, min_tfs=_gr_tfs_f, min_ind=_gr_ind_f):
+                                return f"BLOCKED_MTF_GR_FILTER_FAIL_{_gr_tfs_f}tf_{_gr_ind_f}ind"
+            except Exception:
+                pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT — HARD_AUGMENT_LOCK — mirror ez_manage.py:13946-13955
         # Live blocks AUGMENT/OPEN/REENTRY within 900s of last position-increase unless
@@ -3323,6 +3406,46 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _bn_rvol = _g_store.arrays.get(f'relative_volume_{_bn_htf}', np.ones(_g_n))
                     _g_mask |= (_bn_pctb <= _bn_pctb_long) & (_bn_rvol >= _bn_rvol_min)
                     _g_mask |= (_bn_pctb >= _bn_pctb_short) & (_bn_rvol >= _bn_rvol_min)
+            # ENGINE_ENTRY_GATE_WIDEN_TRIGGERS (2026-05-29 entry-parity fix):
+            # The _GATE_KEYS prefilter only admits flat-position bars at wt/stoch/dc crosses.
+            # LIVE check_entry_candidates ALSO fires non-cross trigger families on flat bars:
+            # RSI/RSI2/ConnorsRSI extremes, MFI extremes, BB-squeeze fire, bar volume spikes,
+            # dc_basis crossovers, and PRICE_CROSS reentries. Those bars were SKIPPED here,
+            # suppressing entries the live system takes (largest Tier-2 entry-parity gap).
+            # Default True = parity; set False to reproduce the legacy narrow-gate numbers.
+            # Each mask only ADMITS a bar to check_entry_candidates, which still makes the
+            # final real-code entry decision per admitted bar (the gate never opens trades).
+            if bool(getattr(config, 'ENGINE_ENTRY_GATE_WIDEN_TRIGGERS', True)):
+                _wt_base_tf = '3m' if mode == 'crypto' else '5m'
+                _wt_rsi_lo = float(getattr(config, 'GATE_RSI_LONG_MAX', 35.0))
+                _wt_rsi_hi = float(getattr(config, 'GATE_RSI_SHORT_MIN', 65.0))
+                _wt_mfi_lo = float(getattr(config, 'GATE_MFI_LONG_MAX', 30.0))
+                _wt_mfi_hi = float(getattr(config, 'GATE_MFI_SHORT_MIN', 70.0))
+                for _wt_tf in (_wt_base_tf, '15m', '1h'):
+                    _wt_rsi = _g_store.arrays.get(f'rsi_{_wt_tf}', None)
+                    if _wt_rsi is not None:
+                        _g_mask |= (_wt_rsi <= _wt_rsi_lo) | (_wt_rsi >= _wt_rsi_hi)
+                    _wt_mfi = _g_store.arrays.get(f'mfi_{_wt_tf}', None)
+                    if _wt_mfi is not None:
+                        _g_mask |= (_wt_mfi <= _wt_mfi_lo) | (_wt_mfi >= _wt_mfi_hi)
+                    _wt_sf = _g_store.arrays.get(f'squeeze_fire_{_wt_tf}', None)
+                    if _wt_sf is not None:
+                        _g_mask |= (_wt_sf.astype(np.float32) != 0.0)
+                    _wt_vs = _g_store.arrays.get(f'bar_vol_spike_{_wt_tf}', None)
+                    if _wt_vs is not None:
+                        _g_mask |= _wt_vs.astype(bool)
+                    _wt_dbc = _g_store.arrays.get(f'dc_basis_crossover_{_wt_tf}', None)
+                    if _wt_dbc is not None:
+                        _g_mask |= _wt_dbc.astype(bool)
+                    _wt_dbu = _g_store.arrays.get(f'dc_basis_crossunder_{_wt_tf}', None)
+                    if _wt_dbu is not None:
+                        _g_mask |= _wt_dbu.astype(bool)
+                _wt_r2 = _g_store.arrays.get(f'rsi2_{_wt_base_tf}', _g_store.arrays.get('rsi_2_1h', None))
+                if _wt_r2 is not None:
+                    _g_mask |= (_wt_r2 <= float(getattr(config, 'GATE_RSI2_LONG_MAX', 10.0))) | (_wt_r2 >= float(getattr(config, 'GATE_RSI2_SHORT_MIN', 90.0)))
+                _wt_cr = _g_store.arrays.get('connors_rsi_D', None)
+                if _wt_cr is not None:
+                    _g_mask |= (_wt_cr <= float(getattr(config, 'GATE_CRSI_LONG_MAX', 20.0))) | (_wt_cr >= float(getattr(config, 'GATE_CRSI_SHORT_MIN', 80.0)))
             if _g_mask.any():
                 _g_dil = _g_mask.copy()
                 for _g_d in range(1, 4):

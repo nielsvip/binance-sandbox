@@ -721,6 +721,12 @@ class SweepConfig:
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.5       # 2026-05-26 live GRID WINNER: 1.5% (was 0.5%)
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 1.75  # 2026-05-26 live: 1.75% proportional (+0.25)
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10
+    # _TRADIER-suffixed mirrors of config_tradier.py:539-549 — read by vec PPL only when
+    # mode=="tradier" (vec_paths/partial_profit_lock_v2._ppl_cfg). Crypto vec ignores these.
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 1.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 1.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
+    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625
     # ── peak giveback / BE erosion exits ─────────────────────────────────────
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False   # default OFF (user disabled 2026-05-11)
@@ -2618,7 +2624,10 @@ def simulate_one_symbol(
                                 # the A/B can measure whether the UAG gate should count realized PPL.
                                 if (bool(getattr(config, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", True))
                                         and getattr(_pos, "ppl_fired", False)):
-                                    _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+                                    if mode == "tradier":
+                                        _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC_TRADIER", getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5)))
+                                    else:
+                                        _ppl_frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
                                     if 0.0 < _ppl_frac < 1.0:
                                         _uag_gain_since = _uag_gain_since / (1.0 - _ppl_frac)
                                 if _uag_gain_since < _uag_min_gain:
