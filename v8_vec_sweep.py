@@ -756,6 +756,7 @@ class SweepConfig:
     # ── Hedge engine (sweep model) ───────────────────────────────────────────
     # 2026-05-26 USER MANDATE: hedging declared dead weeks ago. Master switch off.
     HEDGE_SCAN_ENABLED: bool = False        # master switch for sweep hedge model
+    SWEEP_DISABLE_HEDGING: bool = True      # 2026-05-29 USER: HARD master kill — NO hedge OPEN in sweeps regardless of any hedge knob (HEDGE_SCAN/HEDGE_PROTECT/QUICK_HEDGE/OBLIGATORY). Makes hedge knobs inert no-ops; stops runaway HEDGE_OPEN/CLOSE/REOPEN cycles (AVAXUSDC halt). Set False ONLY for a dedicated hedge-validation sweep.
     HEDGE_MIN_LOSS_PCT: float = -0.5        # matches OBLIGATORY_HEDGE_MIN_LOSS_PCT
     HEDGE_QTY_PCT: float = 1.0              # hedge qty as fraction of main qty
     HEDGE_CLOSE_ON_WT3M_FLIP: bool = True   # close hedge when wt1_3m turns back
@@ -3242,12 +3243,12 @@ def simulate_one_symbol(
         if _b5_exit_result is None and _vec_check_in_gain_trend is not None and bool(getattr(config, "IN_GAIN_TREND_EXIT_LIVE_PARITY_ENABLED", False)):
             _b5_exit_result = _vec_check_in_gain_trend(_store, i, _pos, mode, config)
         # ENTRY #1+#2+#5+#7 HEDGE_PROTECT — fires hedge OPEN against losing position
-        if _b5_exit_result is None and _vec_check_hedge_protect_entry is not None and bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)):
+        if _b5_exit_result is None and not getattr(config, "SWEEP_DISABLE_HEDGING", True) and _vec_check_hedge_protect_entry is not None and bool(getattr(config, "HEDGE_PROTECT_LOSS_VEC_ENABLED", False)):
             _b5_hp = _vec_check_hedge_protect_entry(_store, i, _pos, mode, config, quick=True)
             if _b5_hp:
                 _b5_exit_result = _b5_hp  # routed via exit-pass since it depends on position state
         # ENTRY #4 QUICK_HEDGE_SAME_SYM_LAST_RESORT (HISTORICAL)
-        if _b5_exit_result is None and _vec_check_quick_hedge_lr is not None and bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)):
+        if _b5_exit_result is None and not getattr(config, "SWEEP_DISABLE_HEDGING", True) and _vec_check_quick_hedge_lr is not None and bool(getattr(config, "QUICK_HEDGE_SAME_SYM_LAST_RESORT_VEC_ENABLED", False)):
             _b5_lr = _vec_check_quick_hedge_lr(_store, i, _pos, mode, config)
             if _b5_lr:
                 _b5_exit_result = _b5_lr
@@ -3376,7 +3377,7 @@ def simulate_one_symbol(
                         state.last_reduce_ts = bar_ts
 
         # ─── HEDGE OPEN ────────────────────────────────────────────────────
-        if (config.HEDGE_SCAN_ENABLED and state.qty > 0.0001 and not state.hedge_active
+        if (config.HEDGE_SCAN_ENABLED and not getattr(config, "SWEEP_DISABLE_HEDGING", True) and state.qty > 0.0001 and not state.hedge_active
                 and (bar_ts - state.hedge_completed_ts) >= float(config.HEDGE_COMPLETED_LOCKOUT_SECONDS)
                 and gain < float(config.HEDGE_MIN_LOSS_PCT)
                 and bool(_wt3m_against[i])):
@@ -4128,7 +4129,7 @@ def simulate_one_symbol(
             _vng_hedge_fire = bool(_vng["hedge_fire"][0])
             _vng_hedge_qty = float(_vng["hedge_qty"][0])
             # OBLIGATORY_HEDGE: open vec same-symbol hedge before considering close
-            if _vng_hedge_fire and not state.hedge_active and _vng_hedge_qty > 0.0:
+            if _vng_hedge_fire and not getattr(config, "SWEEP_DISABLE_HEDGING", True) and not state.hedge_active and _vng_hedge_qty > 0.0:
                 _vh_reason = f"OBLIGATORY_HEDGE_VEC_g{gain:.2f}"
                 ev = TradeEvent(ts=bar_ts, type="HEDGE_OPEN", qty=_vng_hedge_qty, price=mark,
                     value=_vng_hedge_qty * mark, reason=_vh_reason)
