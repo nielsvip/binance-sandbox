@@ -1699,6 +1699,16 @@ class Config:
     # GUARANTEED price-cross reentry path (ez_positions_quick.py:15885+) keeps its existing crash-on-timeout
     # mechanism — this switch wraps the OTHER 8 dispatch sites in process_single_reentry_evaluation_epq.
     REENTRY_NEVER_SKIP_ENABLED: bool = True
+    # ═══ GUARANTEED_REENTRY_AUGMENT (USER 2026-05-29) ═══
+    # User report: price moved 15% with NO reentry or augment. Root cause (live logs):
+    # 200× BLOCKED_MTF_NO_ARMED_STATE + 31× BLOCKED_HTF_TREND_VETO. The 2026-05-27 removal
+    # of the REENTRY MTF bypass + the cold-start armed-state that "never flips True" left
+    # reentry/augment permanently blocked. USER MANDATE: reentry MUST be guaranteed, and
+    # augment MUST be guaranteed at bounce (gain >= 0.5*MIN_GAIN) OR a 3m DC break
+    # (price > dc_high_3m for LONG / < dc_low_3m for SHORT). When True, such reentries/
+    # augments BYPASS the MTF armed-state filter and HTF_TREND_VETO (fresh OPENs still
+    # respect both gates; LOSER_KILL on gain<0 still applies). ROLLBACK: set False.
+    GUARANTEED_REENTRY_AUGMENT_ENABLED: bool = True
     REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3                            # number of retry attempts on transient queue failure
     REENTRY_DISPATCH_BACKOFF_S: float = 0.4                           # backoff between attempts (async sleep)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
