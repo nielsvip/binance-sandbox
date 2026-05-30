@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-30 20:56:09 UTC
+# Copilot Status — 2026-05-30 21:11:30 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T20:53:01
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T20:53:01
-- **STALE_INDICATORS** [tradier]  — 2026-05-30T20:55:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T20:55:05
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T20:55:05
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T21:09:27
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T21:09:27
+- **STALE_INDICATORS** [tradier]  — 2026-05-30T21:11:29
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T21:11:29
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T21:11:29
 
 ## Missed Trades (trader comparison)
 
@@ -33,13 +33,13 @@ _None_
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
 - HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.2%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
-- HELD: **IOUSDT** LONG (crypto) peak +3.1%, now +0.2%
+- HELD: **IOUSDT** LONG (crypto) peak +3.1%, now +1.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 42
+**Issues (last 1h):** 50
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
