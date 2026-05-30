@@ -22838,7 +22838,8 @@ class MultiAccountTradeManager:
                  or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_mtf
                  or "TRADEABLE_KEYS_MANDATORY" in _reason_up_mtf or "WT_3M_FORCE_OPEN" in _reason_up_mtf
                  or "DC_BREAKOUT" in _reason_up_mtf or "DC_HIGH_3M" in _reason_up_mtf or "DC_LOW_3M" in _reason_up_mtf
-                 or "SCALP_V3_OPEN" in _reason_up_mtf or "BAR_BREAK" in _reason_up_mtf)
+                 or "SCALP_V3_OPEN" in _reason_up_mtf or "BAR_BREAK" in _reason_up_mtf
+                 or "MOMENTUM_SMA15M_WATCHDOG" in _reason_up_mtf)
                 and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
@@ -28864,6 +28865,53 @@ class MultiAccountTradeManager:
     #                     logger.error(f"[OUTLIER_HUNTER] Error: {e}", exc_info=True)
     #                     await asyncio.sleep(10)
     # DEAD_CODE_END — outlier_hunter_loop: never started, injects symbols into tradeable_keys
+
+    async def momentum_sma_watchdog_loop(self):
+        """USER 2026-05-30: SAFETY-NET OPEN watchdog. Every ~60s scan EVERY tradeable_key and force-OPEN any
+        FLAT key whose price is > MOMENTUM_SMA_WATCHDOG_PCT (2%) above sma_200_15m AND wt1_15m < cap (80, not
+        yet overbought) AND wt1_15m rising. Catches the winners the normal entry path missed. ROLLBACK:
+        MOMENTUM_SMA_WATCHDOG_ENABLED=False."""
+        logger.info("[MOMENTUM_WATCHDOG] started — every-minute force-open safety net for missed winners")
+        if not hasattr(self, "_mom_watchdog_cd"):
+            self._mom_watchdog_cd = {}
+        while True:
+            try:
+                await asyncio.sleep(float(getattr(config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 60.0)))
+                if not bool(getattr(config, "MOMENTUM_SMA_WATCHDOG_ENABLED", True)):
+                    continue
+                _pct = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 2.0)) / 100.0
+                _wt_cap = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 80.0))
+                _cd = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 300.0))
+                for position_key in list(getattr(self, "tradeable_keys", set()) or set()):
+                    try:
+                        if not str(position_key).endswith("_LONG"):
+                            continue
+                        if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
+                            continue
+                        account_key, symbol, pos_side = parse_position_key(position_key)
+                        position = await self.get_position(position_key)
+                        _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
+                        if _amt > 0:
+                            continue
+                        ind = await ii(self, symbol)
+                        if not ind:
+                            continue
+                        _sma15 = safe_fetch_float(ind.get("sma_200_15m", 0), 0.0)
+                        _px = safe_fetch_float(ind.get("current_price", 0), 0.0)
+                        _w1 = safe_fetch_float(ind.get("wt1_15m", 0), 0.0)
+                        _w1p = safe_fetch_float(ind.get("wt1_15m_prev", _w1), _w1)
+                        if _sma15 <= 0 or _px <= 0:
+                            continue
+                        if _px > _sma15 * (1.0 + _pct) and _w1 < _wt_cap and _w1 > _w1p:
+                            self._mom_watchdog_cd[position_key] = time.time()
+                            _reason = f"MOMENTUM_SMA15M_WATCHDOG_px{_px:.6f}>sma15m+{_pct*100:.1f}pct_wt15m{_w1:.1f}<{_wt_cap:.0f}rising"
+                            logger.critical(f"🐶 [MOMENTUM_WATCHDOG] {position_key}: FORCE-OPEN missed winner — {_reason}")
+                            await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0)
+                    except Exception as _wde:
+                        logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: {_wde}")
+            except Exception as _e:
+                logger.error(f"[MOMENTUM_WATCHDOG] loop error: {_e}")
+                await asyncio.sleep(5.0)
 
     async def reentry_enforcement_loop(self):
         logger.info("[REENTRY_ENFORCE] Aggressive reentry loop started (15s interval)")
@@ -49325,6 +49373,10 @@ async def main():
             )
             background_tasks.append(
                 asyncio.create_task(trade_manager.momentum_rider_loop())
+            )
+            # USER 2026-05-30: every-minute momentum force-open safety net (>2% above sma_15m + wt1_15m<80 rising)
+            background_tasks.append(
+                asyncio.create_task(trade_manager.momentum_sma_watchdog_loop())
             )
             # OLD outlier_scalper_loop DISABLED — replaced by outlier_hunter_loop which scans ALL futures
             # background_tasks.append(asyncio.create_task(trade_manager.outlier_scalper_loop()))

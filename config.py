@@ -120,8 +120,8 @@ class Config:
     # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
     # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
     # 2026-04-22 user-authorized live flip with pos_min_qty cap
-    SCALP_V3_ENABLED: bool = False
-    SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
+    SCALP_V3_ENABLED: bool = False        # USER 2026-05-30: SCALP_V3 PROHIBITED (counter-trend churn). Stays off.
+    SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: [])  # USER 2026-05-30: emptied — no account runs SCALP_V3.
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 20.0       # 2026-04-23: bumped 10→20 (Binance min $5, want >$10 after any residual cuts)
     # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
@@ -364,7 +364,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
+    HEDGE_ACCOUNTS = []  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
     # REVERTED 2026-05-18 18:30: 3600 had no sample-floor evidence (violates 2026-05-16 mandate). Restoring 2026-05-10 root-cause fix value 60. Isolated vec sweep queued.
     HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # REVERTED 2026-05-18 18:30 (was 3600 since 2026-05-17, was 60 since 2026-05-10)
@@ -1722,6 +1722,14 @@ class Config:
     #     that 3% gate is enforced separately and is NOT affected by this switch.
     # Fresh non-reentry OPENs still respect MTF/HTF. ROLLBACK: set False.
     GUARANTEED_REENTRY_AUGMENT_ENABLED: bool = True
+    # USER 2026-05-30: every-minute MOMENTUM force-open SAFETY NET. Scans every tradeable_key; force-OPENs any
+    # FLAT key where price > PCT% above sma_200_15m AND wt1_15m < WT_CAP (not overbought) AND wt1_15m rising.
+    # Catches the biggest winners the normal entry path misses. ROLLBACK: MOMENTUM_SMA_WATCHDOG_ENABLED=False.
+    MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
+    MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
+    MOMENTUM_SMA_WATCHDOG_PCT: float = 2.0          # price must be > this % above sma_200_15m
+    MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
+    MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
     REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3                            # number of retry attempts on transient queue failure
     REENTRY_DISPATCH_BACKOFF_S: float = 0.4                           # backoff between attempts (async sleep)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
