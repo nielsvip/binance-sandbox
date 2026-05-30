@@ -22888,10 +22888,36 @@ class MultiAccountTradeManager:
             _guar_ra_en = bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)) and (
                 "REENTRY" in _kill_act or "REENTRY" in _reason_up_mtf or "AUGMENT" in _kill_act
             )
+            # USER 2026-05-30: NEVER MISS A MOVE. A breakout of the PREVIOUS-bar 1h Donchian is a 100% pass —
+            # bypass the armed-state requirement for any tradeable symbol. LONG: price>dc_high_1h_prev;
+            # SHORT: price<dc_low_1h_prev (prev-bar level because the live Donchian auto-extends on the
+            # breakout bar). COUNTER_TREND_ADD_BLOCK already ran (above) so a breakout against the 1h cannot
+            # pass. Fail-CLOSED. ROLLBACK: BREAKOUT_DC1H_BYPASS_ENABLED=False.
+            _mtf_momentum_bypass = False
+            try:
+                if bool(getattr(config, "BREAKOUT_DC1H_BYPASS_ENABLED", True)):
+                    _mb_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                    _mb_is_long = (position_side or "LONG") == "LONG"
+                    if _mb_sym:
+                        _mbi = await ii(self, _mb_sym) or {}
+                        _mb_px = float(old_price) if old_price else 0.0
+                        _mb_dch = safe_fetch_float(_mbi.get("dc_high_1h_prev"), 0.0)
+                        _mb_dcl = safe_fetch_float(_mbi.get("dc_low_1h_prev"), 0.0)
+                        if _mb_px > 0:
+                            if _mb_is_long and _mb_dch > 0 and _mb_px > _mb_dch:
+                                _mtf_momentum_bypass = True
+                            elif (not _mb_is_long) and _mb_dcl > 0 and _mb_px < _mb_dcl:
+                                _mtf_momentum_bypass = True
+                            if _mtf_momentum_bypass:
+                                _mb_lvl = f">dc_high_1h_prev={_mb_dch:.6f}" if _mb_is_long else f"<dc_low_1h_prev={_mb_dcl:.6f}"
+                                logger.warning(f"[BREAKOUT_DC1H_BYPASS] {position_key} side={position_side}: 1h Donchian breakout (px={_mb_px:.6f} {_mb_lvl}) — armed-state requirement bypassed. reason={(reason or '')[:50]}")
+            except Exception as _mbe:
+                logger.warning(f"[BREAKOUT_DC1H_BYPASS] check error (fail-closed): {_mbe}")
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
                     and not _mtf_strong_buy_quick_bypass
-                    and not _guar_ra_en):
+                    and not _guar_ra_en
+                    and not _mtf_momentum_bypass):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):
                     self.mtf_states = {}
@@ -22916,6 +22942,40 @@ class MultiAccountTradeManager:
                             logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.6f}→{quantity:.6f} (mult={_mtf_mult})")
         except Exception as _mtf_e:
             logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 📈 BREAKOUT_SIZE_LADDER (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
+        # strongly extended past sma_200_15m. Tiered multiplier by |price-sma_200_15m|/sma_200_15m
+        # (LONG above / SHORT below). ADD-TO-STRENGTH — only sizes up when price is already extended
+        # the RIGHT way (never a martingale add: COUNTER_TREND_ADD_BLOCK ran above). Fail-open.
+        # ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True))
+                    and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                    and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                    and quantity and quantity > 0):
+                _bsl_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                _bsl_is_long = (position_side or "LONG") == "LONG"
+                if _bsl_sym:
+                    _bsli = await ii(self, _bsl_sym) or {}
+                    _bsl_px = float(old_price) if old_price else 0.0
+                    _bsl_sma = safe_fetch_float(_bsli.get("sma_200_15m"), 0.0)
+                    if _bsl_px > 0 and _bsl_sma > 0:
+                        _bsl_dist = ((_bsl_px - _bsl_sma) / _bsl_sma * 100.0) if _bsl_is_long else ((_bsl_sma - _bsl_px) / _bsl_sma * 100.0)
+                        _bsl_mult = 1.0
+                        if _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_PCT", 2.5)):
+                            _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_MULT", 3.0))
+                        elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_PCT", 1.5)):
+                            _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_MULT", 2.0))
+                        elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_PCT", 1.0)):
+                            _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_MULT", 1.5))
+                        if _bsl_mult > 1.0:
+                            _bsl_mult = min(_bsl_mult, float(getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0)))
+                            _bsl_orig = quantity
+                            quantity = quantity * _bsl_mult
+                            logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past sma_200_15m → qty {_bsl_orig:.6f}→{quantity:.6f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
+        except Exception as _bsle:
+            logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
         # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency-exit reasons bypass.

@@ -2494,8 +2494,23 @@ class TradierConfig:
     STOP_LOSS_THRESHOLD = 999.0  # BACKTEST_CHANGE_17: was 1.0. Dead code under STRICT_NO_LOSS — disabled
     STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
     STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk ; DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
-    STRICT_NO_LOSS_ACCOUNTS = []#['ang', 'inf', 'flz', 'men', 'fin']' 
-    STRICT_NO_LOSS_ACCOUNTS_TRADIER = [] 
+    STRICT_NO_LOSS_ACCOUNTS = []#['ang', 'inf', 'flz', 'men', 'fin']'
+    STRICT_NO_LOSS_ACCOUNTS_TRADIER = []
+    # USER 2026-05-30 ABSOLUTE: martingale destroyed everywhere — block any OPEN/AUGMENT/REENTRY whose side is
+    # against wt1_1h (stocks mirror of crypto config.COUNTER_TREND_ADD_BLOCK_ENABLED; wired in queue_trade_action).
+    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True
+    # USER 2026-05-30: HIGHER open/reentry/augment qty when price is strongly extended past ema_200_15m.
+    # Stocks have NO sma_200_15m (tradier_indicators.py 15m sma=[]) → use ema_200_15m as the 200-anchor.
+    # Tiered ×mult by |price-ema_200_15m|/ema_200_15m (LONG above / SHORT below). Add-to-strength, never
+    # martingale (COUNTER_TREND_ADD_BLOCK ran at queue top). ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
+    BREAKOUT_SIZE_LADDER_ENABLED: bool = True
+    BREAKOUT_SIZE_EMA200_T1_PCT: float = 1.0
+    BREAKOUT_SIZE_EMA200_T1_MULT: float = 1.5
+    BREAKOUT_SIZE_EMA200_T2_PCT: float = 1.5
+    BREAKOUT_SIZE_EMA200_T2_MULT: float = 2.0
+    BREAKOUT_SIZE_EMA200_T3_PCT: float = 2.5
+    BREAKOUT_SIZE_EMA200_T3_MULT: float = 3.0
+    BREAKOUT_SIZE_MAX_MULT: float = 3.0
     SWEEP_OPTIMAL_ENTRY_TF: str = '1h'  # DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     SYMBOL_PERF_DECAY_HOURS: float = 12.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416

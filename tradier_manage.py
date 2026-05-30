@@ -3494,6 +3494,31 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     _OVERTRADE_COUNTER[_ot_key] = _ot_n + 1
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE — STOCKS mirror of ez_manage).
+        # NO open/augment/reentry whose side is against wt1_1h. Reads LIVE wt1_1h (not gain — a
+        # martingaled-to-breakeven loser can't dodge it). Single chokepoint that destroys martingale
+        # on the stock side too. CLOSE/REDUCE/HEDGE pass. Fail-open. ROLLBACK: =False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _ctb_act = (action or '').upper()
+            if (
+                bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
+                and ('OPEN' in _ctb_act or 'AUGMENT' in _ctb_act or 'ENTRY' in _ctb_act or 'REENTER' in _ctb_act or _ctb_act == 'BUY')
+                and 'CLOSE' not in _ctb_act and 'REDUCE' not in _ctb_act and 'HEDGE' not in _ctb_act
+                and 'HEDGE' not in (reason or '').upper()
+            ):
+                _ctb_acct, _ctb_sym, _ctb_side = parse_position_key(position_key)
+                _ctb_ind = trade_manager.get_indicators(_ctb_sym) if _ctb_sym else {}
+                if _ctb_ind:
+                    _ctb_is_long = _ctb_side == "LONG"
+                    _ctb_w1 = safe_fetch_float(_ctb_ind.get("wt1_1h", 0), 0.0)
+                    _ctb_w2 = safe_fetch_float(_ctb_ind.get("wt2_1h", 0), 0.0)
+                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                        logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
+                        return False
+        except Exception as _ctbe:
+            logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
@@ -3752,6 +3777,37 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             return False
         if quantity <= 0:
             return False
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 📈 BREAKOUT_SIZE_LADDER — STOCKS (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
+        # strongly extended past ema_200_15m (stocks have no sma_200_15m → ema_200_15m anchor). Tiered
+        # ×1.5/×2/×3 (cap MAX_MULT) by |price-ema_200_15m|/ema_200_15m (LONG above / SHORT below). Entry
+        # actions only; downstream buying-power/QTY checks still apply. Add-to-strength (COUNTER_TREND_ADD_BLOCK
+        # ran at queue top). Fail-open. ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True))
+                    and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
+                    and quantity and quantity > 0):
+                _bsli = trade_manager.get_indicators(symbol) if symbol else {}
+                _bsl_is_long = position_side == "LONG"
+                _bsl_px = float(current_price) if current_price else 0.0
+                _bsl_ema = safe_fetch_float(_bsli.get("ema_200_15m"), 0.0) if _bsli else 0.0
+                if _bsl_px > 0 and _bsl_ema > 0:
+                    _bsl_dist = ((_bsl_px - _bsl_ema) / _bsl_ema * 100.0) if _bsl_is_long else ((_bsl_ema - _bsl_px) / _bsl_ema * 100.0)
+                    _bsl_mult = 1.0
+                    if _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_EMA200_T3_PCT", 2.5)):
+                        _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_EMA200_T3_MULT", 3.0))
+                    elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_EMA200_T2_PCT", 1.5)):
+                        _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_EMA200_T2_MULT", 2.0))
+                    elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_PCT", 1.0)):
+                        _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_MULT", 1.5))
+                    if _bsl_mult > 1.0:
+                        _bsl_mult = min(_bsl_mult, float(getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0)))
+                        _bsl_orig = quantity
+                        quantity = quantity * _bsl_mult
+                        logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past ema_200_15m → qty {_bsl_orig:.4f}→{quantity:.4f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
+        except Exception as _bsle:
+            logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
         if config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
             try:
                 from utils import get_performance_multiplier

@@ -1735,6 +1735,24 @@ class Config:
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False # also require wt1_4h against (sharper); default just 1h per user mandate
     COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
+    # USER 2026-05-30: NEVER MISS A MOVE. A true breakout — price breaking the PREVIOUS-bar 1h Donchian
+    # (LONG: price>dc_high_1h_prev; SHORT: price<dc_low_1h_prev) — is a 100% pass: it bypasses the MTF
+    # armed-state gate (#1 live open-blocker, BLOCKED_MTF_NO_ARMED_STATE) for ANY tradeable symbol. Prev-bar
+    # level because the live Donchian auto-extends on the breakout bar. COUNTER_TREND_ADD_BLOCK still runs
+    # first, so a breakout against the 1h trend can never sneak through. ROLLBACK: =False.
+    BREAKOUT_DC1H_BYPASS_ENABLED: bool = True
+    # USER 2026-05-30: HIGHER open/reentry quantity when the bounce is strongly extended past sma_200_15m.
+    # Tiered multiplier on OPEN/AUGMENT/REENTRY qty by |price-sma_200_15m|/sma_200_15m (LONG above / SHORT
+    # below). ADD-TO-STRENGTH, never martingale — only sizes up when price is already extended the RIGHT way.
+    # ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
+    BREAKOUT_SIZE_LADDER_ENABLED: bool = True
+    BREAKOUT_SIZE_SMA200_T1_PCT: float = 1.0     # >=1.0% past sma_200_15m → ×T1
+    BREAKOUT_SIZE_SMA200_T1_MULT: float = 1.5
+    BREAKOUT_SIZE_SMA200_T2_PCT: float = 1.5     # >=1.5% → ×T2
+    BREAKOUT_SIZE_SMA200_T2_MULT: float = 2.0
+    BREAKOUT_SIZE_SMA200_T3_PCT: float = 2.5     # >=2.5% → ×T3
+    BREAKOUT_SIZE_SMA200_T3_MULT: float = 3.0
+    BREAKOUT_SIZE_MAX_MULT: float = 3.0          # hard cap on the qty multiplier
     REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3                            # number of retry attempts on transient queue failure
     REENTRY_DISPATCH_BACKOFF_S: float = 0.4                           # backoff between attempts (async sleep)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
