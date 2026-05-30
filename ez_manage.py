@@ -47895,12 +47895,57 @@ def heap_dump_handler(signum, frame):
         for sk, nb in sorted(shape_bytes.items(), key=lambda x: -x[1])[:25]:
             out.append(f"  {nb/1048576:8.2f}MB  {sk}")
         type_count = {}
+        coro_count = {}
+        task_count = {}
         for o in objs:
             tn = f"{type(o).__module__}.{type(o).__name__}"
             type_count[tn] = type_count.get(tn, 0) + 1
+            try:
+                if tn == "builtins.coroutine":
+                    qn = getattr(o, "__qualname__", "?")
+                    coro_count[qn] = coro_count.get(qn, 0) + 1
+                elif type(o).__name__ == "Task" and "asyncio" in type(o).__module__:
+                    cr = o.get_coro()
+                    qn = getattr(cr, "__qualname__", "?")
+                    task_count[qn] = task_count.get(qn, 0) + 1
+            except Exception:
+                continue
         out.append("=== top object types by count ===")
         for tn, c in sorted(type_count.items(), key=lambda x: -x[1])[:25]:
             out.append(f"  {c:9d}  {tn}")
+        out.append("=== coroutine objects by qualname ===")
+        for qn, c in sorted(coro_count.items(), key=lambda x: -x[1])[:30]:
+            out.append(f"  {c:7d}  {qn}")
+        out.append("=== asyncio Tasks by coro qualname ===")
+        for qn, c in sorted(task_count.items(), key=lambda x: -x[1])[:30]:
+            out.append(f"  {c:7d}  {qn}")
+        try:
+            import resource as _res
+            _rss_mb = _res.getrusage(_res.RUSAGE_SELF).ru_maxrss / 1048576
+            out.append(f"=== ru_maxrss(MB)={_rss_mb:.0f} gc_objs={len(objs)} ===")
+        except Exception:
+            pass
+        def _ref_hist(pred, label, limit=8000):
+            seen = 0
+            hist = {}
+            for o in objs:
+                try:
+                    if not pred(o):
+                        continue
+                    seen += 1
+                    if seen > limit:
+                        break
+                    for r in _gc.get_referrers(o):
+                        rn = f"{type(r).__module__}.{type(r).__name__}"
+                        hist[rn] = hist.get(rn, 0) + 1
+                except Exception:
+                    continue
+            out.append(f"=== referrer-types holding {label} (sampled {min(seen,limit)}) ===")
+            for rn, c in sorted(hist.items(), key=lambda x: -x[1])[:15]:
+                out.append(f"  {c:8d}  {rn}")
+        _ref_hist(lambda o: type(o).__name__ == "PosixPath", "PosixPath")
+        _ref_hist(lambda o: type(o).__name__ == "coroutine", "coroutine")
+        _ref_hist(lambda o: type(o) is list, "list", limit=20000)
         tm = None
         for o in objs:
             if o.__class__.__name__ == "MultiAccountTradeManager":
