@@ -22719,6 +22719,22 @@ class MultiAccountTradeManager:
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 SCALPING HARD-GATE (USER 2026-05-30 ABSOLUTE): NO scalp open/reentry when disabled.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _sc_act = (action or "").upper()
+            _sc_reas = (reason or "").upper()
+            if ("SCALP" in _sc_act or "SCALP" in _sc_reas) and "CLOSE" not in _sc_act and "REDUCE" not in _sc_act:
+                if "SCALP_V3" in _sc_act or "SCALP_V3" in _sc_reas:
+                    if not getattr(config, "SCALP_V3_ENABLED", False):
+                        logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED V3 {action} — SCALP_V3_ENABLED is False. reason={reason[:50]}")
+                        return f"BLOCKED_SCALP_V3_DISABLED"
+                else:
+                    if not getattr(config, "SCALP_MODE", False):
+                        logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED {action} — SCALP_MODE is False. reason={reason[:50]}")
+                        return f"BLOCKED_SCALP_DISABLED"
+        except Exception as _sce: logger.warning(f"[SCALPING_HARD_GATE] check error (fail-open): {_sce}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 PER_SYM_SIDE_DISABLED (USER 2026-05-28) — respect LONG_ENABLED/SHORT_ENABLED.
         # A (symbol, side) with NO positive backtest (UVE results + SYMBOL_REPORT) gets
         # LONG_ENABLED:false / SHORT_ENABLED:false in per_sym_active_config.json overrides.
