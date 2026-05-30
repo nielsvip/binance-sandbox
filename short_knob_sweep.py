@@ -20,7 +20,7 @@ KNOBS_FILE = f"{REPO}/vec_aware_knobs.txt"
 BASE_OVERRIDES = {"WT_DC_HTF_GATE": "4h", "QUALITY_BOTTOM_DISABLE_SCATTERGUN": "True"}
 BASELINE_LONG = 0.40
 BASELINE_SHORT = 0.26
-MAX_PARALLEL = 4          # bounded — coexist with S1 production sweeps, no OOM
+MAX_PARALLEL = 2          # bounded — each v8_vec_sweep also runs --workers 2, so ~4 worker procs total (~12GB). 4-way OOM'd S1 (each sweep spawns ~8 internal workers).
 RESULT_CSV = os.path.expanduser("~/logs/short_knob_sweep_results.csv")
 POOL_RE = re.compile(r"pool_sharpe=([+-]?[0-9.]+)")
 DD_RE = re.compile(r"dd=([0-9.]+)%")
@@ -39,7 +39,7 @@ def candidates_for(name, default):
 def run_arm(knob, val):
     syms = open(SYMS_FILE).read().strip()
     cmd = [PY, "v8_vec_sweep.py", "--mode", "crypto", "--symbols", syms,
-           "--sides", "SHORT", "--start", "2024-01-01"]
+           "--sides", "SHORT", "--start", "2024-01-01", "--workers", "2"]
     for k, v in BASE_OVERRIDES.items():
         cmd += ["--override", f"{k}={v}"]
     cmd += ["--override", f"{knob}={val}"]
