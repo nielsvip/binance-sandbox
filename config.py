@@ -63,7 +63,7 @@ class Config:
     COMMISSION_BUFFER_PCT: float = 0.10
     REENTRY_PRICE_IMPROVE_PCT: float = 0.10  # require 0.10% price improvement vs exit before reentry
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
-    MAX_AUGMENTS_PER_POSITION: int = 20  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
+    MAX_AUGMENTS_PER_POSITION: int = 999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
@@ -1031,7 +1031,7 @@ class Config:
     # AUGMENTED_POSITIONS_GUARD floor at ez_manage.py:12190 was `0.5 * MIN_GAIN`; tune via this mult.
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5
     # ALL_TF_AGAINST_CLOSE at ez_manage.py:20633 required ALL 5 TFs against; tune min_tfs (1..5).
-    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = 5
+    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = 4   # USER 2026-05-30: 4/5 crypto (stocks 5, use more TFs)
     # check_entry_vetting NO_STRUCT_OR_BREAKOUT at ez_manage.py:507 had no toggle.
     # When False, the "structure_ok or dc_breakout" requirement is bypassed (entry trigger alone gates).
     ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED: bool = True
@@ -1245,6 +1245,7 @@ class Config:
         'DC_BB_D_BREAK_REVERSE',          # 2026-05-06 user mandate (LUNC -18%): D-band break/cross-back wrong-side close
         'WT15M_AGAINST',                  # 2026-05-06 user mandate: wt1_15m against → hedge or close NO MATTER WHAT
         'ALL_TF_AGAINST',                 # 2026-05-06 user mandate: all TFs against → close primary, hedge becomes main
+        'HTF_AGAINST_FORCE_CLOSE',        # 2026-05-30 user ABSOLUTE: wt1_1h against → close NOW, nothing survives a 1h flip
         # 2026-05-09 USER MANDATE: only R1, R2, hedge-failed can close at loss.
         'R1_DC_LOW4_3M_EMERGENCY',        # newborn-window dc4_3m breach → close
         'NEWBORN_LOSS_KILL',              # 2026-05-21 USER: newborn position with gain<threshold → close (ORDI-protection)
@@ -1730,6 +1731,10 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_PCT: float = 2.0          # price must be > this % above sma_200_15m
     MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
     MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
+    # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
+    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side
+    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False # also require wt1_4h against (sharper); default just 1h per user mandate
+    COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
     REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3                            # number of retry attempts on transient queue failure
     REENTRY_DISPATCH_BACKOFF_S: float = 0.4                           # backoff between attempts (async sleep)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
@@ -2404,7 +2409,7 @@ class Config:
     GR_HTF_DIRECT_ENTRY_SCORE_MIN: float = 23.0    # 🚩 2026-05-17 USER: rescaled 12→23. New max = 6 TFs × 11 ind = 66 (was 5×7=35). Same selectivity ratio 34.3%.
     GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE: float = 34.0 # 🚩 2026-05-17 USER: rescaled 18→34 (same ratio 51.4%).
     GR_HTF_DIRECT_EXIT_ENABLED: bool = True         # 🚩 Master exit switch. ROLLBACK: False
-    GR_HTF_DIRECT_EXIT_SCORE: float = 29.0          # 🚩 2026-05-17 USER: rescaled 15.5→29 (same ratio 44.3%). PRIOR 15.5 (for 35-max).
+    GR_HTF_DIRECT_EXIT_SCORE: float = 15.0   # USER 2026-05-30: was unreachable 29 (max 25). 15 = 3 entry TFs all against → fires.          # 🚩 2026-05-17 USER: rescaled 15.5→29 (same ratio 44.3%). PRIOR 15.5 (for 35-max).
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger

@@ -2260,8 +2260,9 @@ class TradierConfig:
     # 2026-05-21 20:05 — wired knob (was hardcoded ±5 in ez_manage.py:18379/18382).
     # Sweep [5,6,7,8,10,12,15] for positive delta Sharpe / WR vs current ±5. ROLLBACK: 5.
     HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0
-    R3_HTF_FLIP_EXIT_ENABLED: bool = False               # was True 2026-05-17; reverted — no sample-floor proof
-    R3_HTF_FLIP_4H_TIER_ENABLED: bool = False            # was True 2026-05-17; reverted — no sample-floor proof
+    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = 5   # USER 2026-05-30: stocks use more TFs (crypto=4)
+    R3_HTF_FLIP_EXIT_ENABLED: bool = True   # USER 2026-05-30: ABSOLUTELY for stocks (needs STF confirm — see code)
+    R3_HTF_FLIP_4H_TIER_ENABLED: bool = True   # USER 2026-05-30: enabled for stocks
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30

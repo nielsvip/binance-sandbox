@@ -17241,10 +17241,10 @@ class MultiAccountTradeManager:
             )
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, "MIN_POSITION_SIZE", 45.0)
-            # USER 2026-05-30: a BOUNCE augment — price pulled back BELOW the last exit price AND the 1h is
-            # still going the right way (wt1_1h vs wt2_1h) — augments at 0.5*MIN_GAIN (1.5%). EVERY other
-            # augment (incl a breakout) stays at MIN_GAIN (3%). The 0.5*MIN_GAIN rule is BOUNCE-ONLY.
-            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
+            # USER 2026-05-30: AUGMENT a million times as long as gain stays above 0.5*MIN_GAIN (1.5%). NO count
+            # cap (MAX_AUGMENTS uncapped). Direction is enforced separately by COUNTER_TREND_ADD_BLOCK (no add
+            # against wt1_1h), so this is purely "winner past +1.5% → keep pyramiding". gain<0 still LOSER_KILL.
+            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * 0.5
             _aug_is_bounce = False
             try:
                 _aug_is_long = position_side == "LONG"
@@ -18877,11 +18877,17 @@ class MultiAccountTradeManager:
             # trend-vetoed. No gain math here — augment's 3% gate lives above; reentry has no gain.
             # ═══════════════════════════════════════════════════════════════════════════
             _guar_ra_tda = bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)) and (_original_action_was_reentry or is_augment)
+            # USER 2026-05-30: a dc_1h BREAKOUT overrides the daily-trend veto — allow a LONG past the veto when
+            # price > prev dc_1h high (SHORT when price < prev dc_1h low). A confirmed 1h breakout beats the veto.
+            _htfv_dch1h_prev = _sf(i.get("dc_high_1h_prev", i.get("dc_high_1h", 0)), 0.0)
+            _htfv_dcl1h_prev = _sf(i.get("dc_low_1h_prev", i.get("dc_low_1h", 0)), 0.0)
+            _htfv_breakout = (is_long and _htfv_dch1h_prev > 0 and current_price > _htfv_dch1h_prev) or ((not is_long) and _htfv_dcl1h_prev > 0 and current_price < _htfv_dcl1h_prev)
             if (
                 # 2026-05-18 per-sym overlay
                 bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ENABLED", False))
                 and action in ("OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REVERSE", "REVERSE_AUGMENT")
                 and not _guar_ra_tda
+                and not _htfv_breakout
                 and "HEDGE" not in (reason or "").upper()
                 and "RULE_C" not in (reason or "").upper()
             ):
@@ -22689,6 +22695,30 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE): NO open/augment/reentry against wt1_1h.
+        # Reads LIVE wt1_1h (NOT averaged gain — a martingaled-to-breakeven loser can't dodge it). This single
+        # chokepoint DESTROYS martingale: a counter-1h add/open is refused from EVERY path (FIN_AGENT force-open,
+        # STRONG_SELL/BUY, reentry, DELTA_PYRAMID, watchdog, etc). CLOSE/REDUCE/HEDGE pass. ROLLBACK: =False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (
+                bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
+                and symbol
+                and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
+                and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "HEDGE" not in (reason or "").upper()
+            ):
+                _ctb_ind = await ii(self, symbol)
+                if _ctb_ind:
+                    _ctb_is_long = position_side == "LONG"
+                    _ctb_w1 = safe_fetch_float(_ctb_ind.get("wt1_1h", 0), 0.0)
+                    _ctb_w2 = safe_fetch_float(_ctb_ind.get("wt2_1h", 0), 0.0)
+                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                        logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
+                        return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
+        except Exception as _ctbe:
+            logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 PER_SYM_SIDE_DISABLED (USER 2026-05-28) — respect LONG_ENABLED/SHORT_ENABLED.
         # A (symbol, side) with NO positive backtest (UVE results + SYMBOL_REPORT) gets
         # LONG_ENABLED:false / SHORT_ENABLED:false in per_sym_active_config.json overrides.
@@ -24652,6 +24682,7 @@ class MultiAccountTradeManager:
                             or "ALL_TF_AGAINST" in _nb_reason_up
                             or "NEWBORN_LOSS_KILL" in _nb_reason_up
                             or "R1_DC_LOW4_3M_EMERGENCY" in _nb_reason_up
+                            or "HTF_AGAINST_FORCE_CLOSE" in _nb_reason_up
                         )
                         if not _nb_dc_broken and not _nb_emergency:
                             logger.critical(
@@ -38578,6 +38609,53 @@ async def process_position(
     # No-questions-asked reentry on breakout through prior high handled by existing
     # FAVORABLE_MOVE pathway (ez_manage:28881+) now uninhibited by REENTRY_MIN_GAP_MINUTES=0.
     # ═══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🚨 HTF_AGAINST_FORCE_CLOSE (USER 2026-05-30 ABSOLUTE): NOTHING stays open on a sharp move the other way.
+    # ANY position — winner OR loser — is CLOSED the instant wt1_1h is against its side (LONG: wt1_1h<wt2_1h;
+    # SHORT: wt1_1h>wt2_1h). Gain-AGNOSTIC, NO newborn window, NO entry-type restriction. The universal
+    # "1h flipped against → close NOW" the audit found MISSING (R3 disabled, WT_CROSS_EXIT a dead knob). Runs
+    # BEFORE R1/R2/MTF/GR so nothing dodges it. Reentry catches the bounce back. ROLLBACK: =False.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_ENABLED", True))
+    ):
+        try:
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _hac_is_long = position_side == "LONG"
+            _hac_w1 = safe_fetch_float(_pp_shared_ind.get("wt1_1h", 0), 0.0)
+            _hac_w2 = safe_fetch_float(_pp_shared_ind.get("wt2_1h", 0), 0.0)
+            _hac_data = abs(_hac_w1) > 1e-9 or abs(_hac_w2) > 1e-9
+            _hac_1h_against = _hac_data and ((_hac_is_long and _hac_w1 < _hac_w2) or ((not _hac_is_long) and _hac_w1 > _hac_w2))
+            _hac_confirm_ok = True
+            # WT_CROSS_EXIT (USER 2026-05-30 "hook it up"): require wt1_15m ALSO against = a real 1h+15m flip,
+            # not 1h noise. Driven by the (previously dead) WT_CROSS_EXIT_REQUIRE_15M_CONFIRM knob.
+            if _hac_1h_against and bool(getattr(config, "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM", True)):
+                _hac_w1_15 = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0)
+                _hac_w2_15 = safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
+                _hac_confirm_ok = (_hac_is_long and _hac_w1_15 < _hac_w2_15) or ((not _hac_is_long) and _hac_w1_15 > _hac_w2_15)
+            if _hac_1h_against and _hac_confirm_ok and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", False)):
+                _hac_w1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
+                _hac_w2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
+                _hac_confirm_ok = (_hac_is_long and _hac_w1_4h < _hac_w2_4h) or ((not _hac_is_long) and _hac_w1_4h > _hac_w2_4h)
+            if _hac_1h_against and _hac_confirm_ok:
+                _hac_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _hac_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                logger.error(f"🚨 [HTF_AGAINST_FORCE_CLOSE] {position_key}: wt1_1h AGAINST ({_hac_w1:.1f} vs {_hac_w2:.1f}) — CLOSE NOW (g={_hac_gain:.2f}%). Nothing survives a 1h flip against.")
+                await trade_manager.execute_now(
+                    position_key=position_key, account_key=account_key, symbol=symbol,
+                    original_positionAmt=_hac_amt, side=("SELL" if _hac_is_long else "BUY"),
+                    position_side=position_side, quantity=_hac_amt, old_price=current_price,
+                    unique_id=f"HTF_AGAINST_FORCE_CLOSE_{int(time.time())}",
+                    reason=f"HTF_AGAINST_FORCE_CLOSE_wt1h{_hac_w1:.1f}vs{_hac_w2:.1f}_g{_hac_gain:.2f}pct",
+                    is_full_close=True, action="CLOSE",
+                )
+                trade_manager.processing_keys.discard(position_key)
+                return
+        except Exception as _hace:
+            logger.warning(f"[HTF_AGAINST_FORCE_CLOSE] {position_key}: {_hace}")
     # 2026-05-18 per-sym overlay
     if (
         position
