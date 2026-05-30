@@ -47881,14 +47881,47 @@ def heap_dump_handler(signum, frame):
         shape_bytes = {}
         objs = _gc.get_objects()
         out.append(f"gc.get_objects total={len(objs)}")
+        try:
+            import numpy as _np
+            _ndt = _np.ndarray
+        except Exception:
+            _ndt = ()
+        seen_arr = set()
+        def _acct_array(a):
+            try:
+                if id(a) in seen_arr:
+                    return
+                seen_arr.add(id(a))
+                nb = int(a.nbytes)
+            except Exception:
+                return
+            nonlocal np_total, np_count
+            np_total += nb
+            np_count += 1
+            sk = f"{a.dtype}{a.shape}"
+            shape_bytes[sk] = shape_bytes.get(sk, 0) + nb
         for o in objs:
             try:
-                if type(o).__module__ == "numpy" and type(o).__name__ == "ndarray":
-                    nb = o.nbytes
-                    np_total += nb
-                    np_count += 1
-                    sk = f"{o.dtype}{o.shape}"
-                    shape_bytes[sk] = shape_bytes.get(sk, 0) + nb
+                if _ndt and isinstance(o, _ndt):
+                    _acct_array(o)
+            except Exception:
+                continue
+        # also walk one level into object __dict__ to catch arrays held as attrs (gc may not list them directly)
+        for o in objs:
+            try:
+                d = getattr(o, "__dict__", None)
+                if isinstance(d, dict):
+                    for v in d.values():
+                        if _ndt and isinstance(v, _ndt):
+                            _acct_array(v)
+                        elif isinstance(v, (list, tuple)):
+                            for vv in v[:50]:
+                                if _ndt and isinstance(vv, _ndt):
+                                    _acct_array(vv)
+                        elif isinstance(v, dict):
+                            for vv in list(v.values())[:200]:
+                                if _ndt and isinstance(vv, _ndt):
+                                    _acct_array(vv)
             except Exception:
                 continue
         out.append(f"numpy ndarray count={np_count} total_MB={np_total/1048576:.1f}")
@@ -47925,27 +47958,29 @@ def heap_dump_handler(signum, frame):
             out.append(f"=== ru_maxrss(MB)={_rss_mb:.0f} gc_objs={len(objs)} ===")
         except Exception:
             pass
-        def _ref_hist(pred, label, limit=8000):
-            seen = 0
-            hist = {}
+        def _ref_hist(pred, label, sample=40):
+            picked = []
             for o in objs:
                 try:
-                    if not pred(o):
-                        continue
-                    seen += 1
-                    if seen > limit:
-                        break
+                    if pred(o):
+                        picked.append(o)
+                        if len(picked) >= sample:
+                            break
+                except Exception:
+                    continue
+            hist = {}
+            for o in picked:
+                try:
                     for r in _gc.get_referrers(o):
                         rn = f"{type(r).__module__}.{type(r).__name__}"
                         hist[rn] = hist.get(rn, 0) + 1
                 except Exception:
                     continue
-            out.append(f"=== referrer-types holding {label} (sampled {min(seen,limit)}) ===")
-            for rn, c in sorted(hist.items(), key=lambda x: -x[1])[:15]:
+            out.append(f"=== referrer-types holding {label} (sampled {len(picked)}) ===")
+            for rn, c in sorted(hist.items(), key=lambda x: -x[1])[:12]:
                 out.append(f"  {c:8d}  {rn}")
         _ref_hist(lambda o: type(o).__name__ == "PosixPath", "PosixPath")
         _ref_hist(lambda o: type(o).__name__ == "coroutine", "coroutine")
-        _ref_hist(lambda o: type(o) is list, "list", limit=20000)
         tm = None
         for o in objs:
             if o.__class__.__name__ == "MultiAccountTradeManager":

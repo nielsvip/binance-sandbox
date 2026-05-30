@@ -4849,9 +4849,9 @@ class RatingRegistry:
                     if key not in _already:
                         await self._classify_and_queue(key, entry_batch, exit_batch)
             if entry_batch:
-                asyncio.create_task(check_entry_candidates_for_account( self.trade_manager, account_key, self.trade_manager.redis_manager, self.tracker_manager, self.trade_manager.order_queue, self.data_manager, self.trade_manager.hedge_engine, position_keys=entry_batch ))
+                _spawn_bounded_check(account_key, 'entry', check_entry_candidates_for_account( self.trade_manager, account_key, self.trade_manager.redis_manager, self.tracker_manager, self.trade_manager.order_queue, self.data_manager, self.trade_manager.hedge_engine, position_keys=entry_batch ))
             if exit_batch:
-                asyncio.create_task(check_exit_candidates_for_account( self.trade_manager, account_key, self.trade_manager.redis_manager, self.tracker_manager, self.trade_manager.order_queue, self.data_manager, self.trade_manager.hedge_engine, position_keys=exit_batch ))
+                _spawn_bounded_check(account_key, 'exit', check_exit_candidates_for_account( self.trade_manager, account_key, self.trade_manager.redis_manager, self.tracker_manager, self.trade_manager.order_queue, self.data_manager, self.trade_manager.hedge_engine, position_keys=exit_batch ))
             await asyncio.sleep(0.5) 
 
     async def _classify_and_queue(self, position_key, entry_batch, exit_batch):
@@ -13392,6 +13392,30 @@ async def log_stoch_snapshot(account_key: str, trade_manager, context_label: str
     except Exception as e:
         print(f"Error logging snapshot: {e}")
 
+_inflight_check_tasks = defaultdict(int)
+
+
+def _spawn_bounded_check(account_key, kind, coro, force=False, cap=6):
+    """Spawn a check_entry/check_exit task with a per-account in-flight cap. When the cap is
+    already reached (and not a forced rescue), DROP the new coroutine instead of letting untracked
+    fire-and-forget tasks pile up — the SLA/match/watchdog loops re-fire every 12-25s so the work
+    is retried, but stuck tasks can no longer accumulate and pin their captured state (OOM_CYCLE fix
+    2026-05-30). force=True (rescue paths) always runs."""
+    bucket = f"{account_key}:{kind}"
+    if not force and _inflight_check_tasks[bucket] >= cap:
+        try: coro.close()
+        except Exception: pass
+        return None
+    _inflight_check_tasks[bucket] += 1
+
+    async def _runner():
+        try:
+            await coro
+        finally:
+            _inflight_check_tasks[bucket] -= 1
+    return asyncio.create_task(_runner())
+
+
 async def check_exit_candidates_for_account(trade_manager, account_key: str, redis_manager, tracker_manager: TrackerManager, order_queue, data_manager: FastDataManager, hedge_engine: HedgeEngine=None, position_keys: List[str] = None, force: bool = False) -> None:
     if not position_keys: return
     if getattr(config, 'ABLATION_DISABLE_QUICK_EXIT', False): return
@@ -17482,7 +17506,7 @@ async def sla_miss_enforcer_loop(trade_manager, account_key: str, stop_event: as
                 last_time = tracker_manager.get_last_check_time(k)
                 gap = now - last_time
                 if gap > 40.0:
-                    asyncio.create_task( check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=[k] ) )
+                    _spawn_bounded_check(account_key, 'exit', check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=[k] ))
                 else: pass
             if time.time() % 10 < 1.0:
                 universe = list(tracker_manager.get_tradeable_position_keys_for(account_key))
@@ -17492,7 +17516,7 @@ async def sla_miss_enforcer_loop(trade_manager, account_key: str, stop_event: as
                     gap = now - last_time
                     if k not in tracker_manager.tradeable_keys: continue
                     if gap > 180.0:
-                        asyncio.create_task( check_entry_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=[k] ) )
+                        _spawn_bounded_check(account_key, 'entry', check_entry_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=[k] ))
             await asyncio.sleep(12.0)
         except Exception as e:
             logger.error(f"❌ [SLA_LOOP][{account_key}] Error: {e}")
@@ -17547,7 +17571,7 @@ async def position_watchdog_loop(tracker_manager, trade_manager, account_keys: l
                                         tracker_manager.exit_candidates[key]['status'] = 'active'
                                         tracker_manager.exit_candidates[key]['last_reason'] = 'PA_PY_INJECTION'
                                         tracker_manager._exit_candidates_dirty[account_key] = True
-                            asyncio.create_task( check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=rescue_keys, force=True ) )
+                            _spawn_bounded_check(account_key, 'exit', check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=rescue_keys, force=True ), force=True)
                         await aio_os.remove(rescue_file)
                     except Exception as e:
                         logger.error(f"[WATCHDOG] Rescue failed: {e}")
@@ -17587,7 +17611,7 @@ async def position_watchdog_loop(tracker_manager, trade_manager, account_keys: l
                                     tracker_manager.exit_candidates[nk]['status'] = 'active'
                                     tracker_manager.exit_candidates[nk]['last_reason'] = 'WATCHDOG_RESCUE'
                                     tracker_manager._exit_candidates_dirty[account_key] = True
-                        asyncio.create_task( check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=real_neglected_keys, force=True ) )
+                        _spawn_bounded_check(account_key, 'exit', check_exit_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=real_neglected_keys, force=True ), force=True)
                 await tracker_manager.sync_universe(account_key)
                 await tracker_manager.sync_position_keys(account_key)
                 async with tracker_manager._entry_candidates_lock:
@@ -17601,7 +17625,7 @@ async def position_watchdog_loop(tracker_manager, trade_manager, account_keys: l
                         stale_entries.append(k)
                 if stale_entries:
                     batch = stale_entries[:50]
-                    asyncio.create_task( check_entry_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=batch, force=True ) )
+                    _spawn_bounded_check(account_key, 'entry', check_entry_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=batch, force=True ), force=True)
             await asyncio.sleep(15.0)
         except asyncio.CancelledError:
             break
