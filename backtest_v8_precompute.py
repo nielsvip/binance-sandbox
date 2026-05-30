@@ -1096,6 +1096,17 @@ def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base
     merged[f"oi_value_{base_tf}"] = oi_value_arr
     merged[f"oi_change_15m_{base_tf}"] = oi_change_15m_arr
     merged[f"oi_change_1h_{base_tf}"] = oi_change_1h_arr
+    # 2026-05-30: live-parity aliases so the OI×price + funding gates (ez_positions_quick.execute_trade_wrapper)
+    # actually fire in backtest. Live (ez_market_data) emits `oi_change_1h_pct`/`funding_rate`; the engine reads
+    # those exact keys. Also emit `close_1h_prev` (1h-lagged broadcast close) so the price-change leg is non-None.
+    merged["oi_change_1h_pct"] = oi_change_1h_arr
+    merged["funding_rate"] = funding_arr
+    lag_1h_px = {"3m": 20, "5m": 12, "15m": 4}.get(base_tf, 4)
+    c1h = merged.get("close_1h")
+    if c1h is not None and len(c1h) == n:
+        c1h64 = c1h.astype(np.float64)
+        c1h_prev = np.roll(c1h64, lag_1h_px); c1h_prev[:lag_1h_px] = c1h64[:lag_1h_px]
+        merged["close_1h_prev"] = c1h_prev.astype(np.float32)
 
 
 def compute_symbol(symbol: str, mode: str) -> bool:

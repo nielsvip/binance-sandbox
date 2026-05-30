@@ -2144,6 +2144,7 @@ class IndicatorCalculator:
         result[f"close_{timeframe}"] = float(close_series.iloc[-1])
         result[f"high_{timeframe}_prev"] = float(high_series.iloc[-2]) if len(high_series) > 1 else float(high_series.iloc[-1])
         result[f"low_{timeframe}_prev"] = float(low_series.iloc[-2]) if len(low_series) > 1 else float(low_series.iloc[-1])
+        result[f"close_{timeframe}_prev"] = float(close_series.iloc[-2]) if len(close_series) > 1 else current_price
         dc_window = TIMEFRAMES[timeframe]["dc_window"]
         dc_high, dc_low, dc_basis = donchian(high_series, low_series, dc_window)
         dc_high_prev, dc_low_prev, dc_basis_prev = donchian_prev(high_series, low_series, dc_window)
