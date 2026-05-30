@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-30 06:45:27 UTC
+# Copilot Status — 2026-05-30 07:00:41 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-30T06:44:25
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T06:44:25
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T06:44:25
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T06:44:26
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T06:45:26
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T06:58:39
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T06:59:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T07:00:40
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T07:00:40
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T07:00:40
 
 ## Missed Trades (trader comparison)
 
@@ -27,12 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-0.1%
+- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-0.5%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **XLMUSDT** LONG (crypto) peak +4.4%, now +-0.6%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.4%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.3%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
 
 - WATCHING: **INJUSDT** LONG (crypto) peaked +6.8%, exited 0m ago
@@ -43,9 +42,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 30
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
+**Issues (last 1h):** 50
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
