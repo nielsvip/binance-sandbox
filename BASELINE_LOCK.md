@@ -7,10 +7,15 @@ The strategy = two parity-proven vectorized cores, used IDENTICALLY by backtest,
 - `vec_decisions/short_elevator.py` — elevator SHORT (vol-expansion breakdown + rally-fade, fast cover, no avg-down).
 - `vec_decisions/htf_regime_decision.py` — the TANDEM glue (one decision path for all three consumers).
 
-**SYNCHRONICITY GUARANTEE (proven 2026-05-30):** live calls `desired_weight_vec`/`short_weight_vec` on a trailing
-~600-bar window each tick; windowed-vec == full-history vec to **0/200 bars**. So live == backtest == per_sym BY
-CONSTRUCTION. NEVER reimplement these in scalar/hand-rolled live code — that reintroduces drift (measured 0.4%).
-Any change to a core MUST keep windowed==full parity (tools test: `_parity_window.py`).
+**SYNCHRONICITY GUARANTEE (proven 2026-05-30, broad 0/30000 across all 150 keys):** live calls
+`desired_weight_vec`/`short_weight_vec` on the seeded bar history each tick. Windowed-vec == full-history vec
+to **0/30000 bars** when the window is large enough to cover every state machine's lookback + the open position.
+NEVER reimplement these in scalar/hand-rolled live code — that reintroduces drift (measured 0.4–13%).
+**LIVE WINDOW RULE (mandatory for parity):** the live tick computes on a window = **max(15000 bars, bars-since-
+position-open + 1000)**, i.e. effectively the FULL seeded history for any open position. A 600-bar window FAILS
+(1378/30000); 3000 leaves 2 long-state keys; **15000 = 0/30000** (NEAR/GOOGL needed >3000 of struct-gate
+lookback). Smaller windows reintroduce drift — DO NOT shrink. Any core change MUST re-run the broad parity
+(`_consolidate_verify.py` with i0=max(0,n-15000)) to 0/30000 before live.
 
 ## The 4 all-sym 4yr baselines (NET, no-lookahead) — the floor every change must not drop below
 | pool | n | baseline pool_sharpe / gain | per_sym-optimized pool_sharpe / gain |

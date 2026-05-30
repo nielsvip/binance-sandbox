@@ -1869,7 +1869,22 @@ def grid_dc4_stop_compare():
     ]
 
 
+def grid_funding_gate_ab():
+    """2026-05-30: A/B the FUNDING_GATE (block NEW long when funding>=+0.05%, short when<=-0.05%).
+    Tier-2 real engine. Funding history is full (2020+, funding_rate_3m 100% NPZ coverage), so this
+    is a legitimate multi-year test. Gate is a LOW-FREQUENCY tail filter — fires on ~1.4% of entry-bars
+    pooled (concentrated: BNB/BTCDOM/SOL/XRP/LINK). Run on the ACTIVE subset (syms where funding crosses
+    threshold) or the delta is pure noise. OI gate EXCLUDED here: oi_change_1h_pct alias not yet in NPZ +
+    OI cache only ~30d (3.4% coverage) → un-backtestable until regen + history accrual. Hedging stays off
+    (sweep hard-kill). Use --start 2022-01-01 --timeout 3600."""
+    return [
+        ("funding_off", {"FUNDING_GATE_ENABLED": False, "OI_CONFIRM_ENABLED": False}),
+        ("funding_on",  {"FUNDING_GATE_ENABLED": True,  "OI_CONFIRM_ENABLED": False}),
+    ]
+
+
 TIER_MAP = {
+    "funding_gate_ab": grid_funding_gate_ab,
     "dc4_stop_compare": grid_dc4_stop_compare,
     "gr_vote_score": grid_gr_vote_score,
     "wt3m_force_open_gr_tune": grid_wt3m_force_open_gr_tune,
