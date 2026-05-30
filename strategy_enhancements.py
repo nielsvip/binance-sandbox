@@ -225,35 +225,64 @@ def check_circuit_breaker(config, symbol: str, account: str) -> Tuple[bool, str]
 # ═══════════════════════════════════════════════════════════════════
 _pyramid_fired: set[str] = set()  # position_keys that already pyramided once
 
+# ── SHARED per-bar PYRAMID predicate (single source of truth) ─────────────────
+# 2026-05-30 PARITY: live scalar (check_pyramid_signal) AND vectorized backtest
+# (check_pyramid_signal_vec) BOTH derive their fire decision from the same logic
+# below, so the two paths CANNOT drift. Pure: no config, no state. Data source
+# differs (live market_data indicators vs NPZ arrays) but the predicate is identical.
+def _pyramid_fires(gain_pct: float, wt_vel_1h: float, dc_pos_15m: float, is_long: bool,
+                   min_gain: float, min_vel: float, min_dc_pos: float, max_dc_pos_short: float) -> bool:
+    if gain_pct < min_gain:
+        return False
+    if is_long:
+        return wt_vel_1h >= min_vel and dc_pos_15m >= min_dc_pos
+    return wt_vel_1h <= -min_vel and dc_pos_15m <= max_dc_pos_short
+
+def _pyramid_thresholds(config):
+    return (float(getattr(config, "PYRAMID_MIN_GAIN_PCT", 1.5)),
+            float(getattr(config, "PYRAMID_MIN_WT_VEL_1H", 2.0)),
+            float(getattr(config, "PYRAMID_MIN_DC_POS_15M", 0.7)),
+            float(getattr(config, "PYRAMID_MAX_DC_POS_15M_SHORT", 0.3)),
+            float(getattr(config, "PYRAMID_SIZE_MULT", 0.5)))
+
 def check_pyramid_signal(config, position_key: str, indicators: dict, gain_pct: float,
                          is_long: bool) -> Tuple[bool, float, str]:
-    """Return (should_pyramid, size_multiplier, reason). Fires ONCE per position."""
+    """Return (should_pyramid, size_multiplier, reason). Fires ONCE per position.
+    LIVE/scalar path — fire decision comes from the shared _pyramid_fires() predicate."""
     if not getattr(config, "PYRAMID_ENABLED", False):
         return False, 0.0, ""
     if position_key in _pyramid_fired:
         return False, 0.0, ""
-    min_gain = float(getattr(config, "PYRAMID_MIN_GAIN_PCT", 1.5))
-    if gain_pct < min_gain:
-        return False, 0.0, ""
+    min_gain, min_vel, min_dc_pos, max_dc_pos, size_mult = _pyramid_thresholds(config)
     wt_vel_1h = float(indicators.get("wt_velocity_1h") or 0)
     dc_pos_15m = float(indicators.get("dc_position_15m") or 0.5)
-    min_vel = float(getattr(config, "PYRAMID_MIN_WT_VEL_1H", 2.0))
-    min_dc_pos = float(getattr(config, "PYRAMID_MIN_DC_POS_15M", 0.7))
-    max_dc_pos = float(getattr(config, "PYRAMID_MAX_DC_POS_15M_SHORT", 0.3))
-    size_mult = float(getattr(config, "PYRAMID_SIZE_MULT", 0.5))
-    if is_long:
-        if wt_vel_1h < min_vel or dc_pos_15m < min_dc_pos:
-            return False, 0.0, ""
-        _pyramid_fired.add(position_key)
-        return True, size_mult, f"PYRAMID_LONG gain={gain_pct:.2f}% vel={wt_vel_1h:.1f} dcpos={dc_pos_15m:.2f} size={size_mult}x"
-    else:
-        if wt_vel_1h > -min_vel or dc_pos_15m > max_dc_pos:
-            return False, 0.0, ""
-        _pyramid_fired.add(position_key)
-        return True, size_mult, f"PYRAMID_SHORT gain={gain_pct:.2f}% vel={wt_vel_1h:.1f} dcpos={dc_pos_15m:.2f} size={size_mult}x"
+    if not _pyramid_fires(gain_pct, wt_vel_1h, dc_pos_15m, is_long, min_gain, min_vel, min_dc_pos, max_dc_pos):
+        return False, 0.0, ""
+    _pyramid_fired.add(position_key)
+    _side = "LONG" if is_long else "SHORT"
+    return True, size_mult, f"PYRAMID_{_side} gain={gain_pct:.2f}% vel={wt_vel_1h:.1f} dcpos={dc_pos_15m:.2f} size={size_mult}x"
 
 def clear_pyramid_state(position_key: str):
     _pyramid_fired.discard(position_key)
+
+def check_pyramid_signal_vec(config, gain_arr, wt_vel_1h_arr, dc_pos_15m_arr, is_long):
+    """VECTORIZED per-bar PYRAMID fire mask — backtest path. SAME thresholds + SAME
+    predicate as the live scalar check_pyramid_signal (vectorized via numpy). Returns a
+    bool ndarray; the caller takes the FIRST True per position to honor once-per-position.
+    Arrays are per-bar (NPZ in backtest): gain%, wt_velocity_1h, dc_position_15m."""
+    import numpy as np
+    g = np.asarray(gain_arr, dtype=float)
+    if not getattr(config, "PYRAMID_ENABLED", False):
+        return np.zeros(len(g), dtype=bool)
+    min_gain, min_vel, min_dc_pos, max_dc_pos, _size = _pyramid_thresholds(config)
+    v = np.asarray(wt_vel_1h_arr, dtype=float)
+    d = np.asarray(dc_pos_15m_arr, dtype=float)
+    m = g >= min_gain
+    if is_long:
+        m &= (v >= min_vel) & (d >= min_dc_pos)
+    else:
+        m &= (v <= -min_vel) & (d <= max_dc_pos)
+    return m
 
 
 # ═══════════════════════════════════════════════════════════════════

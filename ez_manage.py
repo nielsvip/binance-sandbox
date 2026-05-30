@@ -34192,6 +34192,18 @@ async def process_single_reentry_evaluation(
         if min_since_exit < 120:
             reentry_amount = position.max_quantity
         is_long = position.position_side == "LONG"
+        # USER 2026-05-30 RESTORED sizing rule (no backtest justified erasing it): buy-the-DIP (price below exit)
+        # → 150%; BREAKOUT (price above exit) → 100%; k_1h extended (>95 LONG / <5 SHORT) → 50%. Sweepable.
+        try:
+            _re_k1h = safe_fetch_float(i.get("stoch_k_1h", 50), 50.0)
+            _re_ext_thr = float(getattr(config, "REENTRY_SIZE_EXTENDED_K1H", 95.0))
+            _re_extended = (is_long and _re_k1h > _re_ext_thr) or ((not is_long) and _re_k1h < (100.0 - _re_ext_thr))
+            _re_dip = reentry_level > 0 and ((is_long and current_price < reentry_level) or ((not is_long) and current_price > reentry_level))
+            _re_size_mult = float(getattr(config, "REENTRY_SIZE_EXTENDED_MULT", 0.5)) if _re_extended else (float(getattr(config, "REENTRY_SIZE_DIP_MULT", 1.5)) if _re_dip else float(getattr(config, "REENTRY_SIZE_BREAKOUT_MULT", 1.0)))
+            if reentry_amount and reentry_amount > 0:
+                reentry_amount = reentry_amount * _re_size_mult
+        except Exception:
+            pass
         price_ready = (is_long and current_price >= reentry_level) or (
             not is_long and current_price <= reentry_level
         )
@@ -34290,6 +34302,13 @@ async def process_single_reentry_evaluation(
         # SHORT: current_price must RISE above exit (better entry on rip).
         _dfr_improve_pct = float(getattr(config, "REENTRY_PRICE_IMPROVE_PCT", 0.10))
         if reentry_level > 0:
+            # USER 2026-05-30: a FAVORABLE BREAKOUT (LONG price ABOVE exit / SHORT below exit) must ALWAYS be
+            # allowed to reenter — CHASE it (the dc_3m breakout / DIRECTION_FAVORABLE reentry below handles it).
+            # The old gate demanded "price must DROP below exit" (buy-the-dip ONLY) and `return`ed on any
+            # favorable move, killing the WHOLE reentry function BEFORE the dc_3m breakout code — so XLM ran
+            # +50% and never re-entered. Only block when price is still NEAR the exit (a same-price duplicate),
+            # i.e. NOT improved (no dip) AND NOT favorable (no breakout). A breakout falls through to fire.
+            _dfr_favorable = (is_long and current_price > reentry_level) or ((not is_long) and current_price < reentry_level)
             _dfr_price_improved = (
                 is_long
                 and current_price <= reentry_level * (1.0 - _dfr_improve_pct / 100.0)
@@ -34297,9 +34316,9 @@ async def process_single_reentry_evaluation(
                 (not is_long)
                 and current_price >= reentry_level * (1.0 + _dfr_improve_pct / 100.0)
             )
-            if not _dfr_price_improved:
+            if not _dfr_price_improved and not _dfr_favorable:
                 logger.info(
-                    f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — need {_dfr_improve_pct:.2f}% improvement ({'lower' if is_long else 'higher'}) before reentry. Skipping."
+                    f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout); need {_dfr_improve_pct:.2f}% move before reentry. Skipping."
                 )
                 return
         if min_since_exit < 120 and _dfr_pos_notional < config.START_POSITION_SIZE:

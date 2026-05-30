@@ -530,6 +530,14 @@ class Config:
     # Tier 2 (CHASE): Trend continues without pullback, enter at 70-100% size (don't miss move)
     REENTRY_TIER1_SIZE_MULT: float = 1.5  # Tier 1: 150% of closed qty (better price reward)
     REENTRY_TIER2_SIZE_MULT: float = 0.8  # Tier 2: 80% of closed qty (worse price, smaller)
+    # USER 2026-05-30 RESTORED — the long-standing reentry SIZING rule (was lost when the price-cross path
+    # got disabled to stop a 5s flood; NO backtest justified erasing it). Applied in the live reentry path:
+    #   buy-the-DIP (price below exit, LONG) → 150% | BREAKOUT (price above exit) → 100% | k_1h extended → 50%.
+    # Sweepable (sweep tier reentry_size_tiers tests 150/100/50 vs 200/150/100 vs 300/200/50 etc).
+    REENTRY_SIZE_DIP_MULT: float = 1.5
+    REENTRY_SIZE_BREAKOUT_MULT: float = 1.0
+    REENTRY_SIZE_EXTENDED_MULT: float = 0.5
+    REENTRY_SIZE_EXTENDED_K1H: float = 95.0     # k_1h above this (LONG) / below (100-this) (SHORT) = rally-extended → 50%
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size

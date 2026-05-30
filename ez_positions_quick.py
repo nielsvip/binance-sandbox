@@ -15302,12 +15302,19 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             _wt1_15m = safe_fetch_float(indicators.get('wt1_15m', 0), 0)
                             _wt2_15m = safe_fetch_float(indicators.get('wt2_15m', 0), 0)
                             # USER 2026-05-30: a DC BREAKOUT *is* overbought by nature — the old hard "never LONG
-                            # at k15m>70" self-cancelled every breakout (XLM +50% never re-entered). Ride it:
-                            # rely on WT momentum confirmation (_wt_ok below) and only block at an EXTREME cap.
+                            # at k15m>70" self-cancelled every breakout (XLM +50% never re-entered). Ride it.
+                            # If dc_1h (or higher) is ALSO broken (_dc_tf DC1H/DC4H), we DO NOT CARE about k_15m at
+                            # all — a higher-TF breakout overrides the 15m overbought check entirely. Only the
+                            # lower-TF (DC15M/DC3M) breakouts keep an extreme-k15m guard.
+                            _dc_htf_break = _dc_tf in ("DC1H", "DC4H")
                             _dc_ob_cap = float(getattr(config, "DC_BREAKOUT_OVERBOUGHT_K15M_CAP", 95.0))
-                            _stoch_wrong = (is_long and _k15m > _dc_ob_cap) or (not is_long and _k15m < (100.0 - _dc_ob_cap))
-                            # WT confirmation: LONG wants wt1>wt2 (momentum up), SHORT wants wt1<wt2
-                            _wt_ok = (is_long and _wt1_15m > _wt2_15m) or (not is_long and _wt1_15m < _wt2_15m)
+                            _stoch_wrong = (not _dc_htf_break) and ((is_long and _k15m > _dc_ob_cap) or (not is_long and _k15m < (100.0 - _dc_ob_cap)))
+                            # USER 2026-05-30: even when k_15m is ignored (dc_1h+ break), STILL require WT on the
+                            # right track — wt1_3m AND/OR wt1_15m momentum aligned. Don't enter a breakout into a
+                            # WT reversal ("don't get suicidal"). 3m OR 15m WT must confirm the direction.
+                            _wt1_3m_dcb = safe_fetch_float(indicators.get('wt1_3m', 0), 0)
+                            _wt2_3m_dcb = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
+                            _wt_ok = (is_long and (_wt1_3m_dcb > _wt2_3m_dcb or _wt1_15m > _wt2_15m)) or (not is_long and (_wt1_3m_dcb < _wt2_3m_dcb or _wt1_15m < _wt2_15m))
                             if _stoch_wrong:
                                 logger.warning(f"[DC_BREAKOUT_BLOCKED] {position_key}: {_dc_tf} blocked — {'LONG' if is_long else 'SHORT'} at k15m={_k15m:.0f} (extreme wrong side)")
                             elif _wt_ok:
@@ -16537,9 +16544,12 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         # 2026-04-28 user: require price improvement vs exit before reentering.
         _dfr_improve_pct = float(getattr(config_obj, 'REENTRY_PRICE_IMPROVE_PCT', 0.10))
         if reentry_level > 0:
+            # USER 2026-05-30: a FAVORABLE breakout (LONG above exit / SHORT below) must ALWAYS reenter (chase via
+            # the dc_3m breakout reentry below). Only block when price is still NEAR exit (no dip AND no breakout).
+            _dfr_favorable = (is_long and current_price > reentry_level) or ((not is_long) and current_price < reentry_level)
             _dfr_price_improved = (is_long and current_price <= reentry_level * (1.0 - _dfr_improve_pct/100.0)) or ((not is_long) and current_price >= reentry_level * (1.0 + _dfr_improve_pct/100.0))
-            if not _dfr_price_improved:
-                logger.info(f"[DIRECTION_FAVORABLE_PRICE_BLOCK_EPQ] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — need {_dfr_improve_pct:.2f}% improvement ({'lower' if is_long else 'higher'}) before reentry. Skipping.")
+            if not _dfr_price_improved and not _dfr_favorable:
+                logger.info(f"[DIRECTION_FAVORABLE_PRICE_BLOCK_EPQ] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — near exit (no dip, no breakout). Skipping.")
                 return
         if min_since_exit < 120 and _dfr_pos_notional < config_obj.START_POSITION_SIZE:
             _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
