@@ -2394,6 +2394,20 @@ def main():
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} METRICS_GUARD_REFUSED: {_fmr}")
                 continue
             header_written = True
+            # USER 2026-05-30: a backtest that produces NO TRADES (not even one day in the whole window) is
+            # BROKEN — STOP and FIX (wrong mode/config, missing NPZ field, broken entry path, stale data). Never
+            # trust or continue a 0-trade sweep. Fires on the FIRST 0-trade arm that actually ran.
+            _zt_closes = int(res.get("closes", 0) or 0)
+            if _zt_closes == 0 and res.get("status") in ("ok", "timeout"):
+                print(f"\n❌❌❌ [SWEEP_BROKEN_ZERO_TRADES] arm '{label}' produced 0 TRADES over the backtest — the engine is NOT TRADING at all (broken mode/config/NPZ/entry-path/data). ABORTING. STOP + FIX before re-running.\n")
+                try:
+                    out_path.with_suffix(".BROKEN_ZERO_TRADES").write_text(f"arm '{label}' produced 0 trades (status={res.get('status')}, years={res.get('years')}) — engine not trading; FIX mode/config/NPZ/entry-path before re-running\n")
+                except Exception:
+                    pass
+                for _f in futures:
+                    _f.cancel()
+                _requeue_tasks = []
+                break
             delta_s = ""
             if res.get("status") == "ok":
                 s_pool = res["pool_sharpe"]
