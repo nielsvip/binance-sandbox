@@ -16560,16 +16560,21 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         _dc_fw2_re = _sf(i.get(f"wt2_{_dc_ftf_re}", 0), 0.0)
         _dc_kdata_re = abs(_dc_fk_re) > 1e-9 or abs(_dc_fd_re) > 1e-9
         _dc_wtdata_re = abs(_dc_fw1_re) > 1e-9 or abs(_dc_fw2_re) > 1e-9
+        # USER 2026-05-30: a dc_high_3m (dc_low_3m for shorts) CROSS ALWAYS fires the reentry (no filter).
+        dc_high_3m_re = _sf(i.get("dc_high_3m", 0), 0.0)
+        dc_low_3m_re = _sf(i.get("dc_low_3m", 0), 0.0)
         if is_long:
-            if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_allow_15m_re and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
-                if ((_dc_fk_re > _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re > _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True):
-                    _dc_reentry_breakout = True
-                    _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
+            _dc_3m_long_re = dc_high_3m_re > 0 and current_price > dc_high_3m_re * (1 + _buf)
+            _dc_1h15_long_re = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_allow_15m_re and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
+            if _dc_3m_long_re or (_dc_1h15_long_re and ((_dc_fk_re > _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re > _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True)):
+                _dc_reentry_breakout = True
+                _dc_re_tf = "3M" if _dc_3m_long_re else ("1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M")
         else:
-            if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_allow_15m_re and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
-                if ((_dc_fk_re < _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re < _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True):
-                    _dc_reentry_breakout = True
-                    _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
+            _dc_3m_short_re = dc_low_3m_re > 0 and current_price < dc_low_3m_re * (1 - _buf)
+            _dc_1h15_short_re = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_allow_15m_re and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
+            if _dc_3m_short_re or (_dc_1h15_short_re and ((_dc_fk_re < _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re < _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True)):
+                _dc_reentry_breakout = True
+                _dc_re_tf = "3M" if _dc_3m_short_re else ("1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M")
         if _dc_reentry_breakout is True:
             _dcbr_pos_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
             if _dcbr_pos_notional >= config_obj.START_POSITION_SIZE:

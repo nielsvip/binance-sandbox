@@ -17241,6 +17241,10 @@ class MultiAccountTradeManager:
             )
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, "MIN_POSITION_SIZE", 45.0)
+            # USER 2026-05-30 (PROVISIONAL, under sweep test): AUGMENT of an EXISTING position requires
+            # gain > AUGMENT_GAIN_MULT*MIN_GAIN (default 0.5*3.0 = 1.5%). REENTRY of a FLAT position never
+            # reaches this branch (is_augment=False) — a bounce/cross/breakout OPENs at gain==0, no % gate.
+            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * float(getattr(config, "AUGMENT_GAIN_MULT", 0.5))
             if _pos_val <= _min_pos_val:
                 # 2026-05-09 FOOTHOLD pile-on guard — 2026-05-12 gated by FOOTHOLD_PILEON_ENABLED (default False) after user reported blocked breakouts.
                 if bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False)):
@@ -17273,9 +17277,8 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]"
                     )
-            elif _pos_val > _min_pos_val and _gain < 3.0:
-                # ABSOLUTE: NO augments on an EXISTING position with gain < 3%. No exceptions.
-                # (REENTRY of a FLAT position never reaches here — is_augment=False, no gain gate.)
+            elif _pos_val > _min_pos_val and _gain < _aug_thr:
+                # AUGMENT on an EXISTING position requires gain > AUGMENT_GAIN_MULT*MIN_GAIN (provisional 1.5%, UNDER TEST).
                 if _gain < 0.0:
                     logger.critical(
                         f"🚫 [LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. positionAmt>0 AND gain<0 = NEVER augment. action={action} is_reentry={_is_reentry}"
@@ -17283,9 +17286,9 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_LOSER_KILL_NEGATIVE_{_gain:.2f}%"
                 else:
                     logger.warning(
-                        f"[GAIN_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < 3.0%. action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
+                        f"[AUGMENT_GAIN_GATE] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < {_aug_thr:.2f}% (AUGMENT_GAIN_MULT*MIN_GAIN). action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
                     )
-                    return f"BLOCKED_GAIN_GATE_3PCT_{_gain:.2f}%_pos${_pos_val:.0f}"
+                    return f"BLOCKED_AUGMENT_GAIN_{_gain:.2f}%_lt_{_aug_thr:.2f}%_pos${_pos_val:.0f}"
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
         if is_augment and not _original_action_was_reentry and position:
             _aug_count = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
@@ -34266,11 +34269,16 @@ async def process_single_reentry_evaluation(
                 )
                 return
         if min_since_exit < 120 and _dfr_pos_notional < config.START_POSITION_SIZE:
-            _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
-            _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15
+            # USER 2026-05-30: a bounce ALWAYS gets a reentry while the 1h is still going the right way.
+            # 1h alignment makes the 15m gate optional and satisfies the WT confirm.
+            _wt1_1h_dfr = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
+            _wt2_1h_dfr = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
+            _h1_aligned = (is_long and _wt1_1h_dfr > _wt2_1h_dfr) or ((not is_long) and _wt1_1h_dfr < _wt2_1h_dfr)
+            _dir_fav_long = is_long and k_3m > d_3m and k_3m < 85 and (k_15m > d_15m or _h1_aligned)
+            _dir_fav_short = (not is_long) and k_3m < d_3m and k_3m > 15 and (k_15m < d_15m or _h1_aligned)
             _wt1_3m_dfr = safe_fetch_float(i.get("wt1_3m", 0), 0.0)
             _wt2_3m_dfr = safe_fetch_float(i.get("wt2_3m", 0), 0.0)
-            _wt_confirm = (
+            _wt_confirm = _h1_aligned or (
                 is_long and _wt1_15m > _wt2_15m and _wt1_3m_dfr > _wt2_3m_dfr
             ) or (not is_long and _wt1_15m < _wt2_15m and _wt1_3m_dfr < _wt2_3m_dfr)
             if (
@@ -34320,6 +34328,8 @@ async def process_single_reentry_evaluation(
         # REQUIRE_K_FILTER (k_3m vs d_3m), REQUIRE_WT_FILTER (wt1_3m vs wt2_3m), ALLOW_15M (dc_1h always on).
         dc_high_1h = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
         dc_low_1h = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
+        dc_high_3m = safe_fetch_float(i.get("dc_high_3m", 0), 0.0)
+        dc_low_3m = safe_fetch_float(i.get("dc_low_3m", 0), 0.0)
         _dc_reentry_allow_15m = bool(getattr(config, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
@@ -34331,27 +34341,23 @@ async def process_single_reentry_evaluation(
         _dc_k_data = abs(_dc_fk) > 1e-9 or abs(_dc_fd) > 1e-9
         _dc_wt_data = abs(_dc_fw1) > 1e-9 or abs(_dc_fw2) > 1e-9
         if is_long:
-            _dc_re_long_ok = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_reentry_allow_15m and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
+            # USER 2026-05-30: a dc_high_3m CROSS ALWAYS fires the reentry (no filter). The dc_1h/15m
+            # path keeps the testable K/WT filters. Either one re-OPENs the flat position.
+            _dc_3m_long = dc_high_3m > 0 and current_price > dc_high_3m * (1 + _buf)
+            _dc_1h15_long = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_reentry_allow_15m and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
             _dc_k_ok = (_dc_fk > _dc_fd) if (_dc_req_k and _dc_k_data) else True
             _dc_wt_ok = (_dc_fw1 > _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
-            if _dc_re_long_ok and _dc_k_ok and _dc_wt_ok:
+            if _dc_3m_long or (_dc_1h15_long and _dc_k_ok and _dc_wt_ok):
                 _dc_reentry_breakout = True
-                _dc_re_tf = (
-                    "1H"
-                    if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf))
-                    else "15M"
-                )
+                _dc_re_tf = "3M" if _dc_3m_long else ("1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M")
         else:
-            _dc_re_short_ok = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_reentry_allow_15m and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
+            _dc_3m_short = dc_low_3m > 0 and current_price < dc_low_3m * (1 - _buf)
+            _dc_1h15_short = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_reentry_allow_15m and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
             _dc_k_ok = (_dc_fk < _dc_fd) if (_dc_req_k and _dc_k_data) else True
             _dc_wt_ok = (_dc_fw1 < _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
-            if _dc_re_short_ok and _dc_k_ok and _dc_wt_ok:
+            if _dc_3m_short or (_dc_1h15_short and _dc_k_ok and _dc_wt_ok):
                 _dc_reentry_breakout = True
-                _dc_re_tf = (
-                    "1H"
-                    if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf))
-                    else "15M"
-                )
+                _dc_re_tf = "3M" if _dc_3m_short else ("1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M")
         if _dc_reentry_breakout is True:
             _dcbr_pos_notional = (
                 abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))

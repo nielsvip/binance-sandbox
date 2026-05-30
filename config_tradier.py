@@ -634,6 +634,11 @@ class TradierConfig:
     DC4_STOP_GR_SCORE_MIN_IND: int = 5
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
     DUP_GUARD_USE_GAIN_GATE: bool = True
+    # AUGMENT threshold — USER 2026-05-30 "PUT IT THERE NOW but needs confirmation" (mirror of config.py).
+    # AUGMENT (existing position) requires gain > AUGMENT_GAIN_MULT*MIN_GAIN (provisional 0.5→1.5%, UNDER TEST).
+    # REENTRY of a flat position is NEVER gated by this (gain==0.0, it OPENs).
+    AUGMENT_GAIN_MULT: float = 0.5
+    AUGMENT_GAIN_MULT_CONFIRMED: bool = False
     # USER 2026-05-29 (mirror of config.py): reentry/augment must NOT be blocked by MTF
     # armed-state filter or HTF_TREND_VETO. Augment guaranteed at bounce >= 0.5*MIN_GAIN.
     # Reentry guaranteed. Fresh OPENs still gated. ROLLBACK: set False.
