@@ -862,6 +862,18 @@ class TradierConfig:
     REENTRY_SIZE_BREAKOUT_MULT: float = 1.5    # 2026-05-30: ~same price (continuation) → 150%
     REENTRY_SIZE_EXTENDED_MULT: float = 1.0    # 2026-05-30: k_1h>90 extended → 100% (was 0.5 — never shrink runner). NOTE: stocks still PENDING wiring into tradier_manage reentry sizing.
     REENTRY_SIZE_EXTENDED_K1H: float = 90.0    # 2026-05-30: 95→90
+    # === HTF-REGIME hold + scale-in-at-bottoms (2026-05-30 USER GO-LIVE machinery — DEFAULT OFF) ===
+    # Stocks mirror of config.py block. Ladder defaults to 1h/4h/D (stocks lack 3m/15m WT). Master switch is
+    # a KILL SWITCH defaulting OFF; a stock trades under this ONLY if marked tradeable in the per_sym HTF
+    # ledger (4yr gate: x_bh>=5 AND net pool_sharpe>=0.25 AND beats baseline). See PERSYM_VALIDATION_MAP.
+    HTF_REGIME_ENABLED: bool = False            # MASTER KILL SWITCH — default OFF
+    HTF_REGIME_LEDGER_PATH: str = "data/_diagnostic/persym_htf_ledger_full.json"
+    HTF_REGIME_TF: str = "D"
+    HTF_REGIME_EXIT_TF: str = "1h"             # stocks: 1h tight-cut (markets closed most of day)
+    HTF_REGIME_SCALE_IN: bool = True
+    HTF_REGIME_ADD_MULT_PER_SMA: float = 0.75
+    HTF_REGIME_SIZE_CAP: float = 3.0
+    HTF_REGIME_VOL_TARGET: float = 0.0
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
     REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 120.0  # Force entry after 120min
     # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned

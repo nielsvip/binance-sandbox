@@ -538,6 +538,20 @@ class Config:
     REENTRY_SIZE_BREAKOUT_MULT: float = 1.5     # 2026-05-30: ~same price (continuation) → 150%
     REENTRY_SIZE_EXTENDED_MULT: float = 1.0     # 2026-05-30: k_1h>90 extended/still-ripping → 100% (was 0.5 — NEVER shrink the runner)
     REENTRY_SIZE_EXTENDED_K1H: float = 90.0     # 2026-05-30: extended threshold lowered 95→90 per user
+    # === HTF-REGIME hold + scale-in-at-bottoms (2026-05-30 USER GO-LIVE machinery — DEFAULT OFF) ===
+    # Shared core: vec_decisions/htf_regime_scale.py (live==backtest, parity 0/20000). Master switch is a
+    # KILL SWITCH defaulting OFF (new-strategy rule). A symbol/side trades under this ONLY if it is marked
+    # tradeable in the per_sym HTF ledger (passed the 4yr gate: x_bh>=5 AND net pool_sharpe>=0.25 AND beats
+    # its own baseline — see data/_diagnostic/PERSYM_VALIDATION_MAP_20260530.md). Ledger gate is enforced
+    # by HTF_REGIME_LEDGER_PATH; absent/empty ledger => nothing trades even if master switch is ON.
+    HTF_REGIME_ENABLED: bool = False            # MASTER KILL SWITCH — default OFF
+    HTF_REGIME_LEDGER_PATH: str = "data/_diagnostic/persym_htf_ledger_full.json"
+    HTF_REGIME_TF: str = "D"                    # which 200-SMA TF gates the up/down/flat regime
+    HTF_REGIME_EXIT_TF: str = "15m"            # tight-cut TF in chop / non-uptrend
+    HTF_REGIME_SCALE_IN: bool = True           # per-symbol overridable via ledger cfg
+    HTF_REGIME_ADD_MULT_PER_SMA: float = 0.75  # size added per lower-SMA reclaimed (catch the bottom)
+    HTF_REGIME_SIZE_CAP: float = 3.0           # bounded — never 2^% leverage ruin
+    HTF_REGIME_VOL_TARGET: float = 0.0         # 0=off; >0 de-levers when realized vol high
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
