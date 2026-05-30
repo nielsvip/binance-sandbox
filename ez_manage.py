@@ -44781,6 +44781,11 @@ async def queue_trade_action(
     now = datetime.now(timezone.utc)
     conviction = safe_fetch_float(conviction, 0.5)
     reason_str = str(reason or "")
+    # 2026-05-30 USER: SCALP_REDUCE OFF — these profit-protect reduces (TIGHT_LEASH/Quick_Profit/DECENT_GAIN_PROTECT)
+    # cut winners early. Single-chokepoint gate; breakeven-lock remains the sanctioned protection. See BASELINE_LOCK.md.
+    if "SCALP_REDUCE" in reason_str.upper() and not getattr(config, "SCALP_REDUCE_ENABLED", True):
+        logger.info(f"[queue_trade_action] SCALP_REDUCE_DISABLED skip: {position_key} {reason_str[:50]}")
+        return "SKIPPED_SCALP_REDUCE_DISABLED"
     try:
         account_key, symbol, position_side = parse_position_key(position_key)
         if account_key not in trade_manager.accounts:
