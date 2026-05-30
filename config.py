@@ -534,10 +534,10 @@ class Config:
     # got disabled to stop a 5s flood; NO backtest justified erasing it). Applied in the live reentry path:
     #   buy-the-DIP (price below exit, LONG) → 150% | BREAKOUT (price above exit) → 100% | k_1h extended → 50%.
     # Sweepable (sweep tier reentry_size_tiers tests 150/100/50 vs 200/150/100 vs 300/200/50 etc).
-    REENTRY_SIZE_DIP_MULT: float = 1.5
-    REENTRY_SIZE_BREAKOUT_MULT: float = 1.0
-    REENTRY_SIZE_EXTENDED_MULT: float = 0.5
-    REENTRY_SIZE_EXTENDED_K1H: float = 95.0     # k_1h above this (LONG) / below (100-this) (SHORT) = rally-extended → 50%
+    REENTRY_SIZE_DIP_MULT: float = 2.0          # 2026-05-30 USER GO-LIVE: lower entry (dip, k_15<30) → 200% — REENTER BIGGER when trend continues
+    REENTRY_SIZE_BREAKOUT_MULT: float = 1.5     # 2026-05-30: ~same price (continuation) → 150%
+    REENTRY_SIZE_EXTENDED_MULT: float = 1.0     # 2026-05-30: k_1h>90 extended/still-ripping → 100% (was 0.5 — NEVER shrink the runner)
+    REENTRY_SIZE_EXTENDED_K1H: float = 90.0     # 2026-05-30: extended threshold lowered 95→90 per user
     REENTRY_TIER2_PRICE_PCT: float = 0.003  # 0.3% price move past exit triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES: float = 10.0  # Minimum minutes before Tier 2 activates
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
