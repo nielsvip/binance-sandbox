@@ -100,6 +100,7 @@ class Config:
     # ═══ SCALP_V2 — PRIORITY P0 (test first, week 1) ═══════════════════════════
     SCALP_MODE: bool = False               # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_REDUCE_ENABLED: bool = False     # 2026-05-30 USER: OFF. The AdvancedSignalRater.rate "SCALP_REDUCE" profit-protect reduces (TIGHT_LEASH_PROFIT_SAVE/Quick_Profit/DECENT_GAIN_PROTECT) cut winners early — gated at queue_trade_action. Breakeven-lock (+0.5%->+0.02%) remains the sanctioned profit protection. ROLLBACK: True.
+    RULE_B_3M_EXIT_ENABLED: bool = True     # 2026-05-30 USER: rewire the reduce onto the VALIDATED Rule B signal — exit a LONG on a 3m lower-low+lower-high, a SHORT on a 3m higher-high+higher-low (the trend turning against the position). Fires a REDUCE via the existing exit path; still NO-LOSS-gated (locks profit on the turn, losers held by R1/R2). Replaces the winner-cutting SCALP_REDUCE with the right trigger. ROLLBACK: False.
     SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # P0: sweep winner Sharpe=107. DO NOT change until V8 validates
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
     SCALP_V2_MAX_HOLD_MINUTES: float = 15.0   # P0: sweep-proven, 60m universally worse for inf

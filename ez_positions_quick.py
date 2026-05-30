@@ -14456,6 +14456,19 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if current_gain < 0.2:
                         score_exit -= 10
                         reason_exit += "_EUPHORIA_TIGHTEN"
+                # 2026-05-30 USER: RULE B exit (validated) — rewire the reduce onto the 3m structure turn. LONG exits
+                # on a 3m lower-low+lower-high; SHORT on a 3m higher-high+higher-low. Fires a REDUCE via the normal
+                # path; still NO-LOSS-gated downstream (locks profit on the turn; underwater positions held by R1/R2).
+                if getattr(config, "RULE_B_3M_EXIT_ENABLED", False):
+                    _rb_hi = safe_fetch_float(indicators.get('high_3m'), 0.0); _rb_lo = safe_fetch_float(indicators.get('low_3m'), 0.0)
+                    _rb_hip = safe_fetch_float(indicators.get('high_3m_prev'), 0.0); _rb_lop = safe_fetch_float(indicators.get('low_3m_prev'), 0.0)
+                    if _rb_hi > 0 and _rb_lo > 0 and _rb_hip > 0 and _rb_lop > 0 and rec_exit not in ("HOLD", "WAIT", "BOYCOTT"):
+                        pass  # an explicit exit already chosen — leave it
+                    elif _rb_hi > 0 and _rb_lo > 0 and _rb_hip > 0 and _rb_lop > 0:
+                        if is_long and _rb_lo < _rb_lop and _rb_hi < _rb_hip:
+                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit) + "|RULE_B_3M_LL_LH"); score_exit = min(score_exit, -5)
+                        elif (not is_long) and _rb_hi > _rb_hip and _rb_lo > _rb_lop:
+                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit) + "|RULE_B_3M_HH_HL"); score_exit = min(score_exit, -5)
                 should_close = False
                 if rec_exit in ("HOLD", "WAIT", "BOYCOTT"):
                     should_close = False  # rate() said HOLD/WAIT — RESPECT IT
