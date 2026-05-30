@@ -16096,6 +16096,7 @@ class StockScalpStrategy:
         await asyncio.sleep(15)
         while self.trade_manager.running:
             try:
+                if not getattr(config, 'SCALP_MODE', False): await asyncio.sleep(10); continue
                 if not is_regular_trading_hours():
                     await asyncio.sleep(30)
                     continue
@@ -16259,6 +16260,7 @@ class StockBreakoutScalper:
         self.STATE_FILE.write_text(json.dumps(self._state, indent=2, default=str))
     async def run(self, trade_manager=None):
         if not trade_manager: return
+        if not getattr(config, 'SCALP_MODE', False): return
         if not is_regular_trading_hours(): return
         if self.ACCT not in (trade_manager.target_accounts or []):
             return

@@ -556,7 +556,7 @@ class TradierConfig:
     # Fires from process_position BEFORE evaluate_stop — bypasses STOCK_MIN_HOLD/UNIVERSAL_NOLOSS_GATE
     # because we close ONLY at positive gain. Bypasses are safe by construction.
     # Constrained to RTH (13:30-20:00 UTC) by is_regular_trading_hours() inside place_order.
-    MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = True
+    MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = False
     MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: ["trb", "trc", "tra"])
     MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.05
     MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT: float = 0.5  # 2026-05-28 USER: micro-scalp may only CLOSE a position whose gain has ALREADY peaked >= this floor. Stops 0.05-0.1% round-trip churn (IBIT g0.074% peak0.098% never near 0.5%).
@@ -2468,7 +2468,7 @@ class TradierConfig:
     SBA_MAX_TOTAL_MULT: float = 2.5  # BACKTEST_CHANGE_145: Position can't exceed 2.5x START_POSITION_SIZE
     SBA_MIN_SCORE: float = 3.5  # BACKTEST_CHANGE_145: Min bounce score to trigger (backtest: 3.5 > 4.0/4.5, 66% SBA WR)
     SCALP_ACCOUNTS = []#['inf']
-    SCALP_MODE: bool = True  # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
+    SCALP_MODE: bool = False  # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_OVERRIDE = False  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
     SCALP_V2_ISOLATE: bool = True  # 2026-04-16: ON for live — V2 positions ONLY use V2 exits, main pipeline exits skip them. V8 -0.30 Sharpe was from main exits trampling V2 positions.
