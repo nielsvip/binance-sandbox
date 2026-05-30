@@ -2423,6 +2423,21 @@ def main():
                         )
                     else:
                         _seen_fingerprints[_fp] = label
+                    # USER 2026-05-30: a sweep whose knobs DON'T reach the engine returns IDENTICAL results →
+                    # STOP it (don't waste compute) and flag for REWRITE. Abort when, after enough OK arms, the
+                    # distinct-result count has collapsed (≤2 distinct while ≥3 duplicates) — the override is
+                    # not applied in the code path the engine exercises.
+                    _min_arms_for_abort = max(4, int(0.5 * len(tasks)))
+                    if completed >= _min_arms_for_abort and len(_seen_fingerprints) <= 2 and len(_faulty_pairs) >= 3:
+                        print(f"\n❌❌❌ [SWEEP_BROKEN_IDENTICAL_RESULTS] {len(_faulty_pairs)} arms produced IDENTICAL metrics; only {len(_seen_fingerprints)} distinct result(s) across {completed} OK arms. The override KNOBS ARE NOT REACHING THE ENGINE — this sweep tests NOTHING. ABORTING. Rewrite the knob wiring (the config override isn't applied in the live code path the engine exercises) before re-running.\n")
+                        try:
+                            out_path.with_suffix(".BROKEN_IDENTICAL_RESULTS").write_text(f"distinct={len(_seen_fingerprints)} faulty={len(_faulty_pairs)} completed={completed}/{len(tasks)} — knobs not reaching engine; REWRITE wiring before re-running\n")
+                        except Exception:
+                            pass
+                        for _f in futures:
+                            _f.cancel()
+                        _requeue_tasks = []
+                        break
             elif res.get("status") == "killed_low_sharpe":
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} KILLED live_sharpe={res.get('live_sharpe')} after {res.get('elapsed_s'):.0f}s reason={res.get('reason', '')}")
             else:

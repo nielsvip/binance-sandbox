@@ -16507,6 +16507,19 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         is_long = getattr(position, 'position_side', position_side) == "LONG"
         i = await _ez_ii(trade_manager, symbol)
         if not i: return
+        # USER 2026-05-30: reentry SIZING tiers (mirror of ez_manage) — the BACKTEST runs THIS epq path, so the
+        # tiers must be applied here too or a sweep over them shows zero variance. DIP (price below exit) → 150%
+        # | BREAKOUT (above exit) → 100% | k_1h extended (>95 LONG / <5 SHORT) → 50%. Sweepable.
+        try:
+            _re_k1h = safe_fetch_float(i.get("stoch_k_1h", 50), 50.0)
+            _re_ext_thr = float(getattr(config_obj, "REENTRY_SIZE_EXTENDED_K1H", 95.0))
+            _re_extended = (is_long and _re_k1h > _re_ext_thr) or ((not is_long) and _re_k1h < (100.0 - _re_ext_thr))
+            _re_dip = reentry_level > 0 and ((is_long and current_price < reentry_level) or ((not is_long) and current_price > reentry_level))
+            _re_size_mult = float(getattr(config_obj, "REENTRY_SIZE_EXTENDED_MULT", 0.5)) if _re_extended else (float(getattr(config_obj, "REENTRY_SIZE_DIP_MULT", 1.5)) if _re_dip else float(getattr(config_obj, "REENTRY_SIZE_BREAKOUT_MULT", 1.0)))
+            if reentry_amount and reentry_amount > 0:
+                reentry_amount = reentry_amount * _re_size_mult
+        except Exception:
+            pass
         # === NEW GUARDS (MIN_GAP + SYMGATE + RALLY_K15M) — fail OPEN ===
         if _epq_min_gap_blocked(reentry_timestamp, config_obj, position_key):
             return
