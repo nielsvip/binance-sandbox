@@ -10215,8 +10215,9 @@ class TradierTradeManager:
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain <= 0:
             logger.warning(f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)")
             return "BLOCKED_NO_GAIN"
-        # MIN GAIN AUGMENT GUARD — USER 2026-05-29: augment guaranteed at bounce >= 0.5*MIN_GAIN (was MIN_GAIN). gain<=0 still BLOCKED_NO_GAIN above.
-        _min_aug_gain = (float(getattr(config, 'MIN_GAIN', 3.0)) * float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))) if bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) else getattr(config, 'MIN_GAIN', 3.0)
+        # MIN GAIN AUGMENT GUARD — NEVER augment an EXISTING position below MIN_GAIN (3%). No exceptions.
+        # (REENTRY of a flat position is exempt via _is_reentry below — a reentry OPENs, it does not wait for gain.)
+        _min_aug_gain = getattr(config, 'MIN_GAIN', 3.0)
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"

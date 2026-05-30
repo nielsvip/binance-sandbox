@@ -17241,8 +17241,6 @@ class MultiAccountTradeManager:
             )
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, "MIN_POSITION_SIZE", 45.0)
-            # USER 2026-05-29: augment guaranteed at bounce >= 0.5*MIN_GAIN (was hardcoded 3.0%). gain<0 still LOSER_KILL.
-            _aug_floor = (float(getattr(config, "MIN_GAIN", 3.0)) * float(getattr(config, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))) if bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)) else 3.0
             if _pos_val <= _min_pos_val:
                 # 2026-05-09 FOOTHOLD pile-on guard — 2026-05-12 gated by FOOTHOLD_PILEON_ENABLED (default False) after user reported blocked breakouts.
                 if bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False)):
@@ -17275,16 +17273,17 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]"
                     )
-            elif _pos_val > _min_pos_val and _gain < _aug_floor:
-                # ABSOLUTE: NO opens/augments on positions with gain < bounce floor (0.5*MIN_GAIN). gain<0 = LOSER_KILL. No exceptions.
+            elif _pos_val > _min_pos_val and _gain < 3.0:
+                # ABSOLUTE: NO augments on an EXISTING position with gain < 3%. No exceptions.
+                # (REENTRY of a FLAT position never reaches here — is_augment=False, no gain gate.)
                 if _gain < 0.0:
                     logger.critical(
-                        f"🚫 [LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. positionAmt>0 AND gain<0 = NEVER open/augment/reenter. action={action} is_reentry={_is_reentry}"
+                        f"🚫 [LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. positionAmt>0 AND gain<0 = NEVER augment. action={action} is_reentry={_is_reentry}"
                     )
                     return f"BLOCKED_LOSER_KILL_NEGATIVE_{_gain:.2f}%"
                 else:
                     logger.warning(
-                        f"[GAIN_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < {_aug_floor:.2f}% (bounce floor=0.5*MIN_GAIN). action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
+                        f"[GAIN_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < 3.0%. action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
                     )
                     return f"BLOCKED_GAIN_GATE_3PCT_{_gain:.2f}%_pos${_pos_val:.0f}"
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
@@ -18849,23 +18848,11 @@ class MultiAccountTradeManager:
             # Bypasses: HEDGE_* reasons (loss-protection not directional), RULE_C
             # (orthogonal contrarian, flagged via rule_name=RULE_C when wired).
             # ROLLBACK: HTF_TREND_VETO_ENABLED=False in config.py.
-            # USER 2026-05-29: guaranteed reentry/augment (reentry, or augment at bounce>=0.5*MIN_GAIN
-            # or 3m DC break) BYPASSES HTF veto — mirrors GUARANTEED_REENTRY_HTF_VETO_ENABLED=False policy.
+            # USER 2026-05-29: REENTRY (flat OPEN — no gain gate) and AUGMENT (already passed the 3%
+            # gain gate above) both BYPASS the HTF veto so a guaranteed reentry/augment is never
+            # trend-vetoed. No gain math here — augment's 3% gate lives above; reentry has no gain.
             # ═══════════════════════════════════════════════════════════════════════════
-            _guar_ra_tda = False
-            try:
-                if bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)):
-                    if _original_action_was_reentry:
-                        _guar_ra_tda = True
-                    elif is_augment:
-                        _gra_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0) if position else 0.0
-                        _gra_thr = float(getattr(config, "MIN_GAIN", 3.0)) * float(getattr(config, "DUP_GUARD_GAIN_MULTIPLIER", 0.5))
-                        _gra_hi = safe_fetch_float(i.get("dc_high_3m", 0), 0.0)
-                        _gra_lo = safe_fetch_float(i.get("dc_low_3m", 0), 0.0)
-                        _gra_dcbreak = (is_long and _gra_hi > 0 and current_price > _gra_hi) or ((not is_long) and _gra_lo > 0 and current_price < _gra_lo)
-                        _guar_ra_tda = (_gra_gain >= _gra_thr) or bool(_gra_dcbreak)
-            except Exception:
-                _guar_ra_tda = False
+            _guar_ra_tda = bool(getattr(config, "GUARANTEED_REENTRY_AUGMENT_ENABLED", True)) and (_original_action_was_reentry or is_augment)
             if (
                 # 2026-05-18 per-sym overlay
                 bool(_psym_get(symbol, position_side, "HTF_TREND_VETO_ENABLED", False))
