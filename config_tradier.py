@@ -857,6 +857,11 @@ class TradierConfig:
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # 2026-04-26 WIRED — tradier_manage.py:5561 applies this mult to base_qty cap (was hardcoded 1.5). Tier 1: % of closed qty. Default 1.5 preserves prior behavior. Previously DEAD_CONFIRMED (priority 70).
     REENTRY_TIER2_SIZE_MULT_TRADIER: float = 0.8  # Tier 2: 80% of closed qty
     REENTRY_TIER2_PRICE_PCT_TRADIER: float = 0.003  # 0.3% price move triggers Tier 2
+    # 2026-05-30 USER: dip/breakout/extended reentry sizing tiers (mirror of crypto config.py:537-540, consumed at ez_manage.py:34204). PENDING wiring into tradier_manage reentry sizing (apply _re_size_mult to reentry qty using current_price vs reentry_level + stoch_k_1h).
+    REENTRY_SIZE_DIP_MULT: float = 1.5         # price below exit (buy-the-dip) → 150%
+    REENTRY_SIZE_BREAKOUT_MULT: float = 1.0    # price above exit (breakout) → 100%
+    REENTRY_SIZE_EXTENDED_MULT: float = 0.5    # k_1h extended (>95 LONG / <5 SHORT) → 50%
+    REENTRY_SIZE_EXTENDED_K1H: float = 95.0    # k_1h above this (LONG) / below 100-this (SHORT) = rally-extended
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
     REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 120.0  # Force entry after 120min
     # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned

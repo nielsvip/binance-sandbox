@@ -120,7 +120,7 @@ class Config:
     # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
     # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
     # 2026-04-22 user-authorized live flip with pos_min_qty cap
-    SCALP_V3_ENABLED: bool = True
+    SCALP_V3_ENABLED: bool = False
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 20.0       # 2026-04-23: bumped 10→20 (Binance min $5, want >$10 after any residual cuts)

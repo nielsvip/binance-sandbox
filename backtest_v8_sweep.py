@@ -211,6 +211,21 @@ def grid_reentry_wide():
     ]
 
 
+def grid_reentry_size_tiers():
+    """USER 2026-05-30: sweep the reentry SIZING tiers (DIP / BREAKOUT / k_1h-EXTENDED).
+    Live rule = 150/100/50 (dip 1.5x, breakout 1.0x, extended 0.5x). Test bigger/smaller tiers.
+    baseline = current config defaults (150/100/50)."""
+    return [
+        ("baseline_150_100_50", {}),
+        ("t_200_150_100", {"REENTRY_SIZE_DIP_MULT": 2.0, "REENTRY_SIZE_BREAKOUT_MULT": 1.5, "REENTRY_SIZE_EXTENDED_MULT": 1.0}),
+        ("t_300_200_50",  {"REENTRY_SIZE_DIP_MULT": 3.0, "REENTRY_SIZE_BREAKOUT_MULT": 2.0, "REENTRY_SIZE_EXTENDED_MULT": 0.5}),
+        ("t_200_150_50",  {"REENTRY_SIZE_DIP_MULT": 2.0, "REENTRY_SIZE_BREAKOUT_MULT": 1.5, "REENTRY_SIZE_EXTENDED_MULT": 0.5}),
+        ("t_300_200_100", {"REENTRY_SIZE_DIP_MULT": 3.0, "REENTRY_SIZE_BREAKOUT_MULT": 2.0, "REENTRY_SIZE_EXTENDED_MULT": 1.0}),
+        ("t_250_150_75",  {"REENTRY_SIZE_DIP_MULT": 2.5, "REENTRY_SIZE_BREAKOUT_MULT": 1.5, "REENTRY_SIZE_EXTENDED_MULT": 0.75}),
+        ("flat_100_100_100", {"REENTRY_SIZE_DIP_MULT": 1.0, "REENTRY_SIZE_BREAKOUT_MULT": 1.0, "REENTRY_SIZE_EXTENDED_MULT": 1.0}),
+    ]
+
+
 def grid_reentry_dc_break_knobs():
     """USER 2026-05-29: REENTRY2_DC_BREAK is LOCKED ON (master never off). Test its confirmation
     sub-knobs to find the best combo: FILTER_TF (3m/15m/1h — user: '3m seems too short'),
@@ -1869,6 +1884,7 @@ TIER_MAP = {
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
     "reentry_dc_break_knobs": grid_reentry_dc_break_knobs,
+    "reentry_size_tiers": grid_reentry_size_tiers,
     "reentry_optimize": grid_reentry_optimize,
     "reentry_all_real": grid_reentry_all_real,
     "reentry_killed_rerun": grid_reentry_killed_rerun,
