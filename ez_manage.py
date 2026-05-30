@@ -28889,6 +28889,8 @@ class MultiAccountTradeManager:
                         if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
                             continue
                         account_key, symbol, pos_side = parse_position_key(position_key)
+                        if account_key not in getattr(self, "account_keys", []):
+                            continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
                         position = await self.get_position(position_key)
                         _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
                         if _amt > 0:
