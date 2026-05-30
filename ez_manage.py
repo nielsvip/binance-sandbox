@@ -17252,9 +17252,15 @@ class MultiAccountTradeManager:
                 _aug_w1h = safe_fetch_float(_aug_ind.get("wt1_1h", 0), 0.0)
                 _aug_w2h = safe_fetch_float(_aug_ind.get("wt2_1h", 0), 0.0)
                 _aug_1h_ok = (_aug_is_long and _aug_w1h > _aug_w2h) or ((not _aug_is_long) and _aug_w1h < _aug_w2h)
+                # 15m WT BOUNCE = a wt higher-low (wt bounced to a value ABOVE its previous wt1 low) for LONG;
+                # a wt lower-high for SHORT. Precomputed structure fields. Empty → fail-safe (no bounce → 3%).
+                _aug_hl15 = str(_aug_ind.get("wt_trough_structure_15m", ""))
+                _aug_lh15 = str(_aug_ind.get("wt_peak_structure_15m", ""))
+                _aug_wt_bounce = (_aug_is_long and _aug_hl15 == "HL") or ((not _aug_is_long) and _aug_lh15 == "LH")
                 _aug_exit_px = safe_fetch_float(getattr(position, "last_reduction_price", 0), 0.0) if position else 0.0
                 _aug_below_exit = _aug_exit_px > 0 and ((_aug_is_long and current_price < _aug_exit_px) or ((not _aug_is_long) and current_price > _aug_exit_px))
-                _aug_is_bounce = bool(_aug_below_exit and _aug_1h_ok)
+                # BOUNCE = 15m wt higher-low AND 1h going the right way AND price below the exit. All three.
+                _aug_is_bounce = bool(_aug_below_exit and _aug_1h_ok and _aug_wt_bounce)
                 if _aug_is_bounce:
                     _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * 0.5
             except Exception:
@@ -34289,8 +34295,13 @@ async def process_single_reentry_evaluation(
             _wt1_1h_dfr = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
             _wt2_1h_dfr = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
             _h1_aligned = (is_long and _wt1_1h_dfr > _wt2_1h_dfr) or ((not is_long) and _wt1_1h_dfr < _wt2_1h_dfr)
-            _dir_fav_long = is_long and k_3m > d_3m and k_3m < 85 and (k_15m > d_15m or _h1_aligned)
-            _dir_fav_short = (not is_long) and k_3m < d_3m and k_3m > 15 and (k_15m < d_15m or _h1_aligned)
+            # USER 2026-05-30: BOUNCE reentry = a 15m wt higher-low (HL long / LH short = wt bounced above its
+            # previous low) AND the 1h still going the right way. Same bounce definition as the bounce augment.
+            _hl15_dfr = str(i.get("wt_trough_structure_15m", ""))
+            _lh15_dfr = str(i.get("wt_peak_structure_15m", ""))
+            _wt_bounce_15m_dfr = (is_long and _hl15_dfr == "HL") or ((not is_long) and _lh15_dfr == "LH")
+            _dir_fav_long = is_long and k_3m > d_3m and k_3m < 85 and _h1_aligned and _wt_bounce_15m_dfr
+            _dir_fav_short = (not is_long) and k_3m < d_3m and k_3m > 15 and _h1_aligned and _wt_bounce_15m_dfr
             _wt1_3m_dfr = safe_fetch_float(i.get("wt1_3m", 0), 0.0)
             _wt2_3m_dfr = safe_fetch_float(i.get("wt2_3m", 0), 0.0)
             _wt_confirm = _h1_aligned or (
