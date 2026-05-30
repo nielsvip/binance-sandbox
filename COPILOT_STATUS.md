@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-30 16:00:33 UTC
+# Copilot Status — 2026-05-30 16:16:08 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T15:57:08
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T15:57:08
-- **STALE_INDICATORS** [tradier]  — 2026-05-30T15:59:11
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T15:59:11
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T15:59:11
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T16:13:39
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T16:13:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-30T16:15:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T16:15:49
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T16:15:49
 
 ## Missed Trades (trader comparison)
 
@@ -27,12 +27,15 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +0.9%
+- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-1.8%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.3%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.1%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
+- HELD: **IOUSDT** LONG (crypto) peak +3.0%, now +2.4%
+
+- WATCHING: **NEARUSDC** LONG (crypto) peaked +3.2%, exited 0m ago
 
 ## Supervisor
 
