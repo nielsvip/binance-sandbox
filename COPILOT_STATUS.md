@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-30 23:28:22 UTC
+# Copilot Status — 2026-05-30 23:43:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-30T23:28:21
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T23:28:21
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T23:28:21
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-30T23:28:21
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T23:28:21
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T23:42:37
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T23:42:37
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T23:42:37
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T23:42:37
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T23:42:37
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T23:42:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-30T23:42:38
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T23:42:38
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-30T23:43:39
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-30T23:43:39
 
 ## Missed Trades (trader comparison)
 
@@ -27,12 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-2.9%
-- HELD: **IOUSDT** LONG (crypto) peak +9.4%, now +-3.4%
+- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-3.1%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-1.1%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-1.0%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
 
 ## Supervisor
