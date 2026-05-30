@@ -47871,6 +47871,68 @@ def signal_handler(signum, frame):
         os._exit(1)
 
 
+def heap_dump_handler(signum, frame):
+    """SIGUSR2 diagnostic — dump top heap consumers to /tmp/heap_<pid>.txt. Non-fatal, no state change."""
+    import gc as _gc
+    try:
+        out = [f"=== HEAP DUMP pid={os.getpid()} ts={time.time():.0f} ==="]
+        np_total = 0
+        np_count = 0
+        shape_bytes = {}
+        objs = _gc.get_objects()
+        out.append(f"gc.get_objects total={len(objs)}")
+        for o in objs:
+            try:
+                if type(o).__module__ == "numpy" and type(o).__name__ == "ndarray":
+                    nb = o.nbytes
+                    np_total += nb
+                    np_count += 1
+                    sk = f"{o.dtype}{o.shape}"
+                    shape_bytes[sk] = shape_bytes.get(sk, 0) + nb
+            except Exception:
+                continue
+        out.append(f"numpy ndarray count={np_count} total_MB={np_total/1048576:.1f}")
+        for sk, nb in sorted(shape_bytes.items(), key=lambda x: -x[1])[:25]:
+            out.append(f"  {nb/1048576:8.2f}MB  {sk}")
+        type_count = {}
+        for o in objs:
+            tn = f"{type(o).__module__}.{type(o).__name__}"
+            type_count[tn] = type_count.get(tn, 0) + 1
+        out.append("=== top object types by count ===")
+        for tn, c in sorted(type_count.items(), key=lambda x: -x[1])[:25]:
+            out.append(f"  {c:9d}  {tn}")
+        tm = None
+        for o in objs:
+            if o.__class__.__name__ == "MultiAccountTradeManager":
+                tm = o
+                break
+        if tm is not None:
+            out.append("=== TradeManager attrs by len ===")
+            rows = []
+            for name in dir(tm):
+                if name.startswith("__"):
+                    continue
+                try:
+                    v = getattr(tm, name)
+                except Exception:
+                    continue
+                if isinstance(v, (dict, list, set)):
+                    try:
+                        rows.append((len(v), type(v).__name__, name))
+                    except Exception:
+                        continue
+            for sz, t, n in sorted(rows, reverse=True)[:35]:
+                out.append(f"  {sz:8d}  {t:8s}  tm.{n}")
+        with open(f"/tmp/heap_{os.getpid()}.txt", "a") as fh:
+            fh.write("\n".join(out) + "\n\n")
+    except Exception as _e:
+        try:
+            with open(f"/tmp/heap_{os.getpid()}.txt", "a") as fh:
+                fh.write(f"HEAP_DUMP_ERROR: {_e}\n")
+        except Exception:
+            pass
+
+
 class HaikuOverseer:
     """AI oversight agent — monitors decisions, reverses stupid trades, manages winners.
     Runs as a background task inside ez_manage. Direct access to TradeManager — no Redis pub/sub."""
@@ -49027,6 +49089,10 @@ async def main():
             logger.warning(f"PID file check failed for {acct}: {e} - continuing")
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+    try:
+        signal.signal(signal.SIGUSR2, heap_dump_handler)
+    except Exception:
+        pass
     base_path_str = str(config.BASE_PATH)
     restart_flag_file = os.path.join(
         str(Path.home()), "logs", f"ez_manage_{acct.lower()}_restart_flag"
