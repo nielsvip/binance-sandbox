@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-30 22:11:48 UTC
+# Copilot Status — 2026-05-30 22:27:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T22:08:43
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T22:08:43
-- **STALE_INDICATORS** [tradier]  — 2026-05-30T22:10:45
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T22:10:45
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T22:10:45
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T22:25:07
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T22:25:07
+- **STALE_INDICATORS** [tradier]  — 2026-05-30T22:27:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-30T22:27:10
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-30T22:27:10
 
 ## Missed Trades (trader comparison)
 
@@ -29,17 +29,17 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-1.9%
-- HELD: **IOUSDT** LONG (crypto) peak +7.9%, now +7.4%
+- HELD: **AXSUSDT** LONG (crypto) peak +11.2%, now +-2.1%
+- HELD: **IOUSDT** LONG (crypto) peak +9.0%, now +5.4%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-1.5%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-1.4%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 42
+**Issues (last 1h):** 50
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
