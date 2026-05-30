@@ -1104,17 +1104,16 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
             _dc_max = getattr(config_obj, 'DC_EDGE_SIZING_MAX_MULT', 3.0)
             _dc_edge_mult = _dc_min + _dc_edge * (_dc_max - _dc_min)
             base_usdc_size = base_usdc_size * _dc_edge_mult
-    # MANIPULATION FLAG CHECK: cap position size on flagged symbols
+    # MANIPULATION FLAG — USER 2026-05-30: this is a FLAG, NOT a filter. Log for visibility ONLY; do NOT
+    # cap size. A fast FAVORABLE mover trips PRICE_RANGE_1H/SUSPICIOUS and must still trade at full size —
+    # never shrink a flagged symbol to $10 (that suppressed the XLM +50% move).
     try:
         _manip_flags_path = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
         if _manip_flags_path.exists():
             _manip_flags = json.loads(_manip_flags_path.read_text())
             _mf = _manip_flags.get(symbol, {})
             if _mf and _mf.get("severity", 0) >= 2:
-                _mf_mult = float(_mf.get("size_multiplier", 0.3))
-                _mf_max = float(_mf.get("max_usd", 10.0))
-                base_usdc_size = min(base_usdc_size * _mf_mult, _mf_max)
-                logger.warning(f"[MANIPULATION_CAP] {symbol}: {_mf.get('severity_label','?')} — capped to ${base_usdc_size:.1f} (mult={_mf_mult}, max=${_mf_max})")
+                logger.warning(f"[MANIPULATION_FLAG_INFO] {symbol}: {_mf.get('severity_label','?')} — informational only, size NOT capped")
     except Exception:
         pass
     knife_penalty = 1.0
@@ -2665,7 +2664,14 @@ class AdvancedSignalRater:
             elif not is_long and _e20_dist > 0.02: score += 10; reasons.append(f"EMA20_4H_ABOVE({_e20_dist:.1%},+10)")
         # K3M_CAP: Tournament winner - block entries at overbought/oversold extremes (k3m_cap=80, +242 avg Sharpe)
         _k3m_cap = config.get_symbol_setting(account_key, _rpk, 'K3M_CAP') if account_key else getattr(config, "K3M_CAP", 80)
-        if not is_exit and _k3m_cap and _k3m_cap > 0:
+        # USER 2026-05-30: a confirmed DC breakout (price above the 1h/3m channel for LONG, below for SHORT) is
+        # allowed to RIDE THROUGH the overbought K3M_CAP — that is the whole point of a breakout. Normal entries
+        # still respect the cap (tournament winner). ROLLBACK: K3M_CAP_BREAKOUT_BYPASS=False.
+        _k3m_cap_breakout = bool(getattr(config, "K3M_CAP_BREAKOUT_BYPASS", True)) and (
+            (is_long and ((dc_high_1h > 0 and current_price > dc_high_1h) or (dc_high_3m > 0 and current_price > dc_high_3m)))
+            or ((not is_long) and ((dc_low_1h > 0 and current_price < dc_low_1h) or (dc_low_3m > 0 and current_price < dc_low_3m)))
+        )
+        if not is_exit and _k3m_cap and _k3m_cap > 0 and not _k3m_cap_breakout:
             if is_long and k_3m >= _k3m_cap: return 0, "WAIT", f"K3M_CAP_LONG({k_3m:.0f}>={_k3m_cap})_tournament"
             if not is_long and k_3m <= (100 - _k3m_cap): return 0, "WAIT", f"K3M_CAP_SHORT({k_3m:.0f}<={100-_k3m_cap})_tournament"
         _short_rsi_min = getattr(config, "SHORT_RSI_MIN_1H", 0)
@@ -4339,7 +4345,13 @@ class AdvancedSignalRater:
                         score += _delta_entry_penalty
                         reasons.append(f"DELTA_HTF_D_AGAINST")
 
-            if (is_long and ((k_1m > 70 and true_lag < 10.0) or k_3m > 80)) or (not is_long and ((k_1m < 30 and true_lag < 10.0) or k_3m < 20)): score = 0.2 * score
+            # USER 2026-05-30: a confirmed DC breakout is NOT gutted for being overbought — riding a breakout
+            # requires high momentum. Normal overbought entries still get the 0.2x cut. ROLLBACK: =False.
+            _sg_breakout = bool(getattr(config, "OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS", True)) and (
+                (is_long and ((dc_high_1h > 0 and current_price > dc_high_1h) or (dc_high_3m > 0 and current_price > dc_high_3m)))
+                or ((not is_long) and ((dc_low_1h > 0 and current_price < dc_low_1h) or (dc_low_3m > 0 and current_price < dc_low_3m)))
+            )
+            if not _sg_breakout and ((is_long and ((k_1m > 70 and true_lag < 10.0) or k_3m > 80)) or (not is_long and ((k_1m < 30 and true_lag < 10.0) or k_3m < 20))): score = 0.2 * score
             final_score = max(0, min(60, int(round(score))))
             if final_score >= 29: rec = "STRONG_BUY" if is_long else "STRONG_SELL"
             elif final_score >= 24: rec = "GOOD_BUY" if is_long else "GOOD_SELL"
@@ -15289,8 +15301,11 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             _k15m = safe_fetch_float(indicators.get('stoch_k_15m') or indicators.get('k_15m_prev', 50), 50)
                             _wt1_15m = safe_fetch_float(indicators.get('wt1_15m', 0), 0)
                             _wt2_15m = safe_fetch_float(indicators.get('wt2_15m', 0), 0)
-                            # HARD GATE: never LONG at k15m>70 (overbought), never SHORT at k15m<30 (oversold)
-                            _stoch_wrong = (is_long and _k15m > 70) or (not is_long and _k15m < 30)
+                            # USER 2026-05-30: a DC BREAKOUT *is* overbought by nature — the old hard "never LONG
+                            # at k15m>70" self-cancelled every breakout (XLM +50% never re-entered). Ride it:
+                            # rely on WT momentum confirmation (_wt_ok below) and only block at an EXTREME cap.
+                            _dc_ob_cap = float(getattr(config, "DC_BREAKOUT_OVERBOUGHT_K15M_CAP", 95.0))
+                            _stoch_wrong = (is_long and _k15m > _dc_ob_cap) or (not is_long and _k15m < (100.0 - _dc_ob_cap))
                             # WT confirmation: LONG wants wt1>wt2 (momentum up), SHORT wants wt1<wt2
                             _wt_ok = (is_long and _wt1_15m > _wt2_15m) or (not is_long and _wt1_15m < _wt2_15m)
                             if _stoch_wrong:

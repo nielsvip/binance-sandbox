@@ -22828,8 +22828,17 @@ class MultiAccountTradeManager:
             # 2026-05-21 19:01 — exclude "NOT A TRADEABLE KEY" per [[feedback-history-is-comparison
             # -truth-20260521]] mandate: tradeable_keys is hand-picked, never auto-expand.
             _reason_up_mtf = (reason or "").upper()
+            # USER 2026-05-30: the MTF armed-state filter was blocking EVERY fresh open of a runner
+            # (XLM +50% blocked 100% by MTF_NO_ARMED_STATE). The bypass keyed on the REASON containing
+            # literal "QUICK_OPEN"/"STRONG_BUY", but real open reasons are "TRADEABLE_KEYS_MANDATORY_..dc_high_3m"
+            # and "QUICK_SCALP_V3_OPEN_..BAR_BREAK" (no such literal) while the ACTION is QUICK_OPEN/OPEN.
+            # Fix: test the ACTION (_kill_act) AND add the real fresh-breakout reason tokens.
             _mtf_strong_buy_quick_bypass = (
-                ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_mtf)
+                ("STRONG_BUY" in _reason_up_mtf or "QUICK_OPEN" in _reason_up_mtf or "QUICK_OPEN" in _kill_act
+                 or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_mtf
+                 or "TRADEABLE_KEYS_MANDATORY" in _reason_up_mtf or "WT_3M_FORCE_OPEN" in _reason_up_mtf
+                 or "DC_BREAKOUT" in _reason_up_mtf or "DC_HIGH_3M" in _reason_up_mtf or "DC_LOW_3M" in _reason_up_mtf
+                 or "SCALP_V3_OPEN" in _reason_up_mtf or "BAR_BREAK" in _reason_up_mtf)
                 and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
@@ -34140,7 +34149,11 @@ async def process_single_reentry_evaluation(
         if reentry_level > 0 and current_price > 0:
             _div = abs(current_price - reentry_level) / reentry_level
             _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
-            if _div > _max_div:
+            # USER 2026-05-30: only invalidate on ADVERSE divergence. A FAVORABLE breakout (LONG above exit /
+            # SHORT below exit) is to be CHASED via the dc_3m / DIRECTION_FAVORABLE reentry below — NEVER
+            # zero the record on a favorable move (the +50% XLM run was self-deleting its own reentry).
+            _div_favorable = (is_long and current_price > reentry_level) or ((not is_long) and current_price < reentry_level)
+            if _div > _max_div and not _div_favorable:
                 if isinstance(reentry_data, dict):
                     reentry_data["reentry_level"] = 0.0
                     reentry_data["exit_price"] = 0.0
@@ -35386,7 +35399,9 @@ async def evaluate_reentry_2(trade_manager):
             if reentry_level > 0 and current_price > 0:
                 _div = abs(current_price - reentry_level) / reentry_level
                 _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
-                if _div > _max_div:
+                # USER 2026-05-30: favorable breakout = chase, never invalidate (see process_single_reentry_evaluation).
+                _div_favorable = (is_long and current_price > reentry_level) or ((not is_long) and current_price < reentry_level)
+                if _div > _max_div and not _div_favorable:
                     reentry_data["reentry_level"] = 0.0
                     reentry_data["exit_price"] = 0.0
                     reentry_data["reentry_amount"] = 0.0

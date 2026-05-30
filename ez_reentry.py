@@ -696,7 +696,11 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             continue
         divergence = abs(cur_px - exit_px) / exit_px
         max_div = float(getattr(_cfg, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
-        if divergence > max_div:
+        # USER 2026-05-30: only invalidate on ADVERSE divergence. A FAVORABLE move (LONG price rose above
+        # exit / SHORT price fell below exit) is a breakout to CHASE — NEVER delete the reentry record when
+        # price has crossed in our favor (XLM ran +50% and self-deleted its reentry under the old 20% cap).
+        _div_favorable = (is_long and cur_px > exit_px) or ((not is_long) and cur_px < exit_px)
+        if divergence > max_div and not _div_favorable:
             _invalidate_stale_reentry_record(base_path, pk, account_key, is_long, trade_manager)
             continue
         if cross_pct > 0:
