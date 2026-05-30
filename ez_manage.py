@@ -17241,10 +17241,24 @@ class MultiAccountTradeManager:
             )
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, "MIN_POSITION_SIZE", 45.0)
-            # USER 2026-05-30 (PROVISIONAL, under sweep test): AUGMENT of an EXISTING position requires
-            # gain > AUGMENT_GAIN_MULT*MIN_GAIN (default 0.5*3.0 = 1.5%). REENTRY of a FLAT position never
-            # reaches this branch (is_augment=False) — a bounce/cross/breakout OPENs at gain==0, no % gate.
-            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * float(getattr(config, "AUGMENT_GAIN_MULT", 0.5))
+            # USER 2026-05-30: a BOUNCE augment — price pulled back BELOW the last exit price AND the 1h is
+            # still going the right way (wt1_1h vs wt2_1h) — augments at 0.5*MIN_GAIN (1.5%). EVERY other
+            # augment (incl a breakout) stays at MIN_GAIN (3%). The 0.5*MIN_GAIN rule is BOUNCE-ONLY.
+            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
+            _aug_is_bounce = False
+            try:
+                _aug_is_long = position_side == "LONG"
+                _aug_ind = await ii(self, symbol)
+                _aug_w1h = safe_fetch_float(_aug_ind.get("wt1_1h", 0), 0.0)
+                _aug_w2h = safe_fetch_float(_aug_ind.get("wt2_1h", 0), 0.0)
+                _aug_1h_ok = (_aug_is_long and _aug_w1h > _aug_w2h) or ((not _aug_is_long) and _aug_w1h < _aug_w2h)
+                _aug_exit_px = safe_fetch_float(getattr(position, "last_reduction_price", 0), 0.0) if position else 0.0
+                _aug_below_exit = _aug_exit_px > 0 and ((_aug_is_long and current_price < _aug_exit_px) or ((not _aug_is_long) and current_price > _aug_exit_px))
+                _aug_is_bounce = bool(_aug_below_exit and _aug_1h_ok)
+                if _aug_is_bounce:
+                    _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * 0.5
+            except Exception:
+                _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
             if _pos_val <= _min_pos_val:
                 # 2026-05-09 FOOTHOLD pile-on guard — 2026-05-12 gated by FOOTHOLD_PILEON_ENABLED (default False) after user reported blocked breakouts.
                 if bool(getattr(config, "FOOTHOLD_PILEON_ENABLED", False)):
@@ -17278,7 +17292,8 @@ class MultiAccountTradeManager:
                         f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]"
                     )
             elif _pos_val > _min_pos_val and _gain < _aug_thr:
-                # AUGMENT on an EXISTING position requires gain > AUGMENT_GAIN_MULT*MIN_GAIN (provisional 1.5%, UNDER TEST).
+                # AUGMENT gate: 3% normally; 0.5*MIN_GAIN (1.5%) ONLY at a BOUNCE (below exit + 1h aligned).
+                # gain<0 = LOSER_KILL (never augment a loser, even at a bounce).
                 if _gain < 0.0:
                     logger.critical(
                         f"🚫 [LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. positionAmt>0 AND gain<0 = NEVER augment. action={action} is_reentry={_is_reentry}"
@@ -17286,9 +17301,9 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_LOSER_KILL_NEGATIVE_{_gain:.2f}%"
                 else:
                     logger.warning(
-                        f"[AUGMENT_GAIN_GATE] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < {_aug_thr:.2f}% (AUGMENT_GAIN_MULT*MIN_GAIN). action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
+                        f"[GAIN_GATE] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < {_aug_thr:.2f}% ({'BOUNCE_0.5xMIN_GAIN' if _aug_is_bounce else 'NORMAL_MIN_GAIN'}). action={action} is_reentry={_is_reentry} is_hedge={is_hedge}"
                     )
-                    return f"BLOCKED_AUGMENT_GAIN_{_gain:.2f}%_lt_{_aug_thr:.2f}%_pos${_pos_val:.0f}"
+                    return f"BLOCKED_GAIN_GATE_{_gain:.2f}%_lt_{_aug_thr:.2f}%_pos${_pos_val:.0f}"
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
         if is_augment and not _original_action_was_reentry and position:
             _aug_count = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)

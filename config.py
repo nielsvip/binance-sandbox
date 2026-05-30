@@ -1001,12 +1001,6 @@ class Config:
     # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5         # threshold = MULT * config.MIN_GAIN (=1.5% by default)
     DUP_GUARD_USE_GAIN_GATE: bool = False           # False = revert to 900s time gate
-    # AUGMENT threshold — USER 2026-05-30 "PUT IT THERE NOW but needs confirmation".
-    # AUGMENT (add to an EXISTING position) requires gain > AUGMENT_GAIN_MULT * MIN_GAIN.
-    # Provisional = 0.5 (→1.5%); PROBABLY right but UNDER TEST (sweep tier augment_gain_mult).
-    # REENTRY of a FLAT position is NEVER gated by this (gain==0.0, is_augment=False, it just OPENs).
-    AUGMENT_GAIN_MULT: float = 0.5
-    AUGMENT_GAIN_MULT_CONFIRMED: bool = False       # flips True once a 48-sym sweep confirms the value
     # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
     # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
     # Set False to re-enable the old open-underweight path once system is verified.
