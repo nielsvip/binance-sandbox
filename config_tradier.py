@@ -2516,6 +2516,7 @@ class TradierConfig:
     # Tiered ×mult by |price-ema_200_15m|/ema_200_15m (LONG above / SHORT below). Add-to-strength, never
     # martingale (COUNTER_TREND_ADD_BLOCK ran at queue top). ROLLBACK: BREAKOUT_SIZE_LADDER_ENABLED=False.
     BREAKOUT_SIZE_LADDER_ENABLED: bool = True
+    RULE_B_5M_EXIT_ENABLED: bool = True   # 2026-05-31 USER: stock RULE B exit — LONG on 5m lower-low+lower-high, SHORT on higher-high+higher-low (trend turning against). PROFIT-GATED (gain>=NOLOSS_MIN) → never closes at a loss, holds losers per protection model. Validated 74/74 stock keys positive (ema anchor). Mirrors crypto RULE_B_3M_EXIT. ROLLBACK: False.
     BREAKOUT_SIZE_EMA200_T1_PCT: float = 1.0
     BREAKOUT_SIZE_EMA200_T1_MULT: float = 1.5
     BREAKOUT_SIZE_EMA200_T2_PCT: float = 1.5

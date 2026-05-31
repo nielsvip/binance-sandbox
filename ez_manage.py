@@ -22645,6 +22645,13 @@ class MultiAccountTradeManager:
         )
         global _LAST_EXECUTE_NOW_ENTRY_TS
         _LAST_EXECUTE_NOW_ENTRY_TS = time.time()
+        # 2026-05-31 USER: SCALP_REDUCE OFF — CENTRAL gate at execute_now (the one chokepoint per CLAUDE.md). The
+        # winner-cutting reduce bypassed BOTH queue_trade_action and execute_trade_action via the QUICK reduce path
+        # (ez_positions_quick:13073 -> execute_now). Gating HERE blocks it on every route (men fired 06:13 post both
+        # prior guards). RULE_B_3M reduces use a different reason and pass through. ROLLBACK: SCALP_REDUCE_ENABLED=True.
+        if "SCALP_REDUCE" in str(reason).upper() and not getattr(config, "SCALP_REDUCE_ENABLED", True):
+            logger.info(f"[execute_now] SCALP_REDUCE_DISABLED skip: {position_key} {str(reason)[:60]}")
+            return "SKIPPED_SCALP_REDUCE_DISABLED"
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # 2026-05-23 USER MANDATE — clear dup-open cooldown on CLOSE/REDUCE intent so reentry can fire

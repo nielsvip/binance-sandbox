@@ -6956,6 +6956,17 @@ class StockStrategy:
         # higher_low on 5m for SHORT (structure turning up) + k_5m rising = exit
         _higher_low_5m = low_5m > 0 and low_5m_prev > 0 and low_5m > low_5m_prev
         _lower_high_5m = high_5m > 0 and high_5m_prev > 0 and high_5m < high_5m_prev
+        # 2026-05-31 USER: RULE B 5m exit for stocks (validated 45/45 SHORT + 29/29 LONG positive w/ ema anchor) —
+        # LONG exits on 5m lower-low AND lower-high; SHORT on 5m higher-high AND higher-low (full structure turn
+        # against the position). PROFIT-GATED (gain>=noloss_min) so losers are held per the protection model — $70k
+        # safe, never closes at a loss. Config-flagged (instant rollback). Mirrors crypto RULE_B_3M_EXIT.
+        _ll5 = low_5m > 0 and low_5m_prev > 0 and low_5m < low_5m_prev
+        _hh5 = high_5m > 0 and high_5m_prev > 0 and high_5m > high_5m_prev
+        if getattr(config, "RULE_B_5M_EXIT_ENABLED", False) and gain >= _noloss_min_t:
+            if is_long and _ll5 and _lower_high_5m:
+                return True, f"RULE_B_5M_LL_LH_gain:{gain:.2f}%", qty
+            if (not is_long) and _hh5 and _higher_low_5m:
+                return True, f"RULE_B_5M_HH_HL_gain:{gain:.2f}%", qty
         if gain >= _noloss_min_t and _exit_confirmed:
             if is_long and _lower_high_5m and k_5m < k_5m_prev and hold_time_min > 15:
                 return True, f"STRUCT_LH5M_EXIT_bc100_k5:{k_5m:.1f}<prev:{k_5m_prev:.1f}_hi5:{high_5m:.2f}<prev:{high_5m_prev:.2f}_gain:{gain:.2f}%_WT{_exit_tf_against}TF", qty
