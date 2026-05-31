@@ -12405,13 +12405,26 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                     if _fr_val != 0.0: break  # take first non-zero
                                 except Exception: pass
                         if _fr_val is not None and _fr_val != 0.0:
-                            if _gate_is_long and _fr_val >= _fr_long_th:
-                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED LONG entry — funding_rate={_fr_val*100:.4f}% >= {_fr_long_th*100:.4f}% (longs paying shorts, overheated). action={action}")
+                            # 2026-05-31 MTF-conditioned funding gate. Data (9.3M bars): naive long-block HURTS (kills momentum
+                            # longs when HTF is bullish); only veto when funding is extreme AND HTF WaveTrend disagrees. Default
+                            # FUNDING_GATE_MTF_REQUIRED=False -> original naive snapshot behavior (no change unless enabled).
+                            _fg_mtf_req = bool(getattr(config, 'FUNDING_GATE_MTF_REQUIRED', False))
+                            _fg_bull_tfs = 0; _fg_bear_tfs = 0
+                            if _fg_mtf_req:
+                                for _tf in ('15m', '1h', '4h', 'D'):
+                                    _w1 = _gate_ind.get(f'wt1_{_tf}'); _w2 = _gate_ind.get(f'wt2_{_tf}')
+                                    if _w1 is not None and _w2 is not None:
+                                        if float(_w1) > float(_w2): _fg_bull_tfs += 1
+                                        elif float(_w1) < float(_w2): _fg_bear_tfs += 1
+                            _fg_long_max_bull = int(getattr(config, 'FUNDING_GATE_MTF_LONG_MAX_BULL_TFS', 1))
+                            _fg_short_max_bear = int(getattr(config, 'FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS', 1))
+                            if _gate_is_long and _fr_val >= _fr_long_th and ((not _fg_mtf_req) or _fg_bull_tfs <= _fg_long_max_bull):
+                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED LONG entry — funding_rate={_fr_val*100:.4f}% >= {_fr_long_th*100:.4f}% (overheated) mtf={_fg_mtf_req} bull_tfs={_fg_bull_tfs}/4. action={action}")
                                 return False, f"FUNDING_GATE_LONG_REJECT_fr={_fr_val*100:.4f}%"
-                            if (not _gate_is_long) and _fr_val <= _fr_short_th:
-                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED SHORT entry — funding_rate={_fr_val*100:.4f}% <= {_fr_short_th*100:.4f}% (shorts paying longs, overheated). action={action}")
+                            if (not _gate_is_long) and _fr_val <= _fr_short_th and ((not _fg_mtf_req) or _fg_bear_tfs <= _fg_short_max_bear):
+                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED SHORT entry — funding_rate={_fr_val*100:.4f}% <= {_fr_short_th*100:.4f}% (overheated) mtf={_fg_mtf_req} bear_tfs={_fg_bear_tfs}/4. action={action}")
                                 return False, f"FUNDING_GATE_SHORT_REJECT_fr={_fr_val*100:.4f}%"
-                            logger.debug(f"[FUNDING_GATE_OK] {position_key}: funding={_fr_val*100:.4f}% within bounds [{_fr_short_th*100:.4f}%, {_fr_long_th*100:.4f}%]")
+                            logger.debug(f"[FUNDING_GATE_OK] {position_key}: funding={_fr_val*100:.4f}% mtf={_fg_mtf_req} bull={_fg_bull_tfs} bear={_fg_bear_tfs} within bounds [{_fr_short_th*100:.4f}%, {_fr_long_th*100:.4f}%]")
                 # ═══ 2026-04-27 ORDER-BOOK RED-ZONE GATE — heatmap walls from real bids/asks ═══
                 # ez_orderbook.py writes ob_bid_wall_pct (support distance %) and ob_ask_wall_pct (resistance distance %) per sym.
                 # Block LONG when resistance wall too close above (ob_ask_wall_pct < threshold).
