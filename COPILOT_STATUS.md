@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-31 21:56:18 UTC
+# Copilot Status — 2026-05-31 22:33:48 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,15 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-31T21:55:16
-- **STALE_INDICATORS** [tradier]  — 2026-05-31T21:56:17
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-31T21:56:17
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-31T21:56:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-31T21:56:17
+- **STALE_INDICATORS** [tradier]  — 2026-05-31T22:33:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-31T22:33:17
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-31T22:33:17
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-31T22:33:17
 
 ## Missed Trades (trader comparison)
 
@@ -30,16 +29,16 @@ _None_
 **Held:** 3 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.1%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.0%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
+**Issues (last 1h):** 9
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
