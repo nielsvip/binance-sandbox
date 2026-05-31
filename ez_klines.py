@@ -36,7 +36,7 @@ MIN_KLINES_PER_INTERVAL={'3m': 220, '15m': 250, '1h': 250, '4h': 250, 'D': 50}
 MIN_KLINES_THRESHOLD=200
 MAX_DATA_FILE=cfg.BASE_PATH/'klines_maxed_symbols.json'
 MAX_DATA_RETRY_HOURS=168
-_throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None}
+_throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None,'ban_until':0.0}
 _maxed_cache=None
 ENVIRONMENT=get_current_environment()['env']
 NETIFACES_AVAILABLE=True
@@ -118,12 +118,26 @@ def merge_and_write(symbol, interval, rows):
     with open(tmp_path,'w') as tmp: tmp.write(df_out.to_json(orient='records', indent=2))
     os.replace(tmp_path,file_path)
     return added
+def _record_api_ban(status, text):
+    if status not in (418, 429): return
+    m=re.search(r'banned until (\d+)', text or '')
+    if not m: return
+    ban_ms=int(m.group(1))
+    ban_until_mono=time.monotonic()+max(0.0, (ban_ms/1000.0)-time.time())
+    if ban_until_mono>_throttle_state.get('ban_until', 0.0):
+        _throttle_state['ban_until']=ban_until_mono
+        log(f"⛔ RATE-LIMIT CIRCUIT BREAKER: status {status}, pausing ALL klines REST until ban lifts ({max(0.0,(ban_ms/1000.0)-time.time()):.0f}s)")
 async def throttle_api_request():
     state=_throttle_state
     # if state['lock'] is None: state['lock']=asyncio.Lock()
     # async with state['lock']:
     per_second=state['per_second']
     per_minute=state['per_minute']
+    ban_until=state.get('ban_until', 0.0)
+    if ban_until>0.0:
+        remaining=ban_until-time.monotonic()
+        if remaining>0:
+            await asyncio.sleep(min(remaining+0.5, 60.0))
     while True:
         now=time.monotonic()
         while per_second and now-per_second[0]>=1: per_second.popleft()
@@ -281,6 +295,7 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
                     else:
                         text = await response.text()
                         log(f"API Error for {symbol} {interval}: {response.status} {text}")
+                        _record_api_ban(response.status, text)
                         add_issue(symbol,interval,'API_ERROR','RED',f'status {response.status}')
                         return symbol, interval, None
         else:
@@ -300,6 +315,7 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
                 else:
                     text = await response.text()
                     log(f"API Error for {symbol} {interval}: {response.status} {text}")
+                    _record_api_ban(response.status, text)
                     add_issue(symbol,interval,'API_ERROR','RED',f'status {response.status}')
                     return symbol, interval, None
 
