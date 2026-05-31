@@ -481,6 +481,48 @@ _tradier_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig"
 _global_per_sym_cfgs: dict = {}
 _global_per_sym_cfgs_mtime: float = 0.0
 _global_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+# 2026-05-31 FINAL per_sym BOOK (stocks share data/persym_final_book.json with crypto). Authoritative
+# for the tradeable gate + sizing: tradeable -> side enabled + per-sym size_cap; disabled -> _ENABLED
+# False (is_symbol_tradeable refuses new entries, exits bypass). Gated by PERSYM_FINAL_BOOK_ENABLED.
+_tradier_final_book: dict = {}
+_tradier_final_book_mtime: float = 0.0
+_tradier_final_book_path = Path(config.BASE_PATH) / "data" / "persym_final_book.json"
+
+
+def _tradier_final_book_get(sym_key: str, param):
+    """Return the FINAL-book value for a book-managed param on sym_key, else None.
+    Book-managed: LONG_ENABLED/SHORT_ENABLED (tradeable gate), BREAKOUT_SIZE_MAX_MULT
+    (size cap), MOMENTUM_SMA_WATCHDOG_PCT (entry distance). None = not book-managed/absent."""
+    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
+        return None
+    if param not in ("LONG_ENABLED", "SHORT_ENABLED", "BREAKOUT_SIZE_MAX_MULT", "MOMENTUM_SMA_WATCHDOG_PCT"):
+        return None
+    global _tradier_final_book, _tradier_final_book_mtime
+    try:
+        mtime = _tradier_final_book_path.stat().st_mtime
+        if mtime != _tradier_final_book_mtime:
+            with _tradier_final_book_path.open() as _f:
+                _tradier_final_book = json.load(_f)
+            _tradier_final_book_mtime = mtime
+    except Exception:
+        return None
+    if not _tradier_final_book:
+        return None
+    side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    if side_flag is None:
+        return None
+    trd = _tradier_final_book.get("tradeable", {})
+    if sym_key in trd:
+        if param == side_flag:
+            return True
+        if param == "BREAKOUT_SIZE_MAX_MULT" and trd[sym_key].get("size_cap") is not None:
+            return float(trd[sym_key]["size_cap"])
+        if param == "MOMENTUM_SMA_WATCHDOG_PCT" and trd[sym_key].get("pct_entry") is not None:
+            return float(trd[sym_key]["pct_entry"])
+        return None
+    if sym_key in set(_tradier_final_book.get("disabled", [])) and param == side_flag:
+        return False
+    return None
 
 
 def _collect_sharpe_sources(entry: dict) -> list:
@@ -591,7 +633,14 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     2026-05-18 Path B: when param == 'START_POSITION_SIZE', also try
     'START_POSITION_SIZE_OVERRIDE_USD' (per-sym trial-sizing key) FIRST in the
     same overlay chain. Honors user mandate that PROMOTE_MIN_AMOUNT pending
-    candidates trade at the daemon-written $5 trial size before promotion."""
+    candidates trade at the daemon-written $5 trial size before promotion.
+
+    2026-05-31 FINAL per_sym BOOK is AUTHORITATIVE for LONG_ENABLED/SHORT_ENABLED/
+    BREAKOUT_SIZE_MAX_MULT/MOMENTUM_SMA_WATCHDOG_PCT — checked FIRST when enabled."""
+    if symbol and side:
+        _bv = _tradier_final_book_get(f"{symbol}_{side}", param)
+        if _bv is not None:
+            return _bv
     if account_key and symbol and side:
         # 2026-05-22 USER ARCHITECTURE REVISION (supersedes 2026-05-20 AB_SPLIT):
         #   trb = 4yr per-sym baseline (per_sym_active_config.json) + hourly 7D tweaks
@@ -3802,7 +3851,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_PCT", 1.0)):
                         _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_EMA200_T1_MULT", 1.5))
                     if _bsl_mult > 1.0:
-                        _bsl_mult = min(_bsl_mult, float(getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0)))
+                        _bsl_mult = min(_bsl_mult, float(_cfg("BREAKOUT_SIZE_MAX_MULT", 3.0, account_key, symbol, position_side)))
                         _bsl_orig = quantity
                         quantity = quantity * _bsl_mult
                         logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past ema_200_15m → qty {_bsl_orig:.4f}→{quantity:.4f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
