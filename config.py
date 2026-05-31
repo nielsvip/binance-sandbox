@@ -660,7 +660,7 @@ class Config:
     FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
     FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
     FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
-    FUNDING_GATE_MTF_REQUIRED: bool = False         # 2026-05-31: only veto when HTF WaveTrend disagrees with the trade. Data (9.3M bars, 24h fwd): naive long-block +0.150% (HURTS — kills momentum longs in uptrends) vs MTF-gated long-block (HTF bull<=1) -0.078%..-0.44% (filters BAD longs only); naive short-block +0.427% vs MTF short-block (HTF not bearish) +1.078% (targets squeezes). False = legacy naive snapshot gate (current live).
+    FUNDING_GATE_MTF_REQUIRED: bool = True         # 2026-05-31: only veto when HTF WaveTrend disagrees with the trade. Data (9.3M bars, 24h fwd): naive long-block +0.150% (HURTS — kills momentum longs in uptrends) vs MTF-gated long-block (HTF bull<=1) -0.078%..-0.44% (filters BAD longs only); naive short-block +0.427% vs MTF short-block (HTF not bearish) +1.078% (targets squeezes). False = legacy naive snapshot gate (current live).
     FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 1     # when MTF_REQUIRED: block NEW LONG only if <= this many of (15m,1h,4h,D) are WT-bullish (wt1>wt2)
     FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1    # when MTF_REQUIRED: block NEW SHORT only if <= this many of (15m,1h,4h,D) are WT-bearish (wt1<wt2)
     OI_CONFIRM_ENABLED: bool = True                 # 2026-04-27: live ON per user directive after Batch 1 A/B (+40% max / +107% avg). Backtest reconfirm queued. 4-quadrant OI×price (Schabacker classic).

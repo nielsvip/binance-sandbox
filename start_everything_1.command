@@ -91,6 +91,23 @@ SCRIPTS=(
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ===== RESTART START =====" | tee -a "$LAUNCHER_LOG"
 
+# HEALTH CHECK: if most critical processes are already running, skip scorched earth
+# and only launch missing ones. Prevents Binance IP bans from simultaneous restarts.
+HEALTH_CRITICAL=("ez_manage.py --account ang" "ez_manage.py --account inf" "ez_manage.py --account flz" "ez_manage.py --account men" "ez_manage.py --account fin" "ez_prices.py" "ez_indicators.py" "ez_klines.py")
+RUNNING_COUNT=0
+for crit in "${HEALTH_CRITICAL[@]}"; do
+    pgrep -f "python.*$crit" >/dev/null 2>&1 && RUNNING_COUNT=$((RUNNING_COUNT + 1))
+done
+HEALTH_THRESHOLD=$(( ${#HEALTH_CRITICAL[@]} * 7 / 10 ))  # 70%
+if [ "$RUNNING_COUNT" -ge "$HEALTH_THRESHOLD" ] && [ "${1:-}" != "--force" ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] HEALTH CHECK: $RUNNING_COUNT/${#HEALTH_CRITICAL[@]} critical processes running — skipping scorched earth. Use --force to override." | tee -a "$LAUNCHER_LOG"
+    SKIP_SCORCHED_EARTH=1
+else
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] HEALTH CHECK: $RUNNING_COUNT/${#HEALTH_CRITICAL[@]} critical processes running — proceeding with full restart." | tee -a "$LAUNCHER_LOG"
+    SKIP_SCORCHED_EARTH=0
+fi
+
+if [ "$SKIP_SCORCHED_EARTH" -eq 0 ]; then
 # SCORCHED EARTH: kill ALL ez_ processes, watchdogs, and iTerm launchers
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Killing ALL ez_ processes..." | tee -a "$LAUNCHER_LOG"
 pkill -9 -f "python.*ez_" 2>/dev/null || true
@@ -113,11 +130,16 @@ if [ "$REMAINING" -gt 0 ]; then
     pkill -9 -f "python.*ez_" 2>/dev/null || true
     sleep 2
 fi
+fi  # end SKIP_SCORCHED_EARTH check
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting all scripts..." | tee -a "$LAUNCHER_LOG"
 # Launch each script with watchdog in Terminal windows
 for script in "${SCRIPTS[@]}"; do
-    # After scorched earth, nothing should be running — launch unconditionally
+    # Skip already-running scripts when health-check passed
+    if [ "${SKIP_SCORCHED_EARTH:-0}" -eq 1 ] && is_script_running "$script"; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Skipping $script (already running)" | tee -a "$LAUNCHER_LOG"
+        continue
+    fi
 
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Launching $script in Terminal window..." | tee -a "$LAUNCHER_LOG"
 
@@ -155,8 +177,8 @@ tell application \"iTerm\"
     end tell
 end tell" >/dev/null 2>&1 &
 
-    # Small delay between launches
-    sleep 0.5
+    # Staggered delay — prevents simultaneous Binance API burst → IP ban
+    sleep 2
 
     # Verify we're still in the loop
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Completed launch attempt for $script" | tee -a "$LAUNCHER_LOG"
@@ -212,10 +234,6 @@ LOG_TABS=(
     "ez_news_scanner"
     "ez_copilot"
     "ez_backup"
-    "tradier_manage"
-    "tradier_indicators"
-    "tradier_rankings"
-    "tradier_prices"
     "trade_analytics"
     "sweep_cockpit"
     "sweep_monitor_agent"
