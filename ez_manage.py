@@ -17109,6 +17109,12 @@ class MultiAccountTradeManager:
                 f"🛡️ [execute_trade_action] CRITICAL: Invalid position_key: {position_key}"
             )
             return f"BLOCKED_INVALID_POSITION_KEY"
+        # 2026-05-30 USER: SCALP_REDUCE OFF — executor-level guard (queue_trade_action was bypassed via this direct
+        # executor path; gate HERE so the winner-cutting reduce is blocked on every route). RULE_B_3M reduces use a
+        # different reason and pass through. ROLLBACK: SCALP_REDUCE_ENABLED=True.
+        if "SCALP_REDUCE" in str(reason).upper() and not getattr(config, "SCALP_REDUCE_ENABLED", True):
+            logger.info(f"[execute_trade_action] SCALP_REDUCE_DISABLED skip: {position_key} {str(reason)[:50]}")
+            return "SKIPPED_SCALP_REDUCE_DISABLED"
         is_reduce = (
             action
             in [
