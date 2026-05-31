@@ -46,6 +46,18 @@ dynamic per-account lists). Regenerate with `tools/persym_optimize.py` (establis
 7. **Backups before any core/config edit** (per CLAUDE.md). Backup of the pre-strategy live system:
    `backups/PRE_HTF_REGIME_GOLIVE_20260530_060853_UTC/`.
 
+## LIVE-LOGIC per_sym validation (2026-05-31, exact watchdog+ladder+RuleB) — the go-live gate
+Backtested the EXACT live logic (MOMENTUM_SMA_WATCHDOG 2%-entry + wt1_15m-rising + wt<80 cap; BREAKOUT_SIZE_LADDER
+×1.5/2/3 by %-dist; RULE_B 3m LL+LH exit) per symbol — `data/_diagnostic/live_replica_persym.json`:
+- **crypto LONG 50/50 positive** (median PS 0.383, +2007%, 8% DD); **crypto SHORT 67/67 positive** (0.344, +440%, 10% DD).
+  → ALL 117 live crypto keys pass the positive-Sharpe gate; nothing disabled. Crypto is go-live-validated.
+- stocks LONG 23/29, stocks SHORT 34/45 positive. **17 negative stock keys MUST be disabled before tradier Monday
+  open (13:30 UTC)** — list: `data/_diagnostic/HTF_STOCK_DISABLE_BEFORE_MONDAY.json` (LEXX_LONG, SAP_SHORT,
+  DE_SHORT, RKLB_SHORT, SCHW_LONG, RBLX_*, MSFT_*, STZ_SHORT, etc.). Gate: set LONG/SHORT_ENABLED=False per is_symbol_tradeable.
+PARITY NOTE: this backtest IS the live logic (replicated exactly: thresholds, tiers, cap, exit). Entry/size/exit are
+current-value + state-machine (no long-array drift), so live decisions == backtest given indicator-data parity
+(the standing sandbox/klines consistency). SCALP_REDUCE off needs the executor-guard restart to fully match.
+
 ## Live wiring (gated, default-OFF)
 config.py / config_tradier.py: `HTF_REGIME_ENABLED=False` (master kill) + `HTF_REGIME_LEDGER_PATH`. Live reads the
 per_sym config, computes target weight via the glue on a rolling window, routes size changes through execute_now.
