@@ -63,3 +63,11 @@ config.py / config_tradier.py: `HTF_REGIME_ENABLED=False` (master kill) + `HTF_R
 per_sym config, computes target weight via the glue on a rolling window, routes size changes through execute_now.
 SCALP_REDUCE_ENABLED=False (stops the legacy profit-protect reduces that cut winners). Flip HTF_REGIME_ENABLED=True
 + restart to go live; set False to instantly revert to the prior system.
+
+## CORRECTION 2026-05-31 — stocks use ema_200_15m, not sma (parity)
+The "17 negative stock keys" above were a PARITY ARTIFACT: backtested with sma_200_15m, but live tradier uses
+ema_200_15m (no sma on stocks). Re-backtested with the live-correct ema_200_15m anchor (stock_ema_persym.json):
+stocks LONG 29/29 + SHORT 45/45 ALL POSITIVE (median PS 0.33/0.31, +907%/+3653%, 11%/12% DD). NO stock keys
+disabled. LESSON: always backtest with the SAME indicator the live path uses (sma_200_15m crypto / ema_200_15m
+stocks). STILL PENDING: stock watchdog ENTRY + Rule B 5m EXIT are NOT wired in tradier_manage (only the
+ema BREAKOUT_SIZE_LADDER is) — must wire before stocks run the full strategy at Monday 13:30 UTC open.
