@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-31 04:57:49 UTC
+# Copilot Status — 2026-05-31 05:13:04 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-31T04:56:47
-- **STALE_INDICATORS** [tradier]  — 2026-05-31T04:57:48
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-31T04:57:48
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-31T04:57:48
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-31T04:57:48
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-31T05:10:00
+- **STALE_INDICATORS** [tradier]  — 2026-05-31T05:12:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-05-31T05:12:02
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-05-31T05:12:02
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-31T05:13:03
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 0 | **Reentered:** 0
 
+- HELD: **HIVEUSDT** LONG (crypto) peak +8.9%, now +8.9%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.4%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.2%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
-
-- WATCHING: **IDUSDT** LONG (crypto) peaked +4.9%, exited 0m ago
 
 ## Supervisor
 
