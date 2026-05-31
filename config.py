@@ -660,9 +660,9 @@ class Config:
     FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
     FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
     FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
-    FUNDING_GATE_MTF_REQUIRED: bool = True         # 2026-05-31: only veto when HTF WaveTrend disagrees with the trade. Data (9.3M bars, 24h fwd): naive long-block +0.150% (HURTS — kills momentum longs in uptrends) vs MTF-gated long-block (HTF bull<=1) -0.078%..-0.44% (filters BAD longs only); naive short-block +0.427% vs MTF short-block (HTF not bearish) +1.078% (targets squeezes). False = legacy naive snapshot gate (current live).
-    FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 1     # when MTF_REQUIRED: block NEW LONG only if <= this many of (15m,1h,4h,D) are WT-bullish (wt1>wt2)
-    FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1    # when MTF_REQUIRED: block NEW SHORT only if <= this many of (15m,1h,4h,D) are WT-bearish (wt1<wt2)
+    FUNDING_GATE_MTF_REQUIRED: bool = True          # 2026-05-31 ENABLED: only veto when HTF WaveTrend disagrees with the trade. Data (9.3M bars, 24h fwd): naive long-block +0.150% (HURTS — kills momentum longs) vs MTF long-block bull<=0 -0.912% (filters only worst longs); naive short-block +0.427% vs MTF short-block bear<=1 +1.078% (targets squeezes). False = legacy naive snapshot gate.
+    FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 0     # BEST: block NEW LONG only if 0 of (15m,1h,4h,D) are WT-bullish (wt1>wt2) — HTF fully bearish. blocked-long 24h fwd -0.912% n=6860.
+    FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1    # BEST: block NEW SHORT only if <=1 of (15m,1h,4h,D) WT-bearish (wt1<wt2) — HTF not confirmed-down. blocked-short 24h fwd +1.078% n=9525.
     OI_CONFIRM_ENABLED: bool = True                 # 2026-04-27: live ON per user directive after Batch 1 A/B (+40% max / +107% avg). Backtest reconfirm queued. 4-quadrant OI×price (Schabacker classic).
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this to consider OI move significant
     OI_CONFIRM_MIN_PRICE_PCT: float = 0.3           # |price_change_1h_pct| must exceed this; gate fires only when BOTH oi+price are significant

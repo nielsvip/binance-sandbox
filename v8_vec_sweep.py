@@ -446,6 +446,13 @@ class SweepConfig:
     MIN_GAIN: float = 3.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0
     COMMISSION_BUFFER_PCT: float = 0.10
+    # ── 2026-05-31 MTF-conditioned FUNDING_GATE (mirror live config.py; read by vec_paths.funding_gate) ──
+    FUNDING_GATE_ENABLED: bool = True
+    FUNDING_GATE_LONG_MAX: float = 0.0005
+    FUNDING_GATE_SHORT_MIN: float = -0.0005
+    FUNDING_GATE_MTF_REQUIRED: bool = True
+    FUNDING_GATE_MTF_LONG_MAX_BULL_TFS: int = 0
+    FUNDING_GATE_MTF_SHORT_MAX_BEAR_TFS: int = 1
     # 2026-05-22 USER MANDATE: keep 0.08% round-trip cost for crypto. Earlier I
     # called this "phantom" — incorrect framing. The 0.08% was the intentional
     # conservative cost figure. The actual bug was that the override path was
@@ -2508,6 +2515,15 @@ def simulate_one_symbol(
         except Exception:
             pass
 
+    # 2026-05-31 MTF-conditioned FUNDING_GATE — vec entry veto via SHARED vec_paths.funding_gate
+    # (byte-identical to live ez_positions_quick funding gate). Blocks NEW entries on bars where
+    # funding is extreme AND HTF WaveTrend disagrees with the trade. Default-correct: no-op when
+    # FUNDING_GATE_ENABLED is False or funding_rate_3m absent.
+    try:
+        from vec_paths.funding_gate import funding_block_mask
+        _fund_veto = funding_block_mask(npz, n, is_long, config)
+    except Exception:
+        _fund_veto = np.zeros(n, dtype=bool)
     for i in range(n):
         # 2026-05-27 USER MANDATE event-driven fast-path: when FLAT and the
         # bar has no precomputed entry trigger, skip immediately. Held-position
@@ -2525,6 +2541,8 @@ def simulate_one_symbol(
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
             continue
+        if state.qty <= 0.0001 and _fund_veto[i]:
+            continue  # 2026-05-31 MTF funding gate veto — no NEW entry on this bar (shared vec_paths.funding_gate)
         # 2026-05-26 REGIME-ADAPTED per-bar exit floor — replaces scalar `min_gain`
         # in non-emergency exit gates when REGIME_DETECTION_ENABLED=True. In
         # RANGING regime the floor drops to REGIME_RANGING_EXIT_GAIN_MIN (~0.15%)
