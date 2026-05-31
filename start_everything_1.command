@@ -91,53 +91,67 @@ SCRIPTS=(
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ===== RESTART START =====" | tee -a "$LAUNCHER_LOG"
 
-# HEALTH CHECK: if most critical processes are already running, skip scorched earth
-# and only launch missing ones. Prevents Binance IP bans from simultaneous restarts.
-HEALTH_CRITICAL=("ez_manage.py --account ang" "ez_manage.py --account inf" "ez_manage.py --account flz" "ez_manage.py --account men" "ez_manage.py --account fin" "ez_prices.py" "ez_indicators.py" "ez_klines.py")
-RUNNING_COUNT=0
-for crit in "${HEALTH_CRITICAL[@]}"; do
-    pgrep -f "python.*$crit" >/dev/null 2>&1 && RUNNING_COUNT=$((RUNNING_COUNT + 1))
-done
-HEALTH_THRESHOLD=$(( ${#HEALTH_CRITICAL[@]} * 7 / 10 ))  # 70%
-if [ "$RUNNING_COUNT" -ge "$HEALTH_THRESHOLD" ] && [ "${1:-}" != "--force" ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] HEALTH CHECK: $RUNNING_COUNT/${#HEALTH_CRITICAL[@]} critical processes running — skipping scorched earth. Use --force to override." | tee -a "$LAUNCHER_LOG"
-    SKIP_SCORCHED_EARTH=1
-else
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] HEALTH CHECK: $RUNNING_COUNT/${#HEALTH_CRITICAL[@]} critical processes running — proceeding with full restart." | tee -a "$LAUNCHER_LOG"
-    SKIP_SCORCHED_EARTH=0
-fi
+# DATA-SIDE: keep running across restarts — these are stable pollers that don't carry new
+# trading logic. Keeping them up avoids the simultaneous Binance API burst that causes IP bans.
+# TRADING-SIDE (ez_manage, ez_copilot, ez_reentry_daemon): always killed so new code takes effect.
+# SE2 handles ez_manage + ez_reentry_daemon restart.
+DATA_SIDE_SCRIPTS=(
+    "ez_prices_ws.py"
+    "ez_klines.py"
+    "ez_mark_prices.py"
+    "ez_prices.py"
+    "ez_share_ind.py"
+    "ez_indicators.py"
+    "ez_positions_watchdog.py"
+    "ez_market_data.py"
+    "ez_indicators_merger.py"
+    "ez_crosses.py"
+    "ez_rankings.py"
+    "ez_news_scanner.py"
+    "ez_backup.py"
+    "pa.py"
+    "rsync_market_data_to_server_continuous.sh"
+    "rsync_from_gateway_continuous.sh"
+    "trade_analytics.py"
+    "sweep_cockpit.py"
+    "sweep_monitor_agent.py"
+)
 
-if [ "$SKIP_SCORCHED_EARTH" -eq 0 ]; then
-# SCORCHED EARTH: kill ALL ez_ processes, watchdogs, and iTerm launchers
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Killing ALL ez_ processes..." | tee -a "$LAUNCHER_LOG"
-pkill -9 -f "python.*ez_" 2>/dev/null || true
-pkill -9 -f "python.*pa.py" 2>/dev/null || true
-pkill -9 -f "bash.*run_with_watchdog.*ez_" 2>/dev/null || true
-pkill -9 -f "bash.*iterm_launch_ez_" 2>/dev/null || true
-pkill -9 -f "bash.*iterm_launch_pa" 2>/dev/null || true
-pkill -9 -f "bash.*rsync_market_data" 2>/dev/null || true
-pkill -9 -f "bash.*rsync_from_gateway" 2>/dev/null || true
-pkill -9 -f "ez_indicators_merger" 2>/dev/null || true
-pkill -9 -f "ez_mem_watchdog" 2>/dev/null || true
-pkill -9 -f "python.*trade_analytics" 2>/dev/null || true
-rm -f /Users/niels/logs/start_everything_1.lock 2>/dev/null
-sleep 3
+is_data_side() {
+    local s="$1"
+    for d in "${DATA_SIDE_SCRIPTS[@]}"; do [ "$d" = "$s" ] && return 0; done
+    return 1
+}
 
-# Verify cleanup — force kill stragglers
-REMAINING=$(pgrep -f "python.*ez_" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$REMAINING" -gt 0 ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $REMAINING processes survived, force killing..." | tee -a "$LAUNCHER_LOG"
+# Kill trading-side only. ez_manage and ez_reentry_daemon handled by SE2.
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Killing trading-side processes (ez_manage, ez_copilot, ez_reentry_daemon)..." | tee -a "$LAUNCHER_LOG"
+pkill -9 -f "python.*ez_manage.py" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_manage.py" 2>/dev/null || true
+pkill -9 -f "python.*ez_reentry_daemon.py" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_reentry_daemon" 2>/dev/null || true
+pkill -9 -f "python.*ez_copilot.py" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_copilot" 2>/dev/null || true
+sleep 2
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Trading-side killed. Data fetchers kept running." | tee -a "$LAUNCHER_LOG"
+
+# Use --force to also restart all data-side scripts (full scorched earth)
+if [ "${1:-}" = "--force" ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] --force: killing all remaining ez_ processes..." | tee -a "$LAUNCHER_LOG"
     pkill -9 -f "python.*ez_" 2>/dev/null || true
-    sleep 2
+    pkill -9 -f "bash.*run_with_watchdog.*ez_" 2>/dev/null || true
+    pkill -9 -f "bash.*rsync_market_data" 2>/dev/null || true
+    pkill -9 -f "bash.*rsync_from_gateway" 2>/dev/null || true
+    pkill -9 -f "ez_indicators_merger" 2>/dev/null || true
+    pkill -9 -f "python.*trade_analytics" 2>/dev/null || true
+    sleep 3
 fi
-fi  # end SKIP_SCORCHED_EARTH check
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting all scripts..." | tee -a "$LAUNCHER_LOG"
 # Launch each script with watchdog in Terminal windows
 for script in "${SCRIPTS[@]}"; do
-    # Skip already-running scripts when health-check passed
-    if [ "${SKIP_SCORCHED_EARTH:-0}" -eq 1 ] && is_script_running "$script"; then
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Skipping $script (already running)" | tee -a "$LAUNCHER_LOG"
+    # Keep data-side scripts running if they're already healthy
+    if is_data_side "$script" && is_script_running "$script"; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Keeping $script (already running)" | tee -a "$LAUNCHER_LOG"
         continue
     fi
 

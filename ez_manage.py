@@ -1228,6 +1228,49 @@ logger = logging.getLogger("ez_manage")
 _ezm_per_sym_cfgs: dict = {}
 _ezm_per_sym_cfgs_mtime: float = 0.0
 _ezm_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+# 2026-05-31 FINAL per_sym BOOK overlay (mirror of ez_positions_quick._apply_final_book). ez_manage's
+# _psym_get reads per_sym_active_config directly, so the book must be applied HERE too or the
+# PER_SYM_SIDE_DISABLED gate / watchdog / ladder won't see it. Gated by config.PERSYM_FINAL_BOOK_ENABLED.
+_ezm_final_book: dict = {}
+_ezm_final_book_mtime: float = 0.0
+_ezm_final_book_path = Path(__file__).resolve().parent / "data" / "persym_final_book.json"
+
+
+def _ezm_load_final_book() -> dict:
+    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
+        return {}
+    global _ezm_final_book, _ezm_final_book_mtime
+    try:
+        mtime = _ezm_final_book_path.stat().st_mtime
+        if mtime != _ezm_final_book_mtime:
+            with _ezm_final_book_path.open() as _f:
+                _ezm_final_book = json.load(_f)
+            _ezm_final_book_mtime = mtime
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        return {}
+    return _ezm_final_book
+
+
+def _ezm_apply_final_book(sym_key: str, ov: dict) -> dict:
+    """tradeable -> enable side + per-sym pct_entry/size_cap; disabled -> side _ENABLED=False."""
+    book = _ezm_load_final_book()
+    if not book:
+        return ov
+    side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    if side_flag is None:
+        return ov
+    trd = book.get("tradeable", {})
+    if sym_key in trd:
+        c = trd[sym_key]; ov = dict(ov); ov[side_flag] = True
+        if c.get("pct_entry") is not None:
+            ov["MOMENTUM_SMA_WATCHDOG_PCT"] = float(c["pct_entry"])
+        if c.get("size_cap") is not None:
+            ov["BREAKOUT_SIZE_MAX_MULT"] = float(c["size_cap"])
+    elif sym_key in set(book.get("disabled", [])):
+        ov = dict(ov); ov[side_flag] = False
+    return ov
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
@@ -1248,7 +1291,7 @@ def _psym_get(symbol: str, side: str, knob: str, default):
         pass
     except Exception:
         pass
-    ov = _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {})
+    ov = _ezm_apply_final_book(f"{symbol}_{side}", _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {}))
     if knob in ov:
         return ov[knob]
     return getattr(config, knob, default)
@@ -22999,7 +23042,7 @@ class MultiAccountTradeManager:
                         elif _bsl_dist >= float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_PCT", 1.0)):
                             _bsl_mult = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_MULT", 1.5))
                         if _bsl_mult > 1.0:
-                            _bsl_mult = min(_bsl_mult, float(getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0)))
+                            _bsl_mult = min(_bsl_mult, float(_psym_get(_bsl_sym, position_side, "BREAKOUT_SIZE_MAX_MULT", getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0))))
                             _bsl_orig = quantity
                             quantity = quantity * _bsl_mult
                             logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past sma_200_15m → qty {_bsl_orig:.6f}→{quantity:.6f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
@@ -28999,7 +29042,6 @@ class MultiAccountTradeManager:
                 await asyncio.sleep(float(getattr(config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 60.0)))
                 if not bool(getattr(config, "MOMENTUM_SMA_WATCHDOG_ENABLED", True)):
                     continue
-                _pct = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 2.0)) / 100.0
                 _wt_cap = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 80.0))
                 _cd = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 300.0))
                 for position_key in list(getattr(self, "tradeable_keys", set()) or set()):
@@ -29011,6 +29053,11 @@ class MultiAccountTradeManager:
                         account_key, symbol, pos_side = parse_position_key(position_key)
                         if account_key not in getattr(self, "account_keys", []):
                             continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
+                        # 2026-05-31 FINAL per_sym book: skip LONGs not in the tradeable book (negative/sub-floor),
+                        # and use the symbol's optimized entry %-distance (pct_entry) instead of the global default.
+                        if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, "LONG", "LONG_ENABLED", True)):
+                            continue
+                        _pct = float(_psym_get(symbol, "LONG", "MOMENTUM_SMA_WATCHDOG_PCT", getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 1.0))) / 100.0
                         position = await self.get_position(position_key)
                         _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
                         if _amt > 0:

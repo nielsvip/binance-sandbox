@@ -1747,7 +1747,8 @@ class Config:
     # Catches the biggest winners the normal entry path misses. ROLLBACK: MOMENTUM_SMA_WATCHDOG_ENABLED=False.
     MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
-    MOMENTUM_SMA_WATCHDOG_PCT: float = 2.0          # price must be > this % above sma_200_15m
+    MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
+    PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-05-31 USER "put all new per_sym settings live + block negative-sharpe keys". data/persym_final_book.json: 96 tradeable (>=30tr & ps>0 & not-short-uptrend) enabled + per-sym pct_entry/size_cap; 54 tested-but-excluded -> side disabled (PER_SYM_SIDE_DISABLED gate blocks entries, never exits). ROLLBACK: False.
     MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
     MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.

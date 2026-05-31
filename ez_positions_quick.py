@@ -1725,6 +1725,15 @@ def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
 _per_sym_cfgs: dict = {}
 _per_sym_cfgs_mtime: float = 0.0
 _per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+# 2026-05-31 FINAL per_sym BOOK (USER "put all new per_sym settings live + block negative-sharpe keys").
+# data/persym_final_book.json = {tradeable:{SYM_SIDE:{pct_entry,per_pct_mult,size_cap,...}}, disabled:[...]}.
+# 96 tradeable (>=30 trades & pool_sharpe>0 & not-short-an-uptrend); 54 tested-but-excluded -> disabled.
+# Overlays the per_sym overrides AUTHORITATIVELY: tradeable -> side enabled + per-sym pct_entry / size_cap;
+# disabled -> side _ENABLED=False (the PER_SYM_SIDE_DISABLED gate in ez_manage refuses OPEN/AUGMENT/REENTRY,
+# never exits). Untested keys (in neither set) untouched. Gated by config.PERSYM_FINAL_BOOK_ENABLED.
+_final_book: dict = {}
+_final_book_mtime: float = 0.0
+_final_book_path = Path(__file__).resolve().parent / "data" / "persym_final_book.json"
 
 
 def _collect_sharpe_sources(entry: dict) -> list:
@@ -1775,6 +1784,48 @@ def _inject_neg_sharpe_no_trade(sym_key: str, entry: dict) -> dict:
     return ovr
 
 
+def _load_final_book() -> dict:
+    """Load + cache (by mtime) the FINAL per_sym book. Empty dict if absent/off."""
+    if not bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)):
+        return {}
+    global _final_book, _final_book_mtime
+    try:
+        mtime = _final_book_path.stat().st_mtime
+        if mtime != _final_book_mtime:
+            with _final_book_path.open() as _f:
+                _final_book = json.load(_f)
+            _final_book_mtime = mtime
+    except FileNotFoundError:
+        return {}
+    except Exception as _exc:
+        logger.warning("FINAL_BOOK load error: %s", _exc)
+        return {}
+    return _final_book
+
+
+def _apply_final_book(sym_key: str, ovr: dict) -> dict:
+    """Overlay the FINAL per_sym book (2026-05-31) on the per-sym overrides AUTHORITATIVELY.
+    tradeable -> enable the side + inject per-sym MOMENTUM_SMA_WATCHDOG_PCT (pct_entry) and
+    BREAKOUT_SIZE_MAX_MULT (size_cap). disabled -> _ENABLED=False (blocks entries, never exits).
+    Untested keys untouched. No-op unless config.PERSYM_FINAL_BOOK_ENABLED."""
+    book = _load_final_book()
+    if not book:
+        return ovr
+    side_flag = "LONG_ENABLED" if sym_key.endswith("_LONG") else ("SHORT_ENABLED" if sym_key.endswith("_SHORT") else None)
+    if side_flag is None:
+        return ovr
+    trd = book.get("tradeable", {})
+    if sym_key in trd:
+        c = trd[sym_key]; ovr = dict(ovr); ovr[side_flag] = True
+        if c.get("pct_entry") is not None:
+            ovr["MOMENTUM_SMA_WATCHDOG_PCT"] = float(c["pct_entry"])
+        if c.get("size_cap") is not None:
+            ovr["BREAKOUT_SIZE_MAX_MULT"] = float(c["size_cap"])
+    elif sym_key in set(book.get("disabled", [])):
+        ovr = dict(ovr); ovr[side_flag] = False
+    return ovr
+
+
 def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     """Return per-sym override dict from global per_sym_active_config.json.
     Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
@@ -1796,7 +1847,7 @@ def _get_per_sym_overrides(symbol: str, side: str) -> dict:
         pass
     except Exception as _exc:
         logger.warning("PER_SYM_CFG load error: %s", _exc)
-    return _per_sym_cfgs.get(f"{symbol}_{side}", {})
+    return _apply_final_book(f"{symbol}_{side}", _per_sym_cfgs.get(f"{symbol}_{side}", {}))
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
