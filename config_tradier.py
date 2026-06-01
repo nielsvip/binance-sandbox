@@ -557,9 +557,9 @@ class TradierConfig:
     # because we close ONLY at positive gain. Bypasses are safe by construction.
     # Constrained to RTH (13:30-20:00 UTC) by is_regular_trading_hours() inside place_order.
     MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = False
-    MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: ["trb", "trc", "tra"])
-    MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.05
-    MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT: float = 0.5  # 2026-05-28 USER: micro-scalp may only CLOSE a position whose gain has ALREADY peaked >= this floor. Stops 0.05-0.1% round-trip churn (IBIT g0.074% peak0.098% never near 0.5%).
+    MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: [])#"trb", "trc", "tra"])
+    MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.2
+    MICRO_SCALP_STOCKS_PEAK_FLOOR_PCT: float = 0.6  # 2026-05-28 USER: micro-scalp may only CLOSE a position whose gain has ALREADY peaked >= this floor. Stops 0.05-0.1% round-trip churn (IBIT g0.074% peak0.098% never near 0.5%).
     # 2026-05-29 USER: stocks reentry anti-churn — require a 4-bar Donchian breakout (dc_high4_5m /
     # dc_low4_5m, computed on already-closed 5m bars) before re-entering, not just a touch of the exit
     # price. Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK (vec winner). Stocks base TF = 5m.
