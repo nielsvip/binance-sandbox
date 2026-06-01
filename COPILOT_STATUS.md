@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-01 02:36:52 UTC
+# Copilot Status — 2026-06-01 02:52:00 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-06-01T02:36:20
-- **RATIO_IMBALANCE** [tradier] trb — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-01T02:36:20
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-01T02:36:20
-- **RATIO_IMBALANCE** [crypto] ang — 2026-06-01T02:36:31
-- **RATIO_IMBALANCE** [crypto] flz — 2026-06-01T02:36:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-06-01T02:50:05
+- **STALE_INDICATORS** [tradier]  — 2026-06-01T02:50:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-01T02:50:57
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-01T02:50:57
+- **RATIO_IMBALANCE** [crypto] flz — 2026-06-01T02:51:09
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 3 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.4%
-- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-2.3%
+- HELD: **QTUMUSDT** SHORT (crypto) peak +3.6%, now +-3.1%
 - HELD: **ROBO** LONG (tradier) peak +3.2%, now +0.5%
-
-- WATCHING: **WLDUSDC** LONG (crypto) peaked +3.7%, exited 0m ago
 
 ## Supervisor
 
