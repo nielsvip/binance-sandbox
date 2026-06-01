@@ -11501,6 +11501,7 @@ class TradierTradeManager:
                                         except Exception: pass
                                         logger.warning(f"[GHOST_CLEAR] {position_key}: positionAmt + gain + cycle_peak_gain zeroed. entry_price/max_gain PRESERVED.")
                             elif is_augment:
+                                if float(getattr(local_pos, 'positionAmt', 0.0) or 0) == 0.0: local_pos.opened_at = now_utc; local_pos.max_gain = 0.0; local_pos.cycle_peak_gain = 0.0; local_pos.gain = 0.0; local_pos.was_reduced = False; local_pos.was_reentered = False
                                 new_qty = float(local_pos.positionAmt) + float(quantity)
                                 # 2026-04-08 FIX: Do NOT update positionAmt locally.
                                 # Let tradier_positions API sync (every 5s) be the ONLY source of truth.
@@ -13660,6 +13661,7 @@ class TradierTradeManager:
                             logger.error(f"[SYNC] Failed to create {long_key}: {e}")
                     if long_pos:
                         if raw_qty > 0:
+                            if float(getattr(long_pos, 'positionAmt', 0.0) or 0) == 0.0: long_pos.opened_at = now; long_pos.max_gain = 0.0; long_pos.cycle_peak_gain = 0.0; long_pos.gain = 0.0; long_pos.was_reduced = False; long_pos.was_reentered = False; await self._append_to_history(long_key, "OPEN", abs(raw_qty), avg_price or current_price, "SYNC_DETECTION")
                             long_pos.positionAmt = abs(raw_qty)
                             if avg_price > 0: long_pos.entry_price = avg_price
                             if date_acquired: long_pos.entry_time = date_acquired
@@ -13720,6 +13722,7 @@ class TradierTradeManager:
                             logger.error(f"[SYNC] Failed to create {short_key}: {e}")
                     if short_pos:
                         if raw_qty < 0:
+                            if float(getattr(short_pos, 'positionAmt', 0.0) or 0) == 0.0: short_pos.opened_at = now; short_pos.max_gain = 0.0; short_pos.cycle_peak_gain = 0.0; short_pos.gain = 0.0; short_pos.was_reduced = False; short_pos.was_reentered = False; await self._append_to_history(short_key, "OPEN", abs(raw_qty), avg_price or current_price, "SYNC_DETECTION")
                             short_pos.positionAmt = abs(raw_qty)
                             if avg_price > 0: short_pos.entry_price = avg_price
                             if date_acquired: short_pos.entry_time = date_acquired
