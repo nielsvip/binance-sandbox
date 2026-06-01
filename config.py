@@ -1322,8 +1322,8 @@ class Config:
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
     # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
-    WT_3M_FORCE_OPEN_ENABLED: bool = False  # USER 2026-05-21 04:45: DISABLED — fired LONG ZECUSDC @ $582 with K>90 on 7 TFs in +15.76%/24h parabolic context. No HTF overheat veto; BYPASS_GATES=True meant ALL context ignored. Suicide-prone until SMA_15 pullback pyramid replaces it (vec-validated).
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # USER 2026-05-21 04:45: defense-in-depth — even if master flag flipped True again, gate-bypass off.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True  # USER 2026-06-01: Enabled with >1% SMA200_15m distance, WaveTrend velocity, and wick filters.
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.
     WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # GR vote gate for FORCE_OPEN / TRADEABLE_KEYS_MANDATORY signals.
     # Total votes = sum of bullish indicators across 5 TFs (3m/15m/1h/4h/D), max 35.

@@ -2464,14 +2464,22 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if (not has_position) and bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side)):
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
-                    _wf_wt1_3m = safe_fetch_float(i.get('wt1_3m'), 0)
-                    _wf_wt2_3m = safe_fetch_float(i.get('wt2_3m'), 0)
-                    _wf_trigger = (is_long and _wf_wt1_3m > _wf_wt2_3m) or ((not is_long) and _wf_wt1_3m < _wf_wt2_3m)
+                    _wf_ema15 = safe_fetch_float(i.get('ema_200_15m'), 0.0)
+                    _wf_wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_3m')), 0.0)
+                    _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev')), _wf_wt1_5m)
+                    _high_5m = safe_fetch_float(i.get('high_5m', i.get('high_3m')), current_price)
+                    _high_5m_prev = safe_fetch_float(i.get('high_5m_prev', i.get('high_3m_prev')), _high_5m)
+                    _low_5m = safe_fetch_float(i.get('low_5m', i.get('low_3m')), current_price)
+                    _low_5m_prev = safe_fetch_float(i.get('low_5m_prev', i.get('low_3m_prev')), _low_5m)
+                    _dist_ok = (is_long and _wf_ema15 > 0 and current_price > _wf_ema15 * 1.01) or ((not is_long) and _wf_ema15 > 0 and current_price < _wf_ema15 * 0.99)
+                    _wt_dir_ok = (is_long and _wf_wt1_5m > _wf_wt1_5m_prev) or ((not is_long) and _wf_wt1_5m < _wf_wt1_5m_prev)
+                    _bar_ok = (is_long and not (_high_5m < _high_5m_prev and _low_5m < _low_5m_prev)) or ((not is_long) and not (_high_5m > _high_5m_prev and _low_5m > _low_5m_prev))
+                    _wf_trigger = _dist_ok and _wt_dir_ok and _bar_ok
                     if _wf_trigger and current_price > 0:
                         _wf_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 100.0)) or float(getattr(config, 'START_POSITION_SIZE', 100.0))
                         _wf_qty = max(_wf_size_usd / current_price, 1.0)
-                        _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_wt1={_wf_wt1_3m:.1f}_wt2={_wf_wt2_3m:.1f}_px{current_price:.4f}"
-                        logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if is_long else '<'} wt2_3m ({_wf_wt1_3m:.1f}{'>' if is_long else '<'}{_wf_wt2_3m:.1f}) → OPEN qty={_wf_qty:.2f}")
+                        _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_wt1={_wf_wt1_5m:.1f}_wt2={_wf_wt1_5m_prev:.1f}_px{current_price:.4f}"
+                        logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_5m {'>' if is_long else '<'} prev ({_wf_wt1_5m:.1f}{'>' if is_long else '<'}{_wf_wt1_5m_prev:.1f}) → OPEN qty={_wf_qty:.2f}")
                         _wf_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
                         if _wf_stop > 0:
                             _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)

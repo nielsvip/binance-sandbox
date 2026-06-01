@@ -36345,11 +36345,17 @@ async def _process_single_override_check(
                         # bypass in execute_now).
                         # 2026-05-18 per-sym overlay
                         elif bool(_psym_get(_sym_z, _side_z, "WT_3M_FORCE_OPEN_ENABLED", True)):
-                            _wt1_3m_z = safe_fetch_float(_ind_z.get("wt1_3m"), 0)
-                            _wt2_3m_z = safe_fetch_float(_ind_z.get("wt2_3m"), 0)
-                            _wt_trigger_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (
-                                _is_short_z and _wt1_3m_z < _wt2_3m_z
-                            )
+                            _sma15_z = safe_fetch_float(_ind_z.get("sma_200_15m"), 0.0)
+                            _wt1_3m_z = safe_fetch_float(_ind_z.get("wt1_3m"), 0.0)
+                            _wt1_3m_prev_z = safe_fetch_float(_ind_z.get("wt1_3m_prev"), _wt1_3m_z)
+                            _high_3m_z = safe_fetch_float(_ind_z.get("high_3m"), _px_z)
+                            _high_3m_prev_z = safe_fetch_float(_ind_z.get("high_3m_prev"), _high_3m_z)
+                            _low_3m_z = safe_fetch_float(_ind_z.get("low_3m"), _px_z)
+                            _low_3m_prev_z = safe_fetch_float(_ind_z.get("low_3m_prev"), _low_3m_z)
+                            _dist_ok_z = (_is_long_z and _sma15_z > 0 and _px_z > _sma15_z * 1.01) or (_is_short_z and _sma15_z > 0 and _px_z < _sma15_z * 0.99)
+                            _wt_dir_ok_z = (_is_long_z and _wt1_3m_z > _wt1_3m_prev_z) or (_is_short_z and _wt1_3m_z < _wt1_3m_prev_z)
+                            _bar_ok_z = (_is_long_z and not (_high_3m_z < _high_3m_prev_z and _low_3m_z < _low_3m_prev_z)) or (_is_short_z and not (_high_3m_z > _high_3m_prev_z and _low_3m_z > _low_3m_prev_z))
+                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _bar_ok_z
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)

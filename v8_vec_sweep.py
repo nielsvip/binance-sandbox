@@ -1523,11 +1523,26 @@ def simulate_one_symbol(
     _dc1_stop_short = np.nan_to_num(npz.get(f"dc_high_{_dc_stop_tf}",  np.zeros(n)).astype(np.float32))
     wt_15m_aligned = (wt1_15m > wt2_15m) if is_long else (wt1_15m < wt2_15m)
     wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
+    _wf_mode_crypto = (mode == "crypto")
+    _wf_anchor = np.nan_to_num(npz.get("sma_200_15m" if _wf_mode_crypto else "ema_200_15m", np.zeros(n))).astype(np.float32)
+    _wf_wt1 = wt1_3m
+    _wf_wt1_prev = np.nan_to_num(npz.get("wt1_3m_prev" if _wf_mode_crypto else "wt1_5m_prev", np.roll(_wf_wt1, 1))).astype(np.float32)
+    _wf_wt1_prev[0] = _wf_wt1[0]
+    _wf_high = np.nan_to_num(npz.get("high_3m" if _wf_mode_crypto else "high_5m", close)).astype(np.float32)
+    _wf_high_prev = np.nan_to_num(npz.get("high_3m_prev" if _wf_mode_crypto else "high_5m_prev", np.roll(_wf_high, 1))).astype(np.float32)
+    _wf_high_prev[0] = _wf_high[0]
+    _wf_low = np.nan_to_num(npz.get("low_3m" if _wf_mode_crypto else "low_5m", close)).astype(np.float32)
+    _wf_low_prev = np.nan_to_num(npz.get("low_3m_prev" if _wf_mode_crypto else "low_5m_prev", np.roll(_wf_low, 1))).astype(np.float32)
+    _wf_low_prev[0] = _wf_low[0]
     if is_long:
-        _wt_3m_now  = wt1_3m > wt2_3m
+        _dist_ok = (_wf_anchor > 0) & (close > _wf_anchor * 1.01)
+        _wt_dir_ok = _wf_wt1 > _wf_wt1_prev
+        _bar_ok = ~((_wf_high < _wf_high_prev) & (_wf_low < _wf_low_prev))
     else:
-        _wt_3m_now  = wt1_3m < wt2_3m
-    wt_3m_aligned = _wt_3m_now & (wt_15m_aligned | wt_1h_aligned)
+        _dist_ok = (_wf_anchor > 0) & (close < _wf_anchor * 0.99)
+        _wt_dir_ok = _wf_wt1 < _wf_wt1_prev
+        _bar_ok = ~((_wf_high > _wf_high_prev) & (_wf_low > _wf_low_prev))
+    wt_3m_aligned = _dist_ok & _wt_dir_ok & _bar_ok
     # wt1_3m against the trade (required by GR exit and hedge trigger)
     _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
     # WT against for hedge trigger (15m and 1h)

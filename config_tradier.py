@@ -2259,8 +2259,8 @@ class TradierConfig:
     # ROLLBACK: set ENABLED + BYPASS_GATES = True (live default pre-2026-05-17).
     # REVERTED 2026-05-18 18:30: restored 2026-05-10 NON-NEGOTIABLE mandate value (True).
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
-    WT_3M_FORCE_OPEN_ENABLED: bool = False  # USER 2026-05-21 04:45: DISABLED (mirror of crypto). No HTF overheat veto + BYPASS_GATES=True = suicide-prone on parabolic syms. Awaiting SMA_15 pullback pyramid vec-validation before any re-enable.
-    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = False  # USER 2026-05-21 04:45: defense-in-depth.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True  # USER 2026-06-01: Enabled with >1% EMA200_15m distance, WaveTrend velocity, and wick filters.
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.
     WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
     # ═══════════════════════════════════════════════════════════════════
     # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)

@@ -4831,12 +4831,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _wf_is_long = _wf_pk.endswith('_LONG')
                     _wf_sym = _wf_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _wf_pk else _wf_pk.rsplit('_', 1)[0]
                     _wf_ind = indicator_cache.get(_wf_sym, {}) if isinstance(indicator_cache, dict) else {}
-                    _wf_wt1 = float(_wf_ind.get('wt1_3m', _wf_ind.get('wt1_5m', 0)) or 0)
-                    _wf_wt2 = float(_wf_ind.get('wt2_3m', _wf_ind.get('wt2_5m', 0)) or 0)
-                    _wf_trig = (_wf_is_long and _wf_wt1 > _wf_wt2) or ((not _wf_is_long) and _wf_wt1 < _wf_wt2)
+                    _wf_px = float(price_cache.get(_wf_sym, _wf_ind.get('current_price', 0)) or 0)
+                    _wf_mode_crypto = (mode == 'crypto')
+                    _wf_anchor_val = float(_wf_ind.get('sma_200_15m' if _wf_mode_crypto else 'ema_200_15m', 0) or 0)
+                    _wf_wt1_ltf = float(_wf_ind.get('wt1_3m' if _wf_mode_crypto else 'wt1_5m', 0) or 0)
+                    _wf_wt1_ltf_prev = float(_wf_ind.get('wt1_3m_prev' if _wf_mode_crypto else 'wt1_5m_prev', _wf_wt1_ltf) or 0)
+                    _wf_high = float(_wf_ind.get('high_3m' if _wf_mode_crypto else 'high_5m', _wf_px) or 0)
+                    _wf_high_prev = float(_wf_ind.get('high_3m_prev' if _wf_mode_crypto else 'high_5m_prev', _wf_high) or 0)
+                    _wf_low = float(_wf_ind.get('low_3m' if _wf_mode_crypto else 'low_5m', _wf_px) or 0)
+                    _wf_low_prev = float(_wf_ind.get('low_3m_prev' if _wf_mode_crypto else 'low_5m_prev', _wf_low) or 0)
+                    _wf_dist_ok = (_wf_is_long and _wf_anchor_val > 0 and _wf_px > _wf_anchor_val * 1.01) or ((not _wf_is_long) and _wf_anchor_val > 0 and _wf_px < _wf_anchor_val * 0.99)
+                    _wf_wt_dir_ok = (_wf_is_long and _wf_wt1_ltf > _wf_wt1_ltf_prev) or ((not _wf_is_long) and _wf_wt1_ltf < _wf_wt1_ltf_prev)
+                    _wf_bar_ok = (_wf_is_long and not (_wf_high < _wf_high_prev and _wf_low < _wf_low_prev)) or ((not _wf_is_long) and not (_wf_high > _wf_high_prev and _wf_low > _wf_low_prev))
+                    _wf_trig = _wf_dist_ok and _wf_wt_dir_ok and _wf_bar_ok
                     if not _wf_trig:
                         continue
-                    _wf_px = float(price_cache.get(_wf_sym, _wf_ind.get('current_price', 0)) or 0)
                     if _wf_px <= 0:
                         continue
                     _wf_ok = True
