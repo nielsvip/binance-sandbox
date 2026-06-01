@@ -2518,6 +2518,11 @@ class TradierConfig:
     BREAKOUT_SIZE_LADDER_ENABLED: bool = True
     PERSYM_FINAL_BOOK_ENABLED: bool = True   # 2026-05-31 USER "put all new per_sym settings live + block negative-sharpe keys". Stocks share data/persym_final_book.json: tradeable stock keys (23 LONG + 14 SHORT, >=30tr & ps>0 & not-short-uptrend) enabled + per-sym size_cap; tested-but-excluded -> side disabled (is_symbol_tradeable refuses new entries, exits bypass). ROLLBACK: False.
     RULE_B_5M_EXIT_ENABLED: bool = True   # 2026-05-31 USER: stock RULE B exit — LONG on 5m lower-low+lower-high, SHORT on higher-high+higher-low (trend turning against). PROFIT-GATED (gain>=NOLOSS_MIN) → never closes at a loss, holds losers per protection model. Validated 74/74 stock keys positive (ema anchor). Mirrors crypto RULE_B_3M_EXIT. ROLLBACK: False.
+    MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
+    MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
+    MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0
+    MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0
+    MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0
     BREAKOUT_SIZE_EMA200_T1_PCT: float = 1.0
     BREAKOUT_SIZE_EMA200_T1_MULT: float = 1.5
     BREAKOUT_SIZE_EMA200_T2_PCT: float = 1.5
