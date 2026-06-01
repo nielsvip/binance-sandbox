@@ -2535,7 +2535,10 @@ def calculate_slope_and_rvalue(df: pd.DataFrame) -> tuple[float, float]: # Added
         return 0.0, 0.0
     
     df_calc = df.copy()
-    df_calc['timestamp'] = pd.to_datetime(df_calc['timestamp'], errors='coerce')
+    try:
+        df_calc['timestamp'] = pd.to_datetime(df_calc['timestamp'], utc=True, errors='coerce')
+    except (ValueError, TypeError):
+        df_calc['timestamp'] = pd.to_datetime(df_calc['timestamp'], format="mixed", utc=True, errors='coerce')
     df_calc['close'] = pd.to_numeric(df_calc['close'], errors='coerce')
     df_calc.dropna(subset=['timestamp', 'close', 'top', 'bottom'], how='all', inplace=True) # More specific drop
 
