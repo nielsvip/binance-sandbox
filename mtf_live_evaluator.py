@@ -105,6 +105,18 @@ def update_armed_state(state: dict, indicators: dict, side: str, config: Any) ->
     tf_list = str(getattr(config, "MTF_ARMED_HTF_LIST", "1h,4h,D,W")).split(",")
     bandtypes = str(getattr(config, "MTF_ARMED_BANDTYPES", "dc,bb,wt")).split(",")
     armed = state.setdefault("armed", {})
+    if not armed:
+        for tf in tf_list:
+            tf = tf.strip()
+            if not tf: continue
+            c = _f(indicators, f"close_{tf}")
+            if c <= 0: continue
+            for bt in bandtypes:
+                bt = bt.strip()
+                key = f"{tf}_{bt}"
+                if bt == "dc": armed[key] = (c > _f(indicators, f"dc_low_{tf}")) if is_long else (c < _f(indicators, f"dc_high_{tf}"))
+                elif bt == "bb": armed[key] = (c > _f(indicators, f"bb_lower_{tf}")) if is_long else (c < _f(indicators, f"bb_upper_{tf}"))
+                elif bt == "wt": armed[key] = (_f(indicators, f"wt1_{tf}") > _f(indicators, f"wt2_{tf}")) if is_long else (_f(indicators, f"wt1_{tf}") < _f(indicators, f"wt2_{tf}"))
     for tf in tf_list:
         tf = tf.strip()
         if not tf: continue
