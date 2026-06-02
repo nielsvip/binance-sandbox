@@ -1343,9 +1343,9 @@ class TradierConfig:
     # RZ_BLOCK, hardcool, stoch/WT/HTF gates. User: "IMMEDIATELY BUY AGAIN IF EXIT
     # PRICE IS CROSSED". Defends against the suicide pattern of "we sold, price came
     # right back, we did nothing".
-    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True
+    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True  # USER: HAS TO BE ON everywhere (proven MU 0.84 / NVDA 0.71 vec). exit_price-cross reentry.
     PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
-    PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0 # only fire within 4h of the close
+    PRICE_CROSS_BACK_MAX_AGE_MIN: float = 525_600_000.0  # 2026-06-02 USER MANDATE: fire FOREVER (~1000yr) until positionAmt>0, not just 4h. Was 240. Momentum still gated by check_reentry_confirmation. ROLLBACK: 240.
     # === OVERTRADE_GUARD (2026-05-21 19:10 PARITY FIX — was missing from tradier config) ===
     # config.py:965 was loosened 8→50 earlier today. tradier_manage.py:3215 reads
     # `getattr(config, 'TRADES_PER_SYM_PER_DAY_MAX', 8)` where config = TradierConfig()
@@ -2264,7 +2264,19 @@ class TradierConfig:
     # 2026-05-17 flip to False had no sample-floor evidence; isolated vec sweep queued.
     WT_3M_FORCE_OPEN_ENABLED: bool = True  # USER 2026-06-01: Enabled with >1% EMA200_15m distance, WaveTrend velocity, and wick filters.
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # USER 2026-06-01: Enable bypass gates to ensure always-open operative status.
-    WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
+    WT_3M_FORCE_OPEN_SIZE_USD: float = 2500.0  # 2026-06-02 USER: STOP nibbling $100. Per-fire chunk for the with-trend obligatory entry.
+    # ═══ 2026-06-02 USER MANDATE — OBLIGATORY WITH-TREND LADDER (never ignore a breakout) ═══
+    # Principle (user, verbatim intent): LONG the winners BIG, SHORT the losers; NEVER short a
+    # winner or long a loser (DG_DAILY_GAIN/LOSS guards above enforce that — KEPT). The bug was
+    # the with-trend LONG being smothered to $100 while the direction guard was fine. Fix:
+    #   • anchor on sma_200_15m (+1%) per user spec (was ema_200_15m)
+    #   • BUILD toward a real target instead of one $100 nibble (fire on existing pos until target)
+    #   • TF LADDER: bigger as more TFs confirm — 3m bounce = base, +15m, +1h, +4h, +D each scale up
+    WT_3M_FORCE_OPEN_USE_SMA200: bool = True            # anchor sma_200_15m (user spec) vs ema_200_15m
+    WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True       # keep adding (with-trend, on 3m WT bounce) until target
+    WT_3M_FORCE_OPEN_TARGET_USD: float = 15000.0        # per-symbol target notional for a confirmed winner
+    WT_3M_FORCE_OPEN_TF_LADDER: bool = True             # scale size by # of HTFs (15m/1h/4h/D) confirming
+    WT_3M_FORCE_OPEN_TF_LADDER_MULT: float = 1.0        # extra ×mult per confirming HTF (3m base ×1, +1.0 each)
     # ═══════════════════════════════════════════════════════════════════
     # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
     # Mirrors config.py. R2_TF_LIST stays ('1h','4h','D') per CLAUDE.md stocks rule.
