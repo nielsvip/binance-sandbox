@@ -7267,6 +7267,9 @@ class HedgeEngine:
         # FIX 2026-04-07: GLOBAL HEDGE-COMPLETED LOCKOUT — ONE hedge per position, period.
         origin_key = f"{account_key}:{symbol}_{origin_side}"
         logger.warning(f"🔎 [HEDGE_SAME_CALL] origin={origin_key} qty={qty} px={current_price}")
+        if not bool(getattr(config, 'HEDGE_MODE', False)):
+            logger.critical(f"🚫 [HEDGE_PROHIBITED] {origin_key}: HEDGE_MODE=False — same-symbol hedge (HEDGE_PROTECT augment-on-loser = hedge+martingale) is PROHIBITED. Refusing. USER MANDATE 2026-06-02.")
+            return False
         # 2026-04-24: TRACKER-AUTHORITATIVE PREFLIGHT — even if positions_dict is stale, tracker.json
         # is the single source of truth for active hedges. Block EARLIEST before any side effect.
         # Root incident: 60× NMR hedge opens because positions_service dropped NMR_LONG from Redis.
