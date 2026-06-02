@@ -14525,9 +14525,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         pass  # an explicit exit already chosen — leave it
                     elif _rb_hi > 0 and _rb_lo > 0 and _rb_hip > 0 and _rb_lop > 0:
                         if is_long and _rb_lo < _rb_lop and _rb_hi < _rb_hip:
-                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit) + "|RULE_B_3M_LL_LH"); score_exit = min(score_exit, -5)
+                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit).replace("WAIT", "").replace("HOLD", "") + "|RULE_B_3M_LL_LH"); score_exit = min(score_exit, -5)
                         elif (not is_long) and _rb_hi > _rb_hip and _rb_lo > _rb_lop:
-                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit) + "|RULE_B_3M_HH_HL"); score_exit = min(score_exit, -5)
+                            rec_exit = "REDUCE"; reason_exit = (str(reason_exit).replace("WAIT", "").replace("HOLD", "") + "|RULE_B_3M_HH_HL"); score_exit = min(score_exit, -5)
                 should_close = False
                 if rec_exit in ("HOLD", "WAIT", "BOYCOTT"):
                     should_close = False  # rate() said HOLD/WAIT — RESPECT IT
