@@ -1029,7 +1029,7 @@ class Config:
     # _DUPLICATE_OPEN_GUARD gain-based replacement (USER 2026-05-09):
     # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.
     DUP_GUARD_GAIN_MULTIPLIER: float = 0.5         # threshold = MULT * config.MIN_GAIN (=1.5% by default)
-    DUP_GUARD_USE_GAIN_GATE: bool = False           # False = revert to 900s time gate
+    DUP_GUARD_USE_GAIN_GATE: bool = True            # 2026-06-02 USER MANDATE "augment should never fire without a gain check first": ON restores the 2026-05-09 gain-gate (AUGMENT requires gain > MIN_GAIN*DUP_GUARD_GAIN_MULTIPLIER = 1.5%). Was False (900s time-cooldown only, NO gain check) → let GOLDEN_RULE_SHORT + every augment add to LOSERS (the documented SHORT-martingale bleed). REENTRY (is_augment=False, ez_manage:17251) + OPEN (pos_val=0) UNAFFECTED. To allow adds from gain>0 instead of >1.5%, set DUP_GUARD_GAIN_MULTIPLIER=0. ROLLBACK: False (time gate).
     # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
     # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
     # Set False to re-enable the old open-underweight path once system is verified.

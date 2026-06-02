@@ -2311,7 +2311,7 @@ class AdvancedSignalRater:
         lr_slope = safe_fetch_float(ind.get('lr_trend_15m'), 0.0)
         sco1h = ind.get('wt_cross_1h') == "BULL"; sco15m = ind.get('wt_cross_15m') == "BULL"  # WT cross replaces stoch
         scu1h = ind.get('wt_cross_1h') == "BEAR"; scu15m = ind.get('wt_cross_15m') == "BEAR"
-        top_sent = (ind.get('0is_top_sentiment'), False); bot_sent = (ind.get('0is_bottom_sentiment'), False)
+        top_sent = bool(ind.get('0is_top_sentiment', False)); bot_sent = bool(ind.get('0is_bottom_sentiment', False))  # 2026-06-02 BUGFIX: was (ind.get(...), False) — a TUPLE → ALWAYS truthy → forced 'Get Out'/SCALP_PROFIT exits to fire on a single 1m down-tick at gain<0.2% (195/429 unjustified QUICK_REDUCE). Now a real bool. USER-approved.
         sentc = str(ind.get('0sentiment_classification') or "")
         local_sent = safe_fetch_float(ind.get('0market_sentiment_local'), 0.0)
         _le = _last_events_cache.get(symbol, {}) if _last_events_cache else {}
