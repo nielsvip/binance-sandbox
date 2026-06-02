@@ -29064,7 +29064,7 @@ class MultiAccountTradeManager:
                         if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
                             continue
                         account_key, symbol, pos_side = parse_position_key(position_key)
-                        if account_key not in getattr(self, "account_keys", []):
+                        if account_key not in config.ACCOUNT_KEYS:  # 2026-06-02 FIX: was self.account_keys (EMPTY on TradeManager → scanned=0, watchdog never opened ANYTHING). config.ACCOUNT_KEYS is the canonical live account filter (matches line ~7576 et al).
                             continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
                         _wd_scanned += 1
                         _sflag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
@@ -29103,7 +29103,7 @@ class MultiAccountTradeManager:
                             await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0)
                     except Exception as _wde:
                         logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: {_wde}")
-                logger.warning(f"[MOMENTUM_WATCHDOG] cycle: own-acct scanned={_wd_scanned} flat={_wd_flat} qualified/fired={_wd_qual} acct={getattr(self, 'account_keys', [])}")
+                logger.warning(f"[MOMENTUM_WATCHDOG] cycle: own-acct scanned={_wd_scanned} flat={_wd_flat} qualified/fired={_wd_qual} acct={config.ACCOUNT_KEYS}")
             except Exception as _e:
                 logger.error(f"[MOMENTUM_WATCHDOG] loop error: {_e}")
                 await asyncio.sleep(5.0)
