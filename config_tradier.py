@@ -608,7 +608,8 @@ class TradierConfig:
     R1_NEWBORN_WINDOW_MIN: float = 15.0            # kept for legacy; fixed-stop now active
     # USER 2026-05-18: FROZEN ACTIVATION-TF STOP — per stocks team finding: frozen dc_low_4h@entry + -8% floor.
     # Worst-case stocks loss capped at -9% (vs -12.6% baseline / -17% intra-trade). 250 stops × 30 syms × 2.1yr = 4/sym/yr.
-    FROZEN_ACTIVATION_STOP_ENABLED: bool = True
+    FROZEN_ACTIVATION_STOP_ENABLED: bool = False  # 2026-06-02 USER MANDATE: OFF. Frozen-activation stop fires ~0% gain (48x in /history), is LIVE-ONLY (not in backtest) — a near-breakeven commission-burn exit, not a sanctioned technical exit. ROLLBACK: True.
+    EOD_SLIM_RATIO_ENABLED: bool = False  # 2026-06-02 USER MANDATE: OFF. last_hour_balancing_loop EOD_SLIM_RATIO trim fires at any gain (incl ~0%), LIVE-ONLY rebalance not modeled in backtest. ROLLBACK: True.
     FROZEN_ACTIVATION_TF: str = "4h"
     FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER: float = -8.0
     LIVE_VEC_STALE_MARK_PRICE_ENABLED: bool = False
