@@ -650,7 +650,9 @@ def promote_results(results: List[Dict], csv_path: Path) -> int:
             print(f"  [csv] REFUSED {sym}: {e}", flush=True)
         if v == 'PROMOTE':
             promoted += 1
-    OUT_CFG.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp = OUT_CFG.with_suffix(".json.tmp")
+    _tmp.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp.replace(OUT_CFG)
     return promoted
 
 

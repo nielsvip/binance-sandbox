@@ -518,7 +518,9 @@ def promote_to_active_config(account: str, winners: Dict,
             existing[f"{sym}_{side}"] = entry
         updated += 1
         print(f"  WRITE {sym}: pool={ps:+.4f} trades={tr:,} delta_params={len(delta)} {list(delta.keys())[:4]}")
-    ACTIVE_CFG.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp = ACTIVE_CFG.with_suffix(".json.tmp")
+    _tmp.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp.replace(ACTIVE_CFG)
     print(f"  {updated}/{len(winners)} symbols written → {ACTIVE_CFG}")
 
 

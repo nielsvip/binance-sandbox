@@ -307,7 +307,9 @@ def write_active_config(winners: Dict) -> int:
             'baseline_pool': info.get('baseline_pool', 0),
         }
         if verdict == 'PROMOTE': promoted += 1
-    ACTIVE_CFG.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp = ACTIVE_CFG.with_suffix(".json.tmp")
+    _tmp.write_text(json.dumps(existing, indent=2, default=str))
+    _tmp.replace(ACTIVE_CFG)
     return promoted
 
 
