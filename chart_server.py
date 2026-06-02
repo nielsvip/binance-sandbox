@@ -4972,6 +4972,115 @@ def health():
     })
 
 
+@app.route("/klines_cache")
+def klines_cache():
+    sym = request.args.get("sym", "").upper()
+    tf = request.args.get("tf", "15m")
+    max_bars = int(request.args.get("max", 5000))
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    candidates = [
+        BASE_PATH / "klines_cache" / f"{sym}_{tf}.json",
+        BASE_PATH / "klines_cache_backtest" / "tradier" / f"{sym}_{tf}.json",
+        BASE_PATH / "klines_cache_backtest" / f"{sym}_{tf}.json",
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        return jsonify({"error": f"no klines_cache for {sym} tf={tf}", "tried": [str(p) for p in candidates]}), 404
+    try:
+        rows = json.loads(path.read_text())
+    except Exception as e:
+        return jsonify({"error": f"parse {path}: {e}"}), 500
+    out = []
+    seen = set()
+    for r in rows:
+        ts_raw = r.get("timestamp") or r.get("close_time")
+        if not ts_raw:
+            continue
+        try:
+            unix_ts = int(datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00")).timestamp())
+        except Exception:
+            continue
+        try:
+            c = float(r.get("close"))
+        except Exception:
+            continue
+        if c <= 0 or unix_ts in seen:
+            continue
+        seen.add(unix_ts)
+        out.append({
+            "t": unix_ts,
+            "o": float(r.get("open", c)),
+            "h": float(r.get("high", c)),
+            "l": float(r.get("low", c)),
+            "c": c,
+            "v": float(r.get("volume", 0) or 0),
+        })
+    out.sort(key=lambda x: x["t"])
+    if len(out) > max_bars:
+        out = out[-max_bars:]
+    return jsonify(out)
+
+
+@app.route("/trb_categories")
+def trb_categories():
+    def _load_list(p):
+        try:
+            d = json.loads(Path(p).read_text())
+            return d if isinstance(d, list) else list(d)
+        except Exception:
+            return []
+    brief = {}
+    try:
+        brief = json.loads((BASE_PATH / "data" / "tv_morning_brief.json").read_text())
+    except Exception:
+        brief = {}
+    daily_buys = [s.get("symbol") for s in brief.get("top_buys", []) if s.get("symbol")]
+    daily_shorts = [s.get("symbol") for s in brief.get("top_shorts", []) if s.get("symbol")]
+    all_longs = _load_list(BASE_PATH / "symbols_trb_long.json")
+    all_shorts = _load_list(BASE_PATH / "symbols_trb_short.json")
+    return jsonify({
+        "categories": [
+            {"id": "daily-buys", "label": "DAILY LONG BUYS", "side": "LONG", "symbols": daily_buys},
+            {"id": "daily-shorts", "label": "DAILY SHORT SHORTS", "side": "SHORT", "symbols": daily_shorts},
+            {"id": "all-longs", "label": "ALL TRB LONGS", "side": "LONG", "symbols": all_longs},
+            {"id": "all-shorts", "label": "ALL TRB SHORTS", "side": "SHORT", "symbols": all_shorts},
+        ],
+        "generated_at": brief.get("generated_at", ""),
+        "market_bias": brief.get("market_bias", ""),
+    })
+
+
+@app.route("/per_sym_symbols")
+def per_sym_symbols():
+    accts_raw = request.args.get("accounts", "trb,trc")
+    accts = [a.strip() for a in accts_raw.split(",") if a.strip()]
+    out: Dict[str, Any] = {}
+    symbols: Dict[str, set] = {}
+    for acct in accts:
+        p = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
+        keys: List[str] = []
+        if p.exists():
+            try:
+                d = json.loads(p.read_text())
+                keys = sorted(d.keys()) if isinstance(d, dict) else sorted(d)
+            except Exception:
+                keys = []
+        out[acct] = keys
+        for k in keys:
+            if k.endswith("_LONG"):
+                sym = k[:-5]
+                side = "LONG"
+            elif k.endswith("_SHORT"):
+                sym = k[:-6]
+                side = "SHORT"
+            else:
+                continue
+            symbols.setdefault(sym, set()).add(side)
+    merged = {sym: sorted(sides) for sym, sides in sorted(symbols.items())}
+    return jsonify({"by_account": out, "symbols": merged})
+
+
 _CACHE_DIR = Path("/tmp/chart_cache")
 _CACHE_DIR.mkdir(exist_ok=True)
 

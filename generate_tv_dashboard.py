@@ -16,26 +16,82 @@ def build_wlt_list(symbols, cache):
         wlt.append(f"{exch}:{s}" if exch else s)
     return wlt
 
+def get_per_sym_html(sym, side):
+    cand_path = BASE / "data" / "hourly_reconfig" / "trb" / "_candidates" / f"{sym}_{side.upper()}.json"
+    if not cand_path.exists():
+        return '<div class="settings-content"><div class="settings-empty">No per_sym overrides found</div></div>'
+    try:
+        data = json.loads(cand_path.read_text())
+        metrics = data.get("metrics", {})
+        overrides = data.get("recommended_overrides", {})
+        ovr_list = [f"{k}={v}" for k, v in overrides.items() if k not in ("LONG_ENABLED", "SHORT_ENABLED")]
+        ovr_str = ", ".join(ovr_list) if ovr_list else "None (default)"
+        sharpe = metrics.get("recommended_oos_sharpe", 0.0)
+        trades = metrics.get("recommended_oos_trades", 0)
+        wr = metrics.get("recommended_oos_win_rate_pct", 0.0)
+        dd = metrics.get("max_dd_pct", 0.0)
+        return f'<div class="settings-content"><div class="settings-metrics"><span>OOS Sharpe: <strong>{sharpe:+.2f}</strong></span><span>Trades: <strong>{trades}</strong></span><span>WR: <strong>{wr:.1f}%</strong></span><span>MaxDD: <strong>{dd:.1f}%</strong></span></div><div class="settings-overrides"><span>Overrides: <code>{ovr_str}</code></span></div></div>'
+    except Exception as e:
+        return f'<div class="settings-content"><div class="settings-empty">Error: {e}</div></div>'
+
+def render_grid(symbols, grid_id, side):
+    if not symbols:
+        return '<div class="empty-state">No symbols loaded for this category today.</div>'
+    cards = []
+    for full_sym in symbols:
+        exch, sym = full_sym.split(":") if ":" in full_sym else ("NASDAQ", full_sym)
+        settings_html = get_per_sym_html(sym, side)
+        card = f"""
+        <div class="chart-card">
+            <div class="chart-header">
+                <span class="chart-symbol">{sym}</span>
+                <span class="chart-exch">{exch}</span>
+            </div>
+            {settings_html}
+            <div class="chart-container">
+                <div id="tv-widget-{grid_id}-{sym}" style="width: 100%; height: 100%;"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+                <script type="text/javascript">
+                new TradingView.widget({{
+                  "width": "100%",
+                  "height": "100%",
+                  "symbol": "{exch}:{sym}",
+                  "interval": "15",
+                  "timezone": "exchange",
+                  "theme": "dark",
+                  "style": "1",
+                  "locale": "en",
+                  "enable_publishing": false,
+                  "hide_side_toolbar": false,
+                  "allow_symbol_change": true,
+                  "container_id": "tv-widget-{grid_id}-{sym}",
+                  "hide_top_toolbar": false,
+                  "withdateranges": true,
+                  "save_image": false,
+                  "studies": []
+                }});
+                </script>
+            </div>
+        </div>"""
+        cards.append(card)
+    return f'<div id="{grid_id}" class="dashboard-grid">' + "\n".join(cards) + '</div>'
+
 def main():
     cache = json.loads(CACHE_FILE.read_text()) if CACHE_FILE.exists() else {}
     long_syms = json.loads(LONG_FILE.read_text())
     short_syms = json.loads(SHORT_FILE.read_text())
-    
     brief = {}
     if BRIEF_FILE.exists():
         try:
             brief = json.loads(BRIEF_FILE.read_text())
         except Exception:
             pass
-
     buys = [s["symbol"] for s in brief.get("top_buys", [])]
     shorts = [s["symbol"] for s in brief.get("top_shorts", [])]
-    
     long_all = build_wlt_list(long_syms, cache)
     short_all = build_wlt_list(short_syms, cache)
     buy_list = build_wlt_list(buys, cache)
     short_list = build_wlt_list(shorts, cache)
-
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -143,7 +199,7 @@ def main():
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            height: 600px;
+            height: 650px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -165,6 +221,40 @@ def main():
         }}
         .chart-symbol {{ color: var(--text-primary); font-size: 15px; font-weight: 800; }}
         .chart-exch {{ color: var(--text-secondary); font-size: 12px; }}
+        .settings-content {{
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 16px;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        .settings-metrics {{
+            display: flex;
+            gap: 16px;
+            color: var(--text-secondary);
+        }}
+        .settings-metrics strong {{
+            color: var(--text-primary);
+        }}
+        .settings-overrides {{
+            color: var(--text-secondary);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }}
+        .settings-overrides code {{
+            font-family: monospace;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #0cf;
+        }}
+        .settings-empty {{
+            color: var(--text-secondary);
+            font-style: italic;
+        }}
         .chart-container {{
             flex-grow: 1;
             position: relative;
@@ -214,22 +304,22 @@ def main():
 
     <!-- DAILY LONG BUYS -->
     <div id="long-buys" class="tab-content active">
-        {render_grid(buy_list, "long-buys-grid")}
+        {render_grid(buy_list, "long-buys-grid", "LONG")}
     </div>
 
     <!-- DAILY SHORT SHORTS -->
     <div id="short-shorts" class="tab-content">
-        {render_grid(short_list, "short-shorts-grid")}
+        {render_grid(short_list, "short-shorts-grid", "SHORT")}
     </div>
 
     <!-- ALL TRB LONGS -->
     <div id="all-longs" class="tab-content">
-        {render_grid(long_all, "all-longs-grid")}
+        {render_grid(long_all, "all-longs-grid", "LONG")}
     </div>
 
     <!-- ALL TRB SHORTS -->
     <div id="all-shorts" class="tab-content">
-        {render_grid(short_all, "all-shorts-grid")}
+        {render_grid(short_all, "all-shorts-grid", "SHORT")}
     </div>
 
     <script>
@@ -238,7 +328,6 @@ def main():
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             event.target.classList.add('active');
-            // Trigger window resize to force TradingView widgets to recalculate sizes
             window.dispatchEvent(new Event('resize'));
         }}
 
@@ -256,49 +345,6 @@ def main():
 """
     OUT_FILE.write_text(html_content)
     print(f"Generated dynamic HTML dashboard at: {OUT_FILE}")
-
-def render_grid(symbols, grid_id):
-    if not symbols:
-        return '<div class="empty-state">No symbols loaded for this category today.</div>'
-    
-    cards = []
-    for full_sym in symbols:
-        if ":" in full_sym:
-            exch, sym = full_sym.split(":")
-        else:
-            exch, sym = "NASDAQ", full_sym
-            
-        card = f"""
-        <div class="chart-card">
-            <div class="chart-header">
-                <span class="chart-symbol">{sym}</span>
-                <span class="chart-exch">{exch}</span>
-            </div>
-            <div class="chart-container">
-                <div id="tv-widget-{grid_id}-{sym}" style="width: 100%; height: 100%;"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-                <script type="text/javascript">
-                new TradingView.widget({{
-                  "width": "100%",
-                  "height": "100%",
-                  "symbol": "{exch}:{sym}",
-                  "interval": "15",
-                  "timezone": "exchange",
-                  "theme": "dark",
-                  "style": "1",
-                  "locale": "en",
-                  "enable_publishing": false,
-                  "hide_side_toolbar": false,
-                  "allow_symbol_change": true,
-                  "calendar": true,
-                  "support_host": "https://www.tradingview.com"
-                }});
-                </script>
-            </div>
-        </div>"""
-        cards.append(card)
-        
-    return f'<div id="{grid_id}" class="dashboard-grid">' + "\n".join(cards) + '</div>'
 
 if __name__ == "__main__":
     main()
