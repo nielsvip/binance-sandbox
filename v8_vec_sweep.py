@@ -750,6 +750,10 @@ class SweepConfig:
     BE_EROSION_FLOOR_PCT: float = 0.0
     BE_EROSION_HOLD_MIN_MIN: float = 15.0
     # ── profit-take reduce paths ──────────────────────────────────────────────
+    VEC_REENTRY_REQUIRE_PRIOR_EXIT: bool = False       # 2026-06-02 ENTRY-PARITY FIX (default OFF until validated vs Tier-2/live). The vec fires reentry blocks (esp B15_STRONG_TREND: price>dc_high_4h & wt_vel_1h>2 & k_1h<85) as FRESH entries on every uptrend bar → 99% REENTRY_TREND, ~40x over-trading vs live (MU: vec 582 opens vs live 14). LIVE only reenters AFTER an actual exit. When True, a reentry-block open (fire_block) is allowed ONLY within VEC_REENTRY_WINDOW_BARS of a real prior exit; fresh first-entries must come from non-reentry signals (GR/DELTA/DC-break/quality). Set True after the Tier-2 ground-truth diff confirms it pulls vec entry distribution toward live.
+    VEC_REENTRY_WINDOW_BARS: int = 400                  # reentry-eligibility window (bars since last held) for VEC_REENTRY_REQUIRE_PRIOR_EXIT
+    VEC_REENTRY_DC4_EXITPRICE_ENABLED: bool = False     # 2026-06-02 USER's PRECISE reentry rule (replaces the B-block over-fire). While FLAT after an exit, until positionAmt>0: (a) <=1h since exit → price crosses dc_high4_5m (LONG)/dc_low4_5m (SHORT); (b) >1h since exit → price crosses exit_price (FOREVER). BOTH require wt1 RISING (wt1>wt1_prev) on 3m AND 15m AND 1h (LONG; falling on all 3 for SHORT). When True, fire_block uses THIS rule instead of the B-blocks.
+    VEC_REENTRY_HOUR_BARS: int = 12                     # bars per 1 hour at base TF (stocks 5m→12, crypto 3m→20). The <=1h window for the dc4 branch of the reentry rule.
     QUICK_REDUCE_TECHNICAL_ONLY: bool = True           # 2026-06-02 USER MANDATE — mirror live gate (config.QUICK_REDUCE_TECHNICAL_ONLY). When True, the stochastic/profit-take winner-cutting reduce paths (PROFIT_TAKE_REDUCE / STRONG_REDUCE_K / QUICK_REDUCE_STRONG_REDUCE) are FORCED OFF so the vec sweep cannot discover winner-cutting configs that live (gated) can never execute. Only sanctioned technical exits (GR/WT/DC/struct/ATR-trail) reduce — identical to live. Set False ONLY to A/B the disabled traps.
     PROFIT_TAKE_REDUCE_ENABLED: bool = False           # default OFF
     PROFIT_TAKE_GAIN_PCT: float = 2.0
@@ -1340,6 +1344,9 @@ class SymState:
     last_fire_ts: float = 0.0
     augmented_count: int = 0
     max_gain: float = 0.0
+    last_held_bar: int = -10_000_000  # 2026-06-02: bar index of the most recent bar a position was held (for reentry-context gating — reentry blocks may only fire shortly after an actual exit, like live)
+    last_exit_price: float = 0.0       # price at the most recent exit (for the dc4/exit_price reentry rule)
+    last_exit_bar: int = -10_000_000   # bar index of the most recent exit
     hedge_active: bool = False
     hedge_completed_ts: float = 0.0
     hedge_qty: float = 0.0            # qty of hedge position
@@ -1510,6 +1517,14 @@ def simulate_one_symbol(
     #    per-need, but precompute reuses these too).
     wt1_3m = np.nan_to_num(npz.get("wt1_3m", npz.get("wt1_5m", np.zeros(n))).astype(np.float32))
     wt2_3m = np.nan_to_num(npz.get("wt2_3m", npz.get("wt2_5m", np.zeros(n))).astype(np.float32))
+    # USER reentry rule arrays (dc4/exit_price + wt1-rising-on-3m/15m/1h)
+    _re_dc4_high = np.nan_to_num(npz.get("dc_high4_5m", np.zeros(n)).astype(np.float32))
+    _re_dc4_low = np.nan_to_num(npz.get("dc_low4_5m", np.zeros(n)).astype(np.float32))
+    _re_w3 = wt1_3m; _re_w3p = np.nan_to_num(npz.get("wt1_3m_prev", npz.get("wt1_5m_prev", np.roll(_re_w3, 1))).astype(np.float32))
+    _re_w15 = wt1_15m if False else np.nan_to_num(npz.get("wt1_15m", np.zeros(n)).astype(np.float32))
+    _re_w15p = np.nan_to_num(npz.get("wt1_15m_prev", np.roll(_re_w15, 1)).astype(np.float32))
+    _re_w1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))
+    _re_w1hp = np.nan_to_num(npz.get("wt1_1h_prev", np.roll(_re_w1h, 1)).astype(np.float32))
     wt1_15m = np.nan_to_num(npz.get("wt1_15m", np.zeros(n)).astype(np.float32))
     wt2_15m = np.nan_to_num(npz.get("wt2_15m", np.zeros(n)).astype(np.float32))
     wt1_1h = np.nan_to_num(npz.get("wt1_1h", np.zeros(n)).astype(np.float32))
@@ -2541,6 +2556,9 @@ def simulate_one_symbol(
     except Exception:
         _fund_veto = np.zeros(n, dtype=bool)
     for i in range(n):
+        _bar_was_open = state.qty > 0.0001
+        if _bar_was_open:
+            state.last_held_bar = i  # reentry-context tracking: most recent bar a position was held
         # 2026-05-27 USER MANDATE event-driven fast-path: when FLAT and the
         # bar has no precomputed entry trigger, skip immediately. Held-position
         # bars and stateful-entry configs (GR/DELTA/B5) always evaluate.
@@ -2932,8 +2950,37 @@ def simulate_one_symbol(
             # BB_PULLBACK_GATE (2026-05-23) — block entries when BB %B unfavorable.
             if not bool(_bb_pullback_ok[i]):
                 continue
+            # close-transition: a position held at bar-start is now flat → record exit_price/bar
+            if _bar_was_open and state.qty <= 0.0001:
+                state.last_exit_price = mark
+                state.last_exit_bar = i
             # OPEN gate: WT_3M direction + reentry-fire OR force-open OR GOLDEN_RULE
             fire_block = bool(reentry["fire"][i])
+            if bool(getattr(config, "VEC_REENTRY_DC4_EXITPRICE_ENABLED", False)):
+                # USER's precise reentry rule (replaces B-block over-fire). FLAT + a prior exit exists.
+                if state.qty <= 0.0001 and state.last_exit_bar > -1_000_000 and i > 0:
+                    _hb = int(getattr(config, "VEC_REENTRY_HOUR_BARS", 12))
+                    _since = i - state.last_exit_bar
+                    if is_long:
+                        _wt_ok = (_re_w3[i] > _re_w3p[i]) and (_re_w15[i] > _re_w15p[i]) and (_re_w1h[i] > _re_w1hp[i])
+                        if _since <= _hb:
+                            _trig = (mark > _re_dc4_high[i]) and (float(close[i-1]) <= _re_dc4_high[i-1])
+                        else:
+                            _trig = (mark >= state.last_exit_price) and (float(close[i-1]) < state.last_exit_price)
+                    else:
+                        _wt_ok = (_re_w3[i] < _re_w3p[i]) and (_re_w15[i] < _re_w15p[i]) and (_re_w1h[i] < _re_w1hp[i])
+                        if _since <= _hb:
+                            _trig = (mark < _re_dc4_low[i]) and (float(close[i-1]) >= _re_dc4_low[i-1])
+                        else:
+                            _trig = (mark <= state.last_exit_price) and (float(close[i-1]) > state.last_exit_price)
+                    fire_block = bool(_trig and _wt_ok)
+                else:
+                    fire_block = False
+            elif fire_block and bool(getattr(config, "VEC_REENTRY_REQUIRE_PRIOR_EXIT", False)):
+                # reentry blocks (B15 strong-trend etc.) may only OPEN shortly after a REAL prior exit,
+                # like live — not as fresh entries on every uptrend bar (the 99% REENTRY_TREND artifact).
+                if (i - state.last_held_bar) > int(getattr(config, "VEC_REENTRY_WINDOW_BARS", 400)):
+                    fire_block = False
             wt_open_ok = bool(wt_3m_aligned[i]) and bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", True))
             # WT_DC_HTF_GATE — block wt_open_ok when HTF WT is against the trade.
             # Mirrors tradier_manage:2751-2762. Does NOT block GR/DELTA/B15/etc.

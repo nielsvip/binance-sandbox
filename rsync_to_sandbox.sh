@@ -34,6 +34,10 @@ FILES=(
     config.py config_tradier.py
     # WT + scorer
     wt_composite.py wt_dc_delta.py wt_dc_exit_scorer.py
+    # UVE engine — live tradier_manage imports it (_uve_entry_allowed) AND Tier-2/bt_uve need it.
+    # 2026-06-02: it was NEVER in this list → never synced → S1 backtest ran UVE import-dead
+    # (silent pass-through) while live gated 27 syms = parity lie. MUST stay synced.
+    uve_engine.py
     # V8 backtest engine + sweep
     backtest_v8_engine.py backtest_v8_sweep.py backtest_v8_harness.py
     backtest_v8_precompute.py
