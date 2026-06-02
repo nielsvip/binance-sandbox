@@ -14535,13 +14535,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     should_close = True
                 elif ("CLOSE" in rec_exit or "REDUCE" in rec_exit or "PROFIT" in rec_exit or "EXIT" in rec_exit or "DECAY" in rec_exit or score_exit < -4) and not _in_grace_period:
                     should_close = True
-                if should_close and bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)):
-                    _trap_toks = (str(reason_exit) + "|" + str(rec_exit)).upper()
-                    _real_tech = any(_t in _trap_toks for _t in ("DC_LOW_3M", "DC_HIGH_3M", "DC_LOW4", "DC_HIGH4", "DC4", "DCB_CU", "STRUCT_LH", "STRUCT_LL", "LL_LH", "HH_HL", "RULE_B_3M", "MTF", "GR_AGAINST", "ALL_TF", "HTF_AGAINST", "WT_FLIP", "WT_4H_VEL", "WT_CROSS", "WT_MOMENTUM", "R1_", "R2_", "ATR_TRAIL", "HARD", "FAST_CUT_LOSS", "WRONG_SIDE", "PARTIAL", "PPL", "BREAK_EVEN", "HEDGE_FAILED", "PANIC"))
-                    if not _real_tech:
+                if should_close and bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)) and hard_exit_reason is None:
+                    _stoch_family = str(rec_exit).upper().strip() in ("WEAK_REDUCE", "NO_PROFIT", "STRONG_REDUCE", "SCALP_REDUCE", "NOW_REDUCE", "REDUCE")
+                    _rt = (str(reason_exit) + "|" + str(rec_exit)).upper()
+                    _named_tech = any(_t in _rt for _t in ("RULE_B_3M", "MTF_ATR_TRAIL", "R1_DC", "R2_WT", "WT_4H_VEL", "WT_CROSS", "WT_PERCENTILE", "WT_EXHAUST", "WT_DIV", "WT_ACCEL", "WT_MOMENTUM_EXIT", "GR_EXIT", "DC_HOPELESS", "HTF_AGAINST", "ALL_TF_AGAINST", "FAST_CUT_LOSS", "WRONG_SIDE", "PARTIAL", "PPL", "BREAK_EVEN", "HEDGE_FAILED", "PANIC"))
+                    if _stoch_family and not _named_tech:
                         should_close = False
                         reason_exit = str(reason_exit) + "_TRAP_SUPPRESSED"
-                        logger.info(f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: non-technical stochastic/euphoria reduce (rec={rec_exit}) blocked — only sanctioned technical exits (R1/R2/ATR-trail/DC/MTF/struct/RULE_B) may reduce or close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False")
+                        logger.info(f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: rate()-composite stochastic reduce (rec={rec_exit}) blocked — the vec/Tier-2 backtest does NOT model these, so they are the live↔backtest divergence + the 0%-gain commission-burn. Only clean named technical exits (RULE_B/WT_*/GR/DC_HOPELESS/MTF_ATR_TRAIL/HTF_AGAINST/R1/R2 + hard exits) may close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False")
                 # ═══ USE TRACKER FIELDS FOR SMARTER DECISIONS ═══
                 _cand = tracker_manager.exit_candidates.get(position_key, {})
                 if not isinstance(_cand, dict): _cand = {}
