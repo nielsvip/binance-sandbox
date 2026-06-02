@@ -750,6 +750,7 @@ class SweepConfig:
     BE_EROSION_FLOOR_PCT: float = 0.0
     BE_EROSION_HOLD_MIN_MIN: float = 15.0
     # ── profit-take reduce paths ──────────────────────────────────────────────
+    QUICK_REDUCE_TECHNICAL_ONLY: bool = True           # 2026-06-02 USER MANDATE — mirror live gate (config.QUICK_REDUCE_TECHNICAL_ONLY). When True, the stochastic/profit-take winner-cutting reduce paths (PROFIT_TAKE_REDUCE / STRONG_REDUCE_K / QUICK_REDUCE_STRONG_REDUCE) are FORCED OFF so the vec sweep cannot discover winner-cutting configs that live (gated) can never execute. Only sanctioned technical exits (GR/WT/DC/struct/ATR-trail) reduce — identical to live. Set False ONLY to A/B the disabled traps.
     PROFIT_TAKE_REDUCE_ENABLED: bool = False           # default OFF
     PROFIT_TAKE_GAIN_PCT: float = 2.0
     PROFIT_TAKE_REDUCE_FRAC: float = 0.5
@@ -3252,7 +3253,7 @@ def simulate_one_symbol(
         if _vec_check_ridiculous_hold is not None and bool(getattr(config, "RIDICULOUS_HOLD_VEC_ENABLED", False)):
             _b5_exit_result = _vec_check_ridiculous_hold(_store, i, _pos, mode, config)
         # EXIT #2 QUICK_REDUCE_STRONG_REDUCE (HLR_TOP_EXIT)
-        if _b5_exit_result is None and _vec_check_quick_reduce_strong is not None and bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)):
+        if _b5_exit_result is None and _vec_check_quick_reduce_strong is not None and bool(getattr(config, "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED", False)) and not bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)):
             _b5_exit_result = _vec_check_quick_reduce_strong(_store, i, _pos, mode, config)
         # EXIT #3 QUICK_BREAKEVEN_GAIN_EROSION_STOP (HISTORICAL — DISABLED live)
         if _b5_exit_result is None and _vec_check_breakeven_erosion is not None and bool(getattr(config, "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED", False)):
@@ -3380,7 +3381,7 @@ def simulate_one_symbol(
                         continue
 
         # ─── PROFIT_TAKE REDUCE (partial close at profit target) ────────
-        if check_profit_take_reduce is not None and config.PROFIT_TAKE_REDUCE_ENABLED and state.qty > 0.0001:
+        if check_profit_take_reduce is not None and config.PROFIT_TAKE_REDUCE_ENABLED and not bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)) and state.qty > 0.0001:
             _ptr = check_profit_take_reduce(_store, i, _pos, mode, config)
             if _ptr is not None:
                 frac = float(_ptr.get("frac", 0.5))
@@ -3395,7 +3396,7 @@ def simulate_one_symbol(
                     _pos.ppl_fired = True  # prevent repeat fire within same position
 
         # ─── STRONG REDUCE K (stoch-based partial close) ─────────────────
-        if check_strong_reduce_k is not None and config.STRONG_REDUCE_K_ENABLED and state.qty > 0.0001:
+        if check_strong_reduce_k is not None and config.STRONG_REDUCE_K_ENABLED and not bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)) and state.qty > 0.0001:
             _srk = check_strong_reduce_k(_store, i, _pos, mode, config)
             if _srk is not None:
                 if not _srk.get("require_profit", False) or gain >= 0:
