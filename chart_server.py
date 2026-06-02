@@ -4980,11 +4980,15 @@ def klines_cache():
     if not sym:
         return jsonify({"error": "sym required"}), 400
     candidates = [
-        BASE_PATH / "klines_cache" / f"{sym}_{tf}.json",
         BASE_PATH / "klines_cache_backtest" / "tradier" / f"{sym}_{tf}.json",
         BASE_PATH / "klines_cache_backtest" / f"{sym}_{tf}.json",
+        BASE_PATH / "klines_cache" / f"{sym}_{tf}.json",
     ]
-    path = next((p for p in candidates if p.exists()), None)
+    # 2026-06-02: prefer the FULL-HISTORY backtest klines (live klines_cache is short ~677 bars / stale,
+    # so trades older than ~2 weeks had no candles to land on). Pick the existing candidate with the
+    # MOST bars so the chart spans the whole trade date range and live/backtest markers render.
+    existing = [p for p in candidates if p.exists()]
+    path = max(existing, key=lambda p: p.stat().st_size) if existing else None
     if path is None:
         return jsonify({"error": f"no klines_cache for {sym} tf={tf}", "tried": [str(p) for p in candidates]}), 404
     try:
