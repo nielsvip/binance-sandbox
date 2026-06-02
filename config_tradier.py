@@ -1449,7 +1449,7 @@ class TradierConfig:
     TRC_CLENOW_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
     TRC_SMFI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
     TRC_MINERVINI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
-    TRC_CONNORS_RSI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
+    TRC_CONNORS_RSI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → LOSER, turned OFF per user parity policy. Faithful vec backtest (tools/backtest_connors_rsi_vec.py, uses NPZ connors_rsi_D + sma_200_D, same inputs as live): pool_sharpe=-0.5754, gain_per_mo=-15.25%, total_gain=-555% over 139 trades/34 syms. Oversold-mean-reversion catches falling knives on this universe. OFF in both live (was trc-on) AND backtest by default. ROLLBACK: True (but don't — it loses).
     TRC_CLENOW_POSITION_SIZE: float = 2640.0
     TRC_SMFI_POSITION_SIZE: float = 1980.0
     TRC_MINERVINI_POSITION_SIZE: float = 2640.0
