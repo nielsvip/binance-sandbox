@@ -70,6 +70,31 @@ except Exception:
 _TR_TREND_V1_STATE: Dict[str, Dict[str, Any]] = {}  # key = f"{account}:{symbol}_{side}"
 _TR_TREND_V1_LAST_D_CLOSE: Dict[str, float] = {}    # detect D-bar boundary on live by close_D change
 
+# ═══════════════════════════════════════════════════════════════════════════
+# FOCUS RANK (USER 2026-06-02) — symbols_trb_long/short ARE the curated extremes
+# (best gainers → long list, biggest losers → short list, LT+ST blend). Inside each
+# list, this scores how big a mover a symbol is RIGHT NOW so capital concentrates on
+# the strongest, not dribbled on the weakest. Pure function (point-in-time daily
+# fields only — no rolling history live): ST = position in 20d Donchian range,
+# MT = distance above ema_50_D, LT = distance above sma_200_D. SHORT = mirror
+# (furthest BELOW the MAs / lowest in range = biggest loser). Higher = trade harder.
+def _tr_focus_score(indicators: Dict[str, Any], is_long: bool) -> float:
+    try:
+        close_d = float(indicators.get('close_D', 0) or 0)
+        if close_d <= 0:
+            return 0.0
+        sma200 = float(indicators.get('sma_200_D', 0) or 0)
+        ema50 = float(indicators.get('ema_50_D', 0) or 0)
+        dc_hi = float(indicators.get('dc_high_D', 0) or 0)
+        dc_lo = float(indicators.get('dc_low_D', 0) or 0)
+        lt = (close_d - sma200) / sma200 if sma200 > 0 else 0.0          # month+ trend strength
+        mt = (close_d - ema50) / ema50 if ema50 > 0 else 0.0             # ~week trend strength
+        st = ((close_d - dc_lo) / (dc_hi - dc_lo) - 0.5) * 2.0 if dc_hi > dc_lo else 0.0  # -1..1 in 20d range
+        blend = 0.45 * lt + 0.35 * mt + 0.20 * st
+        return blend if is_long else -blend
+    except Exception:
+        return 0.0
+
 def _tr_trend_v1_state(key: str) -> Dict[str, Any]:
     st = _TR_TREND_V1_STATE.get(key)
     if st is None:
