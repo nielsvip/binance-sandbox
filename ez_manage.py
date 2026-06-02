@@ -29050,6 +29050,7 @@ class MultiAccountTradeManager:
                     continue
                 _wt_cap = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_WT_CAP", 80.0))
                 _cd = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 300.0))
+                _wd_scanned = 0; _wd_flat = 0; _wd_qual = 0
                 for position_key in list(getattr(self, "tradeable_keys", set()) or set()):
                     try:
                         # 2026-06-02 USER MANDATE "ACROSS THE BOARD": bidirectional force-opener. Fires when a
@@ -29065,6 +29066,7 @@ class MultiAccountTradeManager:
                         account_key, symbol, pos_side = parse_position_key(position_key)
                         if account_key not in getattr(self, "account_keys", []):
                             continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
+                        _wd_scanned += 1
                         _sflag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
                         if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, side, _sflag, True)):
                             continue
@@ -29073,6 +29075,7 @@ class MultiAccountTradeManager:
                         _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
                         if _amt > 0:
                             continue
+                        _wd_flat += 1
                         ind = await ii(self, symbol)
                         if not ind:
                             continue
@@ -29092,6 +29095,7 @@ class MultiAccountTradeManager:
                         _is_long_bko = side == "LONG"
                         _dc_trig = (_dch1 > 0 and _px > _dch1) if _is_long_bko else (_dcl1 > 0 and _px < _dcl1)
                         if _bko.entry_signal_scalar(ind, _is_long_bko, _pct * 100.0):
+                            _wd_qual += 1
                             self._mom_watchdog_cd[position_key] = time.time()
                             _trg = "DC1H_BREAKOUT" if _dc_trig else "SMA15M"
                             _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt15m{_w1:.1f}_{'rising' if side == 'LONG' else 'falling'}"
@@ -29099,6 +29103,7 @@ class MultiAccountTradeManager:
                             await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0)
                     except Exception as _wde:
                         logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: {_wde}")
+                logger.warning(f"[MOMENTUM_WATCHDOG] cycle: own-acct scanned={_wd_scanned} flat={_wd_flat} qualified/fired={_wd_qual} acct={getattr(self, 'account_keys', [])}")
             except Exception as _e:
                 logger.error(f"[MOMENTUM_WATCHDOG] loop error: {_e}")
                 await asyncio.sleep(5.0)
