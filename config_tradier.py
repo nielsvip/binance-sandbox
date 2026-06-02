@@ -1447,7 +1447,7 @@ class TradierConfig:
     VIX_REGIME_FILTER_ENABLED: bool = True  # Block entries when SPY < SMA200
     # --- TRC overrides for backtest winners ---
     TRC_CLENOW_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
-    TRC_SMFI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
+    TRC_SMFI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → NOISE-tier, off per user parity policy. Faithful vec backtest (tools/bt_smfi.py, replicates compute_smfi cumulative smart-money-flow + 20d bull-divergence on NPZ daily OHLC — same formula as live): pool_sharpe=+0.0534 (Noise), gain_per_mo=+10.2%, total=+264% over 719 trades/37 syms. POSITIVE in raw gain but risk-adjusted NOISE (0.05 << 0.48 Minervini / 0.44 baseline) + 719 trades = commission churn → does NOT improve the book → OFF both. NOTE: it IS backtestable (OHLC formula, not order-flow); this is a validated-noise cut, NOT a can't-backtest case. ROLLBACK: True (if you want the raw +10%/mo despite the churn).
     TRC_MINERVINI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
     TRC_CONNORS_RSI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → LOSER, turned OFF per user parity policy. Faithful vec backtest (tools/backtest_connors_rsi_vec.py, uses NPZ connors_rsi_D + sma_200_D, same inputs as live): pool_sharpe=-0.5754, gain_per_mo=-15.25%, total_gain=-555% over 139 trades/34 syms. Oversold-mean-reversion catches falling knives on this universe. OFF in both live (was trc-on) AND backtest by default. ROLLBACK: True (but don't — it loses).
     TRC_CLENOW_POSITION_SIZE: float = 2640.0

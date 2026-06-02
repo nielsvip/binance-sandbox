@@ -50,6 +50,7 @@ COOLDOWN_TIER3 = 120   # 2 min between emergency kills
 SWAP_EMERGENCY_GB = 8.0  # 8GB swap = system is dying
 # NEVER KILL these — Terminal has Claude agents, browsers must stay open, Finder/system are essential
 NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari"}
+ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
 # Trading scripts that run in iTerm2 (matched by process command line)
 TRADING_SCRIPT_PATTERNS = ["ez_manage", "ez_positions", "ez_prices", "ez_prices_ws", "ez_klines", "ez_mark_prices", "ez_share_ind", "ez_indicators", "ez_market_data", "ez_indicators_merger", "ez_crosses", "ez_rankings", "ez_news_scanner", "ez_copilot", "ez_backup", "ez_positions_watchdog", "trade_analytics", "pa.py", "tradier_manage", "tradier_positions", "tradier_prices", "tradier_indicators", "tradier_rankings"]
 # Backtest scripts — throttle/kill these FIRST before touching anything else
@@ -229,11 +230,16 @@ def kill_app(app_name):
         try:
             subprocess.run(["pkill", "-f", app_name], capture_output=True, timeout=5)
             logger.warning(f"Force-killed {app_name}")
-        except Exception:
-            pass
-    except Exception as e:
-        logger.error(f"Failed to quit {app_name}: {e}")
+        except Exception: pass
+    except Exception as e: logger.error(f"Failed to quit {app_name}: {e}")
 
+def ask_permission_to_kill(app_name, timeout=15):
+    applescript = f'display dialog "Memory is critically low. Can Memory Guardian close {app_name} to prevent system crash?" buttons {{"No", "Yes"}} default button "No" with icon caution giving up after {timeout}'
+    try:
+        result = subprocess.run(["osascript", "-e", applescript], capture_output=True, text=True, timeout=timeout + 5)
+        if "button returned:Yes" in result.stdout: return True
+    except Exception as e: logger.error(f"Failed to show confirmation dialog for {app_name}: {e}")
+    return False
 
 def notify(message, title="Memory Guardian"):
     """Send macOS notification."""
@@ -471,7 +477,6 @@ def tier3_emergency_cleanup(dry_run=False):
         print(f"[DRY RUN] Would kill all backtests + restart trading")
         print(f"[DRY RUN] Browsers are PROTECTED — will NOT be killed")
         return True
-    # Kill non-essential apps (NOT browsers)
     running_apps = get_running_apps()
     killed = []
     for app in KILL_PRIORITY_APPS:
@@ -479,19 +484,24 @@ def tier3_emergency_cleanup(dry_run=False):
             kill_app(app)
             killed.append(app)
             time.sleep(0.5)
-    # Kill any remaining non-protected, non-system apps (browsers are in NEVER_KILL)
     for app in running_apps:
-        if app in NEVER_KILL or app in set(killed) or app == "iTerm2" or app == "iTerm":
-            continue
-        if any(keyword in app for keyword in SYSTEM_AGENT_KEYWORDS):
-            continue
+        if app in NEVER_KILL or app in ANTIGRAVITY_APPS or app in set(killed) or app == "iTerm2" or app == "iTerm": continue
+        if any(keyword in app for keyword in SYSTEM_AGENT_KEYWORDS): continue
         kill_app(app)
         killed.append(app)
         time.sleep(0.3)
-    # Kill all backtests
     kill_local_backtests()
     logger.info(f"TIER 3: Killed {len(killed)} non-essential apps (browsers preserved): {killed}")
     notify(f"Killed {len(killed)} apps + backtests (browsers safe)", "Tier 3 — Emergency")
+    stats = get_memory_stats()
+    if stats and stats["free_pct"] < TIER3_THRESHOLD_PCT:
+        for app in ANTIGRAVITY_APPS:
+            if app in running_apps:
+                if ask_permission_to_kill(app):
+                    kill_app(app)
+                    logger.warning(f"User approved killing {app} due to critical memory")
+                    notify(f"Killed {app} (user confirmed)", "Emergency Cleanup")
+                else: logger.info(f"User declined (or timed out) killing {app}. Keeping it running.")
     return True
 
 
