@@ -29084,15 +29084,14 @@ class MultiAccountTradeManager:
                         _dcl1 = safe_fetch_float(ind.get("dc_low_1h_prev", ind.get("dc_low_1h", 0)), 0.0)
                         if _sma15 <= 0 or _px <= 0:
                             continue
-                        if side == "LONG":
-                            _wt_ok = _w1 > _w1p
-                            _dc_trig = _dch1 > 0 and _px > _dch1
-                            _sma_trig = _px > _sma15 * (1.0 + _pct)
-                        else:
-                            _wt_ok = _w1 < _w1p
-                            _dc_trig = _dcl1 > 0 and _px < _dcl1
-                            _sma_trig = _px < _sma15 * (1.0 - _pct)
-                        if _wt_ok and (_dc_trig or _sma_trig):
+                        # 2026-06-02 USER "trades 100% identical": the FIRE decision now routes through the
+                        # SHARED single-source function vec_decisions.breakout_opener.entry_signal_scalar — the
+                        # SAME function the backtest calls (vector form) — so live entries == backtest entries by
+                        # construction. _pct is a fraction here; the shared fn wants percent.
+                        from vec_decisions import breakout_opener as _bko
+                        _is_long_bko = side == "LONG"
+                        _dc_trig = (_dch1 > 0 and _px > _dch1) if _is_long_bko else (_dcl1 > 0 and _px < _dcl1)
+                        if _bko.entry_signal_scalar(ind, _is_long_bko, _pct * 100.0):
                             self._mom_watchdog_cd[position_key] = time.time()
                             _trg = "DC1H_BREAKOUT" if _dc_trig else "SMA15M"
                             _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt15m{_w1:.1f}_{'rising' if side == 'LONG' else 'falling'}"
