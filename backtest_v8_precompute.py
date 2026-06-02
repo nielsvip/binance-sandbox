@@ -1677,6 +1677,46 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             merged["connors_rsi_D"] = crsi_d[indices].astype(np.float32)
         else:
             merged["connors_rsi_D"] = np.full(n, 50.0, dtype=np.float32)
+    # 2d-intraday (2026-06-02): connors_rsi_{3m,5m,15m,1h,4h} — same ConnorsRSI on each
+    # intraday TF's raw closes, broadcast back to base TF. Byte-identical method to the D
+    # block above + patch_npz_connors_intraday.py (so patched + regenerated NPZ agree).
+    for _ctf in ("3m", "5m", "15m", "1h", "4h"):
+        _ckey = f"connors_rsi_{_ctf}"
+        if _ctf not in dfs:
+            continue
+        _cc = dfs[_ctf]["close"].values.astype(np.float64)
+        _ncc = len(_cc)
+        if _ncc >= 5:
+            _dl = np.diff(_cc, prepend=_cc[0])
+            _g = np.where(_dl > 0, _dl, 0.0); _l = np.where(_dl < 0, -_dl, 0.0)
+            _ag3 = pd.Series(_g).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            _al3 = pd.Series(_l).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            _r3 = 100.0 - 100.0 / (1.0 + _ag3 / np.where(_al3 > 0, _al3, 1e-10))
+            _sgn = np.sign(_dl); _stk = np.zeros(_ncc)
+            for _i in range(1, _ncc):
+                if _sgn[_i] == 0: _stk[_i] = 0
+                elif _sgn[_i] == _sgn[_i - 1]: _stk[_i] = _stk[_i - 1] + _sgn[_i]
+                else: _stk[_i] = _sgn[_i]
+            _ds = np.diff(_stk, prepend=_stk[0])
+            _gs = np.where(_ds > 0, _ds, 0.0); _ls = np.where(_ds < 0, -_ds, 0.0)
+            _ag2 = pd.Series(_gs).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            _al2 = pd.Series(_ls).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            _rstk = 100.0 - 100.0 / (1.0 + _ag2 / np.where(_al2 > 0, _al2, 1e-10))
+            _cp = np.roll(_cc, 1); _cp[0] = _cc[0]
+            _ret1 = np.where(_cp > 0, (_cc - _cp) / _cp * 100.0, 0.0); _ret1[0] = 0.0
+            _pr = np.zeros(_ncc)
+            for _i in range(_ncc):
+                _lo = max(0, _i - 99); _w = _ret1[_lo:_i + 1]
+                _pr[_i] = (_w[:-1] < _ret1[_i]).sum() / max(len(_w) - 1, 1) * 100.0 if len(_w) > 1 else 50.0
+            _crsi = np.nan_to_num((_r3 + _rstk + _pr) / 3.0, nan=50.0)
+            _dftf = dfs[_ctf]
+            _u = np.datetime_data(_dftf.index.values.dtype)[0]
+            _dv = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_u, 10**9)
+            _tfts = (_dftf.index.values.astype("int64") // _dv).astype(np.int64)
+            _idx = np.clip(np.searchsorted(_tfts, ts_epoch, side="right") - 1, 0, _ncc - 1)
+            merged[_ckey] = _crsi[_idx].astype(np.float32)
+        else:
+            merged[_ckey] = np.full(n, 50.0, dtype=np.float32)
     # 3. vwap_D: daily VWAP broadcast to base TF.
     # Compute as cumulative (typical_price × volume) / cumulative_volume per UTC day.
     if f"close_{base_tf}" in merged and f"high_{base_tf}" in merged and f"low_{base_tf}" in merged and f"volume_{base_tf}" in merged:

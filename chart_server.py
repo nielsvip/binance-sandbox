@@ -5001,12 +5001,23 @@ def persym_backtest_trades():
     sym = request.args.get("sym", "").upper()
     if not sym:
         return jsonify({"error": "sym required"}), 400
-    path = BASE_PATH / "data" / "sweep_results" / "persym_stock_backtest_trades.jsonl"
-    if not path.exists():
-        return jsonify({"events": [], "missing": str(path)})
+    # PREFER Tier-2 (backtest_v8_engine) trades — Tier-2 calls the REAL live entry code, so it makes the
+    # SAME entries as live (true parity). data/tier2_trades/<run>__<SYM>.jsonl. Fall back to the vec dump
+    # only if no Tier-2 file exists yet (the vec dump is a fast SHORTLIST and does NOT match live entries).
+    src_tag = "tier2_live_parity"
+    t2_dir = BASE_PATH / "data" / "tier2_trades"
+    t2_files = sorted(t2_dir.glob(f"*__{sym}.jsonl"), key=lambda p: p.stat().st_mtime) if t2_dir.exists() else []
+    if t2_files:
+        lines = t2_files[-1].read_text(errors="ignore").splitlines()
+    else:
+        src_tag = "vec_shortlist_NOT_live_parity"
+        vec = BASE_PATH / "data" / "sweep_results" / "persym_stock_backtest_trades.jsonl"
+        if not vec.exists():
+            return jsonify({"events": [], "source": src_tag, "missing": str(t2_dir)})
+        lines = [ln for ln in vec.read_text(errors="ignore").splitlines() if sym in ln]
     events = []
-    for ln in path.read_text(errors="ignore").splitlines():
-        if '"symbol"' not in ln or sym not in ln:
+    for ln in lines:
+        if '"symbol"' not in ln and '"type"' not in ln:
             continue
         try:
             d = json.loads(ln)
@@ -5014,13 +5025,13 @@ def persym_backtest_trades():
             continue
         if str(d.get("symbol", "")).upper() != sym:
             continue
-        ts = str(d.get("ts", ""))
+        ts = str(d.get("ts", "") or d.get("timestamp", ""))
         try:
             unix_ts = int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
         except Exception:
             unix_ts = None
         events.append({"symbol": sym, "side": d.get("side"), "type": d.get("type"), "price": d.get("price"), "qty": d.get("qty"), "value": d.get("value"), "reason": d.get("reason"), "pnl_pct": d.get("pnl_pct"), "ts": ts, "unix_ts": unix_ts, "source": "backtest"})
-    return jsonify({"events": events, "source": "persym_backtest"})
+    return jsonify({"events": events, "source": src_tag})
 
 
 @app.route("/klines_cache")

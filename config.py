@@ -765,6 +765,13 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0
+    # 2026-06-02 USER anti-churn: first REENTRY_CHURN_GUARD_WINDOW_S after an exit, the reentry
+    # daemon requires a real Donchian breakout (dc_high4_3m/dc_low4_3m 4-bar if USE_4BAR, else
+    # dc_high_3m/dc_low_3m 1-bar) instead of a bare exit-price cross — stops the re-buy churn.
+    # After the window the bare exit-price cross fires as before. A/B USE_4BAR True vs False.
+    REENTRY_CHURN_GUARD_ENABLED: bool = True
+    REENTRY_CHURN_GUARD_WINDOW_S: float = 3600.0
+    REENTRY_CHURN_GUARD_USE_4BAR: bool = True
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20

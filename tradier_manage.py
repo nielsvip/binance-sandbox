@@ -929,6 +929,19 @@ class GeneralLogFilter(logging.Filter):
         # Exclude snapshots (they go to the other two files)
         return not getattr(record, 'weather_snapshot', False)
 
+class AccountScopedFilter(logging.Filter):
+    """tradier_manage_{acct}.log heartbeat: EVERYTHING for this account (incl snapshots) plus SYS.
+    2026-06-02 FIX — without this, the wd_h handler had NO filter, so each process opened an
+    unfiltered handler to ALL ACCOUNT_KEYS log files and the first process to win the rotation
+    race flooded every {acct}.log with its own account's lines (tra's [tra] filled trb.log). Scoping
+    wd_h to its own account stops the cross-account contamination AND the cross-process rollover race."""
+    def __init__(self, acct: str):
+        super().__init__()
+        self.acct = acct.upper()
+    def filter(self, record: logging.LogRecord) -> bool:
+        rec_acct = getattr(record, 'account_key', 'SYS')
+        return rec_acct == self.acct or rec_acct == "SYS"
+
 class ConsoleFilter(logging.Filter):
     """Stdout: Actions and clean Weather (No waits) for the primary account."""
     def __init__(self, acct: str = None):
@@ -991,6 +1004,7 @@ def setup_logger_per_account(logger_name: str, base_path: str, target_accounts: 
         wd_path = os.path.join(config.LOG_DIR, f"tradier_manage_{acct_l}.log")
         wd_h = RotatingFileHandler(wd_path, maxBytes=5*1024*1024, backupCount=2, encoding='utf-8')
         wd_h.setLevel(logging.INFO)
+        wd_h.addFilter(AccountScopedFilter(acct))
         wd_h.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%m-%d %H:%M:%S'))
         logger_obj.addHandler(wd_h)
 

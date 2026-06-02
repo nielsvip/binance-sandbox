@@ -390,6 +390,24 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
                     dc_tf_used = "3M" if _dc_3m_short_re else ("1H" if (dc_low_1h > 0 and cur_px < dc_low_1h * (1 - _buf)) else "15M")
         if not crossed and not is_dc_breakout:
             continue
+        # CHURN GUARD (user 2026-06-02): for the first REENTRY_CHURN_GUARD_WINDOW_S after exit,
+        # a bare exit-price cross-back is NOT enough — require a real Donchian breakout
+        # (dc_high4_3m/dc_low4_3m 4-bar by default, or dc_high_3m/dc_low_3m 1-bar via _USE_4BAR)
+        # so the daemon stops re-buying tiny cross-backs (the churn). After the window the
+        # exit-price cross fires as before. Flip _USE_4BAR to A/B which churns less.
+        if _cfg_bool("REENTRY_CHURN_GUARD_ENABLED", True) and exit_ts > 0 and (now - exit_ts) < _cfg_float("REENTRY_CHURN_GUARD_WINDOW_S", 3600.0):
+            _cg_4bar = _cfg_bool("REENTRY_CHURN_GUARD_USE_4BAR", True)
+            _cg_lvl = 0.0
+            if _ind:
+                _cg_key = ("dc_high4_3m" if _cg_4bar else "dc_high_3m") if is_long else ("dc_low4_3m" if _cg_4bar else "dc_low_3m")
+                try:
+                    _cg_lvl = float(_ind.get(_cg_key, 0) or 0)
+                except Exception:
+                    _cg_lvl = 0.0
+            _cg_ok = _cg_lvl > 0 and ((cur_px > _cg_lvl * 1.001) if is_long else (cur_px < _cg_lvl * 0.999))
+            if not _cg_ok:
+                logger.info(f"[DAEMON] CHURN_GUARD blocked {pk}: {now - exit_ts:.0f}s since exit (<{_cfg_float('REENTRY_CHURN_GUARD_WINDOW_S', 3600.0):.0f}s), needs {'dc4' if _cg_4bar else 'dc'}_3m breakout (cur={cur_px:g} lvl={_cg_lvl:g})")
+                continue
         _gate_reason_tag = "CONFIRM_DISABLED"
         if not is_dc_breakout and _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True) and _ind:
             from ez_reentry import check_reentry_confirmation as _chk_re
