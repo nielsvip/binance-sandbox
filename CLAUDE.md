@@ -349,6 +349,16 @@ Rsync needed: 6-critical + `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*
 
 ---
 
+## 🔀 PARITY_COMPARISON_MODE MASTER SWITCH + STRATEGY VALIDATION POLICY (USER 2026-06-02)
+
+**Parity policy (default states must match live↔backtest):** a switch default-OFF ⇒ OFF in live too; a switch ON in live ⇒ ON by default in backtest; then run per_sym backtest; **if numbers do NOT improve ⇒ switch OFF in BOTH live and sandbox by default.** Validate faithfully (same NPZ inputs the live reads — many are precomputed: `connors_rsi_D`, `sepa_pass`/`sepa_score`, `clenow_score_D`, OHLC for `compute_smfi`). Use `tools/bt_<strategy>.py` pattern. **A strategy is only "un-backtestable" if its inputs are genuinely absent from NPZ** (only `EPISODIC_PIVOT` = earnings calendar) — verify NPZ fields before claiming so. For a genuinely un-backtestable strategy that is live-ON, mark it OFF **"un-backtestable → forward-test vs live over time,"** not "discarded."
+
+**`PARITY_COMPARISON_MODE` (config.py + config_tradier.py, default `False`):** the ONE master switch. Gain-augmenting strategies that are NOT (fully) in the vec/Tier-2 sweep stay **ON in normal live** (they add gains). Set `PARITY_COMPARISON_MODE=True` **ONLY** while running a live↔backtest parity A/B — it suppresses ALL those augmenting strategies at once (stocks: `tradier_manage._rotation_rsi2_loop` ~15360 skips Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum) so live==backtest is apples-to-apples. **After confirming parity, set back to `False` to resume gains.** Never leave it on.
+
+**2026-06-02 validated stock strategies (faithful vec, NPZ-precomputed inputs):** MINERVINI +0.4806 sharpe/+25%mo → KEEP; CLENOW +0.1815/+8.5%mo → KEEP (gain-augmenting); SMFI +0.0534 (noise) → OFF; CONNORS_RSI −0.5754 → OFF.
+
+---
+
 ## EXECUTE_NOW IS THE ONLY GATE
 
 1. ALL orders (open/augment/reduce/close/hedge) go through `execute_now()` in ez_manage.py.

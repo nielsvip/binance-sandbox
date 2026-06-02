@@ -753,6 +753,7 @@ class TradierConfig:
     HTF4_CONF: bool = False  # Keep off — htf1 alone is sufficient, htf4 too restrictive
     ENABLE_FAST_RISER_REDUCE: bool = False
     # === ROTATION STRATEGY (5yr backtest: +71.2%, Sharpe 0.60, 3,669 trades, 10d lookback) ===
+    PARITY_COMPARISON_MODE: bool = False  # 2026-06-02 USER MASTER SWITCH. Default False = NORMAL LIVE (all gain-augmenting entry strategies ON: Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum). Set True ONLY during a live↔backtest parity A/B — it suppresses ALL those augmenting strategies AT ONCE in live (gate: tradier_manage.py _rotation_rsi2_loop ~15360) so live == backtest is apples-to-apples. AFTER confirming parity, set back to False to resume gains. These strategies augment live gains but are NOT fully in the vec/Tier-2 sweep, so they must be flipped off only for the comparison window, never left off.
     ROTATION_ENABLED: bool = True
     ROTATION_TOP_N: int = 3       # URGENT_FIX: fewer long positions in bear market (was 5)
     ROTATION_BOTTOM_N: int = 8   # URGENT_FIX: more short candidates (was 5)
@@ -1446,7 +1447,7 @@ class TradierConfig:
     # --- VIX Regime Filter (Sharpe 2.00) — overlay on ALL entries, trb+trc ---
     VIX_REGIME_FILTER_ENABLED: bool = True  # Block entries when SPY < SMA200
     # --- TRC overrides for backtest winners ---
-    TRC_CLENOW_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
+    TRC_CLENOW_ENABLED: bool = True  # 2026-06-02 V8-VALIDATED → KEPT ON (USER). Faithful vec backtest (tools/bt_clenow.py, NPZ clenow_score_D = same slope×R² momentum live reads): pool_sharpe=+0.1815, gain_per_mo=+8.5%, total=+221% over 96 trades/35 syms — a REAL gain-augmenting momentum edge. Augments gains → ON in live. (Gain-augmenting strategy NOT fully modeled in vec sweep → controlled by PARITY_COMPARISON_MODE master switch: only flipped off during a live↔backtest parity A/B, then back on.)
     TRC_SMFI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → NOISE-tier, off per user parity policy. Faithful vec backtest (tools/bt_smfi.py, replicates compute_smfi cumulative smart-money-flow + 20d bull-divergence on NPZ daily OHLC — same formula as live): pool_sharpe=+0.0534 (Noise), gain_per_mo=+10.2%, total=+264% over 719 trades/37 syms. POSITIVE in raw gain but risk-adjusted NOISE (0.05 << 0.48 Minervini / 0.44 baseline) + 719 trades = commission churn → does NOT improve the book → OFF both. NOTE: it IS backtestable (OHLC formula, not order-flow); this is a validated-noise cut, NOT a can't-backtest case. ROLLBACK: True (if you want the raw +10%/mo despite the churn).
     TRC_MINERVINI_ENABLED: bool = True  # Paper-only: needs V5 validation before trb
     TRC_CONNORS_RSI_ENABLED: bool = False  # 2026-06-02 V8-VALIDATED → LOSER, turned OFF per user parity policy. Faithful vec backtest (tools/backtest_connors_rsi_vec.py, uses NPZ connors_rsi_D + sma_200_D, same inputs as live): pool_sharpe=-0.5754, gain_per_mo=-15.25%, total_gain=-555% over 139 trades/34 syms. Oversold-mean-reversion catches falling knives on this universe. OFF in both live (was trc-on) AND backtest by default. ROLLBACK: True (but don't — it loses).
