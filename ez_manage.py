@@ -18820,6 +18820,7 @@ class MultiAccountTradeManager:
                 "WT_3M_FORCE_OPEN" in _reason_up_eta
                 or "TRADEABLE_KEYS_MANDATORY" in _reason_up_eta
                 or "FORCE_HA_4H_ABOVE_BASIS" in _reason_up_eta
+                or "MOMENTUM_WATCHDOG" in _reason_up_eta  # 2026-06-02 USER: sma+1%/dc_1h breakout force-opener IS the trigger — don't veto it for "no struct/breakout"
             ) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
             # 2026-05-27 USER MANDATE: REENTRY respects ENTRY_VET. Bypass removed.
             if (
@@ -22985,6 +22986,11 @@ class MultiAccountTradeManager:
                                 logger.warning(f"[BREAKOUT_DC1H_BYPASS] {position_key} side={position_side}: 1h Donchian breakout (px={_mb_px:.6f} {_mb_lvl}) — armed-state requirement bypassed. reason={(reason or '')[:50]}")
             except Exception as _mbe:
                 logger.warning(f"[BREAKOUT_DC1H_BYPASS] check error (fail-closed): {_mbe}")
+            # 2026-06-02 USER: the MOMENTUM_WATCHDOG force-opener (sma+1% OR dc_1h breakout, wt in favor) is a
+            # DELIBERATE force-open — it must bypass the MTF armed-state gate. COUNTER_TREND_ADD_BLOCK ran above
+            # so it still cannot open against the 1h trend.
+            if "MOMENTUM_WATCHDOG" in (reason or ""):
+                _mtf_momentum_bypass = True
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
                     and not _mtf_strong_buy_quick_bypass
@@ -29046,18 +29052,23 @@ class MultiAccountTradeManager:
                 _cd = float(getattr(config, "MOMENTUM_SMA_WATCHDOG_COOLDOWN_S", 300.0))
                 for position_key in list(getattr(self, "tradeable_keys", set()) or set()):
                     try:
-                        if not str(position_key).endswith("_LONG"):
+                        # 2026-06-02 USER MANDATE "ACROSS THE BOARD": bidirectional force-opener. Fires when a
+                        # flat tradeable key (a) breaks the prev-bar 1h Donchian (LONG px>dc_high_1h_prev /
+                        # SHORT px<dc_low_1h_prev) OR (b) is >pct beyond sma_200_15m — in BOTH cases with wt1_15m
+                        # moving in favor (LONG rising / SHORT falling). NO wt ceiling (a ripping move IS overbought
+                        # — that's the point). The OPEN bypasses MTF in execute_now (force-open).
+                        side = "LONG" if str(position_key).endswith("_LONG") else ("SHORT" if str(position_key).endswith("_SHORT") else None)
+                        if side is None:
                             continue
                         if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
                             continue
                         account_key, symbol, pos_side = parse_position_key(position_key)
                         if account_key not in getattr(self, "account_keys", []):
                             continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
-                        # 2026-05-31 FINAL per_sym book: skip LONGs not in the tradeable book (negative/sub-floor),
-                        # and use the symbol's optimized entry %-distance (pct_entry) instead of the global default.
-                        if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, "LONG", "LONG_ENABLED", True)):
+                        _sflag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
+                        if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, side, _sflag, True)):
                             continue
-                        _pct = float(_psym_get(symbol, "LONG", "MOMENTUM_SMA_WATCHDOG_PCT", getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 1.0))) / 100.0
+                        _pct = float(_psym_get(symbol, side, "MOMENTUM_SMA_WATCHDOG_PCT", getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 1.0))) / 100.0
                         position = await self.get_position(position_key)
                         _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
                         if _amt > 0:
@@ -29069,12 +29080,23 @@ class MultiAccountTradeManager:
                         _px = safe_fetch_float(ind.get("current_price", 0), 0.0)
                         _w1 = safe_fetch_float(ind.get("wt1_15m", 0), 0.0)
                         _w1p = safe_fetch_float(ind.get("wt1_15m_prev", _w1), _w1)
+                        _dch1 = safe_fetch_float(ind.get("dc_high_1h_prev", ind.get("dc_high_1h", 0)), 0.0)
+                        _dcl1 = safe_fetch_float(ind.get("dc_low_1h_prev", ind.get("dc_low_1h", 0)), 0.0)
                         if _sma15 <= 0 or _px <= 0:
                             continue
-                        if _px > _sma15 * (1.0 + _pct) and _w1 < _wt_cap and _w1 > _w1p:
+                        if side == "LONG":
+                            _wt_ok = _w1 > _w1p
+                            _dc_trig = _dch1 > 0 and _px > _dch1
+                            _sma_trig = _px > _sma15 * (1.0 + _pct)
+                        else:
+                            _wt_ok = _w1 < _w1p
+                            _dc_trig = _dcl1 > 0 and _px < _dcl1
+                            _sma_trig = _px < _sma15 * (1.0 - _pct)
+                        if _wt_ok and (_dc_trig or _sma_trig):
                             self._mom_watchdog_cd[position_key] = time.time()
-                            _reason = f"MOMENTUM_SMA15M_WATCHDOG_px{_px:.6f}>sma15m+{_pct*100:.1f}pct_wt15m{_w1:.1f}<{_wt_cap:.0f}rising"
-                            logger.critical(f"🐶 [MOMENTUM_WATCHDOG] {position_key}: FORCE-OPEN missed winner — {_reason}")
+                            _trg = "DC1H_BREAKOUT" if _dc_trig else "SMA15M"
+                            _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt15m{_w1:.1f}_{'rising' if side == 'LONG' else 'falling'}"
+                            logger.critical(f"🐶 [MOMENTUM_WATCHDOG] {position_key}: FORCE-OPEN ({_trg}) — {_reason}")
                             await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0)
                     except Exception as _wde:
                         logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: {_wde}")
