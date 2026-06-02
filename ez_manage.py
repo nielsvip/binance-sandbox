@@ -1297,11 +1297,29 @@ def _psym_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+def _ezm_conviction_mult(symbol: str, side: str) -> float:
+    """2026-06-02 USER: per-symbol CONVICTION size multiplier from the FINAL book (size_mult) — proven
+    winners (MU/SNDK/ZEC) open BIG, tag-alongs stay small. Capped at config.CONVICTION_SIZING_MAX. No-op
+    (1.0) unless config.CONVICTION_SIZING_ENABLED. Applied to the base START_POSITION_SIZE in _psym_sps."""
+    if not bool(getattr(config, "CONVICTION_SIZING_ENABLED", False)):
+        return 1.0
+    try:
+        book = _ezm_load_final_book()
+        if not book:
+            return 1.0
+        m = (book.get("tradeable", {}).get(f"{symbol}_{side}", {}) or {}).get("size_mult")
+        if m is None:
+            return 1.0
+        return max(1.0, min(float(m), float(getattr(config, "CONVICTION_SIZING_MAX", 8.0))))
+    except Exception:
+        return 1.0
+
+
 def _psym_sps(symbol: str, side: str):
     """Effective START_POSITION_SIZE for (symbol, side). Honors per-sym
     START_POSITION_SIZE_OVERRIDE_USD first, then per-sym START_POSITION_SIZE,
     finally config.START_POSITION_SIZE. Use at sizing call sites in lieu of
-    `config.START_POSITION_SIZE`.
+    `config.START_POSITION_SIZE`. 2026-06-02: result scaled by per-sym conviction (size_mult).
     2026-05-18 Path B — implements user's minimum-patch trial-sizing key."""
     try:
         if os.environ.get("V8_DISABLE_PER_SYM") == "1":
@@ -26244,11 +26262,11 @@ class MultiAccountTradeManager:
                 # so splitting off $7 foothold leaves almost nothing for the maker leg. Scalps go
                 # 100% maker (limit on USDC is free; USDT tiny maker fee). Finandy visibility is fine
                 # via the SCALP_V3_OPEN reason string captured in webhook fallback.
-                if _is_scalp_v3_reason:
-                    logger.info(
-                        f"[FOOTHOLD_BYPASS_V3] {position_key}: SCALP_V3 entry — skipping foothold, whole order via maker. qty={quantity:.6f}"
-                    )
-                else:
+                # 2026-06-02 USER MANDATE: EVERY entry — INCLUDING SCALP_V3 — must fire the foothold webhook
+                # first so the trade reason is visible on the broker ("why was this trade taken"). The old
+                # SCALP_V3 foothold-skip left scalp opens with no visible origin. Scalps now also get a
+                # foothold; if the scalp qty <= foothold, the foothold webhook IS the whole order (FOOTHOLD_ONLY).
+                if True:
                     foothold_qty = max(
                         7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3
                     )
@@ -27143,7 +27161,7 @@ class MultiAccountTradeManager:
                         timeout=aiohttp.ClientTimeout(total=40, connect=20),
                     ) as resp:
                         await resp.text()
-                    logger.debug(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")
+                    logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT resp_ok")  # 2026-06-02 INFO (was DEBUG-hidden) so every-trade foothold is verifiable
                     # 2026-04-24 UNIVERSAL HEDGE PERSIST (foothold path)
                     try:
                         _r_upper = str(reason or "").upper()
