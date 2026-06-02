@@ -440,6 +440,27 @@ def per_sym_best():
     return resp
 
 
+@app.route("/rundown")
+def rundown():
+    """Suggestions-vs-fills rundown for a stock account (default trb).
+    ?acct=trb&day=YYYYMMDD (day optional, defaults to today UTC). Read-only:
+    rebuilds from decisions JSONL + /history/ ledger + per_sym book on each call."""
+    acct = request.args.get("acct", "trb").lower()
+    day = request.args.get("day") or None
+    try:
+        import importlib, sys as _sys
+        _tools = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
+        if _tools not in _sys.path:
+            _sys.path.insert(0, _tools)
+        import trb_suggestion_rundown as _r
+        importlib.reload(_r)
+        _r.build(acct, day)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", f"{acct}_rundown.json")) as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _file_aggregates(p):
     """Return aggregate dict for a single jsonl file, using mtime cache.
     Per CLAUDE.md STANDARD METRIC SET: stores sum_pnl + sum_pnl_sq so we can
@@ -4970,6 +4991,36 @@ def health():
         "npz_count": len(list(NPZ_DIR.glob("*.npz"))),
         "trade_files": len(list(TRADES_DIR.glob("*.jsonl"))) if TRADES_DIR.exists() else 0,
     })
+
+
+@app.route("/persym_backtest_trades")
+def persym_backtest_trades():
+    # 2026-06-02: serve the per_sym backtest "should-have-traded" events for a symbol, from the
+    # latest per_sym vec backtest trade dump (data/sweep_results/persym_stock_backtest_trades.jsonl).
+    # Same shape as /historic_trades so the dashboard can render a SECOND marker layer (backtest vs live).
+    sym = request.args.get("sym", "").upper()
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    path = BASE_PATH / "data" / "sweep_results" / "persym_stock_backtest_trades.jsonl"
+    if not path.exists():
+        return jsonify({"events": [], "missing": str(path)})
+    events = []
+    for ln in path.read_text(errors="ignore").splitlines():
+        if '"symbol"' not in ln or sym not in ln:
+            continue
+        try:
+            d = json.loads(ln)
+        except Exception:
+            continue
+        if str(d.get("symbol", "")).upper() != sym:
+            continue
+        ts = str(d.get("ts", ""))
+        try:
+            unix_ts = int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+        except Exception:
+            unix_ts = None
+        events.append({"symbol": sym, "side": d.get("side"), "type": d.get("type"), "price": d.get("price"), "qty": d.get("qty"), "value": d.get("value"), "reason": d.get("reason"), "pnl_pct": d.get("pnl_pct"), "ts": ts, "unix_ts": unix_ts, "source": "backtest"})
+    return jsonify({"events": events, "source": "persym_backtest"})
 
 
 @app.route("/klines_cache")
