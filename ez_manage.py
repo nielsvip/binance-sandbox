@@ -25517,8 +25517,15 @@ class MultiAccountTradeManager:
                 or "DC_HIGH_BREAK_RETEST" in _rup
                 or action == "REENTRY"
             )
-            _has_pos = abs(safe_fetch_float(original_positionAmt, 0.0)) > self.min_qty.get(symbol, 0.001)
-            if is_augment and _has_pos and not _is_reentry_exec:
+            _pos = self.positions_by_account.get(account_key, {}).get(position_key)
+            _pos_amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0.0), 0.0)) if _pos else 0.0
+            _gain = safe_fetch_float(getattr(_pos, "gain", 0.0), 0.0) if _pos else 0.0
+            _min_gain = float(getattr(config, "MIN_GAIN", 3.0))
+            _is_open_or_reenter = "OPEN" in (action or "").upper() or "REENTRY" in (action or "").upper() or "OPEN" in (reason or "").upper() or "REENTRY" in (reason or "").upper()
+            _is_bounce = any(x in (reason or "").upper() for x in ["BOUNCE", "PULLBACK", "RECOVERY", "AUG_C"])
+            _thr = 0.5 * _min_gain if _is_bounce else _min_gain
+            _should_check_cd = (_pos_amt > 0) if _is_open_or_reenter else (_gain > _thr)
+            if is_augment and _should_check_cd and not _is_reentry_exec:
                 aug_cd_key = f"aug_cooldown:{position_key}"
                 last_aug = (
                     await self.redis_manager.get(aug_cd_key)
