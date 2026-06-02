@@ -1337,15 +1337,16 @@ def _psym_sps(symbol: str, side: str):
         except Exception:
             pass
         ov = _ezm_per_sym_cfgs.get(f"{symbol}_{side}", {})
+        _cv = _ezm_conviction_mult(symbol, side)
         if "START_POSITION_SIZE_OVERRIDE_USD" in ov:
             v = ov["START_POSITION_SIZE_OVERRIDE_USD"]
             if v is not None:
-                return float(v)
+                return float(v) * _cv
         if "START_POSITION_SIZE" in ov:
-            return float(ov["START_POSITION_SIZE"])
+            return float(ov["START_POSITION_SIZE"]) * _cv
     except Exception:
         pass
-    return float(getattr(config, "START_POSITION_SIZE", 45.0))
+    return float(getattr(config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)
 
 
 paper_trading_logger = logging.getLogger("paper_trading")
@@ -27161,7 +27162,7 @@ class MultiAccountTradeManager:
                         timeout=aiohttp.ClientTimeout(total=40, connect=20),
                     ) as resp:
                         await resp.text()
-                    logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT resp_ok")  # 2026-06-02 INFO (was DEBUG-hidden) so every-trade foothold is verifiable
+                    logger.info(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")  # 2026-06-02 INFO (was DEBUG-hidden); fire-and-forget, no response check
                     # 2026-04-24 UNIVERSAL HEDGE PERSIST (foothold path)
                     try:
                         _r_upper = str(reason or "").upper()

@@ -12719,6 +12719,16 @@ class TradierTradeManager:
                 logger.error(f"Error calculating position size for {symbol}: Price is {price}")
                 return 0.0
             target_value = _cfg('START_POSITION_SIZE', 600, account_key, symbol, side)
+            # 2026-06-02 USER: per-sym CONVICTION sizing (mirror of crypto _psym_sps) — proven winners
+            # (MU/SNDK) open BIG via size_mult from the FINAL book, capped. No-op unless CONVICTION_SIZING_ENABLED.
+            if bool(getattr(config, 'CONVICTION_SIZING_ENABLED', False)):
+                try:
+                    _tradier_final_book_get(f"{symbol}_{side}", 'LONG_ENABLED')  # ensures _tradier_final_book is loaded (mtime-cached)
+                    _cv_sm = (_tradier_final_book.get('tradeable', {}).get(f"{symbol}_{side}", {}) or {}).get('size_mult')
+                    if _cv_sm is not None:
+                        target_value = float(target_value) * max(1.0, min(float(_cv_sm), float(getattr(config, 'CONVICTION_SIZING_MAX', 8.0))))
+                except Exception:
+                    pass
             # BACKTEST_CHANGE_T23: close zone size multiplier
             if getattr(config, 'TIME_ZONE_ENABLED', False):
                 _zone = _get_trade_zone()
