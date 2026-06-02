@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-02 18:19:45 UTC
+# Copilot Status — 2026-06-02 18:35:06 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-02T18:19:45
-- **RATIO_IMBALANCE** [tradier] trb — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-02T18:19:45
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-02T18:19:45
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-02T18:34:35
+- **STALE_INDICATORS** [tradier]  — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-02T18:35:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-02T18:35:06
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-02T18:35:06
 
 ## Missed Trades (trader comparison)
 
@@ -29,19 +29,19 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **FIVN** LONG (tradier) peak +17.2%, now +-7.1%
-- HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.1%
+- HELD: **FIVN** LONG (tradier) peak +17.2%, now +-7.0%
+- HELD: **SLV** LONG (tradier) peak +5.6%, now +-1.0%
 - HELD: **ROBO** LONG (tradier) peak +5.1%, now +0.2%
-- HELD: **BG** LONG (tradier) peak +4.5%, now +-0.8%
+- HELD: **BG** LONG (tradier) peak +4.5%, now +-0.6%
 
-- WATCHING: **UUUU** SHORT (tradier) peaked +4.8%, exited 1m ago
+- WATCHING: **UUUU** SHORT (tradier) peaked +4.8%, exited 2m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 15
-- [HIGH] ez_indicators.py is NOT running
+**Issues (last 1h):** 13
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_prices.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_prices.py is NOT running
