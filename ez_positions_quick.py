@@ -14535,6 +14535,13 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     should_close = True
                 elif ("CLOSE" in rec_exit or "REDUCE" in rec_exit or "PROFIT" in rec_exit or "EXIT" in rec_exit or "DECAY" in rec_exit or score_exit < -4) and not _in_grace_period:
                     should_close = True
+                if should_close and bool(getattr(config, "QUICK_REDUCE_TECHNICAL_ONLY", True)):
+                    _trap_toks = (str(reason_exit) + "|" + str(rec_exit)).upper()
+                    _real_tech = any(_t in _trap_toks for _t in ("DC_LOW_3M", "DC_HIGH_3M", "DC_LOW4", "DC_HIGH4", "DC4", "DCB_CU", "STRUCT_LH", "STRUCT_LL", "LL_LH", "HH_HL", "RULE_B_3M", "MTF", "GR_AGAINST", "ALL_TF", "HTF_AGAINST", "WT_FLIP", "WT_4H_VEL", "WT_CROSS", "WT_MOMENTUM", "R1_", "R2_", "ATR_TRAIL", "HARD", "FAST_CUT_LOSS", "WRONG_SIDE", "PARTIAL", "PPL", "BREAK_EVEN", "HEDGE_FAILED", "PANIC"))
+                    if not _real_tech:
+                        should_close = False
+                        reason_exit = str(reason_exit) + "_TRAP_SUPPRESSED"
+                        logger.info(f"[QUICK_REDUCE_TRAP_SUPPRESSED] {position_key}: non-technical stochastic/euphoria reduce (rec={rec_exit}) blocked — only sanctioned technical exits (R1/R2/ATR-trail/DC/MTF/struct/RULE_B) may reduce or close. USER MANDATE 2026-06-02. Rollback: config.QUICK_REDUCE_TECHNICAL_ONLY=False")
                 # ═══ USE TRACKER FIELDS FOR SMARTER DECISIONS ═══
                 _cand = tracker_manager.exit_candidates.get(position_key, {})
                 if not isinstance(_cand, dict): _cand = {}

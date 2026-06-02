@@ -21900,11 +21900,25 @@ class MultiAccountTradeManager:
                 await self.load_symbol_configs()
                 symbol_conf = self.get_symbol_config(symbol)
             if not symbol_conf:
-                logger.error(
-                    f"[{account_key}] [MAKER_CRITICAL_FAIL] {position_key}: Symbol config missing for {symbol}"
-                )
+                logger.error(f"[{account_key}] [MAKER_CRITICAL_FAIL] {position_key}: Symbol config missing for {symbol}")
                 await release_locks()
                 return False, 0.0
+            if ta == "OPEN":
+                foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
+                logger.info(f"⚓ [CENTRALIZED_FOOTHOLD] Sending foothold webhook for {position_key}: quantity={foothold_qty:.6f}")
+                await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
+                if qty_abs > foothold_qty:
+                    qty_abs = qty_abs - foothold_qty
+                    step = Decimal(str(symbol_conf["step_size"]))
+                    qty_dec_test = (Decimal(str(qty_abs)) // step) * step
+                    if qty_dec_test.is_zero():
+                        logger.info(f"[FOOTHOLD_NEARLY_ONLY] {position_key}: remaining quantity {qty_abs:.6f} rounds to 0 — no separate maker")
+                        await release_locks(success_fill=True)
+                        return True, qty_abs + foothold_qty
+                else:
+                    logger.info(f"[FOOTHOLD_ONLY] {position_key}: qty_abs {qty_abs:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker")
+                    await release_locks(success_fill=True)
+                    return True, qty_abs
             tick = Decimal(str(symbol_conf["tick_size"]))
             step = Decimal(str(symbol_conf["step_size"]))
             qty_dec = (Decimal(str(qty_abs)) // step) * step
@@ -26254,41 +26268,8 @@ class MultiAccountTradeManager:
                         f"[ORDER_SIZE_CAP] {position_key}: ${_order_usd:.2f} > MAX_ORDER_VALUE ${_max_order_usd:.2f} — capping"
                     )
                     quantity = _max_order_usd / current_price
-                # ═══ 2026-04-16 MANDATORY FOOTHOLD ═══
-                # Every OPEN/AUGMENT/REENTRY/HEDGE_OPEN MUST write a foothold webhook first so the reason
-                # string is visible on Binance side. Previous `if quantity > foothold_qty` branch let
-                # small orders bypass the foothold, producing naked maker orders with no visible origin.
-                # For this branch (is_augment else-path), action is always an entry — unconditional.
-                # 2026-04-23 USER: SCALP_V3 scalps bypass the foothold — orders are min-qty ($10 cap)
-                # so splitting off $7 foothold leaves almost nothing for the maker leg. Scalps go
-                # 100% maker (limit on USDC is free; USDT tiny maker fee). Finandy visibility is fine
-                # via the SCALP_V3_OPEN reason string captured in webhook fallback.
-                # 2026-06-02 USER MANDATE: EVERY entry — INCLUDING SCALP_V3 — must fire the foothold webhook
-                # first so the trade reason is visible on the broker ("why was this trade taken"). The old
-                # SCALP_V3 foothold-skip left scalp opens with no visible origin. Scalps now also get a
-                # foothold; if the scalp qty <= foothold, the foothold webhook IS the whole order (FOOTHOLD_ONLY).
-                if True:
-                    foothold_qty = max(
-                        7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3
-                    )
-                    await self.send_foothold_webhook(
-                        position_key,
-                        account_key,
-                        symbol,
-                        foothold_qty,
-                        current_price,
-                        side,
-                        position_side,
-                        f"{reason}__",
-                    )
-                    if quantity > foothold_qty:
-                        quantity = quantity - foothold_qty
-                    else:
-                        # Entire order is foothold-sized → foothold webhook IS the order.
-                        logger.info(
-                            f"[FOOTHOLD_ONLY] {position_key}: quantity {quantity:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker"
-                        )
-                        return "SUCCESS"
+                # ═══ CENTRALIZED FOOTHOLD ═══
+                # Centralized in place_maker_order (USER 2026-06-02) to prevent double webhook sends.
 
                 # EMERGENCY: if this is a REDUCE, skip maker and use webhook (Finandy protects)
                 if _is_reduce and _force_webhook_reduces:
