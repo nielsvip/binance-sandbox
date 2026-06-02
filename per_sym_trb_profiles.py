@@ -512,6 +512,7 @@ def promote_to_global_active_config(sym: str, overrides: Dict, m: Dict, trades: 
         sm = _side_metrics(trades, years, sym, side) if trades else {}
         side_ps = float(sm.get("pool_sharpe", ps))
         side_tr = int(sm.get("trades", tr // 2))
+        _prior = existing.get(f"{sym}_{side}", {}) or {}
         existing[f"{sym}_{side}"] = {
             "winning_tag": f"trb_{sym}_{now_tag}",
             "wsharpe": side_ps,
@@ -522,6 +523,13 @@ def promote_to_global_active_config(sym: str, overrides: Dict, m: Dict, trades: 
             "overrides": delta,
             "_delta_params": len(delta),
         }
+        # 2026-06-02 — per_sym OWNS the UVE gate. This full-dict overwrite previously CLOBBERED
+        # UVE_LIVE_ENABLED/UVE_STRATEGY_MODE every re-profile, so the flag decayed off the book
+        # (and S1 went UVE_ON=0 while live ran it). bt_uve.py A/B: UVE Δ+0.1003 pool_sharpe → keep.
+        # Carry the prior per-sym UVE setting forward so the flag persists across rewrites.
+        for _uk in ("UVE_LIVE_ENABLED", "UVE_STRATEGY_MODE"):
+            if _uk in _prior:
+                existing[f"{sym}_{side}"][_uk] = _prior[_uk]
     GLOBAL_ACTIVE_CFG.write_text(json.dumps(existing, indent=2, default=str))
     print(f"  [global_active] WRITE {sym}: pool={ps:+.4f} trades={tr:,} delta_params={len(delta)} → {GLOBAL_ACTIVE_CFG.name}")
 
