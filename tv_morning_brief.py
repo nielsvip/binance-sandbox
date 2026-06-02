@@ -282,12 +282,19 @@ def main():
     }
 
     OUT_FILE.write_text(json.dumps(output, indent=2))
-    print(
-        f"tv-morning-brief: {n_buy} BUY, {n_short} SHORT, "
-        f"{len(holds_long)+len(holds_short)} HOLD, {len(avoids)} AVOID "
-        f"| bias={market_bias} | data_age={file_age_min:.0f}min"
-    )
+    print(f"tv-morning-brief: {n_buy} BUY, {n_short} SHORT, {len(holds_long)+len(holds_short)} HOLD, {len(avoids)} AVOID | bias={market_bias} | data_age={file_age_min:.0f}min")
     print(f"Wrote: {OUT_FILE}")
+    try:
+        cache_path = BASE / "data" / "tradier_exchange_cache.json"
+        cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+        def format_wlt(symbols): return "\n".join([(f"{cache[s]}:{s}" if cache.get(s) else s) for s in symbols])
+        desktop = Path("/Users/niels/Desktop")
+        (desktop / "TRB_LONG.txt").write_text(format_wlt(long_syms))
+        (desktop / "TRB_SHORT.txt").write_text(format_wlt(short_syms))
+        (desktop / "TRB_LONG_BUY.txt").write_text(format_wlt([x[0] for x in buys]))
+        (desktop / "TRB_SHORT_SHORT.txt").write_text(format_wlt([x[0] for x in shorts]))
+        print("Wrote TradingView watchlists to Desktop.")
+    except Exception as wlt_err: print(f"Error writing watchlists to Desktop: {wlt_err}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

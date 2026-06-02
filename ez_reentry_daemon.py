@@ -120,6 +120,11 @@ def _cfg_bool(attr: str, default: bool) -> bool:
         return default
 
 
+def _cfg_str(attr: str, default: str) -> str:
+    try: import config as cfg; return str(getattr(cfg, attr, default))
+    except Exception: return default
+
+
 def _load_reentry_file(path: Path) -> dict:
     try:
         with open(path, "r") as f:
@@ -343,35 +348,64 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
         cur_px = prices.get(symbol, 0.0)
         if cur_px <= 0:
             continue
+        _ind = None
+        if _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True) or _cfg_bool("REENTRY2_DC_BREAK_ENABLED", True):
+            _ind = _get_indicators(redis_client, symbol)
         if cross_pct > 0:
             crossed = (is_long and cur_px > exit_px * (1.0 + cross_pct)) or (not is_long and cur_px < exit_px * (1.0 - cross_pct))
         else:
             crossed = (is_long and cur_px > exit_px) or (not is_long and cur_px < exit_px)
-        if not crossed:
+        is_dc_breakout = False
+        dc_tf_used = ""
+        if not crossed and _cfg_bool("REENTRY2_DC_BREAK_ENABLED", True) and _ind:
+            _buf = 0.001
+            _sf = lambda val, d=0.0: float(val) if val is not None else d
+            _dc_allow_15m_re = _cfg_bool("REENTRY2_DC_BREAK_ALLOW_15M", True)
+            _dc_req_k_re = _cfg_bool("REENTRY2_DC_BREAK_REQUIRE_K_FILTER", True)
+            _dc_req_wt_re = _cfg_bool("REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", False)
+            _dc_ftf_re = _cfg_str("REENTRY2_DC_BREAK_FILTER_TF", "3m")
+            _dc_fk_re = _sf(_ind.get(f"stoch_k_{_dc_ftf_re}", 0), 0.0)
+            _dc_fd_re = _sf(_ind.get(f"stoch_d_{_dc_ftf_re}", 0), 0.0)
+            _dc_fw1_re = _sf(_ind.get(f"wt1_{_dc_ftf_re}", 0), 0.0)
+            _dc_fw2_re = _sf(_ind.get(f"wt2_{_dc_ftf_re}", 0), 0.0)
+            _dc_kdata_re = abs(_dc_fk_re) > 1e-9 or abs(_dc_fd_re) > 1e-9
+            _dc_wtdata_re = abs(_dc_fw1_re) > 1e-9 or abs(_dc_fw2_re) > 1e-9
+            dc_high_3m_re = _sf(_ind.get("dc_high_3m", 0), 0.0)
+            dc_low_3m_re = _sf(_ind.get("dc_low_3m", 0), 0.0)
+            dc_high_1h = _sf(_ind.get("dc_high_1h", 0), 0.0)
+            dc_low_1h = _sf(_ind.get("dc_low_1h", 0), 0.0)
+            dc_high_15m = _sf(_ind.get("dc_high_15m", 0), 0.0)
+            dc_low_15m = _sf(_ind.get("dc_low_15m", 0), 0.0)
+            if is_long:
+                _dc_3m_long_re = dc_high_3m_re > 0 and cur_px > dc_high_3m_re * (1 + _buf)
+                _dc_1h15_long_re = (dc_high_1h > 0 and cur_px > dc_high_1h * (1 + _buf)) or (_dc_allow_15m_re and dc_high_15m > 0 and cur_px > dc_high_15m * (1 + _buf))
+                if _dc_3m_long_re or (_dc_1h15_long_re and ((_dc_fk_re > _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re > _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True)):
+                    is_dc_breakout = True
+                    dc_tf_used = "3M" if _dc_3m_long_re else ("1H" if (dc_high_1h > 0 and cur_px > dc_high_1h * (1 + _buf)) else "15M")
+            else:
+                _dc_3m_short_re = dc_low_3m_re > 0 and cur_px < dc_low_3m_re * (1 - _buf)
+                _dc_1h15_short_re = (dc_low_1h > 0 and cur_px < dc_low_1h * (1 - _buf)) or (_dc_allow_15m_re and dc_low_15m > 0 and cur_px < dc_low_15m * (1 - _buf))
+                if _dc_3m_short_re or (_dc_1h15_short_re and ((_dc_fk_re < _dc_fd_re) if (_dc_req_k_re and _dc_kdata_re) else True) and ((_dc_fw1_re < _dc_fw2_re) if (_dc_req_wt_re and _dc_wtdata_re) else True)):
+                    is_dc_breakout = True
+                    dc_tf_used = "3M" if _dc_3m_short_re else ("1H" if (dc_low_1h > 0 and cur_px < dc_low_1h * (1 - _buf)) else "15M")
+        if not crossed and not is_dc_breakout:
             continue
-        if _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True):
-            _ind = _get_indicators(redis_client, symbol)
+        _gate_reason_tag = "CONFIRM_DISABLED"
+        if not is_dc_breakout and _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True) and _ind:
             from ez_reentry import check_reentry_confirmation as _chk_re
             _gate_ok, _gate_reason = _chk_re(_ind, is_long)
             if not _gate_ok:
                 logger.info(f"[DAEMON] Reentry gate BLOCKED {pk}: {_gate_reason}")
                 continue
+            _gate_reason_tag = _gate_reason
+        if is_dc_breakout:
+            _gate_reason_tag = f"DC_BREAKOUT_{dc_tf_used}"
         positions = _get_positions_from_redis(redis_client, account_key)
         pos_amt = positions.get(pk, 0.0)
-        # USER 2026-05-16 (PHBUSDT 33-qty-residual + price-cross-no-reentry incident):
-        # Daemon previously skipped if pos_amt != 0 — but RIDICULOUS_LOSS+WT_3M_FORCE_OPEN combo
-        # force-closes then auto-reopens at tiny size, leaving residual qty that BLOCKED reentry
-        # despite the "12 redundant paths" guarantee. Now: allow reentry as AUGMENT-TO-TARGET
-        # when residual < threshold * exit_amt. fire_qty = (exit_amt - pos_amt) to top up.
         _partial_thresh = _cfg_float("EZ_REENTRY_PARTIAL_AUGMENT_THRESHOLD", 0.5)
         _is_partial_augment = (pos_amt > 0 and exit_amt > 0 and pos_amt < _partial_thresh * exit_amt)
         if pos_amt != 0.0 and not _is_partial_augment:
             continue
-        # USER 2026-05-10 — daemon is signal-only. It detects price-cross and writes a
-        # 100% candidate; ez_manage's _reentry_queue_consumer_loop reads it and applies
-        # the user-spec size tiers (150% sma_200_15m bounce / 100% dc_high4_3m+exit_price /
-        # 50% k_15m extreme) using ii() — HTF indicators (sma_200_15m, dc_high4_3m, k_15m)
-        # are not in Redis hot_metrics, only available via ez_manage's bridge merge.
         if _is_partial_augment:
             sizing_frac = 1.0
             sizing_tag = f"price_cross_partial_augment_pos{pos_amt:.4f}_lt_thr{_partial_thresh:.2f}x{exit_amt:.4f}"
@@ -383,8 +417,10 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
         if fire_qty <= 0:
             continue
         xr_tag = (exit_reason[:40] or "unk").replace(" ", "_")
-        _gate_reason_tag = _gate_reason if '_gate_reason' in locals() else "CONFIRM_DISABLED"
-        reason = f"DAEMON_PRICE_CROSS_REENTRY_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_{_gate_reason_tag}_xr{xr_tag}"
+        if is_dc_breakout:
+            reason = f"DAEMON_DC_BREAKOUT_REENTRY_{dc_tf_used}_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_xr{xr_tag}"
+        else:
+            reason = f"DAEMON_PRICE_CROSS_REENTRY_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_{_gate_reason_tag}_xr{xr_tag}"
         queue_dir = queue_base / account_key
         if dry_run:
             logger.info(f"[DAEMON DRY-RUN] would queue {pk} qty={fire_qty:.4f} {sizing_tag} cross={exit_px:.6f}→{cur_px:.6f}")

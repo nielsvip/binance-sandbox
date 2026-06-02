@@ -25517,7 +25517,8 @@ class MultiAccountTradeManager:
                 or "DC_HIGH_BREAK_RETEST" in _rup
                 or action == "REENTRY"
             )
-            if is_augment and not _is_reentry_exec:
+            _has_pos = abs(safe_fetch_float(original_positionAmt, 0.0)) > self.min_qty.get(symbol, 0.001)
+            if is_augment and _has_pos and not _is_reentry_exec:
                 aug_cd_key = f"aug_cooldown:{position_key}"
                 last_aug = (
                     await self.redis_manager.get(aug_cd_key)
