@@ -294,6 +294,7 @@ def main():
         (desktop / "TRB_LONG_BUY.txt").write_text(format_wlt([x[0] for x in buys]))
         (desktop / "TRB_SHORT_SHORT.txt").write_text(format_wlt([x[0] for x in shorts]))
         print("Wrote TradingView watchlists to Desktop.")
+        import subprocess; subprocess.run([sys.executable, str(BASE / "generate_tv_dashboard.py")], check=False)
     except Exception as wlt_err: print(f"Error writing watchlists to Desktop: {wlt_err}", file=sys.stderr)
 
 if __name__ == "__main__":

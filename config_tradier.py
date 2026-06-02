@@ -1252,6 +1252,7 @@ class TradierConfig:
     DELTA_ENGINE_ENABLED: bool = True  # 121 sym/2yr: Sharpe 0.038→0.485. T25 2026-04-14: True=0.346 vs False=0.373 (-7%). False marginally better but diff is small; keeping True for live delta tracking.
     DELTA_ENTRY_ENABLED: bool = False  # T25 sweep: False avg=0.527 vs True=0.507 (-4%). Best tested.
     DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
+    DELTA_EXIT_REQUIRE_NONZERO_SCORE: bool = True  # 2026-06-02 USER MANDATE: refuse DELTA_EXIT_BASELINE closes that fire with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) — 57 such 0-signal closes seen in /history burning commissions at ~0% gain. When True, a delta exit only fires if it carries a real bull/bear speed or TF count. Gate: tradier_manage.py ~6513. ROLLBACK: False.
     # WT_DC scorer exit guards
     WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)
     DELTA_PYRAMID_ENABLED: bool = True  # 2026-04-26: Phase 9 alpha — re-test in live (was DEAD_CONFIRMED)

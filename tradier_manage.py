@@ -6510,7 +6510,9 @@ class StockStrategy:
             _d_ind = indicators if indicators else i
             _d_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
             _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind, _d_pos_state)
-            if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
+            if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)) and bool(getattr(config, 'DELTA_EXIT_REQUIRE_NONZERO_SCORE', True)) and (abs(float(getattr(_d_sig, 'bull_speed', 0) or 0)) + abs(float(getattr(_d_sig, 'bear_speed', 0) or 0)) + float(getattr(_d_sig, 'bull_tf_count', 0) or 0) + float(getattr(_d_sig, 'bear_tf_count', 0) or 0)) == 0.0:
+                logger.info(f"[DELTA_EXIT_ZEROSCORE_SUPPRESSED] {symbol} {'L' if is_long else 'S'}: delta exit fired with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) = closing on NO signal (the 0%-gain commission-burn). HOLDING. USER MANDATE 2026-06-02. Rollback: config_tradier.DELTA_EXIT_REQUIRE_NONZERO_SCORE=False")
+            elif _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
                 # STRICT_NO_LOSS gate (2026-04-17): delta can signal exit but we REFUSE to close at a loss.
                 # System was closing GLD -0.09%, COPX -1.09%, XOM -3.34%, TTD -9.96% on "delta exit" signals.
                 # L/S ratio is the hedge — don't realize losses. Wait for gain >= NOLOSS floor.
