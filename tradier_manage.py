@@ -9533,8 +9533,8 @@ class TradierTradeManager:
                 est = ZoneInfo("America/New_York")
                 now_est = datetime.now(timezone.utc).astimezone(est)
                 
-                if now_est.weekday() < 5 and dt_time(15, 15) <= now_est.time() <= dt_time(15, 58):
-                    
+                if now_est.weekday() < 5 and dt_time(15, 15) <= now_est.time() <= dt_time(15, 58) and bool(getattr(config, 'EOD_SLIM_RATIO_ENABLED', False)):
+
                     # PUNCTUAL FIX: Removed 'await' because these are now synchronous memory lookups
                     target_long_pct = self.calculate_unified_market_ratio()
                     balance = self.get_current_portfolio_balance()

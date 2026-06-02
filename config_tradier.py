@@ -1380,7 +1380,7 @@ class TradierConfig:
     #   "DISABLED" — skip the SENTIMENT_FADE rebalance entirely
     # Read by tradier_manage.py SentimentManager rebalancer AND by backtest_v8_engine.py
     # vec proxy at line ~3748. Test-matrix sweep arms (S1 queue.json): SENTIMENT_FADE_MODE_*.
-    SENTIMENT_FADE_MODE: str = "REDUCE"
+    SENTIMENT_FADE_MODE: str = "DISABLED"  # 2026-06-02 USER MANDATE: was REDUCE. SENTIMENT_FADE rebalance-reduce fires at any gain (~0%), LIVE-ONLY (not in backtest), pyramided-into-highs+panic-sold-dips per IBIT autopsy. DISABLED skips the rebalance entirely. ROLLBACK: REDUCE.
     # === DUPLICATE-FIRE GUARDS (2026-04-27 — MSTR headless-chicken loop) ===
     # Same (position_key, action) refused if queued within N sec. Stops the
     # "REBALANCE → invalid_api_response → REBALANCE" loop the broker rejected

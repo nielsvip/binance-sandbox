@@ -1701,7 +1701,6 @@ class Config:
     # NEVER DISABLED via `if False:` — tune only via these switches.
     OBLIGATORY_HEDGE_ENABLED: bool = False               # 2026-05-20 USER MANDATE: hedge OFF entirely, MTF compound exit replaces it. Prior "FOREVER RULE" comment superseded by explicit user authorization 2026-05-20. ROLLBACK: True restores obligatory-hedge scanner.
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5           # 2026-05-06: -0.25→-0.5 per HEDGE_BANDAID_BACKTEST winner. trigger when gain below this
-    OBLIGATORY_HEDGE_PCT: float = 1.0                    # hedge size (1.0 = 100%)
     # Per-TF enables (VALIDATED 2026-04-17 60d test on 8 bleeding inf shorts):
     # best=3m+1h both required (47% precision, +359% cumulative PnL proxy, +0.19% avg).
     # Adding 1m/15m didn't help (correlated); K filter hurt (-19% PnL).
