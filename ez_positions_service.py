@@ -1683,6 +1683,21 @@ class Position:
                 except Exception:
                     pass
                 return
+        if name == 'positionAmt' and hasattr(self, name):
+            # USER MANDATE 2026-06-03: NO positionAmt change without a record. Real changes are written to
+            # /history/<acct> by the handlers (handle_augmentation/reduction/execute/sync). This is the
+            # belt-and-suspenders tripwire: log EVERY positionAmt change + its caller to a central ledger so
+            # completeness is provable and any out-of-band mutation is flagged. Exception-safe, never raises.
+            try:
+                _pa_old = object.__getattribute__(self, name)
+                if _pa_old != value:
+                    import traceback as _pa_tb
+                    _pa_fr = _pa_tb.extract_stack(limit=4)
+                    _pa_caller = f"{os.path.basename(_pa_fr[-2].filename)}:{_pa_fr[-2].name}" if len(_pa_fr) >= 2 else "?"
+                    with open(os.path.expanduser("~/logs/POSAMT_MUTATIONS.jsonl"), "a") as _pa_fh:
+                        _pa_fh.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "symbol": getattr(self, 'symbol', '?'), "side": getattr(self, 'position_side', '?'), "old": float(_pa_old), "new": float(value), "delta": float(value) - float(_pa_old), "caller": _pa_caller}) + "\n")
+            except Exception:
+                pass
         object.__setattr__(self, name, value)
     mark_price_last_updated: Optional[datetime] = None
     @classmethod
