@@ -7834,6 +7834,38 @@ class StockStrategy:
         current_price = float(current_price)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         positionAmt = abs(float(getattr(position, 'positionAmt', 0) or 0))
+        # ── REENTRY SELF-HEAL (2026-06-03 user mandate) ──────────────────
+        # "all of which should be used to find out whether a symbol has passed
+        #  its exit price even if the position object ... is damaged." If the
+        # position lost its last_reduction_price (0/None), restore it from the
+        # durable reenter_data_{acct}_{side}.json so PRICE_CROSS_BACK / Tier-2
+        # reentry can still fire. Fail-open — never blocks a reentry on error.
+        if float(getattr(position, 'last_reduction_price', 0) or 0) <= 0:
+            try:
+                _sh_side = 'LONG' if is_long else 'SHORT'
+                _sh_accs = list(getattr(config, 'ACCOUNT_KEYS', ['trb', 'trc']) or ['trb', 'trc'])
+                for _sh_ak in _sh_accs:
+                    _sh_rf = config.DATA_DIR / f"reenter_data_{_sh_ak}_{_sh_side.lower()}.json"
+                    if not _sh_rf.exists():
+                        continue
+                    with open(_sh_rf) as _sh_fh:
+                        _sh_rd = json.load(_sh_fh)
+                    for _sh_k, _sh_e in _sh_rd.items():
+                        if not isinstance(_sh_e, dict) or not str(_sh_k).endswith(f"_{_sh_side}"):
+                            continue
+                        if str(_sh_k).split(":")[-1].rsplit("_", 1)[0] != symbol:
+                            continue
+                        _sh_lvl = float(_sh_e.get("reenter_level", 0) or 0)
+                        if _sh_lvl > 0:
+                            position.last_reduction_price = _sh_lvl
+                            if getattr(position, 'last_reduction_time', None) in (None, "") and _sh_e.get("timestamp"):
+                                position.last_reduction_time = _sh_e.get("timestamp")
+                            logger.warning(f"[REENTRY_SELFHEAL] {symbol} {_sh_side}: position.last_reduction_price was 0 — restored {_sh_lvl:.4f} from {_sh_rf.name}")
+                            break
+                    if float(getattr(position, 'last_reduction_price', 0) or 0) > 0:
+                        break
+            except Exception as _sh_e:
+                logger.debug(f"[REENTRY_SELFHEAL] {symbol}: fallback skipped: {_sh_e}")
         # ── ALLOWLIST GATE (user rule 2026-04-22) ──
         # Only reenter symbols still in symbols_trb_long (for LONG) / symbols_trb_short (for SHORT).
         # If the user removed the symbol from the hand-picked list, don't chase it back in.

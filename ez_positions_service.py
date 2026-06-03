@@ -7656,6 +7656,24 @@ class PositionService:
         self.reentry_data[position_key] = { "reentry_level": float(current_price) if current_price is not None else 0.0, "reentry_amount": float(total_reduction_amount), "timestamp": now.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), "reason": reason_str, }
         logger.debug(f"[process_account] {position_key} Reenter level set: {self.reentry_data[position_key]}. 2313")
         await self.save_reentry_data(position_key)
+        _red_px = float(current_price) if current_price is not None else 0.0
+        if _red_px > 0:
+            try:
+                position.last_reduction_price = _red_px
+            except Exception:
+                pass
+            _tm = getattr(self, "tracker_manager", None)
+            if _tm is not None and hasattr(_tm, "exit_candidates"):
+                try:
+                    _ec = _tm.exit_candidates.setdefault(position_key, {})
+                    _ec["last_reduction_price"] = _red_px
+                    _ec["reentry_level"] = _red_px
+                    _ec["exit_price"] = _red_px
+                    _ec["last_reduction_time"] = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                    if hasattr(_tm, "save_tracker"):
+                        asyncio.create_task(_tm.save_tracker(account_key, force=True))
+                except Exception as _trk_e:
+                    logger.debug(f"[handle_reduction][{position_key}] tracker stamp skipped: {_trk_e}")
         if position_key in self.augmented_positions:
             self.unmark_augmented(position_key)
         position_value_str = f"{positionAmt * current_price:.2f}" if current_price else "N/A"

@@ -34501,17 +34501,22 @@ async def process_single_reentry_evaluation(
         min_qty_symbol = safe_fetch_float(
             trade_manager.min_qty.get(symbol, 0.0001), 0.0001
         )
-        reentry_level = safe_fetch_float(
-            reentry_data.get("reentry_level")
-            if isinstance(reentry_data, dict)
-            else (
-                position.last_reduction_price
-                if position and hasattr(position, "last_reduction_price")
-                else None
-            )
-            or 0.0,
-            0.0,
-        )
+        # 2026-06-03 USER MANDATE: resolve the reduction exit-price from ALL sources so a reentry fires even if
+        # the position object / long_short_positions.json dict is damaged. Order: {side}_reentry.json (file-backed,
+        # survives a corrupt position) → position.last_reduction_price → tracker.json. Any one with a price wins.
+        reentry_level = 0.0
+        if isinstance(reentry_data, dict):
+            reentry_level = safe_fetch_float(reentry_data.get("reentry_level"), 0.0) or safe_fetch_float(reentry_data.get("exit_price"), 0.0)
+        if reentry_level <= 0 and position is not None and hasattr(position, "last_reduction_price"):
+            reentry_level = safe_fetch_float(getattr(position, "last_reduction_price", 0.0), 0.0)
+        if reentry_level <= 0:
+            try:
+                _re_tm = getattr(trade_manager, "tracker_manager", None) or getattr(getattr(trade_manager, "service", None), "tracker_manager", None)
+                _re_tc = _re_tm.exit_candidates.get(position_key, {}) if (_re_tm is not None and hasattr(_re_tm, "exit_candidates")) else {}
+                if isinstance(_re_tc, dict):
+                    reentry_level = safe_fetch_float(_re_tc.get("last_reduction_price", _re_tc.get("reentry_level", _re_tc.get("exit_price", 0.0))), 0.0)
+            except Exception:
+                pass
         if reentry_level > 0 and current_price > 0:
             _div = abs(current_price - reentry_level) / reentry_level
             _max_div = float(getattr(config, "REENTRY_MAX_PRICE_DIVERGENCE_PCT", 20.0)) / 100.0
