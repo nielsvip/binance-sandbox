@@ -2277,6 +2277,7 @@ class TradierConfig:
     WT_3M_FORCE_OPEN_TARGET_USD: float = 15000.0        # per-symbol target notional for a confirmed winner
     WT_3M_FORCE_OPEN_TF_LADDER: bool = True             # scale size by # of HTFs (15m/1h/4h/D) confirming
     WT_3M_FORCE_OPEN_TF_LADDER_MULT: float = 1.0        # extra ×mult per confirming HTF (3m base ×1, +1.0 each)
+    WT_3M_FORCE_OPEN_DIST_PCT: float = 0.0              # required % beyond sma_200_15m (0 = just "above"); set >0 for a buffer
     # ═══════════════════════════════════════════════════════════════════
     # RULES A/B/C + R3_HTF_FLIP EXIT + HTF VETO (2026-05-17 USER MANDATE)
     # Mirrors config.py. R2_TF_LIST stays ('1h','4h','D') per CLAUDE.md stocks rule.
@@ -2408,10 +2409,10 @@ class TradierConfig:
     DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG: float = 35.0           # Control 4b: refuse LONG if rsi_15m ≤ this (catch falling knife)
     DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT: float = 65.0           # Control 4c: refuse SHORT if rsi_1h ≥ this
     DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG: float = 35.0            # Control 4d: refuse LONG if rsi_1h ≤ this
-    DG_MAX_FORCE_OPEN_NOTIONAL_USD: float = 500.0             # Control 5: WT_3M_FORCE_OPEN must NEVER size above this $ per fire
+    DG_MAX_FORCE_OPEN_NOTIONAL_USD: float = 4000.0  # 2026-06-03 USER: was 500 — clamped the with-trend build; raised so above-sma200 winners can size up. Direction guards (DG_DAILY_GAIN/LOSS) still block shorting winners/longing losers.             # Control 5: WT_3M_FORCE_OPEN must NEVER size above this $ per fire
     DG_BROKER_MEMORY_SYNC_BLOCK: bool = True                  # Control 6: if broker amt>0 but local memory has no position → REFUSE further opens for that key
     DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT: float = 1.0            # Control 7: if opposite side has gain ≥ this %, block this side opening
-    DG_REPEAT_OPEN_PER_DAY_MAX: int = 3                       # Control 8: cap opens per pos_key per session-day to this many fires of WT_3M_FORCE_OPEN
+    DG_REPEAT_OPEN_PER_DAY_MAX: int = 60                       # Control 8: cap opens per pos_key per session-day to this many fires of WT_3M_FORCE_OPEN
     DG_HIGH_VOLATILITY_ATR_PCT: float = 4.0                   # Control 9: if (atr_1h / price) * 100 ≥ this, refuse force-opens (volatile day = false 3m crosses)
     DG_WT_3M_REQUIRE_HTF_CONFIRM: bool = True                 # Control 10: WT_3M_FORCE_OPEN requires at least D OR 4h agreeing with intended side
     # ── Broker self-verify (independent of tradier_positions) ──

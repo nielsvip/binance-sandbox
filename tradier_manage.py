@@ -2500,32 +2500,53 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # via the WT_3M_FORCE_OPEN reason string.
         # ═══════════════════════════════════════════════════════════════════════
         # 2026-05-18 per-sym overlay
-        if (not has_position) and bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side)):
+        # USER ABSOLUTE RULE 2026-06-03: "If a symbol is moving up and above its sma_200_15m
+        # you HOLD a position if it is a tradeable key." Open when flat, BUILD toward target on
+        # every bounce while the condition holds, then HOLD. Bigger as more HTFs confirm (ladder).
+        # Direction-locked: LONG only ABOVE sma_200_15m, SHORT only BELOW → never long a loser /
+        # short a winner (DG_DAILY_GAIN/LOSS guards downstream also enforce this).
+        _wf_enabled = bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side))
+        _wf_build = bool(getattr(config, 'WT_3M_FORCE_OPEN_BUILD_TO_TARGET', True))
+        _wf_target = float(getattr(config, 'WT_3M_FORCE_OPEN_TARGET_USD', 15000.0))
+        _wf_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
+        _wf_room = (_wf_pos_val < _wf_target) if _wf_build else (not has_position)
+        if _wf_room and _wf_enabled:
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
-                    _wf_ema15 = safe_fetch_float(i.get('ema_200_15m'), 0.0)
+                    _wf_use_sma = bool(getattr(config, 'WT_3M_FORCE_OPEN_USE_SMA200', True))
+                    _wf_anchor = safe_fetch_float(i.get('sma_200_15m'), 0.0) if _wf_use_sma else 0.0
+                    if _wf_anchor <= 0:
+                        _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
+                    _wf_buf = float(getattr(config, 'WT_3M_FORCE_OPEN_DIST_PCT', 0.0)) / 100.0
                     _wf_wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_3m')), 0.0)
                     _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev')), _wf_wt1_5m)
-                    _high_5m = safe_fetch_float(i.get('high_5m', i.get('high_3m')), current_price)
-                    _high_5m_prev = safe_fetch_float(i.get('high_5m_prev', i.get('high_3m_prev')), _high_5m)
-                    _low_5m = safe_fetch_float(i.get('low_5m', i.get('low_3m')), current_price)
-                    _low_5m_prev = safe_fetch_float(i.get('low_5m_prev', i.get('low_3m_prev')), _low_5m)
-                    _dist_ok = (is_long and _wf_ema15 > 0 and current_price > _wf_ema15 * 1.01) or ((not is_long) and _wf_ema15 > 0 and current_price < _wf_ema15 * 0.99)
-                    _wt_dir_ok = (is_long and _wf_wt1_5m > _wf_wt1_5m_prev) or ((not is_long) and _wf_wt1_5m < _wf_wt1_5m_prev)
-                    _bar_ok = (is_long and not (_high_5m < _high_5m_prev and _low_5m < _low_5m_prev)) or ((not is_long) and not (_high_5m > _high_5m_prev and _low_5m > _low_5m_prev))
-                    _wf_trigger = _dist_ok and _wt_dir_ok and _bar_ok
-                    if _wf_trigger and current_price > 0:
-                        _wf_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 100.0)) or float(getattr(config, 'START_POSITION_SIZE', 100.0))
-                        _wf_qty = max(_wf_size_usd / current_price, 1.0)
-                        _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_wt1={_wf_wt1_5m:.1f}_wt2={_wf_wt1_5m_prev:.1f}_px{current_price:.4f}"
-                        logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_5m {'>' if is_long else '<'} prev ({_wf_wt1_5m:.1f}{'>' if is_long else '<'}{_wf_wt1_5m_prev:.1f}) → OPEN qty={_wf_qty:.2f}")
-                        _wf_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
-                        if _wf_stop > 0:
-                            _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
-                            if _cur_r1_wf <= 0 or (is_long and _wf_stop > _cur_r1_wf) or (not is_long and _wf_stop < _cur_r1_wf):
-                                position.r1_stop_price = _wf_stop
-                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wf_reason, 80.0, override_qty=_wf_qty)
-                        return f"WT_3M_FORCE_OPEN:{position_side}"
+                    _above = (is_long and _wf_anchor > 0 and current_price > _wf_anchor * (1.0 + _wf_buf)) or ((not is_long) and _wf_anchor > 0 and current_price < _wf_anchor * (1.0 - _wf_buf))
+                    _moving = (is_long and _wf_wt1_5m >= _wf_wt1_5m_prev) or ((not is_long) and _wf_wt1_5m <= _wf_wt1_5m_prev)
+                    if _above and _moving and current_price > 0:
+                        _wf_mult = 1.0
+                        if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
+                            _lm = float(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER_MULT', 1.0))
+                            _nconf = 0
+                            for _tf in ('15m', '1h', '4h', 'D'):
+                                _w1 = safe_fetch_float(i.get(f'wt1_{_tf}'), 0.0); _w2 = safe_fetch_float(i.get(f'wt2_{_tf}'), 0.0)
+                                if (is_long and _w1 > _w2) or ((not is_long) and _w1 < _w2):
+                                    _nconf += 1
+                            _wf_mult = 1.0 + _lm * _nconf
+                        _wf_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 2500.0)) * _wf_mult
+                        if _wf_build and _wf_target > 0:
+                            _wf_size_usd = min(_wf_size_usd, max(0.0, _wf_target - _wf_pos_val))
+                        if _wf_size_usd >= 1.0:
+                            _wf_qty = max(_wf_size_usd / current_price, 1.0)
+                            _wf_act = "AUGMENT" if has_position else "OPEN"
+                            _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_above_sma200_15m_x{_wf_mult:.0f}_posval{_wf_pos_val:.0f}of{_wf_target:.0f}_px{current_price:.4f}"
+                            logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: tradeable + {'above' if is_long else 'below'} sma200_15m({_wf_anchor:.2f}) + moving → {_wf_act} qty={_wf_qty:.2f} (${_wf_size_usd:.0f}, ladder x{_wf_mult:.0f}, posval ${_wf_pos_val:.0f}/${_wf_target:.0f})")
+                            _wf_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                            if _wf_stop > 0:
+                                _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                                if _cur_r1_wf <= 0 or (is_long and _wf_stop > _cur_r1_wf) or (not is_long and _wf_stop < _cur_r1_wf):
+                                    position.r1_stop_price = _wf_stop
+                            await queue_trade_action(order_queue, trade_manager, position_key, _wf_act, _wf_reason, 80.0, override_qty=_wf_qty)
+                            return f"WT_3M_FORCE_OPEN:{position_side}"
             except Exception as _wf_err:
                 logger.debug(f"[WT_3M_FORCE_OPEN] {position_key}: {_wf_err}")
         # ═══════════════════════════════════════════════════════════════════════

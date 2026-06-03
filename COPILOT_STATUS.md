@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-03 02:20:46 UTC
+# Copilot Status — 2026-06-03 02:36:07 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T02:19:43
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T02:19:43
-- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T02:19:43
-- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T02:20:45
+- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-03T02:36:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T02:36:05
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T02:36:05
+- **RATIO_IMBALANCE** [crypto] flz — 2026-06-03T02:36:06
 
 ## Missed Trades (trader comparison)
 
