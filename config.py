@@ -781,7 +781,7 @@ class Config:
     # Catches EVERY buy-side source (QUICK_OPEN, MOMENTUM_WATCHDOG, WT_3M_ESCALATE, daemon reentry) because
     # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
     # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
-    RECENT_REDUCTION_GUARD_ENABLED: bool = False
+    RECENT_REDUCTION_GUARD_ENABLED: bool = True   # 2026-06-03 ENABLED (USER: crypto churning) — blocks bare exit-price cross-back re-adds (DAEMON_PRICE_CROSS_REENTRY/QUICK_OPEN/WT_3M_ESCALATE) within WINDOW_S of a reduce unless a genuine Donchian breakout. ROLLBACK: False.
     RECENT_REDUCTION_GUARD_WINDOW_S: float = 900.0
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
