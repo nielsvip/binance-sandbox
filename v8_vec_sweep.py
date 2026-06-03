@@ -1258,6 +1258,17 @@ class SweepConfig:
     VEC_MTF_ARMED_BYPASS_STRONG: bool = True           # mirror live: STRONG_BUY/QUICK_OPEN bypass
     VEC_MTF_ARMED_RESULTING_REASON: str = "MTF_NO_ARMED_STATE"  # log/skip reason on block
     VEC_MULTI_SYM_OUTER_LOOP_ENABLED: bool = False     # see structural design notes above
+    # 2026-06-03 SMA200-distance sizing ladder — mirrors live BREAKOUT_SIZE_LADDER
+    # (ez_manage.py ~22918, config.py). Position size N× base based on |price−sma200|/sma200.
+    # Applied as per-trade return multiplier at OPEN (like _side_return_mult).
+    BREAKOUT_SIZE_LADDER_ENABLED: bool = True
+    BREAKOUT_SIZE_SMA200_T1_PCT: float = 1.0
+    BREAKOUT_SIZE_SMA200_T1_MULT: float = 1.5
+    BREAKOUT_SIZE_SMA200_T2_PCT: float = 1.5
+    BREAKOUT_SIZE_SMA200_T2_MULT: float = 2.0
+    BREAKOUT_SIZE_SMA200_T3_PCT: float = 2.5
+    BREAKOUT_SIZE_SMA200_T3_MULT: float = 3.0
+    BREAKOUT_SIZE_MAX_MULT: float = 3.0
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -1333,12 +1344,28 @@ class TradeEvent:
     pnl_pct: float = 0.0  # only on REDUCE/CLOSE
 
 
+class _LadderReturns(list):
+    """list subclass — every appended per-trade return is scaled by the position's entry-bar
+    sma_200_15m-distance size-ladder multiplier (state.entry_ladder_mult). Lets a vec sweep size
+    by sma200 distance exactly like live BREAKOUT_SIZE_LADDER, applied at the SINGLE init site so
+    all 30 close/append paths (inline + helper) are captured. Default mult 1.0 → byte-identical."""
+    def __init__(self, lstate):
+        super().__init__()
+        self._lstate = lstate
+    def append(self, x):
+        super().append(x * self._lstate.entry_ladder_mult)
+    def extend(self, xs):
+        m = self._lstate.entry_ladder_mult
+        super().extend(v * m for v in xs)
+
+
 @dataclass
 class SymState:
     is_long: bool
     qty: float = 0.0
     entry_price: float = 0.0
     initial_qty: float = 0.0
+    entry_ladder_mult: float = 1.0  # 2026-06-03 sma200-distance size-ladder mult captured at the entry bar; applied to this position's per-trade returns (see _LadderReturns). 1.0 = no ladder.
     opened_at: float = 0.0
     last_augment_ts: float = 0.0
     last_reduce_ts: float = 0.0
@@ -1543,6 +1570,17 @@ def simulate_one_symbol(
     wt_1h_aligned  = (wt1_1h  > wt2_1h)  if is_long else (wt1_1h  < wt2_1h)
     _wf_mode_crypto = (mode == "crypto")
     _wf_anchor = np.nan_to_num(npz.get("sma_200_15m" if _wf_mode_crypto else "ema_200_15m", np.zeros(n))).astype(np.float32)
+    # 2026-06-03 sma200-distance size-ladder: per-bar entry multiplier (mirrors config.py BREAKOUT_SIZE_*).
+    if bool(getattr(config, "BREAKOUT_SIZE_LADDER_ENABLED", True)):
+        _ld_dist = np.where(_wf_anchor > 0, ((close - _wf_anchor) / _wf_anchor * 100.0) if is_long else ((_wf_anchor - close) / _wf_anchor * 100.0), 0.0)
+        _ld_t1 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_PCT", 1.0)); _ld_m1 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T1_MULT", 1.5))
+        _ld_t2 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_PCT", 1.5)); _ld_m2 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T2_MULT", 2.0))
+        _ld_t3 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_PCT", 2.5)); _ld_m3 = float(getattr(config, "BREAKOUT_SIZE_SMA200_T3_MULT", 3.0))
+        _ld_cap = float(getattr(config, "BREAKOUT_SIZE_MAX_MULT", 3.0))
+        _ladder_arr = np.where(_ld_dist >= _ld_t3, _ld_m3, np.where(_ld_dist >= _ld_t2, _ld_m2, np.where(_ld_dist >= _ld_t1, _ld_m1, 1.0)))
+        _ladder_arr = np.minimum(_ladder_arr, _ld_cap).astype(np.float64)
+    else:
+        _ladder_arr = np.ones(n, dtype=np.float64)
     _wf_wt1 = wt1_3m
     _wf_wt1_prev = np.nan_to_num(npz.get("wt1_3m_prev" if _wf_mode_crypto else "wt1_5m_prev", np.roll(_wf_wt1, 1))).astype(np.float32)
     _wf_wt1_prev[0] = _wf_wt1[0]
@@ -2137,7 +2175,7 @@ def simulate_one_symbol(
     _store = _NPZStoreAdapter(npz, close, ts)
     _pos = _PosStateAdapter(state)
     events: List[TradeEvent] = []
-    trade_returns: List[float] = []  # per-trade % gain (for pool_sharpe)
+    trade_returns = _LadderReturns(state)  # per-trade % gain (for pool_sharpe); appends auto-scaled by entry-bar sma200 ladder mult (1.0 when ladder OFF)
 
     # Pre-compute commission buffer for gain checks
     comm_buf = float(config.COMMISSION_BUFFER_PCT)
@@ -2673,6 +2711,7 @@ def simulate_one_symbol(
                         state.qty = qty_to_add
                         state.entry_price = mark
                         state.initial_qty = qty_to_add
+                        state.entry_ladder_mult = float(_ladder_arr[i])
                         state.opened_at = bar_ts
                         state.augmented_count = 0
                         state.max_gain = 0.0
@@ -2882,6 +2921,7 @@ def simulate_one_symbol(
                     value=new_qty * mark, reason=_small_reason)
                 events.append(ev)
                 state.qty = new_qty; state.entry_price = mark; state.initial_qty = new_qty
+                state.entry_ladder_mult = float(_ladder_arr[i])
                 state.opened_at = bar_ts; state.augmented_count = 0; state.max_gain = 0.0
                 state.last_open_attempt_ts = bar_ts; state.last_augment_ts = bar_ts
                 state.last_augmentation_price = mark  # UAG anchor
@@ -3290,6 +3330,7 @@ def simulate_one_symbol(
             state.qty = new_qty
             state.entry_price = mark
             state.initial_qty = new_qty
+            state.entry_ladder_mult = float(_ladder_arr[i])
             state.opened_at = bar_ts
             state.augmented_count = 0
             state.max_gain = 0.0
