@@ -1391,6 +1391,11 @@ class Config:
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
     MTF_ARMED_ENTRY_ENABLED: bool = True             # 2026-05-22 02:37 Re-enabled post persistent hydration fix
+    # 2026-06-03 USER MANDATE: the force-opener (watchdog REQ1 sma±pct+wt-cross + REQ3 multi-TF DC)
+    # MUST require MTF armed-state + GR confirmation (via mtf_entry_filter_passes). A/B proved
+    # MTF-gating = pool_sharpe 0.53 vs 0.11 ungated. The watchdog applies this at source so live ==
+    # the MTF-gated backtest. NEVER bypass quality on the force-open again. ROLLBACK: False (NOT advised).
+    FORCE_OPEN_REQUIRE_MTF_GR: bool = True
     REENTRY_CONFIRMATION_GATES_ENABLED: bool = True
     REENTRY_STOCH_K_MAX_LONG: float = 40.0
     REENTRY_STOCH_K_MIN_SHORT: float = 60.0

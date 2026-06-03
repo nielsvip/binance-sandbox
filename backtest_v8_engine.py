@@ -6121,7 +6121,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _gr_is_long_pt = (str(position_side) == "LONG")
                     _gr_invert_pt = str(reason or '').startswith('GOLDEN_RULE')
                     _gr_ok_pt, _gr_tfs_pt, _ = _gr_score_entry_pt(_gr_ind_pt, _gr_is_long_pt, _gr_mode_pt, _gr_min_tfs_pt, _gr_min_ind_pt, _gr_px_pt, invert_dc_bb=_gr_invert_pt)
-                    if not _gr_ok_pt:
+                    if not _gr_ok_pt and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                         return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
                 except Exception:
                     pass
@@ -6468,7 +6468,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _wt_dc_is_long = (str(position_side) == "LONG")
                         _wt_dc_px = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
                         _wt_dc_score, _ = _v8_score_entry_raw(_wt_dc_ind, _wt_dc_is_long, _wt_dc_px)
-                        if float(_wt_dc_score) < _wt_dc_thr:
+                        if float(_wt_dc_score) < _wt_dc_thr and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                             return f"BLOCKED_WT_DC_ENTRY_THRESHOLD_{_wt_dc_score:.0f}_lt_{_wt_dc_thr:.0f}"
                     except Exception as _wt_dc_err:
                         v8_logger.warning(f"[V8_WT_DC_THR_ERR] {position_key}: {_wt_dc_err}")
@@ -6542,7 +6542,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _gr_is_long_r = (str(position_side) == "LONG")
                         _gr_invert_r = str(reason or '').startswith('GOLDEN_RULE')
                         _gr_ok_r, _gr_tfs_r, _gr_detail_r = _gr_score_entry(_gr_ind_r, _gr_is_long_r, _gr_mode_r, _gr_min_tfs_r, _gr_min_ind_r, _gr_px_r, invert_dc_bb=_gr_invert_r)
-                        if not _gr_ok_r:
+                        if not _gr_ok_r and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                             return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_r}of{_gr_min_tfs_r}tfs_need{_gr_min_ind_r}ind"
                     except Exception as _gr_err_r:
                         v8_logger.warning(f"[V8_GOLDEN_RULE_ERR] {position_key}: {_gr_err_r}")

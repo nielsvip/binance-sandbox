@@ -754,6 +754,7 @@ class SweepConfig:
     VEC_REENTRY_WINDOW_BARS: int = 400                  # reentry-eligibility window (bars since last held) for VEC_REENTRY_REQUIRE_PRIOR_EXIT
     VEC_REENTRY_DC4_EXITPRICE_ENABLED: bool = True      # 2026-06-02 USER MANDATE: ON by default (proven MU 0.84/NVDA 0.71, kills 729-trade B-block over-fire). USER's PRECISE reentry rule (replaces the B-block over-fire). While FLAT after an exit, until positionAmt>0: (a) <=1h since exit → price crosses dc_high4_5m (LONG)/dc_low4_5m (SHORT); (b) >1h since exit → price crosses exit_price (FOREVER). BOTH require wt1 RISING (wt1>wt1_prev) on 3m AND 15m AND 1h (LONG; falling on all 3 for SHORT). When True, fire_block uses THIS rule instead of the B-blocks.
     VEC_REENTRY_HOUR_BARS: int = 12                     # bars per 1 hour at base TF (stocks 5m→12, crypto 3m→20). The <=1h window for the dc4 branch of the reentry rule.
+    VEC_REENTRY_DC_USE_4BAR: bool = True                # 2026-06-03 reentry donchian: True=dc_high4/low4_5m (4-bar), False=dc_high/low_5m (1-bar). A/B to confirm which the numbers favor.
     QUICK_REDUCE_TECHNICAL_ONLY: bool = True           # 2026-06-02 USER MANDATE — mirror live gate (config.QUICK_REDUCE_TECHNICAL_ONLY). When True, the stochastic/profit-take winner-cutting reduce paths (PROFIT_TAKE_REDUCE / STRONG_REDUCE_K / QUICK_REDUCE_STRONG_REDUCE) are FORCED OFF so the vec sweep cannot discover winner-cutting configs that live (gated) can never execute. Only sanctioned technical exits (GR/WT/DC/struct/ATR-trail) reduce — identical to live. Set False ONLY to A/B the disabled traps.
     PROFIT_TAKE_REDUCE_ENABLED: bool = False           # default OFF
     PROFIT_TAKE_GAIN_PCT: float = 2.0
@@ -1518,8 +1519,9 @@ def simulate_one_symbol(
     wt1_3m = np.nan_to_num(npz.get("wt1_3m", npz.get("wt1_5m", np.zeros(n))).astype(np.float32))
     wt2_3m = np.nan_to_num(npz.get("wt2_3m", npz.get("wt2_5m", np.zeros(n))).astype(np.float32))
     # USER reentry rule arrays (dc4/exit_price + wt1-rising-on-3m/15m/1h)
-    _re_dc4_high = np.nan_to_num(npz.get("dc_high4_5m", np.zeros(n)).astype(np.float32))
-    _re_dc4_low = np.nan_to_num(npz.get("dc_low4_5m", np.zeros(n)).astype(np.float32))
+    _re_use4 = bool(getattr(config, "VEC_REENTRY_DC_USE_4BAR", True))
+    _re_dc4_high = np.nan_to_num(npz.get("dc_high4_5m" if _re_use4 else "dc_high_5m", np.zeros(n)).astype(np.float32))
+    _re_dc4_low = np.nan_to_num(npz.get("dc_low4_5m" if _re_use4 else "dc_low_5m", np.zeros(n)).astype(np.float32))
     _re_w3 = wt1_3m; _re_w3p = np.nan_to_num(npz.get("wt1_3m_prev", npz.get("wt1_5m_prev", np.roll(_re_w3, 1))).astype(np.float32))
     _re_w15 = wt1_15m if False else np.nan_to_num(npz.get("wt1_15m", np.zeros(n)).astype(np.float32))
     _re_w15p = np.nan_to_num(npz.get("wt1_15m_prev", np.roll(_re_w15, 1)).astype(np.float32))

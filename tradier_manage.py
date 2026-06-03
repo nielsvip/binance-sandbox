@@ -10497,7 +10497,7 @@ class TradierTradeManager:
         if final_shares < 1: return "QTY_ZERO_FINAL"
         if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'):
             _gr_min_tfs_tr = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
-            if _gr_min_tfs_tr > 0:
+            if _gr_min_tfs_tr > 0 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                 try:
                     from golden_rule_htf import score_entry_htf as _gr_score_entry_tr
                     _gr_min_ind_tr = int(getattr(config, "GOLDEN_RULE_MIN_IND", 2))

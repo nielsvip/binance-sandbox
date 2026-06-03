@@ -29165,6 +29165,21 @@ class MultiAccountTradeManager:
                                 _trg = "SMA15M_WT3M"
                         if _trg is None:
                             continue
+                        # 2026-06-03 USER MANDATE: force-open REQUIRES MTF armed-state + GR confirmation
+                        # (mtf_entry_filter_passes does BOTH). A/B proved MTF-gating 0.53 vs 0.11 ungated.
+                        # Applied at source so the live force-open == the MTF-gated backtest. The execute_now
+                        # MOMENTUM_WATCHDOG bypass downstream is now moot for this path (already filtered here).
+                        if bool(getattr(config, "FORCE_OPEN_REQUIRE_MTF_GR", True)):
+                            try:
+                                import mtf_live_evaluator as _mle_wd
+                                if not hasattr(self, "mtf_states"):
+                                    self.mtf_states = {}
+                                _wd_mtf_ok, _wd_mtf_why = _mle_wd.mtf_entry_filter_passes(self.mtf_states, symbol, side, ind, "crypto", config, blocked=bool(_psym_get(symbol, side, "MTF_ENTRY_BLOCKED", False)))
+                                if not _wd_mtf_ok:
+                                    continue
+                            except Exception as _wd_mtfe:
+                                logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: MTF filter error (skip force-open): {_wd_mtfe}")
+                                continue
                         _wd_qual += 1
                         self._mom_watchdog_cd[position_key] = time.time()
                         _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt3m{_wt1_3m:.1f}/{_wt2_3m:.1f}_usd{_usd:.0f}"
@@ -34700,6 +34715,8 @@ async def process_single_reentry_evaluation(
         dc_low_1h = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
         dc_high_3m = safe_fetch_float(i.get("dc_high_3m", 0), 0.0)
         dc_low_3m = safe_fetch_float(i.get("dc_low_3m", 0), 0.0)
+        dc_high4_3m = safe_fetch_float(i.get("dc_high4_3m", 0), 0.0)  # 2026-06-03 USER: 4-bar 3m donchian is THE reentry trigger after a reduction
+        dc_low4_3m = safe_fetch_float(i.get("dc_low4_3m", 0), 0.0)
         _dc_reentry_allow_15m = bool(getattr(config, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
@@ -34713,7 +34730,7 @@ async def process_single_reentry_evaluation(
         if is_long:
             # USER 2026-05-30: a dc_high_3m CROSS ALWAYS fires the reentry (no filter). The dc_1h/15m
             # path keeps the testable K/WT filters. Either one re-OPENs the flat position.
-            _dc_3m_long = dc_high_3m > 0 and current_price > dc_high_3m * (1 + _buf)
+            _dc_3m_long = (dc_high_3m > 0 and current_price > dc_high_3m * (1 + _buf)) or (dc_high4_3m > 0 and current_price > dc_high4_3m * (1 + _buf))
             _dc_1h15_long = (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (_dc_reentry_allow_15m and dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf))
             _dc_k_ok = (_dc_fk > _dc_fd) if (_dc_req_k and _dc_k_data) else True
             _dc_wt_ok = (_dc_fw1 > _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
