@@ -2472,8 +2472,8 @@ class AdvancedSignalRater:
         # Quicker than wt1<wt2 crossover: compares wt1_15m vs its own previous value.
         # Bypass: if 3m WT is making higher highs (bull cross + rising) for LONG, or lower lows for SHORT.
         if not is_exit:
-            _wt1_15m_prev_r = safe_fetch_float(i.get('wt1_15m_prev', wt1_15m), wt1_15m)
-            _wt1_3m_prev_r = safe_fetch_float(i.get('wt1_3m_prev', wt1_3m), wt1_3m)
+            _wt1_15m_prev_r = safe_fetch_float(i.get('wt1_15m_prev', wt2_15m), wt2_15m)  # 2026-06-03 USER: wt1_X_prev never produced → fall back to wt2_X (cross), not current (no-op)
+            _wt1_3m_prev_r = safe_fetch_float(i.get('wt1_3m_prev', wt2_3m), wt2_3m)
             _15m_pen = float(getattr(config, 'WT15M_AGAINST_PENALTY', -5.0))
             _3m_hh_bypass = is_long and wt_cross_bull_3m and wt1_3m > _wt1_3m_prev_r
             _3m_ll_bypass = not is_long and wt_cross_bear_3m and wt1_3m < _wt1_3m_prev_r
@@ -16179,7 +16179,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 # just because k_15m is elevated or stale. T1 (price_crossed) still bypasses ALL guards.
                 _wt1_15m_pre_gr = safe_fetch_float(indicators.get('wt1_15m', 0), 0.0)
                 _wt2_15m_pre_gr = safe_fetch_float(indicators.get('wt2_15m', 0), 0.0)
-                _wt1_15m_prev_pre_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_pre_gr), _wt1_15m_pre_gr)
+                _wt1_15m_prev_pre_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt2_15m_pre_gr), _wt2_15m_pre_gr)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
                 _t3_bounce_pre = ((is_long and _wt1_15m_prev_pre_gr <= _wt2_15m_pre_gr and _wt1_15m_pre_gr > _wt2_15m_pre_gr) or (not is_long and _wt1_15m_prev_pre_gr >= _wt2_15m_pre_gr and _wt1_15m_pre_gr < _wt2_15m_pre_gr))
                 # === GUARDS — BYPASSED entirely when price already crossed exit level ===
                 # T1 (price_crossed) = MANDATORY reentry. Guards may only run when price has NOT yet crossed.
@@ -16216,8 +16216,8 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 should_reenter = False
                 _qty_mult = 0.0
                 _reason_tag = ""
-                _wt1_3m_prev_gr = safe_fetch_float(indicators.get('wt1_3m_prev', _wt1_3m_gr), _wt1_3m_gr)
-                _wt1_15m_prev_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_gr), _wt1_15m_gr)
+                _wt1_3m_prev_gr = safe_fetch_float(indicators.get('wt1_3m_prev', _wt2_3m_gr), _wt2_3m_gr)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
+                _wt1_15m_prev_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt2_15m_gr), _wt2_15m_gr)
                 _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
                 _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
                 # TIER 1: Price crosses exit level → MANDATORY 100% reentry (no gates can block this) but POSITIONAMT NEEDS TO BE ZERO 
@@ -16408,7 +16408,7 @@ async def evaluate_reentry_epq(ctx: dict):
         return None
     _wt1_15m_epq = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
     _wt2_15m_epq = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
-    _wt1_15m_prev_epq = safe_fetch_float(i.get('wt1_15m_prev', _wt1_15m_epq), _wt1_15m_epq)
+    _wt1_15m_prev_epq = safe_fetch_float(i.get('wt1_15m_prev', _wt2_15m_epq), _wt2_15m_epq)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
     _t3_epq = ((is_long and _wt1_15m_prev_epq <= _wt2_15m_epq and _wt1_15m_epq > _wt2_15m_epq) or (not is_long and _wt1_15m_prev_epq >= _wt2_15m_epq and _wt1_15m_epq < _wt2_15m_epq))
     if not _t3_epq and _epq_rally_k15m_blocked(i, is_long, cfg, position_key):
         return None

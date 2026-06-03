@@ -2519,7 +2519,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
                     _wf_buf = float(getattr(config, 'WT_3M_FORCE_OPEN_DIST_PCT', 0.0)) / 100.0
                     _wf_wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_3m')), 0.0)
-                    _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev')), _wf_wt1_5m)
+                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
+                    _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m)), _wf_wt2_5m)
                     _above = (is_long and _wf_anchor > 0 and current_price > _wf_anchor * (1.0 + _wf_buf)) or ((not is_long) and _wf_anchor > 0 and current_price < _wf_anchor * (1.0 - _wf_buf))
                     _moving = (is_long and _wf_wt1_5m >= _wf_wt1_5m_prev) or ((not is_long) and _wf_wt1_5m <= _wf_wt1_5m_prev)
                     if _above and _moving and current_price > 0:
@@ -8098,7 +8099,7 @@ class StockStrategy:
         _reentry_size_mult = 1.0
         if is_long:
             # Reentry LONG: WT cross bull on 5m + 15m/1h WT bullish + DC position pullback
-            wt_entry = _wt_cross_bull_5m or (_wt1_5m > _wt2_5m and _wt1_5m > float(i.get('wt1_5m_prev', _wt1_5m) or _wt1_5m))
+            wt_entry = _wt_cross_bull_5m or (_wt1_5m > _wt2_5m and _wt1_5m > float(i.get('wt1_5m_prev', _wt2_5m) or _wt2_5m))  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
             htf_confirm = (_wt1_15m > _wt2_15m) or (_wt1_1h > _wt2_1h)
             dc_pullback = _dc_pos < 0.40
             stoch_fallback = (k_5m > d_5m) and (k_15m > d_15m or k_15m < 30)
@@ -8118,7 +8119,7 @@ class StockStrategy:
                 _reentry_size_mult = min(2.0, _reentry_size_mult * 1.3)
                 logger.info(f"[REENTRY_BULL_DIV] LONG {symbol}: Bullish divergence detected — {_reentry_size_mult:.1f}x size")
         else:
-            wt_entry = _wt_cross_bear_5m or (_wt1_5m < _wt2_5m and _wt1_5m < float(i.get('wt1_5m_prev', _wt1_5m) or _wt1_5m))
+            wt_entry = _wt_cross_bear_5m or (_wt1_5m < _wt2_5m and _wt1_5m < float(i.get('wt1_5m_prev', _wt2_5m) or _wt2_5m))  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
             htf_confirm = (_wt1_15m < _wt2_15m) or (_wt1_1h < _wt2_1h)
             dc_pullback = _dc_pos > 0.60
             stoch_fallback = (k_5m < d_5m) and (k_15m < d_15m or k_15m > 70)

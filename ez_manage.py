@@ -17250,6 +17250,20 @@ class MultiAccountTradeManager:
             is_reduce = False
             is_augment = False
             logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
+        # ═══ USER 2026-06-03: positionAmt==0 ⇒ NOT an augment, whatever the action is named ═══
+        # An entry on a FLAT position is a REENTRY/OPEN — there is nothing to add to, so it can
+        # NEVER be an augment. "GUARANTEED_REENTRY_AUGMENT" (and any AUGMENT-named action that
+        # fires at zero) was being mis-classified is_augment=True → caught by augment gates
+        # (gain-gate, ratio-substitution, blacklist-augment, etc.) → guaranteed reentries blocked.
+        # That mis-classification is the bulk of the missed gain on big movers. Force is_augment
+        # =False whenever flat so NO augment filter restricts a reentry at positionAmt==0.
+        if is_augment and not is_hedge and not _is_reentry:
+            if position is None:
+                position = await self.get_position(position_key)
+            _flat_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
+            if _flat_amt <= self.min_qty.get(symbol, 0.0001):
+                is_augment = False
+                logger.critical(f"[FLAT_NOT_AUGMENT] {position_key}: positionAmt={_flat_amt:.8f}≈0 → REENTRY/OPEN not augment; cleared is_augment so augment gates can't block it. action={action} reason={(reason or '')[:60]}")
         # ═══ HARD DUPLICATE OPEN GUARD — gain-based per USER 2026-05-09 ═══
         # Replaces the 900s time-cooldown with a gain gate. Augments require
         # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
@@ -29300,8 +29314,8 @@ class MultiAccountTradeManager:
                     _qty_mult = 0.0
                     _reason_tag = ""
                     # Safety gates applied to Pathways A/B (not P0 rescue). User directive 2026-04-16.
-                    _wt1_3m_prev_gr = safe_fetch_float(
-                        indicators.get("wt1_3m_prev", _wt1_3m_gr), _wt1_3m_gr
+                    _wt1_3m_prev_gr = safe_fetch_float(  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X (cross), not current (no-op)
+                        indicators.get("wt1_3m_prev", _wt2_3m_gr), _wt2_3m_gr
                     )
                     _delta_rising = (
                         is_long
@@ -31557,7 +31571,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             _trigger_wt = 0.0
             if getattr(config, "DD_BOUNCE_WT_D_ENABLED", True):
                 wt1_D = safe_fetch_float(i.get("wt1_D"), 0)
-                wt1_D_prev = safe_fetch_float(i.get("wt1_D_prev", wt1_D), wt1_D)
+                wt1_D_prev = safe_fetch_float(i.get("wt1_D_prev", i.get("wt2_D")), safe_fetch_float(i.get("wt2_D"), wt1_D))  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X (cross)
                 _bounce_D = (wt1_D > wt1_D_prev) if is_long else (wt1_D < wt1_D_prev)
                 _hwt_D = (not _req_hwt) or (
                     (wt1_D > _last_wt) if is_long else (wt1_D < _last_wt)
@@ -31574,7 +31588,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 config, "DD_BOUNCE_WT_4H_ENABLED", True
             ):
                 wt1_4h = safe_fetch_float(i.get("wt1_4h"), 0)
-                wt1_4h_prev = safe_fetch_float(i.get("wt1_4h_prev", wt1_4h), wt1_4h)
+                wt1_4h_prev = safe_fetch_float(i.get("wt1_4h_prev", i.get("wt2_4h")), safe_fetch_float(i.get("wt2_4h"), wt1_4h))  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X (cross)
                 _bounce_4h = (
                     (wt1_4h > wt1_4h_prev) if is_long else (wt1_4h < wt1_4h_prev)
                 )
@@ -35081,12 +35095,14 @@ async def process_single_reentry_evaluation(
             _wt2_1h = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
             _wt1_4h = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
             _wt2_4h = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
-            _wt1_15m_prev = safe_fetch_float(i.get("wt1_15m_prev", 0), 0.0)
-            _wt2_15m_prev = safe_fetch_float(i.get("wt2_15m_prev", 0), 0.0)
+            # 2026-06-03 USER: wt1_15m_prev / wt2_15m_prev are phantom (never produced) → the prev-cross
+            # condition was dead (0<=0 always). Reduce to the current wt2 cross state (use wt2_X).
+            _wt1_15m_prev = safe_fetch_float(i.get("wt1_15m_prev", wt2_15m), wt2_15m)
+            _wt2_15m_prev = safe_fetch_float(i.get("wt2_15m_prev", wt1_15m), wt1_15m)
             _wt15m_just_crossed = (
-                is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev
+                is_long and wt1_15m > wt2_15m
             ) or (
-                (not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev
+                (not is_long) and wt1_15m < wt2_15m
             )
             _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or (
                 (not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h)

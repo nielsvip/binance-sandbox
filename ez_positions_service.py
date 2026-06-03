@@ -1600,6 +1600,22 @@ def _convert_timestamp_strings_positions(data: Any) -> Any:
 _POSITION_PROTECTED_FIELDS = frozenset({"entry_price", "max_gain", "last_reduction_price", "last_reduction_amount", "last_augmentation_price", "last_augmentation_amount", "initial_quantity", "max_quantity", "max_positionSize", "augment_reason", "reduction_reason", "opened_at", "last_augmentation_time", "last_reduction_time", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba"})
 _POSITION_SERVICE_ONLY_FIELDS = frozenset({"positionAmt", "entry_price", "last_reduction_price", "last_reduction_amount", "last_reduction_time", "last_augmentation_price", "last_augmentation_amount", "last_augmentation_time", "initial_quantity", "was_reduced", "is_reduced", "reduced_at", "was_reentered", "opened_at", "augment_reason", "reduction_reason"})
 _POSITION_WRITE_ALLOWED_FILES = frozenset({"ez_positions_service.py", "ez_positions.py", "tradier_positions.py", "ez_manage.py", "ez_positions_quick.py", "tradier_manage.py"})
+# 2026-06-03 positionAmt integrity: a handler that changes positionAmt AND writes its own /history record
+# wraps itself in this context so the __setattr__ tripwire does NOT write a duplicate RECONCILE. Any
+# positionAmt change OUTSIDE this context with a known account_key gets a RECONCILE_POSAMT appended to
+# /history/<acct> so the ledger is guaranteed complete (USER MANDATE 2026-06-03).
+_POSAMT_RECORDING: ContextVar = ContextVar("posamt_recording", default=False)
+def _posamt_reconcile_to_history(account_key, symbol, side, old_amt, new_amt):
+    try:
+        _hf = Path(config.BASE_PATH) / "data" / "history" / account_key / f"{symbol}_{side}.jsonl"
+        _hf.parent.mkdir(parents=True, exist_ok=True)
+        _ev = {"ts": datetime.now(timezone.utc).isoformat(), "account": account_key, "symbol": symbol, "side": side, "type": "RECONCILE_POSAMT", "qty": abs(float(new_amt) - float(old_amt)), "positionAmt_old": float(old_amt), "positionAmt_new": float(new_amt), "price": 0.0, "reason": "UNRECORDED_POSAMT_CHANGE_RECONCILE"}
+        with open(_hf, "a") as _fh:
+            _fh.write(json.dumps(_ev) + "\n")
+        logger.critical(f"🚨 [POSAMT_RECONCILE] {account_key}:{symbol}_{side} positionAmt {old_amt}→{new_amt} had NO /history record from its handler — wrote RECONCILE_POSAMT to /history/{account_key}. USER MANDATE: every positionAmt change in /history.")
+    except Exception as _e:
+        try: logger.error(f"[POSAMT_RECONCILE_ERR] {account_key}:{symbol}_{side}: {_e}")
+        except Exception: pass
 
 @dataclass
 
@@ -1640,6 +1656,7 @@ class Position:
     is_hedge: bool = False
     hedge_for: Optional[str] = None
     r1_stop_price: float = 0.0
+    account_key: str = ""  # 2026-06-03: account this position belongs to (prefix of position_key acct:SYM_SIDE). Lets the positionAmt tripwire write a RECONCILE straight into /history/<acct>.
 
     def __setattr__(self, name, value):
         if name in _POSITION_SERVICE_ONLY_FIELDS and hasattr(self, name):
@@ -1694,8 +1711,12 @@ class Position:
                     import traceback as _pa_tb
                     _pa_fr = _pa_tb.extract_stack(limit=4)
                     _pa_caller = f"{os.path.basename(_pa_fr[-2].filename)}:{_pa_fr[-2].name}" if len(_pa_fr) >= 2 else "?"
+                    _pa_sym = getattr(self, 'symbol', '?'); _pa_side = getattr(self, 'position_side', '?'); _pa_acct = getattr(self, 'account_key', '') or ''
                     with open(os.path.expanduser("~/logs/POSAMT_MUTATIONS.jsonl"), "a") as _pa_fh:
-                        _pa_fh.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "symbol": getattr(self, 'symbol', '?'), "side": getattr(self, 'position_side', '?'), "old": float(_pa_old), "new": float(value), "delta": float(value) - float(_pa_old), "caller": _pa_caller}) + "\n")
+                        _pa_fh.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "account": _pa_acct, "symbol": _pa_sym, "side": _pa_side, "old": float(_pa_old), "new": float(value), "delta": float(value) - float(_pa_old), "caller": _pa_caller, "recorded_by_handler": bool(_POSAMT_RECORDING.get())}) + "\n")
+                    # out-of-band change (not inside a handler that writes its own /history): write the RECONCILE
+                    if _pa_acct and not _POSAMT_RECORDING.get():
+                        _posamt_reconcile_to_history(_pa_acct, _pa_sym, _pa_side, _pa_old, value)
             except Exception:
                 pass
         object.__setattr__(self, name, value)
@@ -7300,7 +7321,10 @@ class PositionService:
             except Exception as e:
                 logger.error(f"[{position_key}] Could not set invalidation price during augmentation: {e}")
         _old_aug = position.positionAmt
+        if ':' in position_key: position.account_key = position_key.split(':', 1)[0]
+        _pa_tok_aug = _POSAMT_RECORDING.set(True)
         position.positionAmt = positionAmt_abs
+        _POSAMT_RECORDING.reset(_pa_tok_aug)
         position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
         logger.critical(f"[POSAMT_WRITE][HANDLE_AUG][{position_key}] {_old_aug} -> {positionAmt_abs} (augment_qty={augment_qty})")
         if augment_qty > 0 and position.positionAmt > 0:
@@ -7606,7 +7630,10 @@ class PositionService:
         if is_tiny_position:
             position.max_gain = max(position.gain, position.max_gain)
         _old_red = position.positionAmt
+        if ':' in position_key: position.account_key = position_key.split(':', 1)[0]
+        _pa_tok_red = _POSAMT_RECORDING.set(True)
         position.positionAmt = positionAmt_abs
+        _POSAMT_RECORDING.reset(_pa_tok_red)
         position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
         logger.critical(f"[POSAMT_WRITE][HANDLE_RED][{position_key}] {_old_red} -> {positionAmt_abs} (reduction_source={reduction_source})")
         min_qty = self.min_qty.get(symbol, 0.0001)
