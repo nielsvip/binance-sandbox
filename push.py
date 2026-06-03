@@ -105,12 +105,49 @@ def check_server_older(base_dir):
     else:
         log("All files in sync — server same age or newer than local.", "✅")
 
+def stop_mac_live():
+    """STOP-MAC-FIRST cutover safety: halt the Mac live stack so S1 becomes the SOLE trader (never two
+    boxes on the same accounts = double orders). Returns True iff the Mac was ACTUALLY live-trading before
+    the stop (-> real cutover -> caller snapshots positions). On a routine dev push (Mac already idle)
+    returns False -> caller must NOT clobber S1's live positions with stale Mac dirs."""
+    rc, out, _ = run_cmd("ps -ef | grep -E 'ez_manage\\.py --account|tradier_manage\\.py --account' | grep -v grep | wc -l")
+    were_live = (out or "0").strip() not in ("", "0")
+    if were_live:
+        log("STOP-MAC-FIRST: Mac is live — booting out launchd + killing live procs before S1 starts...", "🛑")
+        for label in ("com.niels.ez-launcher", "com.niels.stocks-market-open"):
+            run_cmd(f"launchctl bootout gui/$(id -u)/{label} 2>/dev/null; launchctl stop {label} 2>/dev/null")
+        run_cmd("pkill -9 -f 'ez_manage.py --account' 2>/dev/null; pkill -9 -f 'ez_positions_quick.py' 2>/dev/null; pkill -9 -f 'ez_positions_service.py' 2>/dev/null; pkill -9 -f 'tradier_manage.py --account' 2>/dev/null; pkill -9 -f 'tradier_positions.py' 2>/dev/null")
+        time.sleep(5)
+    else:
+        log("Mac already idle (no live procs) — routine push, NOT a cutover (positions NOT snapshotted).", "ℹ️")
+    return were_live
+
+def _mac_live_count():
+    rc, out, _ = run_cmd("ps -ef | grep -E 'ez_manage\\.py --account|tradier_manage\\.py --account' | grep -v grep | wc -l")
+    return (out or "1").strip()
+
+def snapshot_positions_to_s1(base_dir):
+    log("Snapshotting Mac position state -> S1 live dir (authoritative at cutover instant)...", "📸")
+    for acct in ("ang", "inf", "flz", "men", "fin", "trb", "trc"):
+        d = base_dir / acct
+        if d.exists():
+            run_cmd(f"rsync -az {d}/ {REMOTE_USER_HOST}:{REMOTE_DIR}/{acct}/")
+    run_cmd(f"rsync -az {base_dir}/symbols.json {REMOTE_USER_HOST}:{REMOTE_DIR}/symbols.json")
+
 def main():
     import platform
     if platform.system() != "Darwin":
         print("FATAL: push.py runs from the Mac dev box only."); sys.exit(1)
     t0 = time.time()
     base_dir = Path(__file__).resolve().parent
+    # ── STOP-MAC-FIRST one-shot cutover safety ──────────────────────────────────────
+    _mac_was_live = stop_mac_live()
+    if _mac_was_live:
+        if _mac_live_count() not in ("", "0"):
+            log("ABORT: Mac live procs STILL present after stop — NOT starting S1 (would double-trade). Kill manually + re-run.", "🛑")
+            sys.exit(2)
+        snapshot_positions_to_s1(base_dir)
+        log("Cutover: Mac stopped + positions snapshotted -> safe to start S1 as sole trader.", "✅")
     log("BIDIRECTIONAL SYNC (pull if S1 newer / else push) -> S1, then conditional restart.", "🔄")
     log("NOTE: on changes this FULL-restarts the S1 live stack (sh.sh). Ensure no other box trades these accounts.", "🛡️")
     all_files = FILES + SH_FILES
