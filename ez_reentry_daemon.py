@@ -246,6 +246,20 @@ def _get_indicators(redis_client, sym: str) -> Dict:
 def _collect_candidates(base_path: Path, accounts: List[str]) -> List[Tuple]:
     """Collect [(pk, is_long, exit_px, exit_amt, exit_ts, exit_reason)] from disk files."""
     by_key: dict = {}
+    # 2026-06-03: skip NON-TRADEABLE keys at the SOURCE. The reentry files accumulate every
+    # symbol the account ever held (700+/acct), but only the hand-picked tradeable_keys (~23)
+    # can actually reenter — the consumer skips the rest. Queuing the 700+ each tick floods the
+    # queue (ang backlog 210) and starves the real reentries. Filter here so only tradeable keys
+    # are queued. Fail-OPEN: if tradeable_keys.json is missing/empty, queue everything (old behavior).
+    _tradeable = set()
+    try:
+        _tk_path = base_path / "tradeable_keys.json"
+        if _tk_path.exists():
+            _tk = json.loads(_tk_path.read_text())
+            if isinstance(_tk, list) and len(_tk) > 5:
+                _tradeable = set(_tk)
+    except Exception:
+        _tradeable = set()
     for acc in accounts:
         acc_dir = base_path / acc
         if not acc_dir.exists():
@@ -255,6 +269,8 @@ def _collect_candidates(base_path: Path, accounts: List[str]) -> List[Tuple]:
             for pk, rd in data.items():
                 if not isinstance(rd, dict):
                     continue
+                if _tradeable and pk not in _tradeable:
+                    continue  # non-tradeable — consumer would skip anyway; don't flood the queue
                 try:
                     exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
                     exit_amt = float(rd.get("reentry_amount", 0) or 0)

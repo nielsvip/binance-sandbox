@@ -1352,7 +1352,7 @@ class TradierConfig:
     # — without this field, tradier silently fell back to default 8. Live trb log
     # 2026-05-21 19:06 shows every NEW open blocked by `OVERTRADE_GUARD ... cap=8`
     # despite crypto cap=50. Adding here closes the parity gap. ROLLBACK: set to 8.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 50
+    TRADES_PER_SYM_PER_DAY_MAX: int = 8   # USER 2026-06-03: 8 trades/sym/day turnover target
     # === RECOVERY_AUGMENT (2026-05-20 — partial-close trap fix) ===
     # PRICE_CROSS_BACK above only fires when positionAmt == 0 (fully closed). The
     # "forgotten winner" pattern is dominated by SENTIMENT_FADE REDUCEs that leave

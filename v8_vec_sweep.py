@@ -2269,12 +2269,9 @@ def simulate_one_symbol(
             # OR the wrapped "REENTRY_TREND_..." prefix from Batch 6 naming.
             if rup.startswith("B") and len(rup) > 2 and rup[1].isdigit():
                 return False
-        # 2026-06-03 USER "NO FILTERS CAN STOP THIS": the live force-openers
-        # (momentum_sma_watchdog_loop — WT_3M_FORCE_OPEN sma±pct+wt-cross AND
-        # MOMENTUM_WATCHDOG multi-TF DC breakout) bypass the MTF armed-state gate
-        # UNCONDITIONALLY. Mirror that here so vec entries == live by construction.
-        if "WT_3M_FORCE_OPEN" in rup or "MOMENTUM_WATCHDOG" in rup:
-            return False
+        # 2026-06-03 USER MANDATE CORRECTION: force-openers MUST require MTF confirmation + GR
+        # (target pool_sharpe>0.6 / per_sym>1.5). Do NOT bypass the MTF armed-state gate for them —
+        # bypassing it tanked Sharpe 0.44→0.08. Force-opens are MTF-gated like every other entry.
         if _b7_bypass_strong:
             if ("STRONG_BUY" in rup or "QUICK_OPEN" in rup or
                 "FORCE_HA_4H_ABOVE_BASIS" in rup):
@@ -3009,6 +3006,9 @@ def simulate_one_symbol(
                 if (i - state.last_held_bar) > int(getattr(config, "VEC_REENTRY_WINDOW_BARS", 400)):
                     fire_block = False
             wt_open_ok = bool(wt_3m_aligned[i]) and bool(getattr(config, "WT_3M_FORCE_OPEN_ENABLED", True))
+            # 2026-06-03 USER MANDATE: force-open REQUIRES GR confirmation (+ MTF via b7 gate at open).
+            if wt_open_ok and _mtf_require_gr and not bool(_gr_filter_mask[i]):
+                wt_open_ok = False
             # WT_DC_HTF_GATE — block wt_open_ok when HTF WT is against the trade.
             # Mirrors tradier_manage:2751-2762. Does NOT block GR/DELTA/B15/etc.
             if wt_open_ok and _wt_dc_htf_gate_block[i]:
@@ -3051,6 +3051,9 @@ def simulate_one_symbol(
             _mom_break_ok = bool(_mom_break_long_mask[i]) if is_long else bool(_mom_break_short_mask[i])
             # 2026-06-03 USER PARITY (REQ3) — multi-TF Donchian force-open (NO wt filter)
             _force_dc_ok = bool(_force_dc_mask[i])
+            # 2026-06-03 USER MANDATE: DC force-open REQUIRES GR confirmation (+ MTF via b7 gate at open).
+            if _force_dc_ok and _mtf_require_gr and not bool(_gr_filter_mask[i]):
+                _force_dc_ok = False
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
             # Daily-cap on quality entries (~1-2/day target)

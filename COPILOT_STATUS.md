@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-03 03:19:25 UTC
+# Copilot Status — 2026-06-03 03:35:15 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-03T03:18:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T03:18:44
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T03:18:44
-- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-03T03:34:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T03:34:11
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T03:34:11
+- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T03:35:14
 
 ## Missed Trades (trader comparison)
 
@@ -27,23 +27,23 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 3 | **Reentered:** 0
 
 - HELD: **FIVN** LONG (tradier) peak +12.8%, now +-5.1%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.9%
 - HELD: **ROBO** LONG (tradier) peak +5.1%, now +0.3%
+- HELD: **AIAUSDT** LONG (crypto) peak +3.8%, now +0.3%
 - HELD: **BG** LONG (tradier) peak +3.1%, now +-0.7%
 
 - WATCHING: **CIBR** LONG (tradier) peaked +21.2%, exited 0m ago
 - WATCHING: **MU** LONG (tradier) peaked +14.5%, exited 0m ago
-- WATCHING: **AIAUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **UUUU** SHORT (tradier) peaked +3.5%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
+**Issues (last 1h):** 42
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running

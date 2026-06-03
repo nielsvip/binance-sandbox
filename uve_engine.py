@@ -114,6 +114,28 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
             is_breakout_entry = buy_breakout & entry_allowed
             overbought_val = float(getattr(config, "UVE_OVERBOUGHT_THRES", -40.0) or -40.0)
             exit_signal = wt_crossunder & (wt1_base < overbought_val)
+    # 2026-06-03 USER PARITY — force-open (REQ1 sma±pct + base-TF WT cross; REQ3 multi-TF Donchian
+    # breakout, NO wt filter) ORed into entry_allowed, bypassing macro_trend/anti_parabolic exactly
+    # like the live momentum_sma_watchdog_loop ("NO FILTERS CAN STOP THIS"). Same logic as v8_vec_sweep.
+    _fo_pct = float(getattr(config, "WT_3M_FORCE_OPEN_SMA_PCT", 1.0) or 1.0) / 100.0
+    _fo_sma200 = np.asarray(npz.get("sma_200_15m", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+    _fo_wtcross = (wt1_base > wt2_base) if is_long else (wt1_base < wt2_base)
+    if is_long:
+        _fo_sma = (_fo_sma200 > 0) & (close > _fo_sma200 * (1.0 + _fo_pct)) & _fo_wtcross
+    else:
+        _fo_sma = (_fo_sma200 > 0) & (close < _fo_sma200 * (1.0 - _fo_pct)) & _fo_wtcross
+    _fo_dc = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", True)):
+        for _fo_tf in list(getattr(config, "WATCHDOG_DC_TFS", ["15m", "1h", "4h", "D"])):
+            if is_long:
+                _fo_lvl = np.asarray(npz.get(f"dc_high_{_fo_tf}", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+                _fo_dc = _fo_dc | ((_fo_lvl > 0) & (close >= _fo_lvl))
+            else:
+                _fo_lvl = np.asarray(npz.get(f"dc_low_{_fo_tf}", np.zeros(n, dtype=np.float32)), dtype=np.float32)
+                _fo_dc = _fo_dc | ((_fo_lvl > 0) & (close <= _fo_lvl))
+    _force_open = _fo_sma | _fo_dc
+    entry_allowed = entry_allowed | _force_open
+    is_breakout_entry = is_breakout_entry | _fo_dc
     return {
         "entry_allowed": entry_allowed,
         "close": close,
