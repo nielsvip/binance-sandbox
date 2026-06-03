@@ -24453,6 +24453,41 @@ class MultiAccountTradeManager:
             _has_existing_position = _existing_amt > self.min_qty.get(
                 symbol or "", 0.0001
             )
+        # ═══ RECENT_REDUCTION_GUARD — kill buy-high/sell-low churn at the ONE gate (2026-06-03 USER MANDATE) ═══
+        # After a REDUCE/CLOSE on this key, block any re-add (OPEN/AUGMENT/REENTRY) for WINDOW_S UNLESS price
+        # makes a GENUINE 4-bar 3m Donchian breakout (dc_high4_3m long / dc_low4_3m short) — a real continuation,
+        # not the bare exit-price cross-back that fed the loop. _recent_reduces[pk] is stamped on every reduce
+        # (~24374). Catches QUICK_OPEN / MOMENTUM_WATCHDOG / WT_3M_ESCALATE / daemon reentry — ALL route here.
+        # Fall back to the (reliably-present) prev-bar 1h Donchian if the 4-bar 3m level is absent; if NEITHER
+        # is available, fail-CLOSED (block the re-add) — a missed reentry is far cheaper than the churn.
+        if _is_aug and position_key and not is_hedge and bool(getattr(config, "RECENT_REDUCTION_GUARD_ENABLED", False)):
+            _rrg_last_red = _recent_reduces.get(position_key, 0)
+            _rrg_since = time.time() - _rrg_last_red
+            _rrg_window = float(getattr(config, "RECENT_REDUCTION_GUARD_WINDOW_S", 900.0))
+            if _rrg_last_red > 0 and _rrg_since < _rrg_window:
+                _rrg_breakout = False
+                _rrg_have_lvl = False
+                try:
+                    _rrg_sym = symbol or (position_key.split(":")[-1].rsplit("_", 1)[0] if position_key else "")
+                    _rrg_is_long = (position_side or "LONG") == "LONG"
+                    if _rrg_sym:
+                        _rrgi = await ii(self, _rrg_sym) or {}
+                        _rrg_px = float(old_price) if old_price else 0.0
+                        _rrg_4bar = bool(getattr(config, "RECENT_REDUCTION_GUARD_USE_4BAR", True))
+                        _rrg_key = ("dc_high4_3m" if _rrg_4bar else "dc_high_3m") if _rrg_is_long else ("dc_low4_3m" if _rrg_4bar else "dc_low_3m")
+                        _rrg_lvl = safe_fetch_float(_rrgi.get(_rrg_key), 0.0)
+                        if _rrg_lvl <= 0:
+                            _rrg_lvl = safe_fetch_float(_rrgi.get("dc_high_1h_prev" if _rrg_is_long else "dc_low_1h_prev"), 0.0)
+                        if _rrg_px > 0 and _rrg_lvl > 0:
+                            _rrg_have_lvl = True
+                            _rrg_breakout = (_rrg_px > _rrg_lvl * 1.001) if _rrg_is_long else (_rrg_px < _rrg_lvl * 0.999)
+                except Exception as _rrge:
+                    logger.warning(f"[RECENT_REDUCTION_GUARD] {position_key}: check error — fail-open to avoid breaking execution: {_rrge}")
+                    _rrg_breakout = True
+                    _rrg_have_lvl = True
+                if not _rrg_breakout:
+                    logger.warning(f"🚫 [RECENT_REDUCTION_GUARD] {position_key}: reduced {_rrg_since:.0f}s ago (<{_rrg_window:.0f}s), no Donchian breakout (have_lvl={_rrg_have_lvl}) — blocking re-add to stop buy-high/sell-low churn. action={action} reason={(reason or '')[:50]}")
+                    return f"BLOCKED_RECENT_REDUCTION_GUARD_{_rrg_since:.0f}s_lt_{_rrg_window:.0f}s"
         # ═══ HARD AUGMENT LOCK — 900s cooldown on position-INCREASE actions ═══
         # 2026-05-09 USER MANDATE: applies to OPEN, AUGMENT, REENTER alike — no
         # REENTRY exemption (`_is_reentry_exec_now` removed from bypass). The
@@ -34738,7 +34773,7 @@ async def process_single_reentry_evaluation(
                 _dc_reentry_breakout = True
                 _dc_re_tf = "3M" if _dc_3m_long else ("1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M")
         else:
-            _dc_3m_short = dc_low_3m > 0 and current_price < dc_low_3m * (1 - _buf)
+            _dc_3m_short = (dc_low_3m > 0 and current_price < dc_low_3m * (1 - _buf)) or (dc_low4_3m > 0 and current_price < dc_low4_3m * (1 - _buf))
             _dc_1h15_short = (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (_dc_reentry_allow_15m and dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf))
             _dc_k_ok = (_dc_fk < _dc_fd) if (_dc_req_k and _dc_k_data) else True
             _dc_wt_ok = (_dc_fw1 < _dc_fw2) if (_dc_req_wt and _dc_wt_data) else True
@@ -34750,18 +34785,25 @@ async def process_single_reentry_evaluation(
                 abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
                 * current_price
             )
-            if _dcbr_pos_notional >= config.START_POSITION_SIZE:
+            # 2026-06-03 USER MANDATE: a reentry must NEVER be blocked after a reduction. Cap at the position's
+            # MAX size (so a reduced position re-adds up to max on a dc4 cross), NOT at START_POSITION_SIZE
+            # (which blocked every after-reduction re-add since the remainder is usually >= start).
+            _dcbr_max = abs(safe_fetch_float(getattr(position, "max_positionSize", 0), 0)) or (float(getattr(config, "MAX_POSITION_SIZE", 0) or 0) or config.START_POSITION_SIZE * 10.0)
+            if _dcbr_pos_notional >= _dcbr_max:
                 logger.info(
-                    f"[DC_BREAKOUT_REENTRY_BLOCKED] {position_key}: position already at full size (${_dcbr_pos_notional:.0f} >= ${config.START_POSITION_SIZE:.0f}). No reentry."
+                    f"[DC_BREAKOUT_REENTRY_AT_MAX] {position_key}: at max size (${_dcbr_pos_notional:.0f} >= max ${_dcbr_max:.0f}). No further add."
                 )
                 return
             if not hasattr(trade_manager, "_dc_breakout_reentry_cd"):
                 trade_manager._dc_breakout_reentry_cd = {}
             _dcbr_now = time.time()
             _dcbr_last = trade_manager._dc_breakout_reentry_cd.get(position_key, 0)
-            if _dcbr_now - _dcbr_last < 900:
+            # 2026-06-03 USER: cooldown only prevents same-bar spam (trigger is "price above dc4", fires each tick);
+            # was hardcoded 900s (15min) which blocked legitimate re-adds. Default 180s (one 3m bar). NEVER a long block.
+            _dcbr_cd = float(getattr(config, "DC_BREAKOUT_REENTRY_COOLDOWN_S", 180.0))
+            if _dcbr_now - _dcbr_last < _dcbr_cd:
                 logger.info(
-                    f"[DC_BREAKOUT_REENTRY_CD] {position_key}: cooldown {_dcbr_now - _dcbr_last:.0f}s < 900s"
+                    f"[DC_BREAKOUT_REENTRY_CD] {position_key}: cooldown {_dcbr_now - _dcbr_last:.0f}s < {_dcbr_cd:.0f}s"
                 )
                 return
             trade_manager._dc_breakout_reentry_cd[position_key] = _dcbr_now
@@ -34770,14 +34812,18 @@ async def process_single_reentry_evaluation(
                     f"[LEGACY_BLOCKED] {position_key}: DC_BREAKOUT_REENTRY disabled in config"
                 )
                 return
-            _dcbr_delta_ok, _dcbr_delta_reason = check_reentry_delta_tolerant(
-                i, is_long, trade_manager, symbol
-            )
-            if not _dcbr_delta_ok:
-                logger.info(
-                    f"[DC_BREAKOUT_DELTA_BLOCK] {position_key}: {_dcbr_delta_reason}"
+            # 2026-06-03 USER MANDATE: a dc4 breakout reentry must NEVER be blocked by the delta veto when the
+            # price+WT conditions are met — the dc-cross IS the signal. Delta veto only applies if explicitly required.
+            _dcbr_delta_reason = "delta_bypassed"
+            if bool(getattr(config, "DC_BREAKOUT_REENTRY_REQUIRE_DELTA", False)):
+                _dcbr_delta_ok, _dcbr_delta_reason = check_reentry_delta_tolerant(
+                    i, is_long, trade_manager, symbol
                 )
-                return
+                if not _dcbr_delta_ok:
+                    logger.info(
+                        f"[DC_BREAKOUT_DELTA_BLOCK] {position_key}: {_dcbr_delta_reason}"
+                    )
+                    return
             logger.warning(
                 f"[DC_BREAKOUT_REENTRY] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}"
             )

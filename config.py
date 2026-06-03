@@ -774,6 +774,16 @@ class Config:
     REENTRY_CHURN_GUARD_ENABLED: bool = False
     REENTRY_CHURN_GUARD_WINDOW_S: float = 3600.0
     REENTRY_CHURN_GUARD_USE_4BAR: bool = True
+    # 2026-06-03 RECENT_REDUCTION_GUARD (USER MANDATE — kill buy-high/sell-low churn at the ONE gate).
+    # In execute_now, block any re-add (OPEN/AUGMENT/REENTRY) on a key within WINDOW_S of a REDUCE/CLOSE
+    # on that SAME key UNLESS price makes a GENUINE 4-bar 3m Donchian breakout (dc_high4_3m long /
+    # dc_low4_3m short) — a real continuation, not the bare exit-price cross-back that fed the loop.
+    # Catches EVERY buy-side source (QUICK_OPEN, MOMENTUM_WATCHDOG, WT_3M_ESCALATE, daemon reentry) because
+    # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
+    # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
+    RECENT_REDUCTION_GUARD_ENABLED: bool = False
+    RECENT_REDUCTION_GUARD_WINDOW_S: float = 900.0
+    RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-02 under-reentry fix: when a winner exits near the top and the EXTREME WT-cross
     # confirmation would block re-entry, allow it if the trend is still intact (price on the
     # right side of sma_200_15m). DEFAULT OFF — enable after A/B. Single-sourced in
