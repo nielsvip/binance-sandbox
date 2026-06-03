@@ -133,9 +133,11 @@ def evaluate_uve_signals(npz: Dict[str, np.ndarray], is_long: bool, mode: str, c
             else:
                 _fo_lvl = np.asarray(npz.get(f"dc_low_{_fo_tf}", np.zeros(n, dtype=np.float32)), dtype=np.float32)
                 _fo_dc = _fo_dc | ((_fo_lvl > 0) & (close <= _fo_lvl))
-    _force_open = _fo_sma | _fo_dc
+    # 2026-06-03 USER MANDATE CORRECTION: force-open REQUIRES HTF/MTF confirmation (macro_trend) —
+    # do NOT bypass it. Bypassing quality gates tanks Sharpe; user targets pool_sharpe>0.6/per_sym>1.5.
+    _force_open = (_fo_sma | _fo_dc) & macro_trend
     entry_allowed = entry_allowed | _force_open
-    is_breakout_entry = is_breakout_entry | _fo_dc
+    is_breakout_entry = is_breakout_entry | (_fo_dc & macro_trend)
     return {
         "entry_allowed": entry_allowed,
         "close": close,
