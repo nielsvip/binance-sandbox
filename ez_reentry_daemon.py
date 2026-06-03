@@ -410,7 +410,7 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
             if _cg_lvl > 0:
                 _cg_ok = (cur_px > _cg_lvl * 1.001) if is_long else (cur_px < _cg_lvl * 0.999)
                 if not _cg_ok:
-                    logger.info(f"[DAEMON] CHURN_GUARD blocked {pk}: {now - exit_ts:.0f}s since exit (<{_cfg_float('REENTRY_CHURN_GUARD_WINDOW_S', 3600.0):.0f}s), needs {'dc4' if _cg_4bar else 'dc'}_3m breakout (cur={cur_px:g} lvl={_cg_lvl:g})")
+                    logger.info(f"[DAEMON] CHURN_GUARD blocked {pk}: {now - exit_ts:.0f}s since exit (<{_cfg_float('REENTRY_CHURN_GUARD_WINDOW_S', 3600.0):.0f}s), needs {_cg_key} breakout (cur={cur_px:g} lvl={_cg_lvl:g})")
                     continue
         _gate_reason_tag = "CONFIRM_DISABLED"
         if not is_dc_breakout and _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True) and _ind:

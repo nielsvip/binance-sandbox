@@ -2269,6 +2269,12 @@ def simulate_one_symbol(
             # OR the wrapped "REENTRY_TREND_..." prefix from Batch 6 naming.
             if rup.startswith("B") and len(rup) > 2 and rup[1].isdigit():
                 return False
+        # 2026-06-03 USER "NO FILTERS CAN STOP THIS": the live force-openers
+        # (momentum_sma_watchdog_loop — WT_3M_FORCE_OPEN sma±pct+wt-cross AND
+        # MOMENTUM_WATCHDOG multi-TF DC breakout) bypass the MTF armed-state gate
+        # UNCONDITIONALLY. Mirror that here so vec entries == live by construction.
+        if "WT_3M_FORCE_OPEN" in rup or "MOMENTUM_WATCHDOG" in rup:
+            return False
         if _b7_bypass_strong:
             if ("STRONG_BUY" in rup or "QUICK_OPEN" in rup or
                 "FORCE_HA_4H_ABOVE_BASIS" in rup):
@@ -3181,7 +3187,11 @@ def simulate_one_symbol(
                 continue
             # 2026-05-22 TOP_OF_RANGE_BLOCK — skip entries when price is at extreme
             # range position on all listed TFs (USER ORDI-prevention mandate).
-            if (is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i]):
+            # 2026-06-03 USER "NO FILTERS CAN STOP THIS": the force-openers (REQ1 sma±pct+wt-cross,
+            # REQ3 multi-TF DC breakout) are DELIBERATE breakout entries — top-of-range is exactly
+            # what they must override (mirrors the live watchdog bypassing entry gates). All other
+            # triggers still respect TOR.
+            if ((is_long and _tor_block_long[i]) or ((not is_long) and _tor_block_short[i])) and not (wt_open_ok or _force_dc_ok):
                 continue
             # 2026-05-27 BATCH 5 — LIVE_ONLY trigger has highest precedence so its
             # reason string (matching live family exactly) hits the trade ledger.

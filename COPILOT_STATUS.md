@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-03 03:04:06 UTC
+# Copilot Status — 2026-06-03 03:19:25 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T03:02:13
-- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T03:02:13
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T03:02:13
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T03:02:13
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T03:02:13
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T03:02:13
-- **RATIO_IMBALANCE** [crypto] inf — 2026-06-03T03:02:14
-- **RATIO_IMBALANCE** [crypto] flz — 2026-06-03T03:02:14
-- **RATIO_IMBALANCE** [crypto] inf — 2026-06-03T03:03:15
-- **RATIO_IMBALANCE** [crypto] flz — 2026-06-03T03:03:15
+- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-03T03:18:44
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T03:18:44
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T03:18:44
+- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T03:18:44
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **FIVN** LONG (tradier) peak +12.8%, now +-5.1%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.9%
@@ -36,6 +36,7 @@ _None_
 
 - WATCHING: **CIBR** LONG (tradier) peaked +21.2%, exited 0m ago
 - WATCHING: **MU** LONG (tradier) peaked +14.5%, exited 0m ago
+- WATCHING: **AIAUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **UUUU** SHORT (tradier) peaked +3.5%, exited 0m ago
 
 ## Supervisor

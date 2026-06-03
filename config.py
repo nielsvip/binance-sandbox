@@ -765,11 +765,13 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0
-    # 2026-06-02 USER anti-churn: first REENTRY_CHURN_GUARD_WINDOW_S after an exit, the reentry
-    # daemon requires a real Donchian breakout (dc_high4_3m/dc_low4_3m 4-bar if USE_4BAR, else
-    # dc_high_3m/dc_low_3m 1-bar) instead of a bare exit-price cross — stops the re-buy churn.
-    # After the window the bare exit-price cross fires as before. A/B USE_4BAR True vs False.
-    REENTRY_CHURN_GUARD_ENABLED: bool = True
+    # 2026-06-03 DISABLED — DO NOT re-enable in the daemon. The reentry DAEMON has NO indicators
+    # (Redis indicators:{sym} keys don't exist on its 6379 feed → dc_high4_3m always 0), so this
+    # guard fail-closed and blocked EVERY first-hour reentry (20k+ CHURN_GUARD blocks). The
+    # daemon runs purely on exit-price cross. Anti-churn (dc_high4_3m/dc_low4_3m 4-bar breakout
+    # for the first window after exit) must live in the QUEUE CONSUMER (ez_manage), which has
+    # real live indicators — NOT the daemon. Code kept (fail-open) but OFF until moved there.
+    REENTRY_CHURN_GUARD_ENABLED: bool = False
     REENTRY_CHURN_GUARD_WINDOW_S: float = 3600.0
     REENTRY_CHURN_GUARD_USE_4BAR: bool = True
     # 2026-06-02 under-reentry fix: when a winner exits near the top and the EXTREME WT-cross
