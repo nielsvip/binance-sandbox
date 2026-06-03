@@ -2321,16 +2321,21 @@ def simulate_one_symbol(
         return not bool(_b7_armed_any[i_bar])
 
     # ─── PHASE G 2026-05-19 GR filter pass mask precompute ─────────────────────
+    # 2026-06-03 USER MANDATE "FIX GR — it is the prime entrypoint": the GR filter was DEAD —
+    # it was only built when `_mtf_active` (the MTF small-entry system, default OFF), else hardcoded
+    # all-True → A/B proved toggling MTF_ENTRY_REQUIRE_GR_FILTER changed nothing. Now build the REAL
+    # GR mask whenever MTF_ENTRY_REQUIRE_GR_FILTER is on (regardless of _mtf_active) so GR actually
+    # gates the force-open + every entry that checks _gr_filter_mask.
+    _mtf_require_gr = bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True))
     try:
         from vec_paths.gr_filter_vec import build_gr_filter_mask
-        if _mtf_active and bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True)):
+        if _mtf_require_gr and bool(getattr(config, "MTF_GR_FILTER_ENABLED", True)):
             _gr_filter_mask = build_gr_filter_mask(npz, n, is_long, mode, config)
         else:
             _gr_filter_mask = np.ones(n, dtype=bool)
     except Exception as _e:
         sys.stderr.write(f"gr_filter_vec precompute failed {symbol}/{side}: {_e}\n")
         _gr_filter_mask = np.ones(n, dtype=bool)
-    _mtf_require_gr = bool(getattr(config, "MTF_ENTRY_REQUIRE_GR_FILTER", True))
 
     # ─── 2026-05-22 TOP_OF_RANGE_BLOCK precompute (post-ORDI prevention) ────
     if build_top_of_range_block_masks is not None:

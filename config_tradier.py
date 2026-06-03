@@ -1857,8 +1857,8 @@ class TradierConfig:
     # Source: tradier_grtf7_hunt sweep — best result tfs=3 ind=6 → pool_sharpe +0.2587
     # (3× baseline lift, 23 trades, dd=0% on 20-sym × 4mo, sub-floor [DIAGNOSTIC]).
     # ROLLBACK: HTF_MIN_TFS=0 (was 0 — gate fully OFF).
-    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # 2026-05-22 RESTORED 1→3: triage set 1 with no backtest. Stage-2 entry TFs=[1h,15m,5m]. ROLLBACK: 1 (triage). Prior locked: 3.
-    GOLDEN_RULE_MIN_IND: int = 5      # 2026-05-22 RESTORED 2→5: triage set 2 with no backtest. Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. ROLLBACK: 2 (triage).
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # 2026-06-03 BACKTESTED (290 syms): K=1 gain/mo +14.98% (2.67x b&h) > K=3 +8.69% (1.55x). Gate KEPT (>=1 HTF) but un-stricted — 3 was too strict (no-backtest triage). ROLLBACK: 3.
+    GOLDEN_RULE_MIN_IND: int = 2      # 2026-06-03 loosened 5→2 (5 was no-backtest triage; companion to MIN_TFS=1). ROLLBACK: 5.
     GR_DC_EXTENDED_LONG: float = 0.80  # 2026-05-13 sweep winner: DC=0.80+BB=0.75 pool_sharpe=0.0623 net (20sym LONG+SHORT gr_dcbb sweep)
     GR_BB_EXTENDED_LONG: float = 0.75  # 2026-05-13 sweep winner: confirmed 2-sym (0.69 net) and 20-sym tests
     # USER 2026-05-18: 2-stage activation/entry split (mirrors config.py crypto).
