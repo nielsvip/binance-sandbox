@@ -32,16 +32,16 @@ class Config:
 
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
-    MAX_POSITION_SIZE: float = 20.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
+    MAX_POSITION_SIZE: float = 200.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
     MAX_POSITION_SIZE_BTC: float = 2000.0  # 2026-03-30: Same rule for BTC. Was $6000.
-    MAX_POSITION_SIZE_MEN: float = 20.0  # 2026-03-30: Same. Was $1200.
-    MAX_POSITION_SIZE_FIN: float = 20.0  # 2026-03-30: Same. Was $4000.
+    MAX_POSITION_SIZE_MEN: float = 200.0  # 2026-03-30: Same. Was $1200.
+    MAX_POSITION_SIZE_FIN: float = 200.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
     MAX_ORDER_VALUE: float = 200.0  # 2026-03-30: 1/50 rule. Was $280.
-    MAX_ORDER_VALUE_MEN: float = 20.0  # Was $240.
-    MAX_ORDER_VALUE_FIN: float = 20.0  # Was $120.
-    START_POSITION_SIZE: float = 9.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
+    MAX_ORDER_VALUE_MEN: float =60.0  # Was $240.
+    MAX_ORDER_VALUE_FIN: float = 60.0  # Was $120.
+    START_POSITION_SIZE: float = 14.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
 
     # PnL Deterioration Settings
     PNL_DECAY_START_HOURS: int = 1  # HOURS
@@ -60,8 +60,8 @@ class Config:
     # 2026-04-28 user: "make sure commissions are included in the sell before loss !!!! that is the real bleed"
     # Maker fee is 0.02% per side = 0.04% round-trip. Taker is 0.05% per side = 0.10% round-trip.
     # Set buffer to 0.10% to cover worst case (taker close + slippage). Closing below this = NET LOSS.
-    COMMISSION_BUFFER_PCT: float = 0.10
-    REENTRY_PRICE_IMPROVE_PCT: float = 0.10  # require 0.10% price improvement vs exit before reentry
+    COMMISSION_BUFFER_PCT: float = 0.08
+    REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # require 0.10% price improvement vs exit before reentry
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
     MAX_AUGMENTS_PER_POSITION: int = 999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
