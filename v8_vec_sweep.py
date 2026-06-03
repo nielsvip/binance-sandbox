@@ -848,6 +848,17 @@ class SweepConfig:
     # Single-sym sweeps pass via SIM_ACCOUNT_KEY env var or via SweepConfig.
     PER_SYM_SIZE_MULTS: dict = field(default_factory=lambda: {"flz:ZECUSDC_LONG": 5.0})
     SIM_ACCOUNT_KEY: str = "flz"
+    # 2026-06-03 sma_200_15m DISTANCE size-ladder knobs (companion to _LadderReturns + _ladder_arr).
+    # RE-ADDED after a concurrent session SweepConfig edit dropped this block. Default OFF → mults 1.0
+    # → byte-identical baseline. Sweep mults/cap to find rungs; select on gain_vs_bh, pool_sharpe>0.1.
+    BREAKOUT_SIZE_LADDER_VEC_ENABLED: bool = False
+    BREAKOUT_SIZE_LADDER_VEC_T1_PCT: float = 1.0
+    BREAKOUT_SIZE_LADDER_VEC_T1_MULT: float = 1.5
+    BREAKOUT_SIZE_LADDER_VEC_T2_PCT: float = 1.5
+    BREAKOUT_SIZE_LADDER_VEC_T2_MULT: float = 2.0
+    BREAKOUT_SIZE_LADDER_VEC_T3_PCT: float = 2.5
+    BREAKOUT_SIZE_LADDER_VEC_T3_MULT: float = 3.0
+    BREAKOUT_SIZE_LADDER_VEC_MAX_MULT: float = 3.0
     # 2026-05-22 USER MANDATE: REAL bottom/top entry, ~1-2 per sym per day.
     # Replaces scattergun WT_3M/RZ_BASELINE/GR micro-fires when active.
     # See vec_paths/quality_bottom_entry.py for full rationale + factor list.
@@ -1039,8 +1050,9 @@ class SweepConfig:
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
     MTF_GR_FILTER_ENABLED: bool = True
     MTF_GR_MIN_TFS: int = 3
-    MTF_GR_MIN_IND: int = 5
-    MTF_GR_INVERT_DC_BB: bool = False
+    MTF_GR_MIN_IND: int = 7              # 2026-06-03 USER "FIX GR": A/B winner (12 syms) — breakout-mode min7 GR as universal entry gate lifts pool 0.4146→0.4355, per_sym 0.4529→0.4822 (cuts weak half). min8 collapses sample.
+    MTF_GR_INVERT_DC_BB: bool = True     # 2026-06-03 BREAKOUT mode (GR fires ON breakouts — intended). Room-mode (False) was inert/neutral and penalized the breakouts the force-open targets.
+    GR_FILTER_ALL_ENTRIES: bool = True   # 2026-06-03 USER "GR is the prime entrypoint": require GR-pass on EVERY entry (DELTA/GOLDEN_RULE/force-open), not just the 1.5% force-open path. REENTRY exempt.
     # 2026-05-19 Phase H2 — slowdown TF selector (3m noisy, 15m steadier)
     MTF_SLOWDOWN_TF: str = '3m'
     # 2026-05-19 Phase I — compound exit (ATR trail + GR exit + WT cross + DC/BB reject)
@@ -3326,6 +3338,14 @@ def simulate_one_symbol(
             # can apply. When knob OFF (default), helper returns False → no-op.
             if _b7_mtf_gate_blocks_entry(i, "OPEN", reason):
                 _b7_mtf_gate_blocks += 1
+                continue
+            # 2026-06-03 USER MANDATE "FIX GR — it is the prime entrypoint": require the GR filter to
+            # pass on EVERY entry (DELTA/GOLDEN_RULE/force-open alike), not just the 1.5% force-open path.
+            # GR becomes the universal confirmation gate. REENTRY exempt (carries its own logic).
+            if (bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
+                    and _mtf_require_gr
+                    and not bool(_gr_filter_mask[i])
+                    and "REENTRY" not in (reason or "").upper()):
                 continue
             ev = TradeEvent(
                 ts=bar_ts, type="OPEN", qty=new_qty, price=mark,

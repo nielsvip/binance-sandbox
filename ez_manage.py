@@ -25507,11 +25507,14 @@ class MultiAccountTradeManager:
             account_key, parsed_symbol, parsed_position_side = parse_position_key(
                 position_key
             )
-            if current_env["env"] == "server":
-                _server_active = await safe_check_server_heartbeat(account_key)
-                if not _server_active and account_key != "flz":
-                    pass  # Server not active, proceed normally (local is source of truth)
-            # NOTE: server heartbeat check DISABLED when running locally — server is in backtest mode, SSH timeouts waste 3s per order
+            # 2026-06-03 USER MANDATE — RE-ENABLED server-heartbeat order guard (S1 trades, Mac=testing only).
+            # Non-server box (Mac) refuses to EXECUTE a live order when the server has a FRESH heartbeat for
+            # this account. Server never blocks itself. Gated by SERVER_HEARTBEAT_BLOCK_ENABLED; fail-OPEN.
+            if (current_env["env"] != "server"
+                    and bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", True))
+                    and await safe_check_server_heartbeat(account_key)):
+                logger.warning(f"🛑 [SERVER_HEARTBEAT_BLOCK] {position_key}: S1 live-trading {account_key} (fresh heartbeat) — Mac refusing live order. action={action}")
+                return "BLOCKED_SERVER_HEARTBEAT_ACTIVE"
             MAX_EXECUTION_TIME = 35 if "SCALP" in reason else 90
             if "QUICK" in action:
                 logger.info(
@@ -27331,9 +27334,12 @@ class MultiAccountTradeManager:
         # execute_now via _ABSOLUTE_OPEN_LOCK (5min TTL). Blocking here would prevent
         # legitimate maker-fallback from completing the very order we want to fire.
         # The former ABSOLUTE_WEBHOOK_LOCK block lived here — removed.
-        # if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and 'QUICK' not in reason and account_key!='flz':
-        #     logger.warning(f"[SERVER_HEARTBEAT_BLOCK] {position_key}: Server active, blocking webhook.")
-        #     return False
+        # 2026-06-03 USER MANDATE — RE-ENABLED: non-server (Mac) refuses webhook when S1 live-trades this account.
+        if (current_env['env'] != 'server'
+                and bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", True))
+                and await safe_check_server_heartbeat(account_key)):
+            logger.warning(f"🛑 [SERVER_HEARTBEAT_BLOCK] {position_key}: S1 live-trading {account_key} — Mac blocking webhook.")
+            return False
         account_key, parsed_symbol, parsed_position_side = parse_position_key(
             position_key
         )

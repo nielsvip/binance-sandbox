@@ -10837,6 +10837,22 @@ class TradierTradeManager:
 
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None) -> str:
         if not is_regular_trading_hours(): return "MARKET_CLOSED"
+        # 2026-06-03 USER MANDATE — S1 = live trader, Mac = testing only (nor ez_ nor tradier_ execute live).
+        # On the non-server box (Mac=Darwin) refuse to place a live stock order when the server holds a
+        # FRESH heartbeat for this account. Lazy imports → no circular load; fail-OPEN. Mirror of ez_manage.
+        try:
+            import platform as _pf
+            if _pf.system() == "Darwin" and bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", True)):
+                try:
+                    from ez_manage import safe_check_server_heartbeat as _ssh_hb
+                    _srv_live = await _ssh_hb(account_key)
+                except Exception:
+                    _srv_live = False
+                if _srv_live:
+                    logger.warning(f"🛑 [SERVER_HEARTBEAT_BLOCK] {position_key}: S1 live-trading {account_key} — Mac (tradier) refusing live order. action={action}")
+                    return "BLOCKED_SERVER_HEARTBEAT_ACTIVE"
+        except Exception:
+            pass
         exec_lock_key = f"execute_now:{position_key}:{side}"
         MAX_EXECUTION_TIME = 120
         lock_acquired = False
@@ -11498,17 +11514,44 @@ class TradierTradeManager:
             # tra = cash account (ending 627), 4th GFV → account close risk.
             # 1 trade/day ensures absolute cash settlement control.
             if not is_reduce and account_key == 'tra':
+                _today_et = datetime.now(ZoneInfo("US/Eastern")).strftime('%Y%m%d')
                 if not hasattr(self, '_tra_daily_buy_count'):
                     self._tra_daily_buy_count = {'date': '', 'count': 0}
-                _today_et = datetime.now(ZoneInfo("US/Eastern")).strftime('%Y%m%d')
                 if self._tra_daily_buy_count['date'] != _today_et:
                     self._tra_daily_buy_count = {'date': _today_et, 'count': 0}
+                # 2026-06-03 RESTART-PROOF: the in-memory counter resets to 0 on any process
+                # restart, which would re-allow a 2nd buy the same day → GFV → account closure.
+                # Derive today's actual buys (OPEN/AUGMENT consume cash; REDUCE/CLOSE are sells)
+                # from the immutable /history/tra/ ledger and gate on the MAX of {memory, ledger}.
+                _hist_buys = 0
+                try:
+                    _tra_hist_dir = Path(config.BASE_PATH) / "data" / "history" / "tra"
+                    for _hf in _tra_hist_dir.glob("*.jsonl"):
+                        with open(_hf) as _hfh:
+                            for _ln in _hfh:
+                                if '"OPEN"' not in _ln and '"AUGMENT"' not in _ln:
+                                    continue
+                                try:
+                                    _ev = json.loads(_ln)
+                                except Exception:
+                                    continue
+                                if _ev.get("type") not in ("OPEN", "AUGMENT"):
+                                    continue
+                                try:
+                                    _edt = datetime.fromisoformat(str(_ev.get("ts") or _ev.get("timestamp") or "").replace("Z", "+00:00")).astimezone(ZoneInfo("US/Eastern"))
+                                except Exception:
+                                    continue
+                                if _edt.strftime('%Y%m%d') == _today_et:
+                                    _hist_buys += 1
+                except Exception as _he:
+                    logger.error(f"[TRA_DAILY_BUY_LIMIT] ledger count failed ({_he}) — using in-memory only")
                 _tra_max = int(getattr(config, 'TRA_MAX_BUYS_PER_DAY', 1))
-                if self._tra_daily_buy_count['count'] >= _tra_max:
-                    logger.critical(f"[TRA_DAILY_BUY_LIMIT] 🚨 {position_key}: already {self._tra_daily_buy_count['count']}/{_tra_max} buy(s) today ({_today_et}) — BUY BLOCKED to prevent GFV. reason={reason}")
+                _eff_buys = max(int(self._tra_daily_buy_count['count']), _hist_buys)
+                if _eff_buys >= _tra_max:
+                    logger.critical(f"[TRA_DAILY_BUY_LIMIT] 🚨 {position_key}: already {_eff_buys}/{_tra_max} buy(s) today ({_today_et}) [mem={self._tra_daily_buy_count['count']} ledger={_hist_buys}] — BUY BLOCKED to prevent GFV. reason={reason}")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
-                    return f"TRA_DAILY_BUY_LIMIT_{self._tra_daily_buy_count['count']}of{_tra_max}"
+                    return f"TRA_DAILY_BUY_LIMIT_{_eff_buys}of{_tra_max}"
             result = await self.place_order(  symbol, side, quantity, "market", duration="day",
                 action=action, position_side=position_side, account_key=account_key  )
             

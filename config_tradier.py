@@ -1220,7 +1220,7 @@ class TradierConfig:
     # WHY changed despite lower new-sweep sharpe: user explicit directive 2026-05-12,
     #     applying new BASELINE for forward-test alignment between vec and live.
     # ═══════════════════════════════════════════════════════════════════════════
-    WT_DC_ENTRY_THRESHOLD: float = 45  # 🚩 NEW BASELINE 2026-05-12 (was 0). ROLLBACK: set to 0.
+    WT_DC_ENTRY_THRESHOLD: float = 20  # 2026-06-03 BACKTESTED (290 syms, gain/mo vs b&h): 20→+14.41%/mo (2.57x, pool_sh 0.239) vs 45→+11.56%/mo (2.06x). Gate KEPT (drops zero-HTF-alignment entries) but un-stricted; 45 cost ~2.9%/mo. ROLLBACK: 45.
     # 🚩 NEW BASELINE 2026-05-12 — 3 additional gates for tradier WT_DC_ENTRY path.
     # Wired in tradier_manage.py:2027-2068. Source: vec_sweep dc45_h1_s40_grOFF.
     # ROLLBACK each to disabled value (commented inline).

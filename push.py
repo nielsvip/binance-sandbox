@@ -13,7 +13,9 @@ WORKINGSET_BASE = "/home/niels/binance/workingset"
 LOG_DIR = "/home/niels/logs"
 
 # Server2: backtest-only, no restart. Syncs live code into sandbox so backtests always use latest.
-SERVER2_HOST = "s2-int"
+# 2026-06-03: S2 destroyed 2026-05-08. Re-pointed the "sandbox parity" sync to S1's own
+# binance-sandbox so backtests on S1 always use the latest live code (was s2-int).
+SERVER2_HOST = "s1-int"
 SERVER2_SANDBOX = "/home/niels/binance-sandbox"
 # Files that backtest imports from sandbox (must stay current)
 SERVER2_SYNC_FILES = [
@@ -21,9 +23,6 @@ SERVER2_SYNC_FILES = [
     "tradier_rankings.py", "config_tradier.py", "config.py", "utils.py",
     "ez_manage.py", "ez_indicators.py", "ez_positions_quick.py", "ez_positions_service.py",
     "ez_reentry.py", "ez_reentry_daemon.py", "ez_reentry_vectorized.py",
-    "backtest_v5_full_tradier.py", "backtest_v5_engine.py", "backtest_v5_sweep.py",
-    "backtest_v5_harness.py", "backtest_v5_analyze.py",
-    "backtest_wt_intel_sweep.py",
     # Agent advisory bundle — paper-account agent-supervisor wiring (trc + fin)
     "trc_advisory_consumer.py", "fin_advisory_consumer.py",
     "agent_snapshot_writer.py", "compare_trc_trb.py", "agent_inbox_poller.py",
@@ -35,14 +34,12 @@ FILES = [
     "tradier_api.py", "tradier_prices.py", "tradier_positions.py", "tradier_indicators.py",
     "tradier_webhook_bridge.py", "tradier_rankings.py", "tradier_manage.py",
     # --- EZ (crypto) ---
-    "ez_manage.py", "ez_indicators.py", "ez_indicators_merger.py", "ez_prices.py", "ez_mark_prices.py",
-    "ez_prices_ws.py", "ez_crosses.py", "ez_rankings.py", "ez_klines.py", "ez_positions.py",
+    "ez_manage.py", "ez_indicators.py", "ez_prices.py",
+    "ez_crosses.py", "ez_rankings.py", "ez_klines.py", "ez_positions.py",
     "ez_positions_service.py", "ez_market_data.py", "ez_share_ind.py", "ez_news_scanner.py",
-    "ez_disk_cleanup.py", "ez_double.py", "ez_positions_backup_account.py", "ez_positions_backup.py",
+    "ez_disk_cleanup.py",
     "ez_positions_quick.py", "ez_positions_realtime.py",
     "ez_reentry.py", "ez_reentry_daemon.py", "ez_reentry_vectorized.py",
-    "ez_positions_realtime_ang.py", "ez_positions_realtime_fin.py", "ez_positions_realtime_flz.py",
-    "ez_positions_realtime_inf.py", "ez_positions_realtime_men.py", "ez_positions_watchdog.py",
     "ez_copilot.py", "trade_analytics.py",
     # --- Agent advisory bundle (paper-account supervisor channel) ---
     "trc_advisory_consumer.py", "fin_advisory_consumer.py",
@@ -53,9 +50,8 @@ FILES = [
     "symbols.json", "symbols_men.json", "symbols_fin.json", "symbols_tradier.json",
     # --- Templates ---
     "templates/stocks.html","CLAUDE.md",
-    # --- Backtest & docs ---
-    "100.md", "backtest_v5_sweep.py", "backtest_v5_engine.py", "backtest_v5_full_tradier.py",
-    "backtest_v5_harness.py", "backtest_v5_analyze.py",
+    # --- Docs ---
+    "100.md",
 ]
 
 # Shell/bash scripts pushed separately (not pulled — they're the authority)
@@ -101,130 +97,56 @@ def check_server_older(base_dir):
         if server_mtime > 0 and local_mtime > server_mtime:
             diff_s = local_mtime - server_mtime
             conflicts.append((f, diff_s))
+    # 2026-06-03: Mac is the SOLE source of truth (S1 = sweeps only). "Local newer than server"
+    # is the NORMAL, correct state — it just means we have code to push. Informational only,
+    # never blocks (the old 15s abort countdown was for the retired S1-as-live era).
     if conflicts:
-        log(f"ALERT: {len(conflicts)} file(s) are NEWER locally than on server!", "🚨")
-        log("This means the server version is OLDER — you may be pushing code that wasn't pulled from server first.", "🚨")
-        for fname, diff in conflicts:
-            m, s = divmod(diff, 60)
-            log(f"  {fname} — local is {m}m{s}s newer than server", "⚠️")
-        log("Run 'diff' against server before continuing. Ctrl+C to abort.", "⚠️")
-        print("\a")  # terminal bell
-        try:
-            for i in range(15, 0, -1):
-                print(f"\r  Continuing in {i}s... (Ctrl+C to abort)", end="", flush=True)
-                time.sleep(1)
-            print()
-        except KeyboardInterrupt:
-            log("Aborted by user.", "❌")
-            sys.exit(1)
+        log(f"{len(conflicts)} file(s) newer locally — will push to S1 (expected; Mac is source of truth).", "ℹ️")
     else:
-        log("All files in sync — server is same age or newer than local.", "✅")
+        log("All files in sync — server same age or newer than local.", "✅")
 
 def main():
     import platform
     if platform.system() != "Darwin":
-        print("FATAL: push.py must only run from the LOCAL Mac, not on the server!")
-        sys.exit(1)
-    start_time = time.time()
+        print("FATAL: push.py runs from the Mac dev box only."); sys.exit(1)
+    t0 = time.time()
     base_dir = Path(__file__).resolve().parent
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    workingset_folder = f"{WORKINGSET_BASE}/workingset_{timestamp}"
-
-    log("🚀 NUCLEAR DEPLOYMENT: STOP, DELETE, PUSH, RESTART", "🔥")
-
-    # GUARD: If server is in backtest-only mode, skip server sync and restart
-    rc_guard, out_guard, _ = run_cmd(f"ssh {REMOTE_USER_HOST} 'ls /home/niels/_binance_PAUSED* /home/niels/binance_scripts_paused 2>/dev/null | head -1'")
-    if rc_guard == 0 and out_guard.strip():
-        log(f"SERVER IN BACKTEST MODE ({out_guard.strip()}). Skipping server sync+restart. Local workingset only.", "🛑")
-        workingset_folder = f"{WORKINGSET_BASE}/workingset_{timestamp}"
-        run_cmd(f"ssh {REMOTE_USER_HOST} 'mkdir -p {workingset_folder}'")
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-            for item in FILES + SH_FILES: f.write(f"{item}\n")
-            f_list_all = f.name
-        run_cmd(f"rsync -avzu --no-perms --timeout=60 --files-from={f_list_all} {base_dir}/ {REMOTE_USER_HOST}:{workingset_folder}/")
-        os.unlink(f_list_all)
-        log(f"Archive saved to {workingset_folder}. Server NOT touched.", "✅")
-        elapsed = time.time() - start_time
-        log(f"DEPLOYMENT COMPLETE (local-only) in {elapsed:.1f}s", "✅")
-        return
-
-    # Check for files where server is OLDER than local — alert before overwriting server
-    check_server_older(base_dir)
-
-    # Process nuking and script deletion is now handled by sh.sh directly.
-
-    # 3. SYNC FRESH CODE
-    log("PUSHING NEW CODE TO LIVE + WORKINGSETS...", "⚡")
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-        for item in FILES: f.write(f"{item}\n")
-        f_list = f.name
-
+    log("BIDIRECTIONAL SYNC (pull if S1 newer / else push) -> S1, then conditional restart.", "🔄")
+    log("NOTE: on changes this FULL-restarts the S1 live stack (sh.sh). Ensure no other box trades these accounts.", "🛡️")
     all_files = FILES + SH_FILES
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-        for item in all_files: f.write(f"{item}\n")
-        f_list_all = f.name
-
-    try:
-        # Create directories
-        run_cmd(f"ssh {REMOTE_USER_HOST} 'mkdir -p {REMOTE_DIR} {WORKINGSET_BASE} {workingset_folder}'")
-        rsync_opts = "-avzu --no-perms --timeout=60"
-
-        # PULL: Download from server first — if server has a newer version, update local before pushing
-        log("Pulling latest from server (--update: only if server is newer)...", "⬇️")
-        rc_pull, _, err_pull = run_cmd(f"rsync {rsync_opts} --files-from={f_list} {REMOTE_USER_HOST}:{REMOTE_DIR}/ {base_dir}/")
-        if rc_pull != 0:
-            log(f"Pull from server failed (continuing anyway): {err_pull}", "⚠️")
-        else:
-            log("Pull complete — local is now up to date with server.", "✅")
-
-        # LIVE
-        log("Syncing to LIVE...", "📡")
-        rc1, _, err1 = run_cmd(f"rsync {rsync_opts} --files-from={f_list_all} {base_dir}/ {REMOTE_USER_HOST}:{REMOTE_DIR}/")
-        if rc1 != 0: log(f"LIVE Rsync FAILED: {err1}", "❌"); sys.exit(1)
-        
-        # WORKINGSET (LATEST) — REMOVED: was dumping stray .py files into workingset root
-        # Services run from /home/niels/binance/ directly (watchdog BASE_DIR fixed 2026-03-16)
-        # Only the dated ARCHIVE below is kept for rollback history
-
-        # HISTORICAL
-        log(f"Syncing to ARCHIVE: {workingset_folder}...", "📡")
-        run_cmd(f"rsync {rsync_opts} --files-from={f_list_all} {base_dir}/ {REMOTE_USER_HOST}:{workingset_folder}/")
-
-        log("ALL CODE SENT SUCCESSFULLY.", "✅")
-    finally:
-        for fl in [f_list, f_list_all]:
-            if os.path.exists(fl): os.unlink(fl)
-
-    # 4. RESTART
-    log("Restarting whole system via remote ./sh.sh...", "🔄")
-    restart_job = f"cd {REMOTE_DIR} && chmod +x sh.sh && ./sh.sh"
-    final_cmd = f"ssh {REMOTE_USER_HOST} 'nohup bash -c \"{restart_job}\" > {LOG_DIR}/push_restore.log 2>&1 &'"
-    run_cmd(final_cmd)
-
-    # 5. SYNC TO SERVER2 SANDBOX (no restart — backtest-only server)
-    # Ensures any backtest run on server2 uses the LATEST live code
-    log("Syncing live code to SERVER2 sandbox (no restart)...", "🖥️")
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f2:
-        for item in SERVER2_SYNC_FILES:
-            f2.write(f"{item}\n")
-        f2_list = f2.name
-    try:
-        rc2, _, err2 = run_cmd(f"rsync -avzu --no-perms --timeout=30 --files-from={f2_list} {base_dir}/ {SERVER2_HOST}:{SERVER2_SANDBOX}/")
-        if rc2 != 0:
-            log(f"Server2 sync failed (non-fatal): {err2}", "⚠️")
-        else:
-            # Clear stale bytecode cache on server2
-            run_cmd(f"ssh {SERVER2_HOST} 'find {SERVER2_SANDBOX} -name \"*.pyc\" -delete 2>/dev/null; find {SERVER2_SANDBOX} -name \"__pycache__\" -type d -exec rm -rf {{}} + 2>/dev/null; echo pycache_cleared'")
-            log("Server2 sandbox synced + pycache cleared.", "✅")
-    finally:
-        if os.path.exists(f2_list):
-            os.unlink(f2_list)
-
-    elapsed = time.time() - start_time
-    log(f"DEPLOYMENT COMPLETE in {elapsed:.1f}s", "✅")
+    remote_cmd = "stat --format='%n %Y' " + " ".join(f"{REMOTE_DIR}/{f}" for f in all_files) + " 2>/dev/null"
+    rc, out, _ = run_cmd(f"ssh {REMOTE_USER_HOST} \"{remote_cmd}\"", timeout=60)
+    server_times = {}
+    for line in (out or "").splitlines():
+        parts = line.rsplit(" ", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            server_times[parts[0].replace(f"{REMOTE_DIR}/", "")] = int(parts[1])
+    pulled, pushed = [], []
+    for f in all_files:
+        lp = base_dir / f
+        lm = int(lp.stat().st_mtime) if lp.exists() else 0
+        sm = server_times.get(f, 0)
+        if sm > lm + 1:                      # S1 newer -> PULL (preserve newer server edits)
+            rc, _, _ = run_cmd(f"rsync -az --no-perms {REMOTE_USER_HOST}:{REMOTE_DIR}/{f} {lp}")
+            if rc == 0: pulled.append(f)
+        elif lm > sm + 1:                    # local newer/new -> PUSH to live dir + sandbox
+            ok = True
+            for tgt in (REMOTE_DIR, SERVER2_SANDBOX):
+                rc, _, _ = run_cmd(f"rsync -az --no-perms --update {lp} {REMOTE_USER_HOST}:{tgt}/{f}")
+                ok = ok and rc == 0
+            if ok: pushed.append(f)
+    changed = pulled + pushed
+    log(f"pulled {len(pulled)} (S1 newer), pushed {len(pushed)}. changed={len(changed)}", "📦")
+    if pulled: log(f"PULLED from S1 (were newer there): {pulled}", "⬇️")
+    for tgt in (REMOTE_DIR, SERVER2_SANDBOX):
+        run_cmd(f"ssh {REMOTE_USER_HOST} 'find {tgt} -name \"*.pyc\" -delete 2>/dev/null; find {tgt} -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null'")
+    if changed:
+        log("Changes -> FULL restart of all ez_/tradier_ services via sh.sh.", "♻️")
+        run_cmd(f"ssh {REMOTE_USER_HOST} 'cd {REMOTE_DIR} && pkill -9 -f run_with_watchdog_LINUX 2>/dev/null; chmod +x sh.sh; nohup ./sh.sh > {LOG_DIR}/push_restart.log 2>&1 & disown'", timeout=120)
+    else:
+        log("No changes -> bounce ONLY ez_manage + ez_positions_quick (avoid bans); sh.sh idempotently restarts just those.", "♻️")
+        run_cmd(f"ssh {REMOTE_USER_HOST} 'cd {REMOTE_DIR} && pkill -9 -f \"ez_manage.py --account\" 2>/dev/null; pkill -9 -f \"ez_positions_quick.py\" 2>/dev/null; sleep 2; chmod +x sh.sh; nohup ./sh.sh > {LOG_DIR}/push_bounce.log 2>&1 & disown'", timeout=120)
+    log(f"DEPLOY+RESTART done in {time.time()-t0:.1f}s", "✅")
 
 if __name__ == "__main__":
     main()

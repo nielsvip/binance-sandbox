@@ -137,7 +137,7 @@ class Config:
     SCALP_V3_ENTRY_REQUIRE_K_TURNUP: bool = False
     SCALP_V3_ENTRY_BAR_1M_REQUIRE: str = "HH_AND_HL"
     SCALP_V3_ENTRY_BAR_3M_REQUIRE: str = "HH"
-    SCALP_V3_ENTRY_VOL_SPIKE_MULT: float = 1.5
+    SCALP_V3_ENTRY_VOL_SPIKE_MULT: float = 1.25
     # TF mode — SWEEP KNOB. Which TF bar(s) required:
     #   "1M_ONLY"        — 1m bar + 1m K only (no 3m bar needed)
     #   "3M_ONLY"        — 3m bar + 3m K only (no 1m bar needed) — backtest-friendly
@@ -784,6 +784,10 @@ class Config:
     RECENT_REDUCTION_GUARD_ENABLED: bool = False
     RECENT_REDUCTION_GUARD_WINDOW_S: float = 900.0
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
+    # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
+    # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
+    # double-trading. Fail-OPEN (Mac keeps managing positions until S1 is genuinely live). ROLLBACK: False.
+    SERVER_HEARTBEAT_BLOCK_ENABLED: bool = True
     # 2026-06-02 under-reentry fix: when a winner exits near the top and the EXTREME WT-cross
     # confirmation would block re-entry, allow it if the trend is still intact (price on the
     # right side of sma_200_15m). DEFAULT OFF — enable after A/B. Single-sourced in
@@ -1432,8 +1436,9 @@ class Config:
     MTF_ENTRY_REQUIRE_GR_FILTER: bool = True
     MTF_GR_FILTER_ENABLED: bool = True
     MTF_GR_MIN_TFS: int = 3                          # Phase I winner
-    MTF_GR_MIN_IND: int = 5                          # Phase I winner
-    MTF_GR_INVERT_DC_BB: bool = False
+    MTF_GR_MIN_IND: int = 7                          # 2026-06-03 USER "FIX GR": A/B winner (12 syms) breakout-mode min7 GR universal gate, pool 0.4146→0.4355 / per_sym 0.4529→0.4822. Live mtf_entry_filter_passes/gr_filter_pass read this key → live GR == vec GR.
+    MTF_GR_INVERT_DC_BB: bool = True                 # 2026-06-03 BREAKOUT mode (GR fires ON breakouts — golden_rule_htf intended use). Room mode was inert + penalized breakouts.
+    GR_FILTER_ALL_ENTRIES: bool = True               # 2026-06-03 USER "GR is the prime entrypoint": gate EVERY entry by GR. ACTIVE in vec (v8_vec_sweep). LIVE: force-open already GR-gated via mtf_entry_filter_passes; universal live gate (DELTA/GR-entry) is a pending follow-up.
     # ═══════════════════════════════════════════════════════════════════
     # GR v5 — Breakout-confirm (4h/D/W) → Bounce-entry (3m/15m/1h) state machine
     # User mandate 2026-05-18: replace simple-mult GR composite with strict two-phase
