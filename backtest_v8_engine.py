@@ -6105,9 +6105,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _ratio_pt = _lv_pt / max(_sv_pt, 1.0)
                 _ls_max_pt = float(getattr(_cfg_pt, 'LS_RATIO_MAX_TRADIER', 2.0))
                 _ls_min_pt = float(getattr(_cfg_pt, 'LS_RATIO_MIN_TRADIER', 0.5))
-                if position_side == 'LONG' and _ratio_pt > _ls_max_pt:
+                if position_side == 'LONG' and _ratio_pt > _ls_max_pt and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                     return f"BLOCKED_LS_RATIO_LONG_{_ratio_pt:.2f}gt{_ls_max_pt}"
-                if position_side == 'SHORT' and _ratio_pt < _ls_min_pt:
+                if position_side == 'SHORT' and _ratio_pt < _ls_min_pt and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                     return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
         if not is_reduce:
             _gr_min_tfs_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
@@ -6502,9 +6502,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _srs_e_pctb_key = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}.get(_srs_e_tf, 'bb_pct_b_1h')
                         _srs_e_pctb = float(_srs_e_ind.get(_srs_e_pctb_key, 0.5) or 0.5)
                         _srs_e_is_long = (str(position_side) == "LONG")
-                        if _srs_e_is_long and _srs_e_pctb >= 0.97:
+                        if _srs_e_is_long and _srs_e_pctb >= 0.97 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                             return f"BLOCKED_SRS_ENTRY_LONG_AT_TOP_pctb={_srs_e_pctb:.2f}"
-                        if (not _srs_e_is_long) and _srs_e_pctb <= 0.03:
+                        if (not _srs_e_is_long) and _srs_e_pctb <= 0.03 and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                             return f"BLOCKED_SRS_ENTRY_SHORT_AT_BOTTOM_pctb={_srs_e_pctb:.2f}"
                     except Exception as _srs_e_err:
                         v8_logger.warning(f"[V8_SRS_ENTRY_ERR] {position_key}: {_srs_e_err}")
@@ -6524,9 +6524,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _ratio_r = _lv_r / max(_sv_r, 1.0)
                     _ls_max_r = float(getattr(_cfg_r, 'LS_RATIO_MAX_TRADIER', 2.0))
                     _ls_min_r = float(getattr(_cfg_r, 'LS_RATIO_MIN_TRADIER', 0.5))
-                    if str(position_side) == 'LONG' and _ratio_r > _ls_max_r:
+                    if str(position_side) == 'LONG' and _ratio_r > _ls_max_r and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                         return f"BLOCKED_LS_RATIO_LONG_{_ratio_r:.2f}gt{_ls_max_r}"
-                    if str(position_side) == 'SHORT' and _ratio_r < _ls_min_r:
+                    if str(position_side) == 'SHORT' and _ratio_r < _ls_min_r and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                         return f"BLOCKED_LS_RATIO_SHORT_{_ratio_r:.2f}lt{_ls_min_r}"
                 # GOLDEN_RULE HTF gate — requires N timeframes each with M bullish indicators.
                 # min_tfs=0 means disabled (default). Wire GOLDEN_RULE_HTF_MIN_TFS≥1 to activate.

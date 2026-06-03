@@ -10414,22 +10414,26 @@ class TradierTradeManager:
 
         # 4. Entry/Augment Blockers — REENTRY and WT_D_BOUNCE_AUG are EXEMPT
         _is_wt_d_aug = "WT_D_BOUNCE_AUG" in str(reason)
-        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
+        # USER 2026-06-03 "keep getting bigger on every favorable WT bounce, NO EXCEPTIONS": the
+        # with-trend WT_3M_FORCE_OPEN build is add-to-STRENGTH (gated above-200MA + WT-favor upstream),
+        # NOT martingale — so it is exempt from the MIN_GAIN augment wall like REENTRY/WT_D_BOUNCE_AUG.
+        _is_wf_force_aug = ("WT_3M_FORCE_OPEN" in str(reason).upper()) and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_wf_force_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED — losing position (gain={position.gain:.2f}%)")
             return "BLOCKED_NO_GAIN"
-        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain <= 0:
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_wf_force_aug and position.gain <= 0:
             logger.warning(f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)")
             return "BLOCKED_NO_GAIN"
         # AUGMENT GUARD — NEVER augment an EXISTING position below MIN_GAIN (3%). The 0.5*MIN_GAIN rule
         # is ONLY for a BOUNCE reentry (an OPEN), never an augment or breakout (USER 2026-05-30).
         # REENTRY of a flat position is exempt via _is_reentry below — it OPENs at gain==0, no gain wait.
         _min_aug_gain = getattr(config, 'MIN_GAIN', 3.0)
-        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain < _min_aug_gain:
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_wf_force_aug and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
         # HARD WALL: position already open → NO buy of any kind without MIN_GAIN. No exceptions.
         _pos_qty_hw = abs(float(getattr(position, 'positionAmt', 0) or 0))
-        if not is_exit_action and not _is_wt_d_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+        if not is_exit_action and not _is_wt_d_aug and not _is_wf_force_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
             logger.warning(f"[HARD_MIN_GAIN_WALL] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED action={action}")
             return f"BLOCKED_MIN_GAIN_WALL_{position.gain:.2f}pct<{_min_aug_gain}pct"
 
