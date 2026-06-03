@@ -20314,7 +20314,11 @@ class MultiAccountTradeManager:
             "REVERSE",
             "REVERSE_AUGMENT",
         ]:
-            reason = f"{position_key}_{reason}_k_15m:{k_15m}_k_15mp:{k_15m_prev}_k_3m{k_3m}_ha3{ha_3m}"
+            _k_15m_rs = locals().get("k_15m", i.get("stoch_k_15m", 0))
+            _k_15m_prev_rs = locals().get("k_15m_prev", i.get("stoch_k_15m_prev", 0))
+            _k_3m_rs = locals().get("k_3m", i.get("stoch_k_3m", 0))
+            _ha_3m_rs = locals().get("ha_3m", i.get("ha_3m", "neutral"))
+            reason = f"{position_key}_{reason}_k_15m:{_k_15m_rs}_k_15mp:{_k_15m_prev_rs}_k_3m{_k_3m_rs}_ha3{_ha_3m_rs}"
         if not override_used:
             # CONVICTION SCALING DISABLED — backtest proved conviction scores have negative OOS Sharpe (-0.6 to -2.9)
             # Was: quantity = quantity * conviction / 100 (destroyed position sizes on good trades)
