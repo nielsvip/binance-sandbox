@@ -772,6 +772,11 @@ class Config:
     REENTRY_CHURN_GUARD_ENABLED: bool = True
     REENTRY_CHURN_GUARD_WINDOW_S: float = 3600.0
     REENTRY_CHURN_GUARD_USE_4BAR: bool = True
+    # 2026-06-02 under-reentry fix: when a winner exits near the top and the EXTREME WT-cross
+    # confirmation would block re-entry, allow it if the trend is still intact (price on the
+    # right side of sma_200_15m). DEFAULT OFF — enable after A/B. Single-sourced in
+    # vec_decisions/guaranteed_price_cross_reentry.py (live scalar == vec, parity-tested).
+    REENTRY_SMA200_BACKUP_ENABLED: bool = False
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
