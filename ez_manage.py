@@ -21921,7 +21921,9 @@ class MultiAccountTradeManager:
                 logger.error(f"[{account_key}] [MAKER_CRITICAL_FAIL] {position_key}: Symbol config missing for {symbol}")
                 await release_locks()
                 return False, 0.0
-            if ta == "OPEN":
+            # 2026-06-03 USER: re-add CLOSE foothold so exits announce their reason. send_foothold_webhook is
+            # direction-aware (sends close/decrease for the REDUCE side), so this reduces a first slice + logs reason.
+            if ta == "OPEN" or (ta == "REDUCE" and bool(getattr(config, "CLOSE_FOOTHOLD_ENABLED", True))):
                 foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
                 logger.info(f"⚓ [CENTRALIZED_FOOTHOLD] Sending foothold webhook for {position_key}: quantity={foothold_qty:.6f}")
                 await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
@@ -22826,6 +22828,30 @@ class MultiAccountTradeManager:
                         return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🟡 GR_FILTER_ALL_ENTRIES (USER 2026-06-03 "GR is the prime entrypoint"): EVERY fresh entry
+        # (DELTA / GOLDEN_RULE / force-open / etc.) must pass the GR filter — same breakout-mode min7
+        # GR as the backtest (mtf_live_evaluator.gr_filter_pass reads the SAME MTF_GR_* knobs as
+        # vec_paths.gr_filter_vec → live == backtest by construction). A/B proved GR breakout-min7 as a
+        # universal entry gate lifts pool 0.4146→0.4355. REENTRY / AUGMENT / CLOSE / REDUCE / HEDGE are
+        # exempt (adds to confirmed positions / exits). Fail-OPEN. ROLLBACK: GR_FILTER_ALL_ENTRIES=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (
+                bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
+                and symbol
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act)
+                and "REENTRY" not in _kill_act and "AUGMENT" not in _kill_act
+                and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                and "REENTRY" not in (reason or "").upper() and "HEDGE" not in (reason or "").upper()
+            ):
+                import mtf_live_evaluator as _mle_gr
+                _gr_ind = await ii(self, symbol)
+                if _gr_ind and not _mle_gr.gr_filter_pass(_gr_ind, position_side, "crypto", config):
+                    logger.warning(f"🟡 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} — GR filter fail (breakout min{int(getattr(config, 'MTF_GR_MIN_IND', 7))}). reason={(reason or '')[:50]}")
+                    return f"BLOCKED_GR_FILTER_{position_side}"
+        except Exception as _gre:
+            logger.warning(f"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 SCALPING HARD-GATE (USER 2026-05-30 ABSOLUTE): NO scalp open/reentry when disabled.
         # ═══════════════════════════════════════════════════════════════════════════

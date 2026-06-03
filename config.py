@@ -788,6 +788,8 @@ class Config:
     # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
     # double-trading. Fail-OPEN (Mac keeps managing positions until S1 is genuinely live). ROLLBACK: False.
     SERVER_HEARTBEAT_BLOCK_ENABLED: bool = True
+    # 2026-06-03 USER: re-add foothold on CLOSE/REDUCE so every exit announces its reason (was OPEN-only). ROLLBACK: False.
+    CLOSE_FOOTHOLD_ENABLED: bool = True
     # 2026-06-02 under-reentry fix: when a winner exits near the top and the EXTREME WT-cross
     # confirmation would block re-entry, allow it if the trend is still intact (price on the
     # right side of sma_200_15m). DEFAULT OFF — enable after A/B. Single-sourced in
