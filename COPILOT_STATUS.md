@@ -1,4 +1,4 @@
-# Copilot Status — 2026-06-03 06:14:49 UTC
+# Copilot Status — 2026-06-03 06:30:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trb:UUUU_SHORT — 2026-06-03T06:14:07
-- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T06:14:07
-- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T06:14:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:CF_LONG — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:IBIT_LONG — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:UAN_LONG — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:WDAY_SHORT — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:ADBE_SHORT — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:ACN_SHORT — 2026-06-03T06:28:27
+- **BIG_LOSER** [tradier] trc:NUE_SHORT — 2026-06-03T06:28:27
+- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T06:28:27
+- **RATIO_IMBALANCE** [crypto] ang — 2026-06-03T06:29:29
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 6 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 3 | **Reentered:** 0
 
 - HELD: **FIVN** LONG (tradier) peak +12.8%, now +-5.1%
-- HELD: **BCHUSDC** SHORT (crypto) peak +7.2%, now +-3.1%
+- HELD: **BEATUSDT** LONG (crypto) peak +5.6%, now +5.4%
 - HELD: **SLV** LONG (tradier) peak +5.6%, now +-0.9%
 - HELD: **ROBO** LONG (tradier) peak +5.1%, now +0.3%
-- HELD: **BEATUSDT** LONG (crypto) peak +3.7%, now +3.5%
 - HELD: **BG** LONG (tradier) peak +3.1%, now +-0.7%
 
 - WATCHING: **CIBR** LONG (tradier) peaked +21.2%, exited 0m ago
