@@ -2330,7 +2330,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if _r3hf_dc_basis_D > 0:
                     _r3hf_dc_break = (is_long and current_price < _r3hf_dc_basis_D) or ((not is_long) and current_price > _r3hf_dc_basis_D)
                     _r3hf_wt_flip = (is_long and _r3hf_w1_D < _r3hf_w2_D and _r3hf_w1_W < _r3hf_w2_W) or ((not is_long) and _r3hf_w1_D > _r3hf_w2_D and _r3hf_w1_W > _r3hf_w2_W)
-                    if _r3hf_dc_break or _r3hf_wt_flip:
+                    # 2026-06-03 USER MANDATE — KILL R3 CHURN: require the WT flip (Daily AND Weekly) to CONFIRM,
+                    # not a bare DC break. Price oscillating the daily DC basis flipped dc_break every few minutes →
+                    # buy-high/sell-low 1-share round-trips at ~0% gain (OKE/USO). ROLLBACK: R3_HTF_FLIP_REQUIRE_WT=False.
+                    _r3hf_require_wt = bool(_cfg('R3_HTF_FLIP_REQUIRE_WT', True, account_key, symbol, position_side))
+                    if ((_r3hf_dc_break and _r3hf_wt_flip) if _r3hf_require_wt else (_r3hf_dc_break or _r3hf_wt_flip)):
                         _r3hf_fire = True
                         _r3hf_tier = "DAILY"
                         _r3hf_detail = f"dc_break={_r3hf_dc_break}_wt_flip={_r3hf_wt_flip}_px={current_price:.4f}_dcBD={_r3hf_dc_basis_D:.4f}_w1D={_r3hf_w1_D:.2f}_w2D={_r3hf_w2_D:.2f}_w1W={_r3hf_w1_W:.2f}_w2W={_r3hf_w2_W:.2f}"
