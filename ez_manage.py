@@ -29051,6 +29051,10 @@ class MultiAccountTradeManager:
         logger.info("[MOMENTUM_WATCHDOG] started — every-minute force-open safety net for missed winners")
         if not hasattr(self, "_mom_watchdog_cd"):
             self._mom_watchdog_cd = {}
+        if not hasattr(self, "_wd_flip_state"):
+            self._wd_flip_state = {}
+        if not hasattr(self, "_wd_escalate_count"):
+            self._wd_escalate_count = {}
         while True:
             try:
                 await asyncio.sleep(float(getattr(config, "MOMENTUM_SMA_WATCHDOG_INTERVAL_S", 60.0)))
@@ -29066,49 +29070,92 @@ class MultiAccountTradeManager:
                         # SHORT px<dc_low_1h_prev) OR (b) is >pct beyond sma_200_15m — in BOTH cases with wt1_15m
                         # moving in favor (LONG rising / SHORT falling). NO wt ceiling (a ripping move IS overbought
                         # — that's the point). The OPEN bypasses MTF in execute_now (force-open).
+                        # 2026-06-03 USER MANDATE "BASIC FIX, applied 90× but ignored": the force-opener is now
+                        # the SINGLE comprehensive engine — (REQ1) sma_200_15m ±PCT% + 3m WT cross in favor;
+                        # (REQ3) multi-TF Donchian breakout (15m small → 1h HUGE → 4h/D bigger), NO wt filter on
+                        # the DC path; (REQ2) escalating reopen/augment 20/50/100/150% on each fresh 3m WT cross
+                        # in favor. Size is plumbed via override_qty so the TF ladder is REAL, not cosmetic.
+                        # Donchian fields exist live for 15m/1h/4h/D only (NO Weekly) — D is the top tier.
                         side = "LONG" if str(position_key).endswith("_LONG") else ("SHORT" if str(position_key).endswith("_SHORT") else None)
                         if side is None:
                             continue
-                        if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
-                            continue
                         account_key, symbol, pos_side = parse_position_key(position_key)
-                        if account_key not in config.ACCOUNT_KEYS:  # 2026-06-02 FIX: was self.account_keys (EMPTY on TradeManager → scanned=0, watchdog never opened ANYTHING). config.ACCOUNT_KEYS is the canonical live account filter (matches line ~7576 et al).
-                            continue  # this proc only opens its own account's keys (queue_trade_action also rejects mismatches)
-                        _wd_scanned += 1
-                        _sflag = "LONG_ENABLED" if side == "LONG" else "SHORT_ENABLED"
-                        if bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, side, _sflag, True)):
+                        if account_key not in config.ACCOUNT_KEYS:  # this proc only opens its own account's keys
                             continue
-                        _pct = float(_psym_get(symbol, side, "MOMENTUM_SMA_WATCHDOG_PCT", getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 1.0))) / 100.0
+                        _wd_scanned += 1
+                        _is_long = side == "LONG"
+                        _sflag = "LONG_ENABLED" if _is_long else "SHORT_ENABLED"
+                        _side_disabled = bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, side, _sflag, True))
                         position = await self.get_position(position_key)
                         _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
-                        if _amt > 0:
-                            continue
-                        _wd_flat += 1
                         ind = await ii(self, symbol)
                         if not ind:
                             continue
                         _sma15 = safe_fetch_float(ind.get("sma_200_15m", 0), 0.0)
                         _px = safe_fetch_float(ind.get("current_price", 0), 0.0)
-                        _w1 = safe_fetch_float(ind.get("wt1_15m", 0), 0.0)
-                        _w1p = safe_fetch_float(ind.get("wt1_15m_prev", _w1), _w1)
-                        _dch1 = safe_fetch_float(ind.get("dc_high_1h_prev", ind.get("dc_high_1h", 0)), 0.0)
-                        _dcl1 = safe_fetch_float(ind.get("dc_low_1h_prev", ind.get("dc_low_1h", 0)), 0.0)
-                        if _sma15 <= 0 or _px <= 0:
+                        if _px <= 0:
+                            _px = safe_fetch_float(getattr(position, "mark_price", 0), 0.0)
+                        if _px <= 0:
                             continue
-                        # 2026-06-02 USER "trades 100% identical": the FIRE decision now routes through the
-                        # SHARED single-source function vec_decisions.breakout_opener.entry_signal_scalar — the
-                        # SAME function the backtest calls (vector form) — so live entries == backtest entries by
-                        # construction. _pct is a fraction here; the shared fn wants percent.
-                        from vec_decisions import breakout_opener as _bko
-                        _is_long_bko = side == "LONG"
-                        _dc_trig = (_dch1 > 0 and _px > _dch1) if _is_long_bko else (_dcl1 > 0 and _px < _dcl1)
-                        if _bko.entry_signal_scalar(ind, _is_long_bko, _pct * 100.0):
-                            _wd_qual += 1
-                            self._mom_watchdog_cd[position_key] = time.time()
-                            _trg = "DC1H_BREAKOUT" if _dc_trig else "SMA15M"
-                            _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt15m{_w1:.1f}_{'rising' if side == 'LONG' else 'falling'}"
-                            logger.critical(f"🐶 [MOMENTUM_WATCHDOG] {position_key}: FORCE-OPEN ({_trg}) — {_reason}")
-                            await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0)
+                        _wt1_3m = safe_fetch_float(ind.get("wt1_3m", 0), 0.0)
+                        _wt2_3m = safe_fetch_float(ind.get("wt2_3m", 0), 0.0)
+                        _cross_fav = (_is_long and _wt1_3m > _wt2_3m) or ((not _is_long) and _wt1_3m < _wt2_3m)
+                        # ── REQ2: escalating reopen/augment on each FRESH 3m WT cross into favor ──
+                        if _amt > 0:
+                            if bool(getattr(config, "WATCHDOG_WT3M_ESCALATE_ENABLED", True)) and not _side_disabled:
+                                _prev_sign = self._wd_flip_state.get(position_key, 0)
+                                _cur_sign = 1 if _cross_fav else -1
+                                self._wd_flip_state[position_key] = _cur_sign
+                                if _cur_sign == 1 and _prev_sign != 1:
+                                    _ladder = list(getattr(config, "WATCHDOG_WT3M_ESCALATE_LADDER", [0.20, 0.50, 1.00, 1.50])) or [0.20]
+                                    _cnt = int(self._wd_escalate_count.get(position_key, 0))
+                                    _frac = _ladder[min(_cnt, len(_ladder) - 1)]
+                                    _add_usd = min(_amt * _px * _frac, float(getattr(config, "WATCHDOG_WT3M_ESCALATE_MAX_USD", 600.0)))
+                                    if _add_usd >= 5.0:
+                                        self._wd_escalate_count[position_key] = _cnt + 1
+                                        _er = f"WT_3M_FORCE_OPEN_ESCALATE_{side}_step{_cnt+1}_{int(_frac*100)}pct_wt3m{_wt1_3m:.1f}/{_wt2_3m:.1f}_addusd{_add_usd:.0f}"
+                                        logger.critical(f"🐶 [WATCHDOG_ESCALATE] {position_key}: fresh 3m WT cross in favor (#{_cnt+1}, +{int(_frac*100)}%) → AUGMENT ~${_add_usd:.0f}")
+                                        await queue_trade_action(self.order_queue, self, position_key, "AUGMENT", _er, 85.0, override_qty=(_add_usd / _px))
+                            continue
+                        # ── flat from here: force-open paths (REQ1 + REQ3) ──
+                        _wd_flat += 1
+                        self._wd_escalate_count.pop(position_key, None)
+                        self._wd_flip_state.pop(position_key, None)
+                        if _side_disabled:
+                            continue
+                        if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
+                            continue
+                        # REQ3: multi-TF Donchian breakout — pick the LARGEST TF broken; NO wt filter
+                        _tf_mult = {"15m": float(getattr(config, "WATCHDOG_DC_MULT_15M", 1.0)), "1h": float(getattr(config, "WATCHDOG_DC_MULT_1H", 4.0)), "4h": float(getattr(config, "WATCHDOG_DC_MULT_4H", 8.0)), "D": float(getattr(config, "WATCHDOG_DC_MULT_D", 16.0))}
+                        _dc_hit_tf = None
+                        if bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", True)):
+                            for _tf in list(getattr(config, "WATCHDOG_DC_TFS", ["15m", "1h", "4h", "D"])):
+                                if _is_long:
+                                    _lvl = safe_fetch_float(ind.get(f"dc_high_{_tf}", 0), 0.0)
+                                    if (_lvl > 0 and _px >= _lvl) or bool(ind.get(f"dc_high_crossover_{_tf}", False)):
+                                        _dc_hit_tf = _tf
+                                else:
+                                    _lvl = safe_fetch_float(ind.get(f"dc_low_{_tf}", 0), 0.0)
+                                    if (_lvl > 0 and _px <= _lvl) or bool(ind.get(f"dc_low_crossunder_{_tf}", False)):
+                                        _dc_hit_tf = _tf
+                        _trg = None; _usd = 0.0
+                        if _dc_hit_tf is not None:
+                            _usd = min(float(getattr(config, "WATCHDOG_DC_BASE_USD", 25.0)) * _tf_mult.get(_dc_hit_tf, 1.0), float(getattr(config, "WATCHDOG_DC_MAX_USD", 600.0)))
+                            _trg = f"DC_{_dc_hit_tf}_BREAKOUT"
+                        else:
+                            # REQ1: sma_200_15m ±pct + 3m WT cross in favor
+                            _fo_pct = float(_psym_get(symbol, side, "MOMENTUM_SMA_WATCHDOG_PCT", getattr(config, "MOMENTUM_SMA_WATCHDOG_PCT", 1.0))) / 100.0
+                            _sma_ok = (_is_long and _sma15 > 0 and _px > _sma15 * (1.0 + _fo_pct)) or ((not _is_long) and _sma15 > 0 and _px < _sma15 * (1.0 - _fo_pct))
+                            if _sma_ok and _cross_fav:
+                                _usd = float(getattr(config, "WATCHDOG_DC_BASE_USD", 25.0))
+                                _trg = "SMA15M_WT3M"
+                        if _trg is None:
+                            continue
+                        _wd_qual += 1
+                        self._mom_watchdog_cd[position_key] = time.time()
+                        _reason = f"MOMENTUM_WATCHDOG_{_trg}_{side}_px{_px:.6f}_wt3m{_wt1_3m:.1f}/{_wt2_3m:.1f}_usd{_usd:.0f}"
+                        logger.critical(f"🐶 [MOMENTUM_WATCHDOG] {position_key}: FORCE-OPEN ({_trg}) ~${_usd:.0f} — {_reason}")
+                        await queue_trade_action(self.order_queue, self, position_key, "OPEN", _reason, 90.0, override_qty=(_usd / _px))
                     except Exception as _wde:
                         logger.warning(f"[MOMENTUM_WATCHDOG] {position_key}: {_wde}")
                 logger.warning(f"[MOMENTUM_WATCHDOG] cycle: own-acct scanned={_wd_scanned} flat={_wd_flat} qualified/fired={_wd_qual} acct={config.ACCOUNT_KEYS}")
@@ -36381,15 +36428,17 @@ async def _process_single_override_check(
                         elif bool(_psym_get(_sym_z, _side_z, "WT_3M_FORCE_OPEN_ENABLED", True)):
                             _sma15_z = safe_fetch_float(_ind_z.get("sma_200_15m"), 0.0)
                             _wt1_3m_z = safe_fetch_float(_ind_z.get("wt1_3m"), 0.0)
-                            _wt1_3m_prev_z = safe_fetch_float(_ind_z.get("wt1_3m_prev"), _wt1_3m_z)
-                            _high_3m_z = safe_fetch_float(_ind_z.get("high_3m"), _px_z)
-                            _high_3m_prev_z = safe_fetch_float(_ind_z.get("high_3m_prev"), _high_3m_z)
-                            _low_3m_z = safe_fetch_float(_ind_z.get("low_3m"), _px_z)
-                            _low_3m_prev_z = safe_fetch_float(_ind_z.get("low_3m_prev"), _low_3m_z)
-                            _dist_ok_z = (_is_long_z and _sma15_z > 0 and _px_z > _sma15_z * 1.01) or (_is_short_z and _sma15_z > 0 and _px_z < _sma15_z * 0.99)
-                            _wt_dir_ok_z = (_is_long_z and _wt1_3m_z > _wt1_3m_prev_z) or (_is_short_z and _wt1_3m_z < _wt1_3m_prev_z)
-                            _bar_ok_z = (_is_long_z and not (_high_3m_z < _high_3m_prev_z and _low_3m_z < _low_3m_prev_z)) or (_is_short_z and not (_high_3m_z > _high_3m_prev_z and _low_3m_z > _low_3m_prev_z))
-                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _bar_ok_z
+                            # 2026-06-03 USER MANDATE FIX: "wt1_3m agrees" == the 3m WaveTrend CROSS
+                            # (LONG wt1_3m>wt2_3m / SHORT wt1_3m<wt2_3m). The prior code gated on a
+                            # NONEXISTENT field wt1_3m_prev (never produced live → defaulted to wt1_3m →
+                            # x>x → ALWAYS False) AND referenced an undefined _wt2_3m_z → this opener was
+                            # dead for weeks. Now: sma_200_15m ±PCT% + 3m WT cross in favor MUST open.
+                            # NO wick filter. GR-vote gate disabled in config. NOTHING may suppress this.
+                            _wt2_3m_z = safe_fetch_float(_ind_z.get("wt2_3m"), 0.0)
+                            _fo_pct_z = float(getattr(config, "WT_3M_FORCE_OPEN_SMA_PCT", 1.0)) / 100.0
+                            _dist_ok_z = (_is_long_z and _sma15_z > 0 and _px_z > _sma15_z * (1.0 + _fo_pct_z)) or (_is_short_z and _sma15_z > 0 and _px_z < _sma15_z * (1.0 - _fo_pct_z))
+                            _wt_dir_ok_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (_is_short_z and _wt1_3m_z < _wt2_3m_z)
+                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)

@@ -1344,7 +1344,8 @@ class Config:
     # MIN_TFS x MIN_IND_PER_TF: when MIN_TFS > 0, also require that many TFs to each
     # have >= MIN_IND_PER_TF indicators agree (3x5 = 3 TFs with 5+ indicators each).
     # Set MIN_TFS=0 to use total-vote-only gate (no per-TF floor).
-    WT_3M_FORCE_OPEN_GR_GATE_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_GR_GATE_ENABLED: bool = False  # 2026-06-03 USER MANDATE — PERMANENTLY OFF. The GR-vote gate (20 votes/4 TFs) blocked the sma±1%+wt1_3m force-opener 100% (0 fires). "NO FILTERS CAN STOP THIS." Adapt values, never re-enable.
+    WT_3M_FORCE_OPEN_SMA_PCT: float = 1.0  # 2026-06-03 USER: distance past sma_200_15m that mandates an open when 3m WT cross agrees (LONG px>sma*(1+pct/100) / SHORT px<sma*(1-pct/100)). Adapt value, never disable.
     # 2026-05-17 TIGHTENED per vec_top_combo_validator winners (56 syms × 1.25yr):
     # Top-25 winners (ps>0.5, trades>1k) are 25-of-25 LONG-side, all use 4-condition combos
     # with HTF (4h/D) WT confirm + K-extreme-low entry. Was VOTE_MIN=15/TFS=3/IND=5.
@@ -1766,6 +1767,33 @@ class Config:
     CONVICTION_SIZING_MAX: float = 8.0              # safety cap on conviction multiplier (crypto-validated cap; prevents runaway). ZEC size_mult ~3.3 -> base $45 x 3.3 ~= $147.
     MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
     MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
+    # ═══════════════════════════════════════════════════════════════════
+    # 2026-06-03 USER MANDATE — MULTI-TF DONCHIAN FORCE-OPEN + ESCALATING AUGMENT.
+    # "NOTHING can be flat below/above dc_low/high_15m, and a HUGE position below/above
+    #  dc_low/high_1h (bigger again for 4h, D). NEVER turn this off — adapt values only."
+    # The watchdog force-OPENs any flat tradeable key whose price is beyond the prev/raw
+    # Donchian channel of a TF (LONG px>=dc_high_{tf} or dc_high_crossover_{tf};
+    # SHORT px<=dc_low_{tf} or dc_low_crossunder_{tf}) — NO WaveTrend filter on the DC path.
+    # Size scales by the LARGEST TF broken (15m base → 1h huge → 4h/D bigger).
+    # NOTE: live indicator dict carries DC for 3m/15m/1h/4h/D only — there is NO Weekly DC
+    # field produced live yet, so 'W' is not wired (would require dc_high_W/dc_low_W in
+    # ez_indicators precompute — NOT fabricated). D is the top tier until W is added.
+    # ═══════════════════════════════════════════════════════════════════
+    WATCHDOG_DC_FORCE_OPEN_ENABLED: bool = True      # master — USER: never disable, adapt sizes only
+    WATCHDOG_DC_TFS: list = field(default_factory=lambda: ["15m", "1h", "4h", "D"])  # W absent live (see note)
+    WATCHDOG_DC_BASE_USD: float = 25.0               # 15m base notional
+    WATCHDOG_DC_MULT_15M: float = 1.0                # 15m → small
+    WATCHDOG_DC_MULT_1H: float = 4.0                 # 1h → HUGE
+    WATCHDOG_DC_MULT_4H: float = 8.0                 # 4h → bigger
+    WATCHDOG_DC_MULT_D: float = 16.0                 # D → biggest
+    WATCHDOG_DC_MAX_USD: float = 600.0               # hard safety cap on any single force-open notional
+    # Escalating reopen/augment on each fresh 3m WT cross in favor: 20% → 50% → 100% → 150%
+    # more of current position notional, capped. USER: "EVERY time wt1_3m turns in favor it
+    # reopens at 20/50/100/150% more." Pyramids WITH momentum (COUNTER_TREND_ADD_BLOCK still
+    # guards against adding against wt1_1h — anti-martingale preserved).
+    WATCHDOG_WT3M_ESCALATE_ENABLED: bool = True
+    WATCHDOG_WT3M_ESCALATE_LADDER: list = field(default_factory=lambda: [0.20, 0.50, 1.00, 1.50])
+    WATCHDOG_WT3M_ESCALATE_MAX_USD: float = 600.0    # cap per escalation add
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False # also require wt1_4h against (sharper); default just 1h per user mandate
