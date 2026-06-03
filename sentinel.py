@@ -454,6 +454,36 @@ def detect_logs(state):
     return incidents
 
 
+def detect_remote_live_logs(state):
+    """2026-06-03: scan S1's LIVE-TRADING logs (ez_manage_*/tradier_manage_*) for the SAME error
+    patterns as local detect_logs, so once trading runs on S1 a Traceback/ban/-1003/duplicate-order/
+    FATAL there raises a Mac desktop alert (LOG_ERROR) exactly like a local one. Read-only ssh; deduped
+    per cycle via a content hash so the same matches aren't re-alerted every loop."""
+    incidents = []
+    pat = "|".join(x.replace("(", "\\(") for x in LOG_PATTERNS)
+    rcmd = ("find /home/niels/logs -maxdepth 1 \\( -name 'ez_manage_*.log' -o -name 'tradier_manage_*.log' \\) -mmin -15 2>/dev/null "
+            "| head -20 | xargs -r tail -n 400 2>/dev/null "
+            "| grep -aE '" + pat + "' | grep -avE 'test |expected error|INFO' | tail -40")
+    for host, target in REMOTE_HOSTS:
+        if host != "s1":
+            continue
+        try:
+            rc, out = ssh(target, rcmd, timeout=12)
+        except Exception:
+            continue
+        if rc != 0 or not out or not out.strip():
+            continue
+        lines = [ln[:300] for ln in out.splitlines() if ln.strip()]
+        if not lines:
+            continue
+        h = hashlib.md5("\n".join(lines[-20:]).encode()).hexdigest()[:12]
+        if state.get("s1_livelog_hash") == h:
+            continue
+        state["s1_livelog_hash"] = h
+        incidents.append(("LOG_ERROR", {"log": "s1:ez_manage/tradier_manage(LIVE)", "hits": lines[:10], "count": len(lines)}))
+    return incidents
+
+
 def detect_http(state):
     import urllib.request, urllib.error, ssl
     incidents = []
@@ -575,6 +605,7 @@ def scan_once(state, cycle):
         a = time.time(); all_incidents.extend(detect_sweep_csvs(state)); t_csv = time.time() - a
         all_incidents.extend(detect_stuck_sweeps(state))
         a = time.time(); all_incidents.extend(detect_logs(state)); t_log = time.time() - a
+        all_incidents.extend(detect_remote_live_logs(state))  # 2026-06-03: S1 live-trading log errors → Mac desktop alert
         a = time.time(); all_incidents.extend(detect_http(state)); t_http = time.time() - a
         a = time.time(); all_incidents.extend(detect_cpu(state)); t_cpu = time.time() - a
         a = time.time(); pull_remote_incidents(state); t_rsync = time.time() - a
