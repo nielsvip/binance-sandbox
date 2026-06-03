@@ -1550,15 +1550,35 @@ def simulate_one_symbol(
     _wf_low = np.nan_to_num(npz.get("low_3m" if _wf_mode_crypto else "low_5m", close)).astype(np.float32)
     _wf_low_prev = np.nan_to_num(npz.get("low_3m_prev" if _wf_mode_crypto else "low_5m_prev", np.roll(_wf_low, 1))).astype(np.float32)
     _wf_low_prev[0] = _wf_low[0]
+    # 2026-06-03 USER PARITY (REQ1): force-open == live momentum_sma_watchdog_loop. "wt agrees"
+    # = the base-TF WT CROSS (wt1>wt2), NOT a phantom wt1_X_prev. The old np.roll(_wf_wt1_prev)
+    # direction DIVERGED from live (which used the never-produced wt1_X_prev → always-False, dead).
+    # NO wick filter. ±pct from config WT_3M_FORCE_OPEN_SMA_PCT (default 1.0). wt1_3m/wt2_3m here
+    # already alias wt1_5m/wt2_5m when 3m absent in NPZ (documented base-TF difference).
+    _wf_pct = float(getattr(config, "WT_3M_FORCE_OPEN_SMA_PCT", 1.0)) / 100.0
     if is_long:
-        _dist_ok = (_wf_anchor > 0) & (close > _wf_anchor * 1.01)
-        _wt_dir_ok = _wf_wt1 > _wf_wt1_prev
-        _bar_ok = ~((_wf_high < _wf_high_prev) & (_wf_low < _wf_low_prev))
+        _dist_ok = (_wf_anchor > 0) & (close > _wf_anchor * (1.0 + _wf_pct))
+        _wt_dir_ok = wt1_3m > wt2_3m
     else:
-        _dist_ok = (_wf_anchor > 0) & (close < _wf_anchor * 0.99)
-        _wt_dir_ok = _wf_wt1 < _wf_wt1_prev
-        _bar_ok = ~((_wf_high > _wf_high_prev) & (_wf_low > _wf_low_prev))
-    wt_3m_aligned = _dist_ok & _wt_dir_ok & _bar_ok
+        _dist_ok = (_wf_anchor > 0) & (close < _wf_anchor * (1.0 - _wf_pct))
+        _wt_dir_ok = wt1_3m < wt2_3m
+    wt_3m_aligned = _dist_ok & _wt_dir_ok
+    # 2026-06-03 USER PARITY (REQ3): multi-TF Donchian force-open (NO wt filter) — mirrors live
+    # momentum_sma_watchdog_loop. LONG: close>=dc_high_{tf} OR dc_high_crossover_{tf}; SHORT:
+    # close<=dc_low_{tf} OR dc_low_crossunder_{tf}. TFs 15m/1h/4h/D (NO Weekly in live or NPZ).
+    # The TF size-ladder (15m small → D huge) is a LIVE execution detail; this per-trade-return
+    # engine models the ENTRY only — pool_sharpe is size-independent. Gated WATCHDOG_DC_FORCE_OPEN_ENABLED.
+    _force_dc_mask = np.zeros(n, dtype=bool)
+    if bool(getattr(config, "WATCHDOG_DC_FORCE_OPEN_ENABLED", True)):
+        for _fdc_tf in list(getattr(config, "WATCHDOG_DC_TFS", ["15m", "1h", "4h", "D"])):
+            if is_long:
+                _fdc_lvl = np.nan_to_num(npz.get(f"dc_high_{_fdc_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+                _fdc_xo = np.asarray(npz.get(f"dc_high_crossover_{_fdc_tf}", np.zeros(n, dtype=bool))).astype(bool)
+                _force_dc_mask = _force_dc_mask | (((_fdc_lvl > 0) & (close >= _fdc_lvl)) | _fdc_xo)
+            else:
+                _fdc_lvl = np.nan_to_num(npz.get(f"dc_low_{_fdc_tf}", np.zeros(n, dtype=np.float32)), nan=0.0).astype(np.float32)
+                _fdc_xu = np.asarray(npz.get(f"dc_low_crossunder_{_fdc_tf}", np.zeros(n, dtype=bool))).astype(bool)
+                _force_dc_mask = _force_dc_mask | (((_fdc_lvl > 0) & (close <= _fdc_lvl)) | _fdc_xu)
     # wt1_3m against the trade (required by GR exit and hedge trigger)
     _wt3m_against = (wt1_3m < wt2_3m) if is_long else (wt1_3m > wt2_3m)
     # WT against for hedge trigger (15m and 1h)
@@ -2530,6 +2550,7 @@ def simulate_one_symbol(
             | _rz_break_mask.astype(bool)
             | _rz_cascade_entry.astype(bool)
             | (_mom_break_long_mask.astype(bool) if is_long else _mom_break_short_mask.astype(bool))
+            | _force_dc_mask.astype(bool)
         )
         _flat_event_indices = np.flatnonzero(_flat_event_mask)
         _fast_path_enabled = True
@@ -3022,6 +3043,8 @@ def simulate_one_symbol(
             _rz_cascade_ok = bool(_rz_cascade_entry[i])
             # 2026-05-26 MOMENTUM_BREAKOUT — fires the bar of the breakout (USER MANDATE).
             _mom_break_ok = bool(_mom_break_long_mask[i]) if is_long else bool(_mom_break_short_mask[i])
+            # 2026-06-03 USER PARITY (REQ3) — multi-TF Donchian force-open (NO wt filter)
+            _force_dc_ok = bool(_force_dc_mask[i])
             # 2026-05-22 QUALITY_BOTTOM_ENTRY — REAL bottom/top detector (USER mandate)
             _qb_ok = bool(_qb_fire_mask[i])
             # Daily-cap on quality entries (~1-2/day target)
@@ -3092,7 +3115,7 @@ def simulate_one_symbol(
                     # quality entry fires — count it
                     state.quality_entries_today += 1
             else:
-                if not (_b5_entry_result is not None or fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok):
+                if not (_b5_entry_result is not None or fire_block or wt_open_ok or (_gr_result is not None) or (_delta_result is not None) or _b15_ok or _connors_ok or _ra_ok or _qb_ok or _bb_break_ok or _brs_ok or _btc_ok or _rz_break_ok or _rz_cascade_ok or _mom_break_ok or _force_dc_ok):
                     continue
                 if _qb_ok:
                     state.quality_entries_today += 1
@@ -3210,6 +3233,20 @@ def simulate_one_symbol(
                 _prev_arr = npz.get(_prev_key)
                 _prev_v = float(_prev_arr[i-1]) if (_prev_arr is not None and i > 0) else 0.0
                 reason = f"MOMENTUM_BREAKOUT_{'LONG' if is_long else 'SHORT'}_{_tf}_px{mark:.4f}_dc{_prev_v:.4f}"
+            elif _force_dc_ok and not wt_open_ok:
+                # 2026-06-03 USER PARITY (REQ3) — multi-TF Donchian force-open. Reason mirrors live
+                # momentum_sma_watchdog_loop MOMENTUM_WATCHDOG_DC_{tf}_BREAKOUT. Pick LARGEST TF hit.
+                _fdc_hit = ""
+                for _fdc_tf2 in list(getattr(config, "WATCHDOG_DC_TFS", ["15m", "1h", "4h", "D"])):
+                    if is_long:
+                        _fdc_l2 = float(npz.get(f"dc_high_{_fdc_tf2}", np.zeros(n))[i]) if f"dc_high_{_fdc_tf2}" in npz else 0.0
+                        if (_fdc_l2 > 0 and mark >= _fdc_l2) or bool(npz.get(f"dc_high_crossover_{_fdc_tf2}", np.zeros(n, dtype=bool))[i]):
+                            _fdc_hit = _fdc_tf2
+                    else:
+                        _fdc_l2 = float(npz.get(f"dc_low_{_fdc_tf2}", np.zeros(n))[i]) if f"dc_low_{_fdc_tf2}" in npz else 0.0
+                        if (_fdc_l2 > 0 and mark <= _fdc_l2) or bool(npz.get(f"dc_low_crossunder_{_fdc_tf2}", np.zeros(n, dtype=bool))[i]):
+                            _fdc_hit = _fdc_tf2
+                reason = f"MOMENTUM_WATCHDOG_DC_{_fdc_hit or '15m'}_BREAKOUT_{'LONG' if is_long else 'SHORT'}_px{mark:.6f}"
             else:
                 # 2026-05-27 BATCH 6 NAMING ALIGNMENT — emit live's exact format
                 # (ez_manage.py:19969+: WT_3M_FORCE_OPEN_{LONG|SHORT}_wt1=N_wt2=N_pxN).

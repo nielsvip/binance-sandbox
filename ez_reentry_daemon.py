@@ -404,10 +404,14 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
                     _cg_lvl = float(_ind.get(_cg_key, 0) or 0)
                 except Exception:
                     _cg_lvl = 0.0
-            _cg_ok = _cg_lvl > 0 and ((cur_px > _cg_lvl * 1.001) if is_long else (cur_px < _cg_lvl * 0.999))
-            if not _cg_ok:
-                logger.info(f"[DAEMON] CHURN_GUARD blocked {pk}: {now - exit_ts:.0f}s since exit (<{_cfg_float('REENTRY_CHURN_GUARD_WINDOW_S', 3600.0):.0f}s), needs {'dc4' if _cg_4bar else 'dc'}_3m breakout (cur={cur_px:g} lvl={_cg_lvl:g})")
-                continue
+            # FAIL-OPEN: only ENFORCE the churn-guard when we actually have the dc level. If the
+            # field is missing (lvl<=0, e.g. dc_high4_3m not in Redis), DO NOT block — otherwise a
+            # missing indicator silently kills EVERY reentry inside the window. (2026-06-03 regression fix.)
+            if _cg_lvl > 0:
+                _cg_ok = (cur_px > _cg_lvl * 1.001) if is_long else (cur_px < _cg_lvl * 0.999)
+                if not _cg_ok:
+                    logger.info(f"[DAEMON] CHURN_GUARD blocked {pk}: {now - exit_ts:.0f}s since exit (<{_cfg_float('REENTRY_CHURN_GUARD_WINDOW_S', 3600.0):.0f}s), needs {'dc4' if _cg_4bar else 'dc'}_3m breakout (cur={cur_px:g} lvl={_cg_lvl:g})")
+                    continue
         _gate_reason_tag = "CONFIRM_DISABLED"
         if not is_dc_breakout and _cfg_bool("REENTRY_CONFIRMATION_GATES_ENABLED", True) and _ind:
             from ez_reentry import check_reentry_confirmation as _chk_re

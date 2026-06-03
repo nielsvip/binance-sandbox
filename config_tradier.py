@@ -2274,7 +2274,7 @@ class TradierConfig:
     #   • TF LADDER: bigger as more TFs confirm — 3m bounce = base, +15m, +1h, +4h, +D each scale up
     WT_3M_FORCE_OPEN_USE_SMA200: bool = True            # anchor sma_200_15m (user spec) vs ema_200_15m
     WT_3M_FORCE_OPEN_BUILD_TO_TARGET: bool = True       # keep adding (with-trend, on 3m WT bounce) until target
-    WT_3M_FORCE_OPEN_TARGET_USD: float = 15000.0        # per-symbol target notional for a confirmed winner
+    WT_3M_FORCE_OPEN_TARGET_USD: float = 50000.0        # per-symbol target notional for a confirmed winner
     WT_3M_FORCE_OPEN_TF_LADDER: bool = True             # scale size by # of HTFs (15m/1h/4h/D) confirming
     WT_3M_FORCE_OPEN_TF_LADDER_MULT: float = 1.0        # extra ×mult per confirming HTF (3m base ×1, +1.0 each)
     WT_3M_FORCE_OPEN_DIST_PCT: float = 0.0              # required % beyond sma_200_15m (0 = just "above"); set >0 for a buffer

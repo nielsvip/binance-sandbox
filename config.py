@@ -1792,7 +1792,7 @@ class Config:
     # reopens at 20/50/100/150% more." Pyramids WITH momentum (COUNTER_TREND_ADD_BLOCK still
     # guards against adding against wt1_1h — anti-martingale preserved).
     WATCHDOG_WT3M_ESCALATE_ENABLED: bool = True
-    WATCHDOG_WT3M_ESCALATE_LADDER: list = field(default_factory=lambda: [0.20, 0.50, 1.00, 1.50])
+    WATCHDOG_WT3M_ESCALATE_LADDER: list = field(default_factory=lambda: [1.00, 2.00, 3.00, 5.00])  # 2026-06-03 USER MANDATE: re-enter/add at 100-500% of position on each fresh favorable continuation so price can never recover/continue without us holding MORE than before. Was [0.20,0.50,1.00,1.50]. Per-add still bounded by WATCHDOG_WT3M_ESCALATE_MAX_USD (account-size rail). Exact rungs to be refined by the 4yr A/B ("unless backtest chose other multipliers"). ROLLBACK: restore [0.20,0.50,1.00,1.50].
     WATCHDOG_WT3M_ESCALATE_MAX_USD: float = 600.0    # cap per escalation add
     # USER 2026-05-30 ABSOLUTE: NOTHING stays open on a sharp move the other way; martingale destroyed everywhere.
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side

@@ -2522,8 +2522,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
                     _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m)), _wf_wt2_5m)
                     _above = (is_long and _wf_anchor > 0 and current_price > _wf_anchor * (1.0 + _wf_buf)) or ((not is_long) and _wf_anchor > 0 and current_price < _wf_anchor * (1.0 - _wf_buf))
-                    _moving = (is_long and _wf_wt1_5m >= _wf_wt1_5m_prev) or ((not is_long) and _wf_wt1_5m <= _wf_wt1_5m_prev)
-                    if _above and _moving and current_price > 0:
+                    # USER 2026-06-03 ABSOLUTE: WT must be GOING the right way — WT-against = NO add/hold,
+                    # no exceptions. WT-in-favor = keep adding bigger. wt1_5m rising AND not below its signal.
+                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), _wf_wt1_5m)
+                    _wt_favor = (is_long and _wf_wt1_5m > _wf_wt1_5m_prev and _wf_wt1_5m >= _wf_wt2_5m) or ((not is_long) and _wf_wt1_5m < _wf_wt1_5m_prev and _wf_wt1_5m <= _wf_wt2_5m)
+                    if _above and _wt_favor and current_price > 0:
                         _wf_mult = 1.0
                         if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
                             _lm = float(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER_MULT', 1.0))
@@ -3933,11 +3936,15 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 quantity = max(1, int(quantity * (0.7 + _perf_mult * 0.3)))
             except Exception:
                 pass
-        max_order_value = config.MAX_ORDER_VALUE
+        # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
+        # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
+        # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.
+        _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+        max_order_value = (float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0)) if _wf_force else config.MAX_ORDER_VALUE)
         order_value = quantity * current_price
         if order_value > max_order_value:
             quantity = int(max_order_value / current_price)
-            if config.VERBOSE: logger.debug(f"[queue_trade_action] {symbol} quantity adjusted to {quantity} to respect MAX_ORDER_VALUE={max_order_value}")
+            if config.VERBOSE: logger.debug(f"[queue_trade_action] {symbol} quantity adjusted to {quantity} to respect max_order_value={max_order_value}")
         if quantity <= 0:
             return False
         
@@ -5976,7 +5983,12 @@ class StockStrategy:
             log_parts.append("🚀EXCEPTION_BOOST(3x)")
             
         if "RECOVERY" in reason.upper(): is_exception = True
+        # USER 2026-06-03 NO-EXCEPTIONS: the with-trend WT_3M_FORCE_OPEN build is bounded by the
+        # DG per-fire notional + the force-open target, NOT the small per-order / per-position caps.
+        _wf_force = ("WT_3M_FORCE_OPEN" in reason.upper()) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
         max_usd = self.limit_exception_order if is_exception else self.limit_normal_order
+        if _wf_force:
+            max_usd = max(max_usd, float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0)))
         
         # B. Calculate proposed USD value
         proposed_usd = qty * current_price
@@ -6008,6 +6020,8 @@ class StockStrategy:
         positionAmt = abs(float(getattr(position, 'positionAmt', 0)))
         current_val = positionAmt * current_price
         max_Total = self.limit_total_pos  # ALWAYS cap total position — REENTER can boost single order but never exceed per-position max
+        if _wf_force:  # USER 2026-06-03: with-trend build grows to the force-open target, not the $1250 cap
+            max_Total = max(max_Total, float(getattr(config, "WT_3M_FORCE_OPEN_TARGET_USD", 50000.0)))
         room_usd = max_Total - current_val
         if room_usd <= 0:
             qty = 0.0
