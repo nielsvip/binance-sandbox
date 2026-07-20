@@ -113,11 +113,39 @@ def git_commit():
         log(f"git commit failed: {e}")
 
 
+GITHUB_REMOTE = "github-main"
+GITHUB_SSH_KEY = Path.home() / ".ssh" / "id_ed25519_github_binance_main"
+
+
+def git_push():
+    """One-way mirror of HEAD to GitHub. NEVER fetch/pull/merge/reset here —
+    Mac is the live-trading source of truth (CLAUDE.md); this repo must never
+    pull code back down from GitHub. No-ops until GITHUB_REMOTE is configured."""
+    r = subprocess.run(["git", "remote", "get-url", GITHUB_REMOTE], cwd=str(REPO),
+                      capture_output=True, text=True)
+    if r.returncode != 0:
+        return
+    env = os.environ.copy()
+    env["GIT_SSH_COMMAND"] = f"ssh -i {GITHUB_SSH_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+    try:
+        r = subprocess.run(["git", "push", GITHUB_REMOTE, "HEAD:main"], cwd=str(REPO),
+                          env=env, timeout=60, capture_output=True, text=True)
+        if r.returncode == 0:
+            log("git push: OK")
+        elif "up-to-date" in (r.stdout + r.stderr).lower() or "up to date" in (r.stdout + r.stderr).lower():
+            log("git push: up to date")
+        else:
+            log(f"git push failed: {(r.stderr or r.stdout).strip()[:300]}")
+    except Exception as e:
+        log(f"git push failed: {e}")
+
+
 log("AUTOSAVE STARTED — 15 min cycles, file backups + git commit")
 while True:
     try:
         backup_cycle()
         git_commit()
+        git_push()
     except Exception as e:
         log(f"ERROR: {e}")
     time.sleep(900)  # 15 minutes

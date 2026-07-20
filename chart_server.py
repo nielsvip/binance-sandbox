@@ -463,6 +463,37 @@ def focus4_page():
                                                       r.get("delta_vs_bh") or 0, r.get("trades"),
                                                       r.get("max_dd_pct")))
                 html.append("</table>")
+    live = _load("data/_diagnostic/ofat_live.json", {}) or {}
+    if live:
+        al = live.get("alarms") or []
+        if al:
+            html.append("<h2 style='color:#ff6b6b'>&#9888; EMERGENCY-BRAKE ALARMS</h2><ul>"
+                        + "".join("<li style='color:#ff6b6b'>%s</li>" % a for a in al) + "</ul>")
+        html.append("<h2>OFAT LIVE &mdash; %s</h2><p class=dim>cells=%s &middot; params_covered=%s &middot; "
+                    "zero-delta=%s &middot; zero-trade=%s &middot; better=%s / worse=%s</p>" % (
+                        live.get("campaign"), live.get("cells"), live.get("params_covered"),
+                        live.get("zero_delta"), live.get("zero_trades"), live.get("better"), live.get("worse")))
+        pk = live.get("per_key") or {}
+        if pk:
+            html.append("<table><tr><th class=l>key</th><th>cells</th><th>avg &Delta;gain/mo</th>"
+                        "<th>min</th><th>max</th></tr>")
+            for k, v in sorted(pk.items()):
+                cls = "g" if (v.get("avg_delta") or 0) > 0 else ("r" if (v.get("avg_delta") or 0) < 0 else "")
+                html.append("<tr><td class=l>%s</td><td>%s</td><td class='%s'>%s</td><td>%s</td><td>%s</td></tr>" % (
+                    k, v.get("cells"), cls, v.get("avg_delta"), v.get("min_delta"), v.get("max_delta")))
+            html.append("</table>")
+        lat = live.get("latest") or []
+        if lat:
+            html.append("<h2>latest cells (newest first)</h2><table><tr><th class=l>key</th><th class=l>param</th>"
+                        "<th class=l>value</th><th>gain/mo</th><th>&Delta;</th><th>trades</th><th class=l>when</th></tr>")
+            for r in lat:
+                d0 = r.get("delta")
+                cls = "g" if (d0 or 0) > 0 else ("r" if (d0 or 0) < 0 else "dim")
+                html.append("<tr><td class=l>%s_%s</td><td class=l>%s</td><td class=l>%s</td><td>%s</td>"
+                            "<td class='%s'>%s</td><td>%s</td><td class=l>%s</td></tr>" % (
+                                r.get("symbol"), r.get("side"), r.get("param"), r.get("value"),
+                                r.get("gain_mo"), cls, d0, r.get("trades"), (r.get("ts") or "")[:19]))
+            html.append("</table>")
     prog = ""
     try:
         prog = (base / "data/_diagnostic/ofat_progress.txt").read_text()[:4000]

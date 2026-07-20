@@ -679,8 +679,11 @@ def build_tv_bias_section():
 
         assessments = brief.get("assessments", {})
 
-        # Collect currently held symbols from trb position files + options
-        held_syms = set()
+        # Collect currently held symbols from trb position files + options,
+        # keyed to the side actually held (assessments are now stored per-side
+        # since ~16 symbols appear in both the long and short trb universes —
+        # a flat assessments[sym] would silently show the wrong side's verdict).
+        held_syms = {}
         try:
             for side in ("long", "short"):
                 pos_path = BASE / "trb" / f"{side}_positions.json"
@@ -689,19 +692,19 @@ def build_tv_bias_section():
                         if float(v.get("positionAmt", 0) or 0) > 0:
                             sym = v.get("symbol") or key.rsplit("_", 1)[0].split(":")[-1]
                             if sym:
-                                held_syms.add(sym)
+                                held_syms[sym] = side
             opts_path = BASE / "trb" / "options_positions.json"
             if opts_path.exists():
                 for p in json.loads(opts_path.read_text()).get("positions", []):
-                    if p.get("qty", 0) > 0:
-                        held_syms.add(p["underlying"])
+                    if p.get("qty", 0) > 0 and p.get("underlying"):
+                        held_syms[p["underlying"]] = "short" if p.get("option_type") == "PUT" else "long"
         except Exception:
             pass
 
         tbl_header = '<tr><th>Symbol</th><th>Signal</th><th>Confidence</th><th>TF Alignment</th><th>Assessment</th><th>Caution</th></tr>'
 
         # ── Section 1: Open positions first ──────────────────────────────
-        held_with_data = [(s, assessments[s]) for s in sorted(held_syms) if s in assessments]
+        held_with_data = [(s, assessments[s][held_syms[s]]) for s in sorted(held_syms) if s in assessments and held_syms[s] in assessments[s]]
         if held_with_data:
             html += '<p class="b" style="margin-top:12px">Open positions — WT bias:</p><table>' + tbl_header
             for sym, a in held_with_data:
@@ -711,15 +714,15 @@ def build_tv_bias_section():
             html += "</table>"
 
         # ── Section 2: Top HIGH-confidence picks from the trb universe ───
-        for label, list_key, pill_cls in (
-            ("High-confidence BUY setups (trb long universe)", "top_buys", "pg"),
-            ("High-confidence SHORT setups (trb short universe)", "top_shorts", "pr"),
+        for label, list_key, side_key, pill_cls in (
+            ("High-confidence BUY setups (trb long universe)", "top_buys", "long", "pg"),
+            ("High-confidence SHORT setups (trb short universe)", "top_shorts", "short", "pr"),
         ):
             top = brief.get(list_key, [])
             high_conf = [
                 item for item in top
                 if (item.get("confidence") if isinstance(item, dict) else
-                    assessments.get(item, {}).get("confidence")) == "HIGH"
+                    assessments.get(item, {}).get(side_key, {}).get("confidence")) == "HIGH"
                 and (item.get("symbol") if isinstance(item, dict) else item) not in held_syms
             ]
             if not high_conf:
@@ -727,7 +730,7 @@ def build_tv_bias_section():
             html += f'<p class="b" style="margin-top:12px">{label}:</p><table>' + tbl_header
             for item in high_conf[:8]:
                 sym = item.get("symbol", "?") if isinstance(item, dict) else item
-                a = assessments.get(sym, {})
+                a = assessments.get(sym, {}).get(side_key, {})
                 html += assessment_row(sym, a, pill_cls)
             html += "</table>"
 

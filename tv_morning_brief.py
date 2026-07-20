@@ -222,7 +222,7 @@ def main():
         if sym not in ind_data:
             continue
         result = assess(sym, ind_data[sym], "long")
-        assessments[sym] = {"side": "long", **result}
+        assessments.setdefault(sym, {})["long"] = {"side": "long", **result}
         if result["recommendation"] == "BUY":
             buys.append((sym, result["confidence"], result))
         elif result["recommendation"] == "HOLD":
@@ -234,7 +234,7 @@ def main():
         if sym not in ind_data:
             continue
         result = assess(sym, ind_data[sym], "short")
-        assessments[sym] = {"side": "short", **result}
+        assessments.setdefault(sym, {})["short"] = {"side": "short", **result}
         if result["recommendation"] == "SHORT":
             shorts.append((sym, result["confidence"], result))
         elif result["recommendation"] == "HOLD":

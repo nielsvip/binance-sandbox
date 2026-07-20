@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-20T18:45:37.989279+00:00",
+  "timestamp": "2026-07-20T19:01:21.774932+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -98,6 +98,12 @@
     },
     {
       "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PLTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -206,6 +212,12 @@
     },
     {
       "symbol": "BEATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "INJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -845,32 +857,9 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "INJUSDT",
-      "net_score": 15.0,
-      "long_score": 15.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 17.7,
-      "long_score": 17.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "PLTRUSDT",
-      17.7,
-      136.15
-    ],
-    [
-      "INJUSDT",
-      15.0,
-      5.461
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
