@@ -21,7 +21,7 @@ SERVER1_SANDBOX = "/home/niels/binance-sandbox"
 SERVER1_SYNC_FILES = [
     "tradier_manage.py", "tradier_indicators.py", "tradier_api.py", "tradier_positions.py",
     "tradier_rankings.py", "config_tradier.py", "config.py", "utils.py",
-    "per_sym_20d_agent_stocks.py",
+    "per_sym_20d_agent_stocks.py", "per_sym_7d_agent.py",
     "ez_manage.py", "ez_indicators.py", "ez_positions_quick.py", "ez_positions_service.py","ez_positions_realtime.py"
     "ez_reentry.py", "ez_reentry_daemon.py", "ez_reentry_vectorized.py",
     # Agent advisory bundle — paper-account agent-supervisor wiring (trc + fin)

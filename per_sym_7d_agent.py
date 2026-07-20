@@ -326,12 +326,26 @@ def reconfig_one_sym(sym: str) -> Optional[Dict]:
     # require min trades. Unconstrained gain-max selects fee-bleed churn (churn law:
     # GAINMO_MAXIMIZATION_20260708.md), so sharpe<=0 variants can never win; fallback
     # to the old wsharpe pick when no variant is sharpe-positive.
+    # 2026-07-20 B&H FLOOR (USER mandate 2026-07-10/11): within the sharpe-positive set,
+    # variants capturing >=2x window b&h outrank >=1x, which outrank sub-b&h — gain-max
+    # only breaks ties inside a tier. b&h<=0 windows have no passive benchmark: any
+    # positive gain is top-tier.
     eligible = [(t, r) for t, r in results if r['trades'] >= MIN_TRADES_FOR_OPINION]
     if not eligible:
         eligible = results
     _positive = [(t, r) for t, r in eligible if r['wsharpe'] > 0.0]
     if _positive:
-        winner_tag, winner_r = max(_positive, key=lambda x: x[1].get('gain_per_week', 0.0))
+        def _gvbh_tier(r):
+            bh_window = float(r.get('bh_pct_window', 0.0) or 0.0)
+            gain_window = float(r.get('gain_per_week', 0.0) or 0.0)
+            if bh_window <= 0.0:
+                return 2 if gain_window > 0.0 else 0
+            if gain_window >= 2.0 * bh_window:
+                return 2
+            if gain_window >= bh_window:
+                return 1
+            return 0
+        winner_tag, winner_r = max(_positive, key=lambda x: (_gvbh_tier(x[1]), x[1].get('gain_per_week', 0.0)))
     else:
         winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
     winner_r['winner_overrides'] = dict(variants).get(winner_tag, {})  # Bible 12.5 full recipe

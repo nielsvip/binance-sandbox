@@ -94,7 +94,12 @@ _SWEEP_MODE = os.environ.get("V8_SWEEP_MODE", "0") == "1"
 if _SWEEP_MODE:
     # Block ALL log output below CRITICAL+1 (logging.disable is hard cutoff,
     # beats per-logger setLevel which CRITICAL records bypass).
-    logging.disable(logging.CRITICAL)
+    # V8_ARROW_DEBUG: allow WARNING+ through so entry-veto guard logs (all
+    # WARNING/CRITICAL) are visible for forensics — INFO per-bar spam stays off.
+    if os.environ.get("V8_ARROW_DEBUG"):
+        logging.disable(logging.INFO)
+    else:
+        logging.disable(logging.CRITICAL)
     v8_logger.setLevel(logging.CRITICAL + 1)
     # Replace builtin print with a whitelist filter. Engine-essential output
     # (V8_RESULT, heartbeats, chart-trade dump confirmation, rate-guard aborts,
@@ -106,7 +111,7 @@ if _SWEEP_MODE:
         "V8_RESULT", "V8_HEARTBEAT", "V8_RESULT_LIVE", "V8_NEW_SWITCHES",
         "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_TIER2_CHART_TRADES",
         "V8_QUICK_RESULT", "EARLY_ABORT_LOW_RATE", "FINAL_BROKEN_RATE",
-        "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT",
+        "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT", "V8_ARROW",
         "MODE_CONFIG_MISMATCH", "V8_VEC_SHADOW", "V8_VEC_STATS",
     )
     def _quiet_print(*args, **kwargs):

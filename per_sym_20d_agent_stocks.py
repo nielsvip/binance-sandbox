@@ -326,9 +326,23 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
         eligible = results
     # 2026-07-08 GAINMO (USER): objective = max gain constrained to wsharpe>0
     # (churn law — unconstrained gain-max selects fee-bleed churn); wsharpe fallback.
+    # 2026-07-20 B&H FLOOR (USER mandate 2026-07-10/11): within the sharpe-positive set,
+    # variants capturing >=2x window b&h outrank >=1x, which outrank sub-b&h — gain-max
+    # only breaks ties inside a tier. gain_per_week is a rate (window_total/weeks), so
+    # scale by WINDOW_DAYS/7 before comparing to bh_pct_window (window total).
     _positive = [(t, r) for t, r in eligible if r['wsharpe'] > 0.0]
     if _positive:
-        winner_tag, winner_r = max(_positive, key=lambda x: x[1].get('gain_per_week', 0.0))
+        def _gvbh_tier(r):
+            bh_window = float(r.get('bh_pct_window', 0.0) or 0.0)
+            gain_window = float(r.get('gain_per_week', 0.0) or 0.0) * WINDOW_DAYS / 7.0
+            if bh_window <= 0.0:
+                return 2 if gain_window > 0.0 else 0
+            if gain_window >= 2.0 * bh_window:
+                return 2
+            if gain_window >= bh_window:
+                return 1
+            return 0
+        winner_tag, winner_r = max(_positive, key=lambda x: (_gvbh_tier(x[1]), x[1].get('gain_per_week', 0.0)))
     else:
         winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
     winner_r['winner_overrides'] = dict(variants).get(winner_tag, {})  # Bible 12.5 full recipe

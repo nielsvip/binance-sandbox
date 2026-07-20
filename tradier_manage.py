@@ -1861,6 +1861,11 @@ async def overnight_gap_hedge_loop(trade_manager):
             await asyncio.sleep(30)
 
 
+def _arrow_dbg(msg):
+    if os.environ.get("V8_ARROW_DEBUG"):
+        print(f"V8_ARROW {msg}", flush=True)
+
+
 def mtf_arrow_score(ind, is_long, cfg):
     """USER 2026-07-20 multi-TF arrow system — port of tools/mtf_arrow_lab (ARM 5.81x b&h sized).
     Score the higher-TF context for a 5m entry: the closer each HTF sits to its LOWER regression
@@ -3147,6 +3152,10 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _ma_ind = indicators_raw if indicators_raw else i
                     _ma_score, _ma_detail = mtf_arrow_score(_ma_ind, True, config)
                     _ma_theta = float(getattr(config, 'MTF_ARROW_THETA', 0.3))
+                    _ma_n = globals().get('_ARROW_EVAL_COUNT', 0) + 1
+                    globals()['_ARROW_EVAL_COUNT'] = _ma_n
+                    if _ma_n <= 5 or _ma_n % 1000 == 0:
+                        _arrow_dbg(f"EVAL#{_ma_n} {symbol} score={_ma_score:.3f} theta={_ma_theta} detail={_ma_detail}")
                     if _ma_score >= _ma_theta:
                         _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         _ma_mult = max(0.5, min(float(getattr(config, 'MTF_ARROW_SIZE_MAX', 4.0)),
@@ -3162,6 +3171,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         # The arrow score IS this path's conviction, so publish it.
                         _entry_score = max(float(_entry_score or 0.0), float(conf))
                         logger.info(f"[MTF_ARROW_ENTRY] {account_key}:{symbol}: score={_ma_score:.3f}>=θ{_ma_theta} mult={_ma_mult:.2f} {_ma_detail}")
+                        _arrow_dbg(f"CLAIM {account_key}:{symbol} score={_ma_score:.3f} mult={_ma_mult:.2f} qty={qty}")
                 # 2026-07-20 USER band mandate — PRIORITY band entry. The band block used to sit
                 # LAST in the cascade, so it was almost never consulted (an earlier path had already
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
@@ -3528,6 +3538,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
                     if _veto is not None:
                         logger.warning(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto} orig_reason={(reason or '')[:70]}")
+                        if _open_claim:
+                            _arrow_dbg(f"VETO_VARIANCE {account_key}:{symbol} {_veto} claimed={_open_claim[:70]}")
                         action_type = "NO_ACTION"
                         reason = _veto
                 if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
@@ -3676,6 +3688,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     log_reason = f"Sc:{int(tech_score)} {strategy_reason}"[:20]
                 if _open_claim and not action_taken:
                     logger.critical(f"[ARROW_CLAIM_DROPPED] {account_key}:{symbol}_{position_side}: claimed='{_open_claim[:80]}' final_action={action_type} log_rec={locals().get('log_rec')} log_reason={str(locals().get('log_reason'))[:70]} market_open={locals().get('market_open')}")
+                    _arrow_dbg(f"CLAIM_DROPPED {account_key}:{symbol}_{position_side} claimed={_open_claim[:70]} final_action={action_type} log_rec={locals().get('log_rec')} log_reason={str(locals().get('log_reason'))[:70]} market_open={locals().get('market_open')}")
 
         if action_taken:
              _entry = float(getattr(position, 'entry_price', 0.0) or 0.0) if position else 0.0
@@ -4325,10 +4338,21 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             'override_qty': override_qty   }
         success, msg = await order_queue.add_order(order)
         logger.info(f"[queue_trade_action] Queued {symbol} {action}: success={success}, msg={msg}")
-        return "SUCCESS" 
+        if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
+            _arrow_dbg(f"QTA_QUEUED {position_key} {action} success={success} msg={msg}")
+        return "SUCCESS"
     except Exception as e:
         logger.error(f"[queue_trade_action] Error: {e}",  exc_info=True )
         return False
+
+_qta_undecorated = queue_trade_action
+async def _qta_arrow_traced(order_queue, trade_manager, position_key, action, reason, conviction=50.0, override_qty=None):
+    res = await _qta_undecorated(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+    if res != "SUCCESS" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+        _arrow_dbg(f"QTA_REFUSED {position_key} {action} result={res} reason={(reason or '')[:80]}")
+    return res
+if os.environ.get("V8_ARROW_DEBUG"):
+    queue_trade_action = _qta_arrow_traced
 
 async def process_symbols_periodically(order_queue: OrderQueue, trade_manager, account_key: str):
     current_account.set(account_key)

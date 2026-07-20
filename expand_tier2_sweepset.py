@@ -30,20 +30,24 @@ BASE = Path(__file__).resolve().parent
 LIVE = {
     "crypto": ["ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py",
                "ez_indicators.py", "ez_prices.py", "ez_rankings.py", "ez_reentry.py",
-               "ez_klines.py", "ez_market_data.py", "wt_composite.py", "utils.py"],
+               "ez_klines.py", "ez_market_data.py", "wt_composite.py", "utils.py",
+               "wt_dc_delta.py"],
     "tradier": ["tradier_manage.py", "tradier_indicators.py", "tradier_positions.py",
                 "tradier_prices.py", "tradier_rankings.py", "tradier_api.py",
-                "tradier_hourly_reconfig.py"],
+                "tradier_hourly_reconfig.py", "utils.py", "wt_composite.py",
+                "wt_dc_delta.py", "wt_dc_entry_scorer.py", "wt_dc_exit_scorer.py",
+                "local_extremes_scorer.py"],
 }
 INFRA = re.compile(r"API|_WS|WEBHOOK|REDIS|LOG|EMAIL|ALERT|SUPERVISOR|INTERVAL|TIMEOUT|RETRY|"
-                   r"CACHE|DISK|PORT|URL|HEARTBEAT|POLL|SLEEP|RATE_LIMIT|BAN|GATEWAY|SOCKET|"
+                   r"CACHE|DISK|PORT|URL|HEARTBEAT|POLL|SLEEP|RATE_LIMIT|_BAN$|_BAN_|^BAN_|GATEWAY|SOCKET|"
                    r"RECONNECT|DESKTOP|NOTIFY|DASHBOARD|CONFIRMATION_THRESHOLD|ZERO_CONF|SYNC|"
                    r"BACKUP|SNAPSHOT|MONITOR|WATCHDOG|PROCESS|THREAD|QUEUE_|_PATH|_DIR|_FILE|SYMBOLS_",
                    re.I)
 LOGIC = re.compile(r"ENTRY|EXIT|GATE|SCORE|SIZE|GAIN|LOSS|STOP|TRAIL|HEDGE|REENTRY|REDUCE|"
                    r"AUGMENT|LONG|SHORT|WT|DC_|STOCH|RSI|MFI|ADX|BB_|EMA|SMA|MACD|ATR|FUNDING|"
                    r"ZONE|ALIGN|MOMENTUM|BREAKOUT|THRESHOLD|MIN_|MAX_|_PCT|RATIO|DIRECTION|"
-                   r"NOLOSS|TFS|VEL|PEAK|BIAS|CONFIRM|BUDGET|CONVICTION|OBLIGATORY", re.I)
+                   r"NOLOSS|TFS|VEL|PEAK|BIAS|CONFIRM|BUDGET|CONVICTION|OBLIGATORY|"
+                   r"LR_BAND|BAND_SLOPE|HARVEST|_FRAC|SLOPE|REGIME|DEPTH|RATCHET|READD", re.I)
 
 
 def derive(name, default):

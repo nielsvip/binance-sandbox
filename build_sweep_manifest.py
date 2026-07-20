@@ -32,12 +32,18 @@ TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 VEC_SRC = ["v8_vec_sweep.py"]
 TIER2_SRC = ["backtest_v8_engine.py", "v8_quick_engine.py"]
+# 2026-07-20: tradier list was missing the SHARED decision modules its stack imports
+# (utils, wt_composite via tradier_indicators, wt_dc_* scorers + local_extremes via
+# tradier_manage) -> params consumed there were falsely classified DEAD for stocks.
 LIVE_SRC_TRADIER = ["tradier_manage.py", "tradier_indicators.py", "tradier_positions.py",
                     "tradier_prices.py", "tradier_rankings.py", "tradier_api.py",
-                    "tradier_hourly_reconfig.py"]
+                    "tradier_hourly_reconfig.py", "utils.py", "wt_composite.py",
+                    "wt_dc_delta.py", "wt_dc_entry_scorer.py", "wt_dc_exit_scorer.py",
+                    "local_extremes_scorer.py"]
 LIVE_SRC_CRYPTO = ["ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py",
                    "ez_indicators.py", "ez_prices.py", "ez_rankings.py", "ez_reentry.py",
-                   "ez_klines.py", "ez_market_data.py", "wt_composite.py", "utils.py"]
+                   "ez_klines.py", "ez_market_data.py", "wt_composite.py", "utils.py",
+                   "wt_dc_delta.py"]
 LIVE_SRC = LIVE_SRC_TRADIER
 
 
