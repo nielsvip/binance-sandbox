@@ -3544,6 +3544,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         reason = _veto
                 if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
                     logger.critical(f"🛑 [CIRCUIT_BREAKER] {account_key}:{symbol}_{position_side}: BLOCKED entry '{reason}' — path auto-disabled after repeated collapses")
+                    if _open_claim:
+                        _arrow_dbg(f"CB_BLOCKED {account_key}:{symbol}_{position_side} claimed={_open_claim[:70]}")
                     return "CIRCUIT_BREAKER_BLOCKED"
                 if action_type == "OPEN" and getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', False):
                     _le_ind = indicators_raw if indicators_raw else i
@@ -3732,6 +3734,8 @@ class OrderQueue:
             if position_key in self.trade_manager.order_deduplication:
                 last_time = float(self.trade_manager.order_deduplication[position_key])
                 if (now_ts - last_time) < 90.0:
+                    if 'MTF_ARROW' in str(order.get('reason', '')) or 'LR_BAND' in str(order.get('reason', '')):
+                        _arrow_dbg(f"ADD_ORDER_DUP {position_key} age={now_ts - last_time:.0f}s")
                     return False, "DUPLICATE"
             self.trade_manager.order_deduplication[position_key] = now_ts
         try:
@@ -3768,10 +3772,14 @@ class OrderQueue:
             order_id = order.get('order_id','None')
             if not is_regular_trading_hours():
                 logger.debug(f"[HANDLE_ORDER] Not in trading hours, skipping order: {symbol} {action} {side} qty={quantity}")
+                if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
+                    _arrow_dbg(f"HANDLE_ORDER_RTH_SKIP {symbol} {action}")
                 return
             logger.info(f"[ORDER_DEBUG] Processing order: {symbol} {action} {side} qty={quantity}")
             position_key = construct_position_key(account_key, symbol, order.get('position_side', ''))            
             result = await self.trade_manager.execute_trade_action(account_key=account_key,position_key=position_key,symbol=symbol,quantity=quantity,current_price=price,side=side,position_side=order.get('position_side', ''),unique_id=order.get('unique_id', f"{account_key}:{symbol}_{action}_{int(time.time())}"),is_full_close=(action == "CLOSE"),action=action,reason=reason,override_qty=order.get('override_qty')  )
+            if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
+                _arrow_dbg(f"HANDLE_ORDER {symbol} {action} result={result} qty={quantity} price={price}")
             if result == "SUCCESS":
                 status = "SUBMITTED"
                 order_id = order.get('order_id', 'None')
