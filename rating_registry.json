@@ -1,23 +1,11 @@
 {
-  "timestamp": "2026-07-20T23:17:34.018919+00:00",
+  "timestamp": "2026-07-20T23:33:06.124582+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 145
   },
   "unified_ranking": [
-    {
-      "symbol": "SUSHIUSDT",
-      "net_score": -12.6,
-      "long_score": 0,
-      "short_score": 12.6
-    },
-    {
-      "symbol": "TIAUSDC",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
-    },
     {
       "symbol": "USUALUSDT",
       "net_score": 0,
@@ -649,6 +637,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUSHIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -710,6 +704,12 @@
     },
     {
       "symbol": "DOGEUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -878,18 +878,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "SUSHIUSDT",
-      12.6,
-      0.1644
-    ],
-    [
-      "TIAUSDC",
-      10.1,
-      0.35639364
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
