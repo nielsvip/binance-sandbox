@@ -1564,7 +1564,7 @@ def detect_trading_signals():
         prev = data_prev[symbol]
         
         # Ensure all required keys exist in curr and prev to avoid KeyErrors
-        required_keys_stoch = ["stoch_k_3m", "stoch_d_3m", "stoch_k_15m", "stoch_k_1h", "stoch_d_1h"]
+        required_keys_stoch = ["k_3m", "d_3m", "k_15m", "k_1h", "d_1h"]
         required_keys_trend = ["lr_trend_3m", "lr_trend_15m"]
         required_keys_dc = ["dc_low_3m_ant", "dc_high_3m_ant", "current_price"]
         required_keys_ranking = ["0ranking_points"]
@@ -1572,7 +1572,7 @@ def detect_trading_signals():
 
 
         all_curr_keys = required_keys_stoch + required_keys_trend + required_keys_dc + required_keys_ranking + required_keys_wt
-        all_prev_keys = ["stoch_k_3m", "stoch_d_3m"] # Example for prev, adjust as needed
+        all_prev_keys = ["k_3m", "d_3m"] # Example for prev, adjust as needed
 
         if not all(k in curr for k in all_curr_keys) or \
            not all(k in prev for k in all_prev_keys):
@@ -1582,10 +1582,10 @@ def detect_trading_signals():
         RANKING_INFO[symbol]["ranking_points"] = curr.get("0ranking_points", 0)
         RANKING_INFO[symbol]["ranking_points_global"] = curr.get("0ranking_points_global", 0)
         RANKING_INFO[symbol]["ranking_points_normal"] = curr.get("0ranking_points_normal", 0)
-        RANKING_INFO[symbol]["stoch_k_3m"] = curr.get("stoch_k_3m", None)
-        RANKING_INFO[symbol]["stoch_d_3m"] = curr.get("stoch_d_3m", None)
-        RANKING_INFO[symbol]["stoch_k_1h"] = curr.get("stoch_k_1h", None)
-        RANKING_INFO[symbol]["stoch_d_1h"] = curr.get("stoch_d_1h", None)
+        RANKING_INFO[symbol]["k_3m"] = curr.get("k_3m", None)
+        RANKING_INFO[symbol]["d_3m"] = curr.get("d_3m", None)
+        RANKING_INFO[symbol]["k_1h"] = curr.get("k_1h", None)
+        RANKING_INFO[symbol]["d_1h"] = curr.get("d_1h", None)
         RANKING_INFO[symbol]["lr_trend_3m"] = curr.get("lr_trend_3m", None)
         RANKING_INFO[symbol]["lr_trend_15m"] = curr.get("lr_trend_15m", None)
         RANKING_INFO[symbol]["dc_low_3m_ant"] = curr.get("dc_low_3m_ant", None)
@@ -1618,11 +1618,11 @@ def detect_trading_signals():
 
         # Signal detection logic (ensure values are not None before comparison)
         # Example for the first signal:
-        if all(curr.get(k) is not None for k in ["stoch_k_3m", "stoch_d_3m", "stoch_k_15m", "stoch_k_1h", "stoch_d_1h", "lr_trend_3m", "lr_trend_15m", "current_price", "dc_low_3m_ant", "0ranking_points"]) and \
-           all(prev.get(k) is not None for k in ["stoch_k_3m", "stoch_d_3m"]):
+        if all(curr.get(k) is not None for k in ["k_3m", "d_3m", "k_15m", "k_1h", "d_1h", "lr_trend_3m", "lr_trend_15m", "current_price", "dc_low_3m_ant", "0ranking_points"]) and \
+           all(prev.get(k) is not None for k in ["k_3m", "d_3m"]):
             if (
-                prev["stoch_k_3m"] < prev["stoch_d_3m"] and curr["stoch_k_3m"] >= curr["stoch_d_3m"] and
-                curr["stoch_k_15m"] < 30 and curr["stoch_k_1h"] > curr["stoch_d_1h"] and
+                prev["k_3m"] < prev["d_3m"] and curr["k_3m"] >= curr["d_3m"] and
+                curr["k_15m"] < 30 and curr["k_1h"] > curr["d_1h"] and
                 curr["lr_trend_3m"] == "uptrend" and curr["lr_trend_15m"] == "uptrend" and
                 curr["current_price"] <= curr["dc_low_3m_ant"] and
                 curr["0ranking_points"] > 70 # Use the direct key from data_latest
@@ -1632,11 +1632,11 @@ def detect_trading_signals():
                     'event_type': "Perfect Stochastic + Trend + Support Entry", 'timestamp': last_timestamp })
 
         # Apply similar checks for other signal conditions...
-        if all(curr.get(k) is not None for k in ["stoch_k_3m", "stoch_d_3m", "stoch_k_15m", "lr_trend_3m", "lr_trend_15m", "current_price", "dc_high_3m_ant", "0ranking_points"]) and \
-           all(prev.get(k) is not None for k in ["stoch_k_3m", "stoch_d_3m"]):
+        if all(curr.get(k) is not None for k in ["k_3m", "d_3m", "k_15m", "lr_trend_3m", "lr_trend_15m", "current_price", "dc_high_3m_ant", "0ranking_points"]) and \
+           all(prev.get(k) is not None for k in ["k_3m", "d_3m"]):
             if (
-                prev["stoch_k_3m"] > prev["stoch_d_3m"] and curr["stoch_k_3m"] <= curr["stoch_d_3m"] and
-                curr["stoch_k_15m"] > 70 and
+                prev["k_3m"] > prev["d_3m"] and curr["k_3m"] <= curr["d_3m"] and
+                curr["k_15m"] > 70 and
                 curr["lr_trend_3m"] == "downtrend" and curr["lr_trend_15m"] == "downtrend" and
                 curr["current_price"] >= curr["dc_high_3m_ant"] and
                 curr["0ranking_points"] < -70
@@ -1984,8 +1984,8 @@ def add_stochrsi_zones(df: pd.DataFrame) -> pd.DataFrame:
         if close_numeric.isnull().all() or len(close_numeric.dropna()) < 14: # 14 is default StochRSI window
             df_copy["stoch_rsi"] = np.nan
         else:
-            stoch_k = StochRSIIndicator(close=close_numeric, window=14, smooth1=3, smooth2=3, fillna=True).stochrsi() * 100.0
-            df_copy["stoch_rsi"] = stoch_k.clip(0, 100)
+            k = StochRSIIndicator(close=close_numeric, window=14, smooth1=3, smooth2=3, fillna=True).stochrsi() * 100.0
+            df_copy["stoch_rsi"] = k.clip(0, 100)
 
         def label_zone(x):
             if pd.isna(x): return "neutral"
@@ -4665,6 +4665,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     try:
         import math as _math
         import statistics as _stats2
+
         from utils import get_symbol_tier as _gst
         _ts_now = int(time.time())
         _shadow_path = BASE_PATH / "data" / "inject_shadow_log.jsonl"
@@ -7127,10 +7128,10 @@ async def calculate_market_movement_index(use_cache=True, volume_weighted=False,
             symbol_score += rsi_momentum_15m * 10
             symbol_score += rsi_momentum_3m * 5
             component_count += 2
-            stoch_k_15m = data.get('stoch_k_15m', 50)
-            stoch_k_3m = data.get('stoch_k_3m', 50)
-            stoch_momentum_15m = abs(stoch_k_15m - 50) / 50.0
-            stoch_momentum_3m = abs(stoch_k_3m - 50) / 50.0
+            k_15m = data.get('k_15m', 50)
+            k_3m = data.get('k_3m', 50)
+            stoch_momentum_15m = abs(k_15m - 50) / 50.0
+            stoch_momentum_3m = abs(k_3m - 50) / 50.0
             symbol_score += stoch_momentum_15m * 5
             symbol_score += stoch_momentum_3m * 3
             component_count += 2

@@ -1,0 +1,5632 @@
+{
+  "_metadata": {
+    "description": "Hedge pair mapping for Tradier stock trading. Since you cannot short the same symbol you're long on Tradier, hedging requires finding correlated symbols in the same sector and opening the opposite position.",
+    "usage": "To hedge LONG AAPL: SHORT one of same_sector peers (MSFT, GOOGL, QQQ). Or buy inverse_etf (SQQQ). To hedge SHORT AAPL: LONG one of same_sector peers.",
+    "correlation_notes": "est_correlation is an estimated correlation coefficient (0-1). Higher = better hedge. Inverse ETFs have negative correlation (move opposite).",
+    "inverse_etf_notes": "inverse_etf lists all known inverse ETFs for the sector. inverse_etf_in_universe = already tradeable. inverse_etf_needs_adding = would need to be added to symbols_tradier.json.",
+    "non_shortable_notes": "Symbols marked shortable=false cannot be sold short on Tradier. They can only be hedged by shorting a correlated peer.",
+    "generated": "2026-03-29",
+    "total_symbols": 262,
+    "sectors": [
+      "AGRICULTURE",
+      "CONSUMER",
+      "CRYPTO",
+      "DEFENSE",
+      "ENERGY_NAT",
+      "ENERGY_OIL",
+      "FINANCIAL",
+      "HEALTH",
+      "INDEX",
+      "INDUSTRIAL",
+      "MEME",
+      "MINING_BASE",
+      "MINING_GOLD",
+      "NUCLEAR",
+      "SHIPPING",
+      "TECH",
+      "TECH_CONS",
+      "TECH_SW",
+      "TELECOM"
+    ]
+  },
+  "_inverse_etf_master": {
+    "SQQQ": {
+      "name": "ProShares UltraPro Short QQQ",
+      "leverage": "3x inverse",
+      "tracks": "Nasdaq-100",
+      "hedges": [
+        "TECH",
+        "TECH_SW",
+        "TECH_CONS"
+      ]
+    },
+    "PSQ": {
+      "name": "ProShares Short QQQ",
+      "leverage": "1x inverse",
+      "tracks": "Nasdaq-100",
+      "hedges": [
+        "TECH",
+        "TECH_SW",
+        "TECH_CONS"
+      ]
+    },
+    "QID": {
+      "name": "ProShares UltraShort QQQ",
+      "leverage": "2x inverse",
+      "tracks": "Nasdaq-100",
+      "hedges": [
+        "TECH"
+      ]
+    },
+    "SH": {
+      "name": "ProShares Short S&P500",
+      "leverage": "1x inverse",
+      "tracks": "S&P 500",
+      "hedges": [
+        "INDEX",
+        "INDUSTRIAL",
+        "BROAD"
+      ]
+    },
+    "SPXU": {
+      "name": "ProShares UltraPro Short S&P500",
+      "leverage": "3x inverse",
+      "tracks": "S&P 500",
+      "hedges": [
+        "INDEX",
+        "INDUSTRIAL",
+        "BROAD"
+      ]
+    },
+    "ERY": {
+      "name": "Direxion Daily Energy Bear 2X",
+      "leverage": "2x inverse",
+      "tracks": "Energy Select",
+      "hedges": [
+        "ENERGY_OIL",
+        "NUCLEAR"
+      ]
+    },
+    "DUG": {
+      "name": "ProShares UltraShort Oil & Gas",
+      "leverage": "2x inverse",
+      "tracks": "Oil & Gas",
+      "hedges": [
+        "ENERGY_OIL"
+      ]
+    },
+    "SCO": {
+      "name": "ProShares UltraShort Bloomberg Crude",
+      "leverage": "2x inverse",
+      "tracks": "Crude Oil",
+      "hedges": [
+        "ENERGY_OIL"
+      ]
+    },
+    "KOLD": {
+      "name": "ProShares UltraShort Bloomberg Nat Gas",
+      "leverage": "2x inverse",
+      "tracks": "Natural Gas",
+      "hedges": [
+        "ENERGY_NAT"
+      ]
+    },
+    "DUST": {
+      "name": "Direxion Daily Gold Miners Bear 2X",
+      "leverage": "2x inverse",
+      "tracks": "Gold Miners",
+      "hedges": [
+        "MINING_GOLD"
+      ]
+    },
+    "GLL": {
+      "name": "ProShares UltraShort Gold",
+      "leverage": "2x inverse",
+      "tracks": "Gold",
+      "hedges": [
+        "MINING_GOLD"
+      ]
+    },
+    "ZSL": {
+      "name": "ProShares UltraShort Silver",
+      "leverage": "2x inverse",
+      "tracks": "Silver",
+      "hedges": [
+        "MINING_GOLD"
+      ]
+    },
+    "SBIT": {
+      "name": "ProShares Short Bitcoin ETF",
+      "leverage": "1x inverse",
+      "tracks": "Bitcoin",
+      "hedges": [
+        "CRYPTO"
+      ],
+      "in_universe": true
+    },
+    "RXD": {
+      "name": "ProShares UltraShort Health Care",
+      "leverage": "2x inverse",
+      "tracks": "Healthcare",
+      "hedges": [
+        "HEALTH"
+      ]
+    },
+    "SCC": {
+      "name": "ProShares UltraShort Consumer Staples",
+      "leverage": "2x inverse",
+      "tracks": "Consumer Staples",
+      "hedges": [
+        "CONSUMER"
+      ]
+    },
+    "SKF": {
+      "name": "ProShares UltraShort Financials",
+      "leverage": "2x inverse",
+      "tracks": "Financials",
+      "hedges": [
+        "FINANCIAL"
+      ]
+    },
+    "FAZ": {
+      "name": "Direxion Daily Financial Bear 3X",
+      "leverage": "3x inverse",
+      "tracks": "Financials",
+      "hedges": [
+        "FINANCIAL"
+      ]
+    },
+    "SDD": {
+      "name": "ProShares UltraShort SmallCap600",
+      "leverage": "2x inverse",
+      "tracks": "Small Cap",
+      "hedges": [
+        "MINING_BASE"
+      ]
+    }
+  },
+  "symbols": {
+    "AA": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AAPL": {
+      "sector": "TECH",
+      "same_sector": [
+        "MSFT",
+        "GOOGL",
+        "QQQ",
+        "NVDA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.87,
+      "shortable": true
+    },
+    "ABBV": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABT"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ABNB": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ABT": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ACN": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ADBE": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ORCL",
+        "SNOW",
+        "WDAY",
+        "PATH"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ADM": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ADP": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AEM": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AG": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AGCO": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AGI": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ALB": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AM": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AMD": {
+      "sector": "TECH",
+      "same_sector": [
+        "NVDA",
+        "INTC",
+        "MU",
+        "QQQ"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AMZN": {
+      "sector": "TECH",
+      "same_sector": [
+        "MSFT",
+        "GOOGL",
+        "QQQ",
+        "META"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.82,
+      "shortable": true
+    },
+    "APA": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "APO": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AR": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ARM": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ASC": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "ASML": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ASTS": {
+      "sector": "MEME",
+      "same_sector": [
+        "GME",
+        "TSLA",
+        "PLTR",
+        "QUBT",
+        "SNDK"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ATI": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AU": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "AVGO": {
+      "sector": "TECH",
+      "same_sector": [
+        "NVDA",
+        "QCOM",
+        "MRVL",
+        "TSM"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.8,
+      "shortable": true
+    },
+    "AXON": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BA": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BABA": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BIDU"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BG": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BHP": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BIDU": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BITO": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BLOK",
+        "SBIT",
+        "COIN",
+        "BTCL"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "BK": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "SCHW",
+        "CME",
+        "MA",
+        "V"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BKR": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "BLOK": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "SBIT",
+        "COIN",
+        "BTCL"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "BOIL": {
+      "sector": "ENERGY_NAT",
+      "same_sector": [
+        "UNG"
+      ],
+      "inverse_etf": [
+        "KOLD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "KOLD"
+      ],
+      "est_correlation": 0.78,
+      "shortable": false,
+      "cross_sector_fallback": [
+        "SPY",
+        "QQQ"
+      ],
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "BTCL": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "BTG": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "BWXT": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CALM": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CAT": {
+      "sector": "INDUSTRIAL",
+      "same_sector": [
+        "GM",
+        "FDX",
+        "UPS",
+        "HON"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CCJ": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "DNN"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CDE": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CENX": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CF": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CHRD": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CLF": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CLX": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CMC": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CME": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "MA",
+        "V"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CNHI": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "COIN": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "BTCL"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "COP": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XOM",
+        "CVX",
+        "EOG",
+        "DVN"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "COPX": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO",
+        "RIO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "CORN": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "DBA",
+        "PDBC",
+        "ADM"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "COST": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW",
+        "NKE"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CRK": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CRM": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY",
+        "PATH"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CRWD": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CRWV": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CTRA": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CTVA": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CVS": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "CVX": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XOM",
+        "COP",
+        "XLE",
+        "EOG"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.92,
+      "shortable": true
+    },
+    "DAC": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "FRO",
+        "GOGL",
+        "EGLE"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "DAR": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DBA": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "PDBC",
+        "ADM"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "DE": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DHR": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DHT": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DIME": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "DINO": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DIS": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DNN": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "DUOL": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "DVN": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "EGLE": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "EGO": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "EOG": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "EPD": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "EQT": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ET": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ETH": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "ETHD": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "EXE": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FANG": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FCX": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "SCCO",
+        "RIO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FDX": {
+      "sector": "INDUSTRIAL",
+      "same_sector": [
+        "CAT",
+        "GM",
+        "UPS",
+        "HON"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FIVN": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FMC": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FNV": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "FRO": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "GOGL",
+        "EGLE"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GD": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "NOC"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GDX": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM",
+        "AEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GDXJ": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GLD",
+        "SLV",
+        "NEM",
+        "AEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GE": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GILD": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GLD": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "NEM",
+        "AEM",
+        "SLV"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.9,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GM": {
+      "sector": "INDUSTRIAL",
+      "same_sector": [
+        "CAT",
+        "FDX",
+        "UPS",
+        "HON"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GME": {
+      "sector": "MEME",
+      "same_sector": [
+        "TSLA",
+        "PLTR",
+        "QUBT",
+        "ASTS",
+        "SNDK"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "GNK": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GOGL": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "EGLE"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GOLD": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "GOOGL": {
+      "sector": "TECH",
+      "same_sector": [
+        "MSFT",
+        "META",
+        "QQQ",
+        "AAPL"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.85,
+      "shortable": true
+    },
+    "HAL": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HD": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "LOW",
+        "NKE"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HES": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HII": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HL": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HON": {
+      "sector": "INDUSTRIAL",
+      "same_sector": [
+        "CAT",
+        "GM",
+        "FDX",
+        "UPS"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "HWM": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "IBIT": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN",
+        "BTCL"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "IBM": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ICL": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "INGR": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "INOD": {
+      "sector": "UNKNOWN",
+      "same_sector": [
+        "SPY",
+        "QQQ"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.6,
+      "shortable": false,
+      "notes": "No sector classification - use broad market hedge"
+    },
+    "INSW": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "INTC": {
+      "sector": "TECH",
+      "same_sector": [
+        "AMD",
+        "MU",
+        "TXN",
+        "QCOM"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.75,
+      "shortable": true
+    },
+    "IPI": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "ITA": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD",
+        "NOC"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "JNJ": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "PFE",
+        "MRK",
+        "ABBV",
+        "ABT"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "JOBY": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "JPM": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "BK",
+        "SCHW",
+        "CME",
+        "MA",
+        "V"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "KGC": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "KMI": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "KO": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "KTOS": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LAC": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LDOS": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LEU": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LHX": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LLY": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV",
+        "ABT"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LMT": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "RTX",
+        "GD",
+        "NOC"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LNG": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LOW": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "NKE"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LRCX": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "LSB": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "LYFT": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MA": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "V"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MAG": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "MCD": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MDT": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "META": {
+      "sector": "TECH",
+      "same_sector": [
+        "GOOGL",
+        "MSFT",
+        "QQQ",
+        "NFLX"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MO": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MOO": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC",
+        "ADM"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "MOS": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MP": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MPC": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MRK": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "ABBV",
+        "ABT"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MRO": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MRVL": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "MSFT": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "GOOGL",
+        "QQQ",
+        "META"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.87,
+      "shortable": true
+    },
+    "MU": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NAT": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "NEM": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "AEM",
+        "GDX",
+        "GLD",
+        "KGC"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.9,
+      "shortable": true
+    },
+    "NFLX": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA",
+        "BIDU"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NKE": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NNE": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "NOC": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NTR": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NUE": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NVDA": {
+      "sector": "TECH",
+      "same_sector": [
+        "AMD",
+        "TSM",
+        "AVGO",
+        "QQQ"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "NXE": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "CCJ",
+        "DNN"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "OIH": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "USO",
+        "XOM",
+        "CVX"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "OKE": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "OKLO": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "OLED": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ORCL": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "SNOW",
+        "WDAY",
+        "PATH"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "OXY": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PAAS": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PATH": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PBF": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PDBC": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "ADM"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "PEP": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PFE": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "MRK",
+        "ABBV",
+        "ABT"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PLL": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "PLTR": {
+      "sector": "MEME",
+      "same_sector": [
+        "GME",
+        "TSLA",
+        "QUBT",
+        "ASTS",
+        "SNDK"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PPA": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "LMT",
+        "RTX",
+        "GD",
+        "NOC"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "PR": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PSX": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "PYPL": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "QBTS": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "SBIT",
+        "COIN"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "QCOM": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "QLYS": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "QQQ": {
+      "sector": "INDEX",
+      "same_sector": [
+        "SPY"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "est_correlation": 0.92,
+      "shortable": true
+    },
+    "QUBT": {
+      "sector": "MEME",
+      "same_sector": [
+        "GME",
+        "TSLA",
+        "PLTR",
+        "ASTS",
+        "SNDK"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "RBLX": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RDDT",
+        "ROKU",
+        "BABA",
+        "BIDU"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RDDT": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "ROKU",
+        "BABA",
+        "BIDU"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "REMX": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "FCX",
+        "SCCO",
+        "RIO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "RGLD": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RIO": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RKLB": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ROKU": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "BABA",
+        "BIDU"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RRC": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RS": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "RTX": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "GD",
+        "NOC"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SAP": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SBIT": {
+      "sector": "CRYPTO",
+      "same_sector": [
+        "IBIT",
+        "BITO",
+        "BLOK",
+        "COIN",
+        "BTCL"
+      ],
+      "inverse_etf": [
+        "SBIT"
+      ],
+      "inverse_etf_in_universe": [
+        "SBIT"
+      ],
+      "inverse_etf_needs_adding": [],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "SBLK": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "DAC",
+        "FRO",
+        "GOGL",
+        "EGLE"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "SBUX": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SCCO": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "RIO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SCHW": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "CME",
+        "MA",
+        "V"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SGML": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "SHOP": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SHY": {
+      "sector": "INDEX",
+      "same_sector": [
+        "SPY",
+        "QQQ",
+        "USAR"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "est_correlation": 0.78,
+      "shortable": true
+    },
+    "SLB": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SLV": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "NEM",
+        "AEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SMCI": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SMG": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SMR": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SNDK": {
+      "sector": "MEME",
+      "same_sector": [
+        "GME",
+        "TSLA",
+        "PLTR",
+        "QUBT",
+        "ASTS"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SNOW": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "WDAY",
+        "PATH"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SPOT": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SPY": {
+      "sector": "INDEX",
+      "same_sector": [
+        "QQQ"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "est_correlation": 0.92,
+      "shortable": true
+    },
+    "SQ": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "SQM": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "STLD": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "STNG": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "STZ": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "T": {
+      "sector": "TELECOM",
+      "same_sector": [
+        "VZ"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.78,
+      "shortable": true,
+      "cross_sector_fallback": [
+        "SPY",
+        "QQQ"
+      ]
+    },
+    "TCEHY": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "TDG": {
+      "sector": "DEFENSE",
+      "same_sector": [
+        "ITA",
+        "PPA",
+        "LMT",
+        "RTX",
+        "GD"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TECK": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TGT": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "HD",
+        "LOW",
+        "NKE"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TMO": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TNK": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "ZIM",
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "TRGP": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TSLA": {
+      "sector": "MEME",
+      "same_sector": [
+        "QQQ",
+        "PLTR",
+        "NVDA",
+        "SPY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "SH"
+      ],
+      "est_correlation": 0.72,
+      "shortable": true
+    },
+    "TSM": {
+      "sector": "TECH",
+      "same_sector": [
+        "NVDA",
+        "ASML",
+        "AVGO",
+        "LRCX"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.82,
+      "shortable": true
+    },
+    "TSN": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TTD": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "TXN": {
+      "sector": "TECH",
+      "same_sector": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "AMZN"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ",
+        "QID"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "UAN": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "WEAT",
+        "CORN",
+        "DBA",
+        "PDBC"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "UBER": {
+      "sector": "TECH_CONS",
+      "same_sector": [
+        "NFLX",
+        "RBLX",
+        "RDDT",
+        "ROKU",
+        "BABA"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "UEC": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "NXE",
+        "CCJ",
+        "DNN"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ULTA": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "WMT",
+        "TGT",
+        "HD",
+        "LOW"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "UNG": {
+      "sector": "ENERGY_NAT",
+      "same_sector": [
+        "BOIL"
+      ],
+      "inverse_etf": [
+        "KOLD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "KOLD"
+      ],
+      "est_correlation": 0.78,
+      "shortable": false,
+      "cross_sector_fallback": [
+        "SPY",
+        "QQQ"
+      ],
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "UNH": {
+      "sector": "HEALTH",
+      "same_sector": [
+        "LLY",
+        "JNJ",
+        "PFE",
+        "MRK",
+        "ABBV"
+      ],
+      "inverse_etf": [
+        "RXD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "RXD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "UPS": {
+      "sector": "INDUSTRIAL",
+      "same_sector": [
+        "CAT",
+        "GM",
+        "FDX",
+        "HON"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "URA": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ",
+        "DNN"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "URNM": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "UEC",
+        "NXE",
+        "CCJ",
+        "DNN"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "USAR": {
+      "sector": "INDEX",
+      "same_sector": [
+        "SPY",
+        "QQQ",
+        "SHY"
+      ],
+      "inverse_etf": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH",
+        "SPXU",
+        "SQQQ"
+      ],
+      "est_correlation": 0.78,
+      "shortable": true
+    },
+    "USO": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "XOM",
+        "CVX"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "UUUU": {
+      "sector": "NUCLEAR",
+      "same_sector": [
+        "URA",
+        "URNM",
+        "UEC",
+        "NXE",
+        "CCJ"
+      ],
+      "inverse_etf": [
+        "ERY"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "V": {
+      "sector": "FINANCIAL",
+      "same_sector": [
+        "JPM",
+        "BK",
+        "SCHW",
+        "CME",
+        "MA"
+      ],
+      "inverse_etf": [
+        "SKF",
+        "FAZ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SKF",
+        "FAZ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "VALE": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "VLO": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "VZ": {
+      "sector": "TELECOM",
+      "same_sector": [
+        "T"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.78,
+      "shortable": true,
+      "cross_sector_fallback": [
+        "SPY",
+        "QQQ"
+      ]
+    },
+    "WDAY": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "PATH"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "WEAT": {
+      "sector": "AGRICULTURE",
+      "same_sector": [
+        "MOO",
+        "CORN",
+        "DBA",
+        "PDBC",
+        "ADM"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "WMB": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "WMT": {
+      "sector": "CONSUMER",
+      "same_sector": [
+        "COST",
+        "TGT",
+        "HD",
+        "LOW",
+        "NKE"
+      ],
+      "inverse_etf": [
+        "SCC"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SCC"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "WPM": {
+      "sector": "MINING_GOLD",
+      "same_sector": [
+        "GDX",
+        "GDXJ",
+        "GLD",
+        "SLV",
+        "NEM"
+      ],
+      "inverse_etf": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "DUST",
+        "GLL",
+        "ZSL"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "X": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "XME",
+        "REMX",
+        "FCX",
+        "SCCO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "XLE": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XOP",
+        "OIH",
+        "USO",
+        "XOM",
+        "CVX"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "XME": {
+      "sector": "MINING_BASE",
+      "same_sector": [
+        "COPX",
+        "REMX",
+        "FCX",
+        "SCCO",
+        "RIO"
+      ],
+      "inverse_etf": [
+        "SDD"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SDD"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "XOM": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "CVX",
+        "COP",
+        "XLE",
+        "USO"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.92,
+      "shortable": true
+    },
+    "XOP": {
+      "sector": "ENERGY_OIL",
+      "same_sector": [
+        "XLE",
+        "OIH",
+        "USO",
+        "XOM",
+        "CVX"
+      ],
+      "inverse_etf": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "ERY",
+        "DUG",
+        "SCO"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    },
+    "ZETA": {
+      "sector": "TECH_SW",
+      "same_sector": [
+        "CRM",
+        "ADBE",
+        "ORCL",
+        "SNOW",
+        "WDAY"
+      ],
+      "inverse_etf": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SQQQ",
+        "PSQ"
+      ],
+      "est_correlation": 0.88,
+      "shortable": true
+    },
+    "ZIM": {
+      "sector": "SHIPPING",
+      "same_sector": [
+        "SBLK",
+        "DAC",
+        "FRO",
+        "GOGL",
+        "EGLE"
+      ],
+      "inverse_etf": [
+        "SH"
+      ],
+      "inverse_etf_in_universe": [],
+      "inverse_etf_needs_adding": [
+        "SH"
+      ],
+      "est_correlation": 0.88,
+      "shortable": false,
+      "notes": "NON_SHORTABLE - can only go long. Hedge by shorting a same_sector peer."
+    }
+  }
+}

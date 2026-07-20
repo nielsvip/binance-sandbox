@@ -1,0 +1,25 @@
+[Unit]
+Description=Sweep Tournament Daemon — self-improving V8 backtest engine
+After=network.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=niels
+WorkingDirectory=/home/niels/binance
+# Default: tradier on 6 workers. Override via /etc/default/sweep_daemon
+EnvironmentFile=-/etc/default/sweep_daemon
+ExecStart=/bin/bash -lc '${SWEEP_PYTHON:-/home/niels/.conda/envs/binance_env/bin/python3} /home/niels/binance/sweep_daemon.py --machine ${SWEEP_MACHINE:-server1} --mode ${SWEEP_MODE:-tradier} --workers ${SWEEP_WORKERS:-6} --start ${SWEEP_START:-2024-06-01} --symbols ${SWEEP_SYMBOLS:-fast} --batch-size ${SWEEP_BATCH:-20}'
+Restart=always
+RestartSec=30
+# Kill after 4h if stuck (safety net)
+WatchdogSec=14400
+# OOM protection: sweep can use lots of memory
+OOMScoreAdjust=500
+# Logging
+StandardOutput=append:/home/niels/logs/sweep_daemon_systemd.log
+StandardError=append:/home/niels/logs/sweep_daemon_systemd.log
+
+[Install]
+WantedBy=multi-user.target

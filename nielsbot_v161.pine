@@ -1,0 +1,908 @@
+//@version=6
+strategy('Nielsbot(v1.63): 60m SuperTrend - Wave - THMA - S/R - Pyramid - Reduce',
+  overlay=true,
+  calc_on_every_tick=false,
+  calc_on_order_fills=false,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  pyramiding=6,
+  initial_capital=400,
+  slippage=2,
+  commission_type=strategy.commission.percent,
+  commission_value=0.01)
+
+// ═══════════════════════════════════════════════════════════════
+// v1.61 STOCK FILTERS (new — all default ON)
+// ═══════════════════════════════════════════════════════════════
+useRTH     = input.bool(true,  'RTH only (9:30-16:00 ET)',    group='Stock Filters')
+useRvol    = input.bool(true,  'Require relative volume',      group='Stock Filters')
+minRvol    = input.float(1.2,  'Min RVOL for entry',           group='Stock Filters', minval=0.5, maxval=5.0, step=0.1)
+rvolLen    = input.int(20,     'RVOL lookback bars',            group='Stock Filters', minval=5, maxval=100, step=5)
+useVwap    = input.bool(true,  'VWAP directional filter',      group='Stock Filters')
+useBullCandle = input.bool(true, 'Require bullish candle for long / bearish for short entry', group='Stock Filters')
+
+// Inputs
+Mult = input.float(3.5, 'Supertrend ATR Factor', step=0.75, minval=0.7, maxval=90)
+Period = input.int(50, 'Supertrend ATR Period', step=20, minval=10, maxval=650)
+HTFm = input.timeframe('120', 'Supertrend higher timeframe', options=['60','90','120','180','240','360','480','D'])
+Xtrends = input.bool(false, 'Exit on current tf ST change')
+Xtrendl = input.bool(true, 'Exit on high tf ST change')
+length0 = input.int(29, 'THMA 0 Length for swingbuy/sell', minval=9, maxval=69, step=4)
+sb = input.bool(false, 'Long on swingbuy')
+ss = input.bool(false, 'Short on swingsell')
+wtBuyShow = input.bool(false, 'Use Waves buy dot signal')
+wtSellShow = input.bool(false, 'Use Waves sell dot signal')
+sommiDiamondShow = input.bool(false, 'Use Waves Diamond')
+sommiHTCRes = input.string('90', 'HTF Candle Res. 1', options=['60', '90', '105', '120','180', '240','360','480','720','960'])
+sommiHTCRes2 = input.string('120', 'HTF Candle Res. 2', options=['60', '90', '105', '120', '135', '150', '180', '240','360', '480', '720', '960', '1280', 'D', '2D', '4D'])
+wtMALen = input.int(3, 'Trend MA Length', step=1, minval=2, maxval=9)
+wtChannelLen = input.int(9, 'Trend Channel Length for EMA', step=2, minval=1, maxval=21)
+wtAverageLen = input.int(13, 'Trend Average Length', step=5, minval=3, maxval=63)
+zoneE = input.bool(true, 'exit Diamond on lower swingbuy/sell outside support/resistance zone')
+Pyr = input.bool(false, 'Pyramiding on')
+PyrPerc = input.float(9, 'Pyramid %', minval=0.5, maxval=45, step=2) / 100
+d21l = input.float(3, 'Pyr % for next long swingbuy0 entry', minval=0.5, step=1) / 100
+d21s = input.float(3, 'Pyr % for next short swingbuy0 entry', minval=0.5, step=1) / 100
+long_sl = input.float(6, 'Stop Loss % Long wave/ST entry', minval=0.5, maxval=100, step=1) / 100
+short_sl = input.float(6, 'Stop Loss % Short wave/ST entry', minval=0.5, maxval=100, step=1) / 100
+long_slp = input.float(4, 'Stop Loss % Long Pyr entry', minval=-1, maxval=100, step=1) / 100
+short_slp = input.float(4, 'Stop Loss % Short Pyr entry', minval=-1, maxval=100, step=1) / 100
+long_trailing = input.float(9, 'Trailing Stop Loss % Long', minval=1, maxval=30, step=2) / 100
+short_trailing = input.float(9, 'Trailing Stop Loss % Short', minval=1, maxval=30, step=2) / 100
+Htchange = input.bool(true, 'enter ST on swingbuy dip after higher TF change')
+stochcheck = input.bool(false, 'postpone ST entry until stoch crossover')
+uwn1 = input.bool(true, 'Longs above THMA1 only')
+dwn1 = input.bool(true, 'Shorts below THMA1 only')
+length1 = input.int(50, 'THMA 1 (open/close) Length', minval=50, step=100)
+d31 = input.float(6, '% from rsi top for immediate exit', minval=1, step=2) / 100
+d31s = input.float(6, '% from rsi bottom for immediate exit', minval=1, step=2) / 100
+delta9 = input.float(3, 'atr multiplier change for immediate exit after open', minval=0.5, step=1)
+dmr = input.float(1.5, '% over/under previous exit price for 5 bar reentry', minval=0.00, step=0.5) / 100
+delta10 = input.float(3, 'atr multiplier change for immediate re-entry after close', minval=0.5, step=1)
+delta11 = input.int(12, '# bars lookback for reentry long', minval=1, step=20)
+delta12 = input.int(12, '# bars lookback for reentry short', minval=1, step=20)
+philo = input.bool(true, 'Reenter on stoch RSI crossover')
+stop0 = input.int(12, '# of bars after which stop loss becomes 0%', minval=2, step=20)
+atrLength = input.int(4, 'Stop ATR Length', step=14, minval=4, maxval=32)
+kvl = input.int(80, 'stoch k crossdown value', step=15, minval=45, maxval=100)
+kvs = input.int(20, 'stoch k crossup value', step=10, minval=0, maxval=35)
+kexitl1 = input.bool(true, 'half long/double short on double stoch rsi crossdown')
+kexits1 = input.bool(true, 'half long/double short on double stoch rsi crossup')
+dkvl = input.int(80, 'max stoch k for long entry', step=15, minval=45, maxval=100)
+dkvs = input.int(20, 'min stoch k for short entry', step=15, minval=0, maxval=55)
+minper = input.float(1.5, 'Min deviation from 200EMA for trade', minval=0.0, maxval=100, step=0.75) / 100
+Flatzone = input.float(2, 'Flat market Def, % over x bars', minval=0, step=0.5) / 100
+lookbackp1 = input.int(12, 'Number of bars look back for hh or ll', minval=1, step=10)
+zllplus = input.float(0.8, 'max% over low resistance for long bounce entry', minval=0.00, step=0.4) / 100
+zhplus = input.float(0.8, 'min% over high resistance for long breakout entry', minval=0.00, step=0.4) / 100
+zhhminus = input.float(0.8, 'max% under high resistance for short bounce entry', minval=0.00, step=0.4) / 100
+zlminus = input.float(0.8, 'min% under low resistance for short breakout entry', minval=0.00, step=0.4) / 100
+har15 = input.bool(false, 'Exit and re-entry on 2h HA candle color change')
+hlp = input.bool(true, 'Enter on pullback/breakout from high/low resistance')
+hlpx = input.bool(false, 'Exit on pullback/breakout from high/low resistance')
+pe = input.bool(false, 'Enter pyr on s/r bounce/breakout')
+start = input.float(2.5, "Psar Start", options=[8.0, 4.0, 2.5, 1.0, 0.75, 0.5, 0.25]) / 100
+maximum = input.float(4, "Psar Max Value %", options=[8.0, 4.0, 2.5, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.17, 0.14, 0.11, 0.09, 0.07, 0.05]) / 100
+Penter = input.bool(false, 'Enter on psar top/bottom cross')
+Pexit = input.bool(false, 'Exit half on psar top/bottom cross')
+PSE = input.bool(false, 'Enter pyr on psar curve cross')
+PSX = input.bool(false, 'Exit half on psar curve cross')
+PSA = input.bool(false, 'Enter position on psar cross')
+halving = input.bool(false, 'Half and double')
+autow = input.bool(true, 'Half position size when < w %')
+autop = input.bool(true, 'Half pyr position size when < pyr %')
+dw1 = input.float(0, '% from 0 for halving w position', minval=-4.00, step=1.0) / 100
+dp1 = input.float(-2, '% from 0 for halving pyr position', minval=-4.00, step=1.5) / 100
+half = input.bool(false, 'half long/double short position on lower stoch RSI top')
+double = input.bool(false, 'half short/double long position on higher stoch rsi top')
+useqty = input.bool(false, 'Vary quantity according to recent wins/losses')
+barswin = input.int(50, 'number of bars back for counting wins/losses', step=50, minval=6, maxval=2000)
+qq = input.float(100, 'multiplier of % of equity for initial trade', minval=0.01, step=0.1) / 100
+sma0 = input.float(1.00, 'multiplier when close < 1% from SMA', minval=0.00, step=0.25)
+sma1 = input.float(1.00, 'multiplier when close > 1% from SMA', minval=0.00, step=0.25)
+sma2 = input.float(1.00, 'multiplier when close > 2% from SMA', minval=0.00, step=0.25)
+sma4 = input.float(1.00, 'multiplier when close > 4% from SMA', minval=0.00, step=0.25)
+sma8 = input.float(1.00, 'multiplier when close > 8% from SMA', minval=0.00, step=0.25)
+sma16 = input.float(1.00, 'multiplier when close >16% from SMA', minval=0.00, step=0.25)
+longs = input.bool(true, 'Long trades')
+shorts = input.bool(true, 'Short trades')
+uwn = input.bool(false, 'Longs above EMA only')
+dwn = input.bool(false, 'Shorts below EMA only')
+length2 = input.int(200, 'EMA (uptrend/downtrend) Length', minval=50, step=1500)
+length3 = input.int(100, 'THMA3 length for Waves Diamond entry', minval=15, step=20)
+nomfi = input.bool(false, 'Diamond entry with decreasing money flow')
+h3 = input.bool(false, 'Diamond exit without THMA3 confirmation')
+exitL = input.bool(true, 'Exit long on diamond sell signal')
+exitS = input.bool(true, 'Exit short on diamond buy signal')
+norsi = input.bool(false, 'Do not use rsi check for entry')
+norsi1 = input.bool(false, 'Do not use rsi1 check for entry')
+noLP = input.bool(true, 'enter without waiting for higher low / lower high')
+noHULL3 = input.bool(true, 'enter without THMA3 trend confirmation')
+zone = input.bool(true, 'enter Wave only on bounce from H/L')
+lengthP = input.int(9, 'THMA P Length (for pyramid swing entry)', minval=6, step=3)
+d34b = input.float(2, 'min % for pyr', minval=-4.00, step=1) / 100
+d38 = input.float(0.0, '% deviation from bid price for Capital.com', minval=0, maxval=1, step=0.05) / 100
+d39 = close < 0.000000001 ? 12 : close < 0.00000001 ? 11 : close < 0.0000001 ? 10 : close < 0.000001 ? 9 : close < 0.00001 ? 8 : close < 0.0001 ? 7 : close < 0.001 ? 6 : close < 0.01 ? 5 : close < 0.1 ? 4 : close < 1 ? 3 : 2
+PYR = input.bool(false, 'Enter position on % from SMA3')
+PERC = input.float(5, '% from SMA3', minval=0.5, maxval=45, step=2) / 100
+d41 = input.float(3, '% from SMA3 for swingbuy', minval=0.5, step=1) / 100
+length4 = input.int(200, 'SMA3 length', minval=9, step=50)
+modeSwitch = "THMA"
+src = close
+mfi = ta.mfi(close, 14)
+res0 = input.timeframe("15", "Resolution k0")
+src0 = request.security(syminfo.tickerid, res0, close)
+rsi0 = ta.rsi(src0, 14)
+k0 = ta.sma(ta.stoch(rsi0, rsi0, rsi0, 14), 3)
+k0cru = ta.crossunder(k0, kvs)
+k0cro = ta.crossover(k0, kvl)
+srcx = close
+rsi = ta.rsi(srcx, 14)
+k = ta.sma(ta.stoch(rsi, rsi, rsi, 14), 3)
+kcro = ta.crossover(k, kvs)
+kcru = ta.crossunder(k, kvl)
+res1 = input.timeframe("120", "Resolution k1")
+src1 = request.security(syminfo.tickerid, res1, close)
+rsi1 = ta.rsi(src1, 14)
+k1 = ta.sma(ta.stoch(rsi1, rsi1, rsi1, 14), 3)
+k1cro = ta.crossover(k1[1], kvs)
+k1cru = ta.crossunder(k1[1], kvl)
+res2 = input.timeframe("240", "Resolution k2")
+src2 = request.security(syminfo.tickerid, res2, close)
+rsi2 = ta.rsi(src2, 14)
+k2 = ta.sma(ta.stoch(rsi2, rsi2, rsi2, 14), 3)
+res3 = input.timeframe("D", "Resolution k3")
+src3 = request.security(syminfo.tickerid, res1, close)  // v1.63: reverted to res1 to match v1.50 behavior
+rsi3 = ta.rsi(src3, 14)
+k3 = ta.sma(ta.stoch(rsi3, rsi3, rsi3, 14), 3)
+k3cro = ta.crossover(k3[1], 30)
+k3cru = ta.crossunder(k3[1], 70)
+talow30 = ta.lowest(low, 30)
+taema200 = ta.ema(close, 200)
+minp = ta.highest(high, 30) > taema200 * (1 + minper) or talow30 < taema200 * (1 - minper)
+
+// ═══════════════════════════════════════════════════════════════
+// v1.61 STOCK FILTER CALCULATIONS
+// ═══════════════════════════════════════════════════════════════
+inRTH = not useRTH or not na(time(timeframe.period, "0930-1600:23456", "America/New_York"))  // v1.61
+volSma = ta.sma(volume, rvolLen)                                                              // v1.61
+rvol = volSma > 0 ? volume / volSma : 1.0                                                     // v1.61
+rvolOk = not useRvol or rvol >= minRvol                                                        // v1.61
+vwapValue = ta.vwap                                                                            // v1.61
+vwapLongOk  = not useVwap or close > vwapValue                                                 // v1.61
+vwapShortOk = not useVwap or close < vwapValue                                                 // v1.61
+bullCandle = not useBullCandle or close > open                                                  // v1.61
+bearCandle = not useBullCandle or close < open                                                  // v1.61
+stockFilterLong  = inRTH and rvolOk and vwapLongOk and bullCandle                              // v1.61
+stockFilterShort = inRTH and rvolOk and vwapShortOk and bearCandle                             // v1.61
+
+// Variable declarations
+var float k0crov0 = na
+var float k0crov1 = na
+var float k0cruv0 = na
+var float k0cruv1 = na
+var float kcrov0 = na
+var float kcrov1 = na
+var float kcruv0 = na
+var float kcruv1 = na
+var float k1crov0 = na
+var float k1crov1 = na
+var float k1cruv0 = na
+var float k1cruv1 = na
+var float k3crov0 = na
+var float k3crov1 = na
+var float k3cruv0 = na
+var float k3cruv1 = na
+var float entry_priceLp = na
+var float entry_priceSp = na
+var float PCL = 0.0
+var float PCS = 0.0
+var float PRL = na
+var float PRS = na
+
+// PSAR calculations
+sar = ta.sar(start, 0.025, maximum)
+var float psov0 = na
+var float psuv0 = na
+if sar < sar[1] * 0.99
+    psov0 := sar
+if sar > sar[1] * 1.01
+    psuv0 := sar
+Psar0L = ta.crossover(close, psov0)
+Psar0S = ta.crossunder(close, psuv0)
+Psar1L = sar < sar[1] * 0.99
+Psar1S = sar > sar[1] * 1.01
+
+// Heikin Ashi calculations
+hah5 = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, high)
+hal5 = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, low)
+hac5 = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close)
+hao5 = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, open)
+Atr = request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, ta.atr(Period))
+hao15 = request.security(ticker.heikinashi(syminfo.tickerid), '120', open[1], barmerge.gaps_off, barmerge.lookahead_off)
+hac15 = request.security(ticker.heikinashi(syminfo.tickerid), '120', close[1], barmerge.gaps_off, barmerge.lookahead_off)
+highhtf = request.security(ticker.heikinashi(syminfo.tickerid), HTFm, high[1], lookahead=barmerge.lookahead_off)
+lowhtf = request.security(ticker.heikinashi(syminfo.tickerid), HTFm, low[1], lookahead=barmerge.lookahead_off)
+closehtf = request.security(ticker.heikinashi(syminfo.tickerid), HTFm, close[1], lookahead=barmerge.lookahead_off)
+openhtf = request.security(ticker.heikinashi(syminfo.tickerid), HTFm, open[1], lookahead=barmerge.lookahead_off)
+haconfl = hac15[1] > hao15[1]
+haconfs = hac15[1] < hao15[1]
+
+// SuperTrend calculations
+Up = (hah5 + hal5) / 2 - Mult * Atr
+Dn = (hah5 + hal5) / 2 + Mult * Atr
+
+var float TUp = na
+var float TDown = na
+Trend = 0
+TUp := hac5[1] > TUp[1] ? math.max(Up, TUp[1]) : Up
+TDown := hac5[1] < TDown[1] ? math.min(Dn, TDown[1]) : Dn
+Trend := hac5 > TDown[1] ? 1 : hac5 < TUp[1] ? -1 : nz(Trend[1], 1)
+Trailingsl = Trend == 1 ? TUp : TDown
+linecolorST = Trend == 1 and nz(Trend[1]) == 1 ? color.new(color.lime, 0) : Trend == -1 and nz(Trend[1]) == -1 ? color.new(color.red, 0) : na
+
+// Higher timeframe SuperTrend
+HTfatr = request.security(ticker.heikinashi(syminfo.tickerid), HTFm, ta.atr(Period)[1], lookahead=barmerge.lookahead_off)
+Uphtf = math.abs(highhtf + lowhtf) / 2 - Mult * HTfatr
+Dnhtf = math.abs(highhtf + lowhtf) / 2 + Mult * HTfatr
+
+var float TUphtf = na
+var float TDownhtf = na
+TrendHtf = 0
+TUphtf := closehtf[1] > TUphtf[1] ? math.max(Uphtf, TUphtf[1]) : Uphtf
+TDownhtf := closehtf[1] < TDownhtf[1] ? math.min(Dnhtf, TDownhtf[1]) : Dnhtf
+TrendHtf := closehtf > TDownhtf[1] ? 1 : closehtf < TUphtf[1] ? -1 : nz(TrendHtf[1], 1)
+TrailingslHtf = TrendHtf == 1 ? TUphtf : TDownhtf
+linecolorHtf = TrendHtf == 1 and nz(TrendHtf[1]) == 1 ? color.green : TrendHtf == -1 and nz(TrendHtf[1]) == -1 ? color.red : na
+
+changeUp = Trend == 1 and Trend[1] == -1
+changeDown = Trend == -1 and Trend[1] == 1
+changeUpHtf = TrendHtf == 1 and TrendHtf[1] == -1
+changeDownHtf = TrendHtf == -1 and TrendHtf[1] == 1
+
+since_TUp = ta.barssince(changeUp)
+since_TDown = ta.barssince(changeDown)
+since_TUpHtf = ta.barssince(changeUpHtf)
+since_TDownhtf = ta.barssince(changeDownHtf)
+
+// THMA function
+THMA(_src, _length) =>
+    ta.wma(ta.wma(_src, _length / 6) * 3 - ta.wma(_src, _length / 4) - ta.wma(_src, _length / 2), _length / 2)
+
+// Mode function
+Mode(modeSwitch, src, len) =>
+    modeSwitch == 'THMA' ? THMA(src, len) : na
+
+// HULL calculations
+HULLP = Mode(modeSwitch, src, lengthP)
+HULLPe = ta.hma(HULLP, 4)
+HULL = Mode(modeSwitch, src, length0)
+HULLe = ta.hma(HULL, 3)
+HULL1 = Mode(modeSwitch, src, length1)
+HULL2 = Mode(modeSwitch, src, length2)
+HULL3 = Mode(modeSwitch, src, length3)
+
+// Swing calculations
+swingbuyP = HULLPe[0] >= HULLPe[1] and HULLPe[1] < HULLPe[2]
+swingsellP = HULLPe[0] <= HULLPe[1] and HULLPe[1] > HULLPe[2]
+swingbuy = HULLe[0] >= HULLe[1] and HULLe[1] < HULLe[2]
+swingsell = HULLe[0] <= HULLe[1] and HULLe[1] > HULLe[2]
+
+LPL0 = ta.valuewhen(swingbuy, low, 0)
+LPS0 = ta.valuewhen(swingsell, high, 0)
+LPL1 = ta.valuewhen(swingbuy, low, 1)
+LPS1 = ta.valuewhen(swingsell, high, 1)
+
+// Hull colors
+hullPColor = HULLP[0] < HULLP[1] ? #ff0000 : #00ff00
+hullPeColor = HULLPe[0] < HULLPe[1] ? #ff0000 : #5eff00
+hullColor = HULL[0] < HULL[1] ? #ff0000 : #00ff00
+hull1Color = HULL1[0] < HULL1[1] ? #ff0000 : #72DD86
+hull2Color = HULL2[0] < HULL2[1] ? #ff0000 : #72DD86
+
+// WaveTrend functions
+f_top_fractal(src) =>
+    src[4] < src[2] and src[3] < src[2] and src[2] > src[1] and src[2] > src[0]
+
+f_bot_fractal(src) =>
+    src[4] > src[2] and src[3] > src[2] and src[2] < src[1] and src[2] < src[0]
+
+f_fractalize(src) =>
+    top_fractal = f_top_fractal(src)
+    bot_fractal = f_bot_fractal(src)
+    top_fractal ? 1 : bot_fractal ? -1 : 0
+
+f_findDivs(src, topLimit, botLimit, useLimits) =>
+    fractalTop = f_fractalize(src) > 0 and (useLimits ? src[2] >= topLimit : true)
+    fractalBot = f_fractalize(src) < 0 and (useLimits ? src[2] <= botLimit : true)
+    fractalTopValue = fractalTop ? src[2] : na
+    fractalBotValue = fractalBot ? src[2] : na
+    highPrev = ta.valuewhen(fractalTop, src[2], 0)[2]
+    highPrice = ta.valuewhen(fractalTop, high[2], 0)[2]
+    lowPrev = ta.valuewhen(fractalBot, src[2], 0)[2]
+    lowPrice = ta.valuewhen(fractalBot, low[2], 0)[2]
+    bearSignal = fractalTop and high[2] > highPrice and src[2] < highPrev
+    bullSignal = fractalBot and low[2] < lowPrice and src[2] > lowPrev
+    bearDivHidden = fractalTop and high[2] < highPrice and src[2] > highPrev
+    bullDivHidden = fractalBot and low[2] > lowPrice and src[2] < lowPrev
+    [fractalTopValue, fractalBotValue, lowPrev, bearSignal, bullSignal, bearDivHidden, bullDivHidden]
+
+rsiMFIPosY = 2.5
+osLevel = -53
+obLevel = 53
+showHiddenDiv_nl = false
+colorGreen = color.green
+colorRed = color.red
+
+f_rsimfi(_period, _multiplier, _tf) =>
+    request.security(syminfo.tickerid, _tf, ta.sma((close - open) / (high - low) * _multiplier, _period) - rsiMFIPosY)
+
+f_wavetrend(src, chlen, avg, malen, tf) =>
+    tfsrc = request.security(syminfo.tickerid, tf, src)
+    esa = ta.ema(tfsrc, chlen)
+    de = ta.ema(math.abs(tfsrc - esa), chlen)
+    ci = (tfsrc - esa) / (0.015 * de)
+    wt1 = request.security(syminfo.tickerid, tf, ta.ema(ci, avg))
+    wt2 = request.security(syminfo.tickerid, tf, ta.sma(wt1, malen))
+    wtVwap = wt1 - wt2
+    wtOversold = wt2 <= osLevel
+    wtOverbought = wt2 >= obLevel
+    wtCross = ta.cross(wt1, wt2)
+    wtCrossUp = wt2 - wt1 <= 0
+    wtCrossDown = wt2 - wt1 >= 0
+    wtCrosslast = ta.cross(wt1[2], wt2[2])
+    wtCrossUplast = wt2[2] - wt1[2] <= 0
+    wtCrossDownlast = wt2[2] - wt1[2] >= 0
+    [wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCrosslast, wtCrossUplast, wtCrossDownlast, wtVwap]
+
+f_getTFCandle(_tf) =>
+    _open = request.security(ticker.heikinashi(syminfo.tickerid), _tf, open[1], barmerge.gaps_off, barmerge.lookahead_off)
+    _close = request.security(ticker.heikinashi(syminfo.tickerid), _tf, close[1], barmerge.gaps_off, barmerge.lookahead_off)
+    _high = request.security(ticker.heikinashi(syminfo.tickerid), _tf, high[1], barmerge.gaps_off, barmerge.lookahead_off)
+    _low = request.security(ticker.heikinashi(syminfo.tickerid), _tf, low[1], barmerge.gaps_off, barmerge.lookahead_off)
+    _hl2 = (_high + _low) / 2.0
+    newBar = ta.change(_open)
+    candleBodyDir = _close > _open
+    [candleBodyDir, newBar]
+
+f_findSommiDiamond(tf, tf2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown) =>
+    [candleBodyDir, newBar] = f_getTFCandle(tf)
+    [candleBodyDir2, newBar2] = f_getTFCandle(tf2)
+    bearPattern = wt2 >= 3 and wtCross and wtCrossDown and not candleBodyDir and not candleBodyDir2
+    bullPattern = wt2 <= 3 and wtCross and wtCrossUp and candleBodyDir and candleBodyDir2
+    [bearPattern, bullPattern]
+
+// WaveTrend levels
+osLevel2 = -60
+osLevel3 = -75
+obLevel2 = 60
+obLevel3 = 100
+wtDivOBLevel = 45
+wtDivOSLevel = -65
+wtDivOBLevel_add = 15
+wtDivOSLevel_add = -40
+rsiMFIperiod = 60
+rsiMFIMultiplier = 400
+
+// Calculate WaveTrend
+[wt1, wt2, wtOversold, wtOverbought, wtCross, wtCrossUp, wtCrossDown, wtCross_last, wtCrossUp_last, wtCrossDown_last, wtVwap] = f_wavetrend(hlc3, wtChannelLen, wtAverageLen, wtMALen, timeframe.period)
+
+// Sommi Diamond
+[sommiBearishDiamond, sommiBullishDiamond] = f_findSommiDiamond(sommiHTCRes, sommiHTCRes2, wt1, wt2, wtCross, wtCrossUp, wtCrossDown)
+
+// Find divergences
+[wtFractalTop, wtFractalBot, wtLow_prev, wtBearDiv, wtBullDiv, wtBearDivHidden, wtBullDivHidden] = f_findDivs(wt2, wtDivOBLevel, wtDivOSLevel, true)
+[wtFractalTop_add, wtFractalBot_add, wtLow_prev_add, wtBearDiv_add, wtBullDiv_add, wtBearDivHidden_add, wtBullDivHidden_add] = f_findDivs(wt2, wtDivOBLevel_add, wtDivOSLevel_add, true)
+[wtFractalTop_nl, wtFractalBot_nl, wtLow_prev_nl, wtBearDiv_nl, wtBullDiv_nl, wtBearDivHidden_nl, wtBullDivHidden_nl] = f_findDivs(wt2, 0, 0, false)
+
+wtBearDivHidden_ = showHiddenDiv_nl ? wtBearDivHidden_nl : wtBearDivHidden
+wtBullDivHidden_ = showHiddenDiv_nl ? wtBullDivHidden_nl : wtBullDivHidden
+signalColor = wt2 - wt1 > 0 ? color.red : color.lime
+
+// Buy and sell signals
+buySignal = wtCross and wtCrossUp and wtOversold and wtBuyShow
+sellSignal = wtCross and wtCrossDown and wtOverbought and wtSellShow
+
+// Additional indicators
+up1 = ta.rma(math.max(ta.change(close), 0), 9)
+down1 = ta.rma(-math.min(ta.change(close), 0), 9)
+legacy_rsi = down1 == 0 ? 100 : up1 == 0 ? 0 : 100 - 100 / (1 + up1 / down1)
+
+f1(m, n) =>
+    m >= n ? m : 0.0
+
+f2(m, n) =>
+    m >= n ? 0.0 : -m
+
+m1 = f1(ta.change(ta.hma(open, 5)), ta.change(ta.hma(close, 12)))
+m2 = f2(ta.change(ta.hma(open, 5)), ta.change(ta.hma(close, 12)))
+sm1 = math.sum(m1, 1)
+sm2 = math.sum(m2, 1)
+
+percent(nom, div) =>
+    100 * nom / div
+
+cmo_new = percent(sm1 - sm2, sm1 + sm2)
+phi = ta.ema(ta.highest(high, delta11)[delta11], 20)
+plo = ta.ema(ta.lowest(low, delta12)[delta12], 20)
+hh = ta.highest(high, lookbackp1)
+ll = ta.lowest(low, lookbackp1)
+flatzone = hh < ll * (1 + Flatzone)
+
+// Support and resistance
+hsr = ta.highest(2)
+h1 = na(ta.dev(hsr, 2)) ? na : hsr
+hpivot = fixnan(h1)
+lsr = ta.lowest(2)
+l1 = na(ta.dev(lsr, 2)) ? na : lsr
+lpivot = fixnan(l1)
+rsi_new = ta.rsi(close, 9)
+lpivot_new = lpivot
+hpivot_new = hpivot
+sup = rsi_new < 25 and cmo_new > 50 and not na(lpivot_new)
+res = rsi_new > 75 and cmo_new < -50 and not na(hpivot_new)
+
+calcXup() =>
+    var xup = 0.0
+    xup := sup ? low : xup[1]
+    xup
+
+calcXdown() =>
+    var xdown = 0.0
+    xdown := res ? high : xdown[1]
+    xdown
+
+tfH = request.security(syminfo.tickerid, '', calcXdown(), lookahead=barmerge.lookahead_off)
+tfL = request.security(syminfo.tickerid, '', calcXup(), lookahead=barmerge.lookahead_off)
+
+zoneL = (close > tfL and close < tfL * (1 + zllplus)) or close > tfH * (1 + zhplus)
+zoneS = (close < tfH and close > tfH * (1 - zhhminus)) or close < tfL * (1 - zlminus)
+
+hlength = 50
+atrstop = ta.atr(atrLength)
+uptrend = close > ta.ema(high, 50)
+downtrend = close < ta.ema(low, 50)
+uptrendn = HULL > HULL2
+downtrendn = HULL < HULL2
+uptrendn1 = close > HULL1
+downtrendn1 = close < HULL1
+
+sbl = sommiBullishDiamond or sommiBullishDiamond[1] or sommiBullishDiamond[2] or sommiBullishDiamond[3] or sommiBullishDiamond[5] or sommiBullishDiamond[6]
+sbs = sommiBearishDiamond or sommiBearishDiamond[1] or sommiBearishDiamond[2] or sommiBearishDiamond[3] or sommiBearishDiamond[5] or sommiBearishDiamond[6]
+
+// Trading logic
+lowest6 = ta.lowest(low, 6)
+highest6 = ta.highest(high, 6)
+lowest2 = ta.lowest(low, 2)
+highest2 = ta.highest(high, 2)
+
+if k0cro
+    k0crov1 := k0crov0
+    k0crov0 := lowest6
+if k0cru
+    k0cruv1 := k0cruv0
+    k0cruv0 := highest6
+
+crudown0 = k0cru and k0cruv0 < k0cruv1
+croup0 = k0cro and k0crov0 > k0crov1
+
+if kcro
+    kcrov1 := kcrov0
+    kcrov0 := lowest6
+if kcru
+    kcruv1 := kcruv0
+    kcruv0 := highest6
+
+croup = kcro and kcrov0 > kcrov1 and k0crov0 > k0crov1
+crudown = kcru and kcruv0 < kcruv1 and k0cruv0 < k0cruv1
+
+if k1cro
+    k1crov1 := k1crov0
+    k1crov0 := lowest6
+if k1cru
+    k1cruv1 := k1cruv0
+    k1cruv0 := highest6
+
+croup1 = k1cro and k1crov0 > k1crov1 and kcrov0 > kcrov1 and k0crov0 > k0crov1
+crudown1 = k1cru and k1cruv0 < k1cruv1 and kcruv0 < kcruv1 and k0cruv0 < k0cruv1
+
+if k3cro
+    k3crov1 := k3crov0
+    k3crov0 := lowest6
+if k3cru
+    k3cruv1 := k3cruv0
+    k3cruv0 := highest6
+
+croup3 = k3cro and k3crov0 > k3crov1 and k1crov0 > k1crov1 and kcrov0 > kcrov1 and k0crov0 > k0crov1
+crudown3 = k3cru and k3cruv0 < k3cruv1 and k1cruv0 < k1cruv1 and kcruv0 < kcruv1 and k0cruv0 < k0cruv1
+
+kel1 = k0crov0 > k0crov1 and kcrov0 > kcrov1 and k1crov0 > k1crov1 and (kcro or kcro[1]) and kexitl1 and k1 < 70 and k3 < 60 and strategy.position_size > 0
+kxs1 = k0crov0 > k0crov1 and kcrov0 > kcrov1 and k1crov0 > k1crov1 and (kcro or kcro[1]) and kexits1 and strategy.position_size < 0
+kes1 = k0cruv0 < k0cruv1 and (kcru or kcru[1]) and kexits1 and k1 > 30 and k3 > 40 and strategy.position_size < 0
+kxl1 = k1cruv0 < k1cruv1 and (kcru or kcru[1]) and kexitl1 and strategy.position_size > 0
+
+HALF = k0cruv0 < k0cruv1 and kcrov0 < kcrov1 and (kcru or kcru[1]) and half
+DOUBLE = k0cruv0 > k0cruv1 and kcrov0 > kcrov1 and (kcro or kcro[1]) and double
+
+hxl = k3[1] > 80 and hac15[1] < hao15[1] and hac15[2] > hao15[2] and har15 and strategy.position_size > 0
+hxs = k3[1] < 20 and hac15[1] > hao15[1] and hac15[2] < hao15[2] and har15 and strategy.position_size < 0
+
+HAL15 = hac15[1] > hao15[1] and hac15[2] < hao15[2] and har15 and zoneL and (kxl1[1] or kxl1[2] or kxl1[3] or kxl1[4] or kxl1[5] or kxl1[6] or hxl[1] or hxl[2] or hxl[3] or hxl[4] or hxl[5] or hxl[6] or hxl[7])
+HAS15 = hac15[1] < hao15[1] and hac15[2] > hao15[2] and hac15[3] > hao15[3] and har15 and zoneS and (kxs1[1] or kxs1[2] or kxs1[3] or kxs1[4] or kxs1[5] or kxs1[6] or hxs[1] or hxs[2] or hxs[3] or hxs[4] or hxs[5] or hxs[6] or hxs[7])
+
+pl = (((zoneL[1]) and close > tfL * (1 + zllplus)) or (close > tfH * (1 + zhplus) and swingbuy)) and haconfl and hlp
+ps = (((zoneS[1]) and close < tfH * (1 - zhhminus)) or (close < tfL * (1 - zlminus) and swingsell)) and haconfs and hlp
+
+pll = ((zoneL[1]) and (close > tfH * (1 + zhplus) and swingbuy)) and haconfl
+pss = ((zoneS[1]) and (close < tfL * (1 - zlminus) and swingsell)) and haconfs
+
+pxl = (((zoneS[1]) and close < tfH * (1 - zhhminus)) and swingsell) and haconfs and hlpx
+pxs = (((zoneL[1]) and close > tfL * (1 + zllplus)) and swingbuy) and haconfl and hlpx
+
+SB = LPL0 > LPL1 and LPS0 > LPS1 and sb and haconfl and swingbuy
+SS = LPL0 < LPL1 and LPS0 < LPS1 and ss and haconfs and swingsell
+
+entrylongST = ((changeUp and TrendHtf == 1 and not stochcheck) or (Trend == 1 and TrendHtf == 1 and swingbuy and Htchange and since_TUpHtf < since_TUp) or (Trend == 1 and TrendHtf == 1 and kcro and stochcheck)) and (strategy.position_size == 0)
+entryshortST = ((changeDown and TrendHtf == -1 and not stochcheck) or (Trend == -1 and TrendHtf == -1 and swingsell and Htchange and since_TDownhtf < since_TDown) or (Trend == -1 and TrendHtf == -1 and kcru and stochcheck)) and (strategy.position_size == 0)
+
+// v1.61 FIX: tz is now a real RTH session filter (was hardcoded true)
+tz = inRTH
+
+smaHigh200 = ta.sma(high, 200)
+smaLow200 = ta.sma(low, 200)
+crossoverCloseSmaHigh = ta.crossover(close, smaHigh200 * (1 + PERC))
+crossunderCloseSmaLow = ta.crossunder(close, smaLow200 * (1 - PERC))
+
+exitlongw = ((k2[1] > 80 and close < highest2 * (1 - d31)) or (Trend == -1 and Trend[1] == 1 and Xtrends) or (TrendHtf == -1 and TrendHtf[1] == 1 and Xtrendl) or (sbs and (LPL0 < LPL1 or close < LPL0 * 0.99) and swingsell and (mfi < mfi[1] or nomfi) and (HULL3 < HULL3[1] or h3) and ((zoneL or zoneS) or not zoneE) and exitL)) and strategy.position_size > 0  // v1.61 FIX: removed duplicate k2 condition
+exitshortw = ((k2[1] < 20 and close > lowest2 * (1 + d31s)) or (Trend == 1 and Trend[1] == -1 and Xtrends) or (TrendHtf == 1 and TrendHtf[1] == -1 and Xtrendl) or (sbl and (LPS0 > LPS1 or close > LPS0 * 1.01) and swingbuy and (mfi > mfi[1] or nomfi) and (HULL3 > HULL3[1] or h3) and ((zoneL or zoneS) or not zoneE) and exitS)) and strategy.position_size < 0
+
+// v1.61 FIX: stockFilterLong/Short applied to entries; symmetric long entry (added entrylongST, SB, buySignal, pl)
+entrylongw = ((((sommiDiamondShow and sommiBullishDiamond) or (Psar0L and PSA) or (crossoverCloseSmaHigh and PYR) or ((haconfl and swingbuy and close > smaHigh200 * (1 + d41)) and PYR)) and (mfi > mfi[1] or nomfi) and tz and (k <= dkvl or norsi) and (k2[1] <= dkvl or norsi1)) or (entrylongST and (k <= dkvl or norsi) and (k2[1] <= dkvl or norsi1) and (uptrendn1 or not uwn1) and (uptrendn or not uwn) and (LPL0 > LPL1 or noLP)) or ((SB or buySignal or pl) and tz and (k <= dkvl or norsi) and (k2[1] <= dkvl or norsi1) and (LPL0 > LPL1 or noLP) and (zoneL or zoneS or not zone) and (HULL3 > HULL3[1] or noHULL3))) and minp and strategy.position_size == 0 and stockFilterLong  // v1.61: +stockFilterLong
+entryshortw = ((((sommiDiamondShow and sommiBearishDiamond) or (Psar0S and PSA) or (crossunderCloseSmaLow and PYR) or ((haconfs and swingsell and close < smaLow200 * (1 - d41)) and PYR)) and (mfi < mfi[1] or nomfi) and tz and (k >= dkvs or norsi) and (k2[1] >= dkvs or norsi1)) or (entryshortST and (k >= dkvs or norsi) and (k2[1] >= dkvs or norsi1) and (downtrendn1 or not dwn1) and (downtrendn or not dwn) and (LPS0 < LPS1 or noLP)) or ((SS or sellSignal or ps) and tz and (k >= dkvs or norsi) and (k2[1] >= dkvs or norsi1) and (LPS0 < LPS1 or noLP) and (zoneL or zoneS or not zone) and (HULL3 < HULL3[1] or noHULL3))) and minp and strategy.position_size == 0 and not entrylongw and stockFilterShort  // v1.61: +stockFilterShort
+
+entry_price_long = ta.valuewhen(entrylongw, open, 0)
+entry_price_short = ta.valuewhen(entryshortw, open, 0)
+posSize = math.abs(strategy.position_size)
+bought = strategy.position_size[0] > strategy.position_size[1]
+firstbought = strategy.position_size[0] > strategy.position_size[1] and strategy.position_size[1] == 0
+entry_priceL = ta.valuewhen(bought, open, 0)
+exit_priceS = ta.valuewhen(bought, close, 0)
+sold = strategy.position_size[0] < strategy.position_size[1]
+firstsold = strategy.position_size[0] < strategy.position_size[1] and strategy.position_size[1] == 0
+entry_priceS = ta.valuewhen(sold, open, 0)
+exit_priceL = ta.valuewhen(sold, close, 0)
+Exitlong = strategy.position_size[1] > strategy.position_size and strategy.position_size == 0
+Exitshort = strategy.position_size[1] < strategy.position_size and strategy.position_size == 0
+Exitlongpart = strategy.position_size[1] > strategy.position_size and strategy.position_size > 0
+Exitshortpart = strategy.position_size[1] < strategy.position_size and strategy.position_size < 0
+ELPV = ta.valuewhen(Exitlongpart, close, 0)
+ESPV = ta.valuewhen(Exitshortpart, close, 0)
+
+entrylongp = (((Psar1L and PSE) or (pl and pe) or (Psar0L and Penter) or (close > entry_priceL * (1 + PyrPerc) and Pyr) or (swingbuyP and close > entry_priceL * (1 + d21l) and HULL > HULL[1] and Pyr) or (kcro and close > strategy.position_avg_price * (1 + d34b) and close > entry_priceL * 1.02 and close > tfH[4] and halving and Pyr) or (kel1 and close > entry_priceL * (1 + d34b))) and close > strategy.position_avg_price * 1.01 and barstate.isconfirmed and close > close[1]) and minp and strategy.position_size > 0 and not entrylongw and not entryshortw and not exitlongw and inRTH  // v1.61: +inRTH for pyramids
+entryshortp = (((Psar1S and PSE) or (ps and pe) or (Psar0S and Penter) or (close < entry_priceS * (1 - PyrPerc) and Pyr) or (swingsellP and close < entry_priceS * (1 - d21s) and HULL < HULL[1] and Pyr) or (kcru and close < strategy.position_avg_price * (1 - d34b) and close < entry_priceS * 0.98 and close < tfL[4] and halving and Pyr) or (kes1 and close < entry_priceS * (1 - d34b))) and close < strategy.position_avg_price * 0.99 and barstate.isconfirmed and close < close[1]) and minp and strategy.position_size < 0 and not entrylongw and not entryshortw and not exitshortw and inRTH  // v1.61: +inRTH for pyramids
+
+if entrylongp
+    entry_priceLp := close
+else if Exitlong or entryshortw
+    entry_priceLp := na
+
+if entryshortp
+    entry_priceSp := close
+else if Exitshort or entrylongw
+    entry_priceSp := na
+
+repentL = (entrylongw[1] or entrylongw[2] or entrylongw[3] or entrylongw[4] or entrylongw[5] or entrylongw[6] or entrylongw[7] or entrylongw[8]) and strategy.position_size > 0 and close < entry_priceL - delta9 * atrstop and minp and not flatzone
+repentS = (entryshortw[1] or entryshortw[2] or entryshortw[3] or entryshortw[4] or entryshortw[5] or entryshortw[6] or entryshortw[7] or entryshortw[8]) and strategy.position_size < 0 and close > entry_priceS + delta9 * atrstop and minp and not flatzone and not entrylongw and not repentL
+
+if Exitlongpart
+    PCL := close
+else if Exitlong or entrylongp or entryshortw
+    PCL := 0.0
+
+if Exitshortpart
+    PCS := close
+else if Exitshort or entryshortp or entrylongw
+    PCS := 0.0
+
+highestPosSizeDelta11 = ta.highest(strategy.position_size, delta11)
+lowestPosSizeDelta12 = ta.lowest(strategy.position_size, delta12)
+highestPosSize10 = ta.highest(strategy.position_size, 10)
+lowestPosSize10 = ta.lowest(strategy.position_size, 10)
+
+entrylongr = ((((close > exit_priceL + (delta10 * atrstop)) or (k1cro and close > plo and philo)) and strategy.position_size == 0 and (highestPosSizeDelta11 > 0)) or (close > exit_priceL * (1 + dmr) and minp and strategy.position_size == 0 and highestPosSize10 > 0)) and not entryshortw and not entrylongw and not flatzone and stockFilterLong  // v1.61: +stockFilterLong
+entryshortr = ((((close < exit_priceS - (delta10 * atrstop)) or (k1cru and close < phi and philo)) and strategy.position_size == 0 and (lowestPosSizeDelta12 < 0)) or (close < exit_priceS * (1 - dmr) and minp and strategy.position_size == 0 and lowestPosSize10 < 0)) and not entrylongw and not entrylongr and not entryshortw and not flatzone and stockFilterShort  // v1.61: +stockFilterShort
+entrylongpr = (close > PCL * 1.01 or (PCL > 0 and (HALF or kel1 or HAL15 or buySignal or kcro))) and halving and barstate.isconfirmed and close > close[1] and Pyr and close > strategy.position_avg_price * (1 + d34b) and minp and strategy.position_size > 0 and not entrylongw and not entryshortw and not exitlongw and not entrylongp
+entryshortpr = (close < PCS * 0.99 or (PCS > 0 and (DOUBLE or kes1 or HAS15 or sellSignal or kcru))) and halving and barstate.isconfirmed and close < close[1] and Pyr and close < strategy.position_avg_price * (1 - d34b) and minp and strategy.position_size < 0 and not entrylongw and not entryshortw and not exitshortw and not entryshortp
+
+if entrylongpr
+    PRL := close * 0.99
+else if Exitlong or Exitlongpart
+    PRL := na
+
+if entryshortpr
+    PRS := close * 1.01
+else if Exitshort or Exitshortpart
+    PRS := na
+
+since_buy = ta.barssince(firstbought)
+since_sell = ta.barssince(firstsold)
+since_buyw = ta.barssince(entrylongw)
+since_buyr = ta.barssince(entrylongr)
+since_buyp = ta.barssince(entrylongp)
+since_sellw = ta.barssince(entryshortw)
+since_sellr = ta.barssince(entryshortr)
+since_sellp = ta.barssince(entryshortp)
+since_buypout = ta.barssince(Exitlongpart)
+since_sellpout = ta.barssince(Exitshortpart)
+
+buy_trendw = since_buyw < since_buyr and strategy.position_size > 0 and since_buyw < since_sellw and since_buyw < since_sellr
+sell_trendw = since_sellw < since_sellr and strategy.position_size < 0 and since_sellw < since_buyw and since_sellw < since_buyr
+buy_trendr = since_buyr < since_buyw and strategy.position_size > 0 and since_buyr < since_sellr and since_buyr < since_sellw
+sell_trendr = since_sellr < since_sellw and strategy.position_size < 0 and since_sellr < since_buyr and since_sellr < since_buyw
+buy_trendp = since_buyp < since_buyw and since_buyp < since_buyr and strategy.position_size > 0 and since_buyp < since_sellp and since_buyp < since_sellr and since_buyp < since_sellw and since_buyp < since_buypout
+sell_trendp = since_sellp < since_sellw and since_sellp < since_sellr and strategy.position_size < 0 and since_sellp < since_buyp and since_sellp < since_buyr and since_sellp < since_buyw and since_sellp < since_sellpout
+
+change_trendw = buy_trendw and sell_trendw[1] or sell_trendw and buy_trendw[1]
+pyrmodeL = since_buyp < since_buyw and since_buyp < since_buypout
+pyrmodeS = since_sellp < since_sellw and since_sellp < since_sellpout
+
+var float long_stop_levelw = na
+var float short_stop_levelw = na
+// v1.61 FIX: pyramid stop levels are now properly updated (were permanently na)
+var float long_stop_levelp = na
+var float short_stop_levelp = na
+var float longStopTrailw = 0.0
+var float shortStopTrailw = 0.0
+
+if entrylongw
+    long_stop_levelw := close * (1 - long_sl)
+else if entrylongr
+    long_stop_levelw := close * (1 - 0.5 * long_sl)
+else if entrylongp
+    long_stop_levelw := strategy.position_avg_price * 1.0025
+else
+    long_stop_levelw := long_stop_levelw[1]
+
+if entryshortw
+    short_stop_levelw := close * (1 + short_sl)
+else if entryshortr
+    short_stop_levelw := close * (1 + 0.5 * short_sl)
+else if entryshortp
+    short_stop_levelw := strategy.position_avg_price * 0.9975
+else
+    short_stop_levelw := short_stop_levelw[1]
+
+// v1.61 FIX: pyramid stop levels now track properly
+if entrylongp or entrylongpr
+    long_stop_levelp := entry_priceLp * (1 - long_slp)
+else if Exitlong or entryshortw
+    long_stop_levelp := na
+
+if entryshortp or entryshortpr
+    short_stop_levelp := entry_priceSp * (1 + short_slp)
+else if Exitshort or entrylongw
+    short_stop_levelp := na
+
+longStopTrailw := if strategy.position_size > 0
+    stopValuew = high * (1 - long_trailing)
+    math.max(stopValuew, longStopTrailw[1])
+else
+    0
+
+shortStopTrailw := if strategy.position_size < 0
+    stopValuew = low * (1 + short_trailing)
+    math.min(stopValuew, shortStopTrailw[1])
+else
+    999999
+
+close_longtrailw = ta.crossunder(close, longStopTrailw[1])
+close_shorttrailw = ta.crossover(close, shortStopTrailw[1])
+talow8 = ta.lowest(low, 8)
+tahigh8 = ta.highest(high, 8)
+close_longwh = ((Psar1S and PSX) or (Psar0L and Pexit) or kxl1 or pxl or hxl or HALF or (swingsell and close < longStopTrailw * 1.02 and k0crov0 < k0crov1 and kcrov0 < kcrov1) or ((swingsell and talow8 < long_stop_levelw * 1.02) and close < strategy.position_avg_price and autop) or (close < long_stop_levelw * 1.01 and close < strategy.position_avg_price and autop) or (swingsell and close < strategy.position_avg_price * (1 + dw1) and autow and LPL0 < LPL1 and LPS0 < LPS1 and since_buyw > 6)) and halving and strategy.position_size > 0 and not entrylongp and not entrylongpr
+close_shortwh = ((Psar1L and PSX) or (Psar0S and Pexit) or kxs1 or pxs or hxs or DOUBLE or (swingbuy and close > shortStopTrailw * 0.98 and k0cruv0 > k0cruv1 and kcruv0 > kcruv1) or ((swingbuy and tahigh8 > short_stop_levelw * 0.98) and close > strategy.position_avg_price and autop) or (close > short_stop_levelw * 0.99 and close > strategy.position_avg_price and autop) or (swingbuy and close > strategy.position_avg_price * (1 - dw1) and autow and LPL0 > LPL1 and LPS0 > LPS1 and since_sellw > 6)) and halving and strategy.position_size < 0 and not entryshortp and not entryshortpr
+
+close_longph = ((((swingsellP and close < strategy.position_avg_price * (1 + dp1) and autop and LPL0 < LPL1) or close < PRL) and halving) or close < strategy.position_avg_price) and (close < ELPV * 0.997 or close < strategy.position_avg_price * 0.995) and strategy.position_size > 0 and not close_longwh
+close_shortph = ((((swingbuyP and close > strategy.position_avg_price * (1 - dp1) and autop and LPS0 > LPS1) or close > PRS) and halving) or close > strategy.position_avg_price) and (close > ESPV * 1.003 or close > strategy.position_avg_price * 1.005) and strategy.position_size < 0 and not close_shortwh
+
+stopLw = ((close_longtrailw and not entrylongp and not entrylongw and not entrylongr) or close < long_stop_levelw or ((since_buy > stop0) and close < strategy.position_avg_price)) and strategy.position_size > 0
+stopSw = ((close_shorttrailw and not entryshortp and not entryshortw and not entryshortr) or close > short_stop_levelw or ((since_sell > stop0) and close > strategy.position_avg_price)) and strategy.position_size < 0
+// v1.61 FIX: pyramid stops now use the tracked levels
+stopLp = (close_longtrailw or (not na(long_stop_levelp) and close < long_stop_levelp)) and strategy.position_size > 0
+stopSp = (close_shorttrailw or (not na(short_stop_levelp) and close > short_stop_levelp)) and strategy.position_size < 0
+
+var float multi = 1.0
+var float multi2 = 1.0
+// v1.61 FIX: removed var from QTY/qqr/qqrhalf — they are recalculated every bar
+float QTY = strategy.equity / close
+float qqrB1 = QTY * close / 20
+float percentagewinners = 50.0
+
+recentWinCount = strategy.wintrades - strategy.wintrades[barswin]
+recentLossCount = strategy.losstrades - strategy.losstrades[barswin]
+totaltrades = recentWinCount + recentLossCount
+
+if totaltrades != 0
+    percentagewinners := recentWinCount / totaltrades * 100
+
+if percentagewinners <= 20 and percentagewinners > 0
+    multi := 0.3
+else if percentagewinners <= 30 and percentagewinners > 20
+    multi := 0.4
+else if percentagewinners <= 40 and percentagewinners > 30
+    multi := 0.6
+else if percentagewinners <= 50 and percentagewinners > 40
+    multi := 0.8
+else if percentagewinners <= 60 and percentagewinners > 50
+    multi := 1.0
+else if percentagewinners <= 70 and percentagewinners > 60
+    multi := 1.5
+else if percentagewinners <= 80 and percentagewinners > 70
+    multi := 1.75
+else if percentagewinners <= 90 and percentagewinners > 80
+    multi := 2.0
+else if percentagewinners <= 100 and percentagewinners > 90
+    multi := 2.25
+
+smaClose = ta.sma(close, length4)
+smaClose_1_01 = smaClose * 1.01
+smaClose_0_99 = smaClose * 0.99
+smaClose_1_02 = smaClose * 1.02
+smaClose_0_98 = smaClose * 0.98
+smaClose_1_04 = smaClose * 1.04
+smaClose_0_96 = smaClose * 0.96
+smaClose_1_08 = smaClose * 1.08
+smaClose_0_92 = smaClose * 0.92
+smaClose_1_16 = smaClose * 1.16
+smaClose_0_84 = smaClose * 0.84
+
+if close < smaClose_1_01 and close > smaClose_0_99
+    multi2 := sma0
+else if close < smaClose_1_01 or close < smaClose_0_99
+    multi2 := sma1
+else if close < smaClose_1_02 or close < smaClose_0_98
+    multi2 := sma2
+else if close < smaClose_1_04 or close < smaClose_0_96
+    multi2 := sma4
+else if close < smaClose_1_08 or close < smaClose_0_92
+    multi2 := sma8
+else if close < smaClose_1_16 or close < smaClose_0_84
+    multi2 := sma16
+
+// v1.61 FIX: qqr and qqrhalf always calculated (not var)
+float qqr = qq * multi * multi2
+float qqrhalf = qq * multi * multi2 / 2
+if not useqty
+    QTY := math.round((qq * math.min((strategy.initial_capital / close + strategy.equity / close * multi2) / 2, strategy.initial_capital * 5 / close)), d39) / 2
+    qqr := math.round((qq * math.min((strategy.initial_capital + strategy.equity * multi2) / 2, strategy.initial_capital * 5)) / strategy.initial_capital, 2) / 2
+    qqrhalf := qqr / 2  // v1.61 FIX: was never updated when useqty=false
+    qqrB1 := math.round(QTY * close / 20, 2)
+
+if useqty
+    QTY := math.round((qq * math.min((strategy.initial_capital / close + strategy.equity / close * multi2 * multi) / 2, strategy.initial_capital * 5 / close)), d39) / 2
+    qqr := math.round((qq * math.min((strategy.initial_capital + strategy.equity * multi2 * multi) / 2, strategy.initial_capital * 5)) / strategy.initial_capital, 2) / 2
+    qqrhalf := math.round((qq * math.min((strategy.initial_capital + strategy.equity * multi2 * multi) / 2, strategy.initial_capital * 5)) / strategy.initial_capital, 2) / 4
+    qqrB1 := math.round(QTY * close / 20, 2) / 2
+
+qqrB2 = math.round(strategy.position_size * close / 20, 2) / 2
+qqrB3 = math.round(strategy.position_size * close / 2 / 20, 2) / 2
+
+startDate = input.int(title='Start Date', defval=1, minval=1, maxval=31)
+startMonth = input.int(title='Start Month', defval=7, minval=1, maxval=12)
+startYear = input.int(title='Start Year', defval=2023, minval=1900, maxval=2100)
+endDate = input.int(title='End Date', defval=1, minval=1, maxval=31)
+endMonth = input.int(title='End Month', defval=7, minval=1, maxval=12)
+endYear = input.int(title='End Year', defval=2030, minval=1900, maxval=2100)
+inDateRange = time >= timestamp(syminfo.timezone, startYear, startMonth, startDate, 0, 0) and time < timestamp(endYear, endMonth, endDate, 0, 0)
+
+// v1.61: helper for counter-signal close logic
+// Counter-direction signals that should close a position when price is unfavorable
+counterShortSignals = (sommiDiamondShow and sommiBearishDiamond) or entryshortST or SS or sellSignal or ps
+counterLongSignals  = (sommiDiamondShow and sommiBullishDiamond) or entrylongST or SB or buySignal or pl
+
+// ═══════════════════════════════════════════════════════════════
+// STRATEGY EXECUTION
+// ═══════════════════════════════════════════════════════════════
+
+// v1.63: reverted symmetric long entry — v1.50 had asymmetric entries that produced better results on SNDK
+if inDateRange and longs and (entrylongw or (exitlongw[1] and entrylongw[1]) or entrylongr) and strategy.position_size == 0
+    strategy.entry("WAVE LONG", strategy.long, qty=QTY, comment=str.tostring(qqr))
+
+if strategy.position_size > 0 and inDateRange
+    strategy.exit("WAVE LONG SL", "WAVE LONG", stop=long_stop_levelw, comment=str.tostring(qqr))
+
+// v1.61: close on counter-signals unconditionally (trend-following: exit when trend reverses)
+if strategy.position_size > 0 and inDateRange and (exitlongw or repentL or stopLw or counterShortSignals)
+    strategy.close("WAVE LONG", comment=str.tostring(qqr))
+
+if strategy.position_size > 0 and inDateRange and close_longwh
+    strategy.close("WAVE LONG", qty=math.abs(strategy.position_size) * 0.5, comment=str.tostring(qqrhalf))  // v1.61 FIX: math.abs for qty
+
+if inDateRange and longs and (entrylongp or entrylongpr) and strategy.position_size > 0
+    strategy.entry("PYR LONG", strategy.long, qty=QTY, comment=str.tostring(qqr))
+
+if strategy.position_size > 0 and inDateRange and (exitlongw or stopLp)
+    strategy.close("PYR LONG", comment=str.tostring(qqr))
+
+if strategy.position_size > 0 and inDateRange and close_longph
+    strategy.close("PYR LONG", qty=math.abs(strategy.position_size) * 0.5, comment=str.tostring(qqrhalf))  // v1.61 FIX: math.abs
+
+// v1.61 FIX: short entry kept symmetric (already had extra signals), added stockFilterShort
+if inDateRange and shorts and (entryshortw or (exitshortw[1] and entryshortw[1]) or entryshortr or entryshortST or SS or sellSignal or ps) and strategy.position_size == 0
+    strategy.entry("WAVE SHORT", strategy.short, qty=QTY, comment=str.tostring(qqr))
+
+if strategy.position_size < 0 and inDateRange
+    strategy.exit("WAVE SHORT SL", "WAVE SHORT", stop=short_stop_levelw, comment=str.tostring(qqr))
+
+// v1.61: close on counter-signals unconditionally (trend-following: exit when trend reverses)
+if strategy.position_size < 0 and inDateRange and (exitshortw or repentS or stopSw or counterLongSignals)
+    strategy.close("WAVE SHORT", comment=str.tostring(qqr))
+
+if strategy.position_size < 0 and inDateRange and close_shortwh
+    strategy.close("WAVE SHORT", qty=math.abs(strategy.position_size) * 0.5, comment=str.tostring(qqrhalf))  // v1.61 FIX: math.abs
+
+if inDateRange and shorts and (entryshortp or entryshortpr) and strategy.position_size < 0
+    strategy.entry("PYR SHORT", strategy.short, qty=QTY, comment=str.tostring(qqr))
+
+// v1.61 FIX: PYR SHORT close — same precedence fix + deduplicated from WAVE SHORT
+if strategy.position_size < 0 and inDateRange and (exitshortw or stopSp)
+    strategy.close("PYR SHORT", comment=str.tostring(qqr))
+
+if strategy.position_size < 0 and inDateRange and close_shortph
+    strategy.close("PYR SHORT", qty=math.abs(strategy.position_size) * 0.5, comment=str.tostring(qqrhalf))  // v1.61 FIX: math.abs
+
+// ═══════════════════════════════════════════════════════════════
+// PLOTTING
+// ═══════════════════════════════════════════════════════════════
+plot(HULLPe, 'NiMA Pe', color.new(hullPeColor, 20), linewidth=1)
+plot(HULL, 'THMA 0', color.new(hullColor, 60), linewidth=1)
+plot(Trailingsl, 'Supertrend', color.new(linecolorST, 40), linewidth=1)
+plot((strategy.position_size > 0 or strategy.position_size < 0) ? strategy.position_avg_price : na, 'Avgprice', color.new(color.white, 70), style=plot.style_linebr)
+plot(TrendHtf == 1 ? TrailingslHtf : na, 'Supertrend HTF Trend Up', color.new(color.green, 80), style=plot.style_linebr, linewidth=4)
+plot(TrendHtf == -1 ? TrailingslHtf : na, 'Supertrend HTF Trend Down', color.new(color.red, 80), style=plot.style_linebr, linewidth=4)
+rh = plot(tfH, 'breakout high', color.new(#4a93ed, 55), style=plot.style_steplinebr, linewidth=1)
+rl = plot(tfL, 'breakout low', color.new(#4a93ed, 55), style=plot.style_steplinebr, linewidth=1)
+rlp = plot(tfL * (1 + zllplus), 'resistance low+', color.new(color.white, 60), style=plot.style_linebr, linewidth=1)
+rhm = plot(tfH * (1 - zhhminus), 'resistance high-', color.new(color.white, 60), style=plot.style_linebr, linewidth=1)
+
+// v1.61: VWAP plot for stock trading
+plot(useVwap ? vwapValue : na, 'VWAP', color.new(color.orange, 40), style=plot.style_linebr, linewidth=2)
+
+// v1.61: RVOL background highlight when volume is strong
+bgcolor(useRvol and rvol >= minRvol * 1.5 ? color.new(color.blue, 95) : na, title="High RVOL")
+
+plotchar(sommiDiamondShow and sommiBearishDiamond, 'Sommi bearish diamond', char='◆', color=color.new(color.gray, 0), location=location.abovebar, size=size.tiny)
+plotchar(sommiDiamondShow and sommiBullishDiamond, 'Sommi bullish diamond', char='◆', color=color.new(color.gray, 0), location=location.belowbar, size=size.tiny)
+plotchar(wtBuyShow and buySignal, 'Buy circle', char='·', color=color.new(#3fff00, 0), location=location.belowbar, size=size.tiny)
+plotchar(wtSellShow and sellSignal, 'Sell circle', char='·', color=color.new(#ff0000, 0), location=location.abovebar, size=size.tiny)
+plotchar(SB, 'Swingbuy', char='*', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(SS, 'Swingsell', char='*', color=color.new(#ff0000, 70), location=location.abovebar, size=size.tiny)
+plotchar(kcro, 'kcro', char='◆', color=color.new(color.green, 80), location=location.belowbar, size=size.tiny)
+plotchar(kcru, 'kcru', char='◆', color=color.new(color.red, 80), location=location.abovebar, size=size.tiny)
+plot(k0crov0 > 0 ? k0crov0 : na, "k0crov0", color.rgb(77, 218, 149, 90), style=plot.style_linebr)
+plot(k0crov1 > 0 ? k0crov1 : na, "k0crov1", color.rgb(77, 218, 149, 95), style=plot.style_circles)
+plot(sar, "ParabolicSAR", color=color.new(#5f81dd, 60), style=plot.style_cross)
+plot(psov0, 'psov0', color.new(#ab48c6, 80), style=plot.style_cross)
+plot(psuv0, 'psuv0', color.new(#48a6c6, 80), style=plot.style_cross)
+plotchar(Psar0L, 'Psar0L', char='P', color=color.new(#3fff00, 80), location=location.belowbar, size=size.tiny)
+plotchar(Psar1L, 'Psar1L', char='Q', color=color.new(#3fff00, 80), location=location.belowbar, size=size.tiny)
+plotchar(Psar0S, 'Psar0S', char='P', color=color.new(#ff4141, 80), location=location.abovebar, size=size.tiny)
+plotchar(Psar1S, 'Psar1S', char='Q', color=color.new(#ff4141, 80), location=location.abovebar, size=size.tiny)
+plotchar(DOUBLE, 'DOUBLE/HALF', char='D', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(HALF, 'DOUBLE/HALF', char='D', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(pl, 'pl/ps', char='P', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(ps, 'pl/ps', char='P', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(pll, 'pll/pss', char='L', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(pss, 'pll/pss', char='S', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(SB, 'sb/ss', char='B', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(SS, 'sb/ss', char='S', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(swingbuyP, 'sbP', char='B', color=color.new(#3fff00, 70), location=location.belowbar, size=size.tiny)
+plotchar(swingsellP, 'sbP', char='S', color=color.new(#ff0033, 70), location=location.abovebar, size=size.tiny)
+plotshape(strategy.position_size > 0 and kel1, text='kel1', color=color.new(color.blue, 80), size=size.tiny, style=shape.triangleup, textcolor=color.black, location=location.belowbar)
+plotshape(strategy.position_size < 0 and kes1, text='kes1', color=color.new(#ff0000, 80), size=size.tiny, style=shape.triangledown, textcolor=color.black, location=location.abovebar)
+plotshape(strategy.position_size > 0 and kxl1, text='kxl1', color=color.new(#ff0000, 80), size=size.tiny, style=shape.triangledown, textcolor=color.black, location=location.abovebar)
+plotshape(strategy.position_size < 0 and kxs1, text='kxs1', color=color.new(color.blue, 80), size=size.tiny, style=shape.triangleup, textcolor=color.black, location=location.belowbar)
+plotchar((strategy.position_size > 0 and close_longtrailw) or (strategy.position_size < 0 and close_shorttrailw), 'TSL hit', char='%', color=color.new(#ff0000, 70), location=location.abovebar, size=size.tiny)
+plotchar((strategy.position_size > 0 and repentL) or (strategy.position_size < 0 and repentS), 'Repent exit', char='R', color=color.new(#ff00f0, 20), location=location.abovebar, size=size.tiny)
+plotchar((strategy.position_size == 0 and entrylongr) or (strategy.position_size == 0 and entryshortr), 'Repent reentry', char='r', color=color.new(#31c0ff, 20), location=location.belowbar, size=size.tiny)
+plotchar(entrylongpr or entryshortpr, 'Entrylong/shortpr', char='P', color=color.new(#31c0ff, 20), location=location.belowbar, size=size.tiny)

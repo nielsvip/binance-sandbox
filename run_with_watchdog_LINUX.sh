@@ -39,7 +39,7 @@ if [[ -z "$ACCOUNT_NAME" ]]; then
         _prev_warg="$_warg"
     done
 fi
-WATCHDOG_LOCK_FILE="/tmp/watchdog_lock_${SCRIPT_NAME_BASE}${ACCOUNT_NAME:+_${ACCOUNT_NAME}}}.lock"
+WATCHDOG_LOCK_FILE="/tmp/watchdog_lock_${SCRIPT_NAME_BASE}${ACCOUNT_NAME:+_${ACCOUNT_NAME}}.lock"
 if [[ -f "$WATCHDOG_LOCK_FILE" ]]; then
     EXISTING_PID=$(cat "$WATCHDOG_LOCK_FILE" 2>/dev/null || echo "")
     if [[ -n "$EXISTING_PID" ]] && ps -p "$EXISTING_PID" > /dev/null 2>&1; then
@@ -74,13 +74,13 @@ LOG_DIR="/home/niels/logs"
 if [[ -n "$ACCOUNT_NAME" ]]; then
     WATCHDOG_LOG_FILE="${LOG_DIR}/watchdog_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log"
     # Point at Python's RotatingFileHandler output for liveness monitoring (NOT stdout capture)
-    PYTHON_SCRIPT_LOG_FILE="${BASE_DIR}/logs/${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log"
+    PYTHON_SCRIPT_LOG_FILE="${LOG_DIR}/${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log"
     FLAPPING_RECORD_FILE="${LOG_DIR}/.watchdog_restarts_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.txt" # Hidden file
     PID_FILE="/tmp/watchdog_pid_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}_${UID_TAG}.txt" # Store PID of monitored Python script
     PID_FILE_ALT="${BASE_DIR}/pids/watchdog_pid_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}_${UID_TAG}.txt"
 else
     WATCHDOG_LOG_FILE="${LOG_DIR}/watchdog_${SCRIPT_NAME_BASE}.log"
-    PYTHON_SCRIPT_LOG_FILE="${BASE_DIR}/logs/${SCRIPT_NAME_BASE}.log"
+    PYTHON_SCRIPT_LOG_FILE="${LOG_DIR}/${SCRIPT_NAME_BASE}.log"
     FLAPPING_RECORD_FILE="${LOG_DIR}/.watchdog_restarts_${SCRIPT_NAME_BASE}.txt" # Hidden file
     PID_FILE="/tmp/watchdog_pid_${SCRIPT_NAME_BASE}_${UID_TAG}.txt" # Store PID of monitored Python script
     PID_FILE_ALT="${BASE_DIR}/pids/watchdog_pid_${SCRIPT_NAME_BASE}_${UID_TAG}.txt"
@@ -92,7 +92,18 @@ if [[ -e "$PID_FILE" ]] && [[ ! -w "$PID_FILE" ]]; then
 fi
 
 # --- Behavior Configuration ---
-MAX_MEMORY_MB=1500
+if [[ -n "$WATCHDOG_MAX_MEMORY_MB" ]]; then
+    MAX_MEMORY_MB="$WATCHDOG_MAX_MEMORY_MB"
+else
+    MAX_MEMORY_MB=1500
+    if [[ "$TARGET_SCRIPT_NAME" == "ez_indicators.py" ]] || [[ "$TARGET_SCRIPT_NAME" == "tradier_indicators.py" ]]; then
+        MAX_MEMORY_MB=3500
+    elif [[ "$TARGET_SCRIPT_NAME" == "ez_manage.py" ]]; then
+        MAX_MEMORY_MB=2500
+    elif [[ "$TARGET_SCRIPT_NAME" == "ez_rankings.py" ]] || [[ "$TARGET_SCRIPT_NAME" == "tradier_rankings.py" ]]; then
+        MAX_MEMORY_MB=2500
+    fi
+fi
 MAX_RUN_TIME_SEC=$((3 * 3600))      # 3 hours
 NO_OUTPUT_TIMEOUT_SEC=$((15 * 60))  # 15 minutes (script must write to its PYTHON_SCRIPT_LOG_FILE)
 SCRIPT_STARTUP_GRACE_SEC=$((2 * 60)) # 2 minutes grace for script to produce first output

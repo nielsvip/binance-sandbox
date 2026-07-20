@@ -1,0 +1,30 @@
+{
+  "_meta": {
+    "created": "2026-05-14",
+    "updated": "2026-05-14 — removed 9 symbols not in symbols.json (KNCUSDT, LRCUSDT, ENJUSDT, ANKRUSDT, KAVAUSDT, MTLUSDT, NKNUSDT, BELUSDT, GTCUSDT)",
+    "note": "Crypto sector groupings for sector-comparison sweeps. Use with --mode crypto --tier crypto_sector_baseline --start 2022-01-01. Only tradeable symbols (in symbols.json) included.",
+    "total_syms": 50,
+    "sectors": 7
+  },
+  "mega_l1": [
+    "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "AVAXUSDC", "ADAUSDC", "XRPUSDC"
+  ],
+  "defi_oracle": [
+    "UNIUSDC", "LINKUSDC", "1INCHUSDT", "SUSHIUSDT", "COMPUSDT", "SNXUSDT", "YFIUSDT", "BANDUSDT", "GRTUSDT"
+  ],
+  "gaming_nft": [
+    "SANDUSDT", "MANAUSDT", "AXSUSDT", "C98USDT", "CHRUSDT", "SKLUSDT"
+  ],
+  "alt_l1": [
+    "DOTUSDT", "ATOMUSDT", "LTCUSDC", "ETCUSDT", "XLMUSDT", "DASHUSDT", "XMRUSDT", "XTZUSDT", "ALGOUSDT", "EGLDUSDT", "QTUMUSDT", "TRXUSDT"
+  ],
+  "ecosystems": [
+    "KSMUSDT", "VETUSDT", "THETAUSDT", "CELRUSDT"
+  ],
+  "infrastructure": [
+    "STORJUSDT", "HOTUSDT", "IOTXUSDT", "IOSTUSDT", "IOTAUSDT", "RLCUSDT"
+  ],
+  "misc_smallcap": [
+    "BATUSDT", "COTIUSDT", "RSRUSDT", "RVNUSDT", "ZENUSDT", "SXPUSDT"
+  ]
+}

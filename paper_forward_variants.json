@@ -1,0 +1,82 @@
+{
+  "_doc": "Per-variant config for paper_forward_runner. Each entry becomes its own LaunchAgent + isolated data dir at data/paper_forward/<id>/. Run paper_forward_install_variants.py to (re)generate the plists. Designed for parallel execution on MacBook (V3-arm variants need Redis latest_market_data; only MacBook has it).",
+  "variants": [
+    {
+      "id": "v01_baseline",
+      "side_mode": "BOTH",
+      "env": {}
+    },
+    {
+      "id": "v02_short_strict",
+      "side_mode": "BOTH",
+      "_note": "tighter SHORT K thresholds — markets reward earlier-shorts on overbought stretches",
+      "env": {
+        "V_K_3M_MAX_SHORT": "30",
+        "V_K_15M_MAX_SHORT": "55",
+        "V_K_1H_MAX_SHORT": "70",
+        "V_SHORT_DUMP_PCT": "5.0"
+      }
+    },
+    {
+      "id": "v03_short_loose",
+      "side_mode": "BOTH",
+      "_note": "looser SHORT K — fire SHORT earlier in distribution, no recent-dump requirement",
+      "env": {
+        "V_K_3M_MAX_SHORT": "55",
+        "V_K_15M_MAX_SHORT": "75",
+        "V_K_1H_MAX_SHORT": "85",
+        "V_SHORT_DUMP": "0"
+      }
+    },
+    {
+      "id": "v04_exit_tight",
+      "side_mode": "BOTH",
+      "_note": "earlier exit on K-momentum slowdown — locks gains faster",
+      "env": {
+        "V_EXIT_K_3M_MIN": "85",
+        "V_EXIT_K_15M_MIN": "85",
+        "V_EXIT_K_1M_MIN": "90"
+      }
+    },
+    {
+      "id": "v05_exit_loose",
+      "side_mode": "BOTH",
+      "_note": "ride longer — only exit at extreme K — tests if exits are too early",
+      "env": {
+        "V_EXIT_K_3M_MIN": "98",
+        "V_EXIT_K_15M_MIN": "98",
+        "V_EXIT_K_1M_MIN": "99"
+      }
+    },
+    {
+      "id": "bgh_v01_balanced",
+      "side_mode": "BOTH",
+      "_note": "Hedge trigger via TF hierarchy (3m+15m AND ≥1 of 1h/4h/D). Origin stays open (HOLD_BOTH) — test whether the technical hedge trigger preserves account vs realized loss.",
+      "env": {
+        "V_HEDGE_TRIGGER_MODE": "TF_HIERARCHY",
+        "V_HEDGE_TF_HIERARCHY": "3m_15m_AND_1of_1h_4h_D",
+        "V_HEDGE_PROMOTE_MODE": "HOLD_BOTH"
+      }
+    },
+    {
+      "id": "bgh_v02_tight",
+      "side_mode": "BOTH",
+      "_note": "Tighter hierarchy: (3m+15m+1h) AND ≥1 of (4h/D). Slower trigger — needs deeper momentum disagreement before hedging.",
+      "env": {
+        "V_HEDGE_TRIGGER_MODE": "TF_HIERARCHY",
+        "V_HEDGE_TF_HIERARCHY": "3m_15m_1h_AND_1of_4h_D",
+        "V_HEDGE_PROMOTE_MODE": "HOLD_BOTH"
+      }
+    },
+    {
+      "id": "bgh_v03_loose",
+      "side_mode": "BOTH",
+      "_note": "Looser: 3m AND ≥2 of (15m/1h/4h/D). Faster trigger — more hedge fires; tests whether early hedging is worth the extra trades.",
+      "env": {
+        "V_HEDGE_TRIGGER_MODE": "TF_HIERARCHY",
+        "V_HEDGE_TF_HIERARCHY": "3m_AND_2of_15m_1h_4h_D",
+        "V_HEDGE_PROMOTE_MODE": "HOLD_BOTH"
+      }
+    }
+  ]
+}

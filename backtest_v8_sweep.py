@@ -62,6 +62,27 @@ from pathlib import Path
 # whether the sweep is run from MacBook, S1, or S2.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import metrics_guard  # noqa: E402
+import dataclasses as _dataclasses  # noqa: E402
+import config as _cfg_crypto  # noqa: E402
+import config_tradier as _cfg_stocks  # noqa: E402
+
+# 2026-07-07 USER MANDATE ("EVERY single setting for every single symbol in
+# every single test must be recorded"): `overrides` as built in run_one_variant
+# is only the DIFF from baseline (often 1-5 keys) — never the full resolved
+# config. This is the canonical 24/7 sweep launcher (CLAUDE.md SWEEP-LIVENESS
+# MANDATE), so the gap here is the single highest-volume source of "what was
+# tested" data loss. Fix computed parent-side (no engine/IPC changes needed):
+# defaults + overrides == exactly what backtest_v8_engine.py's own
+# override-application block produces engine-side, so we can just recompute it
+# here for the CSV row.
+def _full_resolved_config(mode, overrides):
+    cls = _cfg_stocks.TradierConfig if mode == "tradier" else _cfg_crypto.Config
+    try:
+        base = _dataclasses.asdict(cls())
+    except Exception:
+        base = {}
+    base.update(overrides or {})
+    return base
 
 BASE_PATH = Path(__file__).resolve().parent
 ENGINE_PATH = BASE_PATH / "backtest_v8_engine.py"
@@ -2116,6 +2137,8 @@ def run_one_variant(args_tuple):
         common = {
             "label": label,
             "overrides": overrides,
+            "full_config_snapshot": json.dumps(
+                _full_resolved_config(mode, overrides), default=str, sort_keys=True),
             "cfg_hash": cfg_hash,
             "elapsed_s": round(elapsed, 1),
             "rc": proc.returncode,
@@ -2171,7 +2194,10 @@ def run_one_variant(args_tuple):
         }
     except Exception as e:
         return {
-            "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
+            "label": label, "overrides": overrides,
+            "full_config_snapshot": json.dumps(
+                _full_resolved_config(mode, overrides), default=str, sort_keys=True),
+            "cfg_hash": cfg_hash,
             "status": "ERROR", "rc": -1, "elapsed_s": 0,
             "reason": f"runner_exception:{type(e).__name__}:{str(e)[:200]}",
             "stderr_tail": [], "stdout_tail": [],
@@ -2263,7 +2289,10 @@ def _result_to_canonical_row(r: dict, mode_arg: str, start_date: str,
         "elapsed_s": r.get("elapsed_s", ""),
         "rc": r.get("rc", ""),
         "reason": r.get("reason", ""),
-        "overrides_json": json.dumps(r.get("overrides", {}), sort_keys=True),
+        # 2026-07-07: prefer the FULL resolved config (defaults + overrides,
+        # ~700-1000 fields) over the bare diff — see _full_resolved_config().
+        # Falls back to the diff only for in-flight rows from before this fix.
+        "overrides_json": r.get("full_config_snapshot") or json.dumps(r.get("overrides", {}), sort_keys=True),
     }
 
 

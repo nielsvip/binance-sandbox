@@ -1,0 +1,5 @@
+Rank,ID,TF Combo,Stoch K/Smooth/D,TP%,Exit,Entry Gate,Sharpe (pre-QA),Est. Corrected,WR%,PF,Contradiction vs Live?
+1,196,D+4h+1h+15m,9/5/5,1.5,fixed,cross+ha+dc,188.34,~20-50,84.2,12.61,Stoch 9/5 vs live 7/7; TP 1.5% vs 0.5% FIXED; DC gate not in live
+2,71,D+4h+1h+15m,14/5/5,2,fixed,cross+ha,173.89,~18-45,75.2,9.44,Stoch 14/5 vs live 7/7; TP 2% vs live FIXED to 1.5%
+3,70,D+4h+1h+15m,14/5/5,1.5,fixed,cross+ha,140.43,~15-35,80,12.84,Same contradictions
+4,52,D+4h+1h+15m,9/5/5,1.5,fixed,cross+ha,132.68,~14-33,82.4,12.19,Same contradictions

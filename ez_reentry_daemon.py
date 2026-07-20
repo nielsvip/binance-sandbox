@@ -46,7 +46,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-LOG_PATH = Path("/Users/niels/logs/ez_reentry_daemon.log")
+LOG_PATH = Path.home() / "logs" / "ez_reentry_daemon.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(

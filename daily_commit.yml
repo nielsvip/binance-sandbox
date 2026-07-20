@@ -1,0 +1,27 @@
+name: Daily Auto Commit
+
+on:
+  schedule:
+    # Runs every day at midnight UTC
+    - cron: '8 0 * * *'
+  workflow_dispatch: # Allows manual triggering for testing
+
+jobs:
+  auto-commit-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Required for the action to be able to push to the repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Perform some change (example: update a timestamp file)
+        run: echo "Last auto-commit: $(date)" > TIMESTAMP.txt
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated daily commit"
+          # Ensure the action can create a commit and push
+          # The GITHUB_TOKEN has write permission by default if configured in settings

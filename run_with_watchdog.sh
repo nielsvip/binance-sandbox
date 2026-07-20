@@ -55,12 +55,21 @@ MY_PID=$$
 MY_PPID=$PPID
 kill_duplicate_python() {
     local EXISTING_PIDS=""
+    local _dup_pat="python.*-u $SCRIPT ${ARGS[*]}"
+    if [ ${#ARGS[@]} -eq 0 ]; then
+        # 2026-07-02: with empty ARGS the pattern "python.*-u SCRIPT " (trailing space) matched
+        # EVERY instance of SCRIPT regardless of its args, so a no-arg watchdog SIGKILLed a
+        # correctly-args'd sibling's child every 60s loop (tradier_positions.py --accounts
+        # tra trb trc restart churn 2026-07-02: rogue arg-less watchdog murdered the real child).
+        # Anchor to end-of-line so an empty-ARGS watchdog only matches a genuinely no-arg process.
+        _dup_pat="python.*-u $SCRIPT[[:space:]]*\$"
+    fi
     while IFS= read -r pid; do
         [ -z "$pid" ] && continue
         [ "$pid" = "$MY_PID" ] && continue
         [ "$pid" = "$MY_PPID" ] && continue
         EXISTING_PIDS="$EXISTING_PIDS $pid"
-    done < <(pgrep -f "python.*-u $SCRIPT ${ARGS[*]}" 2>/dev/null || true)
+    done < <(pgrep -f "$_dup_pat" 2>/dev/null || true)
     if [ -n "$EXISTING_PIDS" ]; then
         log "[SINGLETON] Killing duplicate python instances of '$FULL_CMD':$EXISTING_PIDS"
         for pid in $EXISTING_PIDS; do
@@ -120,6 +129,7 @@ case "$SCRIPT_BASE" in
     ez_share_ind)        NO_OUTPUT_TIMEOUT=600  ;;  # heartbeat every few minutes
     ez_mark_prices)      NO_OUTPUT_TIMEOUT=600  ;;  # periodic
     ez_orderbook)        NO_OUTPUT_TIMEOUT=0    ;;  # 2026-04-27: disabled — real heartbeat is Redis (orderbook:* keys), not the log file. The 600s log-mtime check was killing healthy processes every ~10 min in a loop.
+    tradier_manage)      NO_OUTPUT_TIMEOUT=0    ;;  # 2026-06-03: disabled — same failure mode as ez_orderbook. The per-account tradier_manage_{acct}.log is hijack-unreliable (multi-proc RotatingFileHandler race freezes trb/tra's own log while the worker is alive + trading + writing shared logs), so the 600s log-mtime check kill-looped healthy trb/tra every ~10min. Liveness covered by binance_supervisor (proc-aware) + shared tradier_positions/actions logs.
     *)                   NO_OUTPUT_TIMEOUT=600  ;;  # safe default
 esac
 
@@ -431,6 +441,29 @@ main() {
 
         # Kill any duplicate python instances before launching
         kill_duplicate_python
+        # ═══ S1 FAILOVER GATE (MacBook only) ═══
+        if [[ "$(uname)" == "Darwin" ]]; then
+            local is_gated=0
+            # 2026-07-02: ONLY gate order-placing / authoritative-position-state procs across machines.
+            # Read-only DATA feeds (ez_prices/klines/mark_prices/indicators/market_data/orderbook/rankings/
+            # tradier_prices/indicators/rankings) each write their OWN machine-local Redis, so gating them on
+            # the Mac (live-trading box) while S1 also runs them STARVED the Mac's local feeds → stale klines.
+            # They must run per-machine; double-run is harmless (separate Redis, separate IP rate-limit pools).
+            case "$SCRIPT" in
+                ez_manage.py|tradier_manage.py|ez_positions_watchdog.py|ez_positions.py|ez_copilot.py|ez_reentry_daemon.py|tradier_positions.py) is_gated=1 ;;
+            esac
+            if [[ "$is_gated" -eq 1 ]]; then
+                local s1_pattern="$SCRIPT"
+                for arg in "${ARGS[@]}"; do
+                    if [[ "$arg" =~ ^(ang|inf|flz|men|fin|tra|trb|trc)$ ]]; then s1_pattern="$SCRIPT.*$arg"; break; fi
+                done
+                if ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no s1-int "pgrep -f \"$s1_pattern\"" >/dev/null 2>&1; then
+                    log "[FAILOVER_IDLE] S1 is running $SCRIPT (pattern: $s1_pattern) — MacBook will NOT spawn. Retrying in 60s..."
+                    sleep 60
+                    continue
+                fi
+            fi
+        fi
 
         # Change to working directory
         cd "$WORKDIR" || {

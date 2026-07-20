@@ -30,16 +30,9 @@ from wt_dc_hierarchy import compute_hierarchy_full
 # K_ZONE, MFI_ENTRY, VWAP_FILTER, STDEV_BREAKOUT/BOUNCE, RZ_BREAKOUT, ATR_ADAPTIVE_SIZING,
 # WINNER_PROTECT, RANK_CONVICTION, etc.). User 2026-05-05: "use all functions we have built — years of work".
 def _import_v8():
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from v8_quick_engine import (
-        compute_entry_signals as _ce,
-        compute_exit_signals as _cx,
-        compute_rz_cascade_signals as _rz,
-        QuickConfig as _QC,
-        simulate as _sim,
-    )
+    import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try: from v8_quick_engine import compute_entry_signals as _ce, compute_exit_signals as _cx, compute_rz_cascade_signals as _rz, QuickConfig as _QC, simulate as _sim
+    except ImportError: from OPUS_VOMIT import compute_entry_signals as _ce, compute_exit_signals as _cx, compute_rz_cascade_signals as _rz, QuickConfig as _QC, simulate as _sim
     return _ce, _cx, _rz, _QC, _sim
 
 _v8_compute_entry = None
@@ -164,6 +157,9 @@ class SymParams:
     # HEDGE_HTF_VETO + HTF_TREND_VETO (Phase 2A patch 4)
     HEDGE_HTF_VETO_ENABLED: bool = False
     HTF_TREND_VETO_ENABLED: bool = False
+    EXIT_STRUCT_TF: str = 'None'
+    LONG_STRUCT_EXIT_TF: str = 'D'
+    SHORT_STRUCT_EXIT_TF: str = '4h'
     # Reentry / reverse paths:
     REVERSE_ON_EXIT_ENABLED: bool = False   # at exit, open opposite side if its signal fires same bar
     FOLLOW_THROUGH_REENTRY_ENABLED: bool = False  # after exit, re-enter same side on continuation
@@ -822,12 +818,18 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      ppl_v2_step1_gain_pct: float = 0.5,
                      ppl_v2_arm_gain_pct: float = 0.75,
                      ppl_v2_be_buffer_pct: float = 0.10,
-                     ppl_v2_frac: float = 0.5,
+                      ppl_v2_frac: float = 0.5,
                      x7_dc_freeze_15m: Optional[np.ndarray] = None,
                      x7_bb_freeze_15m: Optional[np.ndarray] = None,
                      x7_abs_floor_pct: float = -8.0,
                      hedge_htf_ok_long: Optional[np.ndarray] = None,
-                     hedge_htf_ok_short: Optional[np.ndarray] = None) -> List[Dict]:
+                     hedge_htf_ok_short: Optional[np.ndarray] = None,
+                     struct_long_open: Optional[np.ndarray] = None,
+                     struct_long_high_prev: Optional[np.ndarray] = None,
+                     struct_long_low_prev: Optional[np.ndarray] = None,
+                     struct_short_open: Optional[np.ndarray] = None,
+                     struct_short_high_prev: Optional[np.ndarray] = None,
+                     struct_short_low_prev: Optional[np.ndarray] = None) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -872,6 +874,26 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
         # HARD_LOSS_PCT exit (the source of v8 BTC_DEDICATED's 87% WR per audit):
         # If position drops to -HARD_LOSS_PCT, force-exit. Caps individual loss tightly so wins>>losses by count.
         forced_exit_origin = ''
+        open_tf = struct_long_open if side == 'LONG' else struct_short_open
+        high_tf_prev = struct_long_high_prev if side == 'LONG' else struct_short_high_prev
+        low_tf_prev = struct_long_low_prev if side == 'LONG' else struct_short_low_prev
+        if not forced_exit_origin and open_tf is not None and high_tf_prev is not None and low_tf_prev is not None and exit_i > entry_i + min_hold:
+            _se_open = float(open_tf[entry_i])
+            _se_hp = float(high_tf_prev[entry_i])
+            _se_lp = float(low_tf_prev[entry_i])
+            for k in range(entry_i + 1, exit_i + 1):
+                _k_open = float(open_tf[k])
+                if abs(_k_open - _se_open) > 1e-8:
+                    _k_hp = float(high_tf_prev[k])
+                    _k_lp = float(low_tf_prev[k])
+                    _se_fire = (_k_hp < _se_hp and _k_lp < _se_lp) if side == 'LONG' else (_k_hp > _se_hp and _k_lp > _se_lp)
+                    _se_open = _k_open; _se_hp = _k_hp; _se_lp = _k_lp
+                    if _se_fire and k >= entry_i + min_hold:
+                        if k < exit_i:
+                            exit_i = k
+                            xp = float(c15[exit_i])
+                            forced_exit_origin = 'hybrid_struct_exit'
+                        break
         if hard_loss_enabled and exit_i > entry_i + min_hold:
             traj_h = c15[entry_i:exit_i + 1]
             if side == 'LONG':
@@ -1230,7 +1252,11 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0, only_sid
     try: npz, ts = load_npz(sym, "crypto")
     except Exception: return None
     if len(ts) == 0: return None
-    cutoff, _npz_cache, cfg = int(ts[-1] - years_back * 365.25 * 86400), (npz, ts), SweepConfig()
+    cutoff = int(ts[-1] - years_back * 365.25 * 86400)
+    i0 = int(np.searchsorted(ts, cutoff, side="left"))
+    npz = {k: v[i0:] if (isinstance(v, np.ndarray) and len(v) == len(ts)) else v for k, v in npz.items()}
+    ts = ts[i0:]
+    _npz_cache, cfg = (npz, ts), SweepConfig()
     for k, v in params.to_dict().items():
         if hasattr(cfg, k): setattr(cfg, k, v)
     for locked in ("UNIVERSAL_NOLOSS_GATE", "VEC_NOLOSS_GATE_ENABLED", "HEDGE_SCAN_ENABLED", "HEDGE_MODE", "OBLIGATORY_HEDGE_ENABLED", "NOLOSS_ENABLED"):

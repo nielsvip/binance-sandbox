@@ -1,0 +1,114 @@
+{
+  "_doc": "Priority queue for autonomous sweep scheduler. Phases run in order. Within a phase, items with lower priority number run first. Scheduler reads this file to determine what to run next.",
+  "_updated": "2026-04-16",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "TIER_1 Fast Discovery",
+      "priority": 1,
+      "description": "Entry + Exit + Sizing high-impact switches on fast symbols (12 sym). 3072 configs.",
+      "configs": {
+        "crypto": {"tier": "entry_gates", "symbols": "fast", "start": "2022-01-01", "workers_s1": 8},
+        "tradier": {"tier": "entry_gates", "symbols": "fast", "start": "2024-01-01", "workers_s1": 4, "workers_s2": 8}
+      },
+      "est_time_h": 4,
+      "status": "RUNNING"
+    },
+    {
+      "phase": 2,
+      "name": "TIER_1 Full Symbol Validation",
+      "priority": 2,
+      "description": "Top 50 entry_gates winners re-run on ALL symbols (61 crypto 4yr + 262 stocks 2yr).",
+      "configs": {
+        "crypto": {"source": "top50_crypto_entry.json", "symbols": "all_crypto", "start": "2022-01-01", "workers_s1": 8},
+        "tradier": {"source": "top50_tradier_entry.json", "symbols": "all_stocks", "start": "2024-01-01", "workers_s1": 4, "workers_s2": 8}
+      },
+      "est_time_h": 12,
+      "status": "WAITING"
+    },
+    {
+      "phase": 3,
+      "name": "TIER_1 Exit Tuning",
+      "priority": 3,
+      "description": "Validated entry winners × exit_tuning grid (SRS TF, RZ, rally gates, reentry blocks).",
+      "includes_reentry_blocks": ["B15_STRONG_TREND", "B04_DC_RETEST", "B11_DC_BREAK", "B02_BC156_BOTTOM", "B12_WT_MOM", "B14_HA_TREND", "B10_STOCH_REV"],
+      "excludes_reentry_blocks": ["B01_WT_2of3 (noise 0.033 Sharpe)", "B09_SNAPBACK (weak 0.022 Sharpe)"],
+      "configs": {
+        "crypto": {"tier": "exit_tuning", "symbols": "fast", "start": "2022-01-01", "workers_s1": 8},
+        "tradier": {"tier": "exit_tuning", "symbols": "fast", "start": "2024-01-01", "workers_s1": 4, "workers_s2": 8}
+      },
+      "est_time_h": 20,
+      "status": "WAITING"
+    },
+    {
+      "phase": 4,
+      "name": "Safety + Scalp V2 Validation",
+      "priority": 4,
+      "description": "5 tradier safety switches (tradeable gate, ratio gain, overdue bypass, bounce K, SRS bypass) + 4 scalp V2 variants.",
+      "configs": {
+        "tradier_safety": {"tier": 27, "engine": "scalar_v8", "symbols": "fast", "workers_s2": 8},
+        "scalp_v2": {"configs_dir": "data/v8_scalp_configs/", "engine": "scalar_v8", "mode": "crypto", "account": "inf"}
+      },
+      "est_time_h": 8,
+      "status": "RUNNING_LOCAL"
+    },
+    {
+      "phase": 5,
+      "name": "TIER_2 Entry + Exit Tuning",
+      "priority": 5,
+      "description": "Medium-impact switches: MTS weights, short tuning, reentry sizing, hedge trigger, scalp cooldown.",
+      "switches": {
+        "entry": ["MTS_BOTTOM_MIN_SHORT", "MTS_ENTRY_QUALITY_MIN_SHORT", "MTS_WEIGHT_1h/4h/15m", "TF_FOCUS_WEIGHT", "INF_RANKING_BYPASS_*"],
+        "exit": ["REENTRY_TIER1/2_SIZE_MULT", "HEDGE_TRIGGER_LOSS_PCT", "SCALP_V2_REENTRY_COOLDOWN_S", "SCALP_V2_MAX_CONCURRENT"]
+      },
+      "est_time_h": 24,
+      "status": "WAITING"
+    },
+    {
+      "phase": 6,
+      "name": "Winner × Winner Cross-Validation",
+      "priority": 6,
+      "description": "Best entry × best exit × best sizing from phases 1-5. Full symbol validation.",
+      "est_time_h": 16,
+      "status": "WAITING"
+    },
+    {
+      "phase": 7,
+      "name": "TIER_3 Fine Tuning",
+      "priority": 7,
+      "description": "Low-impact micro-tuning: MTS bonus thresholds, PnL decay, newborn immunity.",
+      "switches": ["MTS_BOTTOM_BONUS/STRONG_THRESHOLD", "MTS_ENTRY_QUALITY_BONUS", "MTS_WEIGHT_1m/3m/D", "PNL_DECAY_*", "NEW_POSITION_MIN_AGE_SECONDS", "INF_RANKING_BYPASS_FRESHNESS/MAX_POS"],
+      "est_time_h": 24,
+      "status": "WAITING"
+    },
+    {
+      "phase": 8,
+      "name": "Full Combinatorial (Continuous)",
+      "priority": 8,
+      "description": "100K+ config exhaustive grid. Runs forever. Winners vs winners. Mutate losers with winner params.",
+      "configs": {"tier": "full"},
+      "est_time_h": "continuous",
+      "status": "WAITING"
+    },
+    {
+      "phase": 9,
+      "name": "Loser Optimization",
+      "priority": 9,
+      "description": "Take configs with Sharpe<0 but high trade count, swap ONE param with winner's value. Re-test.",
+      "est_time_h": "continuous",
+      "status": "WAITING"
+    }
+  ],
+  "reentry_blocks_priority": {
+    "_doc": "From ablation. Higher priority = sweep first. Cut blocks get default OFF switch.",
+    "B15_STRONG_TREND": {"sharpe": 0.894, "trades": 66,    "wr": 93.9, "priority": 1, "verdict": "KEEP sniper"},
+    "B04_DC_RETEST":    {"sharpe": 0.391, "trades": 579,   "wr": 58.9, "priority": 2, "verdict": "KEEP high quality"},
+    "B11_DC_BREAK":     {"sharpe": 0.339, "trades": 508,   "wr": 93.7, "priority": 3, "verdict": "KEEP near-perfect WR"},
+    "B02_BC156_BOTTOM": {"sharpe": 0.306, "trades": 22000, "wr": 62.5, "priority": 4, "verdict": "KEEP best balance"},
+    "B12_WT_MOM":       {"sharpe": 0.148, "trades": 112000,"wr": 49.7, "priority": 5, "verdict": "KEEP volume king, tune thresholds"},
+    "B14_HA_TREND":     {"sharpe": 0.112, "trades": 67000, "wr": 50.9, "priority": 6, "verdict": "KEEP moderate"},
+    "B10_STOCH_REV":    {"sharpe": 0.067, "trades": 24000, "wr": 68.6, "priority": 7, "verdict": "KEEP good WR"},
+    "B01_WT_2of3":      {"sharpe": 0.033, "trades": 256000,"wr": 43.3, "priority": 99, "verdict": "CUT noise generator"},
+    "B09_SNAPBACK":     {"sharpe": 0.022, "trades": 34000, "wr": 55.9, "priority": 99, "verdict": "CUT weak"}
+  }
+}

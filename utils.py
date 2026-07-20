@@ -855,8 +855,7 @@ def _get_env_internal():
         return {
             'env': 'server',
             'redis_connections': {
-                'local': ('localhost', 6379),
-                'gateway': ('10.0.0.2', 6379)
+                'local': ('localhost', 6379)
             }
         }
     return {
@@ -2057,7 +2056,12 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
             _valid_symbols = set()
         if _valid_symbols and symbol not in _valid_symbols:
             logger.warning(f"⚠️ [PRICE_SKIP] {symbol} not in symbols.json (delisted?) — returning None instead of crashing"); return None, None
-        logger.critical(f"🛑 [FATAL] No price found for {symbol} in ANY source! Crashing for restart."); raise RuntimeError(f"UNACCEPTABLE: Current price for {symbol} is None/Zero. Force system restart.")
+        try:
+            import ez_alert
+            ez_alert.alert_missing_price(symbol)
+        except Exception as e:
+            logger.error(f"Error calling alert_missing_price for {symbol}: {e}")
+        logger.critical(f"🛑 [PRICE_MISSING] No price found for {symbol} in ANY source — returning None (skip this symbol) instead of crashing the whole account. 2026-06-04: stock-symbol contaminants (UUUU/UEC/TTD) in the crypto symbols.json crash-looped S1 crypto (which has no stock price feed). A single priceless symbol must NEVER crash-loop the process; genuine feed outages are covered by the data-service watchdogs. Matches the delisted-symbol path above."); return None, None
     return best_price, best_timestamp
 
 async def get_klines_from_redis(local_redis_client, gateway_redis_client, symbol: str, interval: str, unified_manager=None) -> pd.DataFrame:
@@ -2568,7 +2572,7 @@ class SimpleRedisManager:
                 conn = self.connections.get(name)
                 if conn:
                     try:
-                        await asyncio.wait_for(conn.ping(), timeout=1.0)
+                        await asyncio.wait_for(conn.ping(), timeout=0.1)
                         return True
                     except Exception: continue
             await asyncio.sleep(1)
@@ -2587,7 +2591,7 @@ class SimpleRedisManager:
             conn = self.connections.get(name)
             if conn:
                 try:
-                    val = await asyncio.wait_for(conn.get(key), timeout=2.0)
+                    val = await asyncio.wait_for(conn.get(key), timeout=0.1)
                     if val is not None:
                         try: return json.loads(val)
                         except Exception: return val
@@ -2599,7 +2603,7 @@ class SimpleRedisManager:
         success = False
         for conn in self.get_broadcast_clients():
             try:
-                await asyncio.wait_for(conn.set(key, data, ex=ex, nx=nx), timeout=2.0)
+                await asyncio.wait_for(conn.set(key, data, ex=ex, nx=nx), timeout=0.1)
                 success = True
             except Exception: continue
         return success
@@ -2633,9 +2637,9 @@ class SimpleRedisManager:
                 # the timeouts already in get()/set(). Was: unbounded → handle_reduction
                 # → save_ladder_levels → _broadcast_ladder_levels_to_redis stalled
                 # 105s+, tripping the 120s PAU watchdog (flz 3× in 30 min on 2026-05-08).
-                await asyncio.wait_for(conn.publish(channel, body), timeout=2.0)
+                await asyncio.wait_for(conn.publish(channel, body), timeout=0.1)
                 if expiry_seconds:
-                    await asyncio.wait_for(conn.set(channel, body, ex=expiry_seconds), timeout=2.0)
+                    await asyncio.wait_for(conn.set(channel, body, ex=expiry_seconds), timeout=0.1)
                 count += 1
             except Exception: continue
         return count

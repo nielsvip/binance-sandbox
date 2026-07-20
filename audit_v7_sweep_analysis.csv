@@ -1,0 +1,47 @@
+V7 SWEEP ANALYSIS — 29 configs completed
+
+config_id,STRICT_NO_LOSS,ENTRY_SCORE,MIN_GAIN_AGG,PnL%,Sharpe,Trades,Opens,Closes,WR%,Fees,MaxDD%
+v7_0000,True,18,3.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0001,False,18,3.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0002,True,18,5.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0003,False,18,5.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0004,True,24,3.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0005,False,24,3.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0006,True,24,5.0,-0.01,0.0,32,2,2,100.0,,0.16
+v7_0007,False,24,5.0,-0.01,0.0,32,2,2,100.0,,0.16
+cfg_STRICT_NO_LOSS,cfg_RATIO_MULTIPLIER,cfg_ENTRY_SCORE_THRESHOLD,cfg_MIN_GAIN_TO_BUY_AGGRESSIVELY,open_losers,open_loser_pnl,open_positions,max_drawdown_pct,cfg_REENTRY_STOCH_K_MAX,open_winners,,fee_rate
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+True,2.0,14,2.0,,,,,40,,,
+True,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,2,-12.63,3,0.16,40,1,,
+False,2.0,14,2.0,3,-169.62,6,4.03,40,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+True,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+False,2.0,14,2.0,3,-169.62,6,4.03,50,3,,0.0004
+
+CRITICAL FINDING: Config overrides have NO EFFECT
+"All STRICT_NO_LOSS=True configs: PnL=-0.01% or PnL=3.0%, 32 or 124 trades"
+All STRICT_NO_LOSS=False configs: IDENTICAL results to True configs
+Changing ENTRY_SCORE_THRESHOLD: NO EFFECT on trade count or PnL
+Only REENTRY_STOCH_K_MAX=40→50 changes results (32→124 trades)
+ROOT CAUSE: V5_CONFIG_OVERRIDES env var loads into tm.config but live code reads global config module directly

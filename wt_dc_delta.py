@@ -909,7 +909,16 @@ class DeltaTracker:
             # The real money here is EXIT LONG and then SHORT the rejection.
             # T1: EXIT LONG if at top with any sign of exhaustion
             if _rz_exit_enabled and position_state and position_state.get("side") in ("LONG", "L"):
-                if _exhaust_up or _bull_div or _wt_vel_1h < 0 or _k_1h > 90:
+                # 2026-07-11 DEFECT-3 FIX (MU_LONG capture: b&h +744% vs strategy -1%, dominant
+                # exit = this one with exh=False div=False): the bare OR on _wt_vel_1h<0 fired on
+                # every negative 1h velocity tick near range top — in a trend that is continuously
+                # true, so longs could never ride a move (also caused the 2026-04-27 67/83
+                # loss-close emergency). Now requires REAL exhaustion evidence (exhaust or
+                # divergence) AND a momentum trigger. Legacy OR behavior via
+                # rz_top_exit_require_confirm=False.
+                _te_confirm = bool(cfg.get("rz_top_exit_require_confirm", True))
+                _te_fire = ((_exhaust_up or _bull_div) and (_wt_vel_1h < 0 or _k_1h > 90)) if _te_confirm else (_exhaust_up or _bull_div or _wt_vel_1h < 0 or _k_1h > 90)
+                if _te_fire:
                     sig.zone_action = "EXIT_LONG"
                     sig.zone_reason = f"TOP_EXIT_LONG_exh={_exhaust_up}_div={_bull_div}_vel={_wt_vel_1h:.1f}_k={_k_1h:.0f}_bb={_bb_1h:.2f}"
                     sig.exit_long = True

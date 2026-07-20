@@ -139,34 +139,17 @@ Autosave: `autosave_15min.py` → `backups/autosave/<timestamp>/`, auto-commits 
 
 ---
 
-## 🔴 SANDBOX PARITY — S1 MUST ALWAYS MATCH MACBOOK
+## 🔴 LOGICAL & TRADING PARITY — LIVE VS SANDBOX BACKTESTS
 
-**MacBook is SOLE SOURCE OF TRUTH.** Sandbox drift → sweep results LIE.
-
-### 6 files bit-identical on MacBook + S1 at ALL times
-`ez_manage.py, ez_positions_quick.py, ez_positions_service.py, tradier_manage.py, config.py, config_tradier.py`
-Plus backtest infra: `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, breakout_multi_lung.py`, all `ez_*.py/tradier_*.py/wt_*.py/utils.py/symbols.json`.
+**Live trading decisions and backtests must have exact logical parity.** File syncing between MacBook and S1 is fully handled by `push.py`. Do not waste time checking S1-MacBook file drift; focus on matching live behavior (live tradier_ and ez_ scripts) with vectorized and per_sym tests on the binance-sandbox.
 
 ### Rules
-1. **Session start**: `python3 check_sandbox_parity.py` — DRIFT → STOP until fixed.
-2. **Before server sweep**: confirm 24 core files bit-match MacBook.
-3. **After editing critical file**: immediately rsync to S1, verify md
-4. **Automated edits count**: bots silently editing `v8_quick_engine.py` cause drift. Resync after any mtime change.
-5. **Never edit scripts on servers** — edit on MacBook, rsync.
-6. **Never use `push.py`** — use `rsync --existing --update` (preserves server-local files).
-
-Past disasters: 2026-04-14 sandbox had older version → 33 canonical switches wiped on copy-back. 2026-04-16 S2 had pre-D4 stub → garbage results.
-
-### Sync command
-```bash
-rsync -az --existing --update \
-  ez_*.py tradier_*.py wt_*.py utils.py config.py config_tradier.py symbols.json \
-  v8_*.py backtest_v8_*.py breakout_multi_lung.py \
-  s1-int:/home/niels/binance-sandbox/
-```
-
-### Files that LEGITIMATELY differ
-`/old/inventory_*/`, `data/sweep_results/*.csv`, `data/decisions/` JSONL, `SWEEP_RUNNING` lock, `backups/autosave/`, `klines_cache*/`. Everything else must bit-match.
+1. **Session start / post-edit**: Check trading logic parity between live trading (live `tradier_` and `ez_` scripts) and backtests (`binance-sandbox vectorized tests`, `per_sym tests`).
+2. **Key Parity Scripts**:
+   - `python3 forward_test_vec_vs_live.py` (compares `v8_vec_sweep` vs live trades).
+   - `python3 parity_diff_live_vs_backtest.py` (identifies entry/exit reasons from live trades missing in backtest).
+   - `python3 parity_test.py` (verifies vec_sweep primitives match live `ez_indicators`).
+3. **Never edit scripts on servers** — edit on MacBook, then run `push.py` to push to S1 and S1 sandbox.
 
 ---
 
@@ -272,7 +255,7 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 1. Read STATE OF AFFAIRS at bottom.
 2. Read `100.md` — master audit (Parts 1–15). Skim headers, read relevant.
 3. Refresh KB: `cd /Users/niels/Documents/binance && python3 export_conversations.py`
-4. Parity: `python3 check_sandbox_parity.py` — DRIFT → STOP.
+4. Parity: Check logical/trading parity between live and backtests (forward_test_vec_vs_live.py, parity_diff_live_vs_backtest.py).
 5. Memory: script → `SCRIPT_STATE.md`; topic → `TOPIC_STATE.md`; "continue from last time" → `INDEX.md`.
 
 ## STEP 0b — Before ANY File Edit
@@ -286,16 +269,12 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 3. Edit locally (/Users/niels/Documents/binance/<file>)
 4. Compile: python -c "import py_compile; py_compile.compile('<file>', doraise=True)"
 5. Verify: grep/read changed lines.
-6. SANDBOX SYNC — rsync to S1 IMMEDIATELY.
-7. Verify md5 parity MacBook+S1 before "done".
+6. SANDBOX SYNC & RESTART — run python3 push.py.
+7. Verify logical/trading parity between live trading and backtests.
 ```
-**Edit without rsync = sandbox tests OLD code, every sweep LIES.**
+**Edit without push.py = sandbox tests OLD code, every sweep LIES.**
 
-```bash
-rsync -az --existing --update <edited_files> niels@157.180.125.52:/home/niels/binance-sandbox/
-```
-
-Rsync needed: 6-critical + `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, breakout_multi_lung.py`, any `ez_*.py/tradier_*.py/wt_*.py/utils.py/symbols.json`. Sweep running on sync: running workers hold OLD code; only next-spawned workers pick up change.
+`push.py` syncs 6-critical + `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, breakout_multi_lung.py`, any `ez_*.py/tradier_*.py/wt_*.py/utils.py/symbols.json` and performs restarts.
 
 ---
 
@@ -498,6 +477,8 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 
 ## Architecture
 
+> **Entry/Exit Path Reference**: See [`TRADING_PATHS.md`](TRADING_PATHS.md) for a complete diagram of every OPEN/AUGMENT/REENTRY/CLOSE path in both crypto (ez_manage.py) and stocks (tradier_manage.py) — file:line, knobs, NOLOSS bypass status, and counts. Read that first before hunting through scripts for strategy changes.
+
 **WaveTrend (WT)** = primary signal. 26 fields/TF/symbol. See `wt_composite.py` + `ez_indicators.py`.
 
 | TF Level | Timeframes | Role |
@@ -538,6 +519,8 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 ---
 
 ## Backtest System (V8 — only valid)
+
+> 🚨 **READ [`BACKTEST_BIBLE.md`](BACKTEST_BIBLE.md) FIRST — MANDATORY for ANY backtest work.** It is the single source of truth for: where to read past results (central SQL DB), avoiding over-testing, storing new data, when to go live, when to start per_sym, the switch priority database, the parity mandate (why past numbers lied), and the goal (pool_sharpe>0.5, gain/mo>20%, ≥10× b&h). This CLAUDE.md's backtest rules are subordinate to the Bible.
 
 `backtest_v8_precompute.py` → NPZ. `v8_quick_engine.py` (Tier 1 vectorized). `backtest_v8_engine.py` (Tier 2 real-code). `v8_quick_sweep.py`/`autonomous_search.py` (sweep runners). V3/V4/V5/old = RETIRED in `old/`.
 

@@ -1,18 +1,21 @@
 import asyncio
-import aiohttp
 import json
 import logging
-import time
 import os
-import socket
 import random
 import re
-from contextvars import ContextVar
+import socket
+import time
 from collections import deque
-from typing import Dict, List, Optional, Any, Callable
-from config_tradier import TradierConfig
+from contextvars import ContextVar
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
+from typing import Any, Callable, Dict, List, Optional
+
+import aiohttp
 import websockets
+
+from config_tradier import TradierConfig
 
 current_account = ContextVar("current_account", default="unknown")
 logger = logging.getLogger("tradier_api")
@@ -433,13 +436,36 @@ class TradierAPIClient:
 
     async def get_timesales(self, symbol: str, interval: str = "1min", start: str = None, end: str = None) -> List[Dict]:
         params = {"symbol": symbol, "interval": interval}
-        if start: params["start"] = start
+        
+        # IGNORE the passed start parameter - always use 26 days ago
+        from datetime import datetime, timedelta
+        start_date = datetime.now() - timedelta(days=26)
+        calculated_start = start_date.strftime("%Y-%m-%d 00:00:00")
+        
+        # Ensure minimum date
+        min_date = datetime(2026, 5, 12)
+        if start_date < min_date:
+            calculated_start = "2026-05-12 00:00:00"
+        
+        params["start"] = calculated_start
         if end: params["end"] = end
+        
+        
         res = await self._request("GET", "/markets/timesales", params=params, use_data_context=True)
         if res and 'series' in res and res['series'] is not None:
-             data = res['series'].get('data', [])
-             return data if isinstance(data, list) else [data]
+            data = res['series'].get('data', [])
+            return data if isinstance(data, list) else [data]
         return []
+    
+    # async def get_timesales(self, symbol: str, interval: str = "1min", start: str = None, end: str = None) -> List[Dict]:
+    #     params = {"symbol": symbol, "interval": interval}
+    #     if start: params["start"] = start
+    #     if end: params["end"] = end
+    #     res = await self._request("GET", "/markets/timesales", params=params, use_data_context=True)
+    #     if res and 'series' in res and res['series'] is not None:
+    #          data = res['series'].get('data', [])
+    #          return data if isinstance(data, list) else [data]
+    #     return []
 
     async def get_history(self, symbol: str, start: str = None, end: str = None, interval: str = 'daily') -> List[Dict]:
         params = {"symbol": symbol, "interval": interval}

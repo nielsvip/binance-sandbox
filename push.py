@@ -12,16 +12,17 @@ REMOTE_DIR = "/home/niels/binance"
 WORKINGSET_BASE = "/home/niels/binance/workingset"
 LOG_DIR = "/home/niels/logs"
 
-# Server2: backtest-only, no restart. Syncs live code into sandbox so backtests always use latest.
+# SERVER1: backtest-only, no restart. Syncs live code into sandbox so backtests always use latest.
 # 2026-06-03: S2 destroyed 2026-05-08. Re-pointed the "sandbox parity" sync to S1's own
 # binance-sandbox so backtests on S1 always use the latest live code (was s2-int).
-SERVER2_HOST = "s1-int"
-SERVER2_SANDBOX = "/home/niels/binance-sandbox"
+SERVER1_HOST = "s1-int"
+SERVER1_SANDBOX = "/home/niels/binance-sandbox"
 # Files that backtest imports from sandbox (must stay current)
-SERVER2_SYNC_FILES = [
+SERVER1_SYNC_FILES = [
     "tradier_manage.py", "tradier_indicators.py", "tradier_api.py", "tradier_positions.py",
     "tradier_rankings.py", "config_tradier.py", "config.py", "utils.py",
-    "ez_manage.py", "ez_indicators.py", "ez_positions_quick.py", "ez_positions_service.py",
+    "per_sym_20d_agent_stocks.py",
+    "ez_manage.py", "ez_indicators.py", "ez_positions_quick.py", "ez_positions_service.py","ez_positions_realtime.py"
     "ez_reentry.py", "ez_reentry_daemon.py", "ez_reentry_vectorized.py",
     # Agent advisory bundle — paper-account agent-supervisor wiring (trc + fin)
     "trc_advisory_consumer.py", "fin_advisory_consumer.py",
@@ -52,6 +53,10 @@ FILES = [
     "templates/stocks.html","CLAUDE.md",
     # --- Docs ---
     "100.md",
+    # --- vec_paths (shared by v8_vec_sweep + backtest_v8_engine; not in live dir but pushed to sandbox) ---
+    "vec_paths/gr_filter_vec.py", "vec_paths/funding_gate.py",
+    # --- per_sym sweep tools ---
+    "tools/per_sym_sweep_100.py",
 ]
 
 # Shell/bash scripts pushed separately (not pulled — they're the authority)
@@ -110,20 +115,20 @@ def stop_mac_live():
     boxes on the same accounts = double orders). Returns True iff the Mac was ACTUALLY live-trading before
     the stop (-> real cutover -> caller snapshots positions). On a routine dev push (Mac already idle)
     returns False -> caller must NOT clobber S1's live positions with stale Mac dirs."""
-    rc, out, _ = run_cmd("ps -ef | grep -E 'ez_manage\\.py --account|tradier_manage\\.py --account' | grep -v grep | wc -l")
+    rc, out, _ = run_cmd("ps -ef | grep -E 'python.*(ez_manage|tradier_manage)\\\\.py --account' | grep -v grep | wc -l")
     were_live = (out or "0").strip() not in ("", "0")
     if were_live:
         log("STOP-MAC-FIRST: Mac is live — booting out launchd + killing live procs before S1 starts...", "🛑")
         for label in ("com.niels.ez-launcher", "com.niels.stocks-market-open"):
             run_cmd(f"launchctl bootout gui/$(id -u)/{label} 2>/dev/null; launchctl stop {label} 2>/dev/null")
-        run_cmd("pkill -9 -f 'ez_manage.py --account' 2>/dev/null; pkill -9 -f 'ez_positions_quick.py' 2>/dev/null; pkill -9 -f 'ez_positions_service.py' 2>/dev/null; pkill -9 -f 'tradier_manage.py --account' 2>/dev/null; pkill -9 -f 'tradier_positions.py' 2>/dev/null")
+        run_cmd("pkill -9 -f 'python.*ez_manage.py' 2>/dev/null; pkill -9 -f 'python.*ez_positions_quick.py' 2>/dev/null; pkill -9 -f 'python.*ez_positions_service.py' 2>/dev/null; pkill -9 -f 'python.*tradier_manage.py' 2>/dev/null; pkill -9 -f 'python.*tradier_positions.py' 2>/dev/null")
         time.sleep(5)
     else:
         log("Mac already idle (no live procs) — routine push, NOT a cutover (positions NOT snapshotted).", "ℹ️")
     return were_live
 
 def _mac_live_count():
-    rc, out, _ = run_cmd("ps -ef | grep -E 'ez_manage\\.py --account|tradier_manage\\.py --account' | grep -v grep | wc -l")
+    rc, out, _ = run_cmd("ps -ef | grep -E 'python.*(ez_manage|tradier_manage)\\\\.py --account' | grep -v grep | wc -l")
     return (out or "1").strip()
 
 def snapshot_positions_to_s1(base_dir):
@@ -168,16 +173,19 @@ def main():
             if rc == 0: pulled.append(f)
         elif lm > sm + 1:                    # local newer/new -> PUSH to live dir + sandbox
             ok = True
-            for tgt in (REMOTE_DIR, SERVER2_SANDBOX):
+            for tgt in (REMOTE_DIR, SERVER1_SANDBOX):
                 rc, _, _ = run_cmd(f"rsync -az --no-perms --update {lp} {REMOTE_USER_HOST}:{tgt}/{f}")
                 ok = ok and rc == 0
             if ok: pushed.append(f)
     changed = pulled + pushed
     log(f"pulled {len(pulled)} (S1 newer), pushed {len(pushed)}. changed={len(changed)}", "📦")
     if pulled: log(f"PULLED from S1 (were newer there): {pulled}", "⬇️")
-    for tgt in (REMOTE_DIR, SERVER2_SANDBOX):
+    for tgt in (REMOTE_DIR, SERVER1_SANDBOX):
         run_cmd(f"ssh {REMOTE_USER_HOST} 'find {tgt} -name \"*.pyc\" -delete 2>/dev/null; find {tgt} -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null'")
-    if changed:
+    no_restart = run_cmd(f"ssh {REMOTE_USER_HOST} 'test -f /home/niels/S1_NO_RESTART && echo YES || echo NO'")[1].strip() == 'YES'
+    if no_restart:
+        log("S1_NO_RESTART flag set — skipping sh.sh restart (testing/sweep mode). Sync only.", "🔒")
+    elif changed:
         log("Changes -> FULL restart of all ez_/tradier_ services via sh.sh.", "♻️")
         run_cmd(f"ssh {REMOTE_USER_HOST} 'cd {REMOTE_DIR} && pkill -9 -f run_with_watchdog_LINUX 2>/dev/null; chmod +x sh.sh; nohup ./sh.sh > {LOG_DIR}/push_restart.log 2>&1 & disown'", timeout=120)
     else:

@@ -1,0 +1,112 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "/opt/anaconda3/envs/binance_env/bin/python",
+		"python.interpreterPath": "/opt/anaconda3/envs/binance_env/bin/python",
+		"python.condaPath": "/opt/anaconda3/bin/conda",
+		"git.ignoreLimitWarning": true,
+		"python.languageServer": "None",
+		"ruff.enable": true,
+		"ruff.lint.enable": true,
+		"workbench.colorTheme": "Default Dark Modern",
+		"workbench.colorCustomizations": {
+			"editor.background": "#161616",
+			"sideBar.background": "#111111",
+			"activityBar.background": "#111111",
+			"terminal.background": "#161616",
+			"statusBar.background": "#161616",
+			"editor.lineHighlightBackground": "#202020",
+			"editor.selectionBackground": "#264f7860"
+		},
+		"editor.tokenColorCustomizations": {
+			"textMateRules": [
+				{
+					"scope": [
+						"comment",
+						"punctuation.definition.comment"
+					],
+					"settings": {
+						"foreground": "#7CA668",
+						"fontStyle": "italic"
+					}
+				},
+				{
+					"scope": [
+						"keyword",
+						"storage.type",
+						"storage.modifier"
+					],
+					"settings": {
+						"foreground": "#C586C0"
+					}
+				},
+				{
+					"scope": [
+						"string",
+						"string.quoted"
+					],
+					"settings": {
+						"foreground": "#CE9178"
+					}
+				},
+				{
+					"scope": [
+						"entity.name.function",
+						"support.function"
+					],
+					"settings": {
+						"foreground": "#DCDCAA"
+					}
+				},
+				{
+					"scope": [
+						"variable.parameter",
+						"variable.other"
+					],
+					"settings": {
+						"foreground": "#9CDCFE"
+					}
+				},
+				{
+					"scope": [
+						"constant.numeric",
+						"constant.language"
+					],
+					"settings": {
+						"foreground": "#B5CEA8"
+					}
+				},
+				{
+					"scope": [
+						"entity.name.type",
+						"entity.other.inherited-class"
+					],
+					"settings": {
+						"foreground": "#4EC9B0"
+					}
+				}
+			]
+		},
+		"terminal.integrated.profiles.osx": {
+			"bash": {
+				"path": "bash",
+				"args": [
+					"-c",
+					"source /opt/anaconda3/bin/activate binance_env && exec bash"
+				]
+			},
+			"zsh": {
+				"path": "zsh",
+				"args": [
+					"-c",
+					"source /opt/anaconda3/bin/activate binance_env && exec zsh"
+				]
+			}
+		},
+		"terminal.integrated.defaultProfile.osx": "zsh"
+	}
+}

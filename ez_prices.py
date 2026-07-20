@@ -1402,14 +1402,46 @@ class ResamplingAndGapFillEngine:
                 return # Empty dataframe
 
             if isinstance(result, str):
-                # Handle error codes from thread
-                if result == "CRITICAL_LOSS":
-                     self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: would destroy data ({actual_existing_count} -> {new_bar_count}) - KEEPING EXISTING")
-                elif result == "CRITICAL_SHRINK":
-                     self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: shrinking from {actual_existing_count} to {new_bar_count} (< 1800) - KEEPING EXISTING")
-                elif result == "CRITICAL_LOW":
-                     self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: only {new_bar_count} bars vs existing {actual_existing_count} - KEEPING EXISTING")
-                return
+                # 2026-07-02 USER ("clip to 1800 not less"): the old behavior returned here and KEPT
+                # EXISTING, which (a) spammed CRITICAL BLOCK and (b) perpetuated staleness — a bloated
+                # live-cache file (e.g. 15m@17280 bars) rejected every fresh (shorter) fetch AND
+                # rejected the aggressive-cleanup's OWN clip write, so it never shrank and never took
+                # new tail bars. Fix (LIVE cache only — this writer touches config.KLINES_CACHE_DIR,
+                # never the backtest history): MERGE incoming with existing (union by timestamp, keep
+                # newest — zero history loss) then CLIP to the most-recent TF-aware target, never below
+                # 1800 (1m/3m keep more since indicators need them). CRITICAL_LOW (a tiny <50-bar fetch
+                # vs a healthy file) stays a HARD block — too likely a corrupt/partial fetch to merge.
+                if result == "CRITICAL_LOW":
+                    self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: only {new_bar_count} bars vs existing {actual_existing_count} - KEEPING EXISTING")
+                    return
+                try:
+                    existing_df = await self._read_file_unlocked(fp)
+                except Exception:
+                    existing_df = None
+                if existing_df is None or existing_df.empty:
+                    self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: {result} ({actual_existing_count} -> {new_bar_count}) and existing unreadable - KEEPING EXISTING")
+                    return
+                try:
+                    _keep_by_tf = {'1m': 14000, '3m': 5000, '15m': 1800, '1h': 1800, '4h': 1800, 'D': 2000, 'W': 500, 'M': 100}
+                    _stem = fp.stem
+                    _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''
+                    keep_n = max(1800, _keep_by_tf.get(_tf, 1800))
+                    merged = pd.concat([existing_df, df], ignore_index=True)
+                    merged = merged.dropna(subset=['timestamp'])
+                    merged['timestamp'] = pd.to_datetime(merged['timestamp'], utc=True, errors='coerce')
+                    merged = merged.dropna(subset=['timestamp']).sort_values('timestamp').drop_duplicates(subset=['timestamp'], keep='last').reset_index(drop=True)
+                    if len(merged) > keep_n:
+                        merged = merged.tail(keep_n).reset_index(drop=True)
+                    merged_rows = standardize_kline_data_for_json(merged)
+                    if not merged_rows or len(merged) < 50:
+                        self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: {result} merge produced only {len(merged)} bars - KEEPING EXISTING")
+                        return
+                    await atomic_write_json(fp, merged_rows)
+                    self.logger.warning(f"🔧 {fp.name}: {result} ({actual_existing_count}->{new_bar_count}) — merged+clipped to {len(merged)} bars (tf={_tf or '?'} floor≥1800), fresh tail applied")
+                    return
+                except Exception as _me:
+                    self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: {result} merge failed ({_me}) - KEEPING EXISTING")
+                    return
 
             rows = result # This is now our List[Dict]
 
@@ -1420,9 +1452,22 @@ class ResamplingAndGapFillEngine:
                 self.logger.warning(f"⚠️ {fp.name}: shrunk from {actual_existing_count} -> {new_bar_count} bars (but >= 1800, allowed)")
         except Exception as e:
             self.logger.error(f"Error writing unlocked {fp}: {e}", exc_info=False)            
+    def _register_rate_limit_ban(self, status, headers, context=""):
+        retry_after = 0
+        try:
+            retry_after = int(float((headers.get("Retry-After") if headers else 0) or 0))
+        except (TypeError, ValueError):
+            retry_after = 0
+        ban_seconds = retry_after if retry_after > 0 else API_DISABLE_SECONDS
+        ban_seconds = max(60, min(ban_seconds, 3 * 24 * 3600))
+        self._api_disabled_until = max(getattr(self, "_api_disabled_until", 0), time.time() + ban_seconds)
+        self.logger.error(f"🚫 Binance rate-limit HTTP {status} (IP ban) {context} — suspending ALL REST klines fetches for {ban_seconds}s (Retry-After={retry_after or 'n/a'}); serving from WS/Redis/file caches meanwhile")
     async def _fetch_klines_from_api_with_semaphore(self, symbol: str, interval: str, limit: int = 1500) -> pd.DataFrame:
         if not self.session:
             self.logger.error("HTTP session not initialized")
+            return pd.DataFrame(columns=config.KLINE_COLUMNS)
+        if getattr(self, "_api_disabled_until", 0) and time.time() < self._api_disabled_until:
+            self.logger.debug(f"⛔ API disabled (rate-limit ban), skipping REST fetch for {symbol}:{interval}")
             return pd.DataFrame(columns=config.KLINE_COLUMNS)
         async with self.api_semaphore:
             async with self.fapi_semaphore:
@@ -1433,7 +1478,10 @@ class ResamplingAndGapFillEngine:
                     params = {"symbol": api_symbol, "interval": api_interval, "limit": min(limit, 1500)}
                     async with self.session.get(url, params=params, timeout=10) as response:
                         if response.status != 200:
-                            self.logger.error(f"API error for {symbol}:{interval} - status {response.status}")
+                            if response.status in (418, 429):
+                                self._register_rate_limit_ban(response.status, response.headers, f"({symbol}:{interval})")
+                            else:
+                                self.logger.error(f"API error for {symbol}:{interval} - status {response.status}")
                             return pd.DataFrame(columns=config.KLINE_COLUMNS)
                         data = await response.json()
                         if not data:
@@ -1544,29 +1592,19 @@ class ResamplingAndGapFillEngine:
 
         return pd.DataFrame(columns=config.KLINE_COLUMNS)
 
-    async def get_klines_df(self, symbol: str, interval: str) -> pd.DataFrame:
+    async def get_klines_df(self, symbol: str, interval: str, recalculate: bool = True) -> pd.DataFrame:
         """Reads a kline DataFrame from ALL klines directories, finding the freshest data."""
         from utils import _resolve_klines_directories, orjson_default
-        
-        # Get ALL klines directories in priority order
         klines_dirs = _resolve_klines_directories()
         best_df = pd.DataFrame()
         best_timestamp = pd.Timestamp(0, tz='UTC')
         best_source = None
-        
         for klines_dir in klines_dirs:
-            if not klines_dir or not klines_dir.exists():
-                continue
-                
+            if not klines_dir or not klines_dir.exists(): continue
             file_path = klines_dir / f"{symbol}_{interval}.json"
-            if not file_path.exists():
-                continue
-                
-            async with self.file_io_semaphore:
-                df = await self._read_file_unlocked(file_path)
-                
+            if not file_path.exists(): continue
+            async with self.file_io_semaphore: df = await self._read_file_unlocked(file_path)
             if not df.empty and 'timestamp' in df.columns:
-                # Find the latest timestamp in this data
                 try:
                     timestamps = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
                     latest_ts = timestamps.max()
@@ -1575,30 +1613,23 @@ class ResamplingAndGapFillEngine:
                         best_timestamp = latest_ts
                         best_source = klines_dir.name
                 except Exception:
-                    # If timestamp parsing fails, still use this data if we don't have any
                     if best_df.empty:
                         best_df = df.copy()
                         best_source = klines_dir.name
-        
         if not best_df.empty:
-            if best_source:
-                self.logger.debug(f"✅ Found {symbol}_{interval} data in {best_source} (latest: {best_timestamp})")
-            if interval == 'D':
+            if best_source: self.logger.debug(f"✅ Found {symbol}_{interval} data in {best_source} (latest: {best_timestamp})")
+            if interval == 'D' and recalculate:
                 now_utc = datetime.now(timezone.utc)
                 if best_timestamp and (now_utc - best_timestamp.to_pydatetime()).total_seconds() > 86400 * 1.5:
                     fixed = await self._check_and_recalculate_D_from_4h(symbol)
-                    if not fixed:
-                        await self._ensure_D_klines_via_api(symbol)
-                    best_df = await self.get_klines_df(symbol, interval)
+                    if not fixed: await self._ensure_D_klines_via_api(symbol)
+                    best_df = await self.get_klines_df(symbol, interval, recalculate=False)
             return best_df
-        elif interval == 'D':
+        elif interval == 'D' and recalculate:
             fixed = await self._check_and_recalculate_D_from_4h(symbol)
-            if not fixed:
-                await self._ensure_D_klines_via_api(symbol)
-            best_df = await self.get_klines_df(symbol, interval)
+            if not fixed: await self._ensure_D_klines_via_api(symbol)
+            best_df = await self.get_klines_df(symbol, interval, recalculate=False)
             return best_df
-        
-        # If no data found anywhere, return empty DataFrame
         return pd.DataFrame(columns=config.KLINE_COLUMNS)
 
     async def _create_synthetic_klines_from_mark_price(self, symbol: str, window: int) -> pd.DataFrame:
@@ -1946,6 +1977,9 @@ class ResamplingAndGapFillEngine:
 
     async def fetch_klines_in_chunks(self, symbol: str, interval: str, total_bars_needed: int, end_time_ms: Optional[int] = None) -> pd.DataFrame:
         """Fetches klines from Binance in chunks using the proper /klines endpoint; returns clean ascending DataFrame."""
+        if getattr(self, "_api_disabled_until", 0) and time.time() < self._api_disabled_until:
+            self.logger.debug(f"⛔ API disabled (rate-limit ban), skipping chunked fetch for {symbol}:{interval}")
+            return pd.DataFrame(columns=config.KLINE_COLUMNS)
         all_dfs = []
         remaining_bars = total_bars_needed
         current_end_time = end_time_ms
@@ -2007,6 +2041,9 @@ class ResamplingAndGapFillEngine:
                                     # Don't break immediately - give it one more try
                                 # Gentle pacing
                                 await asyncio.sleep(API_REQUEST_DELAY_SECONDS)
+                            elif resp.status in (418, 429):
+                                self._register_rate_limit_ban(resp.status, resp.headers, f"({api_symbol} {api_interval})")
+                                break
                             else:
                                 self.logger.warning(f"API Error for {api_symbol} {api_interval}: {resp.status}")
                                 break
@@ -2894,67 +2931,47 @@ class ResamplingAndGapFillEngine:
         """Resample missing daily bars from 4h data"""
         try:
             df_4h = await self.get_klines_df(symbol, '4h')
-            df_D = await self.get_klines_df(symbol, 'D')
-
+            df_D = await self.get_klines_df(symbol, 'D', recalculate=False)
             if df_4h.empty or len(df_4h) < 6:
                 self.logger.debug(f"Insufficient 4h data for {symbol} daily resample")
                 return
-                
             if df_D.empty:
-                # No existing daily data, resample all available 4h
                 df_4h_indexed = df_4h.set_index(pd.to_datetime(df_4h['timestamp'])).sort_index()
-                df_D_new = (
-                    df_4h_indexed
-                    .resample("D", label='right', closed='right')
-                    .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
-                ).dropna()
+                df_D_new = (df_4h_indexed.resample("D", label='right', closed='right').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
             else:
-                # Find the latest daily bar we have
                 latest_D = pd.to_datetime(df_D['timestamp']).max()
-
-                # Get 4h data after the latest daily bar (we need at least 6 bars for one daily bar)
                 df_4h_new = df_4h[pd.to_datetime(df_4h['timestamp']) > latest_D]
-                
                 if len(df_4h_new) >= 6:
                     df_4h_new_indexed = df_4h_new.set_index(pd.to_datetime(df_4h_new['timestamp'])).sort_index()
-                    df_D_new = (
-                        df_4h_new_indexed
-                        .resample("D", label='right', closed='right')
-                        .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
-                    ).dropna()
+                    df_D_new = (df_4h_new_indexed.resample("D", label='right', closed='right').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
                 else:
                     df_D_new = pd.DataFrame()
-            
             if not df_D_new.empty:
                 await self.merge_and_write_df(df_D_new.reset_index(), symbol, "D")
                 self.logger.debug(f"✅ 4h→D: Added {len(df_D_new)} bars for {symbol}")
-                
         except Exception as e:
             self.logger.error(f"4h→D cascade failed for {symbol}: {e}")
 
     async def _check_and_recalculate_D_from_4h(self, symbol: str):
         """Check if D klines are missing/stale and recalculate from 4h if needed"""
         try:
-            df_D = await self.get_klines_df(symbol, 'D')
+            df_D = await self.get_klines_df(symbol, 'D', recalculate=False)
             df_4h = await self.get_klines_df(symbol, '4h')
-            if df_4h.empty or len(df_4h) < 6:
-                return False
+            if df_4h.empty or len(df_4h) < 6: return False
             now_utc = datetime.now(timezone.utc)
             if df_D.empty:
                 self.logger.info(f"🔄 D klines missing for {symbol}, recalculating from 4h...")
             else:
                 latest_D = pd.to_datetime(df_D['timestamp']).max()
                 age_hours = (now_utc - latest_D.to_pydatetime()).total_seconds() / 3600
-                if age_hours < 20:
-                    return True
+                if age_hours < 20: return True
                 self.logger.info(f"🔄 D klines stale for {symbol} (age: {age_hours:.1f}h), recalculating from 4h...")
             await self._cascade_4h_to_D(symbol)
-            df_D_after = await self.get_klines_df(symbol, 'D')
+            df_D_after = await self.get_klines_df(symbol, 'D', recalculate=False)
             if not df_D_after.empty:
                 latest_D_after = pd.to_datetime(df_D_after['timestamp']).max()
                 age_hours_after = (now_utc - latest_D_after.to_pydatetime()).total_seconds() / 3600
-                if age_hours_after < 25:
-                    return True
+                if age_hours_after < 25: return True
             return False
         except Exception as e:
             self.logger.debug(f"Error checking D klines for {symbol}: {e}")
@@ -2968,9 +2985,9 @@ class ResamplingAndGapFillEngine:
             if not fetched.empty:
                 cleaned = self._sanitize_klines(fetched, 'D')
                 if not cleaned.empty:
-                    existing = await self.get_klines_df(symbol, 'D')
+                    existing = await self.get_klines_df(symbol, 'D', recalculate=False)
                     await self._merge_preserving_history(symbol, 'D', cleaned, existing)
-                    df_D_final = await self.get_klines_df(symbol, 'D')
+                    df_D_final = await self.get_klines_df(symbol, 'D', recalculate=False)
                     if not df_D_final.empty:
                         latest_D = pd.to_datetime(df_D_final['timestamp']).max()
                         age_hours = (datetime.now(timezone.utc) - latest_D.to_pydatetime()).total_seconds() / 3600
@@ -3343,27 +3360,30 @@ class ResamplingAndGapFillEngine:
                         else:
                             self.logger.debug(f" Gateway Redis failure {self._gateway_redis_failures}/3, keeping connection")
                 else:
-                    # AGGRESSIVE RECONNECT: Try to reconnect to gateway Redis - NON-BLOCKING
-                    try:
-                        env_info = get_current_environment()
-                        gw_host, gw_port = env_info['redis_connections'].get('gateway', ('localhost', 6379))
-                        # Fix IPv6 issue
-                        if gw_host in ['localhost', '::1']:
-                            gw_host = '127.0.0.1'
-                        # MUCH longer timeout for gateway - SSH tunnels can be slow
-                        self.redis_client_read = redis.Redis(
-                            host=gw_host, port=gw_port, db=0, decode_responses=True, 
-                            socket_connect_timeout=60, socket_timeout=300, max_connections=3000, 
-                            health_check_interval=30, retry_on_error=[redis_exceptions.TimeoutError, redis_exceptions.ConnectionError],
-                            retry_on_timeout=True
-                        )
-                        # NON-BLOCKING: No ping wait, connects in background
-                        self.logger.info(f"⏳ Gateway Redis reconnecting ({gw_host}:{gw_port}) - will connect in background")
-                        if hasattr(self, '_gateway_redis_failures'):
-                            self._gateway_redis_failures = 0
-                    except Exception as e:
-                        self.logger.debug(f"Could not restore gateway Redis connection to {gw_host}:{gw_port}: {e}")
-                        self.redis_client_read = None
+                    env_info = get_current_environment()
+                    if 'gateway' not in env_info['redis_connections']:
+                        pass
+                    else:
+                        # AGGRESSIVE RECONNECT: Try to reconnect to gateway Redis - NON-BLOCKING
+                        try:
+                            gw_host, gw_port = env_info['redis_connections']['gateway']
+                            # Fix IPv6 issue
+                            if gw_host in ['localhost', '::1']:
+                                gw_host = '127.0.0.1'
+                            # MUCH longer timeout for gateway - SSH tunnels can be slow
+                            self.redis_client_read = redis.Redis(
+                                host=gw_host, port=gw_port, db=0, decode_responses=True,
+                                socket_connect_timeout=60, socket_timeout=300, max_connections=3000,
+                                health_check_interval=30, retry_on_error=[redis_exceptions.TimeoutError, redis_exceptions.ConnectionError],
+                                retry_on_timeout=True
+                            )
+                            # NON-BLOCKING: No ping wait, connects in background
+                            self.logger.info(f"⏳ Gateway Redis reconnecting ({gw_host}:{gw_port}) - will connect in background")
+                            if hasattr(self, '_gateway_redis_failures'):
+                                self._gateway_redis_failures = 0
+                        except Exception as e:
+                            self.logger.debug(f"Could not restore gateway Redis connection: {e}")
+                            self.redis_client_read = None
                 
                 # Check HTTP session health
                 if self.session and self.session.closed:
@@ -4063,24 +4083,51 @@ class ResamplingAndGapFillEngine:
             timeframes = ['15m', '1h', '4h', 'D']
             for tf in timeframes:
                 try:
-                    # Step 1: Try to restore from backup klines_cache folders
+                    # Get local file path and check current status
+                    local_fp = config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json"
+                    local_df = await self._read_file_unlocked(local_fp)
+                    local_count = len(local_df) if not local_df.empty else 0
+                    local_ts = pd.Timestamp(0, tz='UTC')
+                    if local_count > 0:
+                        local_ts = pd.to_datetime(local_df['timestamp']).max()
+
+                    # Step 1: Try to find a better version in backup folders
                     backup_df, backup_dir, backup_ts = await _read_latest_kline_from_dirs(symbol, tf)
                     
-                    if not backup_df.empty and len(backup_df) >= 200:
-                        # Found good data in backup folders!
-                        await self.merge_and_write_df(backup_df, symbol, tf)
-                        self.logger.info(f"✅ EMERGENCY FIX: {symbol} {tf} - RESTORED {len(backup_df)} bars from {backup_dir}")
-                        continue  # Skip API call, we have good data
+                    # ONLY restore/merge if the backup is actually from a different directory AND has newer or more data
+                    is_real_backup = False
+                    if backup_dir:
+                        try:
+                            is_real_backup = Path(backup_dir).resolve() != config.KLINES_CACHE_DIR.resolve()
+                        except Exception:
+                            is_real_backup = str(backup_dir) != str(config.KLINES_CACHE_DIR)
+                            
+                    has_better_data = not backup_df.empty and (backup_ts > local_ts or len(backup_df) > local_count)
                     
-                    # Step 2: Only fetch from API if backup folders don't have good data
-                    fetched = await self.fetch_klines_in_chunks(symbol, tf, 1500, end_time_ms=None)
-                    if not fetched.empty:
-                        cleaned = self._sanitize_klines(fetched, tf)
-                        if not cleaned.empty and len(cleaned) >= 200:
-                            await self.merge_and_write_df(cleaned, symbol, tf)
-                            self.logger.info(f"✅ EMERGENCY FIX: {symbol} {tf} - API fetched {len(cleaned)} bars")
-                        else:
-                            self.logger.warning(f"⚠️ EMERGENCY FIX: {symbol} {tf} - API returned only {len(cleaned)} bars, SKIPPING")
+                    if is_real_backup and has_better_data:
+                        await self.merge_and_write_df(backup_df, symbol, tf)
+                        self.logger.info(f"✅ EMERGENCY FIX: {symbol} {tf} - RESTORED {len(backup_df)} bars from backup {backup_dir}")
+                        # Update local state after restore so we know if it is still stale
+                        local_df = backup_df
+                        local_count = len(backup_df)
+                        local_ts = backup_ts
+
+                    # Step 2: Check if the file is still stale (or has too few bars) and fetch from API if needed
+                    now_utc = datetime.now(timezone.utc)
+                    tf_minutes = {'15m': 15, '1h': 60, '4h': 240, 'D': 1440}
+                    limit_minutes = max(tf_minutes.get(tf, 15) * 2, 30) # Allow up to 2 bars of staleness
+                    
+                    is_still_stale = (now_utc - local_ts).total_seconds() > (limit_minutes * 60)
+                    
+                    if is_still_stale or local_count < 200:
+                        fetched = await self.fetch_klines_in_chunks(symbol, tf, 1500, end_time_ms=None)
+                        if not fetched.empty:
+                            cleaned = self._sanitize_klines(fetched, tf)
+                            if not cleaned.empty and len(cleaned) >= 200:
+                                await self.merge_and_write_df(cleaned, symbol, tf)
+                                self.logger.info(f"✅ EMERGENCY FIX: {symbol} {tf} - API fetched {len(cleaned)} bars to resolve staleness")
+                            else:
+                                self.logger.warning(f"⚠️ EMERGENCY FIX: {symbol} {tf} - API returned only {len(cleaned)} bars, SKIPPING")
                 except Exception as e:
                     self.logger.debug(f"Emergency fix failed for {symbol} {tf}: {e}")
         except Exception as e:
@@ -4310,24 +4357,22 @@ class ResamplingAndGapFillEngine:
                     self.logger.warning(f"Local Redis fallback failed: {e}")
                     self.redis_client=None
             if not self.redis_client_read:
-                try:
-                    env_info = get_current_environment()
-                    gw_host, gw_port = env_info['redis_connections'].get('gateway', ('localhost', 6379))
-                    # Fix IPv6 issue
-                    if gw_host in ['localhost', '::1']:
-                        gw_host = '127.0.0.1'
-                    # MUCH longer timeout for gateway - SSH tunnels can be slow
-                    self.redis_client_read=redis.Redis(host=gw_host,port=gw_port,db=config.REDIS_DB,decode_responses=True,
-                                                       socket_connect_timeout=60,socket_timeout=300,max_connections=3000,
-                                                       health_check_interval=30,retry_on_error=[redis_exceptions.TimeoutError,redis_exceptions.ConnectionError],
-                                                       retry_on_timeout=True)
-                    # NON-BLOCKING: No ping wait, connects in background
-                    self.logger.info(f"Gateway Redis client created ({gw_host}:{gw_port}) - connecting in background. System continues with JSON files.")
-                    self._gateway_redis_failures=0
-                    self.redis_client_read=None  # Don't use yet
-                except Exception as e:
-                    self.logger.warning(f"Gateway Redis fallback failed: {e}")
-                    self.redis_client_read=None
+                env_info = get_current_environment()
+                if 'gateway' in env_info['redis_connections']:
+                    try:
+                        gw_host, gw_port = env_info['redis_connections']['gateway']
+                        if gw_host in ['localhost', '::1']:
+                            gw_host = '127.0.0.1'
+                        self.redis_client_read=redis.Redis(host=gw_host,port=gw_port,db=config.REDIS_DB,decode_responses=True,
+                                                           socket_connect_timeout=60,socket_timeout=300,max_connections=3000,
+                                                           health_check_interval=30,retry_on_error=[redis_exceptions.TimeoutError,redis_exceptions.ConnectionError],
+                                                           retry_on_timeout=True)
+                        self.logger.info(f"Gateway Redis client created ({gw_host}:{gw_port}) - connecting in background.")
+                        self._gateway_redis_failures=0
+                        self.redis_client_read=None
+                    except Exception as e:
+                        self.logger.warning(f"Gateway Redis fallback failed: {e}")
+                        self.redis_client_read=None
             self.validator = EnhancedDataValidator(config.KLINES_CACHE_DIR, self.backup_system, self.redis_client)
             self.gap_filler = EnhancedGapFiller(config.KLINES_CACHE_DIR, self.backup_system, self.redis_client)
         except Exception as e:
@@ -5098,6 +5143,8 @@ class ResamplingAndGapFillEngine:
     
     async def _fill_single_gap_with_api(self, symbol: str, interval: str, gap: Dict):
         """Fill a single gap using API call."""
+        if getattr(self, "_api_disabled_until", 0) and time.time() < self._api_disabled_until:
+            return
         try:
             start_time = gap['start_time']
             end_time = gap['end_time']
@@ -5122,9 +5169,12 @@ class ResamplingAndGapFillEngine:
             }
             
             async with self.session.get(url, params=params) as response:
+                if response.status in (418, 429):
+                    self._register_rate_limit_ban(response.status, response.headers, f"(gap-fill {symbol}:{interval})")
+                    return
                 if response.status == 200:
                     data = await response.json()
-                    
+
                     if data:
                         # Convert to DataFrame
                         df = pd.DataFrame(data, columns=[

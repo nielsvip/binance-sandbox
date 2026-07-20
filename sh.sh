@@ -166,7 +166,7 @@ fuser -k 50005/tcp 2>/dev/null || true
 sleep 1
 systemctl --user restart binance-ezshareind.service
 sleep 3
-WORKER_TOTAL=${WORKER_TOTAL_INSTANCES:-3}
+WORKER_TOTAL=${WORKER_TOTAL_INSTANCES:-4}
 if [ "$WORKER_TOTAL" -gt 1 ]; then
     for i in $(seq 0 $((WORKER_TOTAL-1))); do
         if ! pgrep -f "ez_indicators.py --worker $i" >/dev/null 2>&1; then

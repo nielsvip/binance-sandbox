@@ -1,0 +1,15 @@
+Priority,ID,Feature,Evidence,Config Flag,Risk Level,Expected Impact
+#1 HIGHEST,BC_137,ADX regime filter (skip ADX<20),External: 36%→182% improvement,ADX_REGIME_FILTER_ENABLED=False,Low,5x return improvement documented
+#2,BC_138,RSI 50-line crossover mode,Own test: PF 4.64 vs 2.42 (2x better),RSI_MOMENTUM_MODE=False,Medium,2x PF improvement
+#3,BC_141,F&G sizing multiplier,"External: 1,240% vs 680% B&H",FG_SIZING_ENABLED=False,Low,~2x return improvement
+#4,—,6-month momentum gate,Own test: +30% Sharpe,Not in config yet,Low,+30% Sharpe on DC entries
+#5,BC_128,EMA pullback + StochRSI,Copy trading + academic validated,EMA_PULLBACK_ENABLED=False,Low,Higher quality entries
+#6,BC_139,Simple fixed TP% exit,567k external backtests,SIMPLE_TP_EXIT_ENABLED=False,Medium,Simpler > complex exits
+#7,BC_134,BB+RSI+Stoch scalp bonus,73-77% WR triple confirm,BB_RSI_STOCH_SCALP_ENABLED=False,Low,Scalp account boost
+#8,BC_142,L/S ratio contrarian,Moderate external evidence,LS_RATIO_CONTRARIAN_ENABLED=False,Low,Filter crowded trades
+#9,BC_143,OI divergence signal,30-50% accuracy boost,OI_DIVERGENCE_ENABLED=False,Low,Confirmation layer
+,,,,,,
+T#1,T65,Remove DC from HODL entry (stocks),"DC 28.6% WR, PF 0.65 on stocks","Code written, not deployed",Low,Remove bad entries
+T#2,T66,DC daytrade wing 5m/15m (stocks),DC better on lower TFs,"Code written, not deployed",Medium,New profitable wing
+T#3,—,Stoch 9/5 vs 7/7 head-to-head,"Tournament says 9/5, marathon says 7/7",Need backtest,Low,Resolve contradiction
+T#4,—,Blacklist NKE/STZ/CLX/ETHD/BTCL/DIME,Losing + poor rank,Manual removal,Low,Stop bleeding

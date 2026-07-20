@@ -77,6 +77,7 @@ def inject_symbol_into_tracking(sym):
     """Add symbol to symbols.json, symbols_fin.json, tradeable_keys.json + run add_new_symbols.py."""
     changed = False
     for fpath in (SYMBOLS_FILE, SYMBOLS_FIN_FILE):
+        if fpath == SYMBOLS_FILE: logger.warning(f"🚫 [symbols.json write blocked] Skipping inject of {sym}"); continue
         try:
             data = json.loads(fpath.read_text()) if fpath.exists() else []
             if sym not in data:
@@ -117,6 +118,7 @@ def eject_symbol_from_tracking(sym):
         return False
     changed = False
     for fpath in (SYMBOLS_FILE, SYMBOLS_FIN_FILE):
+        if fpath == SYMBOLS_FILE: logger.warning(f"🚫 [symbols.json write blocked] Skipping eject of {sym}"); continue
         try:
             data = json.loads(fpath.read_text()) if fpath.exists() else []
             if sym in data:

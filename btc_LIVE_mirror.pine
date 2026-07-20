@@ -1,0 +1,554 @@
+// @version=6
+// =============================================================================
+//  btc_LIVE_mirror — APPROXIMATION OF LIVE TRADING DECISIONS (NOT PARITY)
+// =============================================================================
+//  This is a research-grade visualisation tool.  It re-implements the DOMINANT
+//  branches of `AdvancedSignalRater.rate()` in /Users/niels/Documents/binance/
+//  ez_positions_quick.py (live entry/exit decision for crypto accounts) so the
+//  user can chart-compare entries/exits while live runs.
+//
+//  *** NOT A LIVE PARITY PORT ***
+//   - Live reads pre-computed multi-symbol redis state, sentiment ranks,
+//     funding-rate cache, hedge tracker, partial-profit-lock state, delta
+//     engine z-scores, and 50+ secondary score boosters.  Pine cannot.
+//   - This file mirrors the gates that fire MOST in production logs:
+//       1. HTF direction gate (D + 4h + 1h + SMA200_D)
+//       2. WT cross alignment + score floor
+//       3. WT exit on min N TFs (config WT_EXIT_MIN_TFS / V8Q_WT_EXIT_MIN_TFS)
+//       4. Stoch K extreme reversal exit (RZ-style)
+//       5. Structural Range Shift exit on dc_4h
+//       6. Funding-rate gate (FUNDING_GATE_ENABLED 2026-04-27 default ON)
+//       7. NOLOSS_GATE block on losing-position closes (STRICT_NO_LOSS_ACCOUNTS)
+//       8. Hedge trigger marker (HEDGE_TRIGGER_LOSS_PCT_ENTRY = -2.0 cross-sym)
+//       9. Hedge close marker (WT 3m + 1h flip + non-negative gain)
+//
+//  Defaults are read from /Users/niels/Documents/binance/config.py as of
+//  2026-04-27.  See the "live config snapshot" notes against each input.
+//
+//  USE: paste in TV, set chart to BTCUSDC 3m, tune inputs to match current
+//  live config.py, then visually compare against
+//  /Users/niels/Documents/binance/data/decisions/decisions_flz_*.jsonl.
+//
+//  CAVEAT: live also runs SCALP_V3, REENTRY_*, BC_152 direction-favorable
+//  reentry, divergence boosters, delta engine, and many score modifiers that
+//  this file approximates with simpler heuristics.  Expect ~60-75% directional
+//  agreement, NOT trade-for-trade parity.
+// =============================================================================
+
+strategy("BTC LIVE Mirror (Approximation, NOT Parity)", "BTC_LIVE_MIRROR",
+     overlay=true, max_bars_back=5000, max_lines_count=500,
+     max_labels_count=500, max_boxes_count=500,
+     pyramiding=2, calc_on_every_tick=false,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=10,
+     initial_capital=1000, commission_type=strategy.commission.percent,
+     commission_value=0.04)
+
+// =============================================================================
+//  INPUT GROUPS — match these to current live config.py
+// =============================================================================
+
+// ---- Master switches (mirror of config.py 2026-04-27) ----
+G_MASTER = "Master switches (config.py mirror)"
+i_account     = input.string("flz", "Account being mirrored", options=["ang","flz","men","fin","inf"], group=G_MASTER, tooltip="Used only to decide STRICT_NO_LOSS membership and HEDGE_MODE membership")
+// config.py:328 STRICT_NO_LOSS_ACCOUNTS = ['ang','flz','men','fin','inf']
+i_strict_noloss_csv = input.string("ang,flz,men,fin,inf", "STRICT_NO_LOSS_ACCOUNTS", group=G_MASTER, tooltip="config.py:328 — accounts that CANNOT close at loss. Live currently has all 5. Memory note: 'STRICT_NO_LOSS = ELIMINATED 2026-04-01' is OUTDATED — real live config still has all 5. We mirror live, not memory.")
+// config.py:77 HEDGE_MODE = True (gates cross-symbol hedges)
+i_hedge_mode  = input.bool(true, "HEDGE_MODE (cross-sym)", group=G_MASTER, tooltip="config.py:77 — when True, account can hedge across symbols. Same-symbol 150% hedge is always on regardless.")
+// config.py:122 SCALP_V3_ENABLED = True (live on inf only)
+i_scalp_v3_acc = input.string("inf", "SCALP_V3 active account", group=G_MASTER, tooltip="config.py:122 — V3 scalper. Currently runs on inf only. Mirror as info only — V3 logic NOT replicated here.")
+// config.py:800 UNIVERSAL_NOLOSS_GATE = True
+i_universal_noloss = input.bool(true, "UNIVERSAL_NOLOSS_GATE", group=G_MASTER, tooltip="config.py:800 — blocks ALL non-technical exits at loss. Bypassed by HEDGE/DELTA/STRUCTURAL paths.")
+
+// ---- Entry gates ----
+G_ENTRY = "Entry gates (LIVE rate() approximation)"
+// HTF_GATE_MIN_CONFIRMATIONS=2, HTF_GATE_D_MANDATORY=False (config.py:1123-1124)
+i_htf_min_conf = input.int(2, "HTF_GATE_MIN_CONFIRMATIONS", minval=1, maxval=4, group=G_ENTRY, tooltip="config.py:1123 — out of (D, 4h, 1h, SMA200_D), need this many to align with side.")
+i_htf_d_mand   = input.bool(false, "HTF_GATE_D_MANDATORY", group=G_ENTRY, tooltip="config.py:1124 (loosened 2026-04-27)")
+i_htf_use_sma  = input.bool(true, "HTF_GATE_SIGNALS_SMA200D", group=G_ENTRY, tooltip="Include price vs SMA200_D as a 4th HTF signal")
+// HTF_DIRECTION_GATE_ENABLED default True (ez_positions_quick.py:11692)
+i_htf_dir_gate = input.bool(true, "HTF_DIRECTION_GATE_ENABLED", group=G_ENTRY)
+// Score threshold — live "GOOD_BUY"/"GOOD_SELL" rec triggers entry at score>=24 (line 4109)
+// final_score is on a 0..60 scale after the long score-bonus pipeline.
+i_score_min    = input.int(24, "Min score for entry (0..60)", minval=10, maxval=50, group=G_ENTRY, tooltip="ez_positions_quick.py:4109 — GOOD_BUY/SELL fires at >=24, STRONG at >=29, WEAK at >=18.  Pine approximation.")
+// Stoch K reentry/entry gates (CLAUDE.md crypto: K<50 LONG)
+i_long_kmax    = input.float(50, "LONG entry max stoch K (3m)", group=G_ENTRY, tooltip="CLAUDE.md crypto: K<50 for LONG reentry. Approximation of multiple K gates in live.")
+i_short_kmin   = input.float(50, "SHORT entry min stoch K (3m)", group=G_ENTRY)
+// WT cross alignment count (live LTF = 1m+3m+15m bullish>=2 per line 2078)
+i_wt_align_min = input.int(2, "Min LTF WT-bullish alignment (1m+3m+15m)", minval=0, maxval=3, group=G_ENTRY)
+// Funding gate (config.py:562-564)
+i_fund_gate    = input.bool(true, "FUNDING_GATE_ENABLED", group=G_ENTRY, tooltip="config.py:562 default ON 2026-04-27")
+i_fund_long_max = input.float(0.0005, "FUNDING_GATE_LONG_MAX", step=0.0001, group=G_ENTRY, tooltip="config.py:563 — reject LONG when funding >= 0.05%. TV cannot read funding so this is approximated by neutral always-pass; flip to manual override if needed.")
+i_fund_short_min = input.float(-0.0005, "FUNDING_GATE_SHORT_MIN", step=0.0001, group=G_ENTRY)
+i_fund_manual  = input.float(0.0, "Manual funding override (0=neutral)", step=0.0001, group=G_ENTRY, tooltip="Pine cannot fetch funding — set this manually if you want the gate to fire on chart")
+// Divergence block (R-G7 default ON, ez_positions_quick.py:1930)
+i_div_gate     = input.bool(true, "WT divergence block (R-G7)", group=G_ENTRY, tooltip="Approximated by RSI divergence from 1h/4h pivots. Live uses computed wt_divergence_TF fields.")
+
+// ---- Exit gates ----
+G_EXIT = "Exit gates (LIVE rate() exit approximation)"
+// V8Q_WT_EXIT_MIN_TFS=3 (config.py:867) — also applied in live exit_candidates
+i_wt_exit_min  = input.int(3, "WT_EXIT_MIN_TFS (out of 1m,3m,15m,1h,4h,D)", minval=2, maxval=6, group=G_EXIT, tooltip="config.py:867 — NEVER drop below 3 per sweep evidence.")
+// RZ_EXIT_ENABLED=False (config.py:1084) — kept off but available
+i_rz_exit      = input.bool(false, "RZ_EXIT (K extreme on 1h)", group=G_EXIT, tooltip="config.py:1084 disabled in live since 2026-04-19 — premature exits dropped Sharpe 2.5→1.25.")
+i_rz_k_high    = input.float(85, "RZ K-high (LONG exit when K_1h>=)", group=G_EXIT)
+i_rz_k_low     = input.float(15, "RZ K-low (SHORT exit when K_1h<=)", group=G_EXIT)
+// STRUCTURAL_RANGE_SHIFT_EXIT=True (config.py:970), TF=dc_4h (config.py:971)
+i_srs          = input.bool(true, "STRUCTURAL_RANGE_SHIFT_EXIT", group=G_EXIT)
+i_srs_k_high   = input.float(75, "SRS K-high (LONG)", group=G_EXIT)
+i_srs_k_low    = input.float(25, "SRS K-low (SHORT)", group=G_EXIT)
+i_srs_prox_bps = input.float(100, "SRS proximity bps (1% = 100)", group=G_EXIT)
+// Wrong-side absolute kill (config.py:1501) — fires zero times in live per memory; skip mirror.
+// 5-of-5 WT against bypass (NOLOSS_BYPASS_WT_5OF5)
+i_5of5_bypass  = input.bool(false, "NOLOSS_BYPASS_WT_5OF5_ENABLED", group=G_EXIT, tooltip="config.py — exception to STRICT_NO_LOSS when ALL 5 WT TFs flip against position")
+
+// ---- Hedge approximation ----
+G_HEDGE = "Hedge engine approximation (visual only)"
+// HEDGE_TRIGGER_LOSS_PCT_ENTRY = -2.0 (config.py:504)
+i_hedge_trig   = input.float(-2.0, "HEDGE_TRIGGER_LOSS_PCT_ENTRY (%)", group=G_HEDGE, tooltip="config.py:504 — cross-symbol hedge fires when position pnl <= this. Same-symbol 150% hedge has its own (-0.05% per BACKTEST_CHANGE_38) but we visualise the cross-sym -2% here as the dominant trigger.")
+i_hedge_close_req_nonneg = input.bool(true, "HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN", group=G_HEDGE, tooltip="config.py:640 — hedge closes only when gain>=0 AND wt 3m+1h flip. Memory: 'feedback_hedge_no_close_at_loss_20260426'. NOTE 2026-04-27 update: 'feedback_hedging_not_suicide' adds dc_5m breach immediate unwind — not modelled here.")
+
+// ---- Visuals ----
+G_VIS = "Visuals"
+i_show_htf_bg  = input.bool(true, "HTF direction shaded background", group=G_VIS)
+i_show_table   = input.bool(true, "Stats table top-right", group=G_VIS)
+i_show_hedge   = input.bool(true, "Hedge trigger / close markers", group=G_VIS)
+i_show_reentry = input.bool(true, "Reentry markers", group=G_VIS)
+
+// =============================================================================
+//  WaveTrend (Mark Bryant) computation per TF
+//  WT(10,21): chlen=10, avglen=21, default LazyBear params
+// =============================================================================
+f_wt(_ap_src, _chlen, _avglen) =>
+    _esa = ta.ema(_ap_src, _chlen)
+    _de  = ta.ema(math.abs(_ap_src - _esa), _chlen)
+    _ci  = (_ap_src - _esa) / (0.015 * _de)
+    _tci = ta.ema(_ci, _avglen)
+    _wt1 = _tci
+    _wt2 = ta.sma(_wt1, 4)
+    [_wt1, _wt2]
+
+// HLC3 source proxy
+ap = (high + low + close) / 3.0
+
+// 3m series (current chart should be 3m)
+[wt1_3m, wt2_3m]   = f_wt(ap, 10, 21)
+k_3m  = ta.stoch(close, high, low, 14)
+d_3m  = ta.sma(k_3m, 3)
+rsi_3m = ta.rsi(close, 14)
+mfi_3m = ta.mfi(close, 14)
+atr_3m = ta.atr(14)
+dc_high_3m = ta.highest(high, 20)
+dc_low_3m  = ta.lowest(low, 20)
+sma_200_3m = ta.sma(close, 200)
+wt_bull_3m = wt1_3m > wt2_3m
+high_3m_prev = high[1]
+low_3m_prev  = low[1]
+
+// Higher TF series via request.security (lookahead off — uses confirmed bars only)
+[wt1_15m_raw, wt2_15m_raw] = request.security(syminfo.tickerid, "15", f_wt(ap, 10, 21), lookahead=barmerge.lookahead_off)
+wt1_15m = wt1_15m_raw
+wt2_15m = wt2_15m_raw
+k_15m  = request.security(syminfo.tickerid, "15", ta.stoch(close, high, low, 14), lookahead=barmerge.lookahead_off)
+d_15m  = request.security(syminfo.tickerid, "15", ta.sma(ta.stoch(close, high, low, 14), 3), lookahead=barmerge.lookahead_off)
+rsi_15m = request.security(syminfo.tickerid, "15", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+dc_high_15m = request.security(syminfo.tickerid, "15", ta.highest(high, 20), lookahead=barmerge.lookahead_off)
+dc_low_15m  = request.security(syminfo.tickerid, "15", ta.lowest(low, 20), lookahead=barmerge.lookahead_off)
+
+[wt1_1h_raw, wt2_1h_raw] = request.security(syminfo.tickerid, "60", f_wt(ap, 10, 21), lookahead=barmerge.lookahead_off)
+wt1_1h = wt1_1h_raw
+wt2_1h = wt2_1h_raw
+k_1h  = request.security(syminfo.tickerid, "60", ta.stoch(close, high, low, 14), lookahead=barmerge.lookahead_off)
+d_1h  = request.security(syminfo.tickerid, "60", ta.sma(ta.stoch(close, high, low, 14), 3), lookahead=barmerge.lookahead_off)
+rsi_1h = request.security(syminfo.tickerid, "60", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+mfi_1h = request.security(syminfo.tickerid, "60", ta.mfi(close, 14), lookahead=barmerge.lookahead_off)
+dc_high_1h = request.security(syminfo.tickerid, "60", ta.highest(high, 20), lookahead=barmerge.lookahead_off)
+dc_low_1h  = request.security(syminfo.tickerid, "60", ta.lowest(low, 20), lookahead=barmerge.lookahead_off)
+bb_basis_1h = request.security(syminfo.tickerid, "60", ta.sma(close, 20), lookahead=barmerge.lookahead_off)
+bb_dev_1h   = request.security(syminfo.tickerid, "60", 2.0 * ta.stdev(close, 20), lookahead=barmerge.lookahead_off)
+bb_pctb_1h  = (close - (bb_basis_1h - bb_dev_1h)) / (2.0 * bb_dev_1h)
+
+[wt1_4h_raw, wt2_4h_raw] = request.security(syminfo.tickerid, "240", f_wt(ap, 10, 21), lookahead=barmerge.lookahead_off)
+wt1_4h = wt1_4h_raw
+wt2_4h = wt2_4h_raw
+k_4h  = request.security(syminfo.tickerid, "240", ta.stoch(close, high, low, 14), lookahead=barmerge.lookahead_off)
+d_4h  = request.security(syminfo.tickerid, "240", ta.sma(ta.stoch(close, high, low, 14), 3), lookahead=barmerge.lookahead_off)
+rsi_4h = request.security(syminfo.tickerid, "240", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+dc_high_4h = request.security(syminfo.tickerid, "240", ta.highest(high, 20), lookahead=barmerge.lookahead_off)
+dc_low_4h  = request.security(syminfo.tickerid, "240", ta.lowest(low, 20), lookahead=barmerge.lookahead_off)
+bb_basis_4h = request.security(syminfo.tickerid, "240", ta.sma(close, 20), lookahead=barmerge.lookahead_off)
+bb_dev_4h   = request.security(syminfo.tickerid, "240", 2.0 * ta.stdev(close, 20), lookahead=barmerge.lookahead_off)
+bb_pctb_4h  = (close - (bb_basis_4h - bb_dev_4h)) / (2.0 * bb_dev_4h)
+
+[wt1_D_raw, wt2_D_raw] = request.security(syminfo.tickerid, "D", f_wt(ap, 10, 21), lookahead=barmerge.lookahead_off)
+wt1_D = wt1_D_raw
+wt2_D = wt2_D_raw
+sma_200_D = request.security(syminfo.tickerid, "D", ta.sma(close, 200), lookahead=barmerge.lookahead_off)
+rsi_D = request.security(syminfo.tickerid, "D", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+
+// 1m proxy: chart is 3m so we approximate the 1m TF alignment using 3m WT direction.
+// Live reads wt1_1m from a separate metrics bridge; on a 3m chart the 1m field is a
+// noisy faster duplicate of 3m, so this proxy preserves the alignment-count semantic.
+wt_bull_1m = wt1_3m > wt2_3m
+
+// =============================================================================
+//  HTF DIRECTION GATE — mirror of check_htf_direction_gate (line 11274)
+// =============================================================================
+htf_d_long_ok  = wt1_D > wt2_D and wt1_D != 0 and wt2_D != 0
+htf_4h_long_ok = wt1_4h > wt2_4h and wt1_4h != 0 and wt2_4h != 0
+htf_1h_long_ok = wt1_1h > wt2_1h and wt1_1h != 0 and wt2_1h != 0
+htf_sma_long_ok = i_htf_use_sma and sma_200_D > 0 ? close > sma_200_D : na
+
+htf_d_short_ok  = wt1_D < wt2_D and wt1_D != 0 and wt2_D != 0
+htf_4h_short_ok = wt1_4h < wt2_4h and wt1_4h != 0 and wt2_4h != 0
+htf_1h_short_ok = wt1_1h < wt2_1h and wt1_1h != 0 and wt2_1h != 0
+htf_sma_short_ok = i_htf_use_sma and sma_200_D > 0 ? close < sma_200_D : na
+
+f_htf_count(_d, _4h, _1h, _sma) =>
+    _c = 0
+    _c := _d  ? _c + 1 : _c
+    _c := _4h ? _c + 1 : _c
+    _c := _1h ? _c + 1 : _c
+    _c := not na(_sma) and _sma ? _c + 1 : _c
+    _c
+
+htf_long_count  = f_htf_count(htf_d_long_ok,  htf_4h_long_ok,  htf_1h_long_ok,  htf_sma_long_ok)
+htf_short_count = f_htf_count(htf_d_short_ok, htf_4h_short_ok, htf_1h_short_ok, htf_sma_short_ok)
+
+htf_long_pass  = (not i_htf_d_mand or htf_d_long_ok)  and htf_long_count  >= i_htf_min_conf
+htf_short_pass = (not i_htf_d_mand or htf_d_short_ok) and htf_short_count >= i_htf_min_conf
+
+// HTF direction classification for background colouring
+htf_dir_bull = htf_long_count >= 3
+htf_dir_bear = htf_short_count >= 3
+bgcolor(i_show_htf_bg and htf_dir_bull ? color.new(color.green, 92) : i_show_htf_bg and htf_dir_bear ? color.new(color.red, 92) : na)
+
+// =============================================================================
+//  LTF WT BULLISH ALIGNMENT — mirror of ltf_align_count (line 2073)
+// =============================================================================
+wt_bull_15m = wt1_15m > wt2_15m
+wt_bear_15m = wt1_15m < wt2_15m
+
+ltf_long_count  = (wt_bull_1m ? 1 : 0) + (wt_bull_3m ? 1 : 0) + (wt_bull_15m ? 1 : 0)
+ltf_short_count = (not wt_bull_1m ? 1 : 0) + (not wt_bull_3m ? 1 : 0) + (wt_bear_15m ? 1 : 0)
+ltf_long_aligned  = ltf_long_count  >= i_wt_align_min
+ltf_short_aligned = ltf_short_count >= i_wt_align_min
+
+// =============================================================================
+//  FUNDING GATE — TV cannot fetch funding rates; use manual override
+// =============================================================================
+fund_long_block  = i_fund_gate and i_fund_manual >= i_fund_long_max
+fund_short_block = i_fund_gate and i_fund_manual <= i_fund_short_min
+
+// =============================================================================
+//  DIVERGENCE GATE (approximation of R-G7) — RSI bear/bull div on 1h
+//  Live uses computed wt_divergence_TF on multiple TFs.  Pine uses the standard
+//  RSI-pivot divergence as a stand-in.
+// =============================================================================
+piv_high_lookback = 5
+piv_low_lookback  = 5
+ph_price = ta.pivothigh(high, piv_high_lookback, piv_high_lookback)
+pl_price = ta.pivotlow(low,  piv_low_lookback,  piv_low_lookback)
+ph_rsi   = ta.pivothigh(rsi_1h, piv_high_lookback, piv_high_lookback)
+pl_rsi   = ta.pivotlow(rsi_1h,  piv_low_lookback,  piv_low_lookback)
+
+var float last_ph_price = na
+var float last_ph_rsi   = na
+var float last_pl_price = na
+var float last_pl_rsi   = na
+var bool  bear_div_active = false
+var bool  bull_div_active = false
+
+if not na(ph_price)
+    if not na(last_ph_price) and ph_price > last_ph_price and ph_rsi < last_ph_rsi
+        bear_div_active := true
+    last_ph_price := ph_price
+    last_ph_rsi   := ph_rsi
+if not na(pl_price)
+    if not na(last_pl_price) and pl_price < last_pl_price and pl_rsi > last_pl_rsi
+        bull_div_active := true
+    last_pl_price := pl_price
+    last_pl_rsi   := pl_rsi
+
+// Decay div flags after 30 bars (approximate live behaviour)
+var int bear_div_age = 0
+var int bull_div_age = 0
+bear_div_age := bear_div_active ? bear_div_age + 1 : 0
+bull_div_age := bull_div_active ? bull_div_age + 1 : 0
+if bear_div_age > 30
+    bear_div_active := false
+    bear_div_age := 0
+if bull_div_age > 30
+    bull_div_active := false
+    bull_div_age := 0
+
+div_long_block  = i_div_gate and bear_div_active
+div_short_block = i_div_gate and bull_div_active
+
+// =============================================================================
+//  SCORE PIPELINE (HEAVILY APPROXIMATED — live has 60+ score boosters)
+//  We approximate with the dominant additive bonuses from rate() lines 2142-2200:
+//   - WT bullish/bearish strong/good/ok composite bonus (8/5/2)
+//   - Multi-OS / Multi-OB count bonus (5)
+//   - HL/LH structure bonus (5)
+//   - WT bull/bear divergence (10)
+//   - WT multi cross count (3)
+//   - WT_CD bias bonus (3)
+//   - DC_MOMENT (10 strong, -15 opposite)
+//   - 15M against penalty (-5)
+//  Plus a base mean-reversion edge boost when OS/OB conditions on 3m line up.
+// =============================================================================
+
+// WT composite bias proxy — long_score = sum of (alignments) * weight
+// (live wt_composite_long is already computed in wt_composite.py; we proxy with WT bull alignment)
+wt_align_long  = ltf_long_count + (htf_4h_long_ok ? 1 : 0) + (htf_1h_long_ok ? 1 : 0) + (htf_d_long_ok ? 1 : 0)
+wt_align_short = ltf_short_count + (htf_4h_short_ok ? 1 : 0) + (htf_1h_short_ok ? 1 : 0) + (htf_d_short_ok ? 1 : 0)
+// scale 0..6 alignments to 0..60 composite proxy
+wt_comp_long_proxy  = wt_align_long  * 10.0
+wt_comp_short_proxy = wt_align_short * 10.0
+
+f_score_side(_is_long) =>
+    _s = 0.0
+    _comp = _is_long ? wt_comp_long_proxy : wt_comp_short_proxy
+    if _comp >= 50
+        _s := _s + 8
+    else if _comp >= 30
+        _s := _s + 5
+    else if _comp >= 10
+        _s := _s + 2
+    // OS / OB multi
+    _os_ct = (_is_long ? (k_3m < 20 ? 1 : 0) : (k_3m > 80 ? 1 : 0))
+           + (_is_long ? (k_15m < 20 ? 1 : 0) : (k_15m > 80 ? 1 : 0))
+           + (_is_long ? (k_1h < 30 ? 1 : 0) : (k_1h > 70 ? 1 : 0))
+    if _os_ct >= 2
+        _s := _s + 5
+    // Divergence
+    if _is_long and bull_div_active
+        _s := _s + 10
+    if (not _is_long) and bear_div_active
+        _s := _s + 10
+    // Multi WT cross count proxy: count TFs where WT just crossed in entry direction
+    _bull_x = (ta.crossover(wt1_3m, wt2_3m) ? 1 : 0) + (ta.crossover(wt1_15m, wt2_15m) ? 1 : 0) + (ta.crossover(wt1_1h, wt2_1h) ? 1 : 0)
+    _bear_x = (ta.crossunder(wt1_3m, wt2_3m) ? 1 : 0) + (ta.crossunder(wt1_15m, wt2_15m) ? 1 : 0) + (ta.crossunder(wt1_1h, wt2_1h) ? 1 : 0)
+    if _is_long and _bull_x >= 2
+        _s := _s + 3
+    if (not _is_long) and _bear_x >= 2
+        _s := _s + 3
+    // WT_CD score bonus (config WT_COMPOSITE_DELTA_SCORE_BONUS=3)
+    _cd = wt_comp_long_proxy - wt_comp_short_proxy
+    if _is_long and _cd > 50
+        _s := _s + 3
+    if (not _is_long) and _cd < -50
+        _s := _s + 3
+    // 15m against penalty
+    _wt15_falling = wt1_15m < wt1_15m[1]
+    _wt15_rising  = wt1_15m > wt1_15m[1]
+    if _is_long and _wt15_falling and not (ta.crossover(wt1_3m, wt2_3m) and wt1_3m > wt1_3m[1])
+        _s := _s - 5
+    if (not _is_long) and _wt15_rising and not (ta.crossunder(wt1_3m, wt2_3m) and wt1_3m < wt1_3m[1])
+        _s := _s - 5
+    // Base trend boost
+    _ema20 = ta.ema(close, 20)
+    _ema50 = ta.ema(close, 50)
+    if _is_long and _ema20 > _ema50 and close > _ema20
+        _s := _s + 4
+    if (not _is_long) and _ema20 < _ema50 and close < _ema20
+        _s := _s + 4
+    // Cap at 0..60 to mirror line 4107
+    _s := math.max(0.0, math.min(60.0, _s))
+    _s
+
+score_long  = f_score_side(true)
+score_short = f_score_side(false)
+
+// =============================================================================
+//  ENTRY DECISION — LONG / SHORT primary triggers
+// =============================================================================
+long_score_pass  = score_long  >= i_score_min
+short_score_pass = score_short >= i_score_min
+
+long_k_pass  = k_3m <= i_long_kmax
+short_k_pass = k_3m >= i_short_kmin
+
+// Cross trigger: at least one LTF WT cross in the entry direction ON THIS BAR
+long_x_trigger  = ta.crossover(wt1_3m, wt2_3m) or ta.crossover(wt1_15m, wt2_15m)
+short_x_trigger = ta.crossunder(wt1_3m, wt2_3m) or ta.crossunder(wt1_15m, wt2_15m)
+
+primary_long  = long_x_trigger  and long_score_pass  and long_k_pass  and ltf_long_aligned  and (not i_htf_dir_gate or htf_long_pass)  and not fund_long_block  and not div_long_block
+primary_short = short_x_trigger and short_score_pass and short_k_pass and ltf_short_aligned and (not i_htf_dir_gate or htf_short_pass) and not fund_short_block and not div_short_block
+
+// =============================================================================
+//  EXIT DECISION
+//  WT_CROSS_EXIT_ENABLED=True (config:1195), require min N TFs against side.
+//  STRUCTURAL_RANGE_SHIFT on dc_4h proximity.
+// =============================================================================
+// Count WT TFs against position direction
+wt_against_long_count  = (not wt_bull_1m ? 1 : 0) + (not wt_bull_3m ? 1 : 0) + (wt_bear_15m ? 1 : 0) + (wt1_1h < wt2_1h ? 1 : 0) + (wt1_4h < wt2_4h ? 1 : 0) + (wt1_D < wt2_D ? 1 : 0)
+wt_against_short_count = (wt_bull_1m ? 1 : 0) + (wt_bull_3m ? 1 : 0) + (wt_bull_15m ? 1 : 0) + (wt1_1h > wt2_1h ? 1 : 0) + (wt1_4h > wt2_4h ? 1 : 0) + (wt1_D > wt2_D ? 1 : 0)
+
+wt_exit_long  = wt_against_long_count  >= i_wt_exit_min
+wt_exit_short = wt_against_short_count >= i_wt_exit_min
+
+// RZ exit (off in live, available)
+rz_exit_long  = i_rz_exit and k_1h >= i_rz_k_high and k_1h < k_1h[1]
+rz_exit_short = i_rz_exit and k_1h <= i_rz_k_low  and k_1h > k_1h[1]
+
+// Structural Range Shift on dc_4h
+dc_w_4h = dc_high_4h - dc_low_4h
+near_top_4h    = dc_w_4h > 0 and (dc_high_4h - close) / close * 10000 <= i_srs_prox_bps
+near_bot_4h    = dc_w_4h > 0 and (close - dc_low_4h)  / close * 10000 <= i_srs_prox_bps
+srs_exit_long  = i_srs and near_top_4h and k_1h >= i_srs_k_high and k_1h < k_1h[1]
+srs_exit_short = i_srs and near_bot_4h and k_1h <= i_srs_k_low  and k_1h > k_1h[1]
+
+// 5-of-5 against bypass — for visualisation only (not currently default ON)
+five_against_long  = wt_against_long_count  >= 5
+five_against_short = wt_against_short_count >= 5
+
+// Combine exits
+exit_long_signal  = wt_exit_long  or rz_exit_long  or srs_exit_long
+exit_short_signal = wt_exit_short or rz_exit_short or srs_exit_short
+
+// =============================================================================
+//  NOLOSS GATE — STRICT_NO_LOSS_ACCOUNTS membership (config.py:328)
+//  In live, account in STRICT_NO_LOSS_ACCOUNTS cannot close at loss EXCEPT via
+//  hedge / structural / delta / 5-of-5 bypass.
+// =============================================================================
+acc_is_strict = str.contains(i_strict_noloss_csv, i_account)
+
+// Track open position pnl
+in_long  = strategy.position_size > 0
+in_short = strategy.position_size < 0
+entry_px = strategy.position_avg_price
+pnl_pct = if in_long
+    (close - entry_px) / entry_px * 100.0
+else if in_short
+    (entry_px - close) / entry_px * 100.0
+else
+    0.0
+
+losing = (in_long or in_short) and pnl_pct < 0
+noloss_block_long  = i_universal_noloss and acc_is_strict and in_long  and pnl_pct < 0 and not (i_5of5_bypass and five_against_long)
+noloss_block_short = i_universal_noloss and acc_is_strict and in_short and pnl_pct < 0 and not (i_5of5_bypass and five_against_short)
+
+// SRS / wt-exit-on-3+TFs / 5-of-5 are technical exits that BYPASS NOLOSS in live
+exit_long_final  = in_long  and (srs_exit_long  or wt_exit_long  or (i_5of5_bypass and five_against_long)  or (not noloss_block_long  and rz_exit_long))
+exit_short_final = in_short and (srs_exit_short or wt_exit_short or (i_5of5_bypass and five_against_short) or (not noloss_block_short and rz_exit_short))
+
+// =============================================================================
+//  HEDGE TRIGGER / CLOSE markers (visual only)
+//  Cross-symbol hedge trigger: pnl <= HEDGE_TRIGGER_LOSS_PCT_ENTRY AND HEDGE_MODE
+//  Same-symbol 150% hedge runs always — we visualise the cross-sym -2% line as
+//  the dominant hedge trigger most users observe.
+// =============================================================================
+hedge_eligible = i_hedge_mode and (in_long or in_short) and pnl_pct <= i_hedge_trig
+var bool hedged = false
+hedge_trigger_event = hedge_eligible and not hedged
+
+// Hedge close: WT 3m + 1h flip in favour of original loser AND non-negative gain (per memory).
+// LONG was losing → loser is LONG → "favour" means WT 3m+1h turn bullish AND pnl >= 0
+hedge_close_long  = hedged and in_long  and wt_bull_3m and (wt1_1h > wt2_1h) and (not i_hedge_close_req_nonneg or pnl_pct >= 0)
+hedge_close_short = hedged and in_short and (not wt_bull_3m) and (wt1_1h < wt2_1h) and (not i_hedge_close_req_nonneg or pnl_pct >= 0)
+hedge_close_event = hedged and (hedge_close_long or hedge_close_short)
+
+if hedge_trigger_event
+    hedged := true
+if hedge_close_event
+    hedged := false
+// Reset hedged flag if position closes (defensive)
+if not in_long and not in_short
+    hedged := false
+
+// =============================================================================
+//  REENTRY TAGGING — last exit timestamp tracking (approximation)
+// =============================================================================
+var int last_exit_bar = -1000
+last_exit_event = (in_long[1] and not in_long) or (in_short[1] and not in_short)
+if last_exit_event
+    last_exit_bar := bar_index
+is_reentry_long  = primary_long  and bar_index - last_exit_bar < 40
+is_reentry_short = primary_short and bar_index - last_exit_bar < 40
+
+// =============================================================================
+//  STRATEGY ORDER ROUTING
+// =============================================================================
+if primary_long and not in_long
+    strategy.entry("L", strategy.long, comment=is_reentry_long ? "REENTRY_LONG" : "PRIMARY_LONG")
+if primary_short and not in_short
+    strategy.entry("S", strategy.short, comment=is_reentry_short ? "REENTRY_SHORT" : "PRIMARY_SHORT")
+if exit_long_final
+    strategy.close("L", comment=srs_exit_long ? "SRS_EXIT" : wt_exit_long ? "WT_EXIT" : "RZ_EXIT")
+if exit_short_final
+    strategy.close("S", comment=srs_exit_short ? "SRS_EXIT" : wt_exit_short ? "WT_EXIT" : "RZ_EXIT")
+
+// =============================================================================
+//  PLOTS — entry/exit markers, hedge flags
+// =============================================================================
+plotshape(primary_long  and not is_reentry_long,  title="PRIMARY_LONG",  style=shape.triangleup,   location=location.belowbar, color=color.new(color.green, 0), size=size.small)
+plotshape(primary_short and not is_reentry_short, title="PRIMARY_SHORT", style=shape.triangledown, location=location.abovebar, color=color.new(color.red,   0), size=size.small)
+plotshape(i_show_reentry and is_reentry_long,  title="REENTRY_LONG",  style=shape.triangleup,   location=location.belowbar, color=color.new(color.aqua, 0), size=size.small)
+plotshape(i_show_reentry and is_reentry_short, title="REENTRY_SHORT", style=shape.triangledown, location=location.abovebar, color=color.new(color.aqua, 0), size=size.small)
+
+plotshape(exit_long_final  and srs_exit_long,  title="EXIT_LONG_SRS",  style=shape.xcross, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny)
+plotshape(exit_short_final and srs_exit_short, title="EXIT_SHORT_SRS", style=shape.xcross, location=location.belowbar, color=color.new(color.orange, 0), size=size.tiny)
+plotshape(exit_long_final  and wt_exit_long  and not srs_exit_long,  title="EXIT_LONG_WT",  style=shape.xcross, location=location.abovebar, color=color.new(color.purple, 0), size=size.tiny)
+plotshape(exit_short_final and wt_exit_short and not srs_exit_short, title="EXIT_SHORT_WT", style=shape.xcross, location=location.belowbar, color=color.new(color.purple, 0), size=size.tiny)
+
+// NOLOSS-blocked (would-have exited but blocked because losing & strict noloss)
+noloss_blocked_long_now  = in_long  and (wt_exit_long  or rz_exit_long)  and noloss_block_long
+noloss_blocked_short_now = in_short and (wt_exit_short or rz_exit_short) and noloss_block_short
+plotshape(noloss_blocked_long_now,  title="NOLOSS_BLOCK_LONG",  style=shape.diamond, location=location.abovebar, color=color.new(color.gray, 0), size=size.tiny)
+plotshape(noloss_blocked_short_now, title="NOLOSS_BLOCK_SHORT", style=shape.diamond, location=location.belowbar, color=color.new(color.gray, 0), size=size.tiny)
+
+// Hedge trigger / close markers
+plotshape(i_show_hedge and hedge_trigger_event, title="HEDGE_TRIGGER", style=shape.flag,   location=location.abovebar, color=color.new(color.yellow, 0), size=size.normal, text="H")
+plotshape(i_show_hedge and hedge_close_event,   title="HEDGE_CLOSE",   style=shape.xcross, location=location.belowbar, color=color.new(color.yellow, 0), size=size.small)
+
+// Hedge trigger horizontal level (visualises -2% line)
+float hedge_level = na
+if in_long
+    hedge_level := entry_px * (1 + i_hedge_trig / 100.0)
+if in_short
+    hedge_level := entry_px * (1 - i_hedge_trig / 100.0)
+plot(hedge_level, "Hedge trigger level", color=color.new(color.yellow, 50), style=plot.style_linebr, linewidth=1)
+
+// =============================================================================
+//  STATS TABLE
+// =============================================================================
+var table tbl = table.new(position.top_right, 2, 14, border_width=1, frame_color=color.gray, frame_width=1)
+if i_show_table and barstate.islast
+    table.cell(tbl, 0, 0, "BTC LIVE Mirror",                bgcolor=color.new(color.black, 0), text_color=color.white, text_halign=text.align_center)
+    table.cell(tbl, 1, 0, "(approximation)",                 bgcolor=color.new(color.black, 0), text_color=color.yellow, text_halign=text.align_center)
+    table.cell(tbl, 0, 1, "Account",                          text_color=color.silver)
+    table.cell(tbl, 1, 1, i_account + (acc_is_strict ? " (STRICT)" : ""), text_color=acc_is_strict ? color.orange : color.white)
+    table.cell(tbl, 0, 2, "HTF dir",                          text_color=color.silver)
+    table.cell(tbl, 1, 2, htf_dir_bull ? "BULL " + str.tostring(htf_long_count) + "/4" : htf_dir_bear ? "BEAR " + str.tostring(htf_short_count) + "/4" : "NEUTRAL", text_color=htf_dir_bull ? color.green : htf_dir_bear ? color.red : color.gray)
+    table.cell(tbl, 0, 3, "K_3m / K_1h",                      text_color=color.silver)
+    table.cell(tbl, 1, 3, str.tostring(k_3m, "#.0") + " / " + str.tostring(k_1h, "#.0"), text_color=color.white)
+    table.cell(tbl, 0, 4, "LTF align L/S",                    text_color=color.silver)
+    table.cell(tbl, 1, 4, str.tostring(ltf_long_count) + "/3 L · " + str.tostring(ltf_short_count) + "/3 S", text_color=color.white)
+    table.cell(tbl, 0, 5, "Score L / S",                      text_color=color.silver)
+    table.cell(tbl, 1, 5, str.tostring(score_long, "#.0") + " / " + str.tostring(score_short, "#.0"), text_color=color.white)
+    table.cell(tbl, 0, 6, "WT against L / S",                 text_color=color.silver)
+    table.cell(tbl, 1, 6, str.tostring(wt_against_long_count) + " / " + str.tostring(wt_against_short_count) + " (need " + str.tostring(i_wt_exit_min) + ")", text_color=color.white)
+    table.cell(tbl, 0, 7, "Position",                          text_color=color.silver)
+    table.cell(tbl, 1, 7, in_long ? "LONG " + str.tostring(pnl_pct, "#.##") + "%" : in_short ? "SHORT " + str.tostring(pnl_pct, "#.##") + "%" : "FLAT", text_color=pnl_pct > 0 ? color.green : pnl_pct < 0 ? color.red : color.gray)
+    table.cell(tbl, 0, 8, "Hedge state",                       text_color=color.silver)
+    table.cell(tbl, 1, 8, hedged ? "HEDGED" : "naked", text_color=hedged ? color.yellow : color.white)
+    table.cell(tbl, 0, 9, "Funding (manual)",                  text_color=color.silver)
+    table.cell(tbl, 1, 9, str.tostring(i_fund_manual * 100, "#.###") + "%", text_color=color.white)
+    table.cell(tbl, 0, 10, "Div bull/bear",                    text_color=color.silver)
+    table.cell(tbl, 1, 10, (bull_div_active ? "BULL " : "—") + " / " + (bear_div_active ? "BEAR" : "—"), text_color=color.white)
+    table.cell(tbl, 0, 11, "Score floor",                      text_color=color.silver)
+    table.cell(tbl, 1, 11, str.tostring(i_score_min) + " (live=24)", text_color=color.white)
+    table.cell(tbl, 0, 12, "WT_EXIT_MIN_TFS",                  text_color=color.silver)
+    table.cell(tbl, 1, 12, str.tostring(i_wt_exit_min) + "/6", text_color=color.white)
+    table.cell(tbl, 0, 13, "5-of-5 bypass",                    text_color=color.silver)
+    table.cell(tbl, 1, 13, i_5of5_bypass ? "ENABLED" : "OFF", text_color=color.white)
+
+// =============================================================================
+//  ALERTS — fire on each event so user can cross-check live decisions JSONL
+// =============================================================================
+alertcondition(primary_long,        "PRIMARY_LONG",  "Mirror: PRIMARY_LONG fired on {{ticker}}")
+alertcondition(primary_short,       "PRIMARY_SHORT", "Mirror: PRIMARY_SHORT fired on {{ticker}}")
+alertcondition(exit_long_final,     "EXIT_LONG",     "Mirror: EXIT_LONG fired on {{ticker}}")
+alertcondition(exit_short_final,    "EXIT_SHORT",    "Mirror: EXIT_SHORT fired on {{ticker}}")
+alertcondition(hedge_trigger_event, "HEDGE_TRIGGER", "Mirror: HEDGE_TRIGGER on {{ticker}}")
+alertcondition(hedge_close_event,   "HEDGE_CLOSE",   "Mirror: HEDGE_CLOSE on {{ticker}}")

@@ -49,7 +49,6 @@ import aiofiles.os as aio_os
 import aiohttp
 import pandas as pd
 from binance.client import Client
-from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from dateutil.parser import isoparse
 from redis.asyncio import Redis
@@ -66,7 +65,7 @@ _BAN_RE = re.compile(r"banned until (\d+)")
 _GLOBAL_BAN_UNTIL_MS = 0
 _GLOBAL_BAN_LOCK = threading.Lock()
 _GLOBAL_BAN_LAST_LOG_TS = 0.0
-
+_delta_exit_ok = False
 
 def _record_ip_ban_from_exc(exc) -> int:
     """If exc text matches Binance -1003 'banned until <ms>', update tracker. Returns ms."""
@@ -371,6 +370,7 @@ except Exception:
     pass
 _last_events_cache_interval = 60 
 try :
+    import json
     from typing import Any, Dict, List, Optional, Union
 
     import orjson
@@ -5103,7 +5103,7 @@ class PositionService:
             return True
         manager = getattr(self, 'redis_manager', None)
         if manager and getattr(manager, 'connections', None):
-            for target in ('gateway', 'server', 'local'):
+            for target in ('local', 'gateway', 'server'):
                 candidate = manager.connections.get(target)
                 if candidate:
                     self._redis_client = candidate
@@ -5115,7 +5115,7 @@ class PositionService:
         if not shared_manager or not getattr(shared_manager, 'connections', None):
             return False
         self.redis_manager = shared_manager
-        for target in ('gateway', 'server', 'local'):
+        for target in ('local', 'gateway', 'server'):
             candidate = shared_manager.connections.get(target)
             if candidate:
                 self._redis_client = candidate
@@ -5250,6 +5250,10 @@ class PositionService:
             if encoded != self.raw_indicators_json_content:
                 self.raw_indicators_json_content = encoded
                 self.indicators_timestamp = ts_source if isinstance(ts_source, datetime) else datetime.now(timezone.utc)
+                try:
+                    await self._redis_set(redis_key, encoded, ex=180)
+                except Exception:
+                    pass
         elif not redis_payload and not file_payload:
             self.raw_indicators_json_content = None
 
@@ -7373,6 +7377,7 @@ class PositionService:
         self._mark_positions_dirty()
         asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
         from ez_positions import atomic_save_positions
+
         # 2026-05-20: bound the save. Even with the to_thread refactor, a stuck filesystem could still hold the await; the 15s ceiling + background fallback keeps PAU from tripping the 120s tripwire.
         try:
             await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
@@ -7588,8 +7593,10 @@ class PositionService:
             realized_gain = gain_at_reduction * reduction_ratio
             position.realized_pnl += realized_gain
             logger.debug(f"[{position_key}] PnL Update: Realized {gain_at_reduction*100:.2f}% (weighted: {realized_gain*100:.2f}%) from this reduction. " f"New cumulative Realized PnL: {position.realized_pnl*100:.2f}%")
-        if is_tiny_position:
-            position.max_gain = max(position.gain, position.max_gain)
+        if is_tiny_position and reduction_source != "phantom_reconcile_bootstrap":
+            _new_max = max(position.gain, position.max_gain)
+            if _new_max > position.max_gain:
+                position.max_gain = _new_max
         _old_red = position.positionAmt
         position.positionAmt = positionAmt_abs
         position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
@@ -7629,7 +7636,8 @@ class PositionService:
                 position.prev_gain = position.gain
                 position.prev_gain_last_updated = now
             position.gain = new_gain
-            position.max_gain = max(new_gain, position.max_gain)
+            if reduction_source != "phantom_reconcile_bootstrap":
+                position.max_gain = max(new_gain, position.max_gain)
         position.last_updated = now
         existing_reentry_amount = 0.0
         if position_key in self.reentry_data:
@@ -7674,6 +7682,14 @@ class PositionService:
                         asyncio.create_task(_tm.save_tracker(account_key, force=True))
                 except Exception as _trk_e:
                     logger.debug(f"[handle_reduction][{position_key}] tracker stamp skipped: {_trk_e}")
+        if positionAmt_abs == 0:
+            _tm_close = getattr(self, "tracker_manager", None)
+            if _tm_close is not None and hasattr(_tm_close, "exit_candidates") and position_key in _tm_close.exit_candidates:
+                _tm_close.exit_candidates.pop(position_key, None)
+                if hasattr(_tm_close, "_exit_candidates_dirty"):
+                    _tm_close._exit_candidates_dirty[account_key] = True
+                asyncio.create_task(_tm_close.save_tracker(account_key, force=True))
+                logger.info(f"[CLOSE_CLEANUP] {position_key}: removed from exit_candidates on full close (positionAmt→0)")
         if position_key in self.augmented_positions:
             self.unmark_augmented(position_key)
         position_value_str = f"{positionAmt * current_price:.2f}" if current_price else "N/A"
@@ -7718,6 +7734,7 @@ class PositionService:
         self._mark_positions_dirty()
         asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
         from ez_positions import atomic_save_positions
+
         # 2026-05-20: bound the save (see handle_augmentation note).
         try:
             await asyncio.wait_for(atomic_save_positions(self, account_key, force=True), timeout=15.0)
@@ -8003,7 +8020,7 @@ class PositionService:
             min_qty = self.min_qty.get(sym, 0.001) * 1.2 if sym else 0.001
             position = self.positions.get(position_key)
             current_price = float(position.mark_price) if position.mark_price > 0 else await quick_price(sym)
-            if not current_price: current_price, ts = await get_current_price (sym) 
+            if not current_price: px, ts_val = await get_current_price(sym); current_price, ts = px or 0.0, ts_val
             min_usd = max(5.50, min_qty*current_price)
             delta = abs(reported_amt - prev_amt)
             if current_price:
@@ -8750,7 +8767,7 @@ class PositionService:
             current_price = _safe_float(getattr(position, "mark_price", 0.0), 0.0)
             if current_price <= 0:
                 try :
-                    current_price, ts = await get_current_price(symbol) 
+                    px, ts_val = await get_current_price(symbol); current_price, ts = px or 0.0, ts_val
                 except Exception:
                     current_price = 0.0
             if current_price <= 0:
@@ -8869,6 +8886,7 @@ class PositionService:
                 logger.info(f"[WEEKLY_SYMBOL_CLEANUP] All {before_count} symbols still active on Binance — no cleanup needed")
                 return
             logger.critical(f"[WEEKLY_SYMBOL_CLEANUP] Found {len(delisted)} delisted symbols: {delisted[:20]}{'...' if len(delisted) > 20 else ''}")
+            logger.warning("[WEEKLY_SYMBOL_CLEANUP] 🚫 Delisted symbol cleanup BLOCKED. symbols.json writes are prohibited on all platforms."); return
             new_symbols = [s for s in current_symbols if s in active_symbols]
             shutil.copy(symbols_file, self.base_path / "backups" / f"before_weekly_cleanup_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}_symbols.json")
             async with aiofiles.open(symbols_file, "w") as f:
@@ -10575,7 +10593,7 @@ class PositionService:
                 try : price = float(getattr(position, "mark_price", 0.0))
                 except (TypeError, ValueError): price = 0.0
                 if price <= 0:
-                    current_price, ts = await get_current_price (symbol) 
+                    px, ts_val = await get_current_price(symbol); current_price, ts = px or 0.0, ts_val
                 min_qty_value = self._get_min_qty(symbol)
                 pos_min_qty = max(3 * self.config.MIN_POSITION_SIZE / price if price > 0 else min_qty_value, min_qty_value)
                 reduction_qty = max(0.0, positionAmt - pos_min_qty)
@@ -11615,44 +11633,82 @@ class PositionService:
     async def _positions_periodic_save_loop(self) -> None:
         await asyncio.sleep(5)
         save_interval = 15.0
-        logger.info(f"[_positions_periodic_save_loop] Started - position count check every {save_interval}s")
-        if not hasattr(self, "_last_periodic_save_time"):
-            self._last_periodic_save_time: float = 0.0
         save_count = 0
-        consecutive_errors = 0
+        
+        # Import the atomic save handler from your orchestration module
+        try:
+            from ez_positions import atomic_save_positions
+        except ImportError:
+            logger.error("[_positions_periodic_save_loop] ❌ Could not import atomic_save_positions from ez_positions")
+            return
+
         while not self._housekeeping_stop:
-            try :
+            try:
                 async with self._periodic_save_lock:
                     total_positions = sum(len(acc_pos) for acc_pos in self.positions_by_account.values())
-                    expected_count = self._get_expected_symbol_count() * 2 * len(self.accounts)
+                    
                     if total_positions == 0:
-                        logger.warning(f"[_positions_periodic_save_loop] ⚠️ No positions in memory - skipping save")
                         await asyncio.sleep(save_interval)
                         continue
+                        
                     save_count += 1
-                    pass
-                    self._last_periodic_save_time = time.time()
-                    consecutive_errors = 0
-                    if total_positions < expected_count:
-                        if save_count % 10 == 0:
-                            logger.debug(f"[_positions_periodic_save_loop] Save #{save_count} completed ({total_positions}/{expected_count} positions) - saved to *_active.json")
-                    elif save_count % 20 == 0:
-                        logger.debug(f"[_positions_periodic_save_loop] Save #{save_count} completed ({total_positions} positions)")
+                    
+                    # Iterate through all configured accounts and write their positions to files
+                    for account_key in list(self.positions_by_account.keys()):
+                        try:
+                            await atomic_save_positions(self, account_key, force=False)
+                        except Exception as account_exc:
+                            logger.error(f"[_positions_periodic_save_loop] Error auto-saving account {account_key}: {account_exc}")
+                            
+                await asyncio.sleep(save_interval)
             except asyncio.CancelledError:
+                logger.info("[_positions_periodic_save_loop] Periodic save task cancelled.")
                 break
-            except OSError as ose:
-                if "Too many open files" in str(ose) or ose.errno == 24:
-                    consecutive_errors += 1
-                    wait_time = save_interval * (2 ** min(consecutive_errors, 4))
-                    logger.error(f"[_positions_periodic_save_loop] File handle exhaustion (error #{consecutive_errors}) - waiting {wait_time:.1f}s: {ose}")
-                    await asyncio.sleep(wait_time)
-                    continue
-            except Exception as exc:
-                consecutive_errors += 1
-                logger.error(f"[_positions_periodic_save_loop] Save failed (error #{consecutive_errors}): {exc}", exc_info=True)
-                if consecutive_errors >= 5:
-                    await asyncio.sleep(save_interval * 2)
-            await asyncio.sleep(save_interval)
+            except Exception as e:
+                logger.error(f"[_positions_periodic_save_loop] Global exception in loop iteration: {e}", exc_info=True)
+                await asyncio.sleep(save_interval)
+
+    # async def _positions_periodic_save_loop(self) -> None:
+    #     await asyncio.sleep(5)
+    #     save_interval = 15.0
+    #     logger.info(f"[_positions_periodic_save_loop] Started - position count check every {save_interval}s")
+    #     if not hasattr(self, "_last_periodic_save_time"):
+    #         self._last_periodic_save_time: float = 0.0
+    #     save_count = 0
+    #     consecutive_errors = 0
+    #     while not self._housekeeping_stop:
+    #         try :
+    #             async with self._periodic_save_lock:
+    #                 total_positions = sum(len(acc_pos) for acc_pos in self.positions_by_account.values())
+    #                 expected_count = self._get_expected_symbol_count() * 2 * len(self.accounts)
+    #                 if total_positions == 0:
+    #                     logger.warning(f"[_positions_periodic_save_loop] ⚠️ No positions in memory - skipping save")
+    #                     await asyncio.sleep(save_interval)
+    #                     continue
+    #                 save_count += 1
+    #                 pass
+    #                 self._last_periodic_save_time = time.time()
+    #                 consecutive_errors = 0
+    #                 if total_positions < expected_count:
+    #                     if save_count % 10 == 0:
+    #                         logger.debug(f"[_positions_periodic_save_loop] Save #{save_count} completed ({total_positions}/{expected_count} positions) - saved to *_active.json")
+    #                 elif save_count % 20 == 0:
+    #                     logger.debug(f"[_positions_periodic_save_loop] Save #{save_count} completed ({total_positions} positions)")
+    #         except asyncio.CancelledError:
+    #             break
+    #         except OSError as ose:
+    #             if "Too many open files" in str(ose) or ose.errno == 24:
+    #                 consecutive_errors += 1
+    #                 wait_time = save_interval * (2 ** min(consecutive_errors, 4))
+    #                 logger.error(f"[_positions_periodic_save_loop] File handle exhaustion (error #{consecutive_errors}) - waiting {wait_time:.1f}s: {ose}")
+    #                 await asyncio.sleep(wait_time)
+    #                 continue
+    #         except Exception as exc:
+    #             consecutive_errors += 1
+    #             logger.error(f"[_positions_periodic_save_loop] Save failed (error #{consecutive_errors}): {exc}", exc_info=True)
+    #             if consecutive_errors >= 5:
+    #                 await asyncio.sleep(save_interval * 2)
+    #         await asyncio.sleep(save_interval)
 
     async def _update_mark_prices_loop(self) -> None:
         """Periodically update mark prices for all positions to prevent stale position errors"""
@@ -13347,6 +13403,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                     service.last_monitored_positions = {}
                 service.last_monitored_positions[position_key] = now_ts
                 return
+            stoch_bearish = wt1_3m<wt2_3m
             if is_new_position and effective_gain >= config.NEW_POSITION_MAX_LOSS_THRESHOLD and has_bearish_signal:
                 logger.warning(f"[NEW_POSITION_PROTECTION] {position_key}: ALLOWING reduction - position is new but bearish signal detected (age={age_seconds:.1f}s, gain={effective_gain:.3f}%, crossunder={has_crossunder_signal}, stoch_bearish={stoch_bearish})")
             master = None

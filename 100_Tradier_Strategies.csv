@@ -1,0 +1,9 @@
+Strategy,TF,Trades,WR%,Avg PnL%,Total PnL%,PF,Sharpe (pre-QA),Est. Corrected,MaxDD%,Long WR%,Short WR%,Status
+structure 15m+1h confirm,15m,3415,56.5,0.327,1118.4,2.53,4.45,~0.5-1.5,-10.7,55,59,✅ BEST — Applied
+gap_structure 15m+1h,15m,3451,56.2,0.312,1075.5,2.46,4.31,~0.4-1.4,-12.8,55,59,Gap adds no value
+structure 1m+5m,1m,13403,55.2,0.073,980.9,2.43,3.77,~0.4-1.2,-9.5,54,57,Too granular
+structure 5m+15m,5m,6534,56.1,0.139,908.9,2.17,3.71,~0.4-1.2,-8.4,55,57,5m exit applied
+structure D only,D,8561,56.2,1.348,11540.4,2,1.81,~0.2-0.6,-130.5,58,54,D for direction only
+structure 1h only,1h,2011,52.4,0.385,773.6,1.38,1.71,~0.2-0.5,-93.5,52,53,1h alone insufficient
+structure 4h only,4h,7337,46.8,0.319,2342.2,1.21,1.01,~0.1-0.3,-185.5,50,43,❌ WORST TF for stocks
+structure 1h+4h,1h,747,48.5,-0.183,-136.5,0.85,-0.85,negative,-189.9,46,50,❌ 4h confirm HURTS

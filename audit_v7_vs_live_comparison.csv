@@ -1,0 +1,47 @@
+"V7 vs LIVE COMPARISON — ang account, ATOM/DOT/XLM, March 2026"
+
+METRIC,V7 (backtest),LIVE (actual),MATCH?,ISSUE
+Total decisions,124,5815,NO,V7 has 124 vs live 5815 — V7 missing 5691 decisions
+
+ACTION,V7_count,LIVE_count,MATCH?,ISSUE
+AUGMENT,0,3,NO,V7 MISSING — 3 live trades with this action never produced by V7
+CLOSE,6,116,YES,MAJOR MISMATCH — ratio 0.1x
+HAIKU_AUGMENT,0,814,NO,V7 MISSING — 814 live trades with this action never produced by V7
+HOLD,0,773,NO,V7 MISSING — 773 live trades with this action never produced by V7
+NOW_REDUCE,0,8,NO,V7 MISSING — 8 live trades with this action never produced by V7
+NO_PROFIT,0,8,NO,V7 MISSING — 8 live trades with this action never produced by V7
+OPEN,0,288,NO,V7 MISSING — 288 live trades with this action never produced by V7
+QUICK_AUGMENT,106,16,YES,MAJOR MISMATCH — ratio 6.6x
+QUICK_CLOSE,0,439,NO,V7 MISSING — 439 live trades with this action never produced by V7
+QUICK_OPEN,11,62,YES,MAJOR MISMATCH — ratio 0.2x
+QUICK_QUICK_CLOSE,0,1,NO,V7 MISSING — 1 live trades with this action never produced by V7
+QUICK_REDUCE,0,37,NO,V7 MISSING — 37 live trades with this action never produced by V7
+QUICK_REENTRY,1,0,NO,V7 GHOST — 1 trades from V7 but 0 in live
+REDUCE,0,3223,NO,V7 MISSING — 3223 live trades with this action never produced by V7
+REENTRY,0,1,NO,V7 MISSING — 1 live trades with this action never produced by V7
+SCALP_PROFIT,0,1,NO,V7 MISSING — 1 live trades with this action never produced by V7
+SCALP_REDUCE,0,17,NO,V7 MISSING — 17 live trades with this action never produced by V7
+WEAK_REDUCE,0,8,NO,V7 MISSING — 8 live trades with this action never produced by V7
+
+SYMBOL,V7_trades,LIVE_trades,V7_opens,LIVE_opens,V7_closes,LIVE_closes,RATIO_trades
+ATOMUSDT,34,1597,3,103,2,358,0.02x
+DOTUSDT,35,3983,4,68,2,165,0.01x
+XLMUSDT,55,235,4,179,2,32,0.23x
+
+CRITICAL FINDINGS
+1,V7 produced 124 trades vs live 5815 for same 3 symbols in same month,V7 captures 2.1% of live activity
+2,REDUCE action: V7=0 vs live=3223,Biggest gap. Live reduces constantly. V7 never reduces.
+3,HAIKU_AUGMENT: V7=0 vs live=814,V7 has no haiku overseer. This is a live-only augmentation path.
+4,HOLD: V7=0 vs live=773,V7 does not log HOLD decisions (only actions). Not a real gap.
+5,OPEN: V7=0 vs live=288,Live has 288 OPEN actions. V7 has 0 OPEN but 11 QUICK_OPEN. Different action naming.
+6,QUICK_CLOSE: V7=0 vs live=439,V7 has 6 CLOSE but 0 QUICK_CLOSE. Live uses QUICK_CLOSE for most exits.
+7,V7 QUICK_AUGMENT=106 vs live=16,V7 augments 6.6x more than live. Augment cooldowns not working in V7.
+8,Config overrides NOT working,Sweep shows changing WT_LTF/HTF/ENTRY_SCORE has ZERO effect. Only REENTRY_STOCH_K_MAX changes results.
+9,V7 date range is Jan 2025-Mar 2026 but live only has March 2026,Cannot do exact trade-by-trade match. Need V7 run on March-only to compare.
+
+ROOT CAUSES OF MISMATCH
+A,REDUCE path not firing in V7,process_position() returns reduce signals but queue_trade_action may not propagate them correctly in backtest
+B,HAIKU overseer not simulated,Live has haiku_overseer doing augments independently. V7 has no equivalent.
+C,Action naming mismatch,Live uses OPEN/QUICK_OPEN/QUICK_CLOSE inconsistently. V7 only produces QUICK_OPEN and CLOSE.
+D,Augment cooldown broken in V7,106 augments in V7 vs 16 in live = cooldowns not working as they do in live
+E,Config override env var not applied to global config module,Sweep JSON overrides load into tm.config but execute_trade_wrapper reads global config directly

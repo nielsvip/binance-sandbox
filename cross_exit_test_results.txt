@@ -1,0 +1,41 @@
+CROSS-EXIT TEST RESULTS
+Generated: 2026-04-08 15:08 UTC
+Stocks: MU, AAPL, TTD, FIVN, AMZN, MRVL, XOM, CVX, GLD, USO, NVDA, MSFT, ASTS (13 symbols, from 2024-04-01)
+Crypto: ANKRUSDT, ATOMUSDT, BANDUSDT, BATUSDT, BELUSDT, BTCDOMUSDT, CELRUSDT, CHRUSDT (8 symbols, from 2024-01-01)
+Entry: score_entry >= 37
+Step: every 2nd bar | Max hold: 96 bars
+Stock sizing: $180,000 / 13 = $13,846 per symbol
+Crypto sizing: $200.0 x 20x = $4,000 notional per trade
+
+System           Market   Config                       Trades       WR      PF   WkShrp  AvgHld     TotalPnL
+------------------------------------------------------------------------------------------------------------
+Scorer           STOCK    thresh=25                     21024    57.0%   3.47x     2.14     9.3  $   1271460
+Scorer           STOCK    thresh=30                     12601    58.8%   4.01x     2.04    17.2  $   1199121
+Scorer           STOCK    thresh=35                      7914    59.6%   4.10x     1.75    29.1  $   1066187
+Scorer           STOCK    thresh=40                      5366    61.1%   4.34x     1.70    44.5  $    959253
+Scorer           CRYPTO   thresh=25                     30905    61.9%   5.63x     2.77     8.2  $   1086014
+Scorer           CRYPTO   thresh=30                     18722    62.6%   6.50x     2.64    14.8  $    932777
+Scorer           CRYPTO   thresh=35                     11653    63.8%   7.13x     2.50    25.1  $    788648
+Scorer           CRYPTO   thresh=40                      7679    65.7%   7.40x     2.29    39.2  $    664056
+Delta            STOCK    tf=2,decay=50,lost=2          19561    64.5%   1.77x     1.67    10.8  $    686354
+Delta            STOCK    tf=3,decay=30,lost=1          16736    61.4%   1.81x     1.46    12.9  $    681675
+Delta            STOCK    tf=4,decay=70,lost=3          19211    63.5%   1.76x     1.56    11.1  $    681000
+Delta            CRYPTO   tf=2,decay=50,lost=2          70270    56.9%   2.51x     2.42     2.8  $    921466
+Delta            CRYPTO   tf=3,decay=30,lost=1          63272    60.1%   2.43x     2.30     3.3  $    876389
+Delta            CRYPTO   tf=4,decay=70,lost=3          75992    55.2%   2.48x     2.46     2.5  $    927480
+Hybrid_opt1      STOCK    BOTH: s>=30 AND delta         11816    58.0%   3.85x     2.07    18.5  $   1165566
+Hybrid_opt2      STOCK    EITHER: s>=40 OR delta        69361    55.5%   1.95x     2.35     1.9  $   1080976
+Hybrid_opt3      STOCK    GATE: s>=25 AND (d OR s>=40)  19135    56.2%   3.46x     2.13    10.5  $   1251338
+Hybrid_opt1      CRYPTO   BOTH: s>=30 AND delta         17768    59.8%   5.57x     2.53    15.7  $    860815
+Hybrid_opt2      CRYPTO   EITHER: s>=40 OR delta        82655    55.0%   2.44x     2.48     2.2  $    931858
+Hybrid_opt3      CRYPTO   GATE: s>=25 AND (d OR s>=40)  28259    58.8%   4.98x     2.60     9.2  $    999115
+
+LEGEND:
+  Scorer  = wt_dc_exit_scorer.score_exit() >= threshold
+  Delta   = DeltaTracker.update() exit_long/exit_short signal
+  Hybrid_opt1 = BOTH scorer>=30 AND delta exit (conservative)
+  Hybrid_opt2 = scorer>=40 OR delta exit (either high-confidence)
+  Hybrid_opt3 = scorer>=25 AND (delta exit OR scorer>=40) (gate+boost)
+  WkShrp  = per-symbol weekly Sharpe ratio
+  AvgHld  = average hold time in bars (stock=5min bars, crypto=15min bars)
+  TotalPnL = sum of all trade PnL in USD

@@ -1,0 +1,12 @@
+{
+  "configs": [
+    {
+      "mode": "crypto",
+      "overrides_json": "{\"EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED\": true, \"RECENT_REDUCTION_GUARD_ENABLED\": false, \"REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT\": 999.0}"
+    },
+    {
+      "mode": "crypto",
+      "overrides_json": "{\"EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED\": true, \"RECENT_REDUCTION_GUARD_ENABLED\": false, \"REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT\": 0.002}"
+    }
+  ]
+}

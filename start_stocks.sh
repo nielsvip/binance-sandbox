@@ -6,8 +6,8 @@ cd /Users/niels/Documents/binance || exit 1
 WD="bash /Users/niels/Documents/binance/run_with_watchdog.sh"
 launch () {
   local name="$1"; shift
-  if pgrep -af "run_with_watchdog.sh $name" | grep -v grep >/dev/null; then
-    echo "ALREADY UP: $name"; return
+  if pgrep -af "run_with_watchdog.sh $*" | grep -v grep >/dev/null; then
+    echo "ALREADY UP: $*"; return
   fi
   nohup $WD "$@" > "/Users/niels/logs/wd_${name%.py}.out" 2>&1 < /dev/null &
   disown
@@ -23,6 +23,10 @@ sleep 40
 # 2) managers (book + Rule B + ema-ladder + per_sym gate live)
 launch tradier_manage.py tradier_manage.py --accounts trb
 launch tradier_manage.py tradier_manage.py --accounts trc
+# tra = LIVE cash account (GFV-restricted). Safe to run: execute path enforces 3-layer GFV
+# protection — settled-cash-only buys (queries Tradier directly, fail-closed), can't sell
+# unsettled-funded positions, and hard ≤1 buy/day (restart-proof via /history/tra ledger).
+launch tradier_manage.py tradier_manage.py --accounts tra
 sleep 5
 echo "=== stock stack status ==="
 for s in tradier_prices tradier_indicators tradier_rankings tradier_positions tradier_manage; do

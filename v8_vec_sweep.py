@@ -643,6 +643,9 @@ class SweepConfig:
     DC_LOW4_STOP_ENABLED: bool = False   # stop at dc_low4_<TF> recorded at entry
     DC_LOW_STOP_ENABLED: bool = False    # stop at dc_low_<TF> (1-bar)
     DC_STOP_TF: str = ""                 # override TF (empty = auto: "3m" crypto / "5m" tradier)
+    EXIT_STRUCT_TF: str = "None"
+    LONG_STRUCT_EXIT_TF: str = "D"
+    SHORT_STRUCT_EXIT_TF: str = "4h"
     # ── GR multiplier exit sweep flags ────────────────────────────────────────
     GR_EXIT_ENABLED: bool = False        # exit when GR votes ≥ MIN_TFS TFs × MIN_IND each AND wt1_3m against
     GR_EXIT_MIN_TFS: int = 3             # TFs that must each reach GR_EXIT_MIN_IND (default 3×3=9)
@@ -2303,6 +2306,8 @@ def simulate_one_symbol(
         """
         if not _b7_mtf_gate_enabled:
             return False
+        if (not is_long) and bool(getattr(config, "MTF_ARMED_ENTRY_SKIP_SHORT", True)):
+            return False
         act_u = (action or "").upper()
         rup = (reason_str or "").upper()
         # HEDGE_OPEN: separate switch (live's MTF gate doesn't apply to hedge open path)
@@ -2536,6 +2541,10 @@ def simulate_one_symbol(
             _wtcf_15m_confirm = (wt1_15m > wt2_15m) | (wt1_15m < -95)
             _wtcf_htf_against = (wt1_1h > wt2_1h) | (_wt1_4h_a > _wt2_4h_a) | (_wt1_D_a > _wt2_D_a)
         _wtcf_cand_mask = _wtcf_ltf_against & _wtcf_15m_confirm & _wtcf_htf_against
+        if bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_D", True)):
+            _wtcf_D_against = (_wt1_D_a < _wt2_D_a) if is_long else (_wt1_D_a > _wt2_D_a)
+            _wtcf_D_nonzero = (np.abs(_wt1_D_a) > 1e-9) | (np.abs(_wt2_D_a) > 1e-9)
+            _wtcf_cand_mask = _wtcf_cand_mask & (~_wtcf_D_nonzero | _wtcf_D_against)
     else:
         _wtcf_cand_mask = np.zeros(n, dtype=bool)
 
@@ -2656,6 +2665,36 @@ def simulate_one_symbol(
         mark = float(close[i])
         if mark <= 0 or not np.isfinite(mark):
             continue
+        if state.qty > 0.0001:
+            _se_tf = getattr(config, "EXIT_STRUCT_TF", "None")
+            if _se_tf == "None" or not _se_tf: _se_tf = getattr(config, "LONG_STRUCT_EXIT_TF" if is_long else "SHORT_STRUCT_EXIT_TF", "None")
+            if _se_tf != "None" and _se_tf:
+                _se_open_arr = npz.get(f"open_{_se_tf}")
+                _se_high_prev_arr = npz.get(f"high_{_se_tf}_prev")
+                _se_low_prev_arr = npz.get(f"low_{_se_tf}_prev")
+                if _se_open_arr is not None and _se_high_prev_arr is not None and _se_low_prev_arr is not None:
+                    _se_open = float(_se_open_arr[i])
+                    _se_high_prev = float(_se_high_prev_arr[i])
+                    _se_low_prev = float(_se_low_prev_arr[i])
+                    if _se_open > 0 and _se_high_prev > 0 and _se_low_prev > 0:
+                        _last_open = getattr(state, "_last_struct_open", None)
+                        if _last_open is None:
+                            state._last_struct_open = _se_open; state._last_high_prev = _se_high_prev; state._last_low_prev = _se_low_prev
+                        elif abs(_se_open - _last_open) > 1e-8:
+                            _last_hp = getattr(state, "_last_high_prev", _se_high_prev); _last_lp = getattr(state, "_last_low_prev", _se_low_prev)
+                            _se_fire = (_se_high_prev < _last_hp and _se_low_prev < _last_lp) if is_long else (_se_high_prev > _last_hp and _se_low_prev > _last_lp)
+                            state._last_struct_open = _se_open; state._last_high_prev = _se_high_prev; state._last_low_prev = _se_low_prev
+                            if _se_fire:
+                                pnl_pct = _gain_pct(state.entry_price, mark, is_long)
+                                ev = TradeEvent(ts=bar_ts, type="CLOSE", qty=state.qty, price=mark, value=state.qty * mark, reason=f"HYBRID_STRUCT_EXIT_{_se_tf}", pnl_pct=pnl_pct)
+                                events.append(ev); trade_returns.append(pnl_pct)
+                                state.qty = 0.0; state.entry_price = 0.0; state.initial_qty = 0.0
+                                state.opened_at = 0.0; state.augmented_count = 0; state.max_gain = 0.0
+                                state.last_reduce_ts = bar_ts; state.hedge_active = False
+                                state._last_struct_open = None; state._last_high_prev = None; state._last_low_prev = None
+                                continue
+        else:
+            state._last_struct_open = None; state._last_high_prev = None; state._last_low_prev = None
         if state.qty <= 0.0001 and _fund_veto[i]:
             continue  # 2026-05-31 MTF funding gate veto — no NEW entry on this bar (shared vec_paths.funding_gate)
         # 2026-05-26 REGIME-ADAPTED per-bar exit floor — replaces scalar `min_gain`
@@ -3343,9 +3382,11 @@ def simulate_one_symbol(
             # pass on EVERY entry (DELTA/GOLDEN_RULE/force-open alike), not just the 1.5% force-open path.
             # GR becomes the universal confirmation gate. REENTRY exempt (carries its own logic).
             if (bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
+                    and is_long
                     and _mtf_require_gr
                     and not bool(_gr_filter_mask[i])
-                    and "REENTRY" not in (reason or "").upper()):
+                    and "REENTRY" not in (reason or "").upper()
+                    and "OBLIGATORY" not in (reason or "").upper()):
                 continue
             ev = TradeEvent(
                 ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
@@ -5214,6 +5255,23 @@ def run_sweep(
         "ts_run": ts_run,
         "summary_path": str(summary_path),
         "trades_path": str(trades_path),
+        # 2026-07-07 USER MANDATE ("EVERY single setting for every single symbol
+        # in every single test") — record the COMPLETE resolved SweepConfig (all
+        # 561 fields, defaults + any --override applied), not just a diff. Prior
+        # runs left overrides_json empty/partial, so ~83% of historical tests had
+        # no recoverable config at all (data/_knob_audit audit, 2026-07-07). This
+        # is the same overrides_json column metrics_guard already writes and the
+        # ingest pipeline (tools/build_test_results_db.py) already explodes into
+        # the queryable switch_settings table — pure additive recording, no
+        # behavior change.
+        "overrides_json": json.dumps(asdict(config), default=str, sort_keys=True),
+        "swept_knobs": json.dumps(sorted(_aggregated_unknown_knobs.union(
+            {k for v in (_per_acct_overrides or {}).values() if isinstance(v, dict) for k in v}
+        ))),
+        # per-(symbol,side) deltas from the global snapshot above (e.g.
+        # data/hourly_reconfig/<acct>/active_config.json) — a symbol's true
+        # full config = overrides_json merged with its own entry here, if any.
+        "per_symbol_overrides_json": json.dumps(_per_acct_overrides or {}, default=str, sort_keys=True),
     }
     try:
         metrics_guard.write_sharpe_row(agg_csv, agg_row, mode=mg_mode, append=False)
@@ -5583,6 +5641,158 @@ def _parse_overrides(items: List[str]) -> Dict[str, Any]:
     return out
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+# OAT (one-at-a-time) parameter sweep — ADDITIVE (--tier oat). Loads each symbol's
+# NPZ ONCE, runs the baseline + every (param,value) cell with the cached NPZ, holding
+# all OTHER params at the bit-exact baseline. Mirrors run_gr_dcbb_sweep's structure +
+# its GR-HTF entry-mask handling (mask recomputed only for the two params that feed it).
+# Only SweepConfig knobs the vec engine actually reads are swept; anything identical to
+# baseline is flagged inert_vs_baseline so dead/unmodelled knobs are surfaced honestly.
+# ════════════════════════════════════════════════════════════════════════════════
+_OAT_GRID = {
+    "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5, 6, 7],
+    "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+    "WT_DC_ENTRY_THRESHOLD": [0, 24, 35, 50, 65, 75],
+    "ENTRY_SCORE_THRESHOLD": [0, 12, 18, 24],
+    "DELTA_ENGINE_ENABLED": [True, False],
+    "DELTA_HTF_GATE": ["none", "hh_hl_4h", "4h", "4h_D"],
+    "DC_LOW_STOP_ENABLED": [True, False],
+    # NOTE: GR_HTF_GATE_ENABLED is intentionally EXCLUDED — flipping it True natively
+    # crashes simulate_one_symbol in the vec path (needs a separate precompute the OAT
+    # path doesn't supply); a native crash would kill the worker and lose all cells.
+    # Its effect is covered by the dedicated gr_dcbb_threshold tier.
+}
+_OAT_MASK_PARAMS = {"GOLDEN_RULE_MIN_IND", "GOLDEN_RULE_HTF_MIN_TFS"}  # feed the GR-HTF entry mask
+_OAT_BASE_DC, _OAT_BASE_BB = 0.65, 0.75  # baseline_dcbb_defaults (see _DCBB_GRID)
+
+
+def _oat_cells():
+    cells = [("__baseline__", None, None)]
+    for p, vals in _OAT_GRID.items():
+        for v in vals:
+            cells.append((f"{p}={v}", p, v))
+    return cells
+
+
+def _oat_mask(npz, is_long, mode, n, min_tfs, min_ind, cfg):
+    m, _ = evaluate_gr_htf_vec(
+        npz, is_long, mode, min_tfs=min_tfs, min_ind=min_ind, invert_dc_bb=True,
+        dc_threshold=_OAT_BASE_DC, bb_threshold=_OAT_BASE_BB, n=n,
+        require_activation=bool(getattr(cfg, "GOLDEN_RULE_REQUIRE_ACTIVATION", False)),
+        activation_tfs=list(getattr(cfg, "GOLDEN_RULE_ACTIVATION_TF_LIST", None) or []),
+        entry_tfs=list(getattr(cfg, "GOLDEN_RULE_ENTRY_TF_LIST", None) or []),
+    )
+    return m
+
+
+def _oat_worker(args_tuple):
+    """One (sym, side): load NPZ once, run baseline + every OAT cell. {label: returns}."""
+    sym, side, mode, base_config, start_ts = args_tuple
+    result: Dict[str, List[float]] = {}
+    try:
+        npz, ts = load_npz(sym, mode, start_ts=start_ts)
+    except Exception as e:
+        sys.stderr.write(f"[oat_worker] SKIP {sym}/{side}: {type(e).__name__}: {e}\n")
+        return result
+    n = len(ts)
+    if n < 50 or evaluate_gr_htf_vec is None:
+        return result
+    is_long = side.upper() == "LONG"
+    base_min_tfs = int(getattr(base_config, "GOLDEN_RULE_HTF_MIN_TFS", 3))
+    base_min_ind = int(getattr(base_config, "GOLDEN_RULE_MIN_IND", 5))
+    base_mask = _oat_mask(npz, is_long, mode, n, base_min_tfs, base_min_ind, base_config)
+    for label, param, value in _oat_cells():
+        if param is None:
+            cfg, mask = base_config, base_mask
+        else:
+            cfg, _a, _u, _uk = _apply_per_task_overrides(base_config, {param: value})
+            if param in _OAT_MASK_PARAMS:
+                mask = _oat_mask(npz, is_long, mode, n,
+                                 int(getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", base_min_tfs)),
+                                 int(getattr(cfg, "GOLDEN_RULE_MIN_IND", base_min_ind)), cfg)
+            else:
+                mask = base_mask
+        try:
+            _e, returns, _n = simulate_one_symbol(sym, side, mode, cfg, _npz_cache=(npz, ts), _gr_htf_entry_mask=mask)
+        except Exception as e:
+            sys.stderr.write(f"[oat_worker] FAIL {sym}/{side} {label}: {type(e).__name__}: {e}\n")
+            continue
+        result[label] = returns
+    return result
+
+
+def run_oat_sweep(mode, account, symbols, sides=None, start="2024-01-01", base_config=None, workers=4):
+    sides = sides or ["LONG", "SHORT"]
+    base_config = base_config or SweepConfig()
+    if evaluate_gr_htf_vec is None:
+        print("[oat_sweep] ERROR: evaluate_gr_htf_vec unavailable — cannot run", flush=True)
+        return
+    start_dt = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    start_ts = int(start_dt.timestamp())
+    n_years = max((datetime.now(timezone.utc) - start_dt).total_seconds() / 86400.0 / 365.25, 0.01)
+    workers = _resolve_workers(workers)
+    cells = _oat_cells()
+    variant_returns_by_sym: Dict[str, Dict[str, List[float]]] = {label: {} for label, _, _ in cells}
+    tasks = [(sym, side, mode, base_config, start_ts) for sym in symbols for side in sides]
+    print(f"[oat_sweep] mode={mode} symbols={len(symbols)} sides={sides} cells={len(cells)} workers={workers} tasks={len(tasks)}", flush=True)
+    completed = 0
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_oat_worker, t): (t[0], t[1]) for t in tasks}
+        for fut in as_completed(futures):
+            sk, sd = futures[fut]
+            completed += 1
+            try:
+                sym_result = fut.result()
+            except Exception as e:
+                print(f"[oat_sweep] [{completed}/{len(tasks)}] {sk}/{sd} WORKER_ERROR: {e}", flush=True)
+                continue
+            for label, rets in sym_result.items():
+                if rets:
+                    variant_returns_by_sym[label].setdefault(sk, []).extend(rets)
+            print(f"[oat_sweep] [{completed}/{len(tasks)}] {sk}/{sd} done — cells={len(sym_result)}", flush=True)
+    results_dir = Path(__file__).resolve().parent / "data" / "sweep_results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    out_csv = results_dir / f"oat_sweep_{mode}_{ts_str}.csv"
+    mg_mode = "stocks" if mode == "tradier" else "crypto"
+    base_fp = None
+    for label, param, value in cells:
+        rets_by_sym = variant_returns_by_sym[label]
+        flat = [r for v in rets_by_sym.values() for r in v]
+        if len(flat) >= 2:
+            std = metrics_guard.standard_metric_set(rets_by_sym, n_years)
+        else:
+            std = {"pool_sharpe": 0.0, "sym_sharpe": 0.0, "avg_gain_trade": 0.0, "gain_per_yr": 0.0,
+                   "gain_sym_yr": 0.0, "trades": len(flat), "n_syms": len(rets_by_sym), "years": n_years}
+        row = {
+            "pool_sharpe": round(float(std["pool_sharpe"]), 4), "sym_sharpe": round(float(std["sym_sharpe"]), 4),
+            "avg_gain_trade": round(float(std["avg_gain_trade"]), 4), "gain_per_yr": round(float(std["gain_per_yr"]), 2),
+            "gain_sym_yr": round(float(std["gain_sym_yr"]), 4), "trades": int(std["trades"]),
+            "max_dd_pct": round(_max_dd_pct(flat), 4) if flat else 0.0, "n_syms": int(std["n_syms"]),
+            "years": round(float(std["years"]), 3), "label": label,
+            "param": param if param else "baseline", "value": "" if value is None else str(value),
+            "engine": "v8_vec_sweep", "tier": "oat", "mode": mode, "account": account, "start": start, "ts_run": ts_str,
+        }
+        fp = (row["pool_sharpe"], row["trades"])
+        if label == "__baseline__":
+            base_fp = fp
+        row["inert_vs_baseline"] = bool(base_fp is not None and fp == base_fp and label != "__baseline__")
+        try:
+            metrics_guard.write_sharpe_row(out_csv, row, mode=mg_mode, append=True)
+        except metrics_guard.FakeMetricRefused as e:
+            sys.stderr.write(f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_oat_sweep {label}: {e}\n")
+            sys.exit(2)
+        print(f"  {label:34s} pool_sharpe={row['pool_sharpe']:+.4f} trades={row['trades']:6d} "
+              f"gain/yr={row['gain_per_yr']:+.1f}%{'  INERT' if row['inert_vs_baseline'] else ''}", flush=True)
+    print(f"[oat_sweep] results -> {out_csv} ({len(cells)} cells)", flush=True)
+    floor = metrics_guard.MIN_SYMS_STOCKS if mg_mode == "stocks" else metrics_guard.MIN_SYMS_CRYPTO
+    sub_floor = (len(symbols) < floor or n_years < metrics_guard.MIN_YEARS)
+    allow_diag = os.environ.get("V8_VEC_ALLOW_DIAGNOSTIC", "0").strip() in ("1", "true", "True")
+    if sub_floor and not allow_diag:
+        sys.stderr.write(f"IMPOSTER_BLOCK_REFUSED: v8_vec_sweep.run_oat_sweep sub-floor (n_syms={len(symbols)} < {floor} or years={n_years:.2f} < {metrics_guard.MIN_YEARS}). Rows at {out_csv}; DIAGNOSTIC-only.\n")
+        sys.exit(2)
+
+
 def main():
     ap = argparse.ArgumentParser(description="v8_vec_sweep — fast pure-vec backtest sweep engine")
     ap.add_argument("--mode", choices=("crypto", "tradier"), default="crypto")
@@ -5651,6 +5861,13 @@ def main():
             start=args.start, base_config=cfg,
             write_history=not args.no_history,
             workers=args.workers,
+        )
+        return 0
+
+    if args.tier == "oat":
+        run_oat_sweep(
+            mode=args.mode, account=args.account, symbols=syms, sides=sides,
+            start=args.start, base_config=cfg, workers=args.workers,
         )
         return 0
 

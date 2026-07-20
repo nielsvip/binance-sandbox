@@ -1,0 +1,784 @@
+// SPDX-License-Identifier: Proprietary
+// =====================================================================
+// btc_loop_strategy.pine — Pine Script v6 port of /Users/niels/Documents/binance/btc_loop.py
+//
+// CRITICAL — Default inputs now match override_btc_DIV_FIX.json which produces
+// sharpe 0.445 / +149% PnL / 64.7% WR over 4yr backtest. Toggling individual inputs
+// off may make TV runs LESS profitable than the basic paste — keep defaults unless
+// you're A/B testing a specific knob.
+//
+// PURPOSE
+//   TradingView-runnable replica of the BTC-dedicated trading loop tested
+//   in v8_quick_engine.py:_btc_dedicated_simulate_per_sym + btc_loop.py.
+//   Defaults match override_btc_DIV_FIX.json (sweep winner 2026-04-27).
+//
+// CHART
+//   Run on BTCUSDT (or BTCUSDC). 3m chart matches the live LTF; works at
+//   any chart TF — HTF features pulled via request.security().
+//
+// PYTHON ↔ PINE INPUT MAPPING (defaults from override_btc_dedicated_v3.json /
+//   v8_quick_engine.QuickConfig):
+//
+//   BTC_DEDICATED_ENABLED           → btc_dedicated_enabled
+//   BTC_RZ_USE_WT_DC                → rz_use_wt_dc
+//   BTC_RZ_USE_FIB                  → rz_use_fib
+//   BTC_RZ_USE_ROUND                → rz_use_round
+//   BTC_RZ_PROXIMITY_PCT            → rz_proximity_pct          (0.5)
+//   BTC_FIB_LOOKBACK_4H             → fib_lookback_4h           (200)
+//   BTC_FIB_LOOKBACK_D              → fib_lookback_d            (180)
+//   BTC_ROUND_INC_PRIMARY_USD       → round_inc_primary_usd     (5000)
+//   BTC_ROUND_INC_SECONDARY_USD     → round_inc_secondary_usd   (1000)
+//   BTC_ROUND_BANDS_EACH_SIDE       → round_bands_each_side     (8)
+//   BTC_ACCEL_RAMP_MIN_TFS          → accel_ramp_min_tfs        (3)
+//   BTC_ACCEL_RAMP_REQUIRE_POSITIVE → accel_ramp_require_positive (true)
+//   BTC_DIVERGENCE_ENABLED          → divergence_enabled
+//   BTC_DIVERGENCE_BULL_MIN_INDS    → divergence_bull_min_inds  (1)   — DIV_FIX (was 2 — too strict)
+//   BTC_DIVERGENCE_BEAR_MIN_INDS    → divergence_bear_min_inds  (1)   — DIV_FIX (was 2)
+//   BTC_DIVERGENCE_LOOKBACK_BARS    → divergence_lookback_bars  (5)   — legacy, unused by pivot detector
+//   BTC_DIVERGENCE_LB_3M            → divergence_lb_3m          (5)   — per-TF lookback (pivot)
+//   BTC_DIVERGENCE_LB_15M           → divergence_lb_15m         (10)
+//   BTC_DIVERGENCE_LB_1H            → divergence_lb_1h          (20)
+//   BTC_DIVERGENCE_LB_4H            → divergence_lb_4h          (20)
+//   BTC_DIVERGENCE_LB_D             → divergence_lb_d           (10)
+//   BTC_DIVERGENCE_MIN_TF           → divergence_min_tf         ("1h") — A/B picked 1h sharpe 0.445
+//   BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS → divergence_d_confirm_bars (2)
+//   BTC_DIVERGENCE_BLOCK_AGAINST    → divergence_block_against  (true)  — DIV_FIX
+//   BTC_DIVERGENCE_EXIT_AGAINST     → divergence_exit_against   (false) — DIV_FIX (redundant w/ WT-against)
+//   BTC_ENTRY_PRIMARY_REQUIRE_RZ    → entry_require_rz          (true)
+//   BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP → entry_require_accel_ramp (true)
+//   BTC_RZ_AS_BOOST_ENABLED         → rz_as_boost_enabled       (false) — DIV_FIX (back to legacy gate)
+//   BTC_RZ_SOFTEN_ACCEL_BY          → rz_soften_accel_by        (1)     — TFs subtracted from accel_ramp_min_tfs when RZ active
+//   BTC_TECH_EXIT_WT_MIN_TFS        → tech_exit_wt_min_tfs      (3)
+//   BTC_GUARANTEED_REENTRY_ENABLED  → reentry_enabled           (true)
+//   BTC_GUARANTEED_REENTRY_MIN_GAP_BARS → reentry_min_gap_bars  (5)
+//   BTC_GUARANTEED_REENTRY_MAX_AGE_BARS → reentry_max_age_bars  (480)
+//   BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE → reentry_require_rz_bounce (true)
+//   BTC_INTRABAR_REVERSAL_EXIT      → intrabar_reversal_exit    (true)
+//   BTC_LEVERAGE                    → leverage                  (20)
+//   BTC_PER_TRADE_NOTIONAL_USD_MAX  → per_trade_notional_max    (90)
+//   BTC_HARD_LOSS_USD_PER_TRADE     → hard_loss_usd             (10)  → ~0.555% price stop
+//   BTC_COOLDOWN_BARS               → cooldown_bars             (20)
+//   BTC_MIN_HOLD_BARS               → min_hold_bars             (20)
+//
+//   BTC_BREAKOUT_ENTRY_ENABLED          → breakout_enabled                  (true)
+//   BTC_BREAKOUT_ACCEL_MIN_TFS          → breakout_accel_min_tfs            (2)
+//   BTC_BREAKOUT_BLOCK_OPPOSING_DIV     → breakout_block_opposing_div       (true)
+//   BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE→ breakout_hard_loss_usd            (5.0) → ~0.278% price stop
+//   BTC_BREAKOUT_MIN_HOLD_BARS          → breakout_min_hold_bars            (3)
+//   BTC_BREAKOUT_COOLDOWN_BARS          → breakout_cooldown_bars            (3)
+//   BTC_FOLLOW_THROUGH_REENTRY_ENABLED  → follow_through_reentry_enabled    (true)
+//   BTC_FOLLOW_THROUGH_MIN_MOVE_PCT     → follow_through_min_move_pct       (0.3)
+//   BTC_BREAKOUT_REQUIRE_HTF_ALIGNED    → breakout_require_htf_aligned      (true)
+//   BTC_BREAKOUT_HTF_MIN_ALIGNED        → breakout_htf_min_aligned          (2)
+//   BTC_REVERSE_ON_EXIT_ENABLED         → reverse_on_exit_enabled           (true)
+//   BTC_REVERSE_REQUIRE_HTF_ALIGNED     → reverse_require_htf_aligned       (true)
+//
+// =====================================================================
+//@version=6
+strategy("BTC Dedicated Loop (btc_loop.py port)", "BTC_LOOP",
+     overlay = true,
+     pyramiding = 0,
+     default_qty_type = strategy.cash,
+     default_qty_value = 90,
+     initial_capital = 1000,
+     commission_type = strategy.commission.percent,
+     commission_value = 0.04,
+     calc_on_every_tick = false,
+     process_orders_on_close = true,
+     max_lines_count = 200,
+     max_labels_count = 200,
+     max_boxes_count = 50)
+
+// ───────────────────────────── INPUTS ──────────────────────────────
+g_master = "BTC Loop — master switches"
+btc_dedicated_enabled = input.bool(true,  "BTC_DEDICATED_ENABLED",                group=g_master)
+
+g_rz = "Red-zone composition"
+rz_use_wt_dc            = input.bool(true,  "BTC_RZ_USE_WT_DC (BB-%B 4h proxy)", group=g_rz)
+rz_use_fib              = input.bool(true,  "BTC_RZ_USE_FIB",                    group=g_rz)
+rz_use_round            = input.bool(true,  "BTC_RZ_USE_ROUND",                  group=g_rz)
+rz_proximity_pct        = input.float(0.5,  "BTC_RZ_PROXIMITY_PCT (%)",          minval=0.05, step=0.05, group=g_rz)
+fib_lookback_4h         = input.int(200,    "BTC_FIB_LOOKBACK_4H (bars)",        minval=20,  group=g_rz)
+fib_lookback_d          = input.int(180,    "BTC_FIB_LOOKBACK_D (bars)",         minval=20,  group=g_rz)
+round_inc_primary_usd   = input.float(5000, "BTC_ROUND_INC_PRIMARY_USD",         minval=100, group=g_rz)
+round_inc_secondary_usd = input.float(1000, "BTC_ROUND_INC_SECONDARY_USD",       minval=100, group=g_rz)
+round_bands_each_side   = input.int(8,      "BTC_ROUND_BANDS_EACH_SIDE",         minval=1,   maxval=15, group=g_rz)
+
+g_accel = "Accel-ramp gate"
+accel_ramp_min_tfs           = input.int(3, "BTC_ACCEL_RAMP_MIN_TFS",                   minval=1, maxval=5, group=g_accel)
+accel_ramp_require_positive  = input.bool(true, "BTC_ACCEL_RAMP_REQUIRE_POSITIVE",      group=g_accel)
+
+g_div = "Divergence detection"
+divergence_enabled         = input.bool(true,  "BTC_DIVERGENCE_ENABLED",         group=g_div)
+divergence_bull_min_inds   = input.int(1,      "BTC_DIVERGENCE_BULL_MIN_INDS",   minval=0, maxval=3, group=g_div)
+divergence_bear_min_inds   = input.int(1,      "BTC_DIVERGENCE_BEAR_MIN_INDS",   minval=0, maxval=3, group=g_div)
+divergence_lookback_bars   = input.int(5,      "BTC_DIVERGENCE_LOOKBACK_BARS",   minval=2, maxval=30, group=g_div)
+divergence_block_against   = input.bool(true,  "BTC_DIVERGENCE_BLOCK_AGAINST",   group=g_div)
+divergence_exit_against    = input.bool(false, "BTC_DIVERGENCE_EXIT_AGAINST",    group=g_div)
+// Pivot-based per-TF lookbacks (rewritten 2026-04-27 — see f_div_pivot below).
+divergence_min_tf            = input.string("1h", "BTC_DIVERGENCE_MIN_TF", options=["3m","15m","1h","4h","D"], group=g_div)
+divergence_lb_3m             = input.int(5,  "BTC_DIVERGENCE_LB_3M",  minval=3,  group=g_div)
+divergence_lb_15m            = input.int(10, "BTC_DIVERGENCE_LB_15M", minval=3,  group=g_div)
+divergence_lb_1h             = input.int(20, "BTC_DIVERGENCE_LB_1H", minval=3,  group=g_div)
+divergence_lb_4h             = input.int(20, "BTC_DIVERGENCE_LB_4H", minval=3,  group=g_div)
+divergence_lb_d              = input.int(10, "BTC_DIVERGENCE_LB_D",  minval=3,  group=g_div)
+divergence_d_confirm_bars    = input.int(2,  "BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS", minval=0, group=g_div)
+
+g_entry = "Entry triggers"
+entry_require_rz          = input.bool(true,  "BTC_ENTRY_PRIMARY_REQUIRE_RZ",          group=g_entry)
+entry_require_accel_ramp  = input.bool(true,  "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP",  group=g_entry)
+// 2026-04-27 RZ redesign — "RZ as score boost" instead of always-on gate.
+// When rz_as_boost_enabled=true, RZ does NOT gate entries; instead it softens
+// the accel-ramp requirement by rz_soften_accel_by TFs while red_zone_active.
+rz_as_boost_enabled       = input.bool(false, "BTC_RZ_AS_BOOST_ENABLED",               group=g_entry)
+rz_soften_accel_by        = input.int(1,      "BTC_RZ_SOFTEN_ACCEL_BY",                minval=0, maxval=4, group=g_entry)
+
+g_exit = "Exit pipeline (Path B)"
+tech_exit_wt_min_tfs       = input.int(3,    "BTC_TECH_EXIT_WT_MIN_TFS",  minval=1, maxval=5, group=g_exit)
+intrabar_reversal_exit     = input.bool(true, "BTC_INTRABAR_REVERSAL_EXIT", group=g_exit)
+
+g_re = "Guaranteed reentry"
+reentry_enabled               = input.bool(true,  "BTC_GUARANTEED_REENTRY_ENABLED",            group=g_re)
+reentry_min_gap_bars          = input.int(5,      "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",       minval=0, group=g_re)
+reentry_max_age_bars          = input.int(480,    "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",       minval=10, group=g_re)
+reentry_require_rz_bounce     = input.bool(true,  "BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE",  group=g_re)
+
+g_risk = "Risk caps & sizing"
+leverage                  = input.float(20.0, "BTC_LEVERAGE",                  minval=1.0, group=g_risk)
+per_trade_notional_max    = input.float(90.0, "BTC_PER_TRADE_NOTIONAL_USD_MAX (own capital)", minval=1.0, group=g_risk)
+hard_loss_usd             = input.float(10.0, "BTC_HARD_LOSS_USD_PER_TRADE",   minval=1.0, group=g_risk)
+cooldown_bars             = input.int(20,     "BTC_COOLDOWN_BARS",             minval=0, group=g_risk)
+min_hold_bars             = input.int(20,     "BTC_MIN_HOLD_BARS",             minval=0, group=g_risk)
+
+g_bk = "BTC Loop — Breakout entry mode"
+breakout_enabled                  = input.bool(true,  "BTC_BREAKOUT_ENTRY_ENABLED",            group=g_bk)
+breakout_accel_min_tfs            = input.int(2,      "BTC_BREAKOUT_ACCEL_MIN_TFS",            minval=1, maxval=5, group=g_bk)
+breakout_block_opposing_div       = input.bool(true,  "BTC_BREAKOUT_BLOCK_OPPOSING_DIV",       group=g_bk)
+breakout_hard_loss_usd            = input.float(5.0,  "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE",  minval=0.1, group=g_bk)
+breakout_min_hold_bars            = input.int(3,      "BTC_BREAKOUT_MIN_HOLD_BARS",            minval=0, group=g_bk)
+breakout_cooldown_bars            = input.int(3,      "BTC_BREAKOUT_COOLDOWN_BARS",            minval=0, group=g_bk)
+follow_through_reentry_enabled    = input.bool(true,  "BTC_FOLLOW_THROUGH_REENTRY_ENABLED",    group=g_bk)
+follow_through_min_move_pct       = input.float(0.3,  "BTC_FOLLOW_THROUGH_MIN_MOVE_PCT (%)",   minval=0.05, step=0.05, group=g_bk)
+breakout_require_htf_aligned      = input.bool(true,  "BTC_BREAKOUT_REQUIRE_HTF_ALIGNED",      group=g_bk)
+breakout_htf_min_aligned          = input.int(2,      "BTC_BREAKOUT_HTF_MIN_ALIGNED",          minval=0, maxval=3, group=g_bk)
+reverse_on_exit_enabled           = input.bool(true,  "BTC_REVERSE_ON_EXIT_ENABLED",           group=g_bk)
+reverse_require_htf_aligned       = input.bool(true,  "BTC_REVERSE_REQUIRE_HTF_ALIGNED",       group=g_bk)
+
+g_viz = "Visuals"
+draw_levels  = input.bool(true,  "Draw fib + round levels",                 group=g_viz)
+tint_rz      = input.bool(true,  "Tint background when red-zone active",    group=g_viz)
+plot_diags   = input.bool(true,  "Plot accel/div TF counts in lower pane",  group=g_viz)
+
+// ───────────── HARD-LOSS PCT (own_capital × leverage) ──────────────
+// BTC_HARD_LOSS_USD / (own × leverage) × 100  ≈ -0.555% with 10/(90*20)
+hard_loss_pct = (per_trade_notional_max > 0 and leverage > 0) ?
+     -(hard_loss_usd / (per_trade_notional_max * leverage)) * 100.0 : -0.555
+// BTC_BREAKOUT_HARD_LOSS_USD / (own × leverage) × 100 ≈ -0.278% with 5/(90*20)
+breakout_hard_loss_pct = (per_trade_notional_max > 0 and leverage > 0) ?
+     -(breakout_hard_loss_usd / (per_trade_notional_max * leverage)) * 100.0 : -0.278
+
+// ────────────── DC-CHANNEL FEATURES (3m base TF, prev-bar) ─────────
+// Native chart-TF Donchian (chart should be on 3m). prev-bar = no lookahead.
+dc_high_3m_prev  = ta.highest(high, 20)[1]
+dc_low_3m_prev   = ta.lowest(low,  20)[1]
+dc_high4_3m_prev = ta.highest(high, 4)[1]
+dc_low4_3m_prev  = ta.lowest(low,  4)[1]
+
+// ────────────── WAVETREND (LazyBear) FUNCTION ──────────────────────
+// WT(10,21) — channel length 10, average length 21. Returns wt1, wt2.
+f_wt(src) =>
+    n1 = 10
+    n2 = 21
+    esa  = ta.ema(src, n1)
+    d    = ta.ema(math.abs(src - esa), n1)
+    ci   = (src - esa) / (0.015 * d)
+    tci  = ta.ema(ci, n2)
+    wt1_ = tci
+    wt2_ = ta.sma(wt1_, 4)
+    [wt1_, wt2_]
+
+// Wrap in a function so request.security can return all fields atomically.
+// Returns: [wt1, wt2, vel, vel_prev, rsi, mfi]  per TF.
+f_tf_features() =>
+    src = hlc3
+    [w1, w2] = f_wt(src)
+    v   = w1 - w1[1]
+    vp  = w1[1] - w1[2]
+    r   = ta.rsi(close, 14)
+    m   = ta.mfi(hlc3, 14)
+    [w1, w2, v, vp, r, m]
+
+// ─────────────── PER-TF SECURITY (lookahead OFF) ───────────────────
+[w1_3m,  w2_3m,  v_3m,  vp_3m,  r_3m,  m_3m ] = request.security(syminfo.tickerid, "3",   f_tf_features(), lookahead=barmerge.lookahead_off)
+[w1_15m, w2_15m, v_15m, vp_15m, r_15m, m_15m] = request.security(syminfo.tickerid, "15",  f_tf_features(), lookahead=barmerge.lookahead_off)
+[w1_1h,  w2_1h,  v_1h,  vp_1h,  r_1h,  m_1h ] = request.security(syminfo.tickerid, "60",  f_tf_features(), lookahead=barmerge.lookahead_off)
+[w1_4h,  w2_4h,  v_4h,  vp_4h,  r_4h,  m_4h ] = request.security(syminfo.tickerid, "240", f_tf_features(), lookahead=barmerge.lookahead_off)
+[w1_D,   w2_D,   v_D,   vp_D,   r_D,   m_D  ] = request.security(syminfo.tickerid, "D",   f_tf_features(), lookahead=barmerge.lookahead_off)
+
+// BB %B on 4h for wt_dc_zone proxy
+bb_basis_4h  = request.security(syminfo.tickerid, "240", ta.sma(close, 20), lookahead=barmerge.lookahead_off)
+bb_dev_4h    = request.security(syminfo.tickerid, "240", ta.stdev(close, 20), lookahead=barmerge.lookahead_off)
+bb_upper_4h  = bb_basis_4h + 2.0 * bb_dev_4h
+bb_lower_4h  = bb_basis_4h - 2.0 * bb_dev_4h
+bb_pct_b_4h  = (bb_upper_4h - bb_lower_4h) > 0 ? (close - bb_lower_4h) / (bb_upper_4h - bb_lower_4h) : 0.5
+
+// 4h / D rolling swing high/low — for fib anchors. Compute on each TF and pull back.
+swing_hi_4h = request.security(syminfo.tickerid, "240", ta.highest(high, fib_lookback_4h), lookahead=barmerge.lookahead_off)
+swing_lo_4h = request.security(syminfo.tickerid, "240", ta.lowest(low,  fib_lookback_4h), lookahead=barmerge.lookahead_off)
+swing_hi_d  = request.security(syminfo.tickerid, "D",   ta.highest(high, fib_lookback_d ), lookahead=barmerge.lookahead_off)
+swing_lo_d  = request.security(syminfo.tickerid, "D",   ta.lowest(low,  fib_lookback_d ), lookahead=barmerge.lookahead_off)
+
+// ──────────────────── ACCEL-RAMP (compute_accel_ramp) ──────────────
+// Per-TF bull cell: vel > vel_prev > 0  (or > vel_prev only if require_positive=false)
+f_accel_bull(v, vp) =>
+    accel_ramp_require_positive ? (v > vp and vp > 0) : (v > vp)
+f_accel_bear(v, vp) =>
+    accel_ramp_require_positive ? (v < vp and vp < 0) : (v < vp)
+
+bull_3m  = f_accel_bull(v_3m,  vp_3m)
+bull_15m = f_accel_bull(v_15m, vp_15m)
+bull_1h  = f_accel_bull(v_1h,  vp_1h)
+bull_4h  = f_accel_bull(v_4h,  vp_4h)
+bull_D   = f_accel_bull(v_D,   vp_D)
+
+bear_3m  = f_accel_bear(v_3m,  vp_3m)
+bear_15m = f_accel_bear(v_15m, vp_15m)
+bear_1h  = f_accel_bear(v_1h,  vp_1h)
+bear_4h  = f_accel_bear(v_4h,  vp_4h)
+bear_D   = f_accel_bear(v_D,   vp_D)
+
+bull_aligned_tfs = (bull_3m ? 1 : 0) + (bull_15m ? 1 : 0) + (bull_1h ? 1 : 0) + (bull_4h ? 1 : 0) + (bull_D ? 1 : 0)
+bear_aligned_tfs = (bear_3m ? 1 : 0) + (bear_15m ? 1 : 0) + (bear_1h ? 1 : 0) + (bear_4h ? 1 : 0) + (bear_D ? 1 : 0)
+accel_side = bull_aligned_tfs > bear_aligned_tfs and bull_aligned_tfs > 0 ? "bull" :
+     bear_aligned_tfs > bull_aligned_tfs and bear_aligned_tfs > 0 ? "bear" : "none"
+
+// ──────────────────── DIVERGENCE (PIVOT-BASED, rewritten 2026-04-27) ──────────
+// Mirror of btc_loop.py:detect_divergence_at — pivot-based detection.
+// Random-noise fire rate dropped 50%→1% vs old 2-point endpoint comparison.
+//   Bull div: price[now] < min(price window excluding now) AND indicator[now] > indicator at that low.
+//   Bear div: mirror with window max.
+//   require_strict (always on): pivot must be in latter half of window.
+f_div_pivot_native(p_series, ind_series, lb) =>
+    p_min  = ta.lowest(p_series[1],  lb - 1)        // window min EXCLUDING current bar
+    p_max  = ta.highest(p_series[1], lb - 1)
+    bars_since_min = nz(ta.barssince(p_series == p_min), lb - 1)
+    bars_since_max = nz(ta.barssince(p_series == p_max), lb - 1)
+    i_at_min = ind_series[bars_since_min]
+    i_at_max = ind_series[bars_since_max]
+    bull = (p_series < p_min) and (ind_series > i_at_min)
+    bear = (p_series > p_max) and (ind_series < i_at_max)
+    half = math.max(1, lb / 2)
+    bull := bull and (bars_since_min <= half)
+    bear := bear and (bars_since_max <= half)
+    [bull, bear]
+
+// Per-TF combined divergence (WT/RSI/MFI all evaluated inside the security call so
+// each indicator uses its native TF history. Returns 6 booleans per TF.)
+f_tf_divs(lb) =>
+    src = hlc3
+    [w1, _w2] = f_wt(src)
+    r = ta.rsi(close, 14)
+    m = ta.mfi(hlc3, 14)
+    [wb, wbr] = f_div_pivot_native(close, w1, lb)
+    [rb, rbr] = f_div_pivot_native(close, r,  lb)
+    [mb, mbr] = f_div_pivot_native(close, m,  lb)
+    [wb, wbr, rb, rbr, mb, mbr]
+
+[wt_b_3m,  wt_br_3m,  rs_b_3m,  rs_br_3m,  mf_b_3m,  mf_br_3m ] = request.security(syminfo.tickerid, "3",   f_tf_divs(divergence_lb_3m),  lookahead=barmerge.lookahead_off)
+[wt_b_15m, wt_br_15m, rs_b_15m, rs_br_15m, mf_b_15m, mf_br_15m] = request.security(syminfo.tickerid, "15",  f_tf_divs(divergence_lb_15m), lookahead=barmerge.lookahead_off)
+[wt_b_1h,  wt_br_1h,  rs_b_1h,  rs_br_1h,  mf_b_1h,  mf_br_1h ] = request.security(syminfo.tickerid, "60",  f_tf_divs(divergence_lb_1h),  lookahead=barmerge.lookahead_off)
+[wt_b_4h,  wt_br_4h,  rs_b_4h,  rs_br_4h,  mf_b_4h,  mf_br_4h ] = request.security(syminfo.tickerid, "240", f_tf_divs(divergence_lb_4h),  lookahead=barmerge.lookahead_off)
+[wt_b_D,   wt_br_D,   rs_b_D,   rs_br_D,   mf_b_D,   mf_br_D  ] = request.security(syminfo.tickerid, "D",   f_tf_divs(divergence_lb_d),   lookahead=barmerge.lookahead_off)
+
+// MIN_TF filter: only count TFs at-or-above the configured floor.
+// 3m=0, 15m=1, 1h=2, 4h=3, D=4.
+min_tf_idx = divergence_min_tf == "3m" ? 0 : divergence_min_tf == "15m" ? 1 : divergence_min_tf == "1h" ? 2 : divergence_min_tf == "4h" ? 3 : 4
+tf_3m_ok  = 0 >= min_tf_idx
+tf_15m_ok = 1 >= min_tf_idx
+tf_1h_ok  = 2 >= min_tf_idx
+tf_4h_ok  = 3 >= min_tf_idx
+tf_d_ok   = 4 >= min_tf_idx
+
+// Per-indicator: did ANY allowed TF show div on this side?
+wt_bull_any  = (tf_3m_ok and wt_b_3m)  or (tf_15m_ok and wt_b_15m)  or (tf_1h_ok and wt_b_1h)  or (tf_4h_ok and wt_b_4h)  or (tf_d_ok and wt_b_D)
+wt_bear_any  = (tf_3m_ok and wt_br_3m) or (tf_15m_ok and wt_br_15m) or (tf_1h_ok and wt_br_1h) or (tf_4h_ok and wt_br_4h) or (tf_d_ok and wt_br_D)
+rsi_bull_any = (tf_3m_ok and rs_b_3m)  or (tf_15m_ok and rs_b_15m)  or (tf_1h_ok and rs_b_1h)  or (tf_4h_ok and rs_b_4h)  or (tf_d_ok and rs_b_D)
+rsi_bear_any = (tf_3m_ok and rs_br_3m) or (tf_15m_ok and rs_br_15m) or (tf_1h_ok and rs_br_1h) or (tf_4h_ok and rs_br_4h) or (tf_d_ok and rs_br_D)
+mfi_bull_any = (tf_3m_ok and mf_b_3m)  or (tf_15m_ok and mf_b_15m)  or (tf_1h_ok and mf_b_1h)  or (tf_4h_ok and mf_b_4h)  or (tf_d_ok and mf_b_D)
+mfi_bear_any = (tf_3m_ok and mf_br_3m) or (tf_15m_ok and mf_br_15m) or (tf_1h_ok and mf_br_1h) or (tf_4h_ok and mf_br_4h) or (tf_d_ok and mf_br_D)
+
+bull_inds_aligned_raw = (wt_bull_any ? 1 : 0) + (rsi_bull_any ? 1 : 0) + (mfi_bull_any ? 1 : 0)
+bear_inds_aligned_raw = (wt_bear_any ? 1 : 0) + (rsi_bear_any ? 1 : 0) + (mfi_bear_any ? 1 : 0)
+
+// D-confirmation persistence: when MIN_TF=D, require N consecutive bars of D-side div.
+var int bull_d_persist = 0
+var int bear_d_persist = 0
+bull_d_persist := (wt_b_D or rs_b_D or mf_b_D)    ? bull_d_persist + 1 : 0
+bear_d_persist := (wt_br_D or rs_br_D or mf_br_D) ? bear_d_persist + 1 : 0
+d_confirm_bull_ok = (divergence_min_tf != "D") or (bull_d_persist >= divergence_d_confirm_bars)
+d_confirm_bear_ok = (divergence_min_tf != "D") or (bear_d_persist >= divergence_d_confirm_bars)
+
+bull_inds_aligned = d_confirm_bull_ok ? bull_inds_aligned_raw : 0
+bear_inds_aligned = d_confirm_bear_ok ? bear_inds_aligned_raw : 0
+
+// ──────────────────── FIB LEVELS (compute_fib_levels) ──────────────
+// Persist as horizontal lines we redraw when swing changes (cheap on last bar only).
+var line[] fib_lines = array.new<line>()
+f_clear_lines(arr) =>
+    if array.size(arr) > 0
+        for i = 0 to array.size(arr) - 1
+            line.delete(array.get(arr, i))
+        array.clear(arr)
+
+f_draw_fib(hi, lo, col) =>
+    if rz_use_fib and draw_levels and hi > lo and hi > 0
+        rng = hi - lo
+        ratios = array.from(0.236, 0.382, 0.5, 0.618, 0.786)
+        for i = 0 to array.size(ratios) - 1
+            r = array.get(ratios, i)
+            lvl = hi - rng * r
+            l = line.new(bar_index - 200, lvl, bar_index, lvl, color=col, style=line.style_dotted, width=1)
+            array.push(fib_lines, l)
+        // Extensions up/down
+        for r in array.from(1.272, 1.618)
+            lvl_u = lo + rng * r
+            lvl_d = hi - rng * r
+            array.push(fib_lines, line.new(bar_index - 200, lvl_u, bar_index, lvl_u, color=col, style=line.style_dashed, width=1))
+            array.push(fib_lines, line.new(bar_index - 200, lvl_d, bar_index, lvl_d, color=col, style=line.style_dashed, width=1))
+
+if barstate.islast
+    f_clear_lines(fib_lines)
+    f_draw_fib(swing_hi_4h, swing_lo_4h, color.new(color.orange, 50))
+    f_draw_fib(swing_hi_d,  swing_lo_d,  color.new(color.purple, 50))
+
+// ──────────────────── ROUND LEVELS (compute_round_levels) ──────────
+var line[] round_lines = array.new<line>()
+f_draw_rounds(price, inc, bands, col) =>
+    if rz_use_round and draw_levels and price > 0 and inc > 0
+        base = math.floor(price / inc) * inc
+        for k = -bands to bands
+            lvl = base + inc * k
+            // Only draw if within ±5% of price (chart hygiene)
+            if math.abs(lvl - price) / price <= 0.05
+                array.push(round_lines, line.new(bar_index - 200, lvl, bar_index, lvl, color=col, style=line.style_dotted, width=1))
+
+if barstate.islast
+    f_clear_lines(round_lines)
+    f_draw_rounds(close, round_inc_primary_usd,   round_bands_each_side, color.new(color.gray, 70))
+    f_draw_rounds(close, round_inc_secondary_usd, round_bands_each_side, color.new(color.gray, 85))
+
+// ──────────────────── RED ZONE (build_red_zone_state) ──────────────
+// Within proximity_pct of any fib level OR any round level OR BB %B 4h is BASELINE/TOP/BOTTOM.
+f_within_pct(p, lvl, pct) =>
+    lvl > 0 and math.abs(p - lvl) / p <= pct / 100.0
+
+// Test against the 5 retracements + 4 extensions on 4h and D
+f_fib_hits(price, hi, lo, pct) =>
+    hits = 0
+    if hi > lo and hi > 0
+        rng = hi - lo
+        for r in array.from(0.236, 0.382, 0.5, 0.618, 0.786)
+            lvl = hi - rng * r
+            hits += f_within_pct(price, lvl, pct) ? 1 : 0
+        for r in array.from(1.272, 1.618)
+            hits += f_within_pct(price, lo + rng * r, pct) ? 1 : 0
+            hits += f_within_pct(price, hi - rng * r, pct) ? 1 : 0
+    hits
+
+fib_count_within = (rz_use_fib ? f_fib_hits(close, swing_hi_4h, swing_lo_4h, rz_proximity_pct) : 0)
+                 + (rz_use_fib ? f_fib_hits(close, swing_hi_d,  swing_lo_d,  rz_proximity_pct) : 0)
+
+// Round-level proximity (any band within ±N around price)
+f_round_within(price, inc, bands, pct) =>
+    found = false
+    if price > 0 and inc > 0
+        base = math.floor(price / inc) * inc
+        for k = -bands to bands
+            if not found
+                lvl = base + inc * k
+                if f_within_pct(price, lvl, pct)
+                    found := true
+    found
+
+round_within = (rz_use_round and (
+     f_round_within(close, round_inc_primary_usd,   round_bands_each_side, rz_proximity_pct) or
+     f_round_within(close, round_inc_secondary_usd, round_bands_each_side, rz_proximity_pct)))
+
+// wt_dc_zone proxy (BB %B 4h)
+wt_dc_zone = bb_pct_b_4h >= 0.85 ? "TOP" :
+     bb_pct_b_4h <= 0.15 ? "BOTTOM" : "BASELINE"
+wt_dc_active = rz_use_wt_dc and (wt_dc_zone == "BASELINE" or wt_dc_zone == "TOP" or wt_dc_zone == "BOTTOM")
+
+red_zone_active = (fib_count_within > 0) or round_within or wt_dc_active
+
+// ──────────────────── WT-AGAINST COUNT (per-TF wt1<wt2 = bear / bull) ──────────────
+f_wt_against_long(w1, w2) => w1 < w2
+f_wt_against_short(w1, w2) => w1 > w2
+
+wt_against_long_count = (f_wt_against_long(w1_3m,  w2_3m)  ? 1 : 0)
+                      + (f_wt_against_long(w1_15m, w2_15m) ? 1 : 0)
+                      + (f_wt_against_long(w1_1h,  w2_1h)  ? 1 : 0)
+                      + (f_wt_against_long(w1_4h,  w2_4h)  ? 1 : 0)
+                      + (f_wt_against_long(w1_D,   w2_D)   ? 1 : 0)
+wt_against_short_count = (f_wt_against_short(w1_3m,  w2_3m)  ? 1 : 0)
+                       + (f_wt_against_short(w1_15m, w2_15m) ? 1 : 0)
+                       + (f_wt_against_short(w1_1h,  w2_1h)  ? 1 : 0)
+                       + (f_wt_against_short(w1_4h,  w2_4h)  ? 1 : 0)
+                       + (f_wt_against_short(w1_D,   w2_D)   ? 1 : 0)
+
+// ───────────── ENTRY DECISION (should_enter_btc_long / _short) ─────
+// Mirror of btc_loop.py:should_enter_btc_long/short (2026-04-27 RZ-as-boost):
+//   1. opposing-divergence veto (if BTC_DIVERGENCE_BLOCK_AGAINST and ENABLED)
+//   2. RZ branch:
+//      - rz_as_boost_enabled=true  → RZ does NOT gate; instead softens
+//        eff_min_tfs by rz_soften_accel_by while red_zone_active
+//      - rz_as_boost_enabled=false → legacy: RZ gates if entry_require_rz
+//   3. accel.side = bull/bear and aligned_tfs >= eff_min_tfs
+// soften applies symmetrically to both sides.
+soften_active     = rz_as_boost_enabled and red_zone_active ? rz_soften_accel_by : 0
+eff_min_tfs_long  = math.max(1, accel_ramp_min_tfs - soften_active)
+eff_min_tfs_short = math.max(1, accel_ramp_min_tfs - soften_active)
+
+f_can_enter_long() =>
+    if not btc_dedicated_enabled
+        false
+    else
+        block_div = divergence_block_against and divergence_enabled and bear_inds_aligned >= divergence_bear_min_inds
+        // RZ as boost (new) vs RZ as gate (legacy)
+        rz_ok = rz_as_boost_enabled or (not entry_require_rz) or red_zone_active
+        accel_ok = (not entry_require_accel_ramp) or (accel_side == "bull" and bull_aligned_tfs >= eff_min_tfs_long)
+        not block_div and rz_ok and accel_ok
+
+f_can_enter_short() =>
+    if not btc_dedicated_enabled
+        false
+    else
+        block_div = divergence_block_against and divergence_enabled and bull_inds_aligned >= divergence_bull_min_inds
+        rz_ok = rz_as_boost_enabled or (not entry_require_rz) or red_zone_active
+        accel_ok = (not entry_require_accel_ramp) or (accel_side == "bear" and bear_aligned_tfs >= eff_min_tfs_short)
+        not block_div and rz_ok and accel_ok
+
+want_long  = f_can_enter_long()
+want_short = f_can_enter_short()
+
+// ─────────────── STATE: cooldown + reentry tracking ────────────────
+var int    last_exit_bar    = -100000
+var string last_exit_side   = "NONE"
+var float  last_exit_price  = 0.0
+var int    entry_bar        = na
+var string entry_type       = "BOUNCE"     // BOUNCE | BREAKOUT — set on every entry
+
+bars_since_exit = bar_index - last_exit_bar
+
+// Reentry gate: same-side reentry between MIN_GAP and MAX_AGE bars,
+// requires red_zone + same-side entry trigger still satisfied (Path B).
+reentry_window_open = reentry_enabled and last_exit_side != "NONE" and bars_since_exit >= reentry_min_gap_bars and bars_since_exit <= reentry_max_age_bars
+reentry_rz_ok       = not reentry_require_rz_bounce or red_zone_active
+want_reenter_long   = reentry_window_open and reentry_rz_ok and last_exit_side == "LONG"  and want_long
+want_reenter_short  = reentry_window_open and reentry_rz_ok and last_exit_side == "SHORT" and want_short
+
+// ─────── BREAKOUT detection (DC-channel close-cross + accel) ───────
+opp_bear_div_block = breakout_block_opposing_div and divergence_enabled and bear_inds_aligned >= divergence_bear_min_inds
+opp_bull_div_block = breakout_block_opposing_div and divergence_enabled and bull_inds_aligned >= divergence_bull_min_inds
+
+// HTF alignment count (1h / 4h / D wt1 vs wt2). Mirrors btc_loop.detect_btc_breakout
+// htf_long/short_aligned_tfs parameters added in btc_loop.py 2026-04-27.
+htf_long_aligned_tfs  = (w1_1h > w2_1h ? 1 : 0) + (w1_4h > w2_4h ? 1 : 0) + (w1_D > w2_D ? 1 : 0)
+htf_short_aligned_tfs = (w1_1h < w2_1h ? 1 : 0) + (w1_4h < w2_4h ? 1 : 0) + (w1_D < w2_D ? 1 : 0)
+htf_long_ok  = (not breakout_require_htf_aligned) or htf_long_aligned_tfs  >= breakout_htf_min_aligned
+htf_short_ok = (not breakout_require_htf_aligned) or htf_short_aligned_tfs >= breakout_htf_min_aligned
+
+bk_long  = breakout_enabled and btc_dedicated_enabled and dc_high_3m_prev > 0 and close > dc_high_3m_prev and bull_aligned_tfs >= breakout_accel_min_tfs and accel_side == "bull" and not opp_bear_div_block and htf_long_ok
+bk_short = breakout_enabled and btc_dedicated_enabled and dc_low_3m_prev  > 0 and close < dc_low_3m_prev  and bear_aligned_tfs >= breakout_accel_min_tfs and accel_side == "bear" and not opp_bull_div_block and htf_short_ok
+
+// ─────── FOLLOW-THROUGH reentry (price moved past last exit) ───────
+pct_past_exit = last_exit_price > 0 ? (close - last_exit_price) / last_exit_price * 100.0 : 0.0
+ft_long  = follow_through_reentry_enabled and last_exit_side == "LONG"  and pct_past_exit >=  follow_through_min_move_pct and accel_side == "bull" and bull_aligned_tfs >= 1
+ft_short = follow_through_reentry_enabled and last_exit_side == "SHORT" and pct_past_exit <= -follow_through_min_move_pct and accel_side == "bear" and bear_aligned_tfs >= 1
+
+// Cooldown branch: BREAKOUT entries use shorter cooldown than BOUNCE.
+last_was_breakout = entry_type == "BREAKOUT"
+active_cooldown_bars = last_was_breakout ? breakout_cooldown_bars : cooldown_bars
+cooldown_ok = bars_since_exit >= active_cooldown_bars
+flat        = strategy.position_size == 0
+
+// ───────────────────── ORDERS — ENTRIES ────────────────────────────
+// Order matches v8_quick_engine FLAT branch:
+//   1. BREAKOUT (DC close-cross)  → entry_type=BREAKOUT
+//   2. FOLLOW-THROUGH reentry      → entry_type=BREAKOUT (treated as breakout-class)
+//   3. BOUNCE reentry (RZ + accel) → entry_type=BOUNCE
+//   4. PRIMARY BOUNCE              → entry_type=BOUNCE
+if flat and (cooldown_ok or want_reenter_long or want_reenter_short or bk_long or bk_short or ft_long or ft_short) and barstate.isconfirmed
+    if bk_long
+        strategy.entry("L", strategy.long, comment = "BREAKOUT_L")
+        entry_bar  := bar_index
+        entry_type := "BREAKOUT"
+    else if bk_short
+        strategy.entry("S", strategy.short, comment = "BREAKOUT_S")
+        entry_bar  := bar_index
+        entry_type := "BREAKOUT"
+    else if ft_long
+        strategy.entry("L", strategy.long, comment = "FT_REENTRY_L")
+        entry_bar  := bar_index
+        entry_type := "BREAKOUT"
+    else if ft_short
+        strategy.entry("S", strategy.short, comment = "FT_REENTRY_S")
+        entry_bar  := bar_index
+        entry_type := "BREAKOUT"
+    else if want_reenter_long
+        strategy.entry("L", strategy.long, comment = "REENTRY_L")
+        entry_bar  := bar_index
+        entry_type := "BOUNCE"
+    else if want_reenter_short
+        strategy.entry("S", strategy.short, comment = "REENTRY_S")
+        entry_bar  := bar_index
+        entry_type := "BOUNCE"
+    else if want_long
+        strategy.entry("L", strategy.long, comment = "PRIMARY_L")
+        entry_bar  := bar_index
+        entry_type := "BOUNCE"
+    else if want_short
+        strategy.entry("S", strategy.short, comment = "PRIMARY_S")
+        entry_bar  := bar_index
+        entry_type := "BOUNCE"
+
+// ──────────────── EXIT DECISION (should_exit_btc, Path B) ──────────
+// 1. WT-against count >= MIN_TFS
+// 2. accel reversal (LONG and side==bear / SHORT and side==bull) if BTC_INTRABAR_REVERSAL_EXIT
+// 3. opposing divergence (if BTC_DIVERGENCE_EXIT_AGAINST)
+// 4. hard-loss-pct ALWAYS exits
+// MIN_HOLD_BARS suppresses non-panic exits.
+in_long  = strategy.position_size > 0
+in_short = strategy.position_size < 0
+age_bars = bar_index - (na(entry_bar) ? bar_index : entry_bar)
+
+// PnL pct vs avg entry (matches btc_loop sym_pnl)
+pnl_pct = in_long  ? (close - strategy.position_avg_price) / strategy.position_avg_price * 100.0 :
+          in_short ? (strategy.position_avg_price - close) / strategy.position_avg_price * 100.0 : 0.0
+
+// is_breakout_pos = current open position was opened as BREAKOUT
+is_breakout_pos = entry_type == "BREAKOUT"
+
+// Per-position panic floor + min-hold (BREAKOUT tighter)
+panic_floor_pct = is_breakout_pos ? breakout_hard_loss_pct : hard_loss_pct
+min_hold_active = is_breakout_pos ? breakout_min_hold_bars : min_hold_bars
+
+panic_long  = in_long  and pnl_pct <= panic_floor_pct
+panic_short = in_short and pnl_pct <= panic_floor_pct
+
+// BOUNCE exit triggers (existing)
+exit_wt_long_b      = in_long  and wt_against_long_count  >= tech_exit_wt_min_tfs
+exit_wt_short_b     = in_short and wt_against_short_count >= tech_exit_wt_min_tfs
+exit_accel_long_b   = in_long  and intrabar_reversal_exit and accel_side == "bear"
+exit_accel_short_b  = in_short and intrabar_reversal_exit and accel_side == "bull"
+exit_div_long_b     = in_long  and divergence_exit_against and bear_inds_aligned >= divergence_bear_min_inds
+exit_div_short_b    = in_short and divergence_exit_against and bull_inds_aligned >= divergence_bull_min_inds
+
+// BREAKOUT exit triggers (tighter — single 3m WT flip OR DC4 breach)
+wt_3m_against_long  = in_long  and w1_3m < w2_3m
+wt_3m_against_short = in_short and w1_3m > w2_3m
+dc_low4_breach_long  = in_long  and dc_low4_3m_prev  > 0 and close < dc_low4_3m_prev
+dc_high4_breach_short = in_short and dc_high4_3m_prev > 0 and close > dc_high4_3m_prev
+
+exit_wt_long_k    = is_breakout_pos and wt_3m_against_long
+exit_wt_short_k   = is_breakout_pos and wt_3m_against_short
+exit_dc_long_k    = is_breakout_pos and dc_low4_breach_long
+exit_dc_short_k   = is_breakout_pos and dc_high4_breach_short
+exit_accel_long_k  = is_breakout_pos and in_long  and accel_side == "bear"
+exit_accel_short_k = is_breakout_pos and in_short and accel_side == "bull"
+
+// Branch by entry_type
+want_tech_exit_long  = is_breakout_pos ?
+     (exit_wt_long_k  or exit_dc_long_k  or exit_accel_long_k) :
+     (exit_wt_long_b  or exit_accel_long_b  or exit_div_long_b)
+want_tech_exit_short = is_breakout_pos ?
+     (exit_wt_short_k or exit_dc_short_k or exit_accel_short_k) :
+     (exit_wt_short_b or exit_accel_short_b or exit_div_short_b)
+
+// Min-hold suppresses non-panic exits
+min_hold_pass = age_bars >= min_hold_active
+
+do_exit_long  = panic_long  or (min_hold_pass and want_tech_exit_long)
+do_exit_short = panic_short or (min_hold_pass and want_tech_exit_short)
+
+// Reverse-on-exit gates — opposite-side breakout setup must fire on this same bar.
+// Optional independent HTF requirement (reverse_require_htf_aligned). bk_long/bk_short
+// already encode breakout_require_htf_aligned; if reverse_require_htf_aligned is on
+// without breakout_require_htf_aligned, we still demand htf_long_ok / htf_short_ok.
+reverse_long_gate  = bk_long  and ((not reverse_require_htf_aligned) or htf_long_aligned_tfs  >= breakout_htf_min_aligned)
+reverse_short_gate = bk_short and ((not reverse_require_htf_aligned) or htf_short_aligned_tfs >= breakout_htf_min_aligned)
+
+var bool just_reversed_to_long  = false
+var bool just_reversed_to_short = false
+just_reversed_to_long  := false
+just_reversed_to_short := false
+
+if barstate.isconfirmed
+    if do_exit_long
+        reason = panic_long ? (is_breakout_pos ? "BK_HARD_LOSS"  : "HARD_LOSS_USD") :
+             is_breakout_pos ?
+                 (exit_dc_long_k ? "BK_DC_LOW4" : exit_wt_long_k ? "BK_WT_3M_FLIP" : "BK_ACCEL_REV") :
+                 (exit_wt_long_b ? "WT_AGAINST" : exit_accel_long_b ? "ACCEL_REV" : "BEAR_DIV")
+        strategy.close("L", comment = reason)
+        last_exit_bar   := bar_index
+        last_exit_side  := "LONG"
+        last_exit_price := close
+        // Reverse-on-exit: opposite-side breakout setup firing same bar → flip immediately.
+        if reverse_on_exit_enabled and reverse_short_gate
+            strategy.entry("S", strategy.short, comment = "REVERSE_S")
+            entry_bar  := bar_index
+            entry_type := "BREAKOUT"
+            just_reversed_to_short := true
+    if do_exit_short
+        reason = panic_short ? (is_breakout_pos ? "BK_HARD_LOSS"  : "HARD_LOSS_USD") :
+             is_breakout_pos ?
+                 (exit_dc_short_k ? "BK_DC_HIGH4" : exit_wt_short_k ? "BK_WT_3M_FLIP" : "BK_ACCEL_REV") :
+                 (exit_wt_short_b ? "WT_AGAINST" : exit_accel_short_b ? "ACCEL_REV" : "BULL_DIV")
+        strategy.close("S", comment = reason)
+        last_exit_bar   := bar_index
+        last_exit_side  := "SHORT"
+        last_exit_price := close
+        if reverse_on_exit_enabled and reverse_long_gate
+            strategy.entry("L", strategy.long, comment = "REVERSE_L")
+            entry_bar  := bar_index
+            entry_type := "BREAKOUT"
+            just_reversed_to_long := true
+
+// Reentry-window expiry → reset state so we don't reenter forever
+if last_exit_side != "NONE" and bars_since_exit > reentry_max_age_bars
+    last_exit_side := "NONE"
+
+// ───────────────────────── VISUALS ─────────────────────────────────
+bgcolor(tint_rz and red_zone_active and flat       ? color.new(color.yellow, 92) : na, title="RZ_FLAT")
+bgcolor(tint_rz and red_zone_active and not flat   ? color.new(color.aqua,   92) : na, title="RZ_INPOS")
+
+plotshape(want_long  and flat and cooldown_ok, "LONG signal",  shape.triangleup,   location.belowbar, color.new(color.lime, 0), size=size.tiny)
+plotshape(want_short and flat and cooldown_ok, "SHORT signal", shape.triangledown, location.abovebar, color.new(color.red,  0), size=size.tiny)
+
+// Breakout + follow-through markers
+plotshape(bk_long  and flat, "BK_L",  shape.diamond, location.abovebar, color.new(color.green,  0), size=size.small,  text="BK_L",  textcolor=color.white)
+plotshape(bk_short and flat, "BK_S",  shape.diamond, location.belowbar, color.new(color.red,    0), size=size.small,  text="BK_S",  textcolor=color.white)
+plotshape(ft_long  and flat, "FT_L",  shape.cross,   location.abovebar, color.new(color.lime,   0), size=size.small,  text="FT_L",  textcolor=color.white)
+plotshape(ft_short and flat, "FT_S",  shape.cross,   location.belowbar, color.new(color.maroon, 0), size=size.small,  text="FT_S",  textcolor=color.white)
+// Reverse-on-exit markers (yellow X)
+plotshape(just_reversed_to_long,  "Reverse to LONG",  shape.xcross, location.belowbar, color=color.yellow, size=size.small)
+plotshape(just_reversed_to_short, "Reverse to SHORT", shape.xcross, location.abovebar, color=color.yellow, size=size.small)
+
+plot(plot_diags ? bull_aligned_tfs : na, "accel_bull_aligned_tfs", color=color.new(color.lime, 0), display=display.data_window)
+plot(plot_diags ? bear_aligned_tfs : na, "accel_bear_aligned_tfs", color=color.new(color.red,  0), display=display.data_window)
+plot(plot_diags ? bull_inds_aligned : na, "bull_inds_aligned",     color=color.new(color.green, 0), display=display.data_window)
+plot(plot_diags ? bear_inds_aligned : na, "bear_inds_aligned",     color=color.new(color.maroon, 0), display=display.data_window)
+plot(plot_diags ? wt_against_long_count  : na, "wt_against_long_count",  color=color.new(color.purple, 0), display=display.data_window)
+plot(plot_diags ? wt_against_short_count : na, "wt_against_short_count", color=color.new(color.teal,   0), display=display.data_window)
+plot(plot_diags ? hard_loss_pct          : na, "hard_loss_pct(%)",       color=color.new(color.fuchsia,0), display=display.data_window)
+plot(plot_diags ? bb_pct_b_4h            : na, "bb_pct_b_4h",            color=color.new(color.orange, 0), display=display.data_window)
+
+// Stats table on last bar — table + helper at TOP LEVEL (Pine v6 forbids
+// function definitions inside conditional blocks)
+var table tbl = table.new(position.top_right, 2, 13, frame_color=color.gray, border_width=1)
+
+f_row(t, r, k, v) =>
+    table.cell(t, 0, r, k, text_color=color.white,  bgcolor=color.new(color.black, 70), text_size=size.tiny)
+    table.cell(t, 1, r, v, text_color=color.yellow, bgcolor=color.new(color.black, 70), text_size=size.tiny)
+
+if barstate.islast
+    f_row(tbl, 0,  "RZ active",      red_zone_active ? "YES" : "no")
+    f_row(tbl, 1,  "fib hits",       str.tostring(fib_count_within))
+    f_row(tbl, 2,  "round within",   round_within ? "YES" : "no")
+    f_row(tbl, 3,  "wt_dc_zone",     wt_dc_zone)
+    f_row(tbl, 4,  "accel_side",     accel_side)
+    f_row(tbl, 5,  "bull/bear TFs",  str.tostring(bull_aligned_tfs) + "/" + str.tostring(bear_aligned_tfs))
+    f_row(tbl, 6,  "div bull/bear",  str.tostring(bull_inds_aligned) + "/" + str.tostring(bear_inds_aligned))
+    f_row(tbl, 7,  "wt_against L/S", str.tostring(wt_against_long_count) + "/" + str.tostring(wt_against_short_count))
+    f_row(tbl, 8,  "hard_loss%",     str.tostring(hard_loss_pct, "#.###"))
+    f_row(tbl, 9,  "BK loss%",       str.tostring(breakout_hard_loss_pct, "#.###"))
+    f_row(tbl, 10, "entry_type",     flat ? ("last:" + entry_type) : ("now:" + entry_type))
+    f_row(tbl, 11, "htf L/S aligned", str.tostring(htf_long_aligned_tfs) + "/" + str.tostring(htf_short_aligned_tfs))
+    f_row(tbl, 12, "eff_min_tfs L/S", str.tostring(eff_min_tfs_long) + "/" + str.tostring(eff_min_tfs_short) + (soften_active > 0 ? " (RZ-boost -" + str.tostring(soften_active) + ")" : ""))
+
+// =====================================================================
+// MAPPING — Pine ↔ Python source
+// =====================================================================
+// Pine function / block          Python source (btc_loop.py / v8_quick_engine.py)
+// f_wt(src)                       LazyBear WT(10,21) — same params as live ez_indicators
+// f_tf_features() per TF          v8_quick_engine.py:2543-2557 wt_velocity_*, wt1/wt2/rsi/mfi
+// bull_*/bear_* per-TF            btc_loop.py:compute_accel_ramp() lines 89-130
+// bull_aligned_tfs / bear_*       compute_accel_ramp() returns bull_aligned_tfs / bear_aligned_tfs
+// f_div_pivot_native(...)         btc_loop.py:detect_divergence_at() rewritten 2026-04-27
+//                                   PIVOT-BASED: window min/max + indicator at that index +
+//                                   strict mode (pivot must be in latter half of window).
+//                                   Random-noise fire rate dropped 50%→1% vs old endpoint detector.
+// f_tf_divs(lb)                   computes WT/RSI/MFI bull+bear divs per TF inside request.security
+//                                   so each TF uses its native bar history (not chart-TF resampled).
+// divergence_lb_3m/15m/1h/4h/d    per-TF lookback (default 5/10/20/20/10).
+// divergence_min_tf               minimum TF for any div to count toward bull_inds_aligned/bear_*.
+//                                   Default "1h" — engine A/B picked it (sharpe 0.445 vs 0.415 on D).
+// bull_d_persist / bear_d_persist when MIN_TF=D, require N consecutive D-div bars before count.
+// {wt,rsi,mfi}_{bull,bear}_any    btc_loop.py:aggregate_multi_indicator_divergence() lines 235-295
+//                                   filtered by tf_*_ok (TF index ≥ min_tf_idx).
+// bull_inds_aligned / bear_*      DivergenceState.bull_inds_aligned / bear_inds_aligned
+//                                   (zeroed when D-confirmation pending and MIN_TF=D)
+// f_fib_hits()                    btc_loop.py:compute_fib_levels() + build_red_zone_state()
+// f_round_within()                btc_loop.py:compute_round_levels() + is_within_proximity()
+// wt_dc_zone (BB %B 4h proxy)     v8_quick_engine.py:2683-2689 (matches engine's proxy)
+// red_zone_active                 btc_loop.py:build_red_zone_state().active lines 298-358
+// f_can_enter_long / _short       btc_loop.py:should_enter_btc_long / _short lines 364-440
+// rz_as_boost_enabled             btc_loop.py:should_enter_btc_long line 394 (cfg.BTC_RZ_AS_BOOST_ENABLED)
+//                                   when true (default), RZ no longer gates entries; instead it
+//                                   softens accel_ramp_min_tfs by rz_soften_accel_by while
+//                                   red_zone_active. RZ becomes a permissiveness bonus rather
+//                                   than a binary filter (which was always-on at default proximity).
+// rz_soften_accel_by              btc_loop.py:should_enter_btc_long line 395 (cfg.BTC_RZ_SOFTEN_ACCEL_BY)
+//                                   number of TFs subtracted from accel_ramp_min_tfs when
+//                                   RZ is active and rz_as_boost_enabled=true (e.g. 3 → 2).
+// eff_min_tfs_long / _short       max(1, accel_ramp_min_tfs - soften_active) — used in
+//                                   f_can_enter_long / _short instead of raw accel_ramp_min_tfs.
+// reentry_window_open + want_re*  btc_loop.py:should_reenter_btc lines 461-502
+// hard_loss_pct                   v8_quick_engine.py:2596-2603  =  -USD/(own*lev)*100
+// exit_wt_*                       btc_loop.py:should_exit_btc WT_AGAINST_NOF5 lines 442-445
+// exit_accel_*                    btc_loop.py:should_exit_btc ACCEL_REVERSAL lines 446-451
+// exit_div_*                      btc_loop.py:should_exit_btc BEAR/BULL_DIV_EXIT lines 452-457
+// panic_*                         btc_loop.py:should_exit_btc HARD_LOSS_USD_FLOOR lines 434-436
+// min_hold_pass                   v8_quick_engine.py:2772 min-hold gate (non-panic suppressed)
+// last_exit_bar / last_exit_side  v8_quick_engine.py:2628-2629 + 2780-2784
+// last_exit_price                 v8_quick_engine.py FLAT branch — used by FT-reentry pct_past_exit
+// dc_high_3m_prev / dc_low_3m_prev native ta.highest(high,20)[1] / ta.lowest(low,20)[1]
+// dc_high4_3m_prev / dc_low4_3m_prev native ta.highest(high,4)[1]  / ta.lowest(low,4)[1]
+// bk_long / bk_short              btc_loop.py:detect_btc_breakout lines 500-546
+//                                   (now AND htf_long_ok / htf_short_ok per
+//                                    BTC_BREAKOUT_REQUIRE_HTF_ALIGNED + _HTF_MIN_ALIGNED)
+// htf_long_aligned_tfs            btc_loop.py:detect_btc_breakout htf_long_aligned_tfs param
+// htf_short_aligned_tfs           btc_loop.py:detect_btc_breakout htf_short_aligned_tfs param
+//                                   ((1h>2)+(4h>2)+(D>2) for long; mirrored for short)
+// just_reversed_to_long/short     btc_loop.py BTC_REVERSE_ON_EXIT_ENABLED — same-bar flip
+//                                   on opposite-side breakout setup, inserted into
+//                                   do_exit_long / do_exit_short blocks. Pine v6 allows
+//                                   strategy.close + strategy.entry on the opposite ID
+//                                   inside the same bar; tester records flip.
+// reverse_*_gate                  bk_long/bk_short AND independent reverse_require_htf_aligned
+// ft_long / ft_short              v8_quick_engine FLAT branch FOLLOW-THROUGH stage
+//                                   (price moved ≥ BTC_FOLLOW_THROUGH_MIN_MOVE_PCT past last_exit_price
+//                                    in same direction, accel still aligned 1+ TF)
+// entry_type (BOUNCE|BREAKOUT)    btc_loop.py:PositionRiskState.entry_type (line 84)
+// is_breakout_pos branching       btc_loop.py:should_exit_btc lines 449,464-478
+//                                 BREAKOUT: panic_floor=BK_HARD_LOSS_USD, single 3m WT flip,
+//                                 dc_low4 / dc_high4 breach, accel reversal, min_hold=3 bars.
+// active_cooldown_bars            BREAKOUT entries cool down with BTC_BREAKOUT_COOLDOWN_BARS
+//
+// CAVEATS (could not translate cleanly to Pine v6):
+//   1. Multi-account portfolio caps (BTC_TOTAL_NOTIONAL_USD_MAX, daily/weekly P&L floors,
+//      risk_gate_pre_entry) — Pine has only single-strategy state. Single-trade cap
+//      enforced via default_qty_value=90.
+//   2. OBV/CVD divergence — not in NPZ today, also not in this Pine (matches engine).
+//      Only WT/RSI/MFI counted (max 3 inds, so MIN_INDS=2 means 2-of-3).
+//   3. compute_accel_ramp's "tfs_evaluated" is fixed at 5 here (3m/15m/1h/4h/D). Live
+//      cfg.BTC_ACCEL_RAMP_TFS subset would require dynamic dispatch we can't do in v6.
+//   4. btc_loop module-level kill switch BTC_DEDICATED_ENABLED short-circuits decisions
+//      to FALSE; mirrored as a guard in f_can_enter_*.
+//   5. Reentry SIZE_MULT not implemented — Pine strategy.entry uses default_qty_value;
+//      multi-size entries would require multiple entry IDs.
+//   6. Path A (hedge) not portable — Pine cannot run a separate hedge symbol concurrent
+//      with the primary. Live engine routes Path A through Tier-2 only too.
+//   7. wt_dc_zone is the BB %B 4h proxy used by v8_quick_engine (line 2683-2689),
+//      NOT the full wt_dc_delta._run_redzone result used by live.
+// =====================================================================

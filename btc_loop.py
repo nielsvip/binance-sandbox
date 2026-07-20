@@ -551,6 +551,12 @@ def should_exit_btc(
     if risk_path == "hedge":
         if getattr(cfg, "BTC_HEDGE_NEVER_CLOSE_AT_LOSS", True) and position.current_pnl_pct < 0:
             return False, "HEDGE_PATH_NO_LOSS_CLOSE"
+    # BTC_TECH_EXIT_AT_ANY_PNL — wired 2026-07-01 (was defined but never read). Default True =
+    # current behavior: technical exits (WT/accel/div) fire at any P/L. If explicitly set False,
+    # HOLD those technical exits while underwater (no-loss on the technical path); the
+    # HARD_LOSS_USD_FLOOR above still fires as the emergency backstop. Makes the knob a testable A/B.
+    if (not getattr(cfg, "BTC_TECH_EXIT_AT_ANY_PNL", True)) and position.current_pnl_pct < 0:
+        return False, "TECH_EXIT_HELD_NOLOSS_underwater"
     if wt_against_count >= wt_against_min_tfs:
         return True, f"WT_AGAINST_{wt_against_count}OF5"
     if getattr(cfg, "BTC_INTRABAR_REVERSAL_EXIT", True):

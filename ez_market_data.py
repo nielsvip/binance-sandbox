@@ -468,10 +468,36 @@ class MarketDataEngine:
                 async with aiohttp.ClientSession(timeout=session_timeout) as session:
                     async with session.ws_connect(url, heartbeat=30, autoping=True, receive_timeout=60) as ws:
                         logger.info("🔌 WS Connected to Binance Stream")
-                        async for msg in ws:
+                        # 2026-07-02/03: data-liveness reconnect. A long-lived connection to fstream can be
+                        # SILENTLY throttled (non-whitelisted IP) — Binance stops sending markPrice@arr@1s DATA
+                        # frames but ping/pong keeps the socket alive, so the loop blocks / receive_timeout never
+                        # fires and prices freeze for hours with NO reconnect (observed 2026-07-03: connection
+                        # delivered data until 01:03:40 then went silent for 88s+ with no reconnect while a fresh
+                        # connect got 736 msgs in 2s). We must reconnect on time-since-last-DATA, NOT since-last-
+                        # frame: bound each receive at 10s AND force reconnect if no TEXT data for 20s (ping/pong
+                        # frames reset a frame-timeout but not this data-timeout). A fresh connection resumes
+                        # delivery immediately, so a ~20s reconnect cadence keeps prices flowing under throttle.
+                        _last_data = time.monotonic()
+                        while self.running:
+                            try:
+                                msg = await asyncio.wait_for(ws.receive(), timeout=10)
+                            except asyncio.TimeoutError:
+                                logger.warning("WS no frame for 10s — forcing reconnect")
+                                break
+                            if time.monotonic() - _last_data > 20:
+                                logger.warning("WS no DATA for 20s (silent throttle / pings only) — forcing reconnect")
+                                break
                             if msg.type == aiohttp.WSMsgType.TEXT:
+                                _last_data = time.monotonic()
                                 try:
                                     data = orjson.loads(msg.data)
+                                    # 2026-07-02: /market/stream?streams= is a COMBINED stream — Binance wraps
+                                    # every payload as {"stream": "...", "data": [ ... ]}. The old code checked
+                                    # isinstance(data, list) directly, so the dict envelope never matched and
+                                    # EVERY mark-price msg was silently dropped (all prices froze while WS logged
+                                    # "Connected"). Unwrap the envelope so the inner array is processed.
+                                    if isinstance(data, dict) and isinstance(data.get('data'), (list, dict)):
+                                        data = data['data']
                                     if isinstance(data, list):
                                         for p in data:
                                             sym = p.get('s')

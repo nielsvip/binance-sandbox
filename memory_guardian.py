@@ -51,6 +51,15 @@ SWAP_EMERGENCY_GB = 8.0  # 8GB swap = system is dying
 # NEVER KILL these — Terminal has Claude agents, browsers must stay open, Finder/system are essential
 NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari"}
 ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
+# Background language-server / indexer helpers that balloon unbounded while indexing this huge
+# repo (2026-06-03: language_server_macos_arm grew to 5.4GB → jetsam SIGKILLed live ez_manage
+# workers at only ~480MB RSS, far below their ceiling). These are NOT the editor UI — they hold
+# no unsaved documents and re-spawn on demand, so trimming one frees GBs with zero work lost.
+# The aggregate free_pct tiers below never catch this because macOS reports the rest of RAM as
+# reclaimable; a single runaway active process is invisible to that metric. Cap it per-process.
+RUNAWAY_INDEXER_PATTERNS = ["language_server_macos_arm"]
+RUNAWAY_INDEXER_RSS_CAP_MB = 3000  # SIGTERM an indexer above this; it re-spawns small
+COOLDOWN_INDEXER = 120  # min seconds between indexer trims
 # Trading scripts that run in iTerm2 (matched by process command line)
 TRADING_SCRIPT_PATTERNS = ["ez_manage", "ez_positions", "ez_prices", "ez_prices_ws", "ez_klines", "ez_mark_prices", "ez_share_ind", "ez_indicators", "ez_market_data", "ez_indicators_merger", "ez_crosses", "ez_rankings", "ez_news_scanner", "ez_copilot", "ez_backup", "ez_positions_watchdog", "trade_analytics", "pa.py", "tradier_manage", "tradier_positions", "tradier_prices", "tradier_indicators", "tradier_rankings"]
 # Backtest scripts — throttle/kill these FIRST before touching anything else
@@ -626,6 +635,46 @@ def show_status():
         print(f"  {app}{protected}")
 
 
+def trim_runaway_indexer(dry_run=False):
+    """SIGTERM any background language-server/indexer process whose RSS exceeds the cap.
+    Returns the number trimmed. Independent of the free_pct tiers — a single runaway active
+    process does not move the aggregate metric but still triggers jetsam against live workers."""
+    trimmed = 0
+    try:
+        result = subprocess.run(["ps", "-eo", "pid,rss,command"], capture_output=True, text=True, timeout=10)
+        for line in result.stdout.strip().split("\n")[1:]:
+            parts = line.strip().split(None, 2)
+            if len(parts) < 3:
+                continue
+            pid, rss_kb, cmd = int(parts[0]), int(parts[1]), parts[2]
+            if not any(pattern in cmd for pattern in RUNAWAY_INDEXER_PATTERNS):
+                continue
+            rss_mb = rss_kb / 1024
+            if rss_mb < RUNAWAY_INDEXER_RSS_CAP_MB:
+                continue
+            if dry_run:
+                print(f"[DRY RUN] Would trim runaway indexer PID {pid} ({rss_mb:.0f}MB > {RUNAWAY_INDEXER_RSS_CAP_MB}MB cap)")
+                trimmed += 1
+                continue
+            logger.warning(f"RUNAWAY INDEXER: PID {pid} at {rss_mb:.0f}MB > {RUNAWAY_INDEXER_RSS_CAP_MB}MB cap — SIGTERM (re-spawns small, no editor work lost)")
+            try:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(2)
+                try:
+                    os.kill(pid, 0)
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                trimmed += 1
+            except OSError as e:
+                logger.error(f"Failed to trim indexer PID {pid}: {e}")
+        if trimmed and not dry_run:
+            notify(f"Trimmed {trimmed} runaway indexer(s) >{RUNAWAY_INDEXER_RSS_CAP_MB}MB to protect live trading", "Indexer RSS Cap")
+    except Exception as e:
+        logger.error(f"trim_runaway_indexer failed: {e}")
+    return trimmed
+
+
 def run_daemon():
     """Main daemon loop with 3-tier escalation. Protects Terminal + browsers at all costs."""
     logger.info(f"Memory Guardian started. Tiers: {TIER1_THRESHOLD_PCT}%/{TIER2_THRESHOLD_PCT}%/{TIER3_THRESHOLD_PCT}% | Swap emergency: {SWAP_EMERGENCY_GB}GB")
@@ -635,6 +684,7 @@ def run_daemon():
     last_tier1_time = 0
     last_tier2_time = 0
     last_tier3_time = 0
+    last_indexer_time = 0
     backtests_paused = False
     while True:
         try:
@@ -642,6 +692,9 @@ def run_daemon():
             if not stats:
                 time.sleep(CHECK_INTERVAL_SECONDS)
                 continue
+            now_idx = time.time()
+            if (now_idx - last_indexer_time) >= COOLDOWN_INDEXER and trim_runaway_indexer():
+                last_indexer_time = now_idx
             pressure = get_memory_pressure_level()
             free_pct = stats["free_pct"]
             swap_gb = stats.get("swap_gb", 0)
@@ -754,6 +807,9 @@ if __name__ == "__main__":
                 print(f"  {mb:.0f}MB  PID {pid}  {extract_script_name(cmd) or cmd[:60]}")
         else:
             print("  No local backtests running")
+        print(f"\n--- Runaway indexer cap (>{RUNAWAY_INDEXER_RSS_CAP_MB}MB) ---")
+        if trim_runaway_indexer(dry_run=True) == 0:
+            print("  No runaway indexer above cap")
         print(f"\n--- Tier 1: Throttle backtests + kill non-essential apps ---")
         throttle_backtests(dry_run=True)
         tier1_restart_hog(dry_run=True)

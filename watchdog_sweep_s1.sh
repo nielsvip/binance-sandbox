@@ -28,7 +28,7 @@ TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
 PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 STATE=/home/niels/logs/sweep_next_mode  # contains "crypto" or "tradier" (which runs NEXT)
-MEM_GUARD_MB=18000  # refuse to launch if available RAM < this (each engine peaks ~10GB)
+MEM_GUARD_MB=6000   # 2026-06-12: live on S1 uses ~20GB; small-scope sweeps (4-sym crypto, 20-stock tradier, 2026-01-01) peak ~3-4GB not 10GB; 6GB floor allows them while guarding true pressure
 
 CORE4_CRYPTO=BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC
 CORE20_TRADIER=AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS
@@ -47,7 +47,8 @@ count_tradier_sweep() {
     ps aux | grep "[b]acktest_v8_sweep.*--mode tradier" | grep python | wc -l | tr -d '[:space:]'
 }
 count_crypto_promoter() {
-    ps aux | grep "[r]ate_filter_promoter.*--mode crypto" | grep python | wc -l | tr -d '[:space:]'
+    # 2026-06-03: match ANY rate_filter_promoter (now launched --mode both = crypto + tradier).
+    ps aux | grep "[r]ate_filter_promoter" | grep python | wc -l | tr -d '[:space:]'
 }
 
 count_coordinator() {
@@ -127,13 +128,14 @@ fi
 kill -9 $(ps aux | grep "[a]utonomous_search" | grep python | awk '{print $2}') 2>/dev/null
 kill -9 $(ps aux | grep "[c]anonical_crypto_50sym\|[c]anonical_tradier_100sym" | grep -E "bash|sh" | awk '{print $2}') 2>/dev/null
 
-# -- Part 4: rate_filter_promoter daemon (crypto mode) --
+# -- Part 4: rate_filter_promoter daemon (BOTH crypto + tradier — one daemon, gated promote into
+#    per_sym_active_config.json so STOCK winners get applied too, not just crypto) --
 NP=$(count_crypto_promoter)
 if [ "$NP" -lt 1 ]; then
-    echo "[$TS] rate_filter_promoter crypto dead -- relaunching" >> "$LOG"
+    echo "[$TS] rate_filter_promoter (both) dead -- relaunching" >> "$LOG"
     cd "$DIR"
-    nohup "$PYTHON" -u rate_filter_promoter.py --mode crypto --poll-s 30 \
-        > ~/logs/rate_filter_promoter_crypto.log 2>&1 < /dev/null & disown
+    nohup "$PYTHON" -u rate_filter_promoter.py --mode both --poll-s 30 \
+        > ~/logs/rate_filter_promoter_both.log 2>&1 < /dev/null & disown
     sleep 2
     echo "[$TS] post-relaunch rate_filter_promoter procs=$(count_crypto_promoter)" >> "$LOG"
 fi

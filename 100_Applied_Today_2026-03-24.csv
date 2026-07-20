@@ -1,0 +1,12 @@
+Change,Parameter,Old Value,New Value,Rationale,File
+REVERT BC_16,OPTIMAL_HOLD_BARS_15M,13,999,Ablation: -6.983 Sharpe (worst of 52). 0% symbols improved.,config.py
+REVERT BC_35,HTF1_CONF,False,True,Ablation: -1.680 Sharpe on crypto. 7% improved. (Stays OFF for tradier only.),config.py
+RAISE BC_112,ACCOUNT_TP_PCT,0.005 (0.5%),0.015 (1.5%),Ablation: -0.745 at 0.5%. Tournament 1.5% wins. Re-entry: need ≥0.6%.,config.py
+FIX,is_entry_action undefined,crashed all orders,replaced with is_augment,UnboundLocalError crashed every order execution,ez_manage.py:10767
+FIX,await on sync func,crashed sentiment,removed await,TypeError: dict can't be used in await,tradier_manage.py:8022
+FIX,is_hedge undefined,crashed all tradier orders,added definition,NameError in execute_now,tradier_manage.py:5410
+FIX,exits blocked by tradeable check,couldn't close positions,skip check for exits,Reduces/closes must always be allowed,tradier_manage.py:5182
+FIX,5 missing TradierConfig attrs,crashed queue processing,added defaults,"SYMBOL_PERF_ENABLED, OUTLIER_*, SLEEP_TIME",config_tradier.py
+FIX,stat -L symlink,watchdog killed indicators every 2min,follow symlinks,"stat returned symlink mtime, not target",run_with_watchdog_LINUX.sh
+FIX,news.html missing,/news returned 500,synced template,Template not deployed to server,templates/news.html
+FIX,analyze_blocked_trades undefined,trade_monitor crashed,moved function before main(),Function defined after __main__ call,trade_monitor_ai.py

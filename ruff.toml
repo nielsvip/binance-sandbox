@@ -1,0 +1,28 @@
+# Ruff — real errors only. No style, no type checking.
+[lint]
+select = [
+    "F",    # Pyflakes: undefined names, unused imports, redefined vars
+    "E9",   # Syntax errors, IO errors (always fatal)
+    "PLE",  # Pylint errors: real bugs only
+]
+ignore = [
+    "F401",  # unused import — too noisy in this codebase
+    "F811",  # redefinition of unused name — intentional in some places
+    "F841",  # local variable assigned but never used — too noisy
+]
+# Never check these
+exclude = [
+    "backups/**",
+    "klines_cache/**",
+    "klines_cache_gateway/**",
+    ".history/**",
+    "__pycache__/**",
+    "*.pyc",
+]
+
+[lint.per-file-ignores]
+# Ignore everything in these dirs
+"backups/*" = ["ALL"]
+
+[format]
+# Don't use ruff formatter — black is the formatter

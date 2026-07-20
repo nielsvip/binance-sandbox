@@ -1,0 +1,16 @@
+[Unit]
+Description=Backtest Orchestrator — Distributed backtest worker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/niels/binance
+ExecStart=/home/niels/.conda/envs/binance_env/bin/python /home/niels/binance/backtest_orchestrator.py --worker-only
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=append:/home/niels/logs/backtest_orchestrator.log
+StandardError=append:/home/niels/logs/backtest_orchestrator.log
+
+[Install]
+WantedBy=default.target

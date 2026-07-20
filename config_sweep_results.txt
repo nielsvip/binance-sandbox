@@ -1,0 +1,410 @@
+===================================================================================================================
+CONFIG TRADIER SWEEP — Exhaustive One-at-a-Time + 2D Parameter Sweep
+Date: 2026-04-08 05:49 UTC
+Symbols: MU, AAPL, TTD, FIVN, AMZN, MRVL, XOM, CVX, GLD, USO, NVDA, MSFT, ASTS
+Data: /Users/niels/Documents/binance/backtest_v8/indicators
+Range: 2024-01-01 to present | Bar step: every 2nd | Trading hours: 13:30-20:00 UTC
+Baseline: entry>=37, exit>=20, K-zone bonus=25, MFI exit=70/30, stoch exit=on, min_tf_against=2
+Total runs: 115
+===================================================================================================================
+
+===================================================================================================================
+ALL RESULTS SORTED BY WEEKLY SHARPE (BEST FIRST)
+===================================================================================================================
+Setting                                       Value  Trades      WR       PF   WkSharpe    vs_BL
+-------------------------------------------------------------------------------------------------------------------
+ENTRY_THRESHOLD                                  30   90336   49.3%    1.29x     11.22   +4.30
+ENTRY=30_EXIT=20                             e30x20   90336   49.3%    1.29x     11.22   +4.30
+K_ZONE_BONUS                                     20   23501   53.0%    1.73x     11.12   +4.20
+ENTRY=30_EXIT=25                             e30x25   83791   49.1%    1.31x     10.62   +3.70
+ENTRY=30_EXIT=30                             e30x30   75011   48.9%    1.35x     10.38   +3.46
+ENTRY=30_EXIT=15                             e30x15   95165   49.5%    1.26x     10.29   +3.36
+K_ZONE_BONUS                                     15   10940   58.8%    2.52x     10.26   +3.34
+ENTRY_THRESHOLD                                  43   17469   52.0%    1.74x      9.74   +2.82
+K_ZONE_BONUS                                     10    5497   64.9%    3.61x      9.61   +2.69
+ENTRY=45_EXIT=15                             e45x15   13626   53.6%    1.90x      9.58   +2.66
+ENTRY_THRESHOLD                                  45   12136   53.8%    2.00x      9.26   +2.34
+ENTRY=45_EXIT=20                             e45x20   12136   53.8%    2.00x      9.26   +2.34
+ENTRY=45_EXIT=25                             e45x25   10501   54.3%    2.12x      9.23   +2.31
+MFI_EXIT_ENABLED                              False   40433   48.3%    1.56x      8.77   +1.85
+ENTRY=40_EXIT=25                             e40x25   25219   50.0%    1.57x      8.74   +1.82
+ENTRY=45_EXIT=30                             e45x30    9115   54.8%    2.10x      8.66   +1.74
+K_ZONE_LONG_THRESHOLD                            50   53568   49.6%    1.34x      8.36   +1.44
+ENTRY_THRESHOLD                                  50    4539   59.4%    3.01x      8.36   +1.44
+ENTRY=40_EXIT=30                             e40x30   21592   49.7%    1.65x      8.35   +1.43
+ENTRY_THRESHOLD                                  40   28688   50.2%    1.49x      8.33   +1.41
+ENTRY=40_EXIT=20                             e40x20   28688   50.2%    1.49x      8.33   +1.41
+COOLDOWN_BARS                                     8   14349   50.5%    1.71x      8.22   +1.30
+COOLDOWN_BARS                                     4   22185   50.0%    1.54x      8.13   +1.21
+K_ZONE_SHORT_THRESHOLD                           85   27830   50.8%    1.47x      7.90   +0.98
+ENTRY_THRESHOLD                                  33   72011   48.8%    1.25x      7.77   +0.85
+K_ZONE_LONG_THRESHOLD                            45   50734   49.5%    1.33x      7.74   +0.82
+MFI_EXIT_LONG_THRESHOLD                          90   44314   49.2%    1.37x      7.71   +0.79
+MFI_EXIT_LONG_THRESHOLD                          85   44470   49.2%    1.34x      7.65   +0.73
+EXIT_THRESHOLD                                   25   40692   49.0%    1.36x      7.65   +0.73
+ENTRY=37_EXIT=25                             e37x25   40692   49.0%    1.36x      7.65   +0.73
+MFI_EXIT_LONG_THRESHOLD                          80   44683   49.2%    1.33x      7.53   +0.61
+MFI_EXIT_SHORT_THRESHOLD                         20   44078   49.1%    1.36x      7.44   +0.52
+MFI_EXIT_SHORT_THRESHOLD                         15   43326   48.9%    1.38x      7.43   +0.51
+MIN_EXIT_TF_AGAINST                               3   40020   47.5%    1.35x      7.40   +0.48
+EXIT_THRESHOLD                                   30   35148   48.6%    1.42x      7.38   +0.46
+ENTRY=37_EXIT=30                             e37x30   35148   48.6%    1.42x      7.38   +0.46
+EXIT_THRESHOLD                                   22   43652   49.1%    1.32x      7.38   +0.46
+K_ZONE_BONUS                                      5    3346   67.8%    4.44x      7.38   +0.46
+MFI_EXIT_SHORT_THRESHOLD                         10   42719   48.8%    1.40x      7.33   +0.41
+K_ZONE_LONG_THRESHOLD                            40   48078   49.4%    1.32x      7.32   +0.40
+K_ZONE_SHORT_THRESHOLD                           80   32493   50.2%    1.39x      7.30   +0.38
+ENTRY=40_EXIT=15                             e40x15   31386   50.3%    1.42x      7.29   +0.37
+EXIT_THRESHOLD                                   28   37507   48.8%    1.37x      7.29   +0.37
+MFI_EXIT_LONG_THRESHOLD                          75   44977   49.2%    1.31x      7.24   +0.32
+COOLDOWN_BARS                                    12   11397   50.5%    1.67x      7.12   +0.20
+MIN_EXIT_TF_AGAINST                               4   28796   44.8%    1.40x      7.12   +0.20
+K_ZONE_ENABLED                                False    2739   67.9%    3.87x      7.09   +0.17
+K_ZONE_BONUS                                      0    2739   67.9%    3.87x      7.09   +0.17
+K_ZONE_SHORT_THRESHOLD                           70   41174   49.7%    1.33x      7.05   +0.12
+MFI_EXIT_SHORT_THRESHOLD                         25   44694   49.1%    1.33x      7.02   +0.10
+K_ZONE_SHORT_THRESHOLD                           75   36924   49.9%    1.36x      7.00   +0.08
+MAX_HOLD_BARS                                    48   45384   49.3%    1.30x      6.94   +0.02
+MAX_HOLD_BARS                                    64   45381   49.3%    1.30x      6.93   +0.01
+K_ZONE_SHORT_THRESHOLD                           55   53159   49.0%    1.27x      6.93   +0.01
+BASELINE                                    default   45381   49.3%    1.30x      6.92   +0.00
+ENTRY_THRESHOLD                                  37   45381   49.3%    1.30x      6.92   +0.00
+EXIT_THRESHOLD                                   20   45381   49.3%    1.30x      6.92   +0.00
+MIN_HOLD_BARS                                     0   45381   49.3%    1.30x      6.92   +0.00
+COOLDOWN_BARS                                     0   45381   49.3%    1.30x      6.92   +0.00
+MAX_HOLD_BARS                                    80   45381   49.3%    1.30x      6.92   +0.00
+MAX_HOLD_BARS                                    96   45381   49.3%    1.30x      6.92   +0.00
+MAX_HOLD_BARS                                   128   45381   49.3%    1.30x      6.92   +0.00
+MAX_HOLD_BARS                                   192   45381   49.3%    1.30x      6.92   +0.00
+MAX_HOLD_BARS                                   384   45381   49.3%    1.30x      6.92   +0.00
+K_ZONE_ENABLED                                 True   45381   49.3%    1.30x      6.92   +0.00
+K_ZONE_LONG_THRESHOLD                            35   45381   49.3%    1.30x      6.92   +0.00
+K_ZONE_SHORT_THRESHOLD                           65   45381   49.3%    1.30x      6.92   +0.00
+K_ZONE_BONUS                                     25   45381   49.3%    1.30x      6.92   +0.00
+MFI_EXIT_ENABLED                               True   45381   49.3%    1.30x      6.92   +0.00
+MFI_EXIT_LONG_THRESHOLD                          70   45381   49.3%    1.30x      6.92   +0.00
+MFI_EXIT_SHORT_THRESHOLD                         30   45381   49.3%    1.30x      6.92   +0.00
+STOCH_EXIT_ENABLED                             True   45381   49.3%    1.30x      6.92   +0.00
+MIN_EXIT_TF_AGAINST                               2   45381   49.3%    1.30x      6.92   +0.00
+NOLOSS_MIN_PCT                                  0.0   45381   49.3%    1.30x      6.92   +0.00
+STOCH_EXIT_ENABLED                            False   45356   49.3%    1.30x      6.91   -0.01
+MIN_EXIT_TF_AGAINST                               0   45626   49.4%    1.30x      6.85   -0.07
+MIN_EXIT_TF_AGAINST                               1   45626   49.4%    1.30x      6.85   -0.07
+K_ZONE_SHORT_THRESHOLD                           60   49355   49.1%    1.28x      6.84   -0.08
+ENTRY=35_EXIT=30                             e35x30   47659   47.5%    1.31x      6.76   -0.16
+ENTRY=35_EXIT=25                             e35x25   54582   48.0%    1.27x      6.75   -0.17
+K_ZONE_SHORT_THRESHOLD                           50   57002   48.8%    1.25x      6.69   -0.23
+MFI_EXIT_LONG_THRESHOLD                          65   45850   49.3%    1.28x      6.69   -0.23
+COOLDOWN_BARS                                    24    7657   50.5%    1.73x      6.62   -0.30
+MFI_EXIT_SHORT_THRESHOLD                         35   46171   49.4%    1.28x      6.48   -0.44
+COOLDOWN_BARS                                    16    9894   51.3%    1.83x      6.47   -0.45
+EXIT_THRESHOLD                                   18   46881   49.3%    1.28x      6.41   -0.51
+MFI_EXIT_LONG_THRESHOLD                          60   46395   49.4%    1.26x      6.34   -0.58
+MFI_EXIT_SHORT_THRESHOLD                         40   46925   49.6%    1.26x      6.23   -0.69
+K_ZONE_LONG_THRESHOLD                            30   42811   49.1%    1.28x      6.22   -0.70
+ENTRY_THRESHOLD                                  35   59932   48.4%    1.22x      6.08   -0.84
+ENTRY=35_EXIT=20                             e35x20   59932   48.4%    1.22x      6.08   -0.84
+MFI_EXIT_SHORT_THRESHOLD                         45   47718   49.7%    1.24x      6.07   -0.85
+EXIT_THRESHOLD                                   15   48695   49.5%    1.26x      6.01   -0.91
+ENTRY=37_EXIT=15                             e37x15   48695   49.5%    1.26x      6.01   -0.91
+MFI_EXIT_LONG_THRESHOLD                          55   46964   49.4%    1.24x      5.98   -0.94
+MIN_HOLD_BARS                                     8   14160   52.6%    1.34x      5.52   -1.40
+MIN_HOLD_BARS                                     4   22046   51.3%    1.30x      5.40   -1.52
+K_ZONE_LONG_THRESHOLD                            25   40278   48.9%    1.25x      5.27   -1.65
+ENTRY=35_EXIT=15                             e35x15   63637   48.7%    1.19x      5.19   -1.74
+K_ZONE_LONG_THRESHOLD                            20   37813   48.9%    1.23x      4.85   -2.07
+MIN_HOLD_BARS                                    16    9759   53.9%    1.30x      4.75   -2.17
+K_ZONE_BONUS                                     30   67992   47.4%    1.14x      4.42   -2.50
+K_ZONE_LONG_THRESHOLD                            15   35349   48.8%    1.22x      4.37   -2.55
+MIN_EXIT_TF_AGAINST                               5   17246   47.8%    1.31x      4.36   -2.57
+MIN_HOLD_BARS                                    24    7605   53.1%    1.28x      4.30   -2.62
+MIN_HOLD_BARS                                    32    6722   52.8%    1.25x      3.85   -3.07
+K_ZONE_BONUS                                     40   75577   46.9%    1.09x      3.31   -3.61
+K_ZONE_BONUS                                     35   75547   46.9%    1.09x      3.27   -3.65
+MIN_HOLD_BARS                                    48    5289   52.7%    1.17x      2.47   -4.45
+NOLOSS_MIN_PCT                                  0.3    7690   82.8%    1.18x      1.87   -5.05
+NOLOSS_MIN_PCT                                  1.0    5227   69.8%    1.15x      1.87   -5.06
+NOLOSS_MIN_PCT                                  0.5    6563   78.4%    1.15x      1.86   -5.06
+NOLOSS_MIN_PCT                                  3.0    3993   56.5%    1.12x      1.47   -5.45
+NOLOSS_MIN_PCT                                  2.0    4329   60.1%    1.11x      1.44   -5.48
+NOLOSS_MIN_PCT                                  5.0    3756   53.2%    1.11x      1.39   -5.53
+
+===================================================================================================================
+RESULTS GROUPED BY PARAMETER
+===================================================================================================================
+
+BASELINE: 45381T, WR=49.3%, PF=1.30x, Sharpe=6.92
+
+--- ENTRY_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          30   90336   49.3%    1.29x     11.22   +4.30
+          33   72011   48.8%    1.25x      7.77   +0.85
+          35   59932   48.4%    1.22x      6.08   -0.84
+          37   45381   49.3%    1.30x      6.92   +0.00
+          40   28688   50.2%    1.49x      8.33   +1.41
+          43   17469   52.0%    1.74x      9.74   +2.82
+          45   12136   53.8%    2.00x      9.26   +2.34
+          50    4539   59.4%    3.01x      8.36   +1.44
+
+--- EXIT_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          15   48695   49.5%    1.26x      6.01   -0.91
+          18   46881   49.3%    1.28x      6.41   -0.51
+          20   45381   49.3%    1.30x      6.92   +0.00
+          22   43652   49.1%    1.32x      7.38   +0.46
+          25   40692   49.0%    1.36x      7.65   +0.73
+          28   37507   48.8%    1.37x      7.29   +0.37
+          30   35148   48.6%    1.42x      7.38   +0.46
+
+--- MIN_HOLD_BARS ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+           0   45381   49.3%    1.30x      6.92   +0.00
+           4   22046   51.3%    1.30x      5.40   -1.52
+           8   14160   52.6%    1.34x      5.52   -1.40
+          16    9759   53.9%    1.30x      4.75   -2.17
+          24    7605   53.1%    1.28x      4.30   -2.62
+          32    6722   52.8%    1.25x      3.85   -3.07
+          48    5289   52.7%    1.17x      2.47   -4.45
+
+--- COOLDOWN_BARS ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+           0   45381   49.3%    1.30x      6.92   +0.00
+           4   22185   50.0%    1.54x      8.13   +1.21
+           8   14349   50.5%    1.71x      8.22   +1.30
+          12   11397   50.5%    1.67x      7.12   +0.20
+          16    9894   51.3%    1.83x      6.47   -0.45
+          24    7657   50.5%    1.73x      6.62   -0.30
+
+--- MAX_HOLD_BARS ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          48   45384   49.3%    1.30x      6.94   +0.02
+          64   45381   49.3%    1.30x      6.93   +0.01
+          80   45381   49.3%    1.30x      6.92   +0.00
+          96   45381   49.3%    1.30x      6.92   +0.00
+         128   45381   49.3%    1.30x      6.92   +0.00
+         192   45381   49.3%    1.30x      6.92   +0.00
+         384   45381   49.3%    1.30x      6.92   +0.00
+
+--- K_ZONE_ENABLED ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+        True   45381   49.3%    1.30x      6.92   +0.00
+       False    2739   67.9%    3.87x      7.09   +0.17
+
+--- K_ZONE_LONG_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          15   35349   48.8%    1.22x      4.37   -2.55
+          20   37813   48.9%    1.23x      4.85   -2.07
+          25   40278   48.9%    1.25x      5.27   -1.65
+          30   42811   49.1%    1.28x      6.22   -0.70
+          35   45381   49.3%    1.30x      6.92   +0.00
+          40   48078   49.4%    1.32x      7.32   +0.40
+          45   50734   49.5%    1.33x      7.74   +0.82
+          50   53568   49.6%    1.34x      8.36   +1.44
+
+--- K_ZONE_SHORT_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          50   57002   48.8%    1.25x      6.69   -0.23
+          55   53159   49.0%    1.27x      6.93   +0.01
+          60   49355   49.1%    1.28x      6.84   -0.08
+          65   45381   49.3%    1.30x      6.92   +0.00
+          70   41174   49.7%    1.33x      7.05   +0.12
+          75   36924   49.9%    1.36x      7.00   +0.08
+          80   32493   50.2%    1.39x      7.30   +0.38
+          85   27830   50.8%    1.47x      7.90   +0.98
+
+--- K_ZONE_BONUS ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+           0    2739   67.9%    3.87x      7.09   +0.17
+           5    3346   67.8%    4.44x      7.38   +0.46
+          10    5497   64.9%    3.61x      9.61   +2.69
+          15   10940   58.8%    2.52x     10.26   +3.34
+          20   23501   53.0%    1.73x     11.12   +4.20
+          25   45381   49.3%    1.30x      6.92   +0.00
+          30   67992   47.4%    1.14x      4.42   -2.50
+          35   75547   46.9%    1.09x      3.27   -3.65
+          40   75577   46.9%    1.09x      3.31   -3.61
+
+--- MFI_EXIT_ENABLED ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+        True   45381   49.3%    1.30x      6.92   +0.00
+       False   40433   48.3%    1.56x      8.77   +1.85
+
+--- MFI_EXIT_LONG_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          55   46964   49.4%    1.24x      5.98   -0.94
+          60   46395   49.4%    1.26x      6.34   -0.58
+          65   45850   49.3%    1.28x      6.69   -0.23
+          70   45381   49.3%    1.30x      6.92   +0.00
+          75   44977   49.2%    1.31x      7.24   +0.32
+          80   44683   49.2%    1.33x      7.53   +0.61
+          85   44470   49.2%    1.34x      7.65   +0.73
+          90   44314   49.2%    1.37x      7.71   +0.79
+
+--- MFI_EXIT_SHORT_THRESHOLD ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+          10   42719   48.8%    1.40x      7.33   +0.41
+          15   43326   48.9%    1.38x      7.43   +0.51
+          20   44078   49.1%    1.36x      7.44   +0.52
+          25   44694   49.1%    1.33x      7.02   +0.10
+          30   45381   49.3%    1.30x      6.92   +0.00
+          35   46171   49.4%    1.28x      6.48   -0.44
+          40   46925   49.6%    1.26x      6.23   -0.69
+          45   47718   49.7%    1.24x      6.07   -0.85
+
+--- STOCH_EXIT_ENABLED ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+        True   45381   49.3%    1.30x      6.92   +0.00
+       False   45356   49.3%    1.30x      6.91   -0.01
+
+--- MIN_EXIT_TF_AGAINST ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+           0   45626   49.4%    1.30x      6.85   -0.07
+           1   45626   49.4%    1.30x      6.85   -0.07
+           2   45381   49.3%    1.30x      6.92   +0.00
+           3   40020   47.5%    1.35x      7.40   +0.48
+           4   28796   44.8%    1.40x      7.12   +0.20
+           5   17246   47.8%    1.31x      4.36   -2.57
+
+--- NOLOSS_MIN_PCT ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+         0.0   45381   49.3%    1.30x      6.92   +0.00
+         0.3    7690   82.8%    1.18x      1.87   -5.05
+         0.5    6563   78.4%    1.15x      1.86   -5.06
+         1.0    5227   69.8%    1.15x      1.87   -5.06
+         2.0    4329   60.1%    1.11x      1.44   -5.48
+         3.0    3993   56.5%    1.12x      1.47   -5.45
+         5.0    3756   53.2%    1.11x      1.39   -5.53
+
+--- ENTRY=30_EXIT=15 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e30x15   95165   49.5%    1.26x     10.29   +3.36
+
+--- ENTRY=30_EXIT=20 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e30x20   90336   49.3%    1.29x     11.22   +4.30
+
+--- ENTRY=30_EXIT=25 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e30x25   83791   49.1%    1.31x     10.62   +3.70
+
+--- ENTRY=30_EXIT=30 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e30x30   75011   48.9%    1.35x     10.38   +3.46
+
+--- ENTRY=35_EXIT=15 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e35x15   63637   48.7%    1.19x      5.19   -1.74
+
+--- ENTRY=35_EXIT=20 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e35x20   59932   48.4%    1.22x      6.08   -0.84
+
+--- ENTRY=35_EXIT=25 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e35x25   54582   48.0%    1.27x      6.75   -0.17
+
+--- ENTRY=35_EXIT=30 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e35x30   47659   47.5%    1.31x      6.76   -0.16
+
+--- ENTRY=37_EXIT=15 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e37x15   48695   49.5%    1.26x      6.01   -0.91
+
+--- ENTRY=37_EXIT=25 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e37x25   40692   49.0%    1.36x      7.65   +0.73
+
+--- ENTRY=37_EXIT=30 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e37x30   35148   48.6%    1.42x      7.38   +0.46
+
+--- ENTRY=40_EXIT=15 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e40x15   31386   50.3%    1.42x      7.29   +0.37
+
+--- ENTRY=40_EXIT=20 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e40x20   28688   50.2%    1.49x      8.33   +1.41
+
+--- ENTRY=40_EXIT=25 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e40x25   25219   50.0%    1.57x      8.74   +1.82
+
+--- ENTRY=40_EXIT=30 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e40x30   21592   49.7%    1.65x      8.35   +1.43
+
+--- ENTRY=45_EXIT=15 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e45x15   13626   53.6%    1.90x      9.58   +2.66
+
+--- ENTRY=45_EXIT=20 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e45x20   12136   53.8%    2.00x      9.26   +2.34
+
+--- ENTRY=45_EXIT=25 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e45x25   10501   54.3%    2.12x      9.23   +2.31
+
+--- ENTRY=45_EXIT=30 ---
+       Value  Trades      WR       PF   WkSharpe    vs_BL
+      e45x30    9115   54.8%    2.10x      8.66   +1.74
+
+===================================================================================================================
+TOP 20 IMPROVEMENTS OVER BASELINE
+===================================================================================================================
+  1. ENTRY_THRESHOLD                        =         30 | Sharpe=  11.22 ( +4.30) | WR=49.3% PF=1.29x 90336T
+  2. ENTRY=30_EXIT=20                       =     e30x20 | Sharpe=  11.22 ( +4.30) | WR=49.3% PF=1.29x 90336T
+  3. K_ZONE_BONUS                           =         20 | Sharpe=  11.12 ( +4.20) | WR=53.0% PF=1.73x 23501T
+  4. ENTRY=30_EXIT=25                       =     e30x25 | Sharpe=  10.62 ( +3.70) | WR=49.1% PF=1.31x 83791T
+  5. ENTRY=30_EXIT=30                       =     e30x30 | Sharpe=  10.38 ( +3.46) | WR=48.9% PF=1.35x 75011T
+  6. ENTRY=30_EXIT=15                       =     e30x15 | Sharpe=  10.29 ( +3.36) | WR=49.5% PF=1.26x 95165T
+  7. K_ZONE_BONUS                           =         15 | Sharpe=  10.26 ( +3.34) | WR=58.8% PF=2.52x 10940T
+  8. ENTRY_THRESHOLD                        =         43 | Sharpe=   9.74 ( +2.82) | WR=52.0% PF=1.74x 17469T
+  9. K_ZONE_BONUS                           =         10 | Sharpe=   9.61 ( +2.69) | WR=64.9% PF=3.61x 5497T
+ 10. ENTRY=45_EXIT=15                       =     e45x15 | Sharpe=   9.58 ( +2.66) | WR=53.6% PF=1.90x 13626T
+ 11. ENTRY_THRESHOLD                        =         45 | Sharpe=   9.26 ( +2.34) | WR=53.8% PF=2.00x 12136T
+ 12. ENTRY=45_EXIT=20                       =     e45x20 | Sharpe=   9.26 ( +2.34) | WR=53.8% PF=2.00x 12136T
+ 13. ENTRY=45_EXIT=25                       =     e45x25 | Sharpe=   9.23 ( +2.31) | WR=54.3% PF=2.12x 10501T
+ 14. MFI_EXIT_ENABLED                       =      False | Sharpe=   8.77 ( +1.85) | WR=48.3% PF=1.56x 40433T
+ 15. ENTRY=40_EXIT=25                       =     e40x25 | Sharpe=   8.74 ( +1.82) | WR=50.0% PF=1.57x 25219T
+ 16. ENTRY=45_EXIT=30                       =     e45x30 | Sharpe=   8.66 ( +1.74) | WR=54.8% PF=2.10x 9115T
+ 17. K_ZONE_LONG_THRESHOLD                  =         50 | Sharpe=   8.36 ( +1.44) | WR=49.6% PF=1.34x 53568T
+ 18. ENTRY_THRESHOLD                        =         50 | Sharpe=   8.36 ( +1.44) | WR=59.4% PF=3.01x 4539T
+ 19. ENTRY=40_EXIT=30                       =     e40x30 | Sharpe=   8.35 ( +1.43) | WR=49.7% PF=1.65x 21592T
+ 20. ENTRY_THRESHOLD                        =         40 | Sharpe=   8.33 ( +1.41) | WR=50.2% PF=1.49x 28688T
+
+===================================================================================================================
+BOTTOM 20 (WORST vs BASELINE)
+===================================================================================================================
+  1. MIN_HOLD_BARS                          =          8 | Sharpe=   5.52 ( -1.40) | WR=52.6% PF=1.34x 14160T
+  2. MIN_HOLD_BARS                          =          4 | Sharpe=   5.40 ( -1.52) | WR=51.3% PF=1.30x 22046T
+  3. K_ZONE_LONG_THRESHOLD                  =         25 | Sharpe=   5.27 ( -1.65) | WR=48.9% PF=1.25x 40278T
+  4. ENTRY=35_EXIT=15                       =     e35x15 | Sharpe=   5.19 ( -1.74) | WR=48.7% PF=1.19x 63637T
+  5. K_ZONE_LONG_THRESHOLD                  =         20 | Sharpe=   4.85 ( -2.07) | WR=48.9% PF=1.23x 37813T
+  6. MIN_HOLD_BARS                          =         16 | Sharpe=   4.75 ( -2.17) | WR=53.9% PF=1.30x 9759T
+  7. K_ZONE_BONUS                           =         30 | Sharpe=   4.42 ( -2.50) | WR=47.4% PF=1.14x 67992T
+  8. K_ZONE_LONG_THRESHOLD                  =         15 | Sharpe=   4.37 ( -2.55) | WR=48.8% PF=1.22x 35349T
+  9. MIN_EXIT_TF_AGAINST                    =          5 | Sharpe=   4.36 ( -2.57) | WR=47.8% PF=1.31x 17246T
+ 10. MIN_HOLD_BARS                          =         24 | Sharpe=   4.30 ( -2.62) | WR=53.1% PF=1.28x 7605T
+ 11. MIN_HOLD_BARS                          =         32 | Sharpe=   3.85 ( -3.07) | WR=52.8% PF=1.25x 6722T
+ 12. K_ZONE_BONUS                           =         40 | Sharpe=   3.31 ( -3.61) | WR=46.9% PF=1.09x 75577T
+ 13. K_ZONE_BONUS                           =         35 | Sharpe=   3.27 ( -3.65) | WR=46.9% PF=1.09x 75547T
+ 14. MIN_HOLD_BARS                          =         48 | Sharpe=   2.47 ( -4.45) | WR=52.7% PF=1.17x 5289T
+ 15. NOLOSS_MIN_PCT                         =        0.3 | Sharpe=   1.87 ( -5.05) | WR=82.8% PF=1.18x 7690T
+ 16. NOLOSS_MIN_PCT                         =        1.0 | Sharpe=   1.87 ( -5.06) | WR=69.8% PF=1.15x 5227T
+ 17. NOLOSS_MIN_PCT                         =        0.5 | Sharpe=   1.86 ( -5.06) | WR=78.4% PF=1.15x 6563T
+ 18. NOLOSS_MIN_PCT                         =        3.0 | Sharpe=   1.47 ( -5.45) | WR=56.5% PF=1.12x 3993T
+ 19. NOLOSS_MIN_PCT                         =        2.0 | Sharpe=   1.44 ( -5.48) | WR=60.1% PF=1.11x 4329T
+ 20. NOLOSS_MIN_PCT                         =        5.0 | Sharpe=   1.39 ( -5.53) | WR=53.2% PF=1.11x 3756T
+
+===================================================================================================================
+ENTRY x EXIT 2D MATRIX (Weekly Sharpe)
+===================================================================================================================
+              exit>=15     exit>=20     exit>=25     exit>=30   
+entry>=30       10.29    11.22    10.62    10.38
+entry>=35        5.19     6.08     6.75     6.76
+entry>=37        6.01     6.92     7.65     7.38
+entry>=40        7.29     8.33     8.74     8.35
+entry>=45        9.58     9.26     9.23     8.66

@@ -1,0 +1,7 @@
+Strategy,Entry TF,Confirm TF,Trades,WR%,Avg PnL%,Total PnL%,PF,Sharpe (pre-QA),Est. Corrected Sharpe,MaxDD%,Status
+structure_break 3m+15m confirm,3m,15m,11694,43.8,0.076,888.38,1.55,3.21,~0.3-1.0,-26.21,✅ APPLIED (BC_100)
+structure_break 3m+15m+1m wide,3m,15m+1m,7230,42.1,0.069,496.93,1.48,2.66,~0.3-0.8,-18.11,Not applied (1m adds nothing)
+structure_break 3m only,3m,none,27156,40.6,0.037,1017.45,1.22,1.49,~0.1-0.5,-76.38,Not applied (too many false signals)
+combined 3m+15m confirm,3m,15m,12611,42.9,0.016,200.38,1.13,0.88,~0.1,-38.57,Not applied (combined exit WORSE)
+k_crossover 3m+15m confirm,3m,15m,12434,40.2,-0.021,-255.63,0.87,-1.04,negative,-259.47,❌ REJECTED (PF<1)
+k_crossover 3m only,3m,none,29934,34.7,-0.074,-2223.17,0.61,-3.62,negative,-2224.74,❌ REJECTED

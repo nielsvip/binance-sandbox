@@ -21,7 +21,7 @@ fi
 ET_TIME=$(TZ="America/New_York" date +"%H:%M")
 ET_HOUR=$(TZ="America/New_York" date +"%H")
 ET_MIN=$(TZ="America/New_York" date +"%M")
-ET_MINS=$((ET_HOUR * 60 + ET_MIN))
+ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
 
 # Only active 9:15 ET - 16:15 ET (market hours with buffer)
 if [ "$ET_MINS" -lt 555 ] || [ "$ET_MINS" -gt 975 ]; then

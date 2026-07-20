@@ -621,6 +621,11 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
         out[f"stoch_d_{tf}"] = d_series.values.astype(np.float32)
         out[f"stoch_k_{tf}_prev"] = k_series.shift(1).fillna(50).values.astype(np.float32)
         out[f"stoch_d_{tf}_prev"] = d_series.shift(1).fillna(50).values.astype(np.float32)
+        # 2026-07-04 audit fix: readers (rate() K_ZONE +25, evaluate_reentry B00, NOLOSS
+        # DC_RECOVERY) read bare `k_{tf}_prev`, which was MISSING from the NPZ → defaulted to
+        # constant 50 → those terms were dead. Alias to the stoch_ series so they see real values.
+        out[f"k_{tf}_prev"] = out[f"stoch_k_{tf}_prev"]
+        out[f"d_{tf}_prev"] = out[f"stoch_d_{tf}_prev"]
         # Crossovers
         co = ((k_series > d_series) & (k_series.shift(1) <= d_series.shift(1))).fillna(False)
         cu = ((k_series < d_series) & (k_series.shift(1) >= d_series.shift(1))).fillna(False)
@@ -702,6 +707,15 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
                 if cb[i] or cr[i]: lc = i
                 bars_ago[i] = i - lc if lc >= 0 else 999
             out[f"wt_cross_bars_ago_{tf}"] = bars_ago
+            # 2026-07-04: close PRICE at the wt cross (and the cross before) → the higher-high /
+            # lower-low crossover-PRICE reentry gate (LONG fires only if cross price > prev cross price).
+            _cpx = close.values.astype(np.float64); _xm = cb | cr
+            _xff = pd.Series(np.where(_xm, _cpx, np.nan)).ffill().bfill().values
+            _xidx = np.where(_xm)[0]; _ppx = np.full(n, np.nan)
+            if len(_xidx) > 1: _ppx[_xidx[1:]] = _cpx[_xidx[:-1]]
+            _pff = pd.Series(_ppx).ffill().bfill().values
+            out[f"wt_crossover_value_{tf}"] = _xff.astype(np.float32)
+            out[f"wt_crossover_value_{tf}_prev"] = _pff.astype(np.float32)
             sig = np.zeros(n, dtype=np.int8)
             sig[(cb) & (w1 < -50)] = 1; sig[(cr) & (w1 > 50)] = -1
             out[f"wt_signal_{tf}"] = sig
@@ -808,6 +822,8 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     sma = close.rolling(200, min_periods=1).mean()
     out[f"sma_200_{tf}"] = sma.values.astype(np.float32)
     out[f"sma_200_{tf}_prev"] = sma.shift(1).fillna(sma.iloc[0]).values.astype(np.float32)
+    # 2026-07-04: sma_70_{tf} — proxy for sma_200_1m (NPZ collects no 1m data; 70×3m ≈ 200×1m).
+    out[f"sma_70_{tf}"] = close.rolling(70, min_periods=1).mean().values.astype(np.float32)
     sma_co = ((close > sma) & (close_prev <= sma.shift(1).fillna(sma.iloc[0]))).fillna(False)
     sma_cu = ((close < sma) & (close_prev >= sma.shift(1).fillna(sma.iloc[0]))).fillna(False)
     out[f"sma_crossover_{tf}"] = sma_co.values.astype(np.int8)
@@ -1001,9 +1017,54 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     return {k: v for k, v in out.items() if isinstance(v, np.ndarray) and len(v) == n}
 
 
+def _tradier_session_4h(df_base: pd.DataFrame) -> Optional[pd.DataFrame]:
+    """Session-anchored 4h bars for stocks: open/noon/close bins at 09:30/12:45/16:00 ET.
+    Verbatim port of tradier_indicators.resample_tf get_4h_bin (live parity — the live
+    engine already sees these bins; wall-clock resample('4h') was the parity break)."""
+    import pytz
+    from datetime import datetime, timedelta, time as dt_time
+    et_tz = pytz.timezone("US/Eastern")
+    agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    idx = df_base.index
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC")
+    dt_et = idx.tz_convert(et_tz)
+    def get_4h_bin(dt):
+        t = dt.time()
+        d = dt.date()
+        if t < dt_time(9, 30):
+            if dt.weekday() == 0:
+                prev_d = (dt - timedelta(days=3)).date()
+            elif dt.weekday() == 6:
+                prev_d = (dt - timedelta(days=2)).date()
+            else:
+                prev_d = (dt - timedelta(days=1)).date()
+            return pd.Timestamp(datetime.combine(prev_d, dt_time(16, 0))).tz_localize(et_tz)
+        elif t < dt_time(12, 45):
+            return pd.Timestamp(datetime.combine(d, dt_time(9, 30))).tz_localize(et_tz)
+        elif t < dt_time(16, 0):
+            return pd.Timestamp(datetime.combine(d, dt_time(12, 45))).tz_localize(et_tz)
+        else:
+            return pd.Timestamp(datetime.combine(d, dt_time(16, 0))).tz_localize(et_tz)
+    bins = dt_et.map(get_4h_bin)
+    tmp = df_base.copy()
+    tmp.index = idx
+    out = tmp.groupby(bins).agg(agg).dropna(subset=["close"])
+    out.index = pd.DatetimeIndex(out.index).tz_convert("UTC")
+    if df_base.index.tz is None:
+        out.index = out.index.tz_localize(None)
+    return out
+
+
 def resample_tf(df_base: pd.DataFrame, target_tf: str) -> Optional[pd.DataFrame]:
     """Resample a lower TF DataFrame to a higher TF."""
     # 2026-04-28: added W (weekly) and M (monthly) for HTF context fields wt1_W/wt1_M etc.
+    # 2026-07-18: stocks 4h = session-anchored open/noon/close (live parity, see _tradier_session_4h).
+    if target_tf == "4h" and MODE == "tradier":
+        try:
+            return _tradier_session_4h(df_base)
+        except Exception:
+            return None
     rule = {"15m": "15min", "1h": "1h", "4h": "4h", "D": "1D", "W": "1W", "M": "1ME"}.get(target_tf)
     if not rule:
         return None
@@ -1410,6 +1471,57 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             merged[f"lr_pct_b_{t}"] = merged[f"bb_pct_b_{t}"]
     if "bb_pct_b_D" in merged:
         merged["lr_pctb_D"] = merged["bb_pct_b_D"]
+    # 5b. TRUE long-window regression channel (2026-07-15): lrL_pct_b_<TF> / lrL_slope_<TF>
+    # (%/bar) / lrL_r2_<TF>. Mirrors live ez_indicators.linreg_channel(close, L, 2.5) +
+    # linreg_features; vectorization identical to tools/bt_band_bounce.rolling_channel which
+    # is parity-asserted per-symbol against the live scalar function. lr_pct_b_* above stay
+    # legacy Bollinger aliases — lrL_* are the REAL channel (BAND_SLOPE_SIZING_V2 + band entry).
+    _lrL_lengths = {"1h": 200, "4h": 200, "D": 300} if mode == "crypto" else {"1h": 200, "4h": 400, "D": 200}
+    def _lrL_channel(y: np.ndarray, L: int):
+        n_ = len(y)
+        out_pb = np.full(n_, 0.5, dtype=np.float32)
+        out_sl = np.zeros(n_, dtype=np.float32)
+        out_r2 = np.zeros(n_, dtype=np.float32)
+        if n_ < L:
+            return out_pb, out_sl, out_r2
+        W = np.lib.stride_tricks.sliding_window_view(y, L)
+        x = np.arange(L, dtype=np.float64)
+        xm = x.mean()
+        denom = np.sum((x - xm) ** 2)
+        ym = W.mean(axis=1)
+        slope = ((W - ym[:, None]) * (x - xm)).sum(axis=1) / denom
+        yfit = ym[:, None] + slope[:, None] * (x - xm)
+        resid_std = np.sqrt(np.mean((W - yfit) ** 2, axis=1))
+        fit_end = yfit[:, -1]
+        upper = fit_end + 2.5 * resid_std
+        lower = fit_end - 2.5 * resid_std
+        width = upper - lower
+        price = W[:, -1]
+        pb = np.clip(np.where(width > 0, (price - lower) / width, 0.5), 0.0, 1.0)
+        ss_res = (resid_std ** 2) * L
+        ss_tot = ((W - ym[:, None]) ** 2).sum(axis=1)
+        r2 = np.where(ss_tot > 0, 1.0 - ss_res / ss_tot, 0.0)
+        sl_pct = slope / np.where(np.abs(price) > 1e-9, np.abs(price), 1e-9) * 100.0
+        out_pb[L - 1:] = pb.astype(np.float32)
+        out_sl[L - 1:] = sl_pct.astype(np.float32)
+        out_r2[L - 1:] = r2.astype(np.float32)
+        return out_pb, out_sl, out_r2
+    for t, _lrL_len in _lrL_lengths.items():
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        if len(df_t) < int(_lrL_len) + 2:
+            continue
+        c_t = df_t["close"].values.astype(np.float64)
+        pb_t, sl_t, r2_t = _lrL_channel(c_t, int(_lrL_len))
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
+        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        merged[f"lrL_pct_b_{t}"] = pb_t[_idx]
+        merged[f"lrL_slope_{t}"] = sl_t[_idx]
+        merged[f"lrL_r2_{t}"] = r2_t[_idx]
     # 6. velocity_1h / velocity_4h. Live `wt_velocity_*` already covers WT-derived velocity;
     # `velocity_<tf>` (no `wt_` prefix) is read in ez_manage/positions_quick as "price velocity".
     # Closest faithful match: percent return per bar on the TF close array.
@@ -1463,6 +1575,13 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         rv = merged.get(f"relative_volume_{t}")
         if rv is not None:
             merged[f"rel_vol_{t}"] = rv
+    # 2026-07-04: sma_200_1m proxy = sma_70 on the base TF (NPZ has no 1m data). crypto base=3m, stock=5m.
+    _s70 = merged.get("sma_70_3m")
+    if _s70 is None:
+        _s70 = merged.get("sma_70_5m")
+    if _s70 is not None:
+        merged["sma_200_1m"] = _s70.astype(np.float32)
+        merged["sma_200_1m_prev"] = np.roll(_s70, 1).astype(np.float32)
     # 11. rsi_2_1h: Connors RSI(2) on 1h close. Reuses base-TF rsi2 logic.
     cl_1h = merged.get("close_1h")
     if cl_1h is not None:
@@ -1742,10 +1861,14 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             cum_vol[i] = running_vol
         vwap_d = np.where(cum_vol > 0, cum_tpv / cum_vol, merged[f"close_{base_tf}"].astype(np.float64)).astype(np.float32)
         merged["vwap_D"] = vwap_d
-    # Save
+    # Save — ATOMICALLY. Sweeps read these NPZ live; a half-written file would corrupt a
+    # running sweep. Write to a temp file in the same dir (ends with .npz so savez doesn't
+    # re-append it), then os.replace (atomic rename on the same filesystem).
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{symbol}.npz"
-    np.savez_compressed(str(out_path), **merged)
+    tmp_path = OUT_DIR / f".{symbol}.{os.getpid()}.tmp.npz"
+    np.savez_compressed(str(tmp_path), **merged)
+    os.replace(str(tmp_path), str(out_path))
     elapsed = time.time() - t0
     fsize = os.path.getsize(str(out_path))
     logger.info(f"  {symbol}: {len(merged)} keys, {n} bars, {fsize/1024:.0f}KB, {elapsed:.1f}s")

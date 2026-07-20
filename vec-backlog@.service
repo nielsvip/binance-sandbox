@@ -1,0 +1,22 @@
+[Unit]
+Description=Vec Backlog Supervisor — billion-param vectorized backtest queue
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/niels/binance-sandbox
+# MODE and N_WORKERS are set by drop-in conf — see install_systemd.sh
+Environment=MODE=%i
+Environment=N_WORKERS=4
+Environment=CPU_CAP=92
+Environment=MEM_CAP=85
+ExecStart=/bin/bash /home/niels/binance-sandbox/vec_supervisor.sh ${MODE} ${N_WORKERS}
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/niels/logs/vec_backlog_%i.log
+StandardError=append:/home/niels/logs/vec_backlog_%i.log
+KillMode=mixed
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

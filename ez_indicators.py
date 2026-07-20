@@ -20,7 +20,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Awaitable, cast, Dict, List, Optional, Set, Tuple, Union
 
 import aiofiles
 import aiohttp
@@ -33,13 +33,8 @@ from config import Config
 
 # wt_composite logic inlined into _inject_wt_composite() — no external dependency
 PositionsServiceClient = None  # lazy import — avoid circular dep with ez_positions_service
-from utils import (
-    REDIS_CHANNELS,
-    clean_nans,
-    default_serializer,
-    get_current_environment,
-    orjson_default,
-)
+from utils import (REDIS_CHANNELS, clean_nans, default_serializer,
+                   get_current_environment, orjson_default)
 
 config = Config()
 try:
@@ -186,7 +181,7 @@ if not logger.handlers:
     except Exception:
         pass
     file_handler = RotatingFileHandler(log_file, maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
-    file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
+    file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))  # type: ignore[arg-type]
     logger.addHandler(file_handler)
 
 TIMEFRAMES: Dict[str, Dict[str, Any]] = {
@@ -203,8 +198,8 @@ WT_N1 = 10
 WT_N2 = 21
 WT_SMOOTH = 3
 STOCH_LEN = 14
-STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
-STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
+k = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
+d = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -432,7 +427,7 @@ def load_symbols() -> List[str]:
                     logger.info(f"   [DEBUG] ✅ Loaded {added} symbols from: {path}")
 
         except Exception as e:
-            logger.error(f"   [DEBUG] 💥 Error reading {path}: {e}")
+            logger.error(f"   [DEBUG] 💥 Error reading {path if 'path' in dir() else '<unknown>'}: {e}")  # type: ignore[possibly-undefined]
 
     all_symbols = sorted(collected)
     
@@ -520,7 +515,7 @@ class SymbolTimeframeState:
 class PriceCacheManager:
     WS_ENDPOINT = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr"  # 2026-05-10: routed /market/ path required since Binance change; old /ws/!markPrice@arr silently sends 0 msgs
 
-    def __init__(self, path: Path, redis_client: Optional[redis.Redis] = None, symbols: Optional[List[str]] = None, refresh_seconds: float = 2.0, max_age: float = 3.0, external_pull_path: Optional[Path] = None):
+    def __init__(self, path: Path, redis_client: Optional[redis.Redis] = None, symbols: Optional[List[str]] = None, refresh_seconds: float = 2.0, max_age: float = 45.0, external_pull_path: Optional[Path] = None, extra_pull_paths: Optional[List[Path]] = None):
         self.path = path
         self.refresh_seconds = refresh_seconds
         self.max_age = max_age
@@ -532,7 +527,11 @@ class PriceCacheManager:
         self._tasks: List[asyncio.Task] = []
         self._session: Optional[aiohttp.ClientSession] = None
         self._external_pull_path = external_pull_path
+        self._extra_pull_paths: List[Path] = [p for p in (extra_pull_paths or []) if p and p != path]
+        self._startup_ts: float = time.time()
         self._external_pull_mtime: float = 0.0
+        self._extra_pull_mtimes: Dict[str, float] = {}
+        self._extra_pull_cache: Dict[str, dict] = {}
         self._stale_warn_throttle: Dict[str, datetime] = {}
 
     async def start(self) -> None:
@@ -651,7 +650,7 @@ class PriceCacheManager:
                 continue
             price_raw = item.get("p") or item.get("markPrice")
             try:
-                price = float(price_raw)
+                price = float(price_raw) if price_raw is not None else 0.0
             except (TypeError, ValueError):
                 continue
             event_ms = item.get("E") or item.get("T")
@@ -685,30 +684,60 @@ class PriceCacheManager:
         async with self._lock:
             self._data[symbol] = {"price": price, "timestamp": ts, "source": source}
 
-    def _lookup_external_pull(self, symbol: str, now: datetime) -> Tuple[Optional[float], Optional[datetime]]:
-        if not self._external_pull_path:
-            return None, None
+    def _read_price_file(self, p: Path, mtime_key: str, now: datetime) -> Tuple[Optional[float], Optional[datetime]]:
         try:
-            p = self._external_pull_path
             if not p.exists(): return None, None
             mtime = p.stat().st_mtime
-            if mtime != self._external_pull_mtime:
+            cache_attr = "_extra_pull_cache"
+            if mtime != self._extra_pull_mtimes.get(mtime_key, 0.0):
                 with open(p, "r") as f:
-                    self._external_pull_data = json.load(f) if f else {}
-                self._external_pull_mtime = mtime
-            entry = (self._external_pull_data or {}).get(symbol) or (self._external_pull_data or {}).get(symbol.upper())
+                    self._extra_pull_cache[mtime_key] = json.load(f)
+                self._extra_pull_mtimes[mtime_key] = mtime
+            data = self._extra_pull_cache.get(mtime_key) or {}
+            entry = data.get(mtime_key.split("|")[1]) if "|" in mtime_key else None
             if not isinstance(entry, dict): return None, None
             price = entry.get("price")
             ts_raw = entry.get("timestamp")
             if price is None or ts_raw is None: return None, None
-            ts = self._parse_timestamp(ts_raw, now)
-            return float(price), ts
+            return float(price), self._parse_timestamp(ts_raw, now)
         except Exception:
             return None, None
 
+    def _lookup_external_pull(self, symbol: str, now: datetime) -> Tuple[Optional[float], Optional[datetime]]:
+        best_age, best_price, best_ts = float("inf"), None, None
+        sym = symbol.upper()
+        paths_to_check: List[Tuple[str, Optional[Path]]] = [("primary", self._external_pull_path)] + [(f"extra_{i}", p) for i, p in enumerate(self._extra_pull_paths)]
+        for key, p in paths_to_check:
+            if not p: continue
+            try:
+                if not p.exists(): continue
+                mtime = p.stat().st_mtime
+                if mtime != self._extra_pull_mtimes.get(key, 0.0):
+                    with open(p, "r") as f:
+                        self._extra_pull_cache[key] = json.load(f)
+                    self._extra_pull_mtimes[key] = mtime
+                    if key == "primary":
+                        self._external_pull_mtime = mtime
+                data = self._extra_pull_cache.get(key) or {}
+                entry = data.get(sym) or data.get(sym.lower())
+                if not isinstance(entry, dict): continue
+                price = entry.get("price")
+                ts_raw = entry.get("timestamp")
+                if price is None or ts_raw is None: continue
+                ts = self._parse_timestamp(ts_raw, now)
+                if not isinstance(ts, datetime): continue
+                age = (now - ts).total_seconds()
+                if age < best_age:
+                    best_age, best_price, best_ts = age, float(price), ts
+            except Exception:
+                continue
+        return best_price, best_ts
+
     def _warn_stale_throttled(self, symbol: str, age: float, source: str, candidates: List[Tuple[float, float, datetime, str]], now: datetime) -> None:
+        if time.time() - self._startup_ts < 90.0:
+            return
         last = self._stale_warn_throttle.get(symbol)
-        if last and (now - last).total_seconds() < 30.0: return
+        if last and (now - last).total_seconds() < 45.0: return
         self._stale_warn_throttle[symbol] = now
         srcs = ",".join(f"{c[3]}:{c[0]:.1f}s" for c in candidates[:4])
         try:
@@ -733,7 +762,7 @@ class PriceCacheManager:
                     candidates.append((age, float(price), ts, entry.get("source", "memory")))
         if self._redis:
             try:
-                raw = await self._redis.get(f"mark_price:{symbol}")
+                raw = await asyncio.wait_for(self._redis.get(f"mark_price:{symbol}"), timeout=0.1)
                 price, ts = self._decode_price_with_ts(raw)
                 if price is not None and isinstance(ts, datetime):
                     age = (now - ts).total_seconds()
@@ -782,9 +811,9 @@ class PriceCacheManager:
             return
         keys = [f"mark_price:{sym}" for sym in symbols]
         try:
-            values = await self._redis.mget(*keys)
+            values = await asyncio.wait_for(self._redis.mget(*keys), timeout=0.1)
         except Exception:
-            pass
+            return
         now = utc_now()
         if not values:
             return
@@ -797,7 +826,7 @@ class PriceCacheManager:
         if not self._redis:
             return None
         try:
-            raw = await self._redis.get(f"mark_price:{symbol}")
+            raw = await asyncio.wait_for(self._redis.get(f"mark_price:{symbol}"), timeout=0.1)
             price = self._decode_price(raw)
             if price is not None:
                 await self._update_price(symbol, price, utc_now(), "redis")
@@ -1013,7 +1042,7 @@ class KlineManager:
                     new_rows.append({"timestamp_dt": ts, "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"), "open": float(window["open"].iloc[0]), "high": float(window["high"].max()), "low": float(window["low"].min()), "close": float(window["close"].iloc[-1]), "volume": float(window["volume"].sum())})
             if not new_rows:
                 return native_df
-            result = pd.concat([native_df, pd.DataFrame(new_rows)], ignore_index=True).sort_values("timestamp_dt").drop_duplicates(subset=["timestamp_dt"]).reset_index(drop=True)
+            result = pd.concat([native_df, pd.DataFrame(new_rows)], ignore_index=True).sort_values(by="timestamp_dt").drop_duplicates(subset=["timestamp_dt"]).reset_index(drop=True)  # type: ignore[call-overload]
             return result
         except Exception:
             return None
@@ -1549,6 +1578,17 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt_cross_value_{tf}"] = cross_value
     result[f"wt_cross_prev_value_{tf}"] = cross_prev_value
     result[f"wt_cross_rising_{tf}"] = cross_rising
+    # 2026-07-04: close PRICE at the wt cross (+ the cross before) — for the higher-high (LONG) /
+    # lower-low (SHORT) crossover-PRICE reentry gate. Same indices as the wt-value cross above.
+    _xc_price = 0.0; _xc_prev_price = 0.0
+    if recent_cross == "BULL" and len(cross_above_idx) > 0:
+        _xc_price = float(close_arr[cross_above_idx[-1]])
+        if len(cross_above_idx) >= 2: _xc_prev_price = float(close_arr[cross_above_idx[-2]])
+    elif recent_cross == "BEAR" and len(cross_below_idx) > 0:
+        _xc_price = float(close_arr[cross_below_idx[-1]])
+        if len(cross_below_idx) >= 2: _xc_prev_price = float(close_arr[cross_below_idx[-2]])
+    result[f"wt_crossover_value_{tf}"] = _xc_price
+    result[f"wt_crossover_value_{tf}_prev"] = _xc_prev_price
     result[f"wt_cross_bars_ago_{tf}"] = recent_cross_bars_ago  # How many bars since the last cross
     lookback = min(50, n - 1)
     start = n - 1 - lookback
@@ -1746,8 +1786,8 @@ def hull_trend_indicators(close_series: pd.Series, length_short: int = 9, length
     except Exception: return None, None, None
 
 STOCH_LEN = 14
-STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
-STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
+k = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
+d = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
 
 def stoch_result(series: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float], bool, bool]:
     def fallback(window: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float], bool, bool]:
@@ -1770,24 +1810,23 @@ def stoch_result(series: pd.Series) -> Tuple[Optional[float], Optional[float], O
         return k_curr, d_curr, k_prev, d_prev, crossover, crossunder
     length = STOCH_LEN
     if len(series) >= length: 
-        stoch = stoch_rsi(series, length=length, k=STOCH_K, d=STOCH_D)
+        stoch = stoch_rsi(series, length=length, k=k, d=d)
         if stoch is not None and not stoch.empty:
-            k = stoch.iloc[:, 0].clip(lower=0, upper=100)
-            d = stoch.iloc[:, 1].clip(lower=0, upper=100)
-            
+            # 2026-07-08: locals renamed k/d→k_ser/d_ser — assigning to k/d here made them
+            # function-locals, so the stoch_rsi(k=k, d=d) call above raised UnboundLocalError
+            k_ser = stoch.iloc[:, 0].clip(lower=0, upper=100)
+            d_ser = stoch.iloc[:, 1].clip(lower=0, upper=100)
             # Ensure we have valid data at the end
-            if not k.empty and pd.notna(k.iloc[-1]):
-                k_curr = float(k.iloc[-1])
-                d_curr = float(d.iloc[-1]) if not d.empty and pd.notna(d.iloc[-1]) else k_curr
-                
+            if not k_ser.empty and pd.notna(k_ser.iloc[-1]):
+                k_curr = float(k_ser.iloc[-1])
+                d_curr = float(d_ser.iloc[-1]) if not d_ser.empty and pd.notna(d_ser.iloc[-1]) else k_curr
                 # Handle previous values safely
-                if len(k) > 1 and pd.notna(k.iloc[-2]):
-                    k_prev = float(k.iloc[-2])
+                if len(k_ser) > 1 and pd.notna(k_ser.iloc[-2]):
+                    k_prev = float(k_ser.iloc[-2])
                 else:
                     k_prev = k_curr
-                    
-                if len(d) > 1 and pd.notna(d.iloc[-2]):
-                    d_prev = float(d.iloc[-2])
+                if len(d_ser) > 1 and pd.notna(d_ser.iloc[-2]):
+                    d_prev = float(d_ser.iloc[-2])
                 else:
                     d_prev = d_curr
 
@@ -2187,8 +2226,8 @@ class IndicatorCalculator:
         result[f"stoch_crossover_{timeframe}"] = bool(stoch_cross_over) if is_valid else False
         result[f"stoch_crossunder_{timeframe}"] = bool(stoch_cross_under) if is_valid else False
         if k_curr is not None:
-            result[f"stoch_k_{timeframe}"] = k_curr
-            result[f"stoch_d_{timeframe}"] = d_curr if d_curr is not None else k_curr
+            result[f"k_{timeframe}"] = k_curr
+            result[f"d_{timeframe}"] = d_curr if d_curr is not None else k_curr
             result[f"k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
             result[f"d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
         wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
@@ -2308,6 +2347,16 @@ class IndicatorCalculator:
             if _lr_pb is not None:
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
                 # lr_upper/lr_lower REMOVED — 0 references in consumers
+            _lrL_len = (getattr(config, "LR_CHANNEL_LONG_LENGTHS", None) or {}).get(timeframe)
+            if _lrL_len and len(close_series) >= int(_lrL_len):
+                _lrL_u, _lrL_l, _lrL_pb = linreg_channel(close_series, int(_lrL_len), std_mult=2.5)
+                _lrL_slope, _lrL_lin = linreg_features(close_series, int(_lrL_len))
+                _lrL_px = float(close_series.iloc[-1])
+                if _lrL_pb is not None and _lrL_slope is not None and _lrL_px > 0:
+                    result[f"lrL_pct_b_{timeframe}"] = _lrL_pb
+                    result[f"lrL_slope_{timeframe}"] = round(_lrL_slope / _lrL_px * 100.0, 6)
+                    if _lrL_lin is not None:
+                        result[f"lrL_r2_{timeframe}"] = round(float(_lrL_lin), 6)
             # bar_pat RESTORED — BACKTEST_CHANGE_150 compression breakout needs bar_atr_rank_{tf}
             try:
                 bar_pat = detect_bar_patterns(adjusted_df, timeframe)
@@ -2398,8 +2447,9 @@ class IndicatorOrchestrator:
         self.shared_proxy = None
         self._connect_shared_memory()
         self.base_path = Path(config.BASE_PATH)
-        self.kline_manager = KlineManager(self.base_path, env)
-        self.price_cache = PriceCacheManager(config.PRICE_CACHE_FILE_2, redis_client=self.redis_client, symbols=self.symbols, external_pull_path=getattr(config, "PRICE_CACHE_PULL_S1", None))
+        self.kline_manager = KlineManager(self.base_path, str(env))
+        _extra_pcache = [p for p in [getattr(config, "PRICE_CACHE_FILE", None), getattr(config, "PRICE_CACHE_FILE_3", None)] if p]
+        self.price_cache = PriceCacheManager(config.PRICE_CACHE_FILE_2, redis_client=self.redis_client, symbols=self.symbols, external_pull_path=getattr(config, "PRICE_CACHE_PULL_S1", None), extra_pull_paths=_extra_pcache)
         self.calculator = IndicatorCalculator()
         self.final_scores = load_scores_file(Path(config.FINAL_SCORE_FILE))
         self.ranking_scores = load_scores_file(Path(config.RANKING_POINTS_FILE))
@@ -2417,7 +2467,7 @@ class IndicatorOrchestrator:
         total_instances = getattr(config, "WORKER_TOTAL_INSTANCES", 1)
         if env == "macbook" and not getattr(config, "ENABLE_MULTI_INSTANCE_ON_MACBOOK", False):
             total_instances = 1
-            logger.info(f"[MACBOOK] Forcing single instance mode (no merger) - total_instances=1")
+            logger.info("[MACBOOK] Forcing single instance mode (no merger) - total_instances=1")
         self.instance_id = instance_id
         self.total_instances = total_instances
         if total_instances > 1:
@@ -2668,34 +2718,38 @@ class IndicatorOrchestrator:
 
     async def _priority_fix_loop(self) -> None:
         """Listens for high-priority fix requests from the Merger"""
-        pubsub = self.redis_client.pubsub()
-        await pubsub.subscribe("priority_3m_fix")
-        logger.info("🚑 Priority Fix Listener active on channel: priority_3m_fix")
-        
         while not self._shutdown.is_set():
             try:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message:
-                    logger.info("🚨 RECEIVED PRIORITY INTERRUPT SIGNAL")
-                    await self._process_priority_symbols()
-                await asyncio.sleep(0.2)
+                if not await self._check_redis_health():
+                    await asyncio.sleep(5.0)
+                    continue
+                pubsub = self.redis_client.pubsub()
+                await pubsub.subscribe("priority_3m_fix")
+                logger.info("🚑 Priority Fix Listener active on channel: priority_3m_fix")
+                while not self._shutdown.is_set():
+                    try:
+                        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                        if message:
+                            logger.info("🚨 RECEIVED PRIORITY INTERRUPT SIGNAL")
+                            await self._process_priority_symbols()
+                        await asyncio.sleep(0.2)
+                    except Exception as e:
+                        logger.error(f"Error in priority listener message loop: {e}")
+                        break
             except Exception as e:
-                logger.error(f"Error in priority listener: {e}")
-                await asyncio.sleep(5)
+                logger.error(f"Error initializing priority listener: {e}")
+                await asyncio.sleep(5.0)
 
     async def _process_priority_symbols(self) -> None:
         """Immediately processes missing symbols and forces a save"""
         try:
-            missing_json = await self.redis_client.get("missing_3m_symbols")
+            missing_json = await asyncio.wait_for(self.redis_client.get("missing_3m_symbols"), timeout=0.1)
             if not missing_json:
                 return
-            
             all_missing = json.loads(missing_json)
             my_missing = [s for s in all_missing if s in self.symbol_set]
-            
             if not my_missing:
                 return
-                
             logger.info(f"🚑 EMERGENCY FIX: Processing {len(my_missing)} symbols immediately: {my_missing}")
             for symbol in my_missing:
                 try:
@@ -2703,7 +2757,6 @@ class IndicatorOrchestrator:
                     if df is not None:
                         state = self.state[symbol]["3m"]
                         mark_price = await self.price_cache.get_price(symbol)
-                        # FORCE calculation even if timestamps look valid (because fields might be missing)
                         sys.stdout.flush()
                         await self._run_full(symbol, "3m", df, close_ts, mark_price, state)
                         sys.stdout.flush()
@@ -2715,18 +2768,16 @@ class IndicatorOrchestrator:
                     sys.stdout.flush()
                     sys.stderr.flush()
                     logger.error(f"Failed to fix {symbol}: {e}")
-            # Remove handled symbols from missing list so merger stops re-triggering
             try:
                 remaining = [s for s in all_missing if s not in my_missing]
                 if remaining:
-                    await self.redis_client.set("missing_3m_symbols", json.dumps(remaining), ex=300)
+                    await asyncio.wait_for(self.redis_client.set("missing_3m_symbols", json.dumps(remaining), ex=300), timeout=0.1)
                 else:
-                    await self.redis_client.delete("missing_3m_symbols")
+                    await asyncio.wait_for(self.redis_client.delete("missing_3m_symbols"), timeout=0.1)
             except Exception as _ce:
                 logger.error(f"Failed to clear missing symbols: {_ce}")
-            # Force save immediately bypassing the lock timer
             logger.info("🚑 EMERGENCY SAVE Triggered")
-            await self._save_data()            
+            await self._save_data()
         except Exception as e:
             logger.error(f"Error processing priority symbols: {e}")
 
@@ -2818,7 +2869,7 @@ class IndicatorOrchestrator:
     async def _get_missing_symbols(self) -> List[str]:
         """Get list of missing 3m symbols from Redis for prioritization."""
         try:
-            missing_json = await self.redis_client.get("missing_3m_symbols")
+            missing_json = await asyncio.wait_for(self.redis_client.get("missing_3m_symbols"), timeout=0.1)
             if missing_json:
                 missing = json.loads(missing_json)
                 if isinstance(missing, list):
@@ -2890,7 +2941,7 @@ class IndicatorOrchestrator:
                 if reuse_previous or force or needs_refresh:
                     if await self._run_reactive(symbol, timeframe, df, close_ts, mark_price, state):
                         reactive_count += 1
-                if await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
+                if close_ts is not None and await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
                     mid_count += 1
 
         tasks = [asyncio.create_task(process_symbol(symbol)) for symbol in self.symbols]
@@ -3417,7 +3468,7 @@ class IndicatorOrchestrator:
             #         hot_keys = [f"hot_metrics:{sym}" for sym in ordered_symbols]
             #         raw_values = await self.redis_client.mget(hot_keys)
             #         merge_count = 0
-            #         hot_to_ind = {'k_1m': 'stoch_k_1m', 'd_1m': 'stoch_d_1m', 'k_3m': 'stoch_k_3m', 'd_3m': 'stoch_d_3m', 'k_1m_prev': 'k_1m_prev', 'd_1m_prev': 'd_1m_prev', 'k_3m_prev': 'k_3m_prev', 'd_3m_prev': 'd_3m_prev'}
+            #         hot_to_ind = {'k_1m': 'k_1m', 'd_1m': 'd_1m', 'k_3m': 'k_3m', 'd_3m': 'd_3m', 'k_1m_prev': 'k_1m_prev', 'd_1m_prev': 'd_1m_prev', 'k_3m_prev': 'k_3m_prev', 'd_3m_prev': 'd_3m_prev'}
             #         for sym, raw in zip(ordered_symbols, raw_values):
             #             if not raw:
             #                 continue
@@ -3630,7 +3681,7 @@ class IndicatorOrchestrator:
         if (now - self._last_redis_health_check) < self._redis_health_check_interval:
             return self._redis_broadcast_failures == 0
         try:
-            await self.redis_client.ping()
+            await asyncio.wait_for(cast(Awaitable[bool], self.redis_client.ping()), timeout=0.1)
             self._last_redis_health_check = now
             if self._redis_broadcast_failures > 0:
                 logger.info(f"✅ Redis connection restored after {self._redis_broadcast_failures} failures")
@@ -3717,8 +3768,8 @@ class IndicatorOrchestrator:
         if self.redis_client:
             try:
                 # Write the COMPACT JSON (Fixes parsing errors in consumers)
-                await self.redis_client.set(config.REDIS_KEY_MARKET_DATA, compact_json)
-                await self.redis_client.publish(self._market_channel, compact_json)
+                await asyncio.wait_for(self.redis_client.set(config.REDIS_KEY_MARKET_DATA, compact_json), timeout=0.1)
+                await asyncio.wait_for(self.redis_client.publish(self._market_channel, compact_json), timeout=0.1)
                 self._redis_broadcast_failures = 0
             except Exception as e:
                 self._redis_broadcast_failures += 1
@@ -3742,7 +3793,7 @@ class IndicatorOrchestrator:
                 headers = {"Content-Type": "application/json"}
                 if self.webhook_secret: headers["Authorization"] = self.webhook_secret
                 async with aiohttp.ClientSession() as session:
-                    await session.post(self.webhook_url, data=compact_json, headers=headers, timeout=5)
+                    await session.post(self.webhook_url, data=compact_json, headers=headers, timeout=aiohttp.ClientTimeout(total=5))
             except Exception: pass
 
 
@@ -4073,7 +4124,7 @@ class IndicatorOrchestrator:
             return 0.0
         if key.endswith("_prev") and key[:-5] in values and isinstance(values[key[:-5]], (int, float)):
             return float(values[key[:-5]])
-        if key.startswith("stoch_k_D") or key.startswith("stoch_d_D"):
+        if key.startswith("k_D") or key.startswith("d_D"):
             fallback_key = key.replace("_D", "_4h")
             if fallback_key in values:
                 return values.get(fallback_key)
@@ -4148,8 +4199,8 @@ class IndicatorOrchestrator:
 
             # --- B. MOMENTUM ---
             # Stoch RSI
-            k3, d3 = g("stoch_k_3m", 50), g("stoch_d_3m", 50)
-            k15, d15 = g("stoch_k_15m", 50), g("stoch_d_15m", 50)
+            k3, d3 = g("k_3m", 50), g("d_3m", 50)
+            k15, d15 = g("k_15m", 50), g("d_15m", 50)
             stoch_mix = ((k3 - d3) * 1.0) + ((k15 - d15) * 1.5)
             
             # Heikin Ashi
@@ -4231,10 +4282,10 @@ class IndicatorOrchestrator:
                     "max_abs": local_max_abs,
                     "ts": time.time()
                 })
-                await self.redis_client.setex(shard_key, 60, payload)
+                await asyncio.wait_for(self.redis_client.setex(shard_key, 60, payload), timeout=0.1)
 
                 shard_keys = [f"sentiment_shard_v2:{i}" for i in range(self.total_instances)]
-                results = await self.redis_client.mget(shard_keys)
+                results = await asyncio.wait_for(self.redis_client.mget(shard_keys), timeout=0.1)
                 
                 global_sum = 0.0
                 global_count = 0
@@ -4279,9 +4330,10 @@ class IndicatorOrchestrator:
             values["0sentiment_strength"] = abs(norm_val)
             values["0sentiment_classification"] = self._classify_sentiment(norm_val)
             
-            # 2. Calculate Divergence & Velocity
             current_divergence = norm_val - global_score_normalized
-            prev_divergence = values.get("_prev_divergence", current_divergence)
+            prev_divergence = values.get("_prev_divergence")
+            if prev_divergence is None:
+                prev_divergence = current_divergence
             velocity = current_divergence - prev_divergence
             values["_prev_divergence"] = current_divergence
             
@@ -4311,16 +4363,16 @@ class IndicatorOrchestrator:
                 signal_payload = { "action": "REDUCE_SHORT", "strength": min(100, velocity * 5.0) }
 
             if signal_payload and self.redis_client:
-                signal_payload.update({
+                signal_payload.update({  # type: ignore[arg-type]
                     "event_type": "SENTIMENT_MOMENTUM",
                     "symbol": symbol,
                     "price": values.get("current_price"),
-                    "local_score": round(norm_val, 2),
-                    "global_score": round(global_score_normalized, 2),
+                    "local_score": round(float(norm_val), 2),
+                    "global_score": round(float(global_score_normalized), 2),
                     "timestamp": isoformat(utc_now())
                 })
                 try:
-                    await self.redis_client.publish(self._signal_channel, json.dumps(signal_payload))
+                    await asyncio.wait_for(self.redis_client.publish(self._signal_channel, json.dumps(signal_payload)), timeout=0.1)
                 except Exception: pass
 
             ranking_list.append((symbol, norm_val))
@@ -4402,15 +4454,15 @@ class IndicatorOrchestrator:
     #                 ha_score += 10.0
     #             elif state == "red":
     #                 ha_score -= 10.0
-    #         stoch_k_3m = f(values, "stoch_k_3m", 50.0)
-    #         stoch_d_3m = f(values, "stoch_d_3m", 50.0)
-    #         stoch_k_15m = f(values, "stoch_k_15m", 50.0)
-    #         stoch_d_15m = f(values, "stoch_d_15m", 50.0)
+    #         k_3m = f(values, "k_3m", 50.0)
+    #         d_3m = f(values, "d_3m", 50.0)
+    #         k_15m = f(values, "k_15m", 50.0)
+    #         d_15m = f(values, "d_15m", 50.0)
     #         stoch_score = 0.0
-    #         if stoch_k_3m is not None and stoch_d_3m is not None:
-    #             stoch_score += max(min(stoch_k_3m - stoch_d_3m, 20.0), -20.0)
-    #         if stoch_k_15m is not None and stoch_d_15m is not None:
-    #             stoch_score += max(min(stoch_k_15m - stoch_d_15m, 20.0), -20.0)
+    #         if k_3m is not None and d_3m is not None:
+    #             stoch_score += max(min(k_3m - d_3m, 20.0), -20.0)
+    #         if k_15m is not None and d_15m is not None:
+    #             stoch_score += max(min(k_15m - d_15m, 20.0), -20.0)
     #         price = f(values, "current_price")
     #         sma_1m = f(values, "sma_200_1m")
     #         sma_15m = f(values, "sma_200_15m")
@@ -4705,7 +4757,7 @@ class IndicatorOrchestrator:
 
         for signal in filtered:
             try:
-                await self.redis_client.publish(self._signal_channel, json.dumps(signal, default=str))
+                await asyncio.wait_for(self.redis_client.publish(self._signal_channel, json.dumps(signal, default=str)), timeout=0.1)
                 logger.debug(f"[SIGNAL] Published {signal.get('event_type')} for {symbol} on {signal.get('timeframe')}: {signal.get('action')}")
             except Exception as e:
                 logger.warning(f"[SIGNAL] Failed to publish signal for {symbol}: {e}")
@@ -4945,7 +4997,7 @@ def detect_episodic_pivot(daily_bars: List[Dict], min_gap_pct: float = 5.0, min_
                             return {
                                 "ep_detected": True,
                                 "ep_gap_pct": round(gap_pct, 2),
-                                "ep_vol_mult": round(vol_mult, 2),
+                                "ep_vol_mult": round(float(vol_mult), 2),
                                 "ep_consolidation_days": len(post_bars),
                                 "ep_breakout_level": round(breakout_level, 6),
                                 "ep_direction": "LONG",
@@ -4961,7 +5013,7 @@ def detect_episodic_pivot(daily_bars: List[Dict], min_gap_pct: float = 5.0, min_
                             return {
                                 "ep_detected": True,
                                 "ep_gap_pct": round(gap_pct, 2),
-                                "ep_vol_mult": round(vol_mult, 2),
+                                "ep_vol_mult": round(float(vol_mult), 2),
                                 "ep_consolidation_days": len(post_bars),
                                 "ep_breakout_level": round(breakout_level, 6),
                                 "ep_direction": "SHORT",

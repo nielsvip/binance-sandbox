@@ -24,6 +24,14 @@ CRYPTO_OUT_BASE = ROOT / 'data' / 'autonomous' / 'canonical_crypto_50sym_post_lo
 TRADIER_OUT_BASE = ROOT / 'data' / 'autonomous' / 'canonical_tradier_100sym_post_lockdown'
 WINNERS_DIR = ROOT / 'data' / 'rate_filter_winners'
 ACTIVE_CFG_PATH = ROOT / 'data' / 'hourly_reconfig' / 'per_sym_active_config.json'
+# 2026-07-06: crypto and stocks (tradier) MUST NOT share the live per-sym config
+# file — writing a 'tradier' mode winner into ACTIVE_CFG_PATH contaminated the
+# crypto-only file. Tradier winners now go to the stocks-only sibling file.
+ACTIVE_CFG_PATH_TRADIER = ROOT / 'data' / 'hourly_reconfig' / 'per_sym_active_config_stocks.json'
+
+
+def _active_cfg_path_for_mode(mode: str) -> Path:
+    return ACTIVE_CFG_PATH_TRADIER if mode == 'tradier' else ACTIVE_CFG_PATH
 
 # 2026-05-09 USER MANDATE: 2-8 trades per sym per day MAX for BOTH crypto and stocks.
 # Earlier crypto cap was 5/day; tradier was 2-8 per WEEK. Both unified to 2-8/day.
@@ -148,26 +156,28 @@ def parse_iter_row(row: dict, mode: str, worker: str) -> dict:
         return None
 
 
-def load_active_config() -> dict:
+def load_active_config(mode: str = 'crypto') -> dict:
+    path = _active_cfg_path_for_mode(mode)
     try:
-        return json.loads(ACTIVE_CFG_PATH.read_text())
+        return json.loads(path.read_text())
     except Exception:
         return {}
 
 
-def save_active_config(cfg: dict) -> None:
-    ACTIVE_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = ACTIVE_CFG_PATH.with_suffix('.json.tmp')
+def save_active_config(cfg: dict, mode: str = 'crypto') -> None:
+    path = _active_cfg_path_for_mode(mode)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix('.json.tmp')
     tmp.write_text(json.dumps(cfg, indent=2, default=str))
-    tmp.replace(ACTIVE_CFG_PATH)
+    tmp.replace(path)
 
 
 def promote_to_active(parsed: dict) -> int:
     # 2026-05-07: per-sym overrides scope is the whole pool config (multi-sym), so
     # we apply to ALL syms in the universe rather than per-sym keys. Live readers
     # can also read at per-sym key level (sym_LONG / sym_SHORT) for legacy.
-    cfg = load_active_config()
     mode = parsed['mode']
+    cfg = load_active_config(mode)
     meta_key = f'_meta_pool_winner_{mode}'
     current_meta = cfg.get(meta_key, cfg.get('_meta_pool_winner', {}))
     current_sharpe = float(current_meta.get('pool_sharpe', current_meta.get('wsharpe', 0.0)) or 0.0)
@@ -197,7 +207,7 @@ def promote_to_active(parsed: dict) -> int:
         'overrides_count': parsed['overrides_count'],
         'promoted_at_utc': parsed['ts_utc'],
     }
-    save_active_config(cfg)
+    save_active_config(cfg, mode)
     return len(overrides)
 
 

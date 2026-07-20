@@ -1,3 +1,4 @@
+# pyright: basic
 import argparse
 import asyncio
 import fnmatch
@@ -31,19 +32,8 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    DefaultDict,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import (Any, Awaitable, Callable, DefaultDict, Dict, Iterable,
+                    List, Optional, Set, Tuple, Union)
 
 import aiofiles
 import aiofiles.os as aio_os
@@ -76,7 +66,7 @@ def _sf(v, default=50.0):
 
 
 def check_reentry_delta_tolerant(
-    indicators: dict, is_long: bool, trade_manager=None, symbol: str = None
+    indicators: dict, is_long: bool, trade_manager=None, symbol: Optional[str] = None
 ) -> Tuple[bool, str]:
     """Tolerant delta gate for REENTRY paths — looser than fresh-entry gate.
     Reentries take a previously-valid position, so they need less conviction than new entries.
@@ -136,7 +126,7 @@ def check_reentry_delta_tolerant(
             _wt2_D = _sf(indicators.get("wt2_D", 0), 0)
             _D_ok = (_wt1_D > _wt2_D) if is_long else (_wt1_D < _wt2_D)
             if not _D_ok:
-                return False, f"DELTA_REENTRY_BLOCKED_D_against"
+                return False, "DELTA_REENTRY_BLOCKED_D_against"
         return True, f"DELTA_REENTRY_OK_tf={_tf_count}_z={_z:.1f}"
     except Exception as e:
         return True, f"DELTA_REENTRY_CHECK_ERR_{str(e)[:40]}_ALLOW"
@@ -178,15 +168,15 @@ def check_entry_alignment(
     """Returns (allowed, reason). Requires 2/3 LTF (k_1m/3m/15m) AND 2/3 HTF (1h/4h/D) aligned.
     No crash hard-block here — hedges and trend-following entries must pass through.
     Crash ratio enforcement lives in compute_applied_ratio and ratio_rebalance_loop."""
-    k_1m, d_1m = _sf(indicators.get("stoch_k_1m")), _sf(indicators.get("stoch_d_1m"))
-    k_3m, d_3m = _sf(indicators.get("stoch_k_3m")), _sf(indicators.get("stoch_d_3m"))
+    k_1m, d_1m = _sf(indicators.get("k_1m")), _sf(indicators.get("d_1m"))
+    k_3m, d_3m = _sf(indicators.get("k_3m")), _sf(indicators.get("d_3m"))
     k_15m, d_15m = (
-        _sf(indicators.get("stoch_k_15m")),
-        _sf(indicators.get("stoch_d_15m")),
+        _sf(indicators.get("k_15m")),
+        _sf(indicators.get("d_15m")),
     )
-    k_1h, d_1h = _sf(indicators.get("stoch_k_1h")), _sf(indicators.get("stoch_d_1h"))
-    k_4h, d_4h = _sf(indicators.get("stoch_k_4h")), _sf(indicators.get("stoch_d_4h"))
-    k_D, d_D = _sf(indicators.get("stoch_k_D")), _sf(indicators.get("stoch_d_D"))
+    k_1h, d_1h = _sf(indicators.get("k_1h")), _sf(indicators.get("d_1h"))
+    k_4h, d_4h = _sf(indicators.get("k_4h")), _sf(indicators.get("d_4h"))
+    k_D, d_D = _sf(indicators.get("k_D")), _sf(indicators.get("d_D"))
     ha_D = str(indicators.get("ha_D", "neutral"))
     if is_long:
         ltf = int(k_1m > d_1m) + int(k_3m > d_3m) + int(k_15m > d_15m)
@@ -251,9 +241,9 @@ def check_entry_alignment(
             return False, f"CT_WT_VEL_LONG({_wt_vel:.1f}<{_min_vel})"
         if not is_long and _wt_vel > -_min_vel:
             return False, f"CT_WT_VEL_SHORT({_wt_vel:.1f}>-{_min_vel})"
-    # BC_171: 15m momentum must confirm direction (d=0.345 stoch_k_15m, d=0.321 mfi_15m)
+    # BC_171: 15m momentum must confirm direction (d=0.345 k_15m, d=0.321 mfi_15m)
     if getattr(config, "CT_15M_MOMENTUM_GATE_ENABLED", False):
-        _sk15 = _sf(indicators.get("stoch_k_15m"), 50.0)
+        _sk15 = _sf(indicators.get("k_15m"), 50.0)
         _mfi15 = _sf(indicators.get("mfi_15m"), 50.0)
         if is_long:
             if _sk15 < getattr(config, "CT_STOCH_K_15M_LONG_MIN", 45.0):
@@ -316,8 +306,8 @@ def check_dc_high_break_retest(
     SHORT: dc_low expanded < dc_low_ant by >1.5%, price pulled back to dc_low_ant zone, k_3m turning down"""
     if current_price <= 0:
         return False, "NO_PRICE", 1.0
-    k_3m = _sf(indicators.get("stoch_k_3m"), 50)
-    d_3m = _sf(indicators.get("stoch_d_3m"), 50)
+    k_3m = _sf(indicators.get("k_3m"), 50)
+    d_3m = _sf(indicators.get("d_3m"), 50)
     k_3m_prev = _sf(indicators.get("k_3m_prev"), k_3m)
     tfs = [
         ("4h", 2.0),
@@ -394,6 +384,12 @@ _ABSOLUTE_OPEN_LOCK_TTL: float = 300.0  # 2026-04-24 user directive: dedup at ex
 # fires long after the last execute_now() entry, a bypass is suspected. Shadow
 # (log-only) diagnostic — never blocks. CLAUDE.md: execute_now is the ONLY gate.
 _LAST_EXECUTE_NOW_ENTRY_TS: float = 0.0
+# ═══ 2026-06-04 COLD-START FLOOD GUARD state ═══
+# Process start time — used to suppress the opener MTF-bypasses during the cold-start window
+# (empty MTF armed-state → QUICK_OPEN/breakout/reentry bypasses flooded ~96 junk opens in seconds
+# after a simultaneous restart). Plus a global rolling-window open-rate circuit breaker.
+_PROCESS_START_TS: float = time.time()
+_RECENT_OPEN_ATTEMPTS: deque = deque()  # timestamps of fresh OPENs that passed MTF — flood breaker
 
 
 def _exec_now_wire_tripwire(site: str, position_key=None, reason=None) -> None:
@@ -496,9 +492,9 @@ def check_htf_trend(
     """Returns (direction, score). direction is 'BULL'/'BEAR'/'NEUTRAL'. score is -10..+10."""
     bull = 0
     bear = 0
-    k_1h, d_1h = _sf(indicators.get("stoch_k_1h")), _sf(indicators.get("stoch_d_1h"))
-    k_4h, d_4h = _sf(indicators.get("stoch_k_4h")), _sf(indicators.get("stoch_d_4h"))
-    k_D, d_D = _sf(indicators.get("stoch_k_D")), _sf(indicators.get("stoch_d_D"))
+    k_1h, d_1h = _sf(indicators.get("k_1h")), _sf(indicators.get("d_1h"))
+    k_4h, d_4h = _sf(indicators.get("k_4h")), _sf(indicators.get("d_4h"))
+    k_D, d_D = _sf(indicators.get("k_D")), _sf(indicators.get("d_D"))
     ha_1h, ha_4h, ha_D = (
         str(indicators.get("ha_1h", "neutral")),
         str(indicators.get("ha_4h", "neutral")),
@@ -648,17 +644,17 @@ def check_htf_trend_aligned(
 def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool, str]:
     """Require concurrent 1m AND 3m stoch crossover (K crosses D).
     Backtest: 150 avg Sharpe vs 77 OR-mode (2x improvement). Falls back if 1m prev missing."""
-    k_1m = _sf(indicators.get("stoch_k_1m"))
-    d_1m = _sf(indicators.get("stoch_d_1m"))
+    k_1m = _sf(indicators.get("k_1m"))
+    d_1m = _sf(indicators.get("d_1m"))
     d_1m_prev = _sf(indicators.get("d_1m_prev"), d_1m)
-    k_3m = _sf(indicators.get("stoch_k_3m"))
-    d_3m = _sf(indicators.get("stoch_d_3m"))
+    k_3m = _sf(indicators.get("k_3m"))
+    d_3m = _sf(indicators.get("d_3m"))
     k_3m_prev = _sf(indicators.get("k_3m_prev"), k_3m)
     k_1m_prev_raw = indicators.get("k_1m_prev")
     if k_1m_prev_raw is None:
         return True, "TRIGGER_NO_1M_PREV_ALLOW"
     k_1m_prev = _sf(k_1m_prev_raw, k_1m)
-    k_15m_t = _sf(indicators.get("stoch_k_15m"), 50.0)
+    k_15m_t = _sf(indicators.get("k_15m"), 50.0)
     rsi_1h_tr = _sf(indicators.get("rsi_1h"), 50.0)
     rsi_4h_tr = _sf(indicators.get("rsi_4h"), 50.0)
     # WT cross replaces stoch crossover (faster, less lag — validated by backtest)
@@ -722,7 +718,7 @@ def check_winner_momentum(
     """Returns (should_hold, reason). True = momentum still favorable — HOLD the winner.
     Allows exit when: (1) stoch_15m exhausted + 3m structure breaking, OR
     (2) wt1_15m crossed below wt2_15m + 3m structure breaking."""
-    k_15m = _sf(indicators.get("stoch_k_15m"))
+    k_15m = _sf(indicators.get("k_15m"))
     wt1_15m = _sf(indicators.get("wt1_15m"), 0.0)
     wt2_15m = _sf(indicators.get("wt2_15m"), 0.0)
     high_3m = _sf(indicators.get("high_3m"), 0)
@@ -771,10 +767,10 @@ def check_entry_vetting(
     wt_cross_3m = indicators.get("wt_cross_3m")
     wt1_3m, wt2_3m = _sf(indicators.get("wt1_3m")), _sf(indicators.get("wt2_3m"))
     k_1m, k_1m_prev = (
-        _sf(indicators.get("stoch_k_1m")),
+        _sf(indicators.get("k_1m")),
         _sf(indicators.get("k_1m_prev")),
     )
-    k_3m, d_3m = _sf(indicators.get("stoch_k_3m")), _sf(indicators.get("stoch_d_3m"))
+    k_3m, d_3m = _sf(indicators.get("k_3m")), _sf(indicators.get("d_3m"))
     if is_long:
         dc_breakout = (
             dc_high_3m > 0 and dc_high_3m_ant > 0 and dc_high_3m > dc_high_3m_ant
@@ -803,14 +799,14 @@ def check_entry_vetting(
     _ev_mode = int(getattr(config, "ENTRY_VET_RELAX_MODE", 1 if _ev_legacy else 2))
     if _ev_mode == 0:
         if not (structure_ok and dc_breakout):
-            return False, f"NO_STRUCT_AND_BREAKOUT"
+            return False, "NO_STRUCT_AND_BREAKOUT"
     elif _ev_mode == 1:
         if not (structure_ok or dc_breakout):
-            return False, f"NO_STRUCT_OR_BREAKOUT"
+            return False, "NO_STRUCT_OR_BREAKOUT"
     # mode 2: skip structure/breakout pre-check (trigger-only gate below)
     # mode 3: auto-pass (skip both pre-check and trigger gate below)
     if _ev_mode != 3 and not trigger:
-        return False, f"NO_TRIGGER"
+        return False, "NO_TRIGGER"
     return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}_mode={_ev_mode}"
 
 
@@ -834,8 +830,8 @@ def update_ls_ratio_1h_adjustment(indicators: Optional[Dict[str, Any]] = None) -
         _ls_ratio_1h_adj["adj"] = 0.0
     if not indicators:
         return _ls_ratio_1h_adj["adj"]
-    k_1h = _sf(indicators.get("stoch_k_1h"), 50.0)
-    d_1h = _sf(indicators.get("stoch_d_1h"), 50.0)
+    k_1h = _sf(indicators.get("k_1h"), 50.0)
+    d_1h = _sf(indicators.get("d_1h"), 50.0)
     prev_k = _ls_ratio_1h_adj["prev_k_1h"]
     prev_d = _ls_ratio_1h_adj["prev_d_1h"]
     bullish_cross = prev_k <= prev_d and k_1h > d_1h
@@ -914,11 +910,11 @@ def check_no_loss_exit(
         return False, "HEALTHY_GAIN"
     if gain_pct >= 0.03:
         return False, "HOLD"
-    k_1m, d_1m = _sf(indicators.get("stoch_k_1m")), _sf(indicators.get("stoch_d_1m"))
-    k_3m, d_3m = _sf(indicators.get("stoch_k_3m")), _sf(indicators.get("stoch_d_3m"))
+    k_1m, d_1m = _sf(indicators.get("k_1m")), _sf(indicators.get("d_1m"))
+    k_3m, d_3m = _sf(indicators.get("k_3m")), _sf(indicators.get("d_3m"))
     k_15m, d_15m = (
-        _sf(indicators.get("stoch_k_15m")),
-        _sf(indicators.get("stoch_d_15m")),
+        _sf(indicators.get("k_15m")),
+        _sf(indicators.get("d_15m")),
     )
     if is_long:
         all_against = k_1m < d_1m and k_3m < d_3m and k_15m < d_15m
@@ -957,8 +953,8 @@ def check_reentry_eligible(
     )
     if _price_crossed:
         return True, "REENTRY_PRICE_CROSSED_EXIT"
-    k_1m, d_1m = _sf(indicators.get("stoch_k_1m")), _sf(indicators.get("stoch_d_1m"))
-    k_3m = _sf(indicators.get("stoch_k_3m"))
+    k_1m, d_1m = _sf(indicators.get("k_1m")), _sf(indicators.get("d_1m"))
+    k_3m = _sf(indicators.get("k_3m"))
     if is_long:
         if k_3m > 95:
             return False, "EXHAUSTED_OVERBOUGHT"
@@ -1020,20 +1016,21 @@ from binance.client import Client
 
 # from binance.enums import *
 ORDER_TYPE_LIMIT = "LIMIT"
-from binance.exceptions import BinanceAPIException
-
 import hedge_decisions as _hd
+from binance.exceptions import BinanceAPIException
 from config import Config
 from ez_positions_service import bootstrap_position_service
 
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
-    from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
-    from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
-    from entry_engine_stoch import (
-        should_fire_stoch_entry as _ee_should_fire_stoch_entry,
-    )
-    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
+    from entry_engine_dc import \
+        should_fire_dc_entry as _ee_should_fire_dc_entry
+    from entry_engine_htf import \
+        should_fire_htf_entry as _ee_should_fire_htf_entry
+    from entry_engine_stoch import \
+        should_fire_stoch_entry as _ee_should_fire_stoch_entry
+    from entry_engine_wt import \
+        should_fire_wt_entry as _ee_should_fire_wt_entry
 except Exception:
     _ee_should_fire_wt_entry = None
     _ee_should_fire_stoch_entry = None
@@ -1042,9 +1039,8 @@ except Exception:
 # 2026-05-19 PATH D — STDEV_MACRO entry-engine import. Default OFF via
 # LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED in config.py.
 try:
-    from entry_engine_stdev_macro import (
-        should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry,
-    )
+    from entry_engine_stdev_macro import \
+        should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry
 except Exception:
     _ee_should_fire_stdev_macro_entry = None
 
@@ -1090,30 +1086,16 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
         return 1.0, ""
 
 
-from utils import (
-    REDIS_CHANNELS,
-    RateLimitDuplicateFilter,
-    action_logger,
-    clean_and_repair_symbol,
-    clean_position_key,
-    construct_position_key,
-    current_account,
-    force_usdc_if_needed,
-    force_usdc_in_list,
-    get_current_environment,
-    get_current_price,
-    get_simple_redis_manager,
-    is_hedge_account,
-    is_sandbox_account,
-    is_strict_no_loss_account,
-    load_environment_from_gpg,
-    parse_position_key,
-    pk_is_long,
-    pk_is_short,
-    pk_symbol,
-    record_decision_context_crypto,
-    safe_fetch_float,
-)
+from utils import (REDIS_CHANNELS, RateLimitDuplicateFilter, action_logger,
+                   clean_and_repair_symbol, clean_position_key,
+                   construct_position_key, current_account,
+                   force_usdc_if_needed, force_usdc_in_list,
+                   get_current_environment, get_current_price,
+                   get_simple_redis_manager, is_hedge_account,
+                   is_sandbox_account, is_strict_no_loss_account,
+                   load_environment_from_gpg, parse_position_key, pk_is_long,
+                   pk_is_short, pk_symbol, record_decision_context_crypto,
+                   safe_fetch_float)
 
 warnings.filterwarnings(
     "ignore", category=UserWarning, message=".*position_keyg_resources is deprecated.*"
@@ -1201,9 +1183,9 @@ current_env = get_current_environment()
 
 
 def is_storm(indicators, position_side, account_key=None):
-    k15 = float(indicators.get("stoch_k_15m", 50) or 50)
-    k1h = float(indicators.get("stoch_k_1h", 50) or 50)
-    k4h = float(indicators.get("stoch_k_4h", 50) or 50)
+    k15 = float(indicators.get("k_15m", 50) or 50)
+    k1h = float(indicators.get("k_1h", 50) or 50)
+    k4h = float(indicators.get("k_4h", 50) or 50)
     if position_side == "LONG":
         return k15 < 30 and (k1h < 30 or k4h < 30)
     return k15 > 70 and (k1h > 70 or k4h > 70)
@@ -1271,6 +1253,40 @@ def _ezm_apply_final_book(sym_key: str, ov: dict) -> dict:
     elif sym_key in set(book.get("disabled", [])):
         ov = dict(ov); ov[side_flag] = False
     return ov
+
+
+# 🏆 INF_DEDICATED_WINNERS 7D overlay (USER 2026-07-08) — per_sym_7d_agent.py writes
+# data/hourly_reconfig/inf/active_config_7d.json (keys = plain symbol e.g. "SKLUSDT";
+# fields incl. delta_wsharpe/baseline_wsharpe/wsharpe/promote/updated_at). mtime-cached
+# like _ezm_load_final_book. Missing or stale (>24h) file -> {} (log once) -> no boost.
+_ezm_inf_7d: dict = {}
+_ezm_inf_7d_mtime: float = 0.0
+_ezm_inf_7d_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "inf" / "active_config_7d.json"
+_ezm_inf_7d_warned: bool = False
+
+
+def _ezm_load_inf_7d() -> dict:
+    global _ezm_inf_7d, _ezm_inf_7d_mtime, _ezm_inf_7d_warned
+    try:
+        mtime = _ezm_inf_7d_path.stat().st_mtime
+        if time.time() - mtime > 86400.0:
+            if not _ezm_inf_7d_warned:
+                logger.warning(f"[INF_7D_BOOST] {_ezm_inf_7d_path} stale >24h — no size boost until per_sym_7d_agent --account inf refreshes it")
+                _ezm_inf_7d_warned = True
+            return {}
+        if mtime != _ezm_inf_7d_mtime:
+            with _ezm_inf_7d_path.open() as _f:
+                _ezm_inf_7d = json.load(_f)
+            _ezm_inf_7d_mtime = mtime
+        _ezm_inf_7d_warned = False
+        return _ezm_inf_7d
+    except FileNotFoundError:
+        if not _ezm_inf_7d_warned:
+            logger.warning(f"[INF_7D_BOOST] {_ezm_inf_7d_path} missing — no size boost until per_sym_7d_agent --account inf runs")
+            _ezm_inf_7d_warned = True
+        return {}
+    except Exception:
+        return {}
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
@@ -1572,7 +1588,7 @@ def log_reduce_action(
     )
 
 
-def get_server_heartbeat_path(account_key: str = None) -> Path:
+def get_server_heartbeat_path(account_key: Optional[str] = None) -> Path:
     """Get the server heartbeat file path in data directory for a specific account"""
     if account_key:
         return config.DATA_DIR / f"ez_manage_running_{account_key}"
@@ -1587,7 +1603,7 @@ _heartbeat_deleted_due_to_ban = (
 )
 
 
-async def check_server_heartbeat(account_key: str = None) -> bool:
+async def check_server_heartbeat(account_key: Optional[str] = None) -> bool:
     """Check if server heartbeat file exists and is fresh (not stale) for specific account"""
     try:
         if account_key:
@@ -1693,7 +1709,7 @@ async def check_server_heartbeat(account_key: str = None) -> bool:
         return False
 
 
-async def update_server_heartbeat(account_key: str = None):
+async def update_server_heartbeat(account_key: Optional[str] = None):
     """Update heartbeat file(s) on server with current timestamp for specific account or all accounts"""
     if current_env["env"] == "server":
         accounts_to_update = [account_key] if account_key else config.ACCOUNT_KEYS
@@ -1810,7 +1826,7 @@ async def delete_server_heartbeat():
                 pass
 
 
-async def safe_check_server_heartbeat(account_key: str = None) -> bool:
+async def safe_check_server_heartbeat(account_key: Optional[str] = None) -> bool:
     return await check_server_heartbeat(account_key)
 
 
@@ -1952,10 +1968,10 @@ async def handle_market_index_spike(
             i = await ii(trade_manager, symbol)
             if not i:
                 continue
-            k_3m = safe_fetch_float(i.get("stoch_k_3m", 50), 50.0)
-            d_3m = safe_fetch_float(i.get("stoch_d_3m", 50), 50.0)
-            k_15m = safe_fetch_float(i.get("stoch_k_15m", 50), 50.0)
-            d_15m = safe_fetch_float(i.get("stoch_d_15m", 50), 50.0)
+            k_3m = safe_fetch_float(i.get("k_3m", 50), 50.0)
+            d_3m = safe_fetch_float(i.get("d_3m", 50), 50.0)
+            k_15m = safe_fetch_float(i.get("k_15m", 50), 50.0)
+            d_15m = safe_fetch_float(i.get("d_15m", 50), 50.0)
             t_up_3m = bool(i.get("t_up_3m", False))
             t_up_15m = bool(i.get("t_up_15m", True))
             higher_high_15m = bool(
@@ -2000,6 +2016,7 @@ async def handle_market_index_spike(
                     and abs(safe_float(position_short.positionAmt)) > 0
                     and getattr(config, "EXIT_MARKET_SPIKE_REDUCE_ENABLED", True)
                 ):
+                    result = None
                     if _check_leaderboard_allowed(
                         trade_manager, symbol, "SHORT", account_key, short_key
                     ):
@@ -2072,10 +2089,10 @@ async def handle_market_index_drop(
             i = await ii(trade_manager, symbol)
             if not i:
                 continue
-            k_3m = safe_fetch_float(i.get("stoch_k_3m", 50), 50.0)
-            d_3m = safe_fetch_float(i.get("stoch_d_3m", 50), 50.0)
-            k_15m = safe_fetch_float(i.get("stoch_k_15m", 50), 50.0)
-            d_15m = safe_fetch_float(i.get("stoch_d_15m", 50), 50.0)
+            k_3m = safe_fetch_float(i.get("k_3m", 50), 50.0)
+            d_3m = safe_fetch_float(i.get("d_3m", 50), 50.0)
+            k_15m = safe_fetch_float(i.get("k_15m", 50), 50.0)
+            d_15m = safe_fetch_float(i.get("d_15m", 50), 50.0)
             t_up_3m = bool(i.get("t_up_3m", False))
             t_up_15m = bool(i.get("t_up_15m", True))
             higher_high_15m = bool(
@@ -2342,7 +2359,7 @@ async def monitor_system_state(trade_manager):
                         )
                         shown += 1
             else:
-                logger.info(f"🎯 REENTRY LEVELS: none")
+                logger.info("🎯 REENTRY LEVELS: none")
             reentry_data_dict = (
                 trade_manager.service.reentry_data
                 if trade_manager.service
@@ -2381,6 +2398,7 @@ async def monitor_system_state(trade_manager):
 master_stop_enter_count = {}
 process_position_enter_count = {}
 trade_manager_global = None
+_HEDGE_SYMBOL_COOLDOWN_TS: dict = {}  # in-memory fallback cooldown tracker
 _global_file_write_semaphore = asyncio.Semaphore(
     40 if current_env.get("env") == "macbook" else 400
 )  # MacBook: 5 (prevent "too many open files"), Server/Gateway: 1000 (speed)
@@ -2654,7 +2672,7 @@ def _is_file_fresh(file_path: Path, max_age: float) -> bool:
     return _file_age_seconds(file_path) <= max_age
 
 
-async def load_json_safe(file_path: Union[str, Path], account_key: str = None) -> dict:
+async def load_json_safe(file_path: Union[str, Path], account_key: Optional[str] = None) -> dict:
     file_path = Path(file_path)
     async with _global_file_write_semaphore:
         content = b""
@@ -2769,7 +2787,7 @@ class AccountConfig:
     _last_used_weight: int = field(
         default=0, init=False
     )  # NEW: to track last logged weight
-    _connector_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _connector_lock: threading.Lock = field(default_factory=threading.Lock, init=False)  # type: ignore[call-overload]
     _ip_cycle: Optional[deque] = field(default=None, init=False)
     _current_ip: Optional[str] = field(default=None, init=False)
     _banned_ips: dict = field(default_factory=dict, init=False)
@@ -3275,7 +3293,7 @@ class TradeVerifier:
             api_positions = self.positions_by_account.get(account_key, {})
             current_pos = api_positions.get(position_key)
             final_amt = (
-                abs(safe_fetch_float(getattr(current_pos, "positionAmt", 0.0), 0.0))
+                (safe_fetch_float(getattr(current_pos, "positionAmt", 0.0), 0.0))
                 if current_pos
                 else 0.0
             )
@@ -3305,7 +3323,7 @@ class TradeVerifier:
                 and final_amt < 1e-6
                 and abs(initial_positionAmt) >= abs(expected_qty_float) * 0.9
             ):
-                logger.info(f"[TradeVerifier] Executed (CLOSED): position gone")
+                logger.info("[TradeVerifier] Executed (CLOSED): position gone")
                 return True
         except Exception as e:
             logger.error(f"[TradeVerifier] API fetch failed: {e}")
@@ -3759,8 +3777,8 @@ async def _ensure_reentry_snapshot(ctx: dict) -> bool:
 
 def _compare_and_merge_market_data_freshness(
     symbol: Optional[str] = None,
-    primary_data: dict = None,
-    secondary_data: dict = None,
+    primary_data: Optional[dict] = None,
+    secondary_data: Optional[dict] = None,
     source_name: str = "secondary",
 ) -> dict:
     """Compare freshness of market data from two sources and merge the fresher values."""
@@ -3815,8 +3833,8 @@ def _compare_and_merge_market_data_freshness(
                 use_secondary = True
             if use_secondary:
                 tf_prefixes = [
-                    f"stoch_k_{tf}",
-                    f"stoch_d_{tf}",
+                    f"k_{tf}",
+                    f"d_{tf}",
                     f"dc_high_{tf}",
                     f"dc_low_{tf}",
                     f"wt1_{tf}",
@@ -3921,7 +3939,7 @@ def _coerce_indicator_epoch(value: Any) -> Optional[float]:
 
 def _get_smart_default(key: str, default_value=None):
     """Smart defaults without file reading or complex fallbacks"""
-    if "stoch_k" in key or "stoch_d" in key:
+    if "k" in key or "d" in key:
         return 50.0
     elif "ha_" in key:
         return "neutral"
@@ -4020,26 +4038,24 @@ async def ii(
     if not result and trade_manager:
         rm = getattr(trade_manager, "redis_manager", None)
         if rm and hasattr(rm, "connections") and rm.connections:
-            try:
-                client = rm.connections.get("local")
+            for name in ["local", "gateway", "server"]:
+                client = rm.connections.get(name)
                 if client:
-                    hot_raw = await asyncio.wait_for(
-                        client.get(f"hot_metrics:{sym}"), timeout=2.0
-                    )
-                    if hot_raw:
-                        if isinstance(hot_raw, bytes):
-                            hot_raw = hot_raw.decode("utf-8")
-                        parsed = orjson.loads(hot_raw)
-                        if isinstance(parsed, dict):
-                            result = parsed.copy()
-                            trade_manager.indicators_source_label = "redis_hot"
-            except Exception:
-                pass
+                    try:
+                        hot_raw = await asyncio.wait_for(client.get(f"hot_metrics:{sym}"), timeout=0.1)
+                        if hot_raw:
+                            if isinstance(hot_raw, bytes): hot_raw = hot_raw.decode("utf-8")
+                            parsed = orjson.loads(hot_raw)
+                            if isinstance(parsed, dict):
+                                result = parsed.copy()
+                                trade_manager.indicators_source_label = f"redis_hot_{name}"
+                                break
+                    except Exception: pass
     # hot_metrics (Redis path 2) only has 1m/3m stoch — supplement HTF fields if missing.
-    # Bridge (shared memory) returns stoch_k_3m=0/stoch_d_3m=0 when ez_indicators skips 3m
+    # Bridge (shared memory) returns k_3m=0/d_3m=0 when ez_indicators skips 3m
     # computation due to stale mark price (>3s gap). Override both-zero 3m stoch from JSON.
-    _htf_needed = bool(result) and result.get("stoch_k_15m") is None
-    _3m_zero = bool(result) and result.get("stoch_k_3m", 0) == 0 and result.get("stoch_d_3m", 0) == 0
+    _htf_needed = bool(result) and result.get("k_15m") is None
+    _3m_zero = bool(result) and result.get("k_3m", 0) == 0 and result.get("d_3m", 0) == 0
     if not result or _htf_needed or _3m_zero:
         snapshot = getattr(trade_manager, "indicators_snapshot", {})
         bulk_data = snapshot.get(sym)
@@ -4049,19 +4065,19 @@ async def ii(
                 trade_manager.indicators_source_label = trade_manager.indicators_source_label or "snapshot"
             else:
                 _label_add = ""
-                if _htf_needed and bulk_data.get("stoch_k_15m") is not None:
+                if _htf_needed and bulk_data.get("k_15m") is not None:
                     for key, val in bulk_data.items():
                         if key not in result:
                             result[key] = val
                     _label_add += "+snapshot_htf"
-                if _3m_zero and bulk_data.get("stoch_k_3m"):
-                    result["stoch_k_3m"] = bulk_data["stoch_k_3m"]
-                    result["stoch_d_3m"] = bulk_data.get("stoch_d_3m", result.get("stoch_d_3m", 0))
+                if _3m_zero and bulk_data.get("k_3m"):
+                    result["k_3m"] = bulk_data["k_3m"]
+                    result["d_3m"] = bulk_data.get("d_3m", result.get("d_3m", 0))
                     _label_add += "+snapshot_3m"
                 if _label_add:
                     trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + _label_add
-    _htf_needed = bool(result) and result.get("stoch_k_15m") is None
-    _3m_zero = bool(result) and result.get("stoch_k_3m", 0) == 0 and result.get("stoch_d_3m", 0) == 0
+    _htf_needed = bool(result) and result.get("k_15m") is None
+    _3m_zero = bool(result) and result.get("k_3m", 0) == 0 and result.get("d_3m", 0) == 0
     if not result or _htf_needed or _3m_zero:
         try:
             latest_file = _get_latest_market_data_file()
@@ -4082,9 +4098,9 @@ async def ii(
                                         if key not in result:
                                             result[key] = val
                                     _label_add += "+json_htf"
-                                if _3m_zero and file_sym_data.get("stoch_k_3m"):
-                                    result["stoch_k_3m"] = file_sym_data["stoch_k_3m"]
-                                    result["stoch_d_3m"] = file_sym_data.get("stoch_d_3m", result.get("stoch_d_3m", 0))
+                                if _3m_zero and file_sym_data.get("k_3m"):
+                                    result["k_3m"] = file_sym_data["k_3m"]
+                                    result["d_3m"] = file_sym_data.get("d_3m", result.get("d_3m", 0))
                                     _label_add += "+json_3m"
                                 if _label_add:
                                     trade_manager.indicators_source_label = (trade_manager.indicators_source_label or "") + _label_add
@@ -4092,14 +4108,14 @@ async def ii(
             pass
     if result:
         mapping = {
-            "k_1m": "stoch_k_1m",
-            "d_1m": "stoch_d_1m",
-            "k_3m": "stoch_k_3m",
-            "d_3m": "stoch_d_3m",
-            "k_1m_prev": "stoch_k_1m_prev",
-            "d_1m_prev": "stoch_d_1m_prev",
-            "k_3m_prev": "stoch_k_3m_prev",
-            "d_3m_prev": "stoch_d_3m_prev",
+            "k_1m": "k_1m",
+            "d_1m": "d_1m",
+            "k_3m": "k_3m",
+            "d_3m": "d_3m",
+            "k_1m_prev": "k_1m_prev",
+            "d_1m_prev": "d_1m_prev",
+            "k_3m_prev": "k_3m_prev",
+            "d_3m_prev": "d_3m_prev",
             "price": "current_price",
             "close": "current_price",
         }
@@ -4148,12 +4164,12 @@ def _check_leaderboard_allowed(
         if service:
             acct_pos = service.positions_by_account.get(account_key, {})
             pos = acct_pos.get(position_key)
-            if pos and abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0)) > 0:
+            if pos and (safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0)) > 0:
                 return True
         local_pos = trade_manager.positions.get(position_key)
         if (
             local_pos
-            and abs(safe_fetch_float(getattr(local_pos, "positionAmt", 0.0), 0.0)) > 0
+            and (safe_fetch_float(getattr(local_pos, "positionAmt", 0.0), 0.0)) > 0
         ):
             return True
     except Exception:
@@ -4348,18 +4364,18 @@ def calculate_gain(position_side, current_price, entry_price):
 
 def calculate_tier_mult(i: dict, is_long: bool) -> int:
     """Calculates the safe retention tier based on Stoch RSI alignment across timeframes."""
-    k_1m = safe_fetch_float(i.get("stoch_k_1m", 50))
+    k_1m = safe_fetch_float(i.get("k_1m", 50))
     k_1m_prev = safe_fetch_float(i.get("k_1m_prev", 50))
-    d_1m = safe_fetch_float(i.get("stoch_k_dm", 50))
-    k_3m = safe_fetch_float(i.get("stoch_k_3m", 50))
-    d_3m = safe_fetch_float(i.get("stoch_d_3m", 50))
+    d_1m = safe_fetch_float(i.get("k_dm", 50))
+    k_3m = safe_fetch_float(i.get("k_3m", 50))
+    d_3m = safe_fetch_float(i.get("d_3m", 50))
     k_3m_prev = safe_fetch_float(i.get("k_3m_prev", 50))
-    k_15m = safe_fetch_float(i.get("stoch_k_15m", 50))
-    d_15m = safe_fetch_float(i.get("stoch_d_15m", 50))
-    k_1h = safe_fetch_float(i.get("stoch_k_1h", 50))
-    d_1h = safe_fetch_float(i.get("stoch_d_1h", 50))
-    k_4h = safe_fetch_float(i.get("stoch_k_4h", 50))
-    d_4h = safe_fetch_float(i.get("stoch_d_4h", 50))
+    k_15m = safe_fetch_float(i.get("k_15m", 50))
+    d_15m = safe_fetch_float(i.get("d_15m", 50))
+    k_1h = safe_fetch_float(i.get("k_1h", 50))
+    d_1h = safe_fetch_float(i.get("d_1h", 50))
+    k_4h = safe_fetch_float(i.get("k_4h", 50))
+    d_4h = safe_fetch_float(i.get("d_4h", 50))
     tick_ts = safe_fetch_float(i.get("tick_ts", 50))
     tier_mult = 0
     arrow1_good = (is_long and k_1m >= k_1m_prev) or (not is_long and k_1m <= k_1m_prev)
@@ -5481,9 +5497,7 @@ class WebSocketManager:
         )
         for candidate in candidates:
             try:
-                raw = await asyncio.wait_for(
-                    client.get(f"mark_price:{candidate}"), timeout=2.0
-                )
+                raw = await asyncio.wait_for(client.get(f"mark_price:{candidate}"), timeout=0.1)
                 if not raw:
                     continue
                 if isinstance(raw, (bytes, bytearray)):
@@ -5632,7 +5646,7 @@ async def atomic_write_json(file_path: Union[str, Path], data: dict):
         return await _atomic_write_json_impl(file_path, clean_data)
 
 
-async def quick_price(symbol: Optional[str] = None) -> float:
+async def quick_price(symbol: Optional[str] = None) -> Optional[float]:
     global trade_manager_global
     if not symbol:
         return 0.0
@@ -5650,7 +5664,7 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                 ) or trade_manager.redis_manager.connections.get("local")
             if read_client:
                 redis_key = f"mark_price:{symbol}"
-                data = await asyncio.wait_for(read_client.get(redis_key), timeout=2.0)
+                data = await asyncio.wait_for(read_client.get(redis_key), timeout=0.1)
                 if data:
                     try:
                         p_data = safe_json_loads(data)
@@ -5812,32 +5826,23 @@ async def price(
         and trade_manager.redis_manager
         and trade_manager.redis_manager._initialized
     ):
-        read_client = trade_manager.redis_manager.connections.get("local")
-        if read_client:
-            try:
-                data = await asyncio.wait_for(
-                    read_client.get(f"mark_price:{symbol}"), timeout=2.0
-                )
-                if data:
-                    if isinstance(data, (bytes, bytearray)):
-                        data = data.decode()
-                    p_data = (
-                        json.loads(data)
-                        if isinstance(data, str) and data.startswith("{")
-                        else None
-                    )
-                    if p_data:
-                        price_val = float(p_data.get("price", 0.0))
-                        if price_val > 0:
-                            ts_str = p_data.get("timestamp", "")
-                            ts = ensure_tz(isoparse(ts_str)) if ts_str else now
-                            age = (now - ts).total_seconds()
-                            if age <= max_age:
-                                return (price_val, ts) if withts else price_val
-                    elif not withts and data:
-                        return float(data)
-            except Exception:
-                pass
+        for name in ["local", "gateway", "server"]:
+            read_client = trade_manager.redis_manager.connections.get(name)
+            if read_client:
+                try:
+                    data = await asyncio.wait_for(read_client.get(f"mark_price:{symbol}"), timeout=0.1)
+                    if data:
+                        if isinstance(data, (bytes, bytearray)): data = data.decode()
+                        p_data = json.loads(data) if isinstance(data, str) and data.startswith("{") else None
+                        if p_data:
+                            price_val = float(p_data.get("price", 0.0))
+                            if price_val > 0:
+                                ts_str = p_data.get("timestamp", "")
+                                ts = ensure_tz(isoparse(ts_str)) if ts_str else now
+                                age = (now - ts).total_seconds()
+                                if age <= max_age: return (price_val, ts) if withts else price_val
+                        elif not withts and data: return float(data)
+                except Exception: pass
     if not withts:
         quick = await quick_price(symbol)
         if quick and quick > 0:
@@ -6195,7 +6200,7 @@ class PositionUpdateCallback:
                 position_data["positionAmt"] = positionAmt  # Ensure float type in data
                 prev_position = self.trade_manager.positions.get(position_key)
                 prev_amt = (
-                    abs(safe_fetch_float(getattr(prev_position, "positionAmt", 0), 0.0))
+                    (safe_fetch_float(getattr(prev_position, "positionAmt", 0), 0.0))
                     if prev_position
                     else 0.0
                 )
@@ -6616,7 +6621,7 @@ class SmartCircuitBreaker:
             pos = positions.get(pk)
             if (
                 not pos
-                or abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0)) < 0.001
+                or (safe_fetch_float(getattr(pos, "positionAmt", 0), 0)) < 0.001
             ):
                 self._entries.pop(pk, None)
                 continue
@@ -6695,19 +6700,19 @@ class MultiAccountTradeManager:
         global trade_manager_global
         self.config = config
         self.circuit_breaker = SmartCircuitBreaker()
-        self._last_redis_warning = 0
-        self._last_read_warning = 0
+        self._last_redis_warning = 0.0
+        self._last_read_warning = 0.0
         self.local_locks_cleanup_task = None
-        self._last_rate_limit_time = 0
+        self._last_rate_limit_time = 0.0
         self._price_cache_refresh_interval = 60  # seconds
         self._price_caches_last_loaded = datetime.min.replace(tzinfo=timezone.utc)
-        self.price_caches_last_loaded = 0
+        self.price_caches_last_loaded = 0.0
         self.accounts = accounts
         self._allowed_accounts = (
             frozenset()
         )  # Will be set in main() - temporary empty set to prevent errors
         if not self.accounts:
-            raise RuntimeError(f"No accounts provided to MultiAccountTradeManager")
+            raise RuntimeError("No accounts provided to MultiAccountTradeManager")
         self.symbols = symbols
         self.order_queue = order_queue
         self.logger = logger
@@ -7078,11 +7083,11 @@ class MultiAccountTradeManager:
         )
         self.prox_scores = {}
         self.tradeable_keys = set()
-        self._last_tradeable_update = 0  # Last time we updated the set in memory
-        self._last_file_read = 0  # Last time we actually read the JSON disk file
+        self._last_tradeable_update = 0.0  # Last time we updated the set in memory
+        self._last_file_read = 0.0  # Last time we actually read the JSON disk file
         self.tradeable_lock = asyncio.Lock()
         self.base_path = config.BASE_PATH
-        self.raw_indicators_json_content = {}
+        self.raw_indicators_json_content: Optional[bytes] = None
         # 2026-05-08 CURSE FIX: per-pkey ring of (ts, qty, reason) for orders just sent.
         # handle_augmentation/handle_reduction match WS-confirmed fill qty against this ring
         # to attribute the correct reason instead of reading a clobbered Redis decision: key.
@@ -7343,9 +7348,9 @@ class MultiAccountTradeManager:
     async def _recover_position_safe(
         self,
         position_key: str,
-        account_key: str = None,
-        symbol: str = None,
-        position_side: str = None,
+        account_key: Optional[str] = None,
+        symbol: Optional[str] = None,
+        position_side: Optional[str] = None,
     ) -> Optional[Position]:
         position = await self.get_position(position_key)
         if position:
@@ -8824,7 +8829,7 @@ class MultiAccountTradeManager:
             position = await self.get_position(position_key)
             has_position = (
                 position
-                and abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                and (safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
                 > 0
             )
             if (
@@ -9186,9 +9191,9 @@ class MultiAccountTradeManager:
             )
             return None
         clients_to_try = [
+            ("local", self.redis_manager.connections.get("local")),
             ("gateway", self.redis_manager.connections.get("gateway")),
             ("server", self.redis_manager.connections.get("server")),
-            ("local", self.redis_manager.connections.get("local")),
         ]
         for name, client in clients_to_try:
             if client is not None:
@@ -9232,9 +9237,9 @@ class MultiAccountTradeManager:
             )
             return None
         clients_to_try = [
+            ("local", self.redis_manager.connections.get("local")),
             ("gateway", self.redis_manager.connections.get("gateway")),
             ("server", self.redis_manager.connections.get("server")),
-            ("local", self.redis_manager.connections.get("local")),
         ]
         for name, client in clients_to_try:
             if client is not None:
@@ -9306,8 +9311,8 @@ class MultiAccountTradeManager:
         existing = self.indicators_snapshot[symbol]
         now = time.time()
         ONE_MINUTE_KEYS = {
-            "stoch_k_1m",
-            "stoch_d_1m",
+            "k_1m",
+            "d_1m",
             "k_1m_prev",
             "k_1m",
             "d_1m",
@@ -9315,8 +9320,8 @@ class MultiAccountTradeManager:
             "timestamp_1m",
         }
         LIVE_KEYS = {
-            "stoch_k_3m",
-            "stoch_d_3m",
+            "k_3m",
+            "d_3m",
             "k_3m_prev",
             "k_3m",
             "d_3m",
@@ -9559,7 +9564,7 @@ class MultiAccountTradeManager:
                             f"[CRITICAL_DATA_STALE] indicators_snapshot CACHE NOT REFRESHED FOR {cache_age_str} (>{CACHE_STALE_SECONDS:.0f}s) | "
                             f"indicator_age={indicator_age_str} position_age={position_age_str} | "
                             f"CONSECUTIVE_FAILURES={self._btc_stale_count['cache']} | "
-                            f"FORCING IMMEDIATE REFRESH NOW!"
+                            "FORCING IMMEDIATE REFRESH NOW!"
                         )
 
                         async def _aggressive_refresh():
@@ -9582,7 +9587,7 @@ class MultiAccountTradeManager:
                                 f"[CRITICAL_DATA_STALE] INDICATORS NOT REFRESHED FOR {indicator_age_str} (source={indicator_source}) | "
                                 f"cache_age={cache_age_str} position_age={position_age_str} | "
                                 f"CONSECUTIVE_FAILURES={self._btc_stale_count['indicator']} | "
-                                f"FORCING IMMEDIATE REFRESH NOW!"
+                                "FORCING IMMEDIATE REFRESH NOW!"
                             )
                         try:
                             await self._force_refresh_indicators_aggressive()
@@ -9681,7 +9686,7 @@ class MultiAccountTradeManager:
                             f"position_key={position_key_found} positionAmt={positionAmt_found:.6f} | "
                             f"indicator_age={indicator_age_str} cache_age={cache_age_str} | "
                             f"CONSECUTIVE_FAILURES={self._btc_stale_count['position']} | "
-                            f"FORCING IMMEDIATE REFRESH NOW!"
+                            "FORCING IMMEDIATE REFRESH NOW!"
                         )
                         try:
                             if position_account_key:
@@ -10263,7 +10268,7 @@ class MultiAccountTradeManager:
     async def init_async(self):
         self.min_qty = await self.load_min_qty()
         self.symbol_configs = await self.load_symbol_configs()
-        self.logger.info(f"Loaded symbol configs from self.config.SYMBOL_CONFIGS_FILE ")
+        self.logger.info("Loaded symbol configs from self.config.SYMBOL_CONFIGS_FILE ")
         try:
             with open(config.LIVE_USDC_PAIRS_FILE, "rb") as f:
                 self.available_usdc_pairs = set(orjson.loads(f.read()))
@@ -10349,7 +10354,7 @@ class MultiAccountTradeManager:
         pass
 
     async def initialize_indicators_bridge(
-        self, poll_interval: float = None, cache_ttl: float = None
+        self, poll_interval: Optional[float] = None, cache_ttl: Optional[float] = None
     ) -> None:
         if self.indicators_bridge:
             return
@@ -10721,10 +10726,10 @@ class MultiAccountTradeManager:
                                 dc_b_1h = safe_fetch_float(ind.get("dc_basis_1h"), None)
                                 bb_u_1h = safe_fetch_float(ind.get("bb_upper_1h"), None)
                                 bb_l_1h = safe_fetch_float(ind.get("bb_lower_1h"), None)
-                                k_3m = safe_fetch_float(ind.get("stoch_k_3m"), 50)
-                                d_3m = safe_fetch_float(ind.get("stoch_d_3m"), 50)
+                                k_3m = safe_fetch_float(ind.get("k_3m"), 50)
+                                d_3m = safe_fetch_float(ind.get("d_3m"), 50)
                                 k_3m_prev = safe_fetch_float(
-                                    ind.get("k_3m_prev") or ind.get("stoch_k_3m_prev"),
+                                    ind.get("k_3m_prev") or ind.get("k_3m_prev"),
                                     k_3m,
                                 )
                             except Exception:
@@ -10830,9 +10835,8 @@ class MultiAccountTradeManager:
                             )
                             if _gr_min_tfs > 0:
                                 try:
-                                    from golden_rule_htf import (
-                                        score_entry_htf as _gr_score_entry,
-                                    )
+                                    from golden_rule_htf import \
+                                        score_entry_htf as _gr_score_entry
 
                                     _gr_min_ind = int(
                                         getattr(config, "GOLDEN_RULE_MIN_IND", 2)
@@ -11205,10 +11209,10 @@ class MultiAccountTradeManager:
         if _svc_snap and isinstance(_svc_snap, dict) and len(_svc_snap) > 10:
             current_snapshot = self.indicators_snapshot
             PROTECTED_KEYS = {
-                "stoch_k_1m",
-                "stoch_d_1m",
-                "stoch_k_3m",
-                "stoch_d_3m",
+                "k_1m",
+                "d_1m",
+                "k_3m",
+                "d_3m",
                 "k1",
                 "d1",
                 "k3",
@@ -11341,10 +11345,10 @@ class MultiAccountTradeManager:
         ]:
             all_symbols.update(sym_set)
         PROTECTED_KEYS = {
-            "stoch_k_1m",
-            "stoch_d_1m",
-            "stoch_k_3m",
-            "stoch_d_3m",
+            "k_1m",
+            "d_1m",
+            "k_3m",
+            "d_3m",
             "k1",
             "d1",
             "k3",
@@ -11480,7 +11484,7 @@ class MultiAccountTradeManager:
             if not latest_file:
                 self.indicators_snapshot_refresh_time = time.time()
                 logger.error(
-                    f"❌ No valid market data file found in _refresh_indicators_from_file"
+                    "❌ No valid market data file found in _refresh_indicators_from_file"
                 )
                 return
             latest_path = Path(latest_file)
@@ -11610,7 +11614,7 @@ class MultiAccountTradeManager:
 
                 latest_file = _get_latest_market_data_file()
                 if not latest_file:
-                    logger.error(f"❌ [REFRESH] No valid market data file found")
+                    logger.error("❌ [REFRESH] No valid market data file found")
                     return
                 latest_path = Path(latest_file)
                 if latest_path.exists():
@@ -11660,7 +11664,7 @@ class MultiAccountTradeManager:
                 logger.warning(f"⚠️ [REFRESH] File refresh failed: {file_err}")
         if not refreshed:
             logger.critical(
-                f"[REFRESH] All sources failed, requesting indicator service restart"
+                "[REFRESH] All sources failed, requesting indicator service restart"
             )
             try:
                 await request_ez_indicators_restart("stale_data_detected")
@@ -11941,7 +11945,7 @@ class MultiAccountTradeManager:
             self.stop_snapshot_refresh_time = now
 
     async def get_cached_positions(
-        self, account_key: str, max_age: float = None
+        self, account_key: str, max_age: Optional[float] = None
     ) -> Optional[Dict]:
         """Get positions from cache if fresh, returns None if cache doesn't exist or is too old"""
         async with self._autonomous_cache_lock:
@@ -12345,7 +12349,7 @@ class MultiAccountTradeManager:
             )
 
     async def clear_all_cooldowns_for_position(
-        self, position_key: str, side: str = None
+        self, position_key: str, side: Optional[str] = None
     ):
         """Clear signal cooldowns for a position when execution fails. NEVER clear augment guards."""
         try:
@@ -12373,7 +12377,7 @@ class MultiAccountTradeManager:
                 f"[CLEAR_ALL_COOLDOWNS] {position_key}: Error clearing cooldowns: {e}"
             )
 
-    async def clear_all_trade_blocks(self, position_key: str, side: str = None):
+    async def clear_all_trade_blocks(self, position_key: str, side: Optional[str] = None):
         """Clear ALL trade blocking mechanisms including cooldowns, locks, and signals"""
         try:
             await self.clear_all_cooldowns_for_position(position_key, side)
@@ -12630,7 +12634,7 @@ class MultiAccountTradeManager:
         latest_file = _get_latest_market_data_file()
         if not latest_file:
             logger.error(
-                f"❌ No valid market data file found in _ensure_latest_market_data_loaded"
+                "❌ No valid market data file found in _ensure_latest_market_data_loaded"
             )
             return
         latest_path = Path(latest_file)
@@ -12859,7 +12863,7 @@ class MultiAccountTradeManager:
         await _maybe_restart_indicators(self, "missing_snapshot")
         return {}
 
-    async def market_snapshot_refresh_loop(self, interval: float = None):
+    async def market_snapshot_refresh_loop(self, interval: Optional[float] = None):
         refresh_interval = float(interval or self._snapshot_refresh_interval)
         await asyncio.sleep(0.1)
         while True:
@@ -13001,7 +13005,7 @@ class MultiAccountTradeManager:
                                     data = json.loads(repaired_content)
                                     if isinstance(data, dict):
                                         logger.info(
-                                            f"[REPAIR] Successfully repaired latest_market_data.json"
+                                            "[REPAIR] Successfully repaired latest_market_data.json"
                                         )
                                         return data
                                 except json.JSONDecodeError:
@@ -13268,7 +13272,7 @@ class MultiAccountTradeManager:
                 account_key, {}
             )
             for position_side_str in ["LONG", "SHORT"]:
-                file_path = await self.get_position_file(account_key, position_side_str)
+                file_path = self.get_position_file(account_key, position_side_str)
                 symbols_data_from_disk = await self._load_and_merge_backups(
                     file_path, position_side_str
                 )
@@ -13731,9 +13735,7 @@ class MultiAccountTradeManager:
                 try:
                     client = self.redis_manager.connections.get("local")
                     if client:
-                        raw = await asyncio.wait_for(
-                            client.get("tradeable_keys"), timeout=0.5
-                        )
+                        raw = await asyncio.wait_for(client.get("tradeable_keys"), timeout=0.1)
                         if raw:
                             if isinstance(raw, str):
                                 raw = raw.encode("utf-8")
@@ -13760,7 +13762,7 @@ class MultiAccountTradeManager:
             data = await load_file(main_path)
             if not data or not isinstance(data, list) or len(data) == 0:
                 logger.warning(
-                    f"[SYMBOLS] Main keys file missing/corrupt. Trying backup..."
+                    "[SYMBOLS] Main keys file missing/corrupt. Trying backup..."
                 )
                 data = await load_file(backup_path)
             if isinstance(data, list):
@@ -14033,11 +14035,12 @@ class MultiAccountTradeManager:
         self,
         position_key: str,
         current_price: float,
-        window_minutes: int = 5,
+        window_minutes: float = 5,
         min_change_pct: float = 0.12,
     ) -> bool:
         try:
             now = datetime.now(timezone.utc)
+            ak = None
             try:
                 ak, sym, side = parse_position_key(position_key)
             except Exception:
@@ -14893,14 +14896,14 @@ class MultiAccountTradeManager:
                                     if is_new_position:
                                         k_3m = (
                                             safe_fetch_float(
-                                                indicators.get("stoch_k_3m", 50), 50.0
+                                                indicators.get("k_3m", 50), 50.0
                                             )
                                             if indicators
                                             else 50.0
                                         )
                                         d_3m = (
                                             safe_fetch_float(
-                                                indicators.get("stoch_d_3m", 50), 50.0
+                                                indicators.get("d_3m", 50), 50.0
                                             )
                                             if indicators
                                             else 50.0
@@ -15520,14 +15523,14 @@ class MultiAccountTradeManager:
                                             if is_new_position:
                                                 k_3m = (
                                                     safe_fetch_float(
-                                                        i.get("stoch_k_3m", 50), 50.0
+                                                        i.get("k_3m", 50), 50.0
                                                     )
                                                     if i
                                                     else 50.0
                                                 )
                                                 d_3m = (
                                                     safe_fetch_float(
-                                                        i.get("stoch_d_3m", 50), 50.0
+                                                        i.get("d_3m", 50), 50.0
                                                     )
                                                     if i
                                                     else 50.0
@@ -15676,16 +15679,19 @@ class MultiAccountTradeManager:
                                 )
                 if event_type == "QUICK_TRIGGER_1M":
                     event_type = "QUICK_TRIGGER"
-                    await monitor_entries(
-                        order_queue=self.order_queue,
-                        trade_manager=self,
-                        account_key=account_key,
-                        position_keys=allowed_existing,
-                        event_type=event_type,
-                        signal_data=signal_data,
-                        is_priority_add=False,
-                        force=True,
-                    )
+                    _qt1m_acct = locals().get('account_key', None)
+                    _qt1m_keys = locals().get('allowed_existing', [])
+                    if _qt1m_acct and _qt1m_keys:
+                        await monitor_entries(
+                            order_queue=self.order_queue,
+                            trade_manager=self,
+                            account_key=_qt1m_acct,
+                            position_keys=_qt1m_keys,
+                            event_type=event_type,
+                            signal_data=signal_data,
+                            is_priority_add=False,
+                            force=True,
+                        )
                 if (
                     entry_routed_to
                     or exit_routed_to
@@ -16442,7 +16448,7 @@ class MultiAccountTradeManager:
                 for pos_key, pos in self.positions_by_account[acc_key].items():
                     if (
                         pos
-                        and abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0.0))
+                        and (safe_fetch_float(getattr(pos, "positionAmt", 0), 0.0))
                         > 0
                     ):
                         if hasattr(pos, "symbol"):
@@ -16529,7 +16535,7 @@ class MultiAccountTradeManager:
     async def _sync_positions_account(self, account_key: str) -> bool:
         if self.positions_service:
             logger.info("[_load_positions_loop] Disabled (Shared Memory Active)")
-            return
+            return False
         long_path = self._ensure_account_file(account_key, "long_positions.json")
         short_path = self._ensure_account_file(account_key, "short_positions.json")
         file_payload, file_ts = await self._load_position_files_payload(
@@ -16785,7 +16791,7 @@ class MultiAccountTradeManager:
             logger.error(
                 f"[_handle_signal_message] ⚠️ SKIPPING - construct_position_key returned None: account={account_key}, symbol={symbol}"
             )
-            return
+            return False
         try:
             center = float(center_price)
         except Exception:
@@ -17100,7 +17106,7 @@ class MultiAccountTradeManager:
         rel_vol = g("relative_volume_15m")
         if rel_vol > 1.0:
             vol_score += (rel_vol - 1.0) * 0.2
-        k_3m, k_3m_prev, d_3m = g("stoch_k_3m"), g("k_3m_prev"), g("stoch_d_3m")
+        k_3m, k_3m_prev, d_3m = g("k_3m"), g("k_3m_prev"), g("d_3m")
         pullback = 0.0
         if position_side == "LONG":
             if (
@@ -17170,7 +17176,7 @@ class MultiAccountTradeManager:
             logger.error(
                 f"🛡️ [execute_trade_action] CRITICAL: Invalid position_key: {position_key}"
             )
-            return f"BLOCKED_INVALID_POSITION_KEY"
+            return "BLOCKED_INVALID_POSITION_KEY"
         # 2026-05-30 USER: SCALP_REDUCE OFF — executor-level guard (queue_trade_action was bypassed via this direct
         # executor path; gate HERE so the winner-cutting reduce is blocked on every route). RULE_B_3M reduces use a
         # different reason and pass through. ROLLBACK: SCALP_REDUCE_ENABLED=True.
@@ -17241,7 +17247,7 @@ class MultiAccountTradeManager:
         _original_action_was_reentry = action == "REENTRY"
         if action == "REENTRY":
             if not position: position = await self.get_position(position_key)
-            _re_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
+            _re_amt = (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
             if _re_amt != 0.0:
                 logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}")
                 return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
@@ -17260,7 +17266,7 @@ class MultiAccountTradeManager:
         if is_augment and not is_hedge and not _is_reentry:
             if position is None:
                 position = await self.get_position(position_key)
-            _flat_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
+            _flat_amt = (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0) or 0.0) if position else 0.0
             if _flat_amt <= self.min_qty.get(symbol, 0.0001):
                 is_augment = False
                 logger.critical(f"[FLAT_NOT_AUGMENT] {position_key}: positionAmt={_flat_amt:.8f}≈0 → REENTRY/OPEN not augment; cleared is_augment so augment gates can't block it. action={action} reason={(reason or '')[:60]}")
@@ -17287,7 +17293,7 @@ class MultiAccountTradeManager:
                         else 0.0
                     )
                     _dg_pos_amt = (
-                        abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
+                        (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
                         if position
                         else 0.0
                     )
@@ -17317,7 +17323,7 @@ class MultiAccountTradeManager:
                 safe_fetch_float(getattr(position, "gain", 0), 0.0) if position else 0.0
             )
             _pos_amt = (
-                abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
+                (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
                 if position
                 else 0.0
             )
@@ -17326,7 +17332,7 @@ class MultiAccountTradeManager:
             # USER 2026-05-30: AUGMENT a million times as long as gain stays above 0.5*MIN_GAIN (1.5%). NO count
             # cap (MAX_AUGMENTS uncapped). Direction is enforced separately by COUNTER_TREND_ADD_BLOCK (no add
             # against wt1_1h), so this is purely "winner past +1.5% → keep pyramiding". gain<0 still LOSER_KILL.
-            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0)) * 0.5
+            _aug_thr = float(getattr(config, "MIN_GAIN", 3.0))
             _aug_is_bounce = False
             try:
                 _aug_is_long = position_side == "LONG"
@@ -17471,7 +17477,7 @@ class MultiAccountTradeManager:
                     logger.warning(
                         f"🛡️ [HEDGE_MODE_BLOCK] {position_key}: Blocking {action} ({reason}) - Must be managed by HedgeEngine."
                     )
-                    return f"BLOCKED_BY_HEDGE_MODE"
+                    return "BLOCKED_BY_HEDGE_MODE"
         # ═══ RATIO-AWARE SIZING — subtle L/S rebalancing through qty adjustment ═══
         # Underweight side entries get 1.5x size, overweight side gets 0.6x
         # Applies to ALL trades — single enforcement point
@@ -17498,7 +17504,7 @@ class MultiAccountTradeManager:
                     _sym_r = getattr(_pos_r, "symbol", "")
                     if _sym_r.upper() not in _ctr_r:
                         continue
-                    _amt_r = abs(safe_fetch_float(getattr(_pos_r, "positionAmt", 0), 0))
+                    _amt_r = (safe_fetch_float(getattr(_pos_r, "positionAmt", 0), 0))
                     if _amt_r == 0:
                         continue
                     _val_r = _amt_r * safe_fetch_float(
@@ -17585,7 +17591,7 @@ class MultiAccountTradeManager:
         # DC_BREAK_RETEST bypass DISABLED — was skipping ALL gates (ratio, size, HTF) and placing 7x positions at mid-range prices
         # if 'DC_HIGH_BREAK_RETEST' in reason.upper() and is_augment: pass
         if "WEAK" in reason or "WEAK" in action:
-            logger.info(f"🛡️ [execute_trade_action] BLOCKED WEAK SHIT SUSPENDED)")
+            logger.info("🛡️ [execute_trade_action] BLOCKED WEAK SHIT SUSPENDED)")
             return "BLOCKED WEAK SHIT SUSPENDED"
         tradeable_keys = await self.load_tradeable()
         # 2026-04-23 USER: SCALP_V3 scanner picks outliers from full L2 book (not
@@ -17601,7 +17607,7 @@ class MultiAccountTradeManager:
             logger.error(
                 f"🛡️ [execute_trade_action] BLOCKED NOT TRADEABLE {position_key} (no hedge auto-add) is_hedge={is_hedge} action={action} reason={reason}"
             )
-            return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
+            return "BLOCKED_NON_TRADEABLE_POSITION_KEY"
         if _is_scalp_v3_entry and position_key not in tradeable_keys:
             logger.warning(
                 f"⚠️ [execute_trade_action] SCALP_V3 bypass NOT_TRADEABLE {position_key} — auto-adding"
@@ -17733,7 +17739,7 @@ class MultiAccountTradeManager:
         #     self.positions[position_key] = placeholder
         #     self.positions_by_account.setdefault(account_key, {})[position_key] = placeholder
         #     position = placeholder
-        positionAmt_abs = abs(
+        positionAmt_abs = (
             safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)
         )
 
@@ -17807,7 +17813,7 @@ class MultiAccountTradeManager:
                         _sym = getattr(_pos, "symbol", "")
                         if _sym.upper() not in _ctr:
                             continue
-                        _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
+                        _amt = (safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
                         if _amt == 0:
                             continue
                         _val = _amt * safe_fetch_float(
@@ -17870,7 +17876,7 @@ class MultiAccountTradeManager:
                 [
                     pk
                     for pk, pos in acc_positions.items()
-                    if abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
+                    if (safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
                     > 0.0001
                 ]
             )
@@ -17885,7 +17891,7 @@ class MultiAccountTradeManager:
                 for pk, pos in acc_positions.items():
                     if pk == position_key:
                         continue
-                    p_amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
+                    p_amt = (safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0))
                     if p_amt > 0.0001:
                         p_gain = safe_fetch_float(getattr(pos, "gain", 0.0), 0.0)
                         if p_gain >= 1.0:
@@ -17908,7 +17914,7 @@ class MultiAccountTradeManager:
                         shittiest_pk = None
                 if shittiest_pk:
                     s_pos = acc_positions[shittiest_pk]
-                    s_amt = abs(
+                    s_amt = (
                         safe_fetch_float(getattr(s_pos, "positionAmt", 0.0), 0.0)
                     )
                     s_side = "SELL" if shittiest_pk.endswith("_LONG") else "BUY"
@@ -18295,24 +18301,24 @@ class MultiAccountTradeManager:
                 timestamp,
                 dc_basis_15m_ant,
             ) = (
-                i.get("stoch_k_1m", 0),
+                i.get("k_1m", 0),
                 i.get("k_1m_prev", 0),
-                i.get("stoch_d_1m", 0),
-                i.get("stoch_k_3m", 0),
-                i.get("stoch_d_3m", 0),
-                i.get("stoch_k_15m", 0),
-                i.get("stoch_d_15m", 0),
-                i.get("stoch_k_1h", 0),
-                i.get("stoch_d_1h", 0),
-                i.get("stoch_k_4h", 0),
-                i.get("stoch_d_4h", 0),
-                i.get("stoch_k_D", 0),
-                i.get("stoch_d_D", 0),
+                i.get("d_1m", 0),
+                i.get("k_3m", 0),
+                i.get("d_3m", 0),
+                i.get("k_15m", 0),
+                i.get("d_15m", 0),
+                i.get("k_1h", 0),
+                i.get("d_1h", 0),
+                i.get("k_4h", 0),
+                i.get("d_4h", 0),
+                i.get("k_D", 0),
+                i.get("d_D", 0),
                 i.get("k_3m_prev", 0),
-                i.get("stoch_k_15m_prev", 0),
-                i.get("stoch_k_1h_prev", 0),
-                i.get("stoch_k_4h_prev", 0),
-                i.get("stoch_k_D_prev", 0),
+                i.get("k_15m_prev", 0),
+                i.get("k_1h_prev", 0),
+                i.get("k_4h_prev", 0),
+                i.get("k_D_prev", 0),
                 i.get("wt1_3m", 0),
                 i.get("wt2_3m", 0),
                 i.get("wt1_15m", 0),
@@ -18516,7 +18522,7 @@ class MultiAccountTradeManager:
             #   HTF_AUG_VETO_FIX_ENABLED=False → OLD behavior (block plain OPENs too; pre-fix)
             # Per-sym overlay supported; default True. Flip to False to revert if Sharpe delta negative.
             _htfv_fix_on = bool(_psym_get(symbol, position_side, "HTF_AUG_VETO_FIX_ENABLED", True))
-            _htfv_has_size = position and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) > self.min_qty.get(symbol, 0.0001)
+            _htfv_has_size = position and (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) > self.min_qty.get(symbol, 0.0001)
             _htfv_open_excl = ("OPEN" not in action.upper()) if _htfv_fix_on else True
             _htfv_size_req = _htfv_has_size if _htfv_fix_on else True
             # 2026-05-27 USER MANDATE: REENTRY must respect HTF_TREND_VETO too. Removed
@@ -19050,13 +19056,13 @@ class MultiAccountTradeManager:
                 ranking_points,
                 ranking_points_global,
             ) = (
-                float(i.get("0market_sentiment_local", 50)),
-                float(i.get("0market_sentiment_score", 50)),
-                float(i.get("0ranking_points", 50)),
-                float(i.get("0ranking_points_global", 50)),
+                float(_v if (_v := i.get("0market_sentiment_local")) is not None else 50),
+                float(_v if (_v := i.get("0market_sentiment_score")) is not None else 50),
+                float(_v if (_v := i.get("0ranking_points")) is not None else 50),
+                float(_v if (_v := i.get("0ranking_points_global")) is not None else 50),
             )
             logger.debug(
-                f"[DEBUG_SENTIMENT_ACCESS] Accessing 0sentiment_classification for position"
+                "[DEBUG_SENTIMENT_ACCESS] Accessing 0sentiment_classification for position"
             )
             sentiment_classification = i.get("0sentiment_classification", "NEUTRAL")
             sentiment_strength = i.get(
@@ -19959,7 +19965,7 @@ class MultiAccountTradeManager:
                                 0.7  # Reduce short positions against strong uptrend
                             )
                             logger.info(
-                                f"⚠️ Short against strong 4h uptrend - reducing position"
+                                "⚠️ Short against strong 4h uptrend - reducing position"
                             )
                     elif lr_trend_4h < -0.001:  # Strong downtrend
                         trend_strength = "STRONG_DOWN"
@@ -19975,20 +19981,20 @@ class MultiAccountTradeManager:
                                 0.7  # Reduce long positions against strong downtrend
                             )
                             logger.info(
-                                f"⚠️ Long against strong 4h downtrend - reducing position"
+                                "⚠️ Long against strong 4h downtrend - reducing position"
                             )
                 if action == "BUY" and wt_signal_4h == "BUY":
                     trend_multiplier *= 1.1
-                    logger.info(f"4h WaveTrend confirms BUY signal")
+                    logger.info("4h WaveTrend confirms BUY signal")
                 elif action == "SELL" and wt_signal_4h == "SELL":
                     trend_multiplier *= 1.1
-                    logger.info(f" 4h WaveTrend confirms SELL signal")
+                    logger.info(" 4h WaveTrend confirms SELL signal")
                 elif action == "BUY" and wt_signal_4h == "SELL":
                     trend_multiplier *= 0.7
-                    logger.warning(f" 4h WaveTrend contradicts BUY signal")
+                    logger.warning(" 4h WaveTrend contradicts BUY signal")
                 elif action == "SELL" and wt_signal_4h == "BUY":
                     trend_multiplier *= 0.7
-                    logger.warning(f" 4h WaveTrend contradicts SELL signal")
+                    logger.warning(" 4h WaveTrend contradicts SELL signal")
                 confluence_multiplier = 1.0
                 if action == "BUY" and k_4h > d_4h:
                     confluence_multiplier *= 1.05
@@ -20036,7 +20042,7 @@ class MultiAccountTradeManager:
                     final_quantity = round(final_quantity, 2)
                 top_quantity = final_quantity
                 bottom_quantity = final_quantity * 0.8  # Allow 20% slippage
-                logger.info(f"🎯 Position sizing complete:")
+                logger.info("🎯 Position sizing complete:")
                 logger.info(f" Base quantity: {base_quantity:.4f}")
                 logger.info(f" Adjusted quantity: {final_quantity:.4f}")
                 logger.info(f" Top quantity (order): {top_quantity:.4f}")
@@ -20168,8 +20174,8 @@ class MultiAccountTradeManager:
                 "QUICK" not in action or position.gain < 0.6
             ):
                 quantity = 0.8 * quantity
-            s_local = i.get("0market_sentiment_local", 0.0)
-            s_global = i.get("0market_sentiment_score", 0.0)
+            s_local = _v if (_v := i.get("0market_sentiment_local")) is not None else 0.0
+            s_global = _v if (_v := i.get("0market_sentiment_score")) is not None else 0.0
             if is_long:
                 n_local = s_local
                 n_global = s_global
@@ -20191,12 +20197,30 @@ class MultiAccountTradeManager:
             if n_global < -10:
                 sentiment_mult = min(sentiment_mult, 0.5)
             quantity = quantity * sentiment_mult
-            strength = i.get("0sentiment_strength", 50)
+            strength = _v if (_v := i.get("0sentiment_strength")) is not None else 50
             strength_mult = 0.8 + (0.4 * (strength / 100.0))
             quantity = quantity * strength_mult
             logger.info(
                 f"{position_key} fffffff execute_ after market sentiment $ {quantity * current_price:.2f} (L:{n_local:.0f} G:{n_global:.0f} D:{delta:.0f} -> x{sentiment_mult:.2f})"
             )
+            # 2026-07-19 USER: band-slope sizing at the central sizing chokepoint so ALL crypto
+            # opens get it (was quick-open path only). QUICK actions skip — calculate_dynamic_quantity
+            # already applied it upstream (no double-apply).
+            if getattr(config, "BAND_SLOPE_SIZING_V2_ENABLED", False) and "QUICK" not in (action or ""):
+                _bs_tf = getattr(config, "BAND_SLOPE_SIZING_V2_TF", "4h")
+                _bs_pb = i.get(f"lrL_pct_b_{_bs_tf}")
+                _bs_sl = i.get(f"lrL_slope_{_bs_tf}")
+                if _bs_pb is not None and _bs_sl is not None:
+                    _bs_pb_f = safe_fetch_float(_bs_pb, 0.5)
+                    _bs_slope_day = safe_fetch_float(_bs_sl, 0.0) * {"1h": 24.0, "4h": 6.0, "D": 1.0}.get(_bs_tf, 6.0)
+                    _bs_edge = (1.0 - _bs_pb_f) if is_long else _bs_pb_f
+                    _bs_m = 1.0 + float(getattr(config, "BAND_SLOPE_SIZING_V2_DEPTH_GAIN", 1.0)) * (_bs_edge - 0.5) * 2.0
+                    _bs_sn = min(abs(_bs_slope_day) / float(getattr(config, "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY", 1.0)), 1.0)
+                    _bs_fav = _bs_slope_day > 0 if is_long else _bs_slope_day < 0
+                    _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)
+                    _bs_m = max(float(getattr(config, "BAND_SLOPE_SIZING_V2_MIN", 0.5)), min(float(getattr(config, "BAND_SLOPE_SIZING_V2_MAX", 2.5)), _bs_m))
+                    quantity = quantity * _bs_m
+                    logger.info(f"{position_key} [BAND_SLOPE_SIZING_V2] lrL_pct_b_{_bs_tf}={_bs_pb_f:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} -> ${quantity * current_price:.2f}")
             higher_high_15m = bool(
                 i.get("high_15m", 0)
                 and i.get("high_15m_prev", 0)
@@ -20301,9 +20325,9 @@ class MultiAccountTradeManager:
         red_minutes = minutes_since(position.last_reduction_time, now)
         if "REENTRY" in action:
             if red_minutes < 120:
-                quantity = max(quantity, position.max_quantity)
+                quantity = max(quantity, 1.2 * position.max_quantity)
             elif red_minutes > 120 and red_minutes < 12000:
-                quantity = max(quantity, position.max_quantity or 0.0)
+                quantity = max(quantity, 1.2 * (position.max_quantity or 0.0))
         logger.debug(
             f"{position_key} {side}, {position_side}, {quantity}, {current_price}, {unique_id}, {reason}, {is_full_close}, {action}"
         )
@@ -20314,9 +20338,9 @@ class MultiAccountTradeManager:
             "REVERSE",
             "REVERSE_AUGMENT",
         ]:
-            _k_15m_rs = locals().get("k_15m", i.get("stoch_k_15m", 0))
-            _k_15m_prev_rs = locals().get("k_15m_prev", i.get("stoch_k_15m_prev", 0))
-            _k_3m_rs = locals().get("k_3m", i.get("stoch_k_3m", 0))
+            _k_15m_rs = locals().get("k_15m", i.get("k_15m", 0))
+            _k_15m_prev_rs = locals().get("k_15m_prev", i.get("k_15m_prev", 0))
+            _k_3m_rs = locals().get("k_3m", i.get("k_3m", 0))
             _ha_3m_rs = locals().get("ha_3m", i.get("ha_3m", "neutral"))
             reason = f"{position_key}_{reason}_k_15m:{_k_15m_rs}_k_15mp:{_k_15m_prev_rs}_k_3m{_k_3m_rs}_ha3{_ha_3m_rs}"
         if not override_used:
@@ -20658,6 +20682,7 @@ class MultiAccountTradeManager:
             import re as _re
 
             _tm = _re.search(r"SIZE_TIER=(TIER[123])", reason)
+            _base = 0.0
             if _tm:
                 # 2026-05-18 per-sym overlay (honors START_POSITION_SIZE_OVERRIDE_USD)
                 _base = _psym_sps(symbol, position_side)
@@ -20894,10 +20919,10 @@ class MultiAccountTradeManager:
             ha_1h = i.get("ha_1h", "neutral") or "neutral"
         if ha_4h == "neutral" and i:
             ha_4h = i.get("ha_4h", "neutral") or "neutral"
-        k_1h = safe_fetch_float(i.get("stoch_k_1h", 0), 0.0)
-        k_4h = safe_fetch_float(i.get("stoch_k_4h", 0), 0.0)
-        d_1h = safe_fetch_float(i.get("stoch_d_1h", 0), 0.0)
-        d_4h = safe_fetch_float(i.get("stoch_d_4h", 0), 0.0)
+        k_1h = safe_fetch_float(i.get("k_1h", 0), 0.0)
+        k_4h = safe_fetch_float(i.get("k_4h", 0), 0.0)
+        d_1h = safe_fetch_float(i.get("d_1h", 0), 0.0)
+        d_4h = safe_fetch_float(i.get("d_4h", 0), 0.0)
         high_1h = safe_fetch_float(i.get("high_1h", 0), 0.0)
         high_1h_prev = safe_fetch_float(i.get("high_1h_prev", 0), 0.0)
         low_1h = safe_fetch_float(i.get("low_1h", 0), 0.0)
@@ -21653,7 +21678,7 @@ class MultiAccountTradeManager:
                     }
 
     async def clear_dedupe_key(
-        self, position_key: str, side: str, unique_id: str = None
+        self, position_key: str, side: str, unique_id: Optional[str] = None
     ):
         if not position_key or not side:
             return
@@ -21698,7 +21723,7 @@ class MultiAccountTradeManager:
             }
             self._track_price_band_order(position_key, order_id_str)
 
-    async def clear_active_maker_order(self, position_key: str, order_id: int = None):
+    async def clear_active_maker_order(self, position_key: str, order_id: Optional[int] = None):
         """Clear active maker order tracking - ONLY call this after order is confirmed canceled/filled on Binance"""
         async with self.dedupe_lock:
             if position_key in self.active_maker_orders:
@@ -22101,6 +22126,28 @@ class MultiAccountTradeManager:
             except Exception:
                 pass
             while time.time() - placement_start_time < TIMEOUT:
+                # ═══ OVER-FILL GUARD (2026-06-04) — NEVER fill more than the intended qty_abs total. ═══
+                # The GTX cancel-replace chase re-placed the FULL qty every iteration; when a resting order
+                # filled but the cancel raced (already-gone → exception swallowed at 22189) or the 0.3s
+                # verify branch was skipped (target price moved every tick), the next pass placed ANOTHER
+                # full-qty order → multiple full fills stacked on a single OPEN (ACT/PNUT/BOME 2026-06-04).
+                # Reconcile filled-so-far from the running executed_qty AND the live WS position delta, and
+                # only ever (re)place the remaining unfilled slice. Filled enough → STOP. This enforces the
+                # "ONE foothold + ONE maker fill, then augments only via the gain gates" mandate.
+                try:
+                    _live_pos = self.positions.get(position_key)
+                    _live_amt = (safe_fetch_float(getattr(_live_pos, "positionAmt", 0), 0.0)) if _live_pos else 0.0
+                    _pos_delta = max(0.0, _live_amt - abs(positionAmt))
+                except Exception:
+                    _pos_delta = 0.0
+                _filled_so_far = max(executed_qty, _pos_delta)
+                _rem_dec = (Decimal(str(max(0.0, qty_abs - _filled_so_far))) // step) * step
+                if _rem_dec < step:
+                    logger.critical(f"🛑 [MAKER_FILLED_STOP] {position_key}: filled_so_far={_filled_so_far:.6f}>=qty_abs={qty_abs:.6f} (exec={executed_qty:.6f} pos_delta={_pos_delta:.6f}) — STOP, no over-fill. side={side} reason={reason[:40]}")
+                    if _filled_so_far >= qty_abs * 0.9:
+                        filled = True
+                    break
+                qty_str = f"{_rem_dec}"
                 try:
                     lp = Decimal(str(current_price))
                     # If OB deferral is active, quantize the wall-target to tick and use it.
@@ -22180,14 +22227,34 @@ class MultiAccountTradeManager:
                         await asyncio.sleep(POLL_INTERVAL)
                         continue
                     if active_order_id:
+                        _cxl_filled = 0.0
                         try:
-                            await asyncio.to_thread(
+                            _cxl = await asyncio.to_thread(
                                 client.futures_cancel_order,
                                 symbol=symbol,
                                 orderId=active_order_id,
                             )
+                            _cxl_filled = float((_cxl or {}).get("executedQty", 0.0) or 0.0)
                         except Exception:
-                            pass
+                            # Cancel failed → the resting order most likely already FILLED and is gone.
+                            # Query it so its fill is captured BEFORE we re-place — this is the exact race
+                            # that stacked 3× full-qty fills on one OPEN. Never re-place a filled order's qty.
+                            try:
+                                _qo = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=active_order_id)
+                                _cxl_filled = float((_qo or {}).get("executedQty", 0.0) or 0.0)
+                            except Exception:
+                                _cxl_filled = 0.0
+                        if _cxl_filled > 0:
+                            executed_qty += _cxl_filled
+                        active_order_id = None
+                    # Re-check remaining AFTER cancel-fill capture — never place if already filled enough.
+                    _rem2_dec = (Decimal(str(max(0.0, qty_abs - executed_qty))) // step) * step
+                    if _rem2_dec < step:
+                        logger.critical(f"🛑 [MAKER_FILLED_STOP_POSTCANCEL] {position_key}: exec={executed_qty:.6f}>=qty_abs={qty_abs:.6f} after cancel-capture — STOP, no over-fill.")
+                        if executed_qty >= qty_abs * 0.9:
+                            filled = True
+                        break
+                    qty_str = f"{_rem2_dec}"
                     _exec_now_wire_tripwire("futures_create_order:place_maker_order", position_key, reason)
                     new_order = await asyncio.to_thread(
                         client.futures_create_order,
@@ -22201,7 +22268,7 @@ class MultiAccountTradeManager:
                         newOrderRespType="RESULT",
                     )
                     if new_order.get("status") == "FILLED":
-                        executed_qty = float(new_order.get("executedQty", 0.0))
+                        executed_qty += float(new_order.get("executedQty", 0.0))
                         filled = True
                         break
                     active_order_id = new_order.get("orderId")
@@ -22533,7 +22600,7 @@ class MultiAccountTradeManager:
         position_key: str,
         account_key: str,
         symbol: str,
-        order_ids: list[int] = None,
+        order_ids: Optional[list[int]] = None,
         max_retries: int = 3,
     ) -> bool:
         """Confirm specific order IDs for THIS order are canceled before sending webhook. Only checks the order_ids provided, not all orders for the position (other orders may need to stay open)."""
@@ -22814,16 +22881,37 @@ class MultiAccountTradeManager:
             if (
                 bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
                 and symbol
-                and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
+                and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or _kill_act == "BUY")
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "HEDGE" not in (reason or "").upper()
+                and "OBLIGATORY" not in (reason or "").upper()
             ):
                 _ctb_ind = await ii(self, symbol)
                 if _ctb_ind:
                     _ctb_is_long = position_side == "LONG"
+                    _ctb_pos = await self.get_position(position_key) if position_key else None
+                    current_price = await price(symbol, _ctb_pos) if symbol else 0.0
                     _ctb_w1 = safe_fetch_float(_ctb_ind.get("wt1_1h", 0), 0.0)
                     _ctb_w2 = safe_fetch_float(_ctb_ind.get("wt2_1h", 0), 0.0)
-                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                    # 2026-06-04 USER directional rule: a SHORT below sma_200_15m (LONG above) WITH 1h structure confirming
+                    # (1h lower-low for shorts / higher-high for longs, OR wt1_1h already agreeing) is TREND-ALIGNED, not
+                    # counter-trend — the laggy wt1_1h must NOT block it (it was missing tumbles: 14k BLOCKED_COUNTER_TREND_1H_AGAINST_SHORT/2h).
+                    # Genuine counter-trend (wrong side of sma_200_15m) stays blocked. ROLLBACK: COUNTER_TREND_SMA200_BYPASS_ENABLED=False.
+                    _ctb_aligned = False
+                    if bool(getattr(config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", True)):
+                        _ctb_sma200 = safe_fetch_float(_ctb_ind.get("sma_200_15m", 0), 0.0)
+                        if _ctb_sma200 > 0 and current_price > 0:
+                            if _ctb_is_long:
+                                _ctb_hh_n = safe_fetch_float(_ctb_ind.get("high_1h", 0), 0.0)
+                                _ctb_hh_p = safe_fetch_float(_ctb_ind.get("high_1h_prev", 0), 0.0)
+                                _ctb_struct = (_ctb_hh_n > 0 and _ctb_hh_p > 0 and _ctb_hh_n > _ctb_hh_p) or (_ctb_w1 > _ctb_w2)
+                                _ctb_aligned = (current_price > _ctb_sma200) and _ctb_struct
+                            else:
+                                _ctb_ll_n = safe_fetch_float(_ctb_ind.get("low_1h", 0), 0.0)
+                                _ctb_ll_p = safe_fetch_float(_ctb_ind.get("low_1h_prev", 0), 0.0)
+                                _ctb_struct = (_ctb_ll_n > 0 and _ctb_ll_p > 0 and _ctb_ll_n < _ctb_ll_p) or (_ctb_w1 < _ctb_w2)
+                                _ctb_aligned = (current_price < _ctb_sma200) and _ctb_struct
+                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
                         logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
                         return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
         except Exception as _ctbe:
@@ -22840,15 +22928,24 @@ class MultiAccountTradeManager:
             if (
                 bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
                 and symbol
+                and position_side == "LONG"
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act)
                 and "REENTRY" not in _kill_act and "AUGMENT" not in _kill_act
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
                 and "REENTRY" not in (reason or "").upper() and "HEDGE" not in (reason or "").upper()
+                and "OBLIGATORY" not in (reason or "").upper()
             ):
                 import mtf_live_evaluator as _mle_gr
                 _gr_ind = await ii(self, symbol)
-                if _gr_ind and not _mle_gr.gr_filter_pass(_gr_ind, position_side, "crypto", config):
-                    logger.warning(f"🟡 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} — GR filter fail (breakout min{int(getattr(config, 'MTF_GR_MIN_IND', 7))}). reason={(reason or '')[:50]}")
+                _gr_min_ind_eff = int(getattr(config, "MTF_GR_MIN_IND", 7))
+                if _gr_ind:
+                    _gr_sma200 = float(_gr_ind.get("sma_200_15m", 0) or 0)
+                    if _gr_sma200 > 0 and position_side == "LONG" and current_price > _gr_sma200 * 1.05:
+                        _gr_min_ind_eff = min(_gr_min_ind_eff, 4)
+                    elif _gr_sma200 > 0 and position_side == "SHORT" and current_price < _gr_sma200 * 0.95:
+                        _gr_min_ind_eff = min(_gr_min_ind_eff, 4)
+                if _gr_ind and not _mle_gr.gr_filter_pass(_gr_ind, position_side, "crypto", config, min_ind=_gr_min_ind_eff):
+                    logger.warning(f"🟡 [GR_FILTER_ALL_ENTRIES] {position_key}: BLOCKED {action} — GR filter fail (breakout min{_gr_min_ind_eff}). reason={(reason or '')[:50]}")
                     return f"BLOCKED_GR_FILTER_{position_side}"
         except Exception as _gre:
             logger.warning(f"[GR_FILTER_ALL_ENTRIES] check error (fail-open): {_gre}")
@@ -22862,11 +22959,11 @@ class MultiAccountTradeManager:
                 if "SCALP_V3" in _sc_act or "SCALP_V3" in _sc_reas:
                     if not getattr(config, "SCALP_V3_ENABLED", False):
                         logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED V3 {action} — SCALP_V3_ENABLED is False. reason={reason[:50]}")
-                        return f"BLOCKED_SCALP_V3_DISABLED"
+                        return "BLOCKED_SCALP_V3_DISABLED"
                 else:
                     if not getattr(config, "SCALP_MODE", False):
                         logger.critical(f"🚫 [SCALPING_HARD_GATE] {position_key}: BLOCKED {action} — SCALP_MODE is False. reason={reason[:50]}")
-                        return f"BLOCKED_SCALP_DISABLED"
+                        return "BLOCKED_SCALP_DISABLED"
         except Exception as _sce: logger.warning(f"[SCALPING_HARD_GATE] check error (fail-open): {_sce}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 PER_SYM_SIDE_DISABLED (USER 2026-05-28) — respect LONG_ENABLED/SHORT_ENABLED.
@@ -22909,7 +23006,10 @@ class MultiAccountTradeManager:
                 _vp_is_exit = ("CLOSE" in _kill_act or "REDUCE" in _kill_act)
                 _vp_applies = (_vp_is_entry and bool(getattr(config, "STRICT_VEC_PARITY_GATE_ENTRIES", True))) or (_vp_is_exit and bool(getattr(config, "STRICT_VEC_PARITY_GATE_EXITS", True)))
                 if _vp_applies:
-                    from vec_paths.vec_parity_gate import is_vec_achievable as _vp_ok, matched_token as _vp_tok
+                    from vec_paths.vec_parity_gate import \
+                        is_vec_achievable as _vp_ok
+                    from vec_paths.vec_parity_gate import \
+                        matched_token as _vp_tok
                     if not _vp_ok(reason or ""):
                         if _vp_mode:
                             logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
@@ -23019,7 +23119,8 @@ class MultiAccountTradeManager:
                  or "TRADEABLE_KEYS_MANDATORY" in _reason_up_mtf or "WT_3M_FORCE_OPEN" in _reason_up_mtf
                  or "DC_BREAKOUT" in _reason_up_mtf or "DC_HIGH_3M" in _reason_up_mtf or "DC_LOW_3M" in _reason_up_mtf
                  or "SCALP_V3_OPEN" in _reason_up_mtf or "BAR_BREAK" in _reason_up_mtf
-                 or "MOMENTUM_SMA15M_WATCHDOG" in _reason_up_mtf)
+                 or "MOMENTUM_SMA15M_WATCHDOG" in _reason_up_mtf
+                 or "LR_BAND" in _reason_up_mtf or "MTF_ARROW" in _reason_up_mtf)
                 and "NOT A TRADEABLE KEY" not in _reason_up_mtf
                 and bool(getattr(config, "MTF_FILTER_STRONG_BUY_QUICK_BYPASS", True))
             )
@@ -23068,11 +23169,35 @@ class MultiAccountTradeManager:
             # so it still cannot open against the 1h trend.
             if "MOMENTUM_WATCHDOG" in (reason or ""):
                 _mtf_momentum_bypass = True
+            # ═══ COLD-START FLOOD GUARD (2026-06-04) — entry-only, never touches exits ═══════════
+            # 2026-06-04 incident: a simultaneous cold restart of all 5 crypto procs opened ~96 junk
+            # shorts in seconds. On cold start the MTF armed-state is empty (re-arms over ~30-60min
+            # from live crosses), but the QUICK_OPEN/breakout/reentry MTF-bypasses above let opens
+            # flood through against the un-armed state. During the cold-start window we DISABLE those
+            # opener bypasses so a fresh open must pass MTF normally (= blocked until armed, the
+            # documented-correct post-restart behaviour). Bypasses resume after the window so
+            # never-miss-a-move is preserved once the proc is warm. Knob COLD_START_OPEN_BYPASS_SUPPRESS_SEC
+            # (default 600s; 0 disables). REENTRY/AUGMENT to an EXISTING position already passed the
+            # upstream bounce/LOSER_KILL gates, but the cold-start flood included reentry opens too, so
+            # we clamp _guar_ra_en as well during the window.
+            _cs_suppress_sec = float(getattr(config, "COLD_START_OPEN_BYPASS_SUPPRESS_SEC", 60.0))
+            if (_cs_suppress_sec > 0 and (time.time() - _PROCESS_START_TS) < _cs_suppress_sec
+                    and (_mtf_strong_buy_quick_bypass or _mtf_momentum_bypass or _guar_ra_en)):
+                _cs_left = _cs_suppress_sec - (time.time() - _PROCESS_START_TS)
+                logger.critical(f"🧊 [COLD_START_FLOOD_GUARD] {position_key}: opener MTF-bypass SUPPRESSED ({_cs_left:.0f}s left) — fresh open must pass MTF (anti cold-start flood). act={_kill_act} reason={_reason_up_mtf[:40]}")
+                _mtf_strong_buy_quick_bypass = False
+                _mtf_momentum_bypass = False
+                _guar_ra_en = False
+            _cs_in_window = (_cs_suppress_sec > 0 and (time.time() - _PROCESS_START_TS) < _cs_suppress_sec)
+            _mtf_skip_short = ((position_side or "LONG") == "SHORT" and bool(getattr(config, "MTF_ARMED_ENTRY_SKIP_SHORT", True)) and not _cs_in_window and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act) and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False)))
+            if _mtf_skip_short:
+                logger.warning(f"[MTF_GATE_SHORT_SKIP] {position_key}: SHORT entry bypasses MTF armed-gate (A/B: MTF hurts shorts -0.10c/-0.20s; cold-window still gated). act={_kill_act}")
             if (("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
                     and bool(getattr(config, "MTF_ARMED_ENTRY_ENABLED", False))
                     and not _mtf_strong_buy_quick_bypass
                     and not _guar_ra_en
-                    and not _mtf_momentum_bypass):
+                    and not _mtf_momentum_bypass
+                    and not _mtf_skip_short):
                 import mtf_live_evaluator as _mle
                 if not hasattr(self, "mtf_states"):
                     self.mtf_states = {}
@@ -23097,6 +23222,50 @@ class MultiAccountTradeManager:
                             logger.warning(f"[MTF_LUMPY_HALF] {position_key}: qty {_orig_qty:.6f}→{quantity:.6f} (mult={_mtf_mult})")
         except Exception as _mtf_e:
             logger.warning(f"[MTF_FILTER] {position_key}: check error (fail-open): {_mtf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚨 OPEN-RATE CIRCUIT BREAKER (2026-06-04) — hard backstop against ANY open flood.
+        # Independent of the cold-start guard: caps fresh OPEN/ENTRY/REENTRY events to OPEN_RATE_MAX
+        # per OPEN_RATE_WINDOW_SEC across ALL symbols in this process. The 2026-06-04 flood opened
+        # ~19 fresh shorts PER ACCOUNT in seconds; normal is <2/day. Counts only opens that SURVIVED
+        # the MTF gate above (so cold-start-blocked opens don't trip it). Augments-to-existing winners
+        # are gain-gated elsewhere and excluded. Exits/reduces/closes/hedges never counted or blocked.
+        # Knobs: OPEN_RATE_BREAKER_ENABLED (default True), OPEN_RATE_MAX (15), OPEN_RATE_WINDOW_SEC (60).
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _orb_is_open = (("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                            and "REDUCE" not in _kill_act and "CLOSE" not in _kill_act and "HEDGE" not in _kill_act)
+            if _orb_is_open and bool(getattr(config, "OPEN_RATE_BREAKER_ENABLED", True)):
+                _orb_win = float(getattr(config, "OPEN_RATE_WINDOW_SEC", 60.0))
+                _orb_max = int(getattr(config, "OPEN_RATE_MAX", 15))
+                _orb_now = time.time()
+                while _RECENT_OPEN_ATTEMPTS and (_orb_now - _RECENT_OPEN_ATTEMPTS[0]) > _orb_win:
+                    _RECENT_OPEN_ATTEMPTS.popleft()
+                if len(_RECENT_OPEN_ATTEMPTS) >= _orb_max:
+                    logger.critical(f"🚨 [OPEN_RATE_BREAKER] {position_key}: BLOCKED — {len(_RECENT_OPEN_ATTEMPTS)} fresh opens in last {_orb_win:.0f}s >= max {_orb_max}. Flood circuit-breaker tripped. act={_kill_act} reason={(reason or '')[:40]}")
+                    return f"BLOCKED_OPEN_RATE_BREAKER_{len(_RECENT_OPEN_ATTEMPTS)}_in_{int(_orb_win)}s"
+                _RECENT_OPEN_ATTEMPTS.append(_orb_now)
+        except Exception as _orb_e:
+            logger.warning(f"[OPEN_RATE_BREAKER] {position_key}: check error (fail-open): {_orb_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🏆 INF_DEDICATED_WINNERS gate — USER 2026-07-08 mandate: inf trades ONLY the proven
+        # winner set (config.INF_DEDICATED_WINNERS). Blocks EVERY inf OPEN/AUGMENT/ENTRY for
+        # any other symbol — deliberately NO emergency/OBLIGATORY/force-open reason bypass
+        # (unlike OVERTRADE_GUARD's _ot_emerg below). CLOSE/REDUCE/exit paths untouched.
+        # Fail-open on error. ROLLBACK: INF_DEDICATED_WINNERS_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (bool(getattr(config, "INF_DEDICATED_WINNERS_ENABLED", False))
+                    and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
+                    and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act):
+                _inf_acct = account_key or (position_key.split(":", 1)[0] if position_key and ":" in position_key else None)
+                if _inf_acct == "inf":
+                    _inf_sym = symbol or (pk_symbol(position_key) if position_key else "")
+                    _inf_winners = set(getattr(config, "INF_DEDICATED_WINNERS", set()) or set())
+                    if _inf_sym and _inf_winners and _inf_sym not in _inf_winners:
+                        logger.warning(f"[INF_DEDICATED] {position_key}: BLOCKED — not in winners set. act={_kill_act} reason={(reason or '')[:60]}")
+                        return "BLOCKED_INF_NOT_WINNER"
+        except Exception as _inf_e:
+            logger.warning(f"[INF_DEDICATED] {position_key}: check error (fail-open): {_inf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 📈 BREAKOUT_SIZE_LADDER (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
         # strongly extended past sma_200_15m. Tiered multiplier by |price-sma_200_15m|/sma_200_15m
@@ -23132,6 +23301,34 @@ class MultiAccountTradeManager:
         except Exception as _bsle:
             logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🏆 INF_7D_BOOST — USER 2026-07-08: "per_sym gainers that manage to get a better 7D
+        # score get big trades". Winner-set keys on inf whose per_sym 7D-agent winner beats
+        # baseline (delta_wsharpe > INF_7D_BEAT_MIN_DELTA in
+        # data/hourly_reconfig/inf/active_config_7d.json) get INF_7D_BEAT_SIZE_MULT x entry qty.
+        # Downstream MAX_ORDER_VALUE caps (~25791 and ~26446) still clamp. HEDGE excluded (a
+        # boosted hedge would over-hedge). File missing/stale(>24h)/field absent -> 1.0x
+        # (loader logs once). Fail-open. ROLLBACK: INF_DEDICATED_WINNERS_ENABLED=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if (bool(getattr(config, "INF_DEDICATED_WINNERS_ENABLED", False))
+                    and ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act)
+                    and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                    and quantity and quantity > 0):
+                _i7_acct = account_key or (position_key.split(":", 1)[0] if position_key and ":" in position_key else None)
+                _i7_sym = symbol or (pk_symbol(position_key) if position_key else "")
+                if _i7_acct == "inf" and _i7_sym and _i7_sym in set(getattr(config, "INF_DEDICATED_WINNERS", set()) or set()):
+                    _i7_row = _ezm_load_inf_7d().get(_i7_sym) or {}
+                    if _i7_row.get("delta_wsharpe") is not None:
+                        _i7_delta = float(_i7_row["delta_wsharpe"])
+                        if _i7_delta > float(getattr(config, "INF_7D_BEAT_MIN_DELTA", 0.0)):
+                            _i7_mult = float(getattr(config, "INF_7D_BEAT_SIZE_MULT", 2.0))
+                            if _i7_mult > 1.0:
+                                _i7_orig = quantity
+                                quantity = quantity * _i7_mult
+                                logger.warning(f"[INF_7D_BOOST] {position_key}: qty x{_i7_mult} (delta_wsharpe={_i7_delta:.3f}) {_i7_orig:.6f}→{quantity:.6f}. reason={(reason or '')[:40]}")
+        except Exception as _i7_e:
+            logger.warning(f"[INF_7D_BOOST] {position_key}: check error (fail-open): {_i7_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
         # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency-exit reasons bypass.
         # Defends against strategy thrash that floods the same pkey with opens/augments.
@@ -23149,6 +23346,8 @@ class MultiAccountTradeManager:
                     or "ALL_TF_AGAINST" in str(reason or "").upper()
                     or "INTERVENTION" in str(reason or "").upper()
                     or "MANUAL" in str(reason or "").upper()
+                    or "WT_3M_FORCE_OPEN" in str(reason or "").upper()
+                    or "OBLIGATORY" in str(reason or "").upper()
                 )
                 if _ot_max > 0 and not _ot_emerg:
                     if not hasattr(self, "_overtrade_counter"):
@@ -23203,7 +23402,8 @@ class MultiAccountTradeManager:
                     "LONG" if (position_side or "").upper() == "LONG" else "SHORT"
                 )
                 if _vg_acct and _vg_sym:
-                    from vec_strategy_gates import check_vec_gate, shadow_log_evaluation
+                    from vec_strategy_gates import (check_vec_gate,
+                                                    shadow_log_evaluation)
 
                     # Pull indicators from latest market data
                     _vg_ind = {}
@@ -23573,7 +23773,8 @@ class MultiAccountTradeManager:
                                 )
                         _live_stale_blocked = _stale_age_s > _stale_max_age
                         try:
-                            from vec_paths.stale_mark_price import evaluate_stale_mark_block_core as _vec_stale_fn
+                            from vec_paths.stale_mark_price import \
+                                evaluate_stale_mark_block_core as _vec_stale_fn
                             _stale_ts_shadow = getattr(_stale_pos, "mark_price_last_updated", None)
                             if isinstance(_stale_ts_shadow, str):
                                 try: _stale_ts_shadow = isoparse(_stale_ts_shadow)
@@ -23893,9 +24094,9 @@ class MultiAccountTradeManager:
             try:
                 _ndo_pos = await self.get_position(position_key)
                 _ndo_amt = (
-                    abs(safe_fetch_float(getattr(_ndo_pos, "positionAmt", 0), 0.0))
+                    (safe_fetch_float(getattr(_ndo_pos, "positionAmt", 0), 0.0))
                     if _ndo_pos
-                    else abs(safe_fetch_float(original_positionAmt, 0.0))
+                    else (safe_fetch_float(original_positionAmt, 0.0))
                 )
                 _ndo_px = (
                     old_price
@@ -24084,7 +24285,7 @@ class MultiAccountTradeManager:
                 pass
             _pos_check = await self.get_position(position_key)
             _pos_amt_check = (
-                abs(safe_fetch_float(getattr(_pos_check, "positionAmt", 0), 0.0))
+                (safe_fetch_float(getattr(_pos_check, "positionAmt", 0), 0.0))
                 if _pos_check
                 else 0.0
             )
@@ -24180,7 +24381,7 @@ class MultiAccountTradeManager:
         ):
             _check_pos = await self.get_position(position_key) if position_key else None
             _check_amt = (
-                abs(safe_fetch_float(getattr(_check_pos, "positionAmt", 0), 0.0))
+                (safe_fetch_float(getattr(_check_pos, "positionAmt", 0), 0.0))
                 if _check_pos
                 else abs(original_positionAmt)
             )
@@ -24214,7 +24415,7 @@ class MultiAccountTradeManager:
         if position_key and not _sg_is_reduce:
             _sg_pos = await self.get_position(position_key) if position_key else None
             _sg_amt = (
-                abs(safe_fetch_float(getattr(_sg_pos, "positionAmt", 0), 0.0))
+                (safe_fetch_float(getattr(_sg_pos, "positionAmt", 0), 0.0))
                 if _sg_pos
                 else abs(original_positionAmt)
             )
@@ -24302,22 +24503,7 @@ class MultiAccountTradeManager:
         )
         # UNBREAKABLE REDUCE LOCK - checked FIRST for reduces, no bypass, no Redis
         _act_check = (action or "").upper()
-        _is_reduce = (
-            _act_check
-            in (
-                "CLOSE",
-                "REDUCE",
-                "SELL",
-                "QUICK_CLOSE",
-                "FULL_CLOSE",
-                "PROFIT_TAKE",
-                "STOP_MAJOR_LOSS_REDUCE",
-                "STOP_FUNCTIONS_KILL",
-                "HEDGE_CLOSE",
-            )
-            or "CLOSE" in (reason or "").upper()
-            or "REDUCE" in (reason or "").upper()
-        )
+        _is_reduce = _act_check in ("CLOSE", "REDUCE", "SELL", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "NO_PROFIT") or "CLOSE" in (reason or "").upper() or "REDUCE" in (reason or "").upper() or "NO_PROFIT" in (reason or "").upper()
         _force_webhook_reduces = False
         # UNIVERSAL_AUGMENT_GAIN_GATE — 2026-05-26 USER MANDATE
         # MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0% must enforce as a HARD gate on all augments.
@@ -24338,7 +24524,7 @@ class MultiAccountTradeManager:
                 _uag_position = None
                 logger.debug(f"[UAGAIN_BLOCK] {position_key} get_position fail-open: {_uag_pos_e}")
             if _uag_position is not None:
-                _uag_amt = abs(safe_fetch_float(getattr(_uag_position, "positionAmt", 0.0), 0.0))
+                _uag_amt = (safe_fetch_float(getattr(_uag_position, "positionAmt", 0.0), 0.0))
                 _uag_min_qty = float(self.min_qty.get(symbol, 0.0001))
                 if _uag_amt > _uag_min_qty:
                     _uag_min_gain = float(getattr(config, "MIN_GAIN_TO_BUY_AGGRESSIVELY", 3.0))
@@ -24395,6 +24581,15 @@ class MultiAccountTradeManager:
                 or "UNDERWATER_HEDGE_OR_CLOSE" in _reason_upper
                 or "WT15M_AGAINST" in _reason_upper
                 or "ALL_TF_AGAINST" in _reason_upper
+                # 2026-06-20: structural stop signals bypass cooldown
+                or "BB_FROZEN" in _reason_upper
+                or "HYBRID_STRUCT" in _reason_upper
+                or "BREAKOUT_LEASH" in _reason_upper
+                or "FROZEN_ACT" in _reason_upper
+                or "R1_DC" in _reason_upper
+                or "GR_HTF" in _reason_upper
+                or "DELTA_EXIT" in _reason_upper
+                or "DC_BREACH" in _reason_upper
             )
             if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close:
                 logger.warning(
@@ -24476,7 +24671,7 @@ class MultiAccountTradeManager:
                 safe_fetch_float(getattr(_pos_obj, "gain", 0), 0.0) if _pos_obj else 0.0
             )
             _existing_amt = (
-                abs(safe_fetch_float(getattr(_pos_obj, "positionAmt", 0), 0.0))
+                (safe_fetch_float(getattr(_pos_obj, "positionAmt", 0), 0.0))
                 if _pos_obj
                 else 0.0
             )
@@ -24684,13 +24879,7 @@ class MultiAccountTradeManager:
                 }
                 _cache = self._brake_cache[_acct]
             _act_check = (action or "").upper()
-            _is_close = _act_check in (
-                "CLOSE",
-                "QUICK_CLOSE",
-                "REDUCE",
-                "PARTIAL_CLOSE",
-                "STRONG_REDUCE",
-            )
+            _is_close = _act_check in ("CLOSE", "QUICK_CLOSE", "REDUCE", "PARTIAL_CLOSE", "STRONG_REDUCE", "NO_PROFIT")
             _is_profitable_close = False
             if _is_close:
                 _brake_pos = (
@@ -24719,7 +24908,8 @@ class MultiAccountTradeManager:
                         _live_eb_blocked = True
                         _live_eb_reason = "EMERGENCY_BRAKE_SYMBOL_CHURN"
             try:
-                from vec_paths.emergency_brake import evaluate_emergency_brake_core as _vec_eb_fn
+                from vec_paths.emergency_brake import \
+                    evaluate_emergency_brake_core as _vec_eb_fn
                 _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
                 _dt_now = datetime.now(timezone.utc)
                 _vec_eb_blocked, _vec_eb_res = _vec_eb_fn(_acct, _dt_now, position_key or "", action or "", is_profitable_close=_is_profitable_close, config=config, decisions_dir_path=_dec_dir)
@@ -24766,7 +24956,8 @@ class MultiAccountTradeManager:
         except Exception:
             pass
         try:
-            from vec_paths.quarantine_strategy_validation import evaluate_quarantine_core as _vec_q_fn
+            from vec_paths.quarantine_strategy_validation import \
+                evaluate_quarantine_core as _vec_q_fn
             _vec_q_blocked, _vec_q_res = _vec_q_fn(position_key, reason, action, is_hedge, original_positionAmt, set(_quarantine), config)
             _divergent_q = (_live_q_blocked != _vec_q_blocked)
             _compare_q = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "quarantine_strategy", "live_result": "BLOCKED" if _live_q_blocked else "OK", "vec_result": "BLOCKED" if _vec_q_blocked else "OK", "divergent": _divergent_q, "live_reason": f"QUARANTINED({_live_q_name})" if _live_q_blocked else "OK", "vec_reason": _vec_q_res}
@@ -24811,26 +25002,7 @@ class MultiAccountTradeManager:
                 return "BLOCK_DEBOUNCE_ACTIVE_10s"
         act_upper = (action or "").upper()
         reason_upper = (reason or "").upper()
-        is_reduce = (
-            act_upper
-            in [
-                "CLOSE",
-                "REDUCE",
-                "STRONG_REDUCE",
-                "QUICK_CLOSE",
-                "QUICK_QUICK_CLOSE",
-                "FULL_CLOSE",
-                "PROFIT_TAKE",
-                "STOP_MAJOR_LOSS_REDUCE",
-                "STOP_FUNCTIONS_KILL",
-                "HEDGE_CLOSE",
-            ]
-            or (
-                "CLOSE" in reason_upper
-                and "QUICK_OPEN" not in reason_upper
-                and "RATIO_" not in reason_upper
-            )
-        )
+        is_reduce = act_upper in ["CLOSE", "REDUCE", "STRONG_REDUCE", "QUICK_CLOSE", "QUICK_QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "NO_PROFIT"] or ("CLOSE" in reason_upper and "QUICK_OPEN" not in reason_upper and "RATIO_" not in reason_upper) or "NO_PROFIT" in reason_upper
         is_augment = act_upper in [
             "OPEN",
             "AUGMENT",
@@ -24857,7 +25029,7 @@ class MultiAccountTradeManager:
                 if self.tracker_manager
                 else None
             )
-            if _nb_pos:
+            if _nb_pos and not getattr(_nb_pos, "was_reduced", False) and not getattr(_nb_pos, "is_reduced", False):
                 _nb_opened = getattr(_nb_pos, "opened_at", None)
                 _nb_last_aug = getattr(_nb_pos, "last_augmentation_time", None)
                 _nb_ref = _nb_last_aug or _nb_opened
@@ -25018,8 +25190,8 @@ class MultiAccountTradeManager:
                                 f"[HEDGE_MISIDENT_CHECK_ERR] {position_key}: {_hmi_e}"
                             )
             if _ung_hedge_misident_block:
-                return f"BLOCKED_HEDGE_MISIDENT_this_is_original"
-            _ung_bypass = is_hedge or "LIQUIDATION" in reason_upper
+                return "BLOCKED_HEDGE_MISIDENT_this_is_original"
+            _ung_bypass = is_hedge or "LIQUIDATION" in reason_upper or "FORCE_REDUCE" in reason_upper or "EMERGENCY_OVERSIZE" in reason_upper
             # 2026-04-16: bypass for technical-exit reasons (WT cross, ratio-close-losing).
             # Default list covers the exits I added today. User controls via config.
             if not _ung_bypass and bool(
@@ -25095,7 +25267,7 @@ class MultiAccountTradeManager:
                                 )
                                 _atr_3m = safe_fetch_float(_ind.get("atr_3m", 0), 0.0)
                                 _ha_3m = _ind.get("ha_3m", "neutral")
-                                _k3 = safe_fetch_float(_ind.get("stoch_k_3m", 0), 0.0)
+                                _k3 = safe_fetch_float(_ind.get("k_3m", 0), 0.0)
                                 _k3p = safe_fetch_float(_ind.get("k_3m_prev", 0), 0.0)
                                 _tol_pct = safe_fetch_float(
                                     getattr(
@@ -25287,7 +25459,8 @@ class MultiAccountTradeManager:
                                         _oh_gr_enabled = bool(getattr(config, "HEDGE_TRIGGER_GR_SCORE_ENABLED", True))
                                         if _oh_gr_enabled and _oh_gr_floor > 0 and _oh_ind:
                                             try:
-                                                from golden_rule_htf import _ind_score as _gr_ind_fn
+                                                from golden_rule_htf import \
+                                                    _ind_score as _gr_ind_fn
                                                 _gr_tfs = ("3m", "15m", "1h", "4h", "D")
                                                 _oh_gr_against_score = sum(
                                                     _gr_ind_fn(_oh_ind, _tf, not _is_long, 0.0)[0]
@@ -25518,16 +25691,16 @@ class MultiAccountTradeManager:
         keep_lock_active = False
         exec_lock_key = f"execute_now:{position_key}:{side}"
         try:
-            k_1m = safe_fetch_float(i.get("stoch_k_1m", 50))
+            k_1m = safe_fetch_float(i.get("k_1m", 50))
             k_1m_prev = safe_fetch_float(i.get("k_1m_prev", 50))
-            k_3m = safe_fetch_float(i.get("stoch_k_3m", 50))
+            k_3m = safe_fetch_float(i.get("k_3m", 50))
             k_3m_prev = safe_fetch_float(i.get("k_3m_prev", 50))
-            k_15m = safe_fetch_float(i.get("stoch_k_15m", 50))
-            d_15m = safe_fetch_float(i.get("stoch_d_15m", 50))
-            k_1h = safe_fetch_float(i.get("stoch_k_1h", 50))
-            d_1h = safe_fetch_float(i.get("stoch_d_1h", 50))
-            k_4h = safe_fetch_float(i.get("stoch_k_4h", 50))
-            d_4h = safe_fetch_float(i.get("stoch_d_4h", 50))
+            k_15m = safe_fetch_float(i.get("k_15m", 50))
+            d_15m = safe_fetch_float(i.get("d_15m", 50))
+            k_1h = safe_fetch_float(i.get("k_1h", 50))
+            d_1h = safe_fetch_float(i.get("d_1h", 50))
+            k_4h = safe_fetch_float(i.get("k_4h", 50))
+            d_4h = safe_fetch_float(i.get("d_4h", 50))
             sma_200_1h = safe_fetch_float(i.get("sma_200_1h", 0))
 
             account_key, parsed_symbol, parsed_position_side = parse_position_key(
@@ -25568,7 +25741,7 @@ class MultiAccountTradeManager:
                         if not self._should_bypass_post_fill_lock(
                             position_key, account_key, side
                         ):
-                            return f"BLOCK_SKIPPED_POST_FILL_COOLDOWN"
+                            return "BLOCK_SKIPPED_POST_FILL_COOLDOWN"
                         else:
                             await self.force_clear_execution_lock(position_key)
                             lock_acquired = await self.try_add_order_redis(
@@ -25600,7 +25773,7 @@ class MultiAccountTradeManager:
                 or action == "REENTRY"
             )
             _pos = self.positions_by_account.get(account_key, {}).get(position_key)
-            _pos_amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0.0), 0.0)) if _pos else 0.0
+            _pos_amt = (safe_fetch_float(getattr(_pos, "positionAmt", 0.0), 0.0)) if _pos else 0.0
             _gain = safe_fetch_float(getattr(_pos, "gain", 0.0), 0.0) if _pos else 0.0
             _min_gain = float(getattr(config, "MIN_GAIN", 3.0))
             _is_open_or_reenter = "OPEN" in (action or "").upper() or "REENTRY" in (action or "").upper() or "OPEN" in (reason or "").upper() or "REENTRY" in (reason or "").upper()
@@ -25626,7 +25799,7 @@ class MultiAccountTradeManager:
                         logger.debug(f"CD err: {e}")
             logger.info(f"[EXEC_TRACE] {position_key}: STEP2_POS_FETCH action={action}")
             position = await self.get_position(position_key)
-            baseline_amt = abs(safe_fetch_float(position.positionAmt, 0.0))
+            baseline_amt = (safe_fetch_float(position.positionAmt, 0.0))
             current_real_amt = (
                 getattr(position, "positionAmt", 0.0) if position else 0.0
             )
@@ -25796,7 +25969,7 @@ class MultiAccountTradeManager:
                     position_key
                 )
                 mem_amt = (
-                    abs(safe_fetch_float(getattr(mem_pos, "positionAmt", 0.0), 0.0))
+                    (safe_fetch_float(getattr(mem_pos, "positionAmt", 0.0), 0.0))
                     if mem_pos
                     else 0.0
                 )
@@ -25882,10 +26055,20 @@ class MultiAccountTradeManager:
                     in _reason_up_drain  # 2026-05-06 user mandate
                     or "WT15M_AGAINST" in _reason_up_drain  # 2026-05-06 user mandate
                     or "ALL_TF_AGAINST" in _reason_up_drain  # 2026-05-06 user mandate
+                    # 2026-06-20: structural stop reasons must bypass drain — they use maker directly
+                    or "BB_FROZEN" in _reason_up_drain
+                    or "HYBRID_STRUCT" in _reason_up_drain
+                    or "BREAKOUT_LEASH" in _reason_up_drain
+                    or "FROZEN_ACT" in _reason_up_drain
+                    or "R1_DC" in _reason_up_drain
+                    or "GR_HTF" in _reason_up_drain
+                    or "DELTA_EXIT" in _reason_up_drain
+                    or "DC_BREACH" in _reason_up_drain
                 )
                 if (
                     not is_hedge
                     and not is_huge
+                    and not is_full_close
                     and position.gain < 0.5
                     and position.gain > -25.0
                     and "SCALP" not in action
@@ -26087,12 +26270,21 @@ class MultiAccountTradeManager:
                 # the PRIMARY path; webhook is the fallback). When Finandy silently rejects a webhook
                 # close, we want maker to have already attempted first.
                 _safety_close = (
-                    "RIDICULOUS_HOLD" in reason_upper
-                    or "RIDICULOUS_LOSS" in reason_upper
+                    # "RIDICULOUS_HOLD" in reason_upper
+                    "RIDICULOUS_LOSS" in reason_upper
                     or "DC_BB_D_BREAK_REVERSE" in reason_upper
                     or "UNDERWATER_HEDGE_OR_CLOSE" in reason_upper
                     or "WT15M_AGAINST" in reason_upper
                     or "ALL_TF_AGAINST" in reason_upper
+                    # 2026-06-20: structural stop closes must use maker (bypass Finandy no-loss)
+                    or "BB_FROZEN" in reason_upper
+                    or "HYBRID_STRUCT" in reason_upper
+                    or "BREAKOUT_LEASH" in reason_upper
+                    or "FROZEN_ACT" in reason_upper
+                    or "R1_DC" in reason_upper
+                    or "GR_HTF" in reason_upper
+                    or "DELTA_EXIT" in reason_upper
+                    or "DC_BREACH" in reason_upper
                 )
                 if _safety_close:
                     _force_webhook_reduces = False
@@ -26112,6 +26304,7 @@ class MultiAccountTradeManager:
                     logger.info(
                         f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)"
                     )
+                    
                     maker_success, executed_qty = await self.place_maker_order(
                         account_key,
                         position_key,
@@ -26748,7 +26941,7 @@ class MultiAccountTradeManager:
             for pk, pos in acc_positions.items():
                 if pk == triggering_key:
                     continue
-                p_amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                p_amt = (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                 if p_amt < 0.0001:
                     continue
                 p_gain = safe_fetch_float(getattr(pos, "gain", 0), 0)
@@ -26764,7 +26957,7 @@ class MultiAccountTradeManager:
                 s_side = "SELL" if best_pk.endswith("_LONG") else "BUY"
                 s_pos_side = "LONG" if best_pk.endswith("_LONG") else "SHORT"
                 s_sym = best_pk.split(":")[1].replace("_LONG", "").replace("_SHORT", "")
-                s_amt = abs(safe_fetch_float(getattr(best_pos, "positionAmt", 0), 0))
+                s_amt = (safe_fetch_float(getattr(best_pos, "positionAmt", 0), 0))
                 logger.critical(
                     f"🧹 [MARGIN_FREE_WINNER] Closing {best_pk} (gain={best_gain:.2f}%, val=${best_val:.1f}) to free margin for {triggering_key}"
                 )
@@ -26790,7 +26983,7 @@ class MultiAccountTradeManager:
             _origin_pk = f"{account_key}:{_sym}_{_origin_side}"
             _orig_pos = acc_positions.get(_origin_pk)
             _orig_amt = (
-                abs(safe_fetch_float(getattr(_orig_pos, "positionAmt", 0), 0))
+                (safe_fetch_float(getattr(_orig_pos, "positionAmt", 0), 0))
                 if _orig_pos
                 else 0
             )
@@ -26917,7 +27110,7 @@ class MultiAccountTradeManager:
             return None
         hedge_engine = getattr(self, "hedge_engine", None)
         if not hedge_engine:
-            logger.error(f"[HEDGE_GUARD] No HedgeEngine. Allowing reduction.")
+            logger.error("[HEDGE_GUARD] No HedgeEngine. Allowing reduction.")
             return None
         if hasattr(self, "tracker_manager") and self.tracker_manager:
             async with self.tracker_manager._hedges_lock:
@@ -26947,7 +27140,7 @@ class MultiAccountTradeManager:
                 f"🛡️ [HEDGE_GUARD] {position_key}: Initiating Hedge (Gain {gain:.2f}%)."
             )
             i = await ii(self, symbol)
-            k_15m = safe_fetch_float(i.get("stoch_k_15m", 50.0))
+            k_15m = safe_fetch_float(i.get("k_15m", 50.0))
             # Stoch gate ONLY for small losses. Deep losses (< -3%) MUST hedge regardless of stoch.
             if gain > -3.0:
                 if is_long and k_15m < 15:
@@ -26978,7 +27171,7 @@ class MultiAccountTradeManager:
             status = hedge_result.get("overall_status")
             if status in ["success", "partial"]:
                 logger.info(
-                    f"✅ [HEDGE_GUARD] Hedge successful. Lock will expire naturally."
+                    "✅ [HEDGE_GUARD] Hedge successful. Lock will expire naturally."
                 )
                 return "ACTION_TAKEN_HEDGE_SUCCESS"
             else:
@@ -27190,34 +27383,9 @@ class MultiAccountTradeManager:
             "symbol": symbol,
             "side": side,
             "positionSide": position_side,
-            **(
-                {"open": {"amountType": "sumUsd", "amount": str(foothold_usd_value)}}
-                if is_opening_or_augmenting
-                else {}
-            ),
-            **(
-                {
-                    "dca": {
-                        "amountType": "sumUsd",
-                        "amount": str(foothold_usd_value),
-                        "side": side,
-                    }
-                }
-                if is_opening_or_augmenting
-                else {}
-            ),
-            **(
-                {
-                    "close": {
-                        "decrease": {
-                            "type": "sumUsd",
-                            "amount": str(foothold_usd_value),
-                        }
-                    }
-                }
-                if not is_opening_or_augmenting
-                else {}
-            ),
+            **({"open": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "type": "market"}} if is_opening_or_augmenting else {}),
+            **({"dca": {"amountType": "sumUsd", "amount": str(foothold_usd_value), "side": side, "type": "market"}} if is_opening_or_augmenting else {}),
+            **({"close": {"type": "market", "decrease": {"type": "sumUsd", "amount": str(foothold_usd_value)}}} if not is_opening_or_augmenting else {}),
         }
         try:
             async with aiohttp.ClientSession(
@@ -27500,7 +27668,7 @@ class MultiAccountTradeManager:
             # (COTIUSDT grew from 2,469 to 29,006 via DCA ladder on losing SHORT)
             _pos_obj = self.positions_by_account.get(account_key, {}).get(position_key)
             _pos_amt = (
-                abs(safe_fetch_float(getattr(_pos_obj, "positionAmt", 0), 0))
+                (safe_fetch_float(getattr(_pos_obj, "positionAmt", 0), 0))
                 if _pos_obj
                 else 0
             )
@@ -27647,7 +27815,8 @@ class MultiAccountTradeManager:
                         )
                     # Clear pending lock so next signal cycle can retry
                     try:
-                        from ez_positions_quick import clear_open_pending as _cop
+                        from ez_positions_quick import \
+                            clear_open_pending as _cop
 
                         _cop(position_key)
                     except Exception:
@@ -27757,7 +27926,7 @@ class MultiAccountTradeManager:
                         )
                     if (
                         not position
-                        or abs(safe_fetch_float(getattr(position, "positionAmt", 0.0)))
+                        or (safe_fetch_float(getattr(position, "positionAmt", 0.0)))
                         <= 0
                     ):
                         keys_to_remove.append(position_key)
@@ -28008,7 +28177,7 @@ class MultiAccountTradeManager:
                         self.pending_reentries[losing_key] = {
                             "exit_price": current_price,
                             "exit_time": datetime.now(timezone.utc).isoformat(),
-                            "exit_reason": f"DC_BREACH_15m",
+                            "exit_reason": "DC_BREACH_15m",
                             "original_qty": float(losing_amt),
                             "attempts": 0,
                             "status": "pending",
@@ -28090,29 +28259,49 @@ class MultiAccountTradeManager:
                         ):
                             continue
                         self._dc_breach_cooldown[breach_key] = time.time()
+                        _dc_action = "CLOSE" if pos_gain < 0 else "REDUCE"
                         logger.critical(
-                            f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. Reducing unhedged loser."
+                            f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser."
                         )
-                        pos_min_qty = max(
-                            config.MIN_POSITION_SIZE / current_price,
-                            self.min_qty.get(symbol, 0.001),
-                        )
-                        reduce_qty = pos_amt - pos_min_qty
-                        if reduce_qty <= 0:
-                            continue
-                        result = await queue_trade_action(
-                            self.order_queue,
-                            self,
-                            position_key,
-                            "REDUCE",
-                            f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}",
-                            100.0,
-                        )
+                        if _dc_action == "CLOSE":
+                            _dc_close_side = "SELL" if is_long else "BUY"
+                            _dc_reason = f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}"
+                            await self.execute_now(
+                                position_key=position_key,
+                                account_key=account_key,
+                                symbol=symbol,
+                                original_positionAmt=pos_amt,
+                                side=_dc_close_side,
+                                position_side=pos_side,
+                                quantity=pos_amt,
+                                old_price=current_price,
+                                unique_id=f"DC_BREACH_CLOSE_{int(time.time())}",
+                                reason=_dc_reason,
+                                is_full_close=True,
+                                action="CLOSE",
+                            )
+                            result = "QUEUED"
+                        else:
+                            pos_min_qty = max(
+                                config.MIN_POSITION_SIZE / current_price,
+                                self.min_qty.get(symbol, 0.001),
+                            )
+                            reduce_qty = pos_amt - pos_min_qty
+                            if reduce_qty <= 0:
+                                continue
+                            result = await queue_trade_action(
+                                self.order_queue,
+                                self,
+                                position_key,
+                                "REDUCE",
+                                f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}",
+                                100.0,
+                            )
                         if result and (
                             "QUEUED" in str(result) or "SUCCESS" in str(result)
                         ):
                             logger.warning(
-                                f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Reduce queued. Setting reentry below exit price {current_price:.6f}"
+                                f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: {_dc_action} queued. Setting reentry below exit price {current_price:.6f}"
                             )
                             self.pending_reentries[position_key] = {
                                 "exit_price": current_price,
@@ -28182,10 +28371,10 @@ class MultiAccountTradeManager:
                         lr15 = safe_fetch_float(ind.get("lr_trend_15m"), 0)
                         ha_3m = str(ind.get("ha_3m", ""))
                         ha_15m = str(ind.get("ha_15m", ""))
-                        k_1h = safe_fetch_float(ind.get("stoch_k_1h"), 50)
-                        d_1h = safe_fetch_float(ind.get("stoch_d_1h"), 50)
-                        k_4h = safe_fetch_float(ind.get("stoch_k_4h"), 50)
-                        d_4h = safe_fetch_float(ind.get("stoch_d_4h"), 50)
+                        k_1h = safe_fetch_float(ind.get("k_1h"), 50)
+                        d_1h = safe_fetch_float(ind.get("d_1h"), 50)
+                        k_4h = safe_fetch_float(ind.get("k_4h"), 50)
+                        d_4h = safe_fetch_float(ind.get("d_4h"), 50)
                         htf_bull = (k_1h > d_1h) and (k_4h > d_4h or ha_15m == "green")
                         htf_bear = (k_1h < d_1h) and (k_4h < d_4h or ha_15m == "red")
                         score = dc_w15 * rv * abs(lr3 + lr15)
@@ -28241,18 +28430,18 @@ class MultiAccountTradeManager:
                         cp = safe_fetch_float(ind.get("current_price"), 0)
                         if cp <= 0:
                             continue
-                        k_3m = safe_fetch_float(ind.get("stoch_k_3m"), 50)
-                        d_3m = safe_fetch_float(ind.get("stoch_d_3m"), 50)
+                        k_3m = safe_fetch_float(ind.get("k_3m"), 50)
+                        d_3m = safe_fetch_float(ind.get("d_3m"), 50)
                         k_3m_prev = safe_fetch_float(
-                            ind.get("k_3m_prev", ind.get("stoch_k_3m_prev")), 50
+                            ind.get("k_3m_prev", ind.get("k_3m_prev")), 50
                         )
-                        k_15m = safe_fetch_float(ind.get("stoch_k_15m"), 50)
-                        d_15m = safe_fetch_float(ind.get("stoch_d_15m"), 50)
-                        k_15m_prev = safe_fetch_float(ind.get("stoch_k_15m_prev"), 50)
-                        k_1h = safe_fetch_float(ind.get("stoch_k_1h"), 50)
-                        d_1h = safe_fetch_float(ind.get("stoch_d_1h"), 50)
-                        k_4h = safe_fetch_float(ind.get("stoch_k_4h"), 50)
-                        d_4h = safe_fetch_float(ind.get("stoch_d_4h"), 50)
+                        k_15m = safe_fetch_float(ind.get("k_15m"), 50)
+                        d_15m = safe_fetch_float(ind.get("d_15m"), 50)
+                        k_15m_prev = safe_fetch_float(ind.get("k_15m_prev"), 50)
+                        k_1h = safe_fetch_float(ind.get("k_1h"), 50)
+                        d_1h = safe_fetch_float(ind.get("d_1h"), 50)
+                        k_4h = safe_fetch_float(ind.get("k_4h"), 50)
+                        d_4h = safe_fetch_float(ind.get("d_4h"), 50)
                         ha_3m = str(ind.get("ha_3m", ""))
                         ha_15m = str(ind.get("ha_15m", ""))
                         long_pk = f"{acct}:{sym}_LONG"
@@ -28714,7 +28903,7 @@ class MultiAccountTradeManager:
     #                             cp = safe_fetch_float(ind.get('current_price', ind.get('close', 0)), 0)
     #                         if cp <= 0: continue
     #                         ind = svc_snap.get(sym, {}) if svc_snap else {}
-    #                         snapshots[sym] = {'price': cp, 'k_3m': safe_fetch_float(ind.get('stoch_k_3m', 50), 50), 'd_3m': safe_fetch_float(ind.get('stoch_d_3m', 50), 50), 'k_15m': safe_fetch_float(ind.get('stoch_k_15m', 50), 50), 'wt1_3m': safe_fetch_float(ind.get('wt1_3m', 0), 0), 'wt2_3m': safe_fetch_float(ind.get('wt2_3m', 0), 0)}
+    #                         snapshots[sym] = {'price': cp, 'k_3m': safe_fetch_float(ind.get('k_3m', 50), 50), 'd_3m': safe_fetch_float(ind.get('d_3m', 50), 50), 'k_15m': safe_fetch_float(ind.get('k_15m', 50), 50), 'wt1_3m': safe_fetch_float(ind.get('wt1_3m', 0), 0), 'wt2_3m': safe_fetch_float(ind.get('wt2_3m', 0), 0)}
     #                 except Exception as _re:
     #                     logger.debug(f"[OUTLIER_SCALPER] Data read error: {_re}")
     #                     continue
@@ -28830,7 +29019,7 @@ class MultiAccountTradeManager:
     #                     sym, side = parts
     #                     pk = construct_position_key(ACCT, sym, side)
     #                     pos = self.positions.get(pk)
-    #                     if not pos or abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0)) == 0:
+    #                     if not pos or (safe_fetch_float(getattr(pos, 'positionAmt', 0), 0)) == 0:
     #                         _entered_keys.discard(key); continue
     #                     snap = snapshots.get(sym)
     #                     if not snap: continue
@@ -29072,7 +29261,7 @@ class MultiAccountTradeManager:
     #                         pk = construct_position_key(ACCT, sym, side)
     #                         if not pk: continue
     #                         pobj = self.positions.get(pk)
-    #                         if not pobj or abs(safe_fetch_float(getattr(pobj, 'positionAmt', 0), 0)) == 0: continue
+    #                         if not pobj or (safe_fetch_float(getattr(pobj, 'positionAmt', 0), 0)) == 0: continue
     #                         t = tickers.get(sym)
     #                         if not t: continue
     #                         ep = pos["entry_price"]; cp = t["price"]
@@ -29110,7 +29299,7 @@ class MultiAccountTradeManager:
     #                         if not pk: continue
     #                         pobj = self.positions.get(pk)
     #                         if pobj:
-    #                             amt = abs(safe_fetch_float(getattr(pobj, 'positionAmt', 0), 0))
+    #                             amt = (safe_fetch_float(getattr(pobj, 'positionAmt', 0), 0))
     #                             if amt > 0: continue
     #                         elif pk in self.positions: continue
     #                         t = tickers.get(sym)
@@ -29167,12 +29356,14 @@ class MultiAccountTradeManager:
                         account_key, symbol, pos_side = parse_position_key(position_key)
                         if account_key not in config.ACCOUNT_KEYS:  # this proc only opens its own account's keys
                             continue
+                        if not self.is_symbol_allowed(account_key, symbol, position_key):
+                            continue
                         _wd_scanned += 1
                         _is_long = side == "LONG"
                         _sflag = "LONG_ENABLED" if _is_long else "SHORT_ENABLED"
                         _side_disabled = bool(getattr(config, "PERSYM_FINAL_BOOK_ENABLED", False)) and not bool(_psym_get(symbol, side, _sflag, True))
                         position = await self.get_position(position_key)
-                        _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
+                        _amt = (safe_fetch_float(getattr(position, "positionAmt", 0), 0.0)) if position else 0.0
                         ind = await ii(self, symbol)
                         if not ind:
                             continue
@@ -29207,8 +29398,32 @@ class MultiAccountTradeManager:
                         self._wd_escalate_count.pop(position_key, None)
                         self._wd_flip_state.pop(position_key, None)
                         if _side_disabled:
+                            if not _is_long:
+                                logger.warning(f"[WD_SHORT_TRACE] {position_key}: SKIP side_disabled")
                             continue
+                        # ═══ 2026-06-04 USER OBLIGATORY OPEN (unblockable safety-net) ═══
+                        # Any flat tradeable key >OBLIGATORY_SMA200_PCT% beyond sma_200_15m with wt1_3m going the
+                        # right way MUST open — runs BEFORE the cooldown/per-tick gates that were missing 24h tumbles
+                        # (4800 SKIP cooldown: watchdog fired once, got blocked downstream, then sat in cooldown the
+                        # whole move). SHORT: price below sma_200_15m AND wt1_3m falling. LONG: above AND wt1_3m rising.
+                        # The OBLIGATORY_OPEN reason bypasses the directional/throttle gates (COUNTER_TREND / LS_RATIO /
+                        # OVERTRADE / MTF-for-shorts) in execute_now; the flood rate-breaker + cold-start guard still apply.
+                        # ROLLBACK: OBLIGATORY_SMA200_WT3M_ENABLED=False.
+                        if bool(getattr(config, "OBLIGATORY_SMA200_WT3M_ENABLED", True)) and _sma15 > 0 and _px > 0:
+                            _ob_pct = float(getattr(config, "OBLIGATORY_SMA200_PCT", 1.0)) / 100.0
+                            _wt1_3m_prev_ob = safe_fetch_float(ind.get("wt1_3m_prev", _wt1_3m), _wt1_3m)
+                            _ob_falling = (_wt1_3m < _wt2_3m) or (_wt1_3m < _wt1_3m_prev_ob)
+                            _ob_rising = (_wt1_3m > _wt2_3m) or (_wt1_3m > _wt1_3m_prev_ob)
+                            _ob_hit = ((not _is_long) and _px < _sma15 * (1.0 - _ob_pct) and _ob_falling) or (_is_long and _px > _sma15 * (1.0 + _ob_pct) and _ob_rising)
+                            if _ob_hit:
+                                _ob_usd = float(getattr(config, "OBLIGATORY_OPEN_USD", 00.0))
+                                _ob_reason = f"OBLIGATORY_OPEN_{side}_SMA200_WT3M_px{_px:.6f}_sma{_sma15:.6f}_wt3m{_wt1_3m:.1f}/{_wt2_3m:.1f}_usd{_ob_usd:.0f}"
+                                logger.critical(f"🩳 [OBLIGATORY_OPEN] {position_key}: FORCE-OPEN {side} ~${_ob_usd:.0f} (px {_px:.6f} vs sma200_15m {_sma15:.6f}, wt1_3m {_wt1_3m:.1f}/{_wt2_3m:.1f}) — {_ob_reason}")
+                                await queue_trade_action(self.order_queue, self, position_key, "OPEN", _ob_reason, 95.0, override_qty=(_ob_usd / _px))
+                                continue
                         if time.time() - self._mom_watchdog_cd.get(position_key, 0) < _cd:
+                            if not _is_long:
+                                logger.warning(f"[WD_SHORT_TRACE] {position_key}: SKIP cooldown")
                             continue
                         # REQ3: multi-TF Donchian breakout — pick the LARGEST TF broken; NO wt filter
                         _tf_mult = {"15m": float(getattr(config, "WATCHDOG_DC_MULT_15M", 1.0)), "1h": float(getattr(config, "WATCHDOG_DC_MULT_1H", 4.0)), "4h": float(getattr(config, "WATCHDOG_DC_MULT_4H", 8.0)), "D": float(getattr(config, "WATCHDOG_DC_MULT_D", 16.0))}
@@ -29234,13 +29449,13 @@ class MultiAccountTradeManager:
                             if _sma_ok and _cross_fav:
                                 _usd = float(getattr(config, "WATCHDOG_DC_BASE_USD", 25.0))
                                 _trg = "SMA15M_WT3M"
+                        if not _is_long and _dc_hit_tf is None:
+                            logger.warning(f"[WD_SHORT_TRACE] {position_key}: NO DC break (px={_px:.4f} dc_low_15m={safe_fetch_float(ind.get('dc_low_15m',0),0):.4f} dc_low_1h={safe_fetch_float(ind.get('dc_low_1h',0),0):.4f} dc_low_4h={safe_fetch_float(ind.get('dc_low_4h',0),0):.4f} dc_low_D={safe_fetch_float(ind.get('dc_low_D',0),0):.4f}) sma_ok={((not _is_long) and _sma15 > 0 and _px < _sma15 * (1.0 - float(_psym_get(symbol, side, 'MOMENTUM_SMA_WATCHDOG_PCT', getattr(config, 'MOMENTUM_SMA_WATCHDOG_PCT', 1.0))) / 100.0))} cross_fav={_cross_fav}")
                         if _trg is None:
                             continue
-                        # 2026-06-03 USER MANDATE: force-open REQUIRES MTF armed-state + GR confirmation
-                        # (mtf_entry_filter_passes does BOTH). A/B proved MTF-gating 0.53 vs 0.11 ungated.
-                        # Applied at source so the live force-open == the MTF-gated backtest. The execute_now
-                        # MOMENTUM_WATCHDOG bypass downstream is now moot for this path (already filtered here).
-                        if bool(getattr(config, "FORCE_OPEN_REQUIRE_MTF_GR", True)):
+                        # 2026-06-03: MTF+GR gate for LONGs only. SHORTs bypass — A/B proved MTF
+                        # HURTS shorts -0.1/-0.2 (per_sym × MTF 2026-05-31). LONGs keep the gate (+0.02).
+                        if _is_long and bool(getattr(config, "FORCE_OPEN_REQUIRE_MTF_GR", True)):
                             try:
                                 import mtf_live_evaluator as _mle_wd
                                 if not hasattr(self, "mtf_states"):
@@ -29311,7 +29526,8 @@ class MultiAccountTradeManager:
                     # refuse this REENTRY (LOSING_POSITION_HARD_BLOCK or NON_TRADEABLE).
                     # Saves the indicator fetch + execute_now traversal cost.
                     try:
-                        from ez_reentry import is_reentry_eligible as _ezr_eligible
+                        from ez_reentry import \
+                            is_reentry_eligible as _ezr_eligible
 
                         _ok, _gate_why = _ezr_eligible(
                             self, position_key, account_key, symbol, config
@@ -29324,10 +29540,10 @@ class MultiAccountTradeManager:
                     indicators = await ii(self, symbol)
                     if not indicators:
                         continue
-                    k_3m = safe_fetch_float(indicators.get("stoch_k_3m", 50), 50.0)
-                    d_3m = safe_fetch_float(indicators.get("stoch_d_3m", 50), 50.0)
-                    k_1m = safe_fetch_float(indicators.get("stoch_k_1m", 50), 50.0)
-                    d_1m = safe_fetch_float(indicators.get("stoch_d_1m", 50), 50.0)
+                    k_3m = safe_fetch_float(indicators.get("k_3m", 50), 50.0)
+                    d_3m = safe_fetch_float(indicators.get("d_3m", 50), 50.0)
+                    k_1m = safe_fetch_float(indicators.get("k_1m", 50), 50.0)
+                    d_1m = safe_fetch_float(indicators.get("d_1m", 50), 50.0)
                     current_price = safe_fetch_float(
                         indicators.get("current_price", 0.0), 0.0
                     )
@@ -29413,10 +29629,10 @@ class MultiAccountTradeManager:
                         and _wt1_3m_gr < _wt1_3m_prev_gr
                     )
                     _k_15m_r = safe_fetch_float(
-                        indicators.get("stoch_k_15m", indicators.get("k_15m", 50)), 50.0
+                        indicators.get("k_15m", indicators.get("k_15m", 50)), 50.0
                     )
                     _k_1h_r = safe_fetch_float(
-                        indicators.get("stoch_k_1h", indicators.get("k_1h", 50)), 50.0
+                        indicators.get("k_1h", indicators.get("k_1h", 50)), 50.0
                     )
                     if is_long:
                         _off_red_count = (
@@ -29477,7 +29693,7 @@ class MultiAccountTradeManager:
                     # User rule 2026-04-17: k_15m >90 (LONG) / <10 (SHORT) → reenter at 50% (rally may be ending).
                     if not should_reenter and _price_favorable and _favorable_htf_ok:
                         should_reenter = True
-                        _k15m_now = float(indicators.get("stoch_k_15m", 50) or 50)
+                        _k15m_now = float(indicators.get("k_15m", 50) or 50)
                         _k15m_thr = float(
                             getattr(config, "REENTRY_K15M_PARTIAL_THRESHOLD", 90.0)
                         )
@@ -29758,10 +29974,10 @@ class MultiAccountTradeManager:
                 _he = getattr(self, "hedge_engine", None)
                 _reg = _he.registry if _he else None
                 btc_ind = await ii(self, "BTCUSDC") or await ii(self, "BTCUSDC") or {}
-                k_1h = safe_fetch_float(btc_ind.get("stoch_k_1h"), 50.0)
-                d_1h = safe_fetch_float(btc_ind.get("stoch_d_1h"), 50.0)
-                k_4h = safe_fetch_float(btc_ind.get("stoch_k_4h"), 50.0)
-                d_4h = safe_fetch_float(btc_ind.get("stoch_d_4h"), 50.0)
+                k_1h = safe_fetch_float(btc_ind.get("k_1h"), 50.0)
+                d_1h = safe_fetch_float(btc_ind.get("d_1h"), 50.0)
+                k_4h = safe_fetch_float(btc_ind.get("k_4h"), 50.0)
+                d_4h = safe_fetch_float(btc_ind.get("d_4h"), 50.0)
                 for account_key in config.ACCOUNT_KEYS:
                     _prev = _prev_k1h.get(account_key, {})
                     _prev_k = _prev.get("k", k_1h)
@@ -30079,7 +30295,7 @@ class MultiAccountTradeManager:
                             account_key, {}
                         ).items()
                         if safe_fetch_float(getattr(_pos, "gain", 0), 0) < -2.0
-                        and abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
+                        and (safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
                         > 0
                     )
                     _dead_zone = (
@@ -30812,7 +31028,7 @@ class OrderQueue:
             return False, f"EXCEPTION_{str(e)[:50]}"
 
     async def process_orders(self):
-        logger.warning(f"[process_orders] Worker STARTED - waiting for orders in queue")
+        logger.warning("[process_orders] Worker STARTED - waiting for orders in queue")
         while True:
             try:
                 order = await self._orders.get()
@@ -31231,7 +31447,7 @@ async def monitor_entries(
 def get_htf_confirmations_1h(i, is_long: bool, current_price: float) -> list:
     confirmations = []
     try:
-        k_1h = float(i.get("stoch_k_1h", 50))
+        k_1h = float(i.get("k_1h", 50))
         wt1_1h = float(i.get("wt1_1h", 0))
         dc_high_1h = float(i.get("dc_high_1h", 0))
         dc_low_1h = float(i.get("dc_low_1h", 0))
@@ -31273,7 +31489,7 @@ def get_htf_confirmations_1h(i, is_long: bool, current_price: float) -> list:
 def get_htf_confirmations_4h(i, is_long: bool, current_price: float) -> list:
     confirmations = []
     try:
-        k_4h = float(i.get("stoch_k_4h", 50))
+        k_4h = float(i.get("k_4h", 50))
         wt1_4h = float(i.get("wt1_4h", 0))
         dc_high_4h = float(i.get("dc_high_4h", 0))
         dc_low_4h = float(i.get("dc_low_4h", 0))
@@ -31318,7 +31534,7 @@ def get_htf_confirmations_D(i, is_long: bool, current_price: float) -> list:
         i,
         "D",
         [
-            ("stoch_k", 50),
+            ("k", 50),
             ("wt1", 0),
             ("ha", "neutral"),
             ("dc_high", 0),
@@ -31373,8 +31589,8 @@ def format_reason(reason_code, i, side_params):
     i = {
         key: i.get(key, default)
         for key, default in {
-            "stoch_k_3m": 50,
-            "stoch_k_15m": 50,
+            "k_3m": 50,
+            "k_15m": 50,
             "ha_3m": "neutral",
             "ha_15m": "neutral",
             "wt1_15m": 0,
@@ -31506,7 +31722,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     position = trade_manager.positions.get(position_key)
     if not position: return None
     is_long = ctx.get("position_side", "LONG") == "LONG"
-    positionAmt = abs(safe_fetch_float(position.positionAmt, 0.0))
+    positionAmt = (safe_fetch_float(position.positionAmt, 0.0))
     if positionAmt > 0:
         return None
     # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
@@ -31576,13 +31792,13 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 _sma_ok = _sma_200 <= 0 or (
                     (is_long and current_price > _sma_200) or (not is_long and current_price < _sma_200)
                 )
-                _k_3m = float(i.get("stoch_k_3m", 50) or 50)
+                _k_3m = float(i.get("k_3m", 50) or 50)
                 _k_3m_prev = float(i.get("k_3m_prev", _k_3m) or _k_3m)
                 _mom_ok = (is_long and _k_3m > _k_3m_prev) or (not is_long and _k_3m < _k_3m_prev)
                 _wt1_15 = float(i.get("wt1_15m", 0) or 0)
                 _wt2_15 = float(i.get("wt2_15m", 0) or 0)
                 _vel_15 = float(i.get("wt_velocity_15m", 0) or 0)
-                _k_15 = float(i.get("stoch_k_15m", 50) or 50)
+                _k_15 = float(i.get("k_15m", 50) or 50)
                 _wt_ok = (is_long and _wt1_15 > _wt2_15 and _vel_15 > 0 and _k_15 < 80) or (
                     not is_long and _wt1_15 < _wt2_15 and _vel_15 < 0 and _k_15 > 20
                 )
@@ -31639,7 +31855,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
         return None
     is_long = ctx.get("is_long", position.position_side == "LONG")
     gain = ctx.get("gain", safe_fetch_float(getattr(position, "gain", 0), 0))
-    pos_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+    pos_amt = (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
     position_value = pos_amt * current_price
     # DD BOUNCE: augment losing position on wt_D or wt_4h bounce with higher price + wt — fires before gain gate
     if pos_amt > 0 and gain < 0 and getattr(config, "DD_BOUNCE_ENABLED", False):
@@ -31721,10 +31937,10 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     wt2_1h = safe_fetch_float(i.get("wt2_1h"), 0)
     wt_cross_3m = i.get("wt_cross_3m", "NONE")
     wt_cross_15m = i.get("wt_cross_15m", "NONE")
-    k_3m = safe_fetch_float(i.get("stoch_k_3m"), 50)
-    k_15m = safe_fetch_float(i.get("stoch_k_15m"), 50)
-    k_1h = safe_fetch_float(i.get("stoch_k_1h"), 50)
-    k_4h = safe_fetch_float(i.get("stoch_k_4h"), 50)
+    k_3m = safe_fetch_float(i.get("k_3m"), 50)
+    k_15m = safe_fetch_float(i.get("k_15m"), 50)
+    k_1h = safe_fetch_float(i.get("k_1h"), 50)
+    k_4h = safe_fetch_float(i.get("k_4h"), 50)
     if is_long:
         wt_dir_3m = wt1_3m > wt2_3m
         wt_dir_15m = wt1_15m > wt2_15m
@@ -31835,13 +32051,13 @@ async def evaluate_leaderboard_entry(ctx: dict) -> Optional[Signal]:
             f" RANKING_FALLBACK: evaluate_leaderboard_entry checking ranking data directly for {position_key}"
         )
     k_15m, k_15m_prev, d_15m, k_1h, d_1h = (
-        i.get("stoch_k_15m"),
-        i.get("stoch_k_15m_prev") or i.get("k_15m_prev"),
-        i.get("stoch_d_15m"),
-        i.get("stoch_k_1h"),
-        i.get("stoch_d_1h"),
+        i.get("k_15m"),
+        i.get("k_15m_prev") or i.get("k_15m_prev"),
+        i.get("d_15m"),
+        i.get("k_1h"),
+        i.get("d_1h"),
     )
-    k_3m, d_3m = i.get("stoch_k_3m"), i.get("stoch_d_3m")
+    k_3m, d_3m = i.get("k_3m"), i.get("d_3m")
     ha_3m, ha_15m = i.get("ha_3m"), i.get("ha_15m")
     wt1_3m, wt2_3m, wt1_15m, wt2_15m = (
         i.get("wt1_3m"),
@@ -32233,12 +32449,12 @@ async def evaluate_ranking_momentum_trade(ctx: dict) -> Optional[Signal]:
         except (ValueError, TypeError):
             return default
 
-    k_15m = get_f("stoch_k_15m", 50.0)
-    k_1h = get_f("stoch_k_1h", 50.0)
-    d_1h = get_f("stoch_d_1h", 50.0)
-    k_15m_prev = get_f("stoch_k_15m_prev", get_f("k_15m_prev", 50.0))
-    k_3m = get_f("stoch_k_3m", 50.0)
-    d_3m = get_f("stoch_d_3m", 50.0)
+    k_15m = get_f("k_15m", 50.0)
+    k_1h = get_f("k_1h", 50.0)
+    d_1h = get_f("d_1h", 50.0)
+    k_15m_prev = get_f("k_15m_prev", get_f("k_15m_prev", 50.0))
+    k_3m = get_f("k_3m", 50.0)
+    d_3m = get_f("d_3m", 50.0)
     wt1_3m = get_f("wt1_3m", 0.0)
     wt2_3m = get_f("wt2_3m", 0.0)
     wt1_15m = get_f("wt1_15m", 0.0)
@@ -32481,8 +32697,8 @@ async def evaluate_reversal_entry(ctx: dict) -> Signal:
     # DEAD_CODE: drop_from_prev = max(prev_gain - gain, 0.0)
     # DEAD_CODE: drop_from_peak = max(max_gain - gain, 0.0)
     # DEAD_CODE: min_drop = float(getattr(config, 'REVERSAL_MIN_GAIN_DROP', 0.05) or 0.05)
-    # DEAD_CODE: k_3m = float(i.get('stoch_k_3m') or 0.0)
-    # DEAD_CODE: d_3m = float(i.get('stoch_d_3m') or 0.0)
+    # DEAD_CODE: k_3m = float(i.get('k_3m') or 0.0)
+    # DEAD_CODE: d_3m = float(i.get('d_3m') or 0.0)
     # DEAD_CODE: k_3m_prev = float(i.get('k_3m_prev') or k_3m)
     # DEAD_CODE: reasons = f'REVERSE {position.positionAmt:.4f} {gain:.2f}%'
     # DEAD_CODE: if config.VERBOSE:
@@ -32541,8 +32757,8 @@ async def evaluate_reversal_entry(ctx: dict) -> Signal:
     # DEAD_CODE: if config.VERBOSE:
     # DEAD_CODE: logger.info(f"[REVERSAL_ENTRY] {position_key}: NO_ACTION - Already reversed")
     # DEAD_CODE: return Signal(action='NO_ACTION', reason='REVERSAL_ENTRY_ALREADY_REVERSED_SUFFICIENT_SIZE', conviction=0.0)
-    # DEAD_CODE: k_15m = float(i.get('stoch_k_15m') or 0.0)
-    # DEAD_CODE: d_15m = float(i.get('stoch_d_15m') or 0.0)
+    # DEAD_CODE: k_15m = float(i.get('k_15m') or 0.0)
+    # DEAD_CODE: d_15m = float(i.get('d_15m') or 0.0)
     # DEAD_CODE: wt1_3m = float(i.get('wt1_3m') or 0.0)
     # DEAD_CODE: wt2_3m = float(i.get('wt2_3m') or 0.0)
     # DEAD_CODE: ha_raw = i.get('ha_15m')
@@ -32637,8 +32853,8 @@ async def _process_technical_signals(
     wt_cross_3m = i.get("wt_cross_3m", "NONE")
     wt_cross_15m = i.get("wt_cross_15m", "NONE")
     # ── K values for TIMING (runway estimation) ──────────────────────────
-    k_3m = safe_fetch_float(i.get("stoch_k_3m"), 50)
-    k_1h = safe_fetch_float(i.get("stoch_k_1h"), 50)
+    k_3m = safe_fetch_float(i.get("k_3m"), 50)
+    k_1h = safe_fetch_float(i.get("k_1h"), 50)
     if is_long:
         k_runway = min(100 - k_3m, 100 - k_15m, 100 - k_1h) / 100.0
     else:
@@ -33274,6 +33490,28 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             _lr_action = _decide_action(_lr_pos_amt, _lr_min_qty)
             logger.info(f"[LR_PCTB_D_LONG] {ctx['position_key']}: lr_pct_b_D={_lr_pb:.4f} action={_lr_action}")
             return Signal(action=_lr_action, reason=f"LR_PCTB_D_LONG_bb={_lr_pb:.4f}", conviction=80.0)
+    if getattr(trade_manager.config, "LR_BAND_ENTRY_ENABLED", False):
+        _lb_tf = getattr(trade_manager.config, "LR_BAND_ENTRY_TF", "4h")
+        _lb_pb = i.get(f"lrL_pct_b_{_lb_tf}")
+        _lb_sl = i.get(f"lrL_slope_{_lb_tf}")
+        _lb_r2 = i.get(f"lrL_r2_{_lb_tf}")
+        if _lb_pb is not None and _lb_sl is not None and _lb_r2 is not None:
+            _lb_pb = float(_lb_pb)
+            _lb_sl = float(_lb_sl)
+            _lb_r2 = float(_lb_r2)
+            _lb_lo = float(getattr(trade_manager.config, "LR_BAND_ENTRY_LO", 0.1))
+            # USER 2026-07-20 REGIME mode (mirror of tradier_manage): long anywhere below the
+            # top band while the channel rises — catch every upswing, not only band touches.
+            if bool(getattr(trade_manager.config, "LR_BAND_REGIME_ENABLED", False)):
+                _lb_lo = max(_lb_lo, float(getattr(trade_manager.config, "LR_BAND_REGIME_MAX_PB", 0.6)))
+            _lb_sides = str(getattr(trade_manager.config, "LR_BAND_ENTRY_SIDES", "L"))
+            _lb_long_ok = is_long and _lb_pb <= _lb_lo and _lb_sl > 0
+            _lb_short_ok = (not is_long) and "S" in _lb_sides and _lb_pb >= 1.0 - _lb_lo and _lb_sl < 0
+            if _lb_r2 >= float(getattr(trade_manager.config, "LR_BAND_ENTRY_R2_MIN", 0.7)) and (_lb_long_ok or _lb_short_ok):
+                _lb_min_qty = float((trade_manager.min_qty or {}).get(ctx.get("symbol"), 0.0)) if isinstance(getattr(trade_manager, "min_qty", None), dict) else 0.0
+                _lb_action = _decide_action(float(getattr(position, "positionAmt", 0.0) or 0.0), _lb_min_qty)
+                logger.info(f"[LR_BAND_ENTRY] {ctx['position_key']}: pb={_lb_pb:.3f} slope={_lb_sl:+.4f} r2={_lb_r2:.2f} tf={_lb_tf} action={_lb_action}")
+                return Signal(action=_lb_action, reason=f"LR_BAND_ENTRY_{'L' if is_long else 'S'}_pb={_lb_pb:.3f}_r2={_lb_r2:.2f}", conviction=85.0)
     # RZ_BREAKOUT early path: bb_pct_b_1h in band just outside extreme zone → entry without alignment gates.
     # Band: LONG fires when bb_pctb in [rz_bot, rz_bot+band] (just exited oversold zone).
     # SHORT fires when bb_pctb in [rz_top-band, rz_top]. Defaults False — enable via config.py once sweep validates.
@@ -33317,8 +33555,9 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
         try:
             from golden_rule_htf import score_entry_htf as _gr_htf_de_fn
 
-            _grde_min_ind = int(getattr(_tm_cfg_grde, "GOLDEN_RULE_MIN_IND", 1))
-            _grde_min_tfs = int(getattr(_tm_cfg_grde, "GOLDEN_RULE_HTF_MIN_TFS", 1))
+            _gr_sym = ctx["symbol"]; _gr_side = "LONG" if is_long else "SHORT"  # 2026-07-04 per_sym-wire GR entry thresholds (fallback == prior getattr(config) → 0 behavior change when no override)
+            _grde_min_ind = int(_psym_get(_gr_sym, _gr_side, "GOLDEN_RULE_MIN_IND", 1))
+            _grde_min_tfs = int(_psym_get(_gr_sym, _gr_side, "GOLDEN_RULE_HTF_MIN_TFS", 1))
             _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_de_fn(
                 i,
                 is_long,
@@ -33329,17 +33568,17 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             )
             _grde_score = float(_grde_n_tfs) * float(_grde_min_ind)
             _grde_score_min = float(
-                getattr(_tm_cfg_grde, "GR_HTF_DIRECT_ENTRY_SCORE_MIN", 12.0)
+                _psym_get(_gr_sym, _gr_side, "GR_HTF_DIRECT_ENTRY_SCORE_MIN", 12.0)
             )
             _grde_double = float(
-                getattr(_tm_cfg_grde, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", 18.0)
+                _psym_get(_gr_sym, _gr_side, "GR_HTF_DIRECT_ENTRY_DOUBLE_SCORE", 18.0)
             )
             if _grde_score >= _grde_score_min:
                 _grde_sps = float(getattr(_tm_cfg_grde, "START_POSITION_SIZE", 200))
                 _grde_mult = 2.0 if _grde_score >= _grde_double else 1.0
                 _grde_pos_amt = float(getattr(position, "positionAmt", 0.0) or 0.0)
                 _grde_min_qty = (
-                    float((trade_manager.min_qty or {}).get(symbol, 0.0))
+                    float((trade_manager.min_qty or {}).get(ctx.get("symbol"), 0.0))
                     if hasattr(trade_manager, "min_qty")
                     and isinstance(getattr(trade_manager, "min_qty", None), dict)
                     else 0.0
@@ -33357,18 +33596,18 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
         except Exception as _grde_err:
             logger.warning(f"[GR_HTF_DIRECT_ENTRY_ERR] {position_key}: {_grde_err}")
     # ═══ END GR_HTF_DIRECT_ENTRY ═══
-    k_1m = float(i.get("stoch_k_1m", 50))
-    d_1m = float(i.get("stoch_d_1m", 50))
-    k_3m = float(i.get("stoch_k_3m", 50))
-    d_3m = float(i.get("stoch_d_3m", 50))
-    k_15m = float(i.get("stoch_k_15m", 50))
-    d_15m = float(i.get("stoch_d_15m", 50))
-    k_1h = float(i.get("stoch_k_1h", 50))
-    d_1h = float(i.get("stoch_d_1h", 50))
-    k_4h = float(i.get("stoch_k_4h", 50))
-    d_4h = float(i.get("stoch_d_4h", 50))
-    k_D = float(i.get("stoch_k_D", 50))
-    d_D = float(i.get("stoch_d_D", 50))
+    k_1m = float(i.get("k_1m", 50))
+    d_1m = float(i.get("d_1m", 50))
+    k_3m = float(i.get("k_3m", 50))
+    d_3m = float(i.get("d_3m", 50))
+    k_15m = float(i.get("k_15m", 50))
+    d_15m = float(i.get("d_15m", 50))
+    k_1h = float(i.get("k_1h", 50))
+    d_1h = float(i.get("d_1h", 50))
+    k_4h = float(i.get("k_4h", 50))
+    d_4h = float(i.get("d_4h", 50))
+    k_D = float(i.get("k_D", 50))
+    d_D = float(i.get("d_D", 50))
     ha_D = i.get("ha_D", "neutral")
     _ha_4h_q = str(i.get("ha_4h", "neutral")).lower()
     _dc_basis_4h_q = float(i.get("dc_basis_4h") or 0.0)
@@ -33902,7 +34141,7 @@ async def calculate_final_order_quantity(
         ("0final_score_norm", 0.4),
         ("0prox_norm", 0.1),
     ]:
-        score = i.get(key, 0.0)
+        score = i.get(key, 0.0) or 0.0
         factors.append((score * weight, True, f"{key} Modifier"))
     gain = getattr(position, "gain", 0.0)
     if gain > 4.0:
@@ -34038,10 +34277,10 @@ async def calculate_final_order_quantity(
     if not is_long and _div_bull_count >= 2:
         sizing_score -= 20
     k_1h, d_1h, k_4h, d_4h = (
-        i.get("stoch_k_1h", 50),
-        i.get("stoch_d_1h", 50),
-        i.get("stoch_k_4h", 50),
-        i.get("stoch_d_4h", 50),
+        i.get("k_1h", 50),
+        i.get("d_1h", 50),
+        i.get("k_4h", 50),
+        i.get("d_4h", 50),
     )
     higher_high_1h_check = (
         i.get("high_1h", 0) > i.get("high_1h_prev", 0)
@@ -34089,7 +34328,7 @@ async def calculate_final_order_quantity(
         sizing_score *= 0.65
     if now.weekday() >= 5 or now.hour < 14:
         sizing_score *= 0.5
-    k_15m = i.get("stoch_k_15m", 50)
+    k_15m = i.get("k_15m", 50)
     if (is_long and k_15m > 85) or (not is_long and k_15m < 15):
         sizing_score *= 0.6
     # BACKTEST_CHANGE_141: Fear & Greed sizing multiplier (1,240% vs 680% B&H documented)
@@ -34502,6 +34741,7 @@ async def process_single_reentry_evaluation(
                 f"[{position_key}] CRITICAL2: Position object vanished during processing - Aborting evaluation."
             )
             return f"{EvalStatus.NO_ACTION}:POSITION_LOST_RACE_CONDITION"
+        is_long = position.position_side == "LONG"
         current_price = safe_fetch_float(position.mark_price or 0.0, 0.0)
         if not current_price or current_price <= 0:
             current_price = await price(symbol, position)
@@ -34594,11 +34834,13 @@ async def process_single_reentry_evaluation(
             return
         if min_since_exit < 120:
             reentry_amount = position.max_quantity
-        is_long = position.position_side == "LONG"
+        i = await ii(trade_manager, symbol)
+        if not i:
+            return
         # USER 2026-05-30 RESTORED sizing rule (no backtest justified erasing it): buy-the-DIP (price below exit)
         # → 150%; BREAKOUT (price above exit) → 100%; k_1h extended (>95 LONG / <5 SHORT) → 50%. Sweepable.
         try:
-            _re_k1h = safe_fetch_float(i.get("stoch_k_1h", 50), 50.0)
+            _re_k1h = safe_fetch_float(i.get("k_1h", 50), 50.0)
             _re_ext_thr = float(getattr(config, "REENTRY_SIZE_EXTENDED_K1H", 95.0))
             _re_extended = (is_long and _re_k1h > _re_ext_thr) or ((not is_long) and _re_k1h < (100.0 - _re_ext_thr))
             _re_dip = reentry_level > 0 and ((is_long and current_price < reentry_level) or ((not is_long) and current_price > reentry_level))
@@ -34613,17 +34855,14 @@ async def process_single_reentry_evaluation(
         price_above_reduction = (is_long and current_price >= reentry_level) or (
             not is_long and current_price <= reentry_level
         )
-        i = await ii(trade_manager, symbol)
-        if not i:
-            return
-        k_3m = safe_fetch_float(i.get("stoch_k_3m"))
-        d_3m = safe_fetch_float(i.get("stoch_d_3m"))
-        k_15m = safe_fetch_float(i.get("stoch_k_15m"))
-        d_15m = safe_fetch_float(i.get("stoch_d_15m"))
-        k_15m_prev = safe_fetch_float(i.get("stoch_k_15m_prev", 0), 0.0)
+        k_3m = safe_fetch_float(i.get("k_3m"))
+        d_3m = safe_fetch_float(i.get("d_3m"))
+        k_15m = safe_fetch_float(i.get("k_15m"))
+        d_15m = safe_fetch_float(i.get("d_15m"))
+        k_15m_prev = safe_fetch_float(i.get("k_15m_prev", 0), 0.0)
         k_3m_prev = safe_fetch_float(i.get("k_3m_prev", 0), 0.0)
-        d_3m_prev = safe_fetch_float(i.get("stoch_d_3m_p", 0), 0.0)
-        d_15m_prev = safe_fetch_float(i.get("stoch_d_15m_prev", 0), 0.0)
+        d_3m_prev = safe_fetch_float(i.get("d_3m_p", 0), 0.0)
+        d_15m_prev = safe_fetch_float(i.get("d_15m_prev", 0), 0.0)
         t_up_3m = i.get("t_up_3m")
         t_up_15m = i.get("t_up_15m")
         wt1_3m = safe_fetch_float(i.get("wt1_3m", 0), 0.0)
@@ -34635,12 +34874,18 @@ async def process_single_reentry_evaluation(
         market_sentiment = safe_fetch_float(
             i.get("0market_sentiment_score", 50.0), 50.0
         )
-        k_1h = safe_fetch_float(i.get("stoch_k_1h", 0), 0.0)
-        d_1h = safe_fetch_float(i.get("stoch_d_1h", 0), 0.0)
-        k_1h_prev = safe_fetch_float(i.get("stoch_k_1h_prev", 0), 0.0)
-        k_4h = safe_fetch_float(i.get("stoch_k_4h", 0), 0.0)
-        d_4h = safe_fetch_float(i.get("stoch_d_4h", 0), 0.0)
-        k_4h_prev = safe_fetch_float(i.get("stoch_k_4h_prev", 0), 0.0)
+        k_1h = safe_fetch_float(i.get("k_1h", 0), 0.0)
+        d_1h = safe_fetch_float(i.get("d_1h", 0), 0.0)
+        k_1h_prev = safe_fetch_float(i.get("k_1h_prev", 0), 0.0)
+        k_4h = safe_fetch_float(i.get("k_4h", 0), 0.0)
+        d_4h = safe_fetch_float(i.get("d_4h", 0), 0.0)
+        k_4h_prev = safe_fetch_float(i.get("k_4h_prev", 0), 0.0)
+        ha_1h = i.get("ha_1h", "neutral")
+        ha_4h = i.get("ha_4h", "neutral")
+        wt1_1h = safe_fetch_float(i.get("wt1_1h", 0), 0.0)
+        wt2_1h = safe_fetch_float(i.get("wt2_1h", 0), 0.0)
+        wt1_4h = safe_fetch_float(i.get("wt1_4h", 0), 0.0)
+        wt2_4h = safe_fetch_float(i.get("wt2_4h", 0), 0.0)
         sma_200_1m = safe_fetch_float(i.get("sma_200_1m", 0), 0.0)
         dc_basis_15m = safe_fetch_float(i.get("dc_basis_15m", 0), 0.0)
         dc_basis_3m = safe_fetch_float(i.get("dc_basis_3m", 0), 0.0)
@@ -34651,6 +34896,7 @@ async def process_single_reentry_evaluation(
         dc_high_15m = safe_fetch_float(i.get("dc_high_15m", 0), 0.0)
         dc_high_1h = safe_fetch_float(i.get("dc_high_1h", 0), 0.0)
         dc_high_1h_ant = safe_fetch_float(i.get("dc_high_1h_ant", 0), 0.0)
+        dc_low_1h_ant = safe_fetch_float(i.get("dc_low_1h_ant", 0), 0.0)
         dc_low_15m = safe_fetch_float(i.get("dc_low_15m", 0), 0.0)
         dc_low_1h = safe_fetch_float(i.get("dc_low_1h", 0), 0.0)
         dc_low_15m_ant = safe_fetch_float(i.get("dc_low_15m_ant", 0), 0.0)
@@ -34696,7 +34942,7 @@ async def process_single_reentry_evaluation(
         _wt1_15m = safe_fetch_float(i.get("wt1_15m", 0), 0.0)
         _wt2_15m = safe_fetch_float(i.get("wt2_15m", 0), 0.0)
         _dfr_pos_notional = (
-            abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             * current_price
         )
         # 2026-04-28 user: reentries firing at SAME price as exit = duplicate-open accumulation.
@@ -34797,8 +35043,8 @@ async def process_single_reentry_evaluation(
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
         _dc_ftf = str(getattr(config, 'REENTRY2_DC_BREAK_FILTER_TF', '3m'))
-        _dc_fk = safe_fetch_float(i.get(f"stoch_k_{_dc_ftf}", 0), 0.0)
-        _dc_fd = safe_fetch_float(i.get(f"stoch_d_{_dc_ftf}", 0), 0.0)
+        _dc_fk = safe_fetch_float(i.get(f"k_{_dc_ftf}", 0), 0.0)
+        _dc_fd = safe_fetch_float(i.get(f"d_{_dc_ftf}", 0), 0.0)
         _dc_fw1 = safe_fetch_float(i.get(f"wt1_{_dc_ftf}", 0), 0.0)
         _dc_fw2 = safe_fetch_float(i.get(f"wt2_{_dc_ftf}", 0), 0.0)
         _dc_k_data = abs(_dc_fk) > 1e-9 or abs(_dc_fd) > 1e-9
@@ -34823,13 +35069,13 @@ async def process_single_reentry_evaluation(
                 _dc_re_tf = "3M" if _dc_3m_short else ("1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M")
         if _dc_reentry_breakout is True:
             _dcbr_pos_notional = (
-                abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+                (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
                 * current_price
             )
             # 2026-06-03 USER MANDATE: a reentry must NEVER be blocked after a reduction. Cap at the position's
             # MAX size (so a reduced position re-adds up to max on a dc4 cross), NOT at START_POSITION_SIZE
             # (which blocked every after-reduction re-add since the remainder is usually >= start).
-            _dcbr_max = abs(safe_fetch_float(getattr(position, "max_positionSize", 0), 0)) or (float(getattr(config, "MAX_POSITION_SIZE", 0) or 0) or config.START_POSITION_SIZE * 10.0)
+            _dcbr_max = (safe_fetch_float(getattr(position, "max_positionSize", 0), 0)) or (float(getattr(config, "MAX_POSITION_SIZE", 0) or 0) or config.START_POSITION_SIZE * 10.0)
             if _dcbr_pos_notional >= _dcbr_max:
                 logger.info(
                     f"[DC_BREAKOUT_REENTRY_AT_MAX] {position_key}: at max size (${_dcbr_pos_notional:.0f} >= max ${_dcbr_max:.0f}). No further add."
@@ -35140,14 +35386,7 @@ async def process_single_reentry_evaluation(
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                     _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
                     reason = reason + _ee_tag
-                    result = await queue_trade_action(
-                        trade_manager.order_queue,
-                        trade_manager,
-                        position_key,
-                        "REENTRY",
-                        reason,
-                        conviction,
-                    )  # ), override_qty=recovery_reentry_amount)
+                    result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=recovery_reentry_amount)
                     if result and (
                         result.startswith("QUEUED") or result.startswith("SUCCESS")
                     ):
@@ -35393,14 +35632,7 @@ async def process_single_reentry_evaluation(
                     f"[PROC_SINGLE_REENTRY]:_qty_{reentry_amount}_k_3mm_crossover_above_dc_low_3m_delta_{_psr_delta_reason[:30]}"
                     + _ee_tag
                 )
-                result = await queue_trade_action(
-                    trade_manager.order_queue,
-                    trade_manager,
-                    position_key,
-                    "REENTRY",
-                    _psr_long_reason,
-                    75.0,
-                )  # ,override_qty=reentry_amount)
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_long_reason, 75.0, override_qty=reentry_amount)
                 if result and (
                     result.startswith("QUEUED") or result.startswith("SUCCESS")
                 ):
@@ -35500,14 +35732,7 @@ async def process_single_reentry_evaluation(
                     f"[PROC_SINGLE_REENTRY]_qty_{reentry_amount}:k_3mm_crossunder_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}"
                     + _ee_tag
                 )
-                result = await queue_trade_action(
-                    trade_manager.order_queue,
-                    trade_manager,
-                    position_key,
-                    "REENTRY",
-                    _psr_short_reason,
-                    75.0,
-                )  # ,override_qty=reentry_amount)
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_short_reason, 75.0, override_qty=reentry_amount)
                 if result and (
                     result.startswith("QUEUED") or result.startswith("SUCCESS")
                 ):
@@ -35528,7 +35753,7 @@ async def process_single_reentry_evaluation(
                 f"[proces s_single_reentry_evaluation] {position_key}: FULL_REENTRY check - stoch_crossover_3m={stoch_crossover_3m}, full_reentry_stoch_above_dc={full_reentry_stoch_above_dc}, dc_basis_crossover_3m={dc_basis_crossover_3m}, is_invalidated={is_invalidated}, current_price={current_price:.6f}, dc_basis_15m={dc_basis_15m:.6f}"
             )
         _psr_notional = (
-            abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             * current_price
         )
         if (
@@ -35546,14 +35771,7 @@ async def process_single_reentry_evaluation(
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
             reason = reason + _ee_tag
-            result = await queue_trade_action(
-                trade_manager.order_queue,
-                trade_manager,
-                position_key,
-                "REENTRY",
-                reason,
-                conviction,
-            )  # ,override_qty=reentry_amount)
+            result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=reentry_amount)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(
                     f"[evaluate_reentry_2] {position_key}: FULL REENTRY queued - amount={reentry_amount:.6f}, price={current_price:.6f}, dc_basis_15m={dc_basis_15m:.6f}, k_3m={k_3m:.1f} d_3m={d_3m:.1f} k_3m_prev={k_3m_prev:.1f} d_3m_prev={d_3m_prev:.1f}, reason={reason}"
@@ -35672,14 +35890,7 @@ async def process_single_reentry_evaluation(
                             symbol, i, is_long, config
                         )
                         reason = reason + _ee_tag
-                        result = await queue_trade_action(
-                            trade_manager.order_queue,
-                            trade_manager,
-                            position_key,
-                            "REENTRY",
-                            reason,
-                            conviction,
-                        )  # override_qty=reentry_amount)
+                        result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=reentry_amount)
                         if result and (
                             result.startswith("QUEUED") or result.startswith("SUCCESS")
                         ):
@@ -35854,7 +36065,7 @@ async def evaluate_reentry_2(trade_manager):
             )
             # Pre-filter REMOVED: it was killing BC_152/BC_156/DC_BREAKOUT/GUARANTEED paths before they could run.
             # Those paths have their own gates. Only block exhausted K (>95/<5) here.
-            k_3m_pre = safe_fetch_float(i.get("stoch_k_3m", 50), 50)
+            k_3m_pre = safe_fetch_float(i.get("k_3m", 50), 50)
             if (is_long and k_3m_pre > 95) or (not is_long and k_3m_pre < 5):
                 continue
             # --- C. Launch Processor ---
@@ -35990,8 +36201,8 @@ async def direct_high_gain_augmentation(
         )
         if is_large_position and gain > 3 * config.MIN_GAIN:
             i = await ii(trade_manager, symbol)
-            k_3m = safe_fetch_float(i.get("stoch_k_3m", 50), 50.0)
-            d_3m = safe_fetch_float(i.get("stoch_d_3m", 50), 50.0)
+            k_3m = safe_fetch_float(i.get("k_3m", 50), 50.0)
+            d_3m = safe_fetch_float(i.get("d_3m", 50), 50.0)
             t_up_3m = i.get("t_up_3m", False)
             conditions_met = (is_long and k_3m > d_3m and t_up_3m) or (
                 not is_long and k_3m < d_3m and not t_up_3m
@@ -36111,10 +36322,10 @@ async def direct_high_gain_augmentation(
                 t_up_15m,
                 timestamp_3m,
             ) = (
-                i.get("stoch_k_3m", 0),
-                i.get("stoch_d_3m", 0),
-                i.get("stoch_k_15m", 0),
-                i.get("stoch_d_15m", 0),
+                i.get("k_3m", 0),
+                i.get("d_3m", 0),
+                i.get("k_15m", 0),
+                i.get("d_15m", 0),
                 i.get("t_up_3m", False),
                 i.get("dc_high_3m", 0),
                 i.get("dc_high_15m", 0),
@@ -36126,15 +36337,15 @@ async def direct_high_gain_augmentation(
                 i.get("dc_low_4h", 0),
                 i.get("dc_low4_3m", 0),
                 i.get("dc_high4_3m", 0),
-                i.get("stoch_k_1h", 0),
-                i.get("stoch_d_1h", 0),
-                i.get("stoch_k_1h_prev", 0),
-                i.get("stoch_k_4h", 0),
-                i.get("stoch_k_4h_prev", 0),
-                i.get("stoch_k_15m_prev", 0),
+                i.get("k_1h", 0),
+                i.get("d_1h", 0),
+                i.get("k_1h_prev", 0),
+                i.get("k_4h", 0),
+                i.get("k_4h_prev", 0),
+                i.get("k_15m_prev", 0),
                 i.get("k_3m_prev", 0),
                 i.get("ha_15m", ""),
-                i.get("stoch_k_15m", 0),
+                i.get("k_15m", 0),
                 i.get("ha_3m", ""),
                 i.get("t_up_3m", False),
                 i.get("t_up_15m", True),
@@ -36471,9 +36682,9 @@ async def _process_single_override_check(
                         )
                         _dch3m_z = safe_fetch_float(_ind_z.get("dc_high_3m"), 0)
                         _dcl3m_z = safe_fetch_float(_ind_z.get("dc_low_3m"), 0)
-                        _k3_z = safe_fetch_float(_ind_z.get("stoch_k_3m"), 50)
+                        _k3_z = safe_fetch_float(_ind_z.get("k_3m"), 50)
                         _k3p_z = safe_fetch_float(
-                            _ind_z.get("k_3m_prev") or _ind_z.get("stoch_k_3m_prev"),
+                            _ind_z.get("k_3m_prev") or _ind_z.get("k_3m_prev"),
                             _k3_z,
                         )
                         _ha3_z = _ind_z.get("ha_3m", "neutral")
@@ -36504,11 +36715,11 @@ async def _process_single_override_check(
                             )
                             _r1s_tkm = safe_fetch_float(
                                 _ind_z.get(
-                                    "dc_low4_3m" if _is_long_z else "dc_high4_3m"
+                                    ("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")
                                 ),
                                 0.0,
                             )
-                            if _r1s_tkm > 0 and position:
+                            if _r1s_tkm > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:  # 2026-07-01 R1 freeze-at-entry (crypto): capture dc_low at buy, do NOT chase it up
                                 position.r1_stop_price = _r1s_tkm
                             if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
                                 pass
@@ -36519,7 +36730,8 @@ async def _process_single_override_check(
                                 _fo_tkm_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
                                 if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_tkm_gr_min > 0 or _fo_tkm_min_tfs > 0):
                                     try:
-                                        from golden_rule_htf import _ind_score as _grf_score_tkm
+                                        from golden_rule_htf import \
+                                            _ind_score as _grf_score_tkm
                                         _fo_tkm_tf_scores = [(_tf, _grf_score_tkm(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
                                         _fo_tkm_votes = sum(s for _, s in _fo_tkm_tf_scores)
                                         if _fo_tkm_gr_min > 0 and _fo_tkm_votes < _fo_tkm_gr_min:
@@ -36558,7 +36770,14 @@ async def _process_single_override_check(
                             _fo_pct_z = float(getattr(config, "WT_3M_FORCE_OPEN_SMA_PCT", 1.0)) / 100.0
                             _dist_ok_z = (_is_long_z and _sma15_z > 0 and _px_z > _sma15_z * (1.0 + _fo_pct_z)) or (_is_short_z and _sma15_z > 0 and _px_z < _sma15_z * (1.0 - _fo_pct_z))
                             _wt_dir_ok_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (_is_short_z and _wt1_3m_z < _wt2_3m_z)
-                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z
+                            # 2026-07-04 USER: WT_3M reentry fires ONLY if the 3m crossover PRICE is a
+                            # higher-high (LONG) / lower-low (SHORT) vs the previous cross. Same knob + true
+                            # wt_crossover_value_3m field as the engine (backtest parity).
+                            _req_hh_z = bool(getattr(config, "WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS", True))
+                            _xv_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m"), 0.0)
+                            _xvp_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m_prev"), 0.0)
+                            _hh_ok_z = (not _req_hh_z) or ((_xv_z > 0 and _xvp_z > 0) and ((_is_long_z and _xv_z > _xvp_z) or (_is_short_z and _xv_z < _xvp_z)))
+                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _hh_ok_z
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)
@@ -36569,11 +36788,11 @@ async def _process_single_override_check(
                                 )
                                 _r1s_wf = safe_fetch_float(
                                     _ind_z.get(
-                                        "dc_low4_3m" if _is_long_z else "dc_high4_3m"
+                                        ("dc_low4_3m" if _is_long_z else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if _is_long_z else "dc_high_3m")
                                     ),
                                     0.0,
                                 )
-                                if _r1s_wf > 0 and position:
+                                if _r1s_wf > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:  # 2026-07-01 R1 freeze-at-entry (crypto): set once at buy, don't chase
                                     position.r1_stop_price = _r1s_wf
                                 if time.time() - _recent_opens.get(position_key, 0) < _DUPLICATE_OPEN_COOLDOWN:
                                     pass
@@ -36584,7 +36803,8 @@ async def _process_single_override_check(
                                     _fo_wf_min_ind = int(getattr(config, "WT_3M_FORCE_OPEN_GR_MIN_IND_PER_TF", 5))
                                     if bool(getattr(config, "WT_3M_FORCE_OPEN_GR_GATE_ENABLED", True)) and (_fo_wf_gr_min > 0 or _fo_wf_min_tfs > 0):
                                         try:
-                                            from golden_rule_htf import _ind_score as _grf_score_wf
+                                            from golden_rule_htf import \
+                                                _ind_score as _grf_score_wf
                                             _fo_wf_tf_scores = [(_tf, _grf_score_wf(_ind_z, _tf, _is_long_z, _px_z)[0]) for _tf in ("3m", "15m", "1h", "4h", "D")]
                                             _fo_wf_votes = sum(s for _, s in _fo_wf_tf_scores)
                                             if _fo_wf_gr_min > 0 and _fo_wf_votes < _fo_wf_gr_min:
@@ -36627,9 +36847,9 @@ async def _process_single_override_check(
                             _ra_w2_15m = safe_fetch_float(_ind_z.get("wt2_15m"), 0)
                             _ra_w1_1h = safe_fetch_float(_ind_z.get("wt1_1h"), 0)
                             _ra_w2_1h = safe_fetch_float(_ind_z.get("wt2_1h"), 0)
-                            _ra_k_3m = safe_fetch_float(_ind_z.get("stoch_k_3m") or _ind_z.get("k_3m"), 50)
-                            _ra_d_3m = safe_fetch_float(_ind_z.get("stoch_d_3m") or _ind_z.get("d_3m"), 50)
-                            _ra_k_3m_prev = safe_fetch_float(_ind_z.get("k_3m_prev") or _ind_z.get("stoch_k_3m_prev"), _ra_k_3m)
+                            _ra_k_3m = safe_fetch_float(_ind_z.get("k_3m") or _ind_z.get("k_3m"), 50)
+                            _ra_d_3m = safe_fetch_float(_ind_z.get("d_3m") or _ind_z.get("d_3m"), 50)
+                            _ra_k_3m_prev = safe_fetch_float(_ind_z.get("k_3m_prev") or _ind_z.get("k_3m_prev"), _ra_k_3m)
                             _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0)
                             if _ra_data_ok:
                                 # 2026-05-18 per-sym overlay
@@ -36687,24 +36907,24 @@ async def _process_single_override_check(
         )
         t_up_3m = bool(i.get("t_up_3m", False))
         t_up_15m = bool(i.get("t_up_15m", False))
-        k_3m = i.get("stoch_k_3m", 50.0)
-        d_3m = i.get("stoch_d_3m", 50.0)
+        k_3m = i.get("k_3m", 50.0)
+        d_3m = i.get("d_3m", 50.0)
         ha_3m = i.get("ha_3m", "neutral")
-        k_15m = i.get("stoch_k_15m", 50.0)
-        d_15m = i.get("stoch_d_15m", 50.0)
+        k_15m = i.get("k_15m", 50.0)
+        d_15m = i.get("d_15m", 50.0)
         k_3m_prev = i.get("k_3m_prev", k_3m)
-        d_3m_prev = i.get("stoch_d_3m_p", d_3m)
-        k_15m_prev = i.get("stoch_k_15m_prev", k_15m)
+        d_3m_prev = i.get("d_3m_p", d_3m)
+        k_15m_prev = i.get("k_15m_prev", k_15m)
         ha_15m = i.get("ha_15m", "neutral")
         ha_1h = i.get("ha_1h", "neutral")
         dc_basis_15m = i.get("dc_basis_15m", 0.0)
         dc_basis_3m = i.get("dc_basis_3m", 0.0)
-        k_1h = i.get("stoch_k_1h", 50.0)
-        k_1h_prev = i.get("stoch_k_1h_prev", k_1h)
-        k_4h = i.get("stoch_k_4h", 50.0)
-        k_4h_prev = i.get("stoch_k_4h_prev", k_4h)
-        d_1h = safe_fetch_float(i.get("stoch_d_1h", 0), 0.0)
-        d_4h = safe_fetch_float(i.get("stoch_d_4h", 0), 0.0)
+        k_1h = i.get("k_1h", 50.0)
+        k_1h_prev = i.get("k_1h_prev", k_1h)
+        k_4h = i.get("k_4h", 50.0)
+        k_4h_prev = i.get("k_4h_prev", k_4h)
+        d_1h = safe_fetch_float(i.get("d_1h", 0), 0.0)
+        d_4h = safe_fetch_float(i.get("d_4h", 0), 0.0)
         high_1h = safe_fetch_float(i.get("high_1h", 0), 0.0)
         high_1h_prev = safe_fetch_float(i.get("high_1h_prev", 0), 0.0)
         low_1h = safe_fetch_float(i.get("low_1h", 0), 0.0)
@@ -36911,7 +37131,7 @@ async def _process_single_override_check(
             logger.warning(
                 f"[OVERRIDE_CHECK] {position_key}: PositionAmt {current_positionAmt:.6f} >= max_quantity {position_max_quantity:.6f} - STOPPING reentry immediately!"
             )
-            return f"SKIPPED_POSITION_ALREADY_AT_MAX"
+            return "SKIPPED_POSITION_ALREADY_AT_MAX"
         if position_max_quantity > 0 and current_positionAmt < position_max_quantity:
             should_reentry = False
             reentry_reason = ""
@@ -36982,13 +37202,13 @@ async def _process_single_override_check(
                             logger.warning(
                                 f"[OVERRIDE_CHECK] {position_key}: PositionAmt changed during check ({current_positionAmt:.6f} -> {final_positionAmt:.6f}) - CANCELLING reentry order!"
                             )
-                            return f"SKIPPED_POSITION_CHANGED_DURING_CHECK"
+                            return "SKIPPED_POSITION_CHANGED_DURING_CHECK"
                         needed_qty = position_max_quantity - final_positionAmt
                         if needed_qty <= pos_min_qty:
                             logger.warning(
                                 f"[OVERRIDE_CHECK] {position_key}: Needed qty {needed_qty:.6f} <= min {pos_min_qty:.6f} after final check - CANCELLING reentry order!"
                             )
-                            return f"SKIPPED_NEEDED_QTY_TOO_SMALL"
+                            return "SKIPPED_NEEDED_QTY_TOO_SMALL"
                     base_conviction = 70.0 if indicators_good_reentry else 50.0
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                     _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
@@ -37075,8 +37295,8 @@ async def _process_single_override_check(
                 is_new_position
                 and position.gain > config.NEW_POSITION_MAX_LOSS_THRESHOLD
             ):
-                k_3m = safe_fetch_float(i.get("stoch_k_3m", 50), 50.0)
-                d_3m = safe_fetch_float(i.get("stoch_d_3m", 50), 50.0)
+                k_3m = safe_fetch_float(i.get("k_3m", 50), 50.0)
+                d_3m = safe_fetch_float(i.get("d_3m", 50), 50.0)
                 k_3m_prev = safe_fetch_float(i.get("k_3m_prev", 50), 50.0)
                 entry_price = safe_fetch_float(
                     getattr(position, "entry_price", 0.0), 0.0
@@ -37232,8 +37452,8 @@ async def _process_single_override_check(
             return
         elif not is_long and market_sentiment > 30:
             return
-        k_15m = i.get("stoch_k_15m", 50.0)
-        d_15m = i.get("stoch_d_15m", 50.0)
+        k_15m = i.get("k_15m", 50.0)
+        d_15m = i.get("d_15m", 50.0)
         ha_15m = i.get("ha_15m", "neutral")
         if is_long and (
             not t_up_15m or k_15m <= d_15m or ha_15m != "green" or k_15m > 75
@@ -37460,21 +37680,21 @@ async def override_check_uptrend_positions(
                 )
                 t_up_3m = bool(i.get("t_up_3m", False))
                 t_up_15m = bool(i.get("t_up_15m", False))
-                k_3m = i.get("stoch_k_3m", 50.0)
-                d_3m = i.get("stoch_d_3m", 50.0)
+                k_3m = i.get("k_3m", 50.0)
+                d_3m = i.get("d_3m", 50.0)
                 ha_3m = i.get("ha_3m", "neutral")
-                k_15m = i.get("stoch_k_15m", 50.0)
-                d_15m = i.get("stoch_d_15m", 50.0)
+                k_15m = i.get("k_15m", 50.0)
+                d_15m = i.get("d_15m", 50.0)
                 ha_15m = i.get("ha_15m", "neutral")
-                k_15m_prev = i.get("stoch_k_15m_prev", k_15m)
+                k_15m_prev = i.get("k_15m_prev", k_15m)
                 k_3m_prev = i.get("k_3m_prev", k_3m)
                 market_sentiment = i.get("0market_sentiment_score", 50.0)
                 dc_basis_15m = i.get("dc_basis_15m", 0.0)
                 dc_basis_3m = i.get("dc_basis_3m", 0.0)
-                k_1h = i.get("stoch_k_1h", 50.0)
-                k_1h_prev = i.get("stoch_k_1h_prev", k_1h)
-                k_4h = i.get("stoch_k_4h", 50.0)
-                k_4h_prev = i.get("stoch_k_4h_prev", k_4h)
+                k_1h = i.get("k_1h", 50.0)
+                k_1h_prev = i.get("k_1h_prev", k_1h)
+                k_4h = i.get("k_4h", 50.0)
+                k_4h_prev = i.get("k_4h_prev", k_4h)
                 for position_side in ["LONG", "SHORT"]:
                     if not trade_manager.allows_side(
                         account_key, position_side, symbol
@@ -37632,9 +37852,9 @@ async def override_check_uptrend_positions(
                             continue
                         base_conviction = 70.0
                         _r1s_ov = safe_fetch_float(
-                            i.get("dc_low4_3m" if is_long else "dc_high4_3m"), 0.0
+                            i.get(("dc_low4_3m" if is_long else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if is_long else "dc_high_3m")), 0.0
                         )
-                        if _r1s_ov > 0 and position:
+                        if _r1s_ov > 0 and position and float(getattr(position, "r1_stop_price", 0.0) or 0.0) <= 0:  # 2026-07-01 R1 freeze-at-entry (crypto): set once at buy, don't chase
                             position.r1_stop_price = _r1s_ov
                         await queue_trade_action(
                             order_queue,
@@ -37761,10 +37981,10 @@ async def _process_single_monitor_direct_high_gain(
             ha_3m,
             ha_15m,
         ) = (
-            safe_fetch_float(i.get("stoch_k_15m", 0), 0.0),
-            safe_fetch_float(i.get("stoch_k_3m", 0), 0.0),
-            safe_fetch_float(i.get("stoch_d_3m", 0), 0.0),
-            safe_fetch_float(i.get("stoch_d_15m", 0), 0.0),
+            safe_fetch_float(i.get("k_15m", 0), 0.0),
+            safe_fetch_float(i.get("k_3m", 0), 0.0),
+            safe_fetch_float(i.get("d_3m", 0), 0.0),
+            safe_fetch_float(i.get("d_15m", 0), 0.0),
             safe_fetch_float(i.get("low_3m", 0), 0.0),
             safe_fetch_float(i.get("low_3m_prev", 0), 0.0),
             safe_fetch_float(i.get("high_3m", 0), 0.0),
@@ -38256,7 +38476,7 @@ async def monitor_direct_high_gain_positions(
     # DEAD_CODE: keys_to_remove_local.append(key)
     # DEAD_CODE: continue
     # DEAD_CODE: position = await trade_manager.get_position(key)
-    # DEAD_CODE: has_open_position = position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) > 0.0001
+    # DEAD_CODE: has_open_position = position and (safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) > 0.0001
     # DEAD_CODE: if not has_open_position:
     # DEAD_CODE: keys_to_remove_local.append(key)
     # DEAD_CODE: keys_to_purge_by_account[account_key].append(key)
@@ -38524,6 +38744,7 @@ async def process_position(
     if not position_key or not trade_manager:
         return
     try:
+        config = getattr(trade_manager, "config", None)
         if (
             hasattr(trade_manager, "tradeable_keys")
             and trade_manager.tradeable_keys
@@ -38536,7 +38757,7 @@ async def process_position(
             else None
         )
         if _pp_pos is not None:
-            _pp_amt = abs(safe_fetch_float(getattr(_pp_pos, "positionAmt", 0), 0))
+            _pp_amt = (safe_fetch_float(getattr(_pp_pos, "positionAmt", 0), 0))
             if _pp_amt > 0:
                 _pp_gain = safe_fetch_float(getattr(_pp_pos, "gain", 0), 0)
                 _pp_min_gain = float(
@@ -38589,7 +38810,7 @@ async def process_position(
     if last_queued_ts and not force and (now_ts - last_queued_ts) < 2.0:
         try:
             await symbol_tracker.track_completion(
-                position_key, f"NO_ACTION:COOLDOWN_ACTIVE"
+                position_key, "NO_ACTION:COOLDOWN_ACTIVE"
             )
         except Exception as e:
             logger.warning(f"[{position_key}] Error tracking completion: {e}")
@@ -38597,7 +38818,7 @@ async def process_position(
     if position_key in trade_manager.processing_keys:
         try:
             await symbol_tracker.track_completion(
-                position_key, f"NO_ACTION:ALREADY_PROCESSING"
+                position_key, "NO_ACTION:ALREADY_PROCESSING"
             )
         except Exception as e:
             logger.warning(f"[{position_key}] Error tracking completion: {e}")
@@ -38985,6 +39206,16 @@ async def process_position(
                 _hac_w1_4h = safe_fetch_float(_pp_shared_ind.get("wt1_4h", 0), 0.0)
                 _hac_w2_4h = safe_fetch_float(_pp_shared_ind.get("wt2_4h", 0), 0.0)
                 _hac_confirm_ok = (_hac_is_long and _hac_w1_4h < _hac_w2_4h) or ((not _hac_is_long) and _hac_w1_4h > _hac_w2_4h)
+            if _hac_1h_against and _hac_confirm_ok and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_3M", True)):
+                _hac_w1_3m = safe_fetch_float(_pp_shared_ind.get("wt1_3m", 0), 0.0)
+                _hac_w2_3m = safe_fetch_float(_pp_shared_ind.get("wt2_3m", 0), 0.0)
+                if abs(_hac_w1_3m) > 1e-9 or abs(_hac_w2_3m) > 1e-9:
+                    _hac_confirm_ok = (_hac_is_long and _hac_w1_3m < _hac_w2_3m) or ((not _hac_is_long) and _hac_w1_3m > _hac_w2_3m)
+            if _hac_1h_against and _hac_confirm_ok and bool(getattr(config, "HTF_AGAINST_FORCE_CLOSE_CONFIRM_D", True)):
+                _hac_w1_D = safe_fetch_float(_pp_shared_ind.get("wt1_D", 0), 0.0)
+                _hac_w2_D = safe_fetch_float(_pp_shared_ind.get("wt2_D", 0), 0.0)
+                if abs(_hac_w1_D) > 1e-9 or abs(_hac_w2_D) > 1e-9:
+                    _hac_confirm_ok = (_hac_is_long and _hac_w1_D < _hac_w2_D) or ((not _hac_is_long) and _hac_w1_D > _hac_w2_D)
             if _hac_1h_against and _hac_confirm_ok:
                 _hac_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _hac_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -39032,7 +39263,7 @@ async def process_position(
             # 2026-05-23 USER MANDATE: lazy-set only fires for overbought-breakout entries.
             # For non-overbought entries, _r1_stop is intentionally 0 and stays 0 (R1 skipped).
             if _r1_stop <= 0 and (not _r1_restrict or _r1_is_overbought_breakout):
-                _r1_live_key = "dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m"
+                _r1_live_key = ("dc_low4_3m" if (position_side == "LONG") else "dc_high4_3m") if bool(getattr(config, "R1_USE_DC_4BAR", True)) else ("dc_low_3m" if (position_side == "LONG") else "dc_high_3m")  # 2026-07-01 R1_USE_DC_4BAR wired: False→20-bar dc_low_3m (proven better for crypto)
                 if _pp_shared_ind is None:
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
                 _r1_stop_live = safe_fetch_float(_pp_shared_ind.get(_r1_live_key), 0.0)
@@ -39176,6 +39407,43 @@ async def process_position(
                         )
         except Exception as _r1_outer:
             logger.debug(f"[R1_DC_LOW4_3M] {position_key} probe err: {_r1_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HYBRID EXIT — Timeframe Exit Combinations for Lower-HL exits (Structure-Breakdown)
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        try:
+            _se_tf = _psym_get(symbol, position_side, "EXIT_STRUCT_TF", "None")
+            if _se_tf == "None" or not _se_tf: _se_tf = _psym_get(symbol, position_side, "LONG_STRUCT_EXIT_TF" if position_side == "LONG" else "SHORT_STRUCT_EXIT_TF", "None")
+            if _se_tf != "None" and _se_tf:
+                if _pp_shared_ind is None: _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _se_ind = _pp_shared_ind if _pp_shared_ind else None
+                if _se_ind:
+                    _se_open = safe_fetch_float(_se_ind.get(f"open_{_se_tf}"), 0.0)
+                    _se_high_prev = safe_fetch_float(_se_ind.get(f"high_{_se_tf}_prev"), 0.0)
+                    _se_low_prev = safe_fetch_float(_se_ind.get(f"low_{_se_tf}_prev"), 0.0)
+                    if _se_open > 0 and _se_high_prev > 0 and _se_low_prev > 0:
+                        _last_open = getattr(position, "_last_struct_open", None)
+                        if _last_open is None:
+                            setattr(position, "_last_struct_open", _se_open)
+                            setattr(position, "_last_high_prev", _se_high_prev)
+                            setattr(position, "_last_low_prev", _se_low_prev)
+                        elif abs(_se_open - _last_open) > 1e-8:
+                            _se_is_long = position_side == "LONG"
+                            _last_hp = getattr(position, "_last_high_prev", _se_high_prev)
+                            _last_lp = getattr(position, "_last_low_prev", _se_low_prev)
+                            _se_fire = (_se_high_prev < _last_hp and _se_low_prev < _last_lp) if _se_is_long else (_se_high_prev > _last_hp and _se_low_prev > _last_lp)
+                            setattr(position, "_last_struct_open", _se_open)
+                            setattr(position, "_last_high_prev", _se_high_prev)
+                            setattr(position, "_last_low_prev", _se_low_prev)
+                            if _se_fire:
+                                _se_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                                _se_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                                logger.error(f"⛔ [HYBRID_STRUCT_EXIT] {position_key}: structure breakdown on {_se_tf} (high_prev={_se_high_prev:.6f} vs last_hp={_last_hp:.6f}, low_prev={_se_low_prev:.6f} vs last_lp={_last_lp:.6f}) → CLOSE")
+                                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_se_amt, side=("SELL" if _se_is_long else "BUY"), position_side=position_side, quantity=_se_amt, old_price=current_price, unique_id=f"HYBRID_STRUCT_EXIT_{int(time.time())}", reason=f"HYBRID_STRUCT_EXIT_{_se_tf}_g{_se_gain:.2f}%", is_full_close=True, action="CLOSE")
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:HYBRID_STRUCT_EXIT_CLOSED"
+        except Exception as _se_err:
+            logger.debug(f"[HYBRID_STRUCT_EXIT_ERR] {position_key} check err: {_se_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # R1b — DAEMON_REENTRY_STALE EXIT (2026-05-15 USER).
     # When a DAEMON_PRICE_CROSS_REENTRY position's premise fails — price crosses
@@ -39348,6 +39616,44 @@ async def process_position(
                         return f"{EvalStatus.ACTION_TAKEN}:BB_FROZEN_STOP_CLOSED"
         except Exception as _bb_stop_err:
             logger.debug(f"[BB_FROZEN_STOP_ERR] {position_key} stop check err: {_bb_stop_err}")
+    # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit at the UPPER regression band —
+    # the sell-at-top half of LR_BAND_ENTRY. Profit-only; crypto always FULL close (live REDUCE
+    # behaves as full close per 2026-05-26 architecture note). Default OFF pending Tier-2 proof.
+    if (
+        position
+        and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+        and bool(getattr(config, "LR_BAND_HARVEST_ENABLED", False))
+    ):
+        try:
+            _lbh_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+            if _lbh_gain > 0:
+                if _pp_shared_ind is None:
+                    _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                _lbh_ind = _pp_shared_ind or {}
+                _lbh_tf = str(getattr(config, "LR_BAND_ENTRY_TF", "4h"))
+                _lbh_pb = _lbh_ind.get(f"lrL_pct_b_{_lbh_tf}")
+                _lbh_sl = _lbh_ind.get(f"lrL_slope_{_lbh_tf}")
+                if _lbh_pb is not None:
+                    _lbh_pb_f = safe_fetch_float(_lbh_pb, 0.5)
+                    _lbh_hi = float(getattr(config, "LR_BAND_HARVEST_HI", 0.7))
+                    _lbh_is_long = position_side == "LONG"
+                    _lbh_top = (_lbh_pb_f >= _lbh_hi) if _lbh_is_long else (_lbh_pb_f <= (1.0 - _lbh_hi))
+                    # USER 2026-07-20: slope flip = channel stopped rising → full profit exit (mirror tradier).
+                    if bool(getattr(config, "LR_BAND_SLOPE_FLIP_EXIT_ENABLED", False)) and _lbh_sl is not None:
+                        _lbh_sl_f = safe_fetch_float(_lbh_sl, 0.0)
+                        if (_lbh_sl_f <= 0) if _lbh_is_long else (_lbh_sl_f >= 0):
+                            _lbh_top = True
+                    if _lbh_top:
+                        _lbh_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                        _lbh_side = "SELL" if _lbh_is_long else "BUY"
+                        _lbh_reason = f"LR_BAND_HARVEST_{_lbh_tf}_pb{_lbh_pb_f:.2f}_g{_lbh_gain:.2f}%"
+                        logger.warning(f"[LR_BAND_HARVEST] {position_key}: lrL_pct_b_{_lbh_tf}={_lbh_pb_f:.3f} hi={_lbh_hi:.2f} g={_lbh_gain:.2f}% → {_lbh_side} {_lbh_amt}")
+                        _lbh_result = await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_lbh_amt, side=_lbh_side, position_side=position_side, quantity=_lbh_amt, old_price=current_price, unique_id=f"LR_BAND_HARVEST_{int(time.time())}", reason=_lbh_reason, is_full_close=True, action="CLOSE")
+                        if isinstance(_lbh_result, str) and not any(x in _lbh_result.upper() for x in ("BLOCK", "SKIP", "REJECT")):
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:LR_BAND_HARVEST"
+        except Exception as _lbh_err:
+            logger.debug(f"[LR_BAND_HARVEST_ERR] {position_key}: {_lbh_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-08, tightened 2026-05-09).
     # Trigger (per TF in R2_TF_LIST):
@@ -40882,7 +41188,7 @@ async def process_position(
                 position
                 if (
                     position
-                    and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+                    and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
                     > 0
                 )
                 else None
@@ -40890,7 +41196,7 @@ async def process_position(
             if _hg_pos is None:
                 _hg_pos = await trade_manager.get_position(position_key)
             _hg_amt = (
-                abs(safe_fetch_float(getattr(_hg_pos, "positionAmt", 0), 0))
+                (safe_fetch_float(getattr(_hg_pos, "positionAmt", 0), 0))
                 if _hg_pos
                 else 0
             )
@@ -40899,7 +41205,8 @@ async def process_position(
                 _is_hedge_tracker = False
                 _hedge_for_tracker = None
                 try:
-                    for _h in getattr(tracker_manager, "active_hedges", None) or []:
+                    _tm_tracker = getattr(trade_manager, "tracker_manager", None) or getattr(getattr(trade_manager, "service", None), "tracker_manager", None)
+                    for _h in getattr(_tm_tracker, "active_hedges", None) or []:
                         if (
                             isinstance(_h, dict)
                             and _h.get("position_key") == position_key
@@ -41205,20 +41512,20 @@ async def process_position(
             i.get("sma_200_1m", 0.0),
             i.get("ha_3m", "neutral"),
             i.get("ha_15m", "neutral"),
-            i.get("stoch_k_3m", 50.0),
+            i.get("k_3m", 50.0),
             i.get("k_3m_prev", 50.0),
-            i.get("stoch_d_3m", 50.0),
+            i.get("d_3m", 50.0),
             i.get("atr_3m", 0.0),
             i.get("atr_3m_prev", 0.0),
-            i.get("stoch_k_15m", 50.0),
-            i.get("stoch_d_15m", 50.0),
-            i.get("stoch_k_15m_prev", 50.0),
-            i.get("stoch_k_1h", 50.0),
-            i.get("stoch_d_1h", 50.0),
-            i.get("stoch_k_1h_prev", 50.0),
-            i.get("stoch_k_4h", 50.0),
-            i.get("stoch_d_4h", 50.0),
-            i.get("stoch_k_4h_prev", 50.0),
+            i.get("k_15m", 50.0),
+            i.get("d_15m", 50.0),
+            i.get("k_15m_prev", 50.0),
+            i.get("k_1h", 50.0),
+            i.get("d_1h", 50.0),
+            i.get("k_1h_prev", 50.0),
+            i.get("k_4h", 50.0),
+            i.get("d_4h", 50.0),
+            i.get("k_4h_prev", 50.0),
             i.get("t_up_3m", False),
             i.get("t_up_15m", True),
             i.get("timestamp_3m"),
@@ -41236,22 +41543,22 @@ async def process_position(
             i.get("dc_high_4h", 0.0),
         )
         (
-            stoch_k_1m,
-            stoch_d_1m,
-            stoch_k_3m,
-            stoch_d_3m,
-            stoch_k_15m,
-            stoch_d_15m,
+            k_1m,
+            d_1m,
+            k_3m,
+            d_3m,
+            k_15m,
+            d_15m,
             timestamp_1m,
             timestamp_3m,
             timestamp_15m,
         ) = (
-            i.get("stoch_k_1m"),
-            i.get("stoch_d_1m"),
-            i.get("stoch_k_3m"),
-            i.get("stoch_d_3m"),
-            i.get("stoch_k_15m"),
-            i.get("stoch_d_15m"),
+            i.get("k_1m"),
+            i.get("d_1m"),
+            i.get("k_3m"),
+            i.get("d_3m"),
+            i.get("k_15m"),
+            i.get("d_15m"),
             i.get("timestamp_1m"),
             i.get("timestamp_3m"),
             i.get("timestamp_15m"),
@@ -41261,9 +41568,16 @@ async def process_position(
         dc_high_3m = safe_fetch_float(i.get("dc_high_3m"), 0.0)
         dc_low_3m = safe_fetch_float(i.get("dc_low_3m"), 0.0)
         dc_basis_15m = safe_fetch_float(i.get("dc_basis_15m"), 0.0)
-        k_1m = safe_fetch_float(stoch_k_1m, 50.0)
+        k_1m = safe_fetch_float(k_1m, 50.0)
         k_1m_prev = safe_fetch_float(i.get("k_1m_prev"), 50.0)
-        d_1m = safe_fetch_float(stoch_d_1m, 50.0)
+        d_1m = safe_fetch_float(d_1m, 50.0)
+        # 2026-07-08: restore null-guard (self-assignment had stripped it → None>None
+        # TypeError crash-loop in process_position; 50.0 = neutral, same idiom as all
+        # other stoch fetch sites)
+        k_3m = safe_fetch_float(k_3m, 50.0)
+        d_3m = safe_fetch_float(d_3m, 50.0)
+        k_15m = safe_fetch_float(k_15m, 50.0)
+        d_15m = safe_fetch_float(d_15m, 50.0)
         stoch_k_3m = k_3m
         stoch_d_3m = d_3m
         stoch_k_15m = k_15m
@@ -41279,13 +41593,13 @@ async def process_position(
         is_active_position = False
         position = await trade_manager.get_position(position_key)
         if position:
-            amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+            amt = (safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
             if amt > pos_min_qty:
                 is_active_position = True
         if not is_active_position:
             pass  # Entry gates moved to rate() and evaluate functions — process_position must reach ALL evaluators
         logger.info(
-            f"👂👂{position_key} {current_price}: k_1m:{stoch_k_1m}, d_1m:{stoch_d_1m}, k_3m:{stoch_k_3m}, d_3m:{stoch_d_3m}, k_15m:{stoch_k_15m}, d_15m:{stoch_d_15m}, age_1m:{age_1m}, age_3m:{age_3m},age_15m:{age_15m}, age_pr:{age_pr}"
+            f"👂👂{position_key} {current_price}: k_1m:{k_1m}, d_1m:{d_1m}, k_3m:{k_3m}, d_3m:{d_3m}, k_15m:{k_15m}, d_15m:{d_15m}, age_1m:{age_1m}, age_3m:{age_3m},age_15m:{age_15m}, age_pr:{age_pr}"
         )
         # ═══ 2026-04-26 USER RULE — MICRO_SCALP_USDC_MAKER ═══
         # USDC-only, maker-only micro-scalper. Closes at gain >= MICRO_SCALP_GAIN_THRESHOLD AND gain < prev_gain
@@ -41305,7 +41619,7 @@ async def process_position(
                     _ms_state_dict = trade_manager._micro_scalp_state
                 _ms_st = _ms_state_dict.get(position_key, {})
                 _ms_pos_amt = (
-                    abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                    (safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
                     if position
                     else 0.0
                 )
@@ -41587,7 +41901,7 @@ async def process_position(
         if (
             is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             try:
@@ -41625,7 +41939,7 @@ async def process_position(
                 )
                 if _plock and _frac > 0:
                     _plock_qty = (
-                        abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+                        (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
                         * _frac
                     )
                     logger.warning(
@@ -41648,7 +41962,7 @@ async def process_position(
                 )
                 if _pyr and _pyr_mult > 0:
                     _pyr_qty = (
-                        abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+                        (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
                         * _pyr_mult
                     )
                     logger.warning(f"[PYRAMID] {position_key}: {_pyr_reason}")
@@ -41681,7 +41995,7 @@ async def process_position(
             bool(getattr(config, "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED", True))
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _gr_signal_blob = (
@@ -41744,7 +42058,7 @@ async def process_position(
             getattr(config, "WT_4H_VEL_EXIT_ENABLED", True)
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _wt_vel_4h = safe_fetch_float(i.get("wt_velocity_4h", 0), 0)
@@ -41786,8 +42100,8 @@ async def process_position(
             # 2026-04-28 user: commission-aware floor — close must net positive after fees + slippage.
             _wtve_comm_buf = float(getattr(config, "COMMISSION_BUFFER_PCT", 0.10))
             _profit_ok = (_pp_g >= _wtve_comm_buf) if _wtve_req_profit else True
-            _k_3m = safe_fetch_float(i.get("stoch_k_3m", 50.0), 50.0)
-            _k_15m = safe_fetch_float(i.get("stoch_k_15m", 50.0), 50.0)
+            _k_3m = safe_fetch_float(i.get("k_3m", 50.0), 50.0)
+            _k_15m = safe_fetch_float(i.get("k_15m", 50.0), 50.0)
             if _wtve_req_kx:
                 if is_long:
                     _kx_ok = (_k_3m >= _wtve_kx_hi) or (_k_15m >= _wtve_kx_hi)
@@ -41825,7 +42139,7 @@ async def process_position(
             getattr(config, "DC_HOPELESS_EXIT_ENABLED", True)
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _dc_high_4h = safe_fetch_float(i.get("dc_high_4h", 0), 0)
@@ -41877,7 +42191,7 @@ async def process_position(
             getattr(config, "WT_EXHAUST_EXIT_ENABLED", True)
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _mom_4h = str(i.get("wt_momentum_state_4h", "") or "").upper()
@@ -41924,22 +42238,26 @@ async def process_position(
             getattr(config, "WT_PERCENTILE_EXIT_ENABLED", True)
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _pct_D = safe_fetch_float(i.get("wt_percentile_D", 50), 50)
             _pct_4h = safe_fetch_float(i.get("wt_percentile_4h", 50), 50)
             _pct_exit = False
+            wt1_15m = safe_fetch_float(i.get("wt1_15m", 50), 50)
+            wt2_15m = safe_fetch_float(i.get("wt2_15m", 50), 50)
             if (
                 is_long
                 and _pct_D > getattr(config, "WT_PERCENTILE_EXIT_OB_D", 90)
                 and _pct_4h > getattr(config, "WT_PERCENTILE_EXIT_OB_4H", 75)
+                and wt1_15m < wt2_15m
             ):
                 _pct_exit = True
             elif (
                 not is_long
                 and _pct_D < getattr(config, "WT_PERCENTILE_EXIT_OS_D", 10)
                 and _pct_4h < getattr(config, "WT_PERCENTILE_EXIT_OS_4H", 25)
+                and wt1_15m > wt2_15m
             ):
                 _pct_exit = True
             if _pct_exit:
@@ -41964,7 +42282,7 @@ async def process_position(
             bool(getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False))
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _e1_delta = safe_fetch_float(i.get("wt_composite_delta"), None)
@@ -41996,7 +42314,7 @@ async def process_position(
             _e3_mode > 0
             and is_active_position
             and position
-            and abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0))
+            and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _e3_against = 0
@@ -42331,7 +42649,7 @@ async def process_position(
             # ═══ 2026-04-18 USER RULE — WRONG_SIDE_ABS_KILL ═══
             # "Going COMPLETELY against any curve = SUICIDE mission. Kill completely."
             # Closes position when ALL of the following are against the position side:
-            #   wt1_3m, wt1_15m, wt1_1h, wt1_4h, wt1_D (5 WT TFs) AND stoch_k_3m/15m/1h (3 stoch TFs)
+            #   wt1_3m, wt1_15m, wt1_1h, wt1_4h, wt1_D (5 WT TFs) AND k_3m/15m/1h (3 stoch TFs)
             # That's 8-of-8 simultaneous against-signals — rare, decisive, bypasses STRICT_NO_LOSS.
             # Grace period: position must be older than WRONG_SIDE_MIN_AGE_MIN (default 30 min).
             # Skip hedges — HEDGE_CLEANUP_R6 above handles them with its own wt1_3m rule.
@@ -42386,8 +42704,8 @@ async def process_position(
                                 _ws_wt_against += 1
                         _ws_k_against = 0
                         for _ktf in ("3m", "15m", "1h"):
-                            _k = safe_fetch_float(i.get(f"stoch_k_{_ktf}"), 50)
-                            _d = safe_fetch_float(i.get(f"stoch_d_{_ktf}"), 50)
+                            _k = safe_fetch_float(i.get(f"k_{_ktf}"), 50)
+                            _d = safe_fetch_float(i.get(f"d_{_ktf}"), 50)
                             if (is_long and _k < _d) or ((not is_long) and _k > _d):
                                 _ws_k_against += 1
                         _ws_wt_req = int(
@@ -42550,7 +42868,7 @@ async def process_position(
                     _hedge_pk, max_age_s=5.0
                 )
                 _hedge_existing_pre = (
-                    abs(safe_fetch_float(getattr(_hedge_pos_pre, "positionAmt", 0), 0))
+                    (safe_fetch_float(getattr(_hedge_pos_pre, "positionAmt", 0), 0))
                     if _hedge_pos_pre
                     else 0
                 )
@@ -43611,8 +43929,8 @@ async def process_position(
             trade_manager.config, "TREND_ACCOUNTS", []
         )
         if current_gain > 2.0 and not _is_trend_acct_m and not _recently_reduced:
-            _k_1h = safe_fetch_float(i.get("stoch_k_1h", i.get("k_1h")), 50.0)
-            _d_1h = safe_fetch_float(i.get("stoch_d_1h", i.get("d_1h")), 50.0)
+            _k_1h = safe_fetch_float(i.get("k_1h", i.get("k_1h")), 50.0)
+            _d_1h = safe_fetch_float(i.get("d_1h", i.get("d_1h")), 50.0)
             _ha_1h = i.get("ha_1h", i.get("ha_color_1h", ""))
             if current_gain >= 10.0:
                 _htf_long_exit = (
@@ -43698,7 +44016,7 @@ async def process_position(
             and current_gain < -0.12
         ):
             logger.critical(
-                f"🛑 [IMMEDIATE_WRONG_WAY] {position_key} went WRONG IMMEDIATELY. Age: {position_age_seconds:.1f}s, Gain: {current_gain:.2f}%. Indicators: ha15={i.get('ha_15m')}, k15={i.get('stoch_k_15m', 0):.1f}, event={event_type}. CLOSING AND REPORTING."
+                f"🛑 [IMMEDIATE_WRONG_WAY] {position_key} went WRONG IMMEDIATELY. Age: {position_age_seconds:.1f}s, Gain: {current_gain:.2f}%. Indicators: ha15={i.get('ha_15m')}, k15={i.get('k_15m', 0):.1f}, event={event_type}. CLOSING AND REPORTING."
             )
             return await trade_manager.execute_now(
                 position_key,
@@ -43726,7 +44044,7 @@ async def process_position(
             _opp_pos = trade_manager.positions.get(_opp_key)
             _opp_in_loss = (
                 _opp_pos
-                and abs(safe_fetch_float(getattr(_opp_pos, "positionAmt", 0), 0)) > 0
+                and (safe_fetch_float(getattr(_opp_pos, "positionAmt", 0), 0)) > 0
                 and safe_fetch_float(getattr(_opp_pos, "gain", 0), 0) < 0.0
             )
             if _opp_in_loss:
@@ -43960,7 +44278,7 @@ async def process_position(
                                 logger.info(
                                     f" [HEDGE_PLACED] Dual hedge created for {position_key}"
                                 )
-                                return f"HEDGE_MODE_BLOCK_STOP_MAJOR_LOSS_REDUCE"
+                                return "HEDGE_MODE_BLOCK_STOP_MAJOR_LOSS_REDUCE"
                             else:
                                 if current_gain < _reduce_huge_thresh:
                                     logger.error(
@@ -44138,7 +44456,7 @@ async def process_position(
                                     losing_value_usd=losing_value_usd_kill,
                                     dry_run=False,
                                 )
-                        return f"HEDGE_MODE_BLOCK_STOP_FUNCTIONS_KILL"
+                        return "HEDGE_MODE_BLOCK_STOP_FUNCTIONS_KILL"
                 side = "SELL" if is_long else "BUY"
                 if (is_long and side != "SELL") or (not is_long and side != "BUY"):
                     logger.error(
@@ -45127,7 +45445,7 @@ async def queue_trade_action(
         if not current_price or current_price <= 0:
             current_price = safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0)
         positionAmt = (
-            abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+            (safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
             if position
             else 0.0
         )
@@ -45150,7 +45468,7 @@ async def queue_trade_action(
         if action in ("AUGMENT", "QUICK_AUGMENT") and position and current_price > 0:
             _pos_gain = safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
             _pos_notional = (
-                abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                (safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
                 * current_price
             )
             _dd_bypass = "DD_BOUNCE_AUG" in (reason or "").upper()
@@ -45310,7 +45628,7 @@ async def queue_trade_action(
         logger.error(
             f"[{position_key}] Exception in queue_trade_action: {e}", exc_info=True
         )
-        return f"ERROR_QUEUE_EXCEPTION"
+        return "ERROR_QUEUE_EXCEPTION"
 
 
 async def cleanup_positions(
@@ -45428,7 +45746,7 @@ def get_tradeable_position_keys_for(trade_manager, account_key: str) -> list:
             keys.add(f"fin:{s}_SHORT")
     if account_key in trade_manager.positions_by_account:
         for k, pos in trade_manager.positions_by_account[account_key].items():
-            if pos and abs(safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0)) > 0:
+            if pos and (safe_fetch_float(getattr(pos, "positionAmt", 0.0), 0.0)) > 0:
                 sym = getattr(pos, "symbol", "")
                 if _valid and sym and sym not in _valid:
                     logger.warning(
@@ -45452,7 +45770,7 @@ async def process_all_symbols_for_account(
     current_open_keys = {
         k
         for k, p in acct_pos.items()
-        if abs(safe_fetch_float(getattr(p, "positionAmt", 0.0), 0.0)) > 0.0001
+        if (safe_fetch_float(getattr(p, "positionAmt", 0.0), 0.0)) > 0.0001
     }
     all_tradeable_keys = await trade_manager.load_tradeable()
     watchlist_keys = {k for k in all_tradeable_keys if k.startswith(f"{account_key}:")}
@@ -45618,7 +45936,7 @@ async def periodic_tasks(
             for _pk, _pos in _pdict.items():
                 if not _pos:
                     continue
-                _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
+                _amt = (safe_fetch_float(getattr(_pos, "positionAmt", 0), 0))
                 if _amt == 0:
                     continue
                 _mp = safe_fetch_float(getattr(_pos, "mark_price", 0), 0)
@@ -45627,29 +45945,15 @@ async def periodic_tasks(
                 _notional = _amt * _mp
                 if _notional > _max_usd * 1.5:
                     _cd_key = f"oversize:{_pk}"
-                    # 2026-04-26 FIX: was 30s cooldown — when position at loss, NOLOSS_GATE correctly blocks
-                    # the FORCE_REDUCE every 30s causing log spam + deadlock (37 firings/18min on flz:BNBUSDC_LONG).
-                    # New: 600s cooldown when at loss (just log warn, don't try to reduce — respects user "never close at loss" rule).
-                    # 30s cooldown when at gain (proceed with reduce — safe to realize).
-                    _ov_gain = safe_fetch_float(getattr(_pos, "gain", 0), 0.0)
-                    _ov_at_loss = _ov_gain < 0
-                    _ov_cd = 600 if _ov_at_loss else 30
-                    if time.time() - _oversize_cooldown.get(_cd_key, 0) < _ov_cd:
-                        continue
+                    if time.time() - _oversize_cooldown.get(_cd_key, 0) < 30: continue
                     _oversize_cooldown[_cd_key] = time.time()
                     _excess_usd = _notional - _max_usd
                     _excess_qty = _excess_usd / _mp
                     _, _sym, _ps = parse_position_key(_pk)
                     _is_long = _ps == "LONG"
                     _close_side = "SELL" if _is_long else "BUY"
-                    if _ov_at_loss:
-                        logger.warning(
-                            f"⚠️ [EMERGENCY_OVERSIZE_AT_LOSS_SKIP] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} BUT gain={_ov_gain:.2f}%<0 — skipping FORCE_REDUCE (NOLOSS gate would block). Will recheck in {_ov_cd}s. Hedge it or wait for gain>=0."
-                        )
-                        continue
-                    logger.critical(
-                        f"🚨🚨🚨 [EMERGENCY_OVERSIZE] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} (150%) gain={_ov_gain:.2f}%. FORCE REDUCING excess ${_excess_usd:.2f} ({_excess_qty:.4f} qty)"
-                    )
+                    _ov_gain = safe_fetch_float(getattr(_pos, "gain", 0), 0.0)
+                    logger.critical(f"🚨🚨🚨 [EMERGENCY_OVERSIZE] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} (150%) gain={_ov_gain:.2f}%. FORCE REDUCING excess ${_excess_usd:.2f} ({_excess_qty:.4f} qty)")
                     try:
                         await trade_manager.execute_now(
                             _pk,
@@ -45934,7 +46238,7 @@ async def _spike_fade_1m_exit_monitor(trade_manager):
                     or ""
                 ):
                     continue
-                amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                amt = (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                 if amt == 0:
                     _sf_exhaust_watch.pop(pk, None)
                     continue
@@ -45942,7 +46246,7 @@ async def _spike_fade_1m_exit_monitor(trade_manager):
                 symbol = pk.split(":")[-1].replace("_LONG", "").replace("_SHORT", "")
                 is_long = pk.endswith("_LONG")
                 i = snap.get(symbol, {})
-                k_3m = safe_fetch_float(i.get("stoch_k_3m", 50), 50)
+                k_3m = safe_fetch_float(i.get("k_3m", 50), 50)
                 if gain > 0.3 and (
                     (is_long and k_3m > 75) or (not is_long and k_3m < 25)
                 ):
@@ -46016,7 +46320,7 @@ async def _spike_fade_result_tracker(trade_manager):
                     or getattr(pos, "last_signal", "")
                 ):
                     continue
-                amt = abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                amt = (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                 entry = safe_fetch_float(getattr(pos, "entry_price", 0), 0)
                 if amt > 0 and entry > 0:
                     if pk not in _known_fade_positions:
@@ -46028,7 +46332,7 @@ async def _spike_fade_result_tracker(trade_manager):
             for pk, entry_px in list(_known_fade_positions.items()):
                 pos = trade_manager.positions.get(pk)
                 amt = (
-                    abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                    (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                     if pos
                     else 0
                 )
@@ -46337,7 +46641,7 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
                         pk = f"{account_key}:{symbol}_SHORT"
                         pos = trade_manager.positions.get(pk)
                         pos_amt = (
-                            abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                            (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                             if pos
                             else 0
                         )
@@ -46368,7 +46672,7 @@ async def crypto_spike_fade_loop(trade_manager: MultiAccountTradeManager):
                         pk = f"{account_key}:{symbol}_LONG"
                         pos = trade_manager.positions.get(pk)
                         pos_amt = (
-                            abs(safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
+                            (safe_fetch_float(getattr(pos, "positionAmt", 0), 0))
                             if pos
                             else 0
                         )
@@ -47520,7 +47824,7 @@ async def _reentry_daemon_subprocess_watchdog(config) -> None:
         logger.error(f"[REENTRY_DAEMON] {daemon_script} not found — daemon NOT started")
         return
     python = _sys.executable
-    log_path = Path("/Users/niels/logs/ez_reentry_daemon.log")
+    log_path = Path.home() / "logs" / "ez_reentry_daemon.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     while True:
         proc = None
@@ -47648,7 +47952,7 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                         if (not _is_long_tier) and getattr(cfg, "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED", True):
                             _wt1_3m_q = safe_fetch_float(_ind_for_tier.get("wt1_3m"), 0.0) if _ind_for_tier else 0.0
                             _wt2_3m_q = safe_fetch_float(_ind_for_tier.get("wt2_3m"), 0.0) if _ind_for_tier else 0.0
-                            _k3m_q = safe_fetch_float(_ind_for_tier.get("stoch_k_3m"), 0.0) if _ind_for_tier else 0.0
+                            _k3m_q = safe_fetch_float(_ind_for_tier.get("k_3m"), 0.0) if _ind_for_tier else 0.0
                             _short_xunder = _wt1_3m_q < _wt2_3m_q
                             _short_k3m_ok = _k3m_q > 60.0
                             if not (_short_xunder and _short_k3m_ok):
@@ -47671,13 +47975,13 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                             else 0.0
                         )
                         _k15m = (
-                            safe_fetch_float(_ind_for_tier.get("stoch_k_15m"), 50.0)
+                            safe_fetch_float(_ind_for_tier.get("k_15m"), 50.0)
                             if _ind_for_tier
                             else 50.0
                         )
                         _k15m_prev = (
                             safe_fetch_float(
-                                _ind_for_tier.get("stoch_k_15m_prev"), _k15m
+                                _ind_for_tier.get("k_15m_prev"), _k15m
                             )
                             if _ind_for_tier
                             else _k15m
@@ -48132,6 +48436,26 @@ shutdown_event = asyncio.Event()
 _signal_count = 0
 
 
+def _shutdown_watchdog_force_exit(timeout_s=35.0):
+    """Runs in a plain OS thread, NOT asyncio -- immune to the event loop being
+    blocked. 2026-07-15: graceful shutdown hung indefinitely on 'men' (SIGTERM
+    accepted, cleanup() logged through 'Trade manager clients closed', then
+    nothing for 3+ minutes -- process stayed alive, requiring an external
+    SIGKILL). asyncio.wait_for()'s internal 10s/15s timeouts can only fire at
+    an await point; if something downstream blocks the loop synchronously they
+    never get the chance. This is the hard backstop: if the process hasn't
+    exited on its own within timeout_s of the FIRST signal, force-exit
+    unconditionally, same as what a second manual SIGTERM already does via
+    _signal_count>=2 below -- just automatic instead of requiring a human to
+    notice and send it.
+    """
+    time.sleep(timeout_s)
+    logging.getLogger(__name__).critical(
+        f"[SHUTDOWN_WATCHDOG] graceful shutdown did not complete within {timeout_s:.0f}s of SIGTERM -- force exiting"
+    )
+    os._exit(1)
+
+
 def signal_handler(signum, frame):
     """Handle SIGTERM and SIGINT signals for graceful shutdown."""
     global _signal_count
@@ -48140,6 +48464,7 @@ def signal_handler(signum, frame):
     if _signal_count == 1:
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         shutdown_event.set()
+        threading.Thread(target=_shutdown_watchdog_force_exit, daemon=True).start()
     elif _signal_count >= 2:
         logger.critical(f"Received signal {signum} again - FORCE KILLING process")
         os._exit(1)
@@ -48359,10 +48684,10 @@ class HaikuOverseer:
         pk = decision.get("position_key", "")
         is_long = pk.endswith("_LONG") or "_YES" in pk
         is_short = pk.endswith("_SHORT") or "_NO" in pk
-        k15 = snap.get("k_15m") or snap.get("stoch_k_15m")
-        d15 = snap.get("d_15m") or snap.get("stoch_d_15m")
-        k1m = snap.get("k_1m") or snap.get("stoch_k_1m")
-        k3m = snap.get("k_3m") or snap.get("stoch_k_3m")
+        k15 = snap.get("k_15m") or snap.get("k_15m")
+        d15 = snap.get("d_15m") or snap.get("d_15m")
+        k1m = snap.get("k_1m") or snap.get("k_1m")
+        k3m = snap.get("k_3m") or snap.get("k_3m")
         sentiment = snap.get("sentiment") or snap.get("sentiment_score")
         ha_15m = snap.get("ha_15m") or snap.get("ha_5m")
         price = snap.get("price") or snap.get("current_price")
@@ -48400,7 +48725,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
             if not pos:
                 logger.warning(f"[HAIKU] Position {position_key} not found")
                 return False
-            pos_amt = abs(safe_fetch_float(pos.positionAmt, 0))
+            pos_amt = (safe_fetch_float(pos.positionAmt, 0))
             if pos_amt <= 0:
                 return False
             current_price = price if price > 0 else safe_fetch_float(pos.markPrice, 0)
@@ -48522,7 +48847,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
             price = safe_fetch_float(snap.get("price") or snap.get("current_price"), 0)
             pos = await self.tracker_manager.get_position(pk)
             if pos:
-                reduce_qty = abs(safe_fetch_float(pos.positionAmt, 0)) * 0.5
+                reduce_qty = (safe_fetch_float(pos.positionAmt, 0)) * 0.5
                 await self._execute_trade(
                     acct,
                     pk,
@@ -48579,7 +48904,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                     gain = safe_fetch_float(pos.get("gain", 0), 0)
                     if gain <= 0:
                         continue
-                    pos_amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                    pos_amt = (safe_fetch_float(pos.get("positionAmt", 0), 0))
                     entry_price = safe_fetch_float(
                         pos.get("entryPrice") or pos.get("entry_price", 0), 0
                     )
@@ -48765,7 +49090,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
 
     async def monitor_position_corruption(self):
         """Detect when position fields get overwritten with null/zero values. Logs to dedicated file for 24h forensics."""
-        corruption_log = Path("/home/niels/logs/position_corruption.log")
+        corruption_log = Path.home() / "logs" / "position_corruption.log"
         snapshots: Dict[str, dict] = {}
         CRITICAL_FIELDS = [
             "entry_price",
@@ -48787,7 +49112,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                     async with aiofiles.open(pos_path, "r") as f:
                         positions = json.loads(await f.read())
                     for pk, pos in positions.items():
-                        amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                        amt = (safe_fetch_float(pos.get("positionAmt", 0), 0))
                         ep = safe_fetch_float(pos.get("entry_price", 0), 0)
                         if amt > 0 or ep > 0:
                             snapshots[pk] = {
@@ -48813,7 +49138,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                         except Exception:
                             continue
                         for pk, pos in positions.items():
-                            amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                            amt = (safe_fetch_float(pos.get("positionAmt", 0), 0))
                             ep = safe_fetch_float(pos.get("entry_price", 0), 0)
                             prev = snapshots.get(pk)
                             if prev:
@@ -48874,7 +49199,7 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                                     field: pos.get(field) for field in CRITICAL_FIELDS
                                 }
                             elif prev and (
-                                abs(safe_fetch_float(prev.get("positionAmt", 0), 0)) > 0
+                                (safe_fetch_float(prev.get("positionAmt", 0), 0)) > 0
                                 or safe_fetch_float(prev.get("entry_price", 0), 0) > 0
                             ):
                                 pass
@@ -49293,7 +49618,7 @@ class ManipulationDetector:
                     or rv_15m >= self.SPIKE_ON_DEAD_COIN_VOL
                 ):
                     reasons.append(
-                        f"DEAD_COIN_VOL_SPIKE: volume spike on a coin >30% below SMA200 = pump scheme"
+                        "DEAD_COIN_VOL_SPIKE: volume spike on a coin >30% below SMA200 = pump scheme"
                     )
                     severity = max(severity, 3)
         dc_high_3m = sf(md.get("dc_high_3m"), 0)
@@ -49695,7 +50020,7 @@ async def main():
             while wait_cycles < 10:
                 data_count = len(trade_manager.indicators_snapshot)
                 btc_data = await ii(trade_manager, "BTCUSDC")
-                k_3m_val = btc_data.get("stoch_k_3m")
+                k_3m_val = btc_data.get("k_3m")
                 k_3m_ts = btc_data.get("timestamp_3m")
                 if data_count > 0 and k_3m_val is not None:
                     logger.info(
@@ -49845,6 +50170,11 @@ async def main():
             )
             background_tasks.append(
                 asyncio.create_task(trade_manager.redis_listener_signals())
+            )
+            background_tasks.append(
+                asyncio.create_task(
+                    trade_manager.start_position_updates_listener()
+                )
             )
             background_tasks.append(
                 asyncio.create_task(
@@ -50009,7 +50339,7 @@ async def main():
                                     f"[COPILOT_BRIDGE] Position {pk} not found — skipping"
                                 )
                                 continue
-                            pos_amt = abs(safe_fetch_float(pos.positionAmt, 0))
+                            pos_amt = (safe_fetch_float(pos.positionAmt, 0))
                             if pos_amt <= 0:
                                 continue
                             is_long = pk.endswith("_LONG")
@@ -50335,7 +50665,7 @@ if __name__ == "__main__":
         logger.error(f"Fatal error at top level: {e}", exc_info=True)
         try:
             base_path_str = str(config.BASE_PATH)
-            restart_flag_file = base_path_str / "logs" / f"ez_manage_*_restart_flag"
+            restart_flag_file = base_path_str / "logs" / "ez_manage_*_restart_flag"
             if os.path.exists(restart_flag_file):
                 os.remove(restart_flag_file)
         except Exception:

@@ -259,6 +259,14 @@ def _tf_score(indicators: dict, tf: str, is_long: bool, invert_dc_bb: bool) -> i
     mfi = _f(indicators, f"mfi_{tf}")
     if mfi > 0 and ((is_long and mfi > 50) or ((not is_long) and mfi < 50)): score += 1
     dc_pct = _f(indicators, f"dc_pct_{tf}")
+    if dc_pct <= 0:
+        # 2026-06-03 USER "FIX GR" parity w/ gr_filter_vec: dc_pct_{tf} often absent → compute channel
+        # position from dc_high/dc_low/close (all present live) so indicator #4 isn't dead.
+        _dch = _f(indicators, f"dc_high_{tf}"); _dcl = _f(indicators, f"dc_low_{tf}")
+        _cl = _f(indicators, "current_price") or _f(indicators, "close")
+        _rng = _dch - _dcl
+        if _rng > 0 and _cl > 0:
+            dc_pct = (_cl - _dcl) / _rng
     if dc_pct > 0:
         if invert_dc_bb:
             if (is_long and dc_pct >= 0.65) or ((not is_long) and dc_pct <= 0.35): score += 1

@@ -1,0 +1,6 @@
+Bug,Impact,Correction Factor,Status
+Sharpe annualization: sqrt(bars_per_year) not sqrt(trades_per_year),Inflated Sharpe 8-34x,Divide old Sharpe by ~10,✅ Fixed in framework
+2of3_aligned stoch gate timestamp bug,Gate always open → inflated SHORT results,All pre-fix SHORT results unreliable,✅ Fixed
+trailing_1atr hasattr bug,Trailing stop never fired,All trailing stop results invalid,✅ Fixed
+Stoch using close-only instead of H/L/C,Wrong stoch values,Minor (~1-2% WR impact),✅ Fixed
+Missing commission (0.075%/side),Inflated PnL by ~0.15%/trade,Subtract 0.15% from avg PnL,✅ Fixed

@@ -135,8 +135,10 @@ async def throttle_api_request():
     per_minute=state['per_minute']
     ban_until=state.get('ban_until', 0.0)
     if ban_until>0.0:
-        remaining=ban_until-time.monotonic()
-        if remaining>0:
+        while True:
+            remaining=state.get('ban_until', 0.0)-time.monotonic()
+            if remaining<=0:
+                break
             await asyncio.sleep(min(remaining+0.5, 60.0))
     while True:
         now=time.monotonic()
@@ -172,9 +174,9 @@ def get_klines_directories():
     if env=='macbook':
         dirs=[cfg.BASE_PATH/'klines_cache',cfg.BASE_PATH/'klines_cache_gateway']
     elif env=='gateway':
-        dirs=[Path('/home/niels/binance/klines_cache')]
+        dirs=[cfg.BASE_PATH/'klines_cache']
     elif env=='server':
-        dirs=[Path('/home/niels/binance/klines_cache'),Path('/home/niels/binance/klines_cache_gateway'),Path('/home/niels/binance/klines_cache_macbook')]
+        dirs=[cfg.BASE_PATH/'klines_cache',cfg.BASE_PATH/'klines_cache_gateway',cfg.BASE_PATH/'klines_cache_macbook']
     return [d for d in dirs if d.exists()]
 def get_symbols():
     symbols=set()

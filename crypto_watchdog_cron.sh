@@ -62,7 +62,11 @@ for proc in "${CRITICAL_PROCESSES[@]}"; do
                 break
             fi
         done
-        if $is_watchdog_managed && pgrep -f "run_with_watchdog.*$script_name" >/dev/null 2>&1; then
+        # Match the FULL proc string (incl. "--account <acct>") so a per-account
+        # wrapper only counts as self-healing for ITS OWN account. Bug 2026-07-01:
+        # matching bare "$script_name" meant ang's wrapper made the cron skip
+        # relaunching inf/men/flz/fin forever (they stayed dead after an OOM burst).
+        if $is_watchdog_managed && pgrep -f "run_with_watchdog.*$proc" >/dev/null 2>&1; then
             # Wrapper alive — it will restart the process. Don't interfere.
             log "SKIP: $proc — run_with_watchdog wrapper alive, will self-heal"
             continue
@@ -111,27 +115,51 @@ if ! /opt/homebrew/bin/redis-cli -p 6381 ping >/dev/null 2>&1; then
     fi
 fi
 
-# === 2b. TRADIER — MARKET HOURS ONLY (9:15 AM - 4:15 PM ET) ===
+# === 2b. TRADIER — PRE-MARKET THROUGH MARKET CLOSE (7:00 AM - 4:15 PM ET) ===
+# 2026-07-15 WIDENED from 9:15 AM start: trb/trc's watchdog WRAPPER (not just the child)
+# died completely at 7:21 AM ET with zero recovery for ~2h15m until market-open's
+# start_stocks.sh was run manually. ALL THREE recovery layers (run_with_watchdog.sh's own
+# market-hours cold-start gate, this section, and the dedicated */10 13-21 UTC crontab
+# relauncher) were scoped to 9:15/9:30 AM ET, missing genuine pre-market (4:00-9:30 AM ET)
+# entirely. Widened here + the crontab relauncher lines to 7:00 AM ET (420 min) as a
+# practical buffer. Restart attempts before 9:30 AM still no-op safely via
+# run_with_watchdog.sh's own TRADIER_MARKET_GATE (refuses cold-start, logs, exits 0) --
+# widening this window is safe, it just lets the ALERT fire promptly instead of silently
+# waiting for a human to notice.
+# EXTENDED to all 5 tradier scripts, not just tradier_manage: prices/indicators/rankings/
+# positions previously had ZERO meta-watchdog coverage -- only their own run_with_watchdog.sh
+# wrapper, which we proved today can itself die (not just the child) with nothing to notice.
+# Now checks the WRAPPER for aliveness too -- the old "wrapper alive = will self-heal"
+# assumption is exactly what let this incident go unnoticed for over two hours.
 ET_HOUR=$(TZ="America/New_York" date +"%H")
 ET_MIN=$(TZ="America/New_York" date +"%M")
 ET_MINS=$((ET_HOUR * 60 + ET_MIN))
 DOW=$(date +%u)
-if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 555 ] && [ "$ET_MINS" -le 975 ]; then
-    for tproc in "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
-        if ! pgrep -f "$tproc" >/dev/null 2>&1; then
-            script_name="${tproc%% *}"
-            args="${tproc#* }"
-            # Don't create bare process if wrapper is alive
-            if pgrep -f "run_with_watchdog.*$script_name.*$args" >/dev/null 2>&1; then
-                log "SKIP TRADIER: $tproc — wrapper alive"
-                continue
-            fi
-            log "RESTARTING TRADIER: $tproc"
-            cd "$WORKDIR"
-            nohup $PYTHON -u $script_name $args > /dev/null 2>&1 &
-            sleep 2
-            alert "Tradier $args was dead — restarted"
+if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
+    for tproc in "tradier_prices.py" "tradier_indicators.py" "tradier_rankings.py" "tradier_positions.py --accounts tra trb trc" "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
+        script_name="${tproc%% *}"
+        args="${tproc#* }"
+        if [ "$script_name" = "$args" ]; then args=""; fi
+        # 2026-07-19: anchor to the PYTHON child. A bare "$tproc" pattern also matches the
+        # wrapper cmdline (/bin/bash run_with_watchdog.sh tradier_manage.py --accounts trb),
+        # so a live wrapper with a DEAD child read as "alive" here and continue'd silently --
+        # which also made the wrapper-alive branch below unreachable dead code.
+        if pgrep -f "python.*-u $tproc" >/dev/null 2>&1; then
+            continue
         fi
+        if pgrep -f "run_with_watchdog.sh $tproc" >/dev/null 2>&1; then
+            log "SKIP TRADIER: $tproc — wrapper alive, will self-heal"
+            continue
+        fi
+        # Both child AND wrapper dead -- relaunch UNDER run_with_watchdog.sh so it gets
+        # proper ongoing supervision back (RSS recycling, no-output timeout, singleton
+        # guard), not a bare unmanaged process.
+        log "RESTARTING TRADIER (wrapper+child both dead): $tproc"
+        cd "$WORKDIR"
+        LOG_NAME=$(echo "$script_name" | sed 's/\.py//')
+        nohup /bin/bash "$WORKDIR/run_with_watchdog.sh" $script_name $args >> "$LOGDIR/${LOG_NAME}_cron.log" 2>&1 &
+        sleep 2
+        alert "Tradier $tproc — BOTH wrapper and process were dead — restarted under watchdog"
     done
 fi
 

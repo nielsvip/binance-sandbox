@@ -1,0 +1,22 @@
+V5 SWEEP STATUS REPORT — 2026-03-31 01:56 UTC
+============================================================
+
+MACHINE STATUS:
+  server1: unreachable | RAM: 100% | Procs: 0
+  server2: unreachable | RAM: 100% | Procs: 0
+  local: ok | Procs: 14
+
+HTF EXIT GRID RESULTS:
+  [local] sweep_orchestrator:   [local] sweep_htf_hodl: 2026-03-31 01:37:10,629 INFO   10% | 16 pos | 0 closed | PnL: $0.00 | eq: $69913.33 | 247s
+  [local] sweep_htf_D_local: 
+  [local] sweep_htf_hodl: 2026-03-31 01:37:10,629 INFO   10% | 16 pos | 0 closed | PnL: $0.00 | eq: $69913.33 | 247s
+  [local] sweep_htf_4h_local: 
+  [local] sweep_htf_4hD_local: 
+
+PARALLEL SWEEP (server2):
+2026-03-31 01:36:22,870 INFO V5 Parallel Sweep — 3 workers, max 120.0h
+2026-03-31 01:36:22,871 INFO ═══ PHASE 1: Single-param isolation (crypto) — 12 symbols, 3 workers ═══
+2026-03-31 01:36:22,871 INFO Phase 1: 155 configs remaining out of 155 (baseline + 154 single-param tests)
+
+============================================================
+Next report in ~8 hours.

@@ -1,0 +1,304 @@
+class SimpleRedisManager:
+    """Simple, reliable Redis manager - NO TUNNELS, NO COMPLEXITY"""
+    def __init__(self):
+        self.connections={"local":None,"gateway":None,"server":None}
+        self._initialized=False
+    async def initialize(self):
+        if self._initialized:return self.connections
+        import redis.asyncio as redis
+        env_info=get_current_environment()
+        env=env_info['env']
+        redis_connections=env_info['redis_connections']
+        logger.info(f"🔄 Initializing simple Redis for {env}")
+        
+        # Connect to all Redis connections for this environment
+        for name, (host, port) in redis_connections.items():
+            try:
+                # Fix IPv6 issue - use 127.0.0.1 for localhost
+                if host in ['localhost', '::1']:
+                    host = '127.0.0.1'
+                # Use MUCH longer timeouts for connections - Redis has time to appear
+                # Gateway needs extra time due to SSH tunnels
+                connect_timeout = 60 if name == 'gateway' else 30
+                socket_timeout = 300 if name == 'gateway' else 60
+                
+                # Create client with long timeouts - NO BLOCKING WAIT
+                # auto_close_connection_pool=False prevents premature pool closure
+                self.connections[name]=redis.Redis(host=host,port=port,db=0,decode_responses=True, socket_connect_timeout=connect_timeout,
+                                                   socket_timeout=socket_timeout,
+                                                   health_check_interval=30,
+                                                   max_connections=50,
+                                                   retry_on_timeout=True,
+                                                   retry_on_error=[redis_exceptions.TimeoutError, redis_exceptions.ConnectionError, ConnectionResetError, OSError],
+                                                   single_connection_client=False)
+                
+                # NON-BLOCKING: Just create the client, continue immediately
+                # Connection happens in background, will retry every 30s (health_check_interval)
+                logger.info(f"⏳ Redis {name} client created for {host}:{port} - connecting in background. System continues with JSON files.")
+            except Exception as e:
+                logger.warning(f"⚠️ {name.title()} Redis client creation failed: {e}")
+                self.connections[name]=None
+        
+        ready=[n for n,c in self.connections.items() if c]
+        if ready:
+            logger.info(f"✅ Redis ready on {ready}")
+        else:
+            logger.warning("⚠️ No Redis connections available - system will use file fallbacks")
+        self._initialized=True
+        return self.connections
+    def get_broadcast_clients(self):return [c for c in self.connections.values() if c]
+    def has_any_connection(self):return any(self.connections.values())
+    def get_available_connections(self):return [name for name,conn in self.connections.items() if conn]
+    async def _get_or_connect(self,name:str):
+        client=self.connections.get(name)
+        if client:
+            try:
+                await asyncio.wait_for(client.ping(),timeout=1.0)
+                return client
+            except (redis_exceptions.ConnectionError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
+                # Connection failed, will try to reconnect below
+                logger.debug(f"Redis {name} ping failed: {type(e).__name__}")
+                self.connections[name] = None
+            except Exception as e:
+                logger.debug(f"Redis {name} ping unexpected error: {type(e).__name__}: {e}")
+                self.connections[name] = None
+        try:
+            import redis.asyncio as redis
+            env_info=get_current_environment()
+            redis_connections=env_info['redis_connections']
+            if name in redis_connections:
+                host,port=redis_connections[name]
+                # Fix IPv6 issue - use 127.0.0.1 for localhost
+                if host in ['localhost', '::1']:
+                    host = '127.0.0.1'
+                # Use MUCH longer timeouts for gateway connections (SSH tunnel)
+                connect_timeout = 60 if name == 'gateway' else 30
+                socket_timeout = 300 if name == 'gateway' else 60
+                
+                from redis import exceptions as redis_ex
+                fresh=redis.Redis(host=host,port=port,db=0,decode_responses=True, socket_connect_timeout=connect_timeout,  socket_timeout=socket_timeout,
+                                  health_check_interval=30,
+                                  max_connections=2000,
+                                  retry_on_timeout=True,
+                                  retry_on_error=[redis_ex.TimeoutError, redis_ex.ConnectionError, ConnectionResetError, OSError],
+                                  single_connection_client=False)
+                
+                self.connections[name]=fresh
+                return fresh
+        except Exception:
+            pass
+        return None
+    async def publish(self,channel,message,expiry_seconds=None,data_type=None):
+        """Publish to all available Redis connections"""
+        import json
+        if isinstance(message,dict):msg=json.dumps(message,default=str)
+        else:msg=str(message)
+        success=0
+        for name,client in self.connections.items():
+            if not client:
+                continue
+            try:
+                # NON-BLOCKING: Add timeout to publish
+                await asyncio.wait_for(client.publish(channel,msg), timeout=2.0)
+                if expiry_seconds:
+                    try:
+                        await asyncio.wait_for(client.setex(channel, expiry_seconds, msg), timeout=2.0)
+                        logger.info(f"✅ SimpleRedisManager: Set Redis key {channel} with {expiry_seconds}s expiry on {name}")
+                    except Exception as setex_error:
+                        logger.debug(f"⚠️ SimpleRedisManager: Failed to setex {channel} on {name}: {setex_error}")
+                success+=1
+            except (redis_exceptions.ConnectionError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
+                logger.debug(f"Redis publish connection error on {name}: {type(e).__name__} - will retry next time")
+                self.connections[name] = None  # Mark as disconnected for reconnect
+            except Exception as e:
+                logger.debug(f"Redis publish error on {name}: {type(e).__name__}: {e}")
+        if success==0:
+            try:
+                # Try to use a local fallback if all else fails
+                fallback=await self._get_or_connect('local')
+                if fallback:
+                    await fallback.set(f"fallback:{channel}:{time.time()}",msg,ex=expiry_seconds or 60)
+                    logger.info(f"Fallback cached publish for {channel}")
+            except Exception as e:
+                logger.warning(f"Failed to cache fallback publish for {channel}: {e}")
+        return success
+
+    async def subscribe(self, channel, callback, data_type="generic", target=None):
+        """Resilient subscriber that retries on failure and stays connected."""
+        async def resilient_listener(target_name, initial_client):
+            retry_delay = 5
+            consecutive_failures = 0
+            while True:
+                try:
+                    # Get or reconnect client
+                    client = await self._get_or_connect(target_name)
+                    if not client:
+                        consecutive_failures += 1
+                        if consecutive_failures % 3 == 0:  # Only log every 3rd failure
+                            logger.debug(f"🔌 [{target_name}] Redis not ready for {channel}, retrying in {retry_delay}s")
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    consecutive_failures = 0
+                    # Verify connection with ping
+                    try:
+                        await asyncio.wait_for(client.ping(), timeout=2.0)
+                    except Exception:
+                        await asyncio.sleep(1)
+                        continue
+                    pubsub = client.pubsub()
+                    await asyncio.wait_for(pubsub.subscribe(channel), timeout=3.0)
+                    logger.info(f"👂 [{target_name}] subscribed to {channel} - listening for updates")
+                    # Use get_message with timeout instead of listen() to prevent blocking
+                    while True:
+                        try:
+                            msg = await asyncio.wait_for(pubsub.get_message(ignore_subscribe_messages=True), timeout=1.0)
+                            if msg and msg["type"] == "message":
+                                try:
+                                    data = msg["data"]
+                                    if isinstance(data, bytes):
+                                        data = data.decode('utf-8')
+                                    if isinstance(data, str):
+                                        data = json.loads(data)
+                                    await callback(data)
+                                except json.JSONDecodeError as e:
+                                    logger.debug(f"[{target_name}] JSON decode error on {channel}: {e}")
+                                except Exception as e:
+                                    logger.error(f"[{target_name}] Callback error on {channel}: {e}")
+                        except asyncio.TimeoutError:
+                            continue
+                except asyncio.CancelledError:
+                    logger.info(f"🔌 [{target_name}] subscriber cancelled for {channel}")
+                    break
+                except Exception as e:
+                    consecutive_failures += 1
+                    if consecutive_failures % 3 == 0:  # Only log every 3rd failure
+                        logger.debug(f"🔌 [{target_name}] subscriber failed for {channel}: {type(e).__name__}, retrying in {retry_delay}s")
+                    await asyncio.sleep(retry_delay)
+        
+        if target:
+            client = self.connections.get(target)
+            if client:
+                asyncio.create_task(resilient_listener(target, client))
+            else:
+                logger.warning(f"Requested subscribe target '{target}' not found in SimpleRedisManager connections")
+        else:
+            for target_name, client in list(self.connections.items()):
+                if client:
+                    asyncio.create_task(resilient_listener(target_name, client))
+                
+    async def rpush(self,key:str,value:Any):
+        """Push value to Redis list - broadcast to all available connections"""
+        import json
+        body=value if isinstance(value,str) else json.dumps(value,default=str)
+        success=0
+        for name,client in self.connections.items():
+            if not client:continue
+            try:
+                await asyncio.wait_for(client.rpush(key,body),timeout=2.0)
+                success+=1
+            except (redis_exceptions.ConnectionError, ConnectionResetError, OSError, asyncio.TimeoutError) as e:
+                logger.debug(f"Redis rpush connection error on {name}: {type(e).__name__} - will retry next time")
+                self.connections[name] = None
+            except Exception as e:
+                logger.debug(f"Redis rpush error on {name}: {type(e).__name__}: {e}")
+        return success
+
+    async def publish_to_all(self, channel: str, message: dict, expiry_seconds: Optional[int] = None):
+        payload = message if isinstance(message, dict) else {"data": message}
+        try:
+            from utils import get_current_environment
+            env_info = get_current_environment()
+            env = env_info.get('env', 'unknown')
+        except: env = 'unknown'
+        payload.update({"source": env, "timestamp": datetime.now(timezone.utc).isoformat()})
+        body = json.dumps(payload, default=str)
+        success = 0
+        for name in self.connections:
+            client = await self._get_or_connect(name)
+            if not client:
+                continue
+            try:
+                await asyncio.wait_for(client.publish(channel, body), timeout=2)
+                if expiry_seconds:
+                    with suppress(Exception):
+                        await asyncio.wait_for(client.setex(channel, expiry_seconds, body), timeout=2)
+                success += 1
+            except Exception as exc:
+                logger.warning(f"Redis publish failed {name}: {exc}")
+        return success
+
+    async def publish_klines(self, symbol: str, interval: str, klines_data: list, expiry_seconds: int = 3600, data_type=None):
+        redis_key = f"klines:{symbol}:{interval}"
+        
+        try:
+            from utils import get_current_environment
+            env_info = get_current_environment()
+            env = env_info.get('env', 'unknown')
+        except: env = 'unknown'
+
+        payload = {
+            "symbol": symbol,
+            "interval": interval,
+            "published_at_utc": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            "klines": klines_data,
+            "count": len(klines_data),
+            "last_timestamp": klines_data[-1]['timestamp'] if klines_data else None,
+            "source": f"{env}_consolidated",
+            "data_type": data_type,  }
+        
+        return await self.publish_to_all(redis_key, payload, expiry_seconds)
+
+    def pipeline(self, target_preference: List[str] = None):
+        preference = target_preference or ['local', 'gateway', 'server']
+        for name in preference:
+            client = self.connections.get(name)
+            if client:
+                try:
+                    return client.pipeline()
+                except Exception as e:
+                    logger.debug(f"Failed to create pipeline on {name}: {e}")
+        raise RuntimeError("No Redis connection available for pipeline")
+
+    async def get(self,key:str,target_preference:List[str]=None):
+        preference=target_preference or list(self.connections.keys())
+        for name in preference:
+            client=await self._get_or_connect(name)
+            if not client:continue
+            try:
+                value=await asyncio.wait_for(client.get(key),timeout=2.0)
+                if value is None:continue
+                try:return json.loads(value)
+                except json.JSONDecodeError:return value
+            except Exception as exc:logger.debug(f"Rum get {name}:{key} -> {exc}")
+        return None
+
+    async def set(self,key:str,value:Any,ex:int=None):
+        body=value if isinstance(value,str) else json.dumps(value,default=str)
+        success=False
+        for name in self.connections:
+            client=await self._get_or_connect(name)
+            if not client:continue
+            try:
+                if ex:await asyncio.wait_for(client.setex(key,ex,body),timeout=2.0)
+                else:await asyncio.wait_for(client.set(key,body),timeout=2.0)
+                success=True
+            except Exception as exc:logger.debug(f"Rum set {name}:{key} -> {exc}")
+        return success
+
+    async def delete(self,*keys):
+        success=False
+        for name in self.connections:
+            client=await self._get_or_connect(name)
+            if not client:continue
+            try:
+                await asyncio.wait_for(client.delete(*keys),timeout=2.0)
+                success=True
+            except Exception as exc:logger.debug(f"Rum delete {name}:{keys} -> {exc}")
+        return success
+
+    async def close(self):
+        for client in self.connections.values():
+            if not client:continue
+            with suppress(Exception):await client.close()
+        self._initialized=False
+        logger.info("🧹 Rum shutdown complete.")

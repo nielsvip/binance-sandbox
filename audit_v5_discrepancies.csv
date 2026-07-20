@@ -1,0 +1,12 @@
+#,FINDING,SEVERITY,DIRECTION,VERIFIED_BY,DETAIL
+1,ZERO signal-driven entries,CRITICAL,Engine produces NO new entries,RUN OUTPUT,opens=0 in PROGRESS logs. Only SEED_POSITION opens exist. check_entry_candidates runs but never produces OPEN trades.
+2,100% win rate is fake,CRITICAL,INFLATES WR,RUN OUTPUT,Only 2 closes in 24 days both at tiny +. LONG at -9.15% held forever by STRICT_NO_LOSS. 100% WR because it NEVER closes losers.
+3,Positions seeded at bar 0,CRITICAL,DISTORTS results,CODE line 1007-1049,Every symbol gets LONG+SHORT at first bar. Entry logic never tested. Live doesnt do this.
+4,No fees,HIGH,INFLATES PnL,CODE — no fee calc anywhere,0% transaction cost. Real Binance futures: 0.02% maker / 0.04% taker. 37 trades × 0.04% = ~1.5% drag.
+5,No slippage,HIGH,INFLATES PnL,CODE — fills at close price,Exact bar close price. Real: bid/ask spread 0.02-0.05% on altcoins.
+6,STRICT_NO_LOSS blocks ALL exits at loss,HIGH,INFLATES WR / DISTORTS PnL,RUN OUTPUT — STRICT_NO_LOSS_BLOCK logs,WT_4H_VEL_EXIT fires every bar but blocked. Position trapped at -9.15% with no exit path.
+7,execute_trade_wrapper IS called (sizing intact),CORRECTION,Previous audit was WRONG,CODE line 907-908,Agent wrongly said sizing was flat . Actual: queue_trade_action passes qty to real execute_trade_wrapper with all gates.
+8,REENTRY/REDUCE handled in queue_trade_action,CORRECTION,Previous audit was WRONG for crypto,CODE line 889-901,OPEN/REENTRY/AUGMENT and REDUCE all handled. V5 crypto is correct. V6 tradier may still have issues.
+9,SPIKE_FADE strategy in engine only,MEDIUM,INFLATES if enabled,CODE line 1231,Gated by CRYPTO_SPIKE_FADE_ENABLED (default False). Currently OFF. If turned on = phantom strategy.
+10,No capital constraints,HIGH,INFLATES returns,CODE — no total capital check,48 symbols × 2 sides × augments = can exceed account capital. No margin call simulation.
+11,HTF forward-fill may corrupt binary indicators,MEDIUM,INFLATES signals,CODE harness lines 84-106,wt_cross_bull_1h=0 (no cross) gets forward-filled from previous 1 value. Needs verification with actual NPZ data.

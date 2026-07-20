@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRB Charts Dashboard</title>
+<!--
+================================================================================
+TRB CHARTS DASHBOARD  —  multi-timeframe candlestick + live per_sym trade markers
+================================================================================
+
+WHAT THIS IS
+  A single-file dashboard for the TRADIER stock accounts (trb, trc). Pick a
+  symbol, pick a timeframe (3m/15m/1h/4h/D), see candlesticks rendered from local
+  klines, and see every LIVE trade event (OPEN / AUGMENT / REDUCE / CLOSE /
+  REENTRY / BROKER_CLOSE / GHOST_CLOSE) plotted on the chart. Hover any marker to
+  see the $ value (qty x fill price), side, type, gain%, reason and timestamp.
+
+DATA BACKEND  —  chart_server.py  (Flask, port 5077)
+  Endpoints used (all read-only):
+    GET /trb_categories                      -> the 4 symbol categories (below)
+    GET /per_sym_symbols?accounts=trb,trc    -> live per_sym symbols + sides
+    GET /klines_cache?sym=&tf=&max=          -> OHLCV bars from klines_cache/
+    GET /historic_trades?sym=&accounts=trb,trc -> live trade events per account
+
+  NOTE on /klines vs /klines_cache: the documented /klines endpoint reads from
+  backtest_v8/indicators/*.npz, which on the MacBook is EMPTY (NPZ lives on S1).
+  So this dashboard uses /klines_cache, a read-only endpoint added to
+  chart_server.py that serves bars from klines_cache/<SYM>_<TF>.json (the live
+  cache that DOES exist on the Mac), falling back to klines_cache_backtest/tradier/.
+  If you regen NPZ on the Mac, you may switch KLINES_ENDPOINT below to "/klines".
+
+START THE BACKEND (if charts show "server not reachable"):
+    cd /Users/niels/Documents/binance
+    /opt/anaconda3/envs/binance_env/bin/python -u chart_server.py
+  (listens on http://127.0.0.1:5077  — override with CHART_PORT env var)
+  Then open this file directly in a browser (file://) OR via the server.
+
+THE 4 CATEGORIES  (preserved per user: "the 4 categories are correct")
+  Discovered in generate_tv_dashboard.py (the prior TRB charts generator). They
+  are symbol GROUPS, served by /trb_categories:
+    1. DAILY LONG BUYS    -> data/tv_morning_brief.json  top_buys
+    2. DAILY SHORT SHORTS  -> data/tv_morning_brief.json  top_shorts
+    3. ALL TRB LONGS       -> symbols_trb_long.json
+    4. ALL TRB SHORTS      -> symbols_trb_short.json
+  A 5th convenience tab, LIVE PER_SYM, lists only symbols currently in the live
+  per_sym book (data/hourly_reconfig/{trb,trc}/active_config.json) — these are
+  the symbols actually trading live; their markers are the live trades.
+
+TIMEFRAMES
+  Requested: 3m / 15m / 1h / 4h / D. Stocks have NO 3m data (stock base TF = 5m
+  per project convention), so the 3m button maps to 5m for stocks and is labelled
+  "3m*". TF buttons with no local data are auto-disabled per symbol.
+
+CHART LIBRARY
+  TradingView lightweight-charts@4.1.3 (CDN) — the repo standard (matches the
+  /live route in chart_server.py): addCandlestickSeries + setMarkers + crosshair.
+
+This file is self-contained and read-only. It does not touch any live trading
+script. Backups of the touched server live in backups/.
+================================================================================
+-->
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#131722; --border:#2a2e39; --txt:#f2f5f8;
+    --muted:#848e9c; --green:#3fb950; --red:#f85149; --blue:#58a6ff;
+    --amber:#d29922; --purple:#bc8cff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--txt);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  .topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--panel);flex-wrap:wrap}
+  .title{font-size:16px;font-weight:800;letter-spacing:.5px}
+  .title small{font-weight:400;color:var(--muted);margin-left:8px}
+  .cats{display:flex;gap:8px;flex-wrap:wrap}
+  .cat-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+  .cat-btn:hover{color:var(--txt);border-color:var(--muted)}
+  .cat-btn.active{background:#fff;color:#000;border-color:#fff}
+  .spacer{flex:1}
+  .status{font-size:12px;color:var(--muted)}
+  .status.err{color:var(--red)}
+  .main{flex:1;display:flex;min-height:0}
+  .sidebar{width:210px;border-right:1px solid var(--border);overflow-y:auto;background:#0d0f14;flex-shrink:0}
+  .sym-item{padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,.03);display:flex;justify-content:space-between;align-items:center}
+  .sym-item:hover{background:rgba(255,255,255,.04)}
+  .sym-item.active{background:rgba(88,166,255,.15);border-left:3px solid var(--blue);font-weight:700}
+  .sym-item .sides{font-size:10px;color:var(--muted);display:flex;gap:4px}
+  .sym-item .sides .L{color:var(--green)}
+  .sym-item .sides .S{color:var(--amber)}
+  .sym-item .live-dot{width:7px;height:7px;border-radius:50%;background:var(--purple);display:inline-block;margin-left:6px}
+  .chartwrap{flex:1;display:flex;flex-direction:column;min-width:0}
+  .chart-toolbar{display:flex;align-items:center;gap:14px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--panel);flex-wrap:wrap}
+  .cur-sym{font-size:18px;font-weight:800}
+  .tfs{display:flex;gap:4px;background:#0d0f14;padding:3px;border-radius:8px;border:1px solid var(--border)}
+  .tf-btn{background:transparent;border:none;color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px}
+  .tf-btn:hover:not(:disabled){color:var(--txt)}
+  .tf-btn.active{background:var(--blue);color:#000}
+  .tf-btn:disabled{opacity:.3;cursor:not-allowed}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:4px}
+  .legend i{font-style:normal;font-size:13px}
+  .legend .lg-grp b{color:var(--txt);font-size:10px;letter-spacing:.5px;margin-right:2px}
+  .legend .lg-bt b{color:var(--blue)}
+  .legend i.bt-l{color:#58a6ff} .legend i.bt-s{color:#bc8cff} .legend i.bt-o{color:#7d8db0}
+  .layersel{display:flex;gap:4px;background:#0d0f14;padding:3px;border-radius:8px;border:1px solid var(--border)}
+  .layer-btn{background:transparent;border:none;color:var(--muted);padding:5px 10px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px}
+  .layer-btn:hover{color:var(--txt)}
+  .layer-btn.active{background:var(--blue);color:#000}
+  .acctsel{display:flex;gap:6px;font-size:12px;align-items:center}
+  .acctsel label{cursor:pointer;color:var(--muted)}
+  .acctsel input{vertical-align:middle}
+  #chart{flex:1;min-height:0;position:relative}
+  #tooltip{position:absolute;display:none;pointer-events:none;z-index:50;background:rgba(13,17,23,.97);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;max-width:340px;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+  #tooltip .row{display:flex;justify-content:space-between;gap:14px;margin:2px 0}
+  #tooltip .k{color:var(--muted)}
+  #tooltip .v{font-weight:700}
+  #tooltip .hdr{font-weight:800;font-size:13px;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+  #tooltip .reason{color:var(--muted);font-size:11px;margin-top:6px;word-break:break-word;max-width:320px}
+  .L{color:var(--green)} .S{color:var(--amber)} .win{color:var(--green)} .loss{color:var(--red)}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .trade-summary{font-size:11px;color:var(--muted);padding:6px 14px;border-top:1px solid var(--border);background:var(--panel)}
+  .trade-summary .sum-live b{color:var(--green)}
+  .trade-summary .sum-bt b{color:var(--blue)}
+  #tooltip .src-live{color:#3fb950;font-size:10px;font-weight:800;letter-spacing:.5px}
+  #tooltip .src-bt{color:#58a6ff;font-size:10px;font-weight:800;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="title">TRB CHARTS<small id="bias"></small></div>
+  <div class="cats" id="cats"></div>
+  <div class="spacer"></div>
+  <button class="layer-btn" id="rundownBtn" style="margin-right:10px" onclick="openRundown()">📋 Suggestions ⇄ Fills</button>
+  <div class="status" id="status">loading…</div>
+</div>
+<div id="rundownOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;overflow:auto;padding:24px">
+  <div style="max-width:1180px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div style="font-size:16px;font-weight:700">trb — Trade Suggestions vs Actual Fills</div>
+      <select id="rundownAcct" onchange="openRundown()" style="background:var(--panel);color:var(--txt);border:1px solid var(--border);border-radius:6px;padding:3px 6px">
+        <option value="trb">trb</option><option value="trc">trc</option></select>
+      <div class="spacer" style="flex:1"></div>
+      <button class="layer-btn" onclick="document.getElementById('rundownOverlay').style.display='none'">✕ close</button>
+    </div>
+    <div id="rundownCards" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+    <div id="rundownBody" style="font-size:12px">loading…</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:12px;line-height:1.5">
+      Each row = a symbol/side the WT_DC entry engine flagged during market hours (reached <code>queue_trade_action</code>). <b>Σ notional</b> = qty×price summed over the day. <b>FILLED</b> = a real OPEN/AUGMENT/REENTRY in the /history/ ledger. <b>side DISABLED</b> = per_sym wsharpe≤0 (neg-Sharpe no-trade). <b>NOT FILLED</b> otherwise = queued but blocked downstream (cash buying-power / GFV unsettled-funds / swing-budget / overtrade / dedup); exact per-trade reason needs the live trb log.
+    </div>
+  </div>
+</div>
+<div class="main">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="chartwrap">
+    <div class="chart-toolbar">
+      <div class="cur-sym" id="curSym">—</div>
+      <div class="tfs" id="tfs"></div>
+      <div class="acctsel">
+        <label><input type="checkbox" id="acc-trb" checked> trb</label>
+        <label><input type="checkbox" id="acc-trc" checked> trc</label>
+      </div>
+      <div class="layersel">
+        <button class="layer-btn active" id="layer-both" data-layer="both">Both</button>
+        <button class="layer-btn" id="layer-live" data-layer="live">Show Live</button>
+        <button class="layer-btn" id="layer-backtest" data-layer="backtest">Show Backtest</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="legend">
+        <span class="lg-grp"><b>LIVE</b><i class="L">▲</i>open<i class="S">▼</i>short<i>●</i>reduce<i>✕</i>close</span>
+        <span class="lg-grp lg-bt"><b>BACKTEST</b><i class="bt-l">△</i>open<i class="bt-s">▽</i>short<i class="bt-o">○</i>red/close</span>
+      </div>
+    </div>
+    <div id="chart"><div id="tooltip"></div></div>
+    <div class="trade-summary" id="tradeSummary"></div>
+  </div>
+</div>
+
+<script>
+const SERVER = (location.protocol === "file:") ? "http://localhost:5077" : "";
+const KLINES_ENDPOINT = "/klines_cache"; // switch to "/klines" if NPZ exists locally
+
+async function openRundown(){
+  const ov=document.getElementById('rundownOverlay'); ov.style.display='block';
+  const acct=document.getElementById('rundownAcct').value;
+  const body=document.getElementById('rundownBody'), cards=document.getElementById('rundownCards');
+  body.innerHTML='loading…'; cards.innerHTML='';
+  try{
+    const r=await fetch(`${SERVER}/rundown?acct=${acct}`,{cache:'no-store'});
+    const d=await r.json();
+    if(d.error){body.innerHTML='<span style="color:#d9534f">error: '+d.error+'</span>';return;}
+    const s=d.summary;
+    const card=(v,l,c)=>`<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:96px"><div style="font-size:18px;font-weight:700;${c?'color:'+c:''}">${v}</div><div style="color:var(--muted);font-size:11px">${l}</div></div>`;
+    cards.innerHTML=card(s.suggestion_rows.toLocaleString(),'suggestion rows')+card(s.symbols_suggested,'symbols')+card('$'+Math.round(s.total_notional_suggested).toLocaleString(),'notional suggested')+card(s.symbols_filled,'filled','#3fb950')+card(s.symbols_not_filled,'NOT filled','#d9534f');
+    const rows=d.rows.map(x=>{
+      const col=x.status==='FILLED'?'#3fb950':'#d9534f';
+      return `<tr><td>${x.position_key}</td><td style="text-align:right">${x.suggestions}</td><td style="text-align:right">$${Math.round(x.notional).toLocaleString()}</td><td style="text-align:right">${x.peak_score}</td><td style="text-align:center;color:var(--muted)">${x.first}–${x.last}</td><td style="color:${col};font-weight:600">${x.status}</td><td style="color:var(--muted)">${x.blocker}</td></tr>`;}).join('');
+    body.innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:5px 7px">position_key</th><th style="text-align:right;padding:5px 7px">sugg</th><th style="text-align:right;padding:5px 7px">Σ notional</th><th style="text-align:right;padding:5px 7px">peak WT_DC</th><th style="padding:5px 7px">window</th><th style="text-align:left;padding:5px 7px">status</th><th style="text-align:left;padding:5px 7px">what kept it from happening</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.querySelectorAll('#rundownBody td').forEach(td=>{td.style.padding='5px 7px';td.style.borderBottom='1px solid var(--border)';});
+  }catch(e){body.innerHTML='<span style="color:#d9534f">fetch failed: '+e+'</span>';}
+}
+// TF buttons. value = key requested from backend. Stocks have no 3m -> use 5m, labelled 3m*.
+const TFS = [
+  {label:"3m*", tf:"5m"},
+  {label:"15m", tf:"15m"},
+  {label:"1h",  tf:"1h"},
+  {label:"4h",  tf:"4h"},
+  {label:"D",   tf:"D"},
+];
+const ACCOUNTS = ["trb","trc"];
+
+let chart, candleSeries;
+let categories = [];
+let livePerSym = {};        // {SYM: ["LONG","SHORT"], ...}
+let curCategory = null;     // category id
+let curSym = null;
+let curTf = "15m";
+let allMarkers = [];        // for tooltip lookup: {time, evt}
+let markerByTime = {};      // time -> [evt,...]
+let curLayer = "both";      // "both" | "live" | "backtest"
+let lastBars = [];          // bars for the current chart (for re-render on toggle)
+
+const $ = id => document.getElementById(id);
+
+async function api(path){
+  const r = await fetch(SERVER + path, {cache:"no-store"});
+  if(!r.ok) throw new Error(path+" -> "+r.status);
+  return r.json();
+}
+function setStatus(msg, err){ const s=$("status"); s.textContent=msg; s.className="status"+(err?" err":""); }
+
+function selectedAccounts(){
+  return ACCOUNTS.filter(a => $("acc-"+a).checked);
+}
+
+function initChart(){
+  chart = LightweightCharts.createChart($("chart"), {
+    layout:{background:{color:"#0a0b0d"},textColor:"#c9d1d9"},
+    grid:{vertLines:{color:"#1c2128"},horzLines:{color:"#1c2128"}},
+    timeScale:{borderColor:"#30363d",timeVisible:true,secondsVisible:false},
+    rightPriceScale:{borderColor:"#30363d"},
+    crosshair:{mode:1},
+    autoSize:true,
+  });
+  candleSeries = chart.addCandlestickSeries({
+    upColor:"#3fb950",downColor:"#f85149",borderVisible:false,
+    wickUpColor:"#3fb950",wickDownColor:"#f85149",
+  });
+  chart.subscribeCrosshairMove(onCrosshair);
+}
+
+// ---- categories (the 4 + a LIVE PER_SYM convenience tab) -------------------
+async function loadCategories(){
+  const data = await api("/trb_categories");
+  categories = data.categories.slice();
+  if(data.market_bias) $("bias").textContent = "market bias: "+data.market_bias;
+  const ps = await api("/per_sym_symbols?accounts=trb,trc");
+  livePerSym = ps.symbols || {};
+  categories.push({
+    id:"live-persym", label:"LIVE PER_SYM", side:"BOTH",
+    symbols: Object.keys(livePerSym).sort(),
+  });
+  const wrap = $("cats");
+  wrap.innerHTML = "";
+  categories.forEach((c,i)=>{
+    const b = document.createElement("button");
+    b.className = "cat-btn" + (i===0?" active":"");
+    b.textContent = `${c.label} (${c.symbols.length})`;
+    b.onclick = ()=>selectCategory(c.id, b);
+    wrap.appendChild(b);
+  });
+  selectCategory(categories[0].id, wrap.firstChild);
+}
+
+function selectCategory(id, btn){
+  curCategory = id;
+  document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  const cat = categories.find(c=>c.id===id);
+  renderSidebar(cat ? cat.symbols : []);
+}
+
+function renderSidebar(symbols){
+  const sb = $("sidebar");
+  sb.innerHTML = "";
+  if(!symbols.length){ sb.innerHTML = '<div class="empty">No symbols in this category.</div>'; return; }
+  symbols.forEach(sym=>{
+    const item = document.createElement("div");
+    item.className = "sym-item" + (sym===curSym?" active":"");
+    const sides = livePerSym[sym] || [];
+    const sidesHtml = sides.map(s => `<span class="${s==='LONG'?'L':'S'}">${s[0]}</span>`).join("");
+    const liveDot = sides.length ? '<span class="live-dot" title="in live per_sym book"></span>' : "";
+    item.innerHTML = `<span>${sym}${liveDot}</span><span class="sides">${sidesHtml}</span>`;
+    item.onclick = ()=>selectSymbol(sym, item);
+    sb.appendChild(item);
+  });
+}
+
+async function selectSymbol(sym, item){
+  curSym = sym;
+  document.querySelectorAll(".sym-item").forEach(b=>b.classList.remove("active"));
+  if(item) item.classList.add("active");
+  $("curSym").textContent = sym;
+  await buildTfButtons(sym);
+  await loadChart();
+}
+
+// Probe which TFs have data for this symbol; disable buttons with none.
+async function buildTfButtons(sym){
+  const wrap = $("tfs");
+  wrap.innerHTML = "";
+  const avail = {};
+  await Promise.all(TFS.map(async t=>{
+    try{
+      const r = await fetch(`${SERVER}${KLINES_ENDPOINT}?sym=${encodeURIComponent(sym)}&tf=${t.tf}&max=1`, {cache:"no-store"});
+      avail[t.tf] = r.ok;
+    }catch(e){ avail[t.tf] = false; }
+  }));
+  // pick a sensible default tf if current one is unavailable
+  const order = ["15m","1h","4h","5m","D"];
+  if(!avail[curTf]){ curTf = order.find(tf => avail[tf]) || "15m"; }
+  TFS.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "tf-btn" + (t.tf===curTf?" active":"");
+    b.textContent = t.label;
+    b.disabled = !avail[t.tf];
+    b.title = avail[t.tf] ? "" : "no "+t.tf+" data for "+sym;
+    b.onclick = ()=>{ if(b.disabled) return; curTf=t.tf; document.querySelectorAll(".tf-btn").forEach(x=>x.classList.remove("active")); b.classList.add("active"); loadChart(); };
+    wrap.appendChild(b);
+  });
+}
+
+async function loadChart(){
+  if(!curSym) return;
+  setStatus(`loading ${curSym} ${curTf}…`);
+  let bars = [];
+  try{
+    bars = await api(`${KLINES_ENDPOINT}?sym=${encodeURIComponent(curSym)}&tf=${curTf}&max=5000`);
+  }catch(e){
+    candleSeries.setData([]); candleSeries.setMarkers([]);
+    setStatus(`no chart data for ${curSym} ${curTf} (${e.message})`, true);
+    $("tradeSummary").textContent = "";
+    return;
+  }
+  if(!Array.isArray(bars) || !bars.length){
+    candleSeries.setData([]); candleSeries.setMarkers([]);
+    setStatus(`no bars for ${curSym} ${curTf}`, true);
+    return;
+  }
+  candleSeries.setData(bars.map(b=>({time:b.t,open:b.o,high:b.h,low:b.l,close:b.c})));
+  await loadTrades(bars);
+  chart.timeScale().fitContent();
+  setStatus(`${curSym} ${curTf} · ${bars.length} bars`);
+}
+
+async function loadTrades(bars){
+  lastBars = bars;
+  const accts = selectedAccounts();
+  // Fetch LIVE (per selected accounts) and BACKTEST (per symbol) in parallel.
+  const liveP = accts.length
+    ? api(`/historic_trades?sym=${encodeURIComponent(curSym)}&accounts=${accts.join(",")}`).catch(()=>({}))
+    : Promise.resolve({});
+  const btP = api(`/persym_backtest_trades?sym=${encodeURIComponent(curSym)}`).catch(()=>({events:[]}));
+  const [liveData, btData] = await Promise.all([liveP, btP]);
+  // bar range — snap each event to the nearest bar time so markers land on candles.
+  const barTimes = bars.map(b=>b.t);
+  const tMin = barTimes[0], tMax = barTimes[barTimes.length-1];
+  allMarkers = []; markerByTime = {};
+  // counters per layer
+  const liveC = {open:0,aug:0,reduce:0,close:0,reentry:0,openVal:0};
+  const btC   = {open:0,aug:0,reduce:0,close:0,reentry:0,openVal:0};
+  // ---- collect events from both sources into a single enriched list ----
+  function ingest(ev, src, acct){
+    const ts = ev.unix_ts; if(!ts) return;
+    if(ts < tMin - 86400*2 || ts > tMax + 86400*2) return; // skip far-out events
+    const snapTs = snapToBar(ts, barTimes);
+    const type = (ev.type||"").toUpperCase();
+    const side = (ev.side||"LONG").toUpperCase();
+    const qty = +ev.qty||0, price=+ev.price||0;
+    const val = (ev.value!=null) ? +ev.value : qty*price;
+    const C = (src==="live") ? liveC : btC;
+    if(type==="OPEN") { C.open++; C.openVal+=val; }
+    else if(type==="AUGMENT") { C.aug++; C.openVal+=val; }
+    else if(type==="REDUCE") C.reduce++;
+    else if(type==="CLOSE"||type==="BROKER_CLOSE"||type==="GHOST_CLOSE") C.close++;
+    else if(type==="REENTRY") C.reentry++;
+    const enriched = Object.assign({}, ev, {_src:src, _acct:acct||null, _val:val, _snap:snapTs, _type:type, _side:side});
+    allMarkers.push(enriched);
+  }
+  for(const acct of accts){
+    const blob = liveData[acct]; if(!blob) continue;
+    for(const ev of (blob.events||[])) ingest(ev, "live", acct);
+  }
+  for(const ev of (btData.events||[])) ingest(ev, "backtest", null);
+  rebuildMarkers();
+  // ---- dual summary bar ----
+  const liveTotal = liveC.open+liveC.aug+liveC.reduce+liveC.close+liveC.reentry;
+  const btTotal   = btC.open+btC.aug+btC.reduce+btC.close+btC.reentry;
+  $("tradeSummary").innerHTML =
+    `<b>${curSym}</b> · accounts ${accts.length?accts.join("+"):"none"} &nbsp;|&nbsp; `+
+    `<span class="sum-live"><b>LIVE</b>: ${liveC.open} opens / ${liveC.aug} aug / ${liveC.reduce} reduce / ${liveC.close} closes`+
+    (liveC.reentry?` / ${liveC.reentry} reentry`:``)+` · $vol $${fmt(liveC.openVal)} (${liveTotal} evts)</span>`+
+    ` &nbsp;·&nbsp; `+
+    `<span class="sum-bt"><b>BACKTEST</b>: ${btC.open} opens / ${btC.aug} aug / ${btC.reduce} reduce / ${btC.close} closes`+
+    (btC.reentry?` / ${btC.reentry} reentry`:``)+` · $vol $${fmt(btC.openVal)} (${btTotal} evts)</span>`;
+}
+
+// Build the marker array from allMarkers honoring the current layer toggle, then
+// push to the (single) candle series. Live = solid/filled; backtest = hollow/muted.
+function rebuildMarkers(){
+  markerByTime = {};
+  const markers = [];
+  for(const ev of allMarkers){
+    if(curLayer==="live" && ev._src!=="live") continue;
+    if(curLayer==="backtest" && ev._src!=="backtest") continue;
+    const isLong = ev._side==="LONG";
+    const type = ev._type;
+    let shape, color, position, text;
+    if(ev._src==="live"){
+      // LIVE — solid arrows / filled circles, bright palette
+      if(type==="OPEN"||type==="AUGMENT"){
+        shape = isLong?"arrowUp":"arrowDown"; position = isLong?"belowBar":"aboveBar";
+        color = isLong?"#3fb950":"#d29922"; text = (type==="OPEN"?"O":"A");
+      }else if(type==="REDUCE"){ shape="circle"; position=isLong?"aboveBar":"belowBar"; color="#58a6ff"; text="R"; }
+      else if(type==="CLOSE"||type==="BROKER_CLOSE"||type==="GHOST_CLOSE"){ shape="circle"; position=isLong?"aboveBar":"belowBar"; color="#f85149"; text="✕"; }
+      else if(type==="REENTRY"){ shape=isLong?"arrowUp":"arrowDown"; position=isLong?"belowBar":"aboveBar"; color="#bc8cff"; text="RE"; }
+      else { shape="square"; position="inBar"; color="#848e9c"; text="?"; }
+    }else{
+      // BACKTEST — distinct: circles (hollow-look via muted blue/purple palette), smaller, no fill arrows
+      if(type==="OPEN"||type==="AUGMENT"){
+        shape="circle"; position = isLong?"belowBar":"aboveBar";
+        color = isLong?"#58a6ff":"#bc8cff"; text = (type==="OPEN"?"o":"a");
+      }else if(type==="REDUCE"){ shape="circle"; position=isLong?"aboveBar":"belowBar"; color="#7d8db0"; text="r"; }
+      else if(type==="CLOSE"||type==="BROKER_CLOSE"||type==="GHOST_CLOSE"){ shape="circle"; position=isLong?"aboveBar":"belowBar"; color="#9d6bd4"; text="c"; }
+      else if(type==="REENTRY"){ shape="circle"; position=isLong?"belowBar":"aboveBar"; color="#6f7fb8"; text="re"; }
+      else { shape="circle"; position="inBar"; color="#5a6273"; text="?"; }
+    }
+    markers.push({time:ev._snap, position, color, shape, text, size:(ev._src==="backtest"?1:1)});
+    (markerByTime[ev._snap] = markerByTime[ev._snap]||[]).push(ev);
+  }
+  markers.sort((a,b)=>a.time-b.time);
+  candleSeries.setMarkers(markers);
+}
+
+function snapToBar(ts, barTimes){
+  // binary search nearest bar time
+  let lo=0, hi=barTimes.length-1;
+  if(ts<=barTimes[0]) return barTimes[0];
+  if(ts>=barTimes[hi]) return barTimes[hi];
+  while(lo<hi){ const mid=(lo+hi)>>1; if(barTimes[mid]<ts) lo=mid+1; else hi=mid; }
+  const a=barTimes[lo-1], b=barTimes[lo];
+  return (ts-a <= b-ts) ? a : b;
+}
+
+function fmt(n){ return (n||0).toLocaleString(undefined,{maximumFractionDigits:0}); }
+function fmtTs(unix){ return new Date(unix*1000).toISOString().replace("T"," ").slice(0,16)+"Z"; }
+
+function onCrosshair(param){
+  const tip = $("tooltip");
+  if(!param.time || !param.point){ tip.style.display="none"; return; }
+  const evs = markerByTime[param.time];
+  if(!evs || !evs.length){ tip.style.display="none"; return; }
+  let html = "";
+  for(const ev of evs){
+    const type=(ev.type||"").toUpperCase(), side=(ev.side||"").toUpperCase();
+    const sideCls = side==="LONG"?"L":"S";
+    const qty=+ev.qty||0, price=+ev.price||0, val=ev._val||0;
+    const gain = (ev.gain_pct!=null)?ev.gain_pct:(ev.pnl_pct!=null?ev.pnl_pct:(ev.max_gain!=null?ev.max_gain:null));
+    const isBt = ev._src==="backtest";
+    const srcTag = isBt ? '<span class="src-bt">BACKTEST</span>' : '<span class="src-live">LIVE'+(ev._acct?(' · '+ev._acct):'')+'</span>';
+    html += `<div class="hdr">${srcTag} &nbsp;<span class="${sideCls}">${type} ${side}</span></div>`;
+    html += `<div class="row"><span class="k">$ value</span><span class="v">$${val.toLocaleString(undefined,{maximumFractionDigits:2})}</span></div>`;
+    html += `<div class="row"><span class="k">qty × price</span><span class="v">${qty} × ${price}</span></div>`;
+    if(gain!=null) html += `<div class="row"><span class="k">${isBt?'pnl%':'gain%'}</span><span class="v ${gain>=0?'win':'loss'}">${(+gain).toFixed(2)}%</span></div>`;
+    html += `<div class="row"><span class="k">time</span><span class="v">${fmtTs(ev.unix_ts)}</span></div>`;
+    if(ev.reason) html += `<div class="reason">${(""+ev.reason).slice(0,200)}</div>`;
+    if(evs.length>1) html += '<hr style="border:0;border-top:1px solid var(--border);margin:6px 0">';
+  }
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const wrap = $("chart").getBoundingClientRect();
+  let x = param.point.x + 16, y = param.point.y + 16;
+  if(x + 350 > wrap.width) x = param.point.x - 356;
+  if(y + tip.offsetHeight > wrap.height) y = wrap.height - tip.offsetHeight - 8;
+  tip.style.left = Math.max(4,x)+"px"; tip.style.top = Math.max(4,y)+"px";
+}
+
+// account checkbox -> reload trades only
+ACCOUNTS.forEach(a=> $("acc-"+a).addEventListener("change", ()=>{ if(curSym) loadChart(); }));
+
+// layer toggle (Both / Show Live / Show Backtest) -> re-render markers only (no refetch)
+["both","live","backtest"].forEach(L=>{
+  $("layer-"+L).addEventListener("click", ()=>{
+    curLayer = L;
+    document.querySelectorAll(".layer-btn").forEach(b=>b.classList.remove("active"));
+    $("layer-"+L).classList.add("active");
+    if(allMarkers.length || lastBars.length) rebuildMarkers();
+  });
+});
+
+async function boot(){
+  initChart();
+  try{
+    setStatus("connecting to chart_server :5077…");
+    await loadCategories();
+    setStatus("ready — pick a symbol");
+  }catch(e){
+    setStatus("chart_server not reachable on :5077 — run: python chart_server.py  ("+e.message+")", true);
+    $("sidebar").innerHTML = '<div class="empty">Backend offline.<br><br>Start it:<br><code style="font-size:11px">cd /Users/niels/Documents/binance &amp;&amp; python chart_server.py</code><br>(port 5077)</div>';
+  }
+}
+boot();
+</script>
+</body>
+</html>

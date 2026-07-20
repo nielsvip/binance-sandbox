@@ -463,7 +463,7 @@ def analyze_multi_tf_state_tradier(ind: dict, is_long: bool, current_price: floa
     _sf = lambda v, d=0.0: float(v) if v is not None else d
     _sb = lambda v, d=False: v if v is not None else d
     _w = lambda tf, d: getattr(config, f'MTS_WEIGHT_{tf}', d) if config and hasattr(config, f'MTS_WEIGHT_{tf}') else d
-    _tf_cfg = [('5m', _w('5m', 2), 'stoch_k_5m', 'stoch_d_5m'), ('15m', _w('15m', 4), 'stoch_k_15m', 'stoch_d_15m'), ('1h', _w('1h', 3), 'stoch_k_1h', 'stoch_d_1h'), ('4h', _w('4h', 5), 'stoch_k_4h', 'stoch_d_4h'), ('D', _w('D', 12), 'stoch_k_D', 'stoch_d_D')]
+    _tf_cfg = [('5m', _w('5m', 2), 'k_5m', 'd_5m'), ('15m', _w('15m', 4), 'k_15m', 'd_15m'), ('1h', _w('1h', 3), 'k_1h', 'd_1h'), ('4h', _w('4h', 5), 'k_4h', 'd_4h'), ('D', _w('D', 12), 'k_D', 'd_D')]
     tf_breakdown = {}
     total_bottom = 0.0; total_entry = 0.0; total_dir = 0.0; total_range = 0.0; total_weight = 0.0
     extreme_count = 0; htf_bullish_count = 0
@@ -1174,6 +1174,14 @@ class IndicatorCalculator:
         result[f"high_{timeframe}_prev"] = float(high_series.iloc[-2]) if len(high_series) > 1 else float(high_series.iloc[-1])
         result[f"low_{timeframe}_prev"] = float(low_series.iloc[-2]) if len(low_series) > 1 else float(low_series.iloc[-1])
         result[f"close_{timeframe}_prev"] = float(close_series.iloc[-2]) if len(close_series) > 1 else current_price
+        # [2026-07-03] DG_10 SHORT-BLOCK FIX: open_{tf}/close_{tf} were never emitted, so the
+        # disaster-guard HTF bias (close_D vs open_D, close_4h vs open_4h) was structurally 0 and
+        # blocked EVERY short since 2026-05-13. sma_200_15m likewise absent (only ema existed),
+        # so the below-sma200 bypass could never fire.
+        result[f"open_{timeframe}"] = float(open_series.iloc[-1]) if len(open_series) > 0 else current_price
+        result[f"close_{timeframe}"] = float(close_series.iloc[-1]) if len(close_series) > 0 else current_price
+        if timeframe == "15m" and len(close_series) >= 200:
+            result["sma_200_15m"] = float(close_series.iloc[-200:].mean())
 
         tf_config = TIMEFRAMES.get(timeframe, {"sec": 60, "half": 30, "dc_window": 20, "atr": 14, "ema": [20, 50, 200], "sma":[]})
         dc_window = tf_config["dc_window"]
@@ -1222,10 +1230,10 @@ class IndicatorCalculator:
         result[f"stoch_crossover_{timeframe}"] = stoch_cross if k_curr is not None else False
         result[f"stoch_crossunder_{timeframe}"] = stoch_cross_under if k_curr is not None else False
         if k_curr is not None:
-            result[f"stoch_k_{timeframe}"] = k_curr
-            result[f"stoch_d_{timeframe}"] = d_curr if d_curr is not None else k_curr
-            result[f"stoch_k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
-            result[f"stoch_d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
+            result[f"k_{timeframe}"] = k_curr
+            result[f"d_{timeframe}"] = d_curr if d_curr is not None else k_curr
+            result[f"k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
+            result[f"d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
             
         wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
@@ -1330,6 +1338,16 @@ class IndicatorCalculator:
                 result[f"lr_upper_{timeframe}"] = _lr_u
                 result[f"lr_lower_{timeframe}"] = _lr_l
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
+            _lrL_len = (getattr(config, "LR_CHANNEL_LONG_LENGTHS", None) or {}).get(timeframe)
+            if _lrL_len and len(close_series) >= int(_lrL_len):
+                _lrL_u, _lrL_l, _lrL_pb = linreg_channel(close_series, int(_lrL_len), std_mult=2.5)
+                _lrL_slope, _lrL_lin = linreg_features(close_series, int(_lrL_len))
+                _lrL_px = float(close_series.iloc[-1])
+                if _lrL_pb is not None and _lrL_slope is not None and _lrL_px > 0:
+                    result[f"lrL_pct_b_{timeframe}"] = _lrL_pb
+                    result[f"lrL_slope_{timeframe}"] = round(_lrL_slope / _lrL_px * 100.0, 6)
+                    if _lrL_lin is not None:
+                        result[f"lrL_r2_{timeframe}"] = round(float(_lrL_lin), 6)
             bar_pat = detect_bar_patterns(adjusted_df, timeframe)
             result.update(bar_pat)
             # Candle body comparison (current vs prev) — needed by Strategy 3 (EMA200+StochRSI)
@@ -1928,7 +1946,8 @@ class TradierIndicatorOrchestrator:
             self.pending_trivial[symbol] = False
 
     async def run_cycle(self):
-        logger.info(f"Update cycle starting for {len(self.symbols)} symbols (Env: {self.bar_manager.env})")
+        _cycle_total = len(self.symbols)
+        logger.info(f"Update cycle starting for {_cycle_total} symbols (Env: {self.bar_manager.env})")
         all_prices = {}
         if self.redis_manager:
             try:
@@ -1937,6 +1956,8 @@ class TradierIndicatorOrchestrator:
                     all_prices = prices_raw.get("data", prices_raw)
             except Exception as e:
                 logger.warning(f"Failed to fetch prices for cycle: {e}")
+
+        _cycle_done = [0]
 
         async def process_symbol_parallel(symbol):
             async with self.cycle_semaphore:
@@ -1948,6 +1969,15 @@ class TradierIndicatorOrchestrator:
                     s_data["timestamp_1m"] = real_now_iso
                     bundle = await self.bar_manager.get_bundle(symbol)
                     if not bundle: return
+                    # Clip to recent bars for live indicator computation — server mode reads years of 1m/5m data.
+                    # 600 bars is sufficient for all indicators (SMA-200, ATR, RSI, WT).
+                    _clip = int(getattr(self.config, 'LIVE_INDICATOR_MAX_BARS_PER_TF', 600))
+                    if _clip > 0:
+                        bundle = {tf: (df.tail(_clip).reset_index(drop=True) if len(df) > _clip else df) for tf, df in bundle.items()}
+                    _cycle_done[0] += 1
+                    n = _cycle_done[0]
+                    if n % 10 == 0 or n == _cycle_total:
+                        logger.info(f"[CYCLE_PROGRESS] {n}/{_cycle_total} bundles clipped and ready")
                     quote = all_prices.get(symbol)
                     m_price = None
                     m_ts = None
@@ -2058,7 +2088,7 @@ class TradierIndicatorOrchestrator:
 
     def _required_by_timeframe(self, timeframe: str) -> List[str]:
         base_indicators =[f"timestamp_{timeframe}", f"dc_high_{timeframe}", f"dc_low_{timeframe}", f"dc_basis_{timeframe}",
-                          f"stoch_k_{timeframe}", f"stoch_d_{timeframe}", f"atr_{timeframe}", f"rsi_{timeframe}"]
+                          f"k_{timeframe}", f"d_{timeframe}", f"atr_{timeframe}", f"rsi_{timeframe}"]
         return base_indicators
 
     async def _run_full(self, symbol: str, timeframe: str, df: pd.DataFrame, close_ts: datetime, mark_price: Optional[float], state: SymbolTimeframeState, mark_ts=None) -> None:
@@ -2340,8 +2370,8 @@ class TradierIndicatorOrchestrator:
                 dist_pct = (current_price - sma_1m) / sma_1m
                 sma_score = dist_pct * 2000.0 
 
-            k5, d5 = g("stoch_k_5m", 50), g("stoch_d_5m", 50)
-            k15, d15 = g("stoch_k_15m", 50), g("stoch_d_15m", 50)
+            k5, d5 = g("k_5m", 50), g("d_5m", 50)
+            k15, d15 = g("k_15m", 50), g("d_15m", 50)
             stoch_mix = ((k5 - d5) * 1.0) + ((k15 - d15) * 1.5)
             
             ha_score = 0.0
@@ -2684,8 +2714,7 @@ class TradierIndicatorOrchestrator:
             self.cleanup_old_indicator_files()
         
         await self.run_cycle()
-
-        tasks =[asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
+        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
@@ -2693,31 +2722,62 @@ class TradierIndicatorOrchestrator:
         finally:
             self._shutdown.set()
             for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            await self.api_client.close()
+                if not task.done():
+                    task.cancel()
+            try:
+                # Only attempt to gather tasks if the loop is verified open
+                loop = asyncio.get_running_loop()
+                if loop.is_running():
+                    await asyncio.gather(*tasks, return_exceptions=True)
+            except RuntimeError:
+                # Loop is already dying/closed; suppress error and exit cleanly
+                pass
+
+
+
+        # tasks =[asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._save_loop())]
+        # try:
+        #     await asyncio.gather(*tasks)
+        # except asyncio.CancelledError:
+        #     pass
+        # finally:
+        #     self._shutdown.set()
+        #     for task in tasks:
+        #         task.cancel()
+        #     await asyncio.gather(*tasks, return_exceptions=True)
+        #     await self.api_client.close()
 
 def ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
-def signal_handler(signum, frame):
-    logger.info(f"Received signal {signum}, shutting down...")
-    sys.exit(0)
+def signal_handler(signum, frame, orchestrator=None):
+    logger.info(f"Received signal {signum}, scheduling graceful shutdown via event loop...")
+    if orchestrator and hasattr(orchestrator, '_shutdown'):
+        # Safely flag the asyncio.Event loop from outside the async loop context
+        orchestrator._shutdown.set()
+    else:
+        # Fallback if orchestrator isn't initialized yet
+        sys.exit(0)
 
 async def main():
     import signal
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    from functools import partial
     orchestrator = TradierIndicatorOrchestrator()
+    sig_handler_with_ctx = partial(signal_handler, orchestrator=orchestrator)
+    
+    signal.signal(signal.SIGINT, sig_handler_with_ctx)
+    signal.signal(signal.SIGTERM, sig_handler_with_ctx)
+    
     try:
         await orchestrator.run()
     except KeyboardInterrupt:
-        logger.info("Interrupted by user")
+        logger.info("Interrupted by user via keyboard")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
     finally:
-        await orchestrator.api_client.close()
-
+        # Guard against closing a client that wasn't successfully opened
+        if hasattr(orchestrator, 'api_client') and orchestrator.api_client:
+            await orchestrator.api_client.close()
 
 # ============================================================================
 # CONSENSUS INDICATORS — migrated from tradier_indicators_extra.py 2026-04-26

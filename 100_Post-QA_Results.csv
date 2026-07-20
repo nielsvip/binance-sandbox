@@ -1,0 +1,7 @@
+Test,Key Finding,Best Result,WR%,PF,Sharpe,Applied?,Trust Level
+RSI Investigation (809 combos),RSI 50-line crossover > k<30/k>70,SHORT: rsi_above_50 + rsi_below50 exit (15m),76.1,4.644,32.4,❌ BC_138 DISABLED,✅ HIGH
+Entry Logic (4×4 matrix),Logic D multi-confirm on 1h = ONLY profitable entry,Logic D 1h: k<30 + lower-TF k>d + higher-low,98.97,5.189,21.28,Partially (BC_109/110),✅ HIGH
+Re-entry Sizing (24 combos),ALL net negative. TP must be ≥0.6%,GATE1 + F_BINARY (least bad),60.9,,-11.48,✅ TP raised to 1.5%,✅ HIGH
+Config Matrix (11 flags),SCALP_OFF = #1 lever (+6.1 Sharpe),SCALP_OFF+HTF4_ON+HTF1_OFF,25.14,0.805,-4.044,✅ ACTIVE,✅ HIGH
+Momentum Gate (50 sym),"6-month gate: +30% Sharpe, cuts 31% bad trades",close > close[126] on DC(20),26.6,0.954,-0.687,❌ NOT APPLIED,✅ HIGH
+QA Corrections,Old Sharpe inflated 8-34x. 5 bugs found.,Best corrected: Sharpe +6.42 (2 symbols),,,6.42,Framework fixed,✅ HIGH

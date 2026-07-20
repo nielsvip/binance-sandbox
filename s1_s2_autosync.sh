@@ -47,7 +47,7 @@ push_to() {
     local files=()
     # Skip per-account realtime stubs (MacBook-only, not on sandboxes).
     local skip_list=" ez_positions_realtime_ang.py ez_positions_realtime_fin.py ez_positions_realtime_flz.py ez_positions_realtime_inf.py ez_positions_realtime_men.py "
-    for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py config.py config_tradier.py; do
+    for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py per_sym_*.py utils.py symbols.json breakout_multi_lung.py config.py config_tradier.py; do
         for f in $pat; do
             [[ -f "$f" ]] || continue
             [[ "$skip_list" == *" $f "* ]] && continue
@@ -103,9 +103,14 @@ _merge_persym() {
     /opt/anaconda3/envs/binance_env/bin/python3 - <<'PYEOF' && echo "$(date -u +%FT%TZ) PER_SYM_CFG synced S1→Mac" >>"$LOG"
 import json, os, sys
 s1 = json.load(open('/tmp/per_sym_s1.json')) if os.path.exists('/tmp/per_sym_s1.json') else {}
+if not s1:
+    print('s1 empty/missing — keeping existing Mac config (no write)', flush=True)
+    sys.exit(0)
 out = os.environ.get('PER_SYM_CFG_MAC', '/tmp/per_sym_merged.json')
-with open(out, 'w') as f:
+tmp = out + '.tmp'
+with open(tmp, 'w') as f:
     json.dump(s1, f, indent=2, default=str)
+os.replace(tmp, out)
 print(f'synced {len(s1)} entries from S1', flush=True)
 PYEOF
 }
@@ -122,6 +127,15 @@ while true; do
         mkdir -p "$BASE/data/hourly_reconfig"
         export PER_SYM_CFG_MAC
         _merge_persym
+    fi
+    # Pull _trade_lists/ from S1 every ~60 s (per_sym_20d_agent writes exact BT trades)
+    if [[ $_pull_tick -eq 0 ]]; then
+        for _acct in trb trc; do
+            mkdir -p "$BASE/data/hourly_reconfig/$_acct/_trade_lists"
+            rsync -az --timeout=20 -e "ssh $SSH_OPTS" \
+                "s1-int:/home/niels/binance/data/hourly_reconfig/$_acct/_trade_lists/" \
+                "$BASE/data/hourly_reconfig/$_acct/_trade_lists/" 2>>"$LOG"
+        done
     fi
     # Pull OPT_*.png charts from S1 every ~5 min (per-sym profiler writes them)
     _chart_tick=$(( (_chart_tick + 1) % 150 ))

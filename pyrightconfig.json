@@ -1,0 +1,32 @@
+{
+  "venvPath": "/opt/anaconda3/envs",
+  "venv": "binance_env",
+  "pythonVersion": "3.11",
+  "pythonPath": "/opt/anaconda3/envs/binance_env/bin/python",
+  "include": ["."],
+  "exclude": [
+    "**/backups/**",
+    "**/klines_cache/**",
+    "**/klines_cache_gateway/**",
+    "**/plots/**",
+    "**/data/**",
+    "**/logs/**",
+    "**/analyzer/node_modules/**",
+    "**/__pycache__/**",
+    "**/.history/**",
+    "**/workingset/**"
+  ],
+  "extraPaths": [
+    ".",
+    "/opt/anaconda3/envs/binance_env/lib/python3.11/site-packages",
+    "/opt/anaconda3/envs/binance_env/lib/python3.11",
+    "/opt/anaconda3/envs/binance_env/lib/python3.11/lib-dynload"
+  ],
+  "typeCheckingMode": "off",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false,
+  "reportGeneralTypeIssues": false,
+  "reportAttributeAccessIssue": false,
+  "reportOperatorIssue": false,
+  "stubPath": "./typings"
+}

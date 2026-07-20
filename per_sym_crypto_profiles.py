@@ -203,6 +203,10 @@ def mutation_grid() -> List[Tuple[str, Dict]]:
             {"ENTRY_SCORE_THRESHOLD": es, "WA_MIN_GAIN_PCT": mg_pct,
              "PYRAMID_MIN_GAIN_PCT": mg_pct, "HTF_MIN_ALIGNED": htf})
 
+    # Timeframe structural exit variations (2026-06-07)
+    for tf in ('15m', '1h', '4h', 'D'):
+        add(f"struct_tf_{tf}", {"EXIT_STRUCT_TF": tf})
+
     return grid
 
 

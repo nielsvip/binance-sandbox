@@ -15,6 +15,19 @@ The active_config.json is read by tradier_manage.py's _get_tradier_sym_cfg() at 
 """
 from __future__ import annotations
 
+def _bible125_stamp():
+    import hashlib as _h, os as _os
+    base = _os.path.dirname(_os.path.abspath(__file__))
+    parts = []
+    for tag, f in (("eng", "backtest_v8_engine.py"), ("tm", "tradier_manage.py"), ("wdd", "wt_dc_delta.py"), ("cfgt", "config_tradier.py")):
+        try:
+            parts.append(tag + ":" + _h.md5(open(_os.path.join(base, f), "rb").read()).hexdigest()[:10])
+        except Exception:
+            parts.append(tag + ":?")
+    return "+".join(parts)
+
+
+
 import json
 import math
 import os
@@ -51,7 +64,7 @@ SYMBOLS_LONG_TRC  = ROOT / "symbols_trc_long.json"
 SYMBOLS_SHORT_TRC = ROOT / "symbols_trc_short.json"
 
 WINDOW_DAYS = 14.0          # 2 weeks — tradier stocks trade infrequently; 7D gave 0 trades
-MIN_TRADES_FOR_OPINION = 2  # lowered from 5; 7-14 day sample is thin for stocks
+MIN_TRADES_FOR_OPINION = 10  # 2026-07-08 GAINMO: raised 2→10. Opinions from 2 trades are noise-grade (metrics_guard floor is 30; a 7-14d stock window cannot honestly reach 30, so 10 = compromise — anything below simply keeps the baseline, which is the honest default). Sub-30 remains [DIAGNOSTIC]-grade by CLAUDE.md.
 RATE_GUARD_DISABLED = "1"
 WSHARPE_TRADE_FLOOR = 0.0   # lowered from 0.7; disabling on <0 only — small sample can't hit 0.7
 
@@ -261,7 +274,10 @@ def run_symbol(sym: str, can_long: bool, can_short: bool,
     if not npz_path.exists():
         return None
 
-    z = np.load(str(npz_path))
+    # [2026-07-03] allow_pickle: NPZs regenerated ~Jun 16 contain object arrays — the default
+    # False made EVERY symbol fail ("Object arrays cannot be loaded"), freezing live per_sym
+    # configs at 2026-06-15 while mtimes kept refreshing. Trusted local files only.
+    z = np.load(str(npz_path), allow_pickle=True)
     npz = {k: z[k] for k in z.files}
     z.close()
 
@@ -276,21 +292,37 @@ def run_symbol(sym: str, can_long: bool, can_short: bool,
     run_dir = run_root / sym
     run_dir.mkdir(parents=True, exist_ok=True)
 
+    # 2026-07-08 GAINMO (USER): winner = max summed gain among wsharpe>0 candidates
+    # (churn law — unconstrained gain-max selects fee-bleed churn); wsharpe-best fallback
+    # when no candidate is sharpe-positive.
     best_ws = -1e9
+    best_gain = -1e18
     best_tag: str = ""
     best_ovr: Dict = {}
     best_n = 0
     best_rts: List[Tuple[float, int]] = []
+    fb_ws = -1e9
+    fb = None
 
     for i, (tag, ovr) in enumerate(cands, 1):
         run_id = f"reconf_{sym}_{tag}_{i:03d}"
         ws, n, rts = run_candidate(sym, ovr, run_dir, run_id, npz, start_ts, end_ts)
-        if n >= MIN_TRADES_FOR_OPINION and ws > best_ws:
+        if n < MIN_TRADES_FOR_OPINION:
+            continue
+        gain = sum(r for r, _ in rts)
+        if ws > 0.0 and gain > best_gain:
+            best_gain = gain
             best_ws = ws
             best_tag = tag
             best_ovr = ovr
             best_n = n
             best_rts = rts
+        if ws > fb_ws:
+            fb_ws = ws
+            fb = (ws, tag, ovr, n, rts)
+
+    if not best_tag and fb is not None:
+        best_ws, best_tag, best_ovr, best_n, best_rts = fb
 
     if not best_tag:
         return None
@@ -303,6 +335,7 @@ def run_symbol(sym: str, can_long: bool, can_short: bool,
         "trades": best_n,
         "total_pnl_pct": round(total_pnl, 4),
         "overrides": {k: v for k, v in best_ovr.items() if not k.startswith("_")},
+        "settings_stamp": _bible125_stamp(),
         "raw_returns": raw_returns[:200],  # keep recent sample for audit
         "updated_at": int(time.time()),
     }
@@ -489,18 +522,16 @@ def _get_open_positions_trb() -> List[str]:
 
 def main() -> int:
     import argparse
+    global WINDOW_DAYS
     ap = argparse.ArgumentParser()
-    ap.add_argument("--accounts", default="trb",
-                    help="comma-separated accounts (default trb)")
-    ap.add_argument("--daemon", action="store_true",
-                    help="run continuously every hour")
+    ap.add_argument("--accounts", default="trb", help="comma-separated accounts (default trb)")
+    ap.add_argument("--daemon", action="store_true", help="run continuously every hour")
     ap.add_argument("--interval-minutes", type=int, default=60)
-    ap.add_argument("--priority-syms", default="",
-                    help="comma-separated symbols to process first (overrides auto-detect)")
-    ap.add_argument("--syms", default="",
-                    help="comma-separated symbols to process (skip all others)")
+    ap.add_argument("--window-days", type=float, default=14.0, help="window in days (default 14.0)")
+    ap.add_argument("--priority-syms", default="", help="comma-separated symbols to process first (overrides auto-detect)")
+    ap.add_argument("--syms", default="", help="comma-separated symbols to process (skip all others)")
     args = ap.parse_args()
-
+    WINDOW_DAYS = args.window_days
     os.environ["RATE_GUARD_DISABLED"] = RATE_GUARD_DISABLED
 
     accounts = [a.strip() for a in args.accounts.split(",") if a.strip()]

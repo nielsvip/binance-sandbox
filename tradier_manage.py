@@ -15,8 +15,9 @@ from asyncio.queues import QueueEmpty
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager, suppress
 from contextvars import ContextVar
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from datetime import time as dt_time
+from datetime import timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -34,15 +35,20 @@ from dateutil.parser import isoparse
 from config_tradier import TradierConfig
 from local_extremes_scorer import score_local_extremes as _le_score_entry
 from tradier_indicators import analyze_multi_tf_state_tradier
+from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
-from wt_dc_delta import DeltaTracker
+
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
-    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
-    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
-    from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
-    from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+    from entry_engine_dc import \
+        should_fire_dc_entry as _ee_should_fire_dc_entry
+    from entry_engine_htf import \
+        should_fire_htf_entry as _ee_should_fire_htf_entry
+    from entry_engine_stoch import \
+        should_fire_stoch_entry as _ee_should_fire_stoch_entry
+    from entry_engine_wt import \
+        should_fire_wt_entry as _ee_should_fire_wt_entry
 except Exception:
     _ee_should_fire_wt_entry = None
     _ee_should_fire_stoch_entry = None
@@ -51,7 +57,8 @@ except Exception:
 # 2026-05-19 PATH D — STDEV_MACRO entry-engine import (pure function, no I/O).
 # Default OFF via LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED in config_tradier.py.
 try:
-    from entry_engine_stdev_macro import should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry
+    from entry_engine_stdev_macro import \
+        should_fire_stdev_macro_entry as _ee_should_fire_stdev_macro_entry
 except Exception:
     _ee_should_fire_stdev_macro_entry = None
 # ────────────────────────────────────────────────────────────────────────────────
@@ -340,33 +347,26 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
         return _mult, f" +ENGINES({','.join(_reasons)})"
     except Exception:
         return 1.0, ''
-from tradier_indicators import (
-    compute_extra_indicators,
-    get_rvol_gate_for_strategy,
-    is_lunch_dead_zone,
-)
-from utils import (
-    construct_position_key,
-    current_account,
-    get_simple_redis_manager,
-    load_environment_from_gpg,
-    parse_position_key,
-    pk_is_long,
-    pk_is_short,
-    pk_symbol,
-    record_decision_context,
-    safe_datetime,
-    tradier_action_logger,
-)
+from tradier_indicators import (compute_extra_indicators,
+                                get_rvol_gate_for_strategy, is_lunch_dead_zone)
+from utils import (construct_position_key, current_account,
+                   get_simple_redis_manager, load_environment_from_gpg,
+                   parse_position_key, pk_is_long, pk_is_short, pk_symbol,
+                   record_decision_context, safe_datetime,
+                   tradier_action_logger)
+
 # wt_composite inlined into tradier_indicators._inject_wt_composite — fields already in indicator dict
 _STOCK_TFS = ["5m", "15m", "1h", "4h", "D"]
 
 load_environment_from_gpg(None)
 from tradier_api import TradierAPIClient
 from tradier_positions import TradierPosition, TradierPositionManager
+
 # === 2026-04-26 NEW MODULES (VIX regime + per-sector L/S) ===
 try:
-    from tradier_vix_regime import get_vix_regime_size_mult, get_vix_regime_label, is_vix_panic_regime
+    from tradier_vix_regime import (get_vix_regime_label,
+                                    get_vix_regime_size_mult,
+                                    is_vix_panic_regime)
     _VIX_MODULE_AVAILABLE = True
 except Exception as _vix_err:
     _VIX_MODULE_AVAILABLE = False
@@ -677,30 +677,18 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
         # Earlier 2026-05-20 split (trc = config defaults only, no per-sym at all) is
         # OBSOLETE — was measuring the wrong thing.
         # Both arms honor _inject_neg_sharpe_no_trade: wsharpe<0 → LONG/SHORT_ENABLED=False.
-        if account_key == "trb":
+        if account_key in ("trb", "trc"):
             # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
-            cfgs = _load_tradier_per_sym_cfgs(_tradier_per_sym_cfgs_path)
+            cfgs = _load_tradier_per_sym_cfgs(Path(config.BASE_PATH) / "data" / "hourly_reconfig" / account_key / "active_config.json")
             entry = cfgs.get(f"{symbol}_{side}", {})
-            # 2026-05-18 trial-sizing override
-            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in entry and entry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
-                return entry["START_POSITION_SIZE_OVERRIDE_USD"]
-            if param in entry:
-                return entry[param]
+            # 2026-05-18 trial-sizing override 
+            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in entry and entry["START_POSITION_SIZE_OVERRIDE_USD"] is not None: return entry["START_POSITION_SIZE_OVERRIDE_USD"]
+            if param in entry: return entry[param]
             # 2. Global per-symbol custom (single source of truth for per-symbol settings)
             gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
             # 2026-05-18 trial-sizing override
-            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
-                return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
-            if param in gentry:
-                return gentry[param]
-        elif account_key == "trc":
-            # 2026-05-22 USER MANDATE: trc reads ONLY per_sym_active_config.json (static 4yr baseline).
-            # Skip trb/active_config.json overlay (the 7D tweaks belong to trb only).
-            gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
-            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None:
-                return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
-            if param in gentry:
-                return gentry[param]
+            if param == "START_POSITION_SIZE" and "START_POSITION_SIZE_OVERRIDE_USD" in gentry and gentry["START_POSITION_SIZE_OVERRIDE_USD"] is not None: return gentry["START_POSITION_SIZE_OVERRIDE_USD"]
+            if param in gentry: return gentry[param]
         # 3. Regime override (applies to all accounts — not per_sym agent output)
         v = config.get_symbol_setting(account_key, f"{symbol}_{side}", param)
         if v is not None:
@@ -753,8 +741,8 @@ def _uve_update_and_read(symbol, ind, price):
             "wt2_D": float(ind.get("wt2_D", 0) or 0),
             "wt1_W": float(ind.get("wt1_W", 0) or 0),
             "wt2_W": float(ind.get("wt2_W", 0) or 0),
-            "stoch_k_15m": float(ind.get("stoch_k_15m", 50) or 50),
-            "stoch_k_1h": float(ind.get("stoch_k_1h", 50) or 50),
+            "k_15m": float(ind.get("k_15m", 50) or 50),
+            "k_1h": float(ind.get("k_1h", 50) or 50),
             "atr_15m": float(ind.get("atr_15m", ind.get("atr_1h", 0)) or 0),
             "dc_high_15m": float(ind.get("dc_high_15m", ind.get("dc_high_1h", 0)) or 0),
             "dc_low_15m": float(ind.get("dc_low_15m", ind.get("dc_low_1h", 0)) or 0),
@@ -914,8 +902,8 @@ _GLOBAL_JSON_LOCK = threading.Lock()
 class InjectAccountFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         if not hasattr(record, 'account_key'):
-            val = current_account.get()
-            record.account_key = val if val else "SYS"
+            val = current_account.get(None)
+            record.account_key = val.upper() if val else "SYS"
         return True
 
 class WeatherLogFilter(logging.Filter):
@@ -967,6 +955,13 @@ class AccountScopedFilter(logging.Filter):
         rec_acct = getattr(record, 'account_key', 'SYS')
         return rec_acct == self.acct or rec_acct == "SYS"
 
+class NoWaitSnapshotFilter(logging.Filter):
+    """tradier_manage_{acct}.log: exclude WAIT/HOLD weather snapshots (they go to wait log)."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not getattr(record, 'weather_snapshot', False): return True
+        msg = record.getMessage()
+        return not ("WAIT" in msg or "⏳" in msg or "🛡️" in msg)
+
 class ConsoleFilter(logging.Filter):
     """Stdout: Actions and clean Weather (No waits) for the primary account."""
     def __init__(self, acct: str = None):
@@ -979,7 +974,7 @@ class ConsoleFilter(logging.Filter):
         return not ("WAIT" in msg or "⏳" in msg)
 
 # --- 2. LOGGER SETUP ---
-
+_logger_setup_done = False
 def setup_logger_per_account(logger_name: str, base_path: str, target_accounts: List[str]) -> logging.Logger:
     global _logger_setup_done
 
@@ -1002,13 +997,15 @@ def setup_logger_per_account(logger_name: str, base_path: str, target_accounts: 
     for acct in target_accounts:
         acct_l = acct.lower()
         
-        # --- WEATHER LOG: tradier_manage_trb.log (Clean Forecasts) ---
-        w_path = os.path.join(base_path, f"tradier_manage_{acct_l}.log")
-        w_h = RotatingFileHandler(w_path, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
-        w_h.setLevel(logging.INFO)
-        w_h.addFilter(WeatherLogFilter(acct))
-        w_h.setFormatter(logging.Formatter('[%(asctime)s] %(message)s'))
-        logger_obj.addHandler(w_h)
+        # 2026-06-03 REMOVED the WEATHER LOG handler (w_h). It opened a SECOND RotatingFileHandler
+        # on the SAME file as the wd_h heartbeat handler below (both → tradier_manage_{acct}.log).
+        # Two RotatingFileHandlers on one file = (1) every line written TWICE in two formats, and
+        # (2) a rotation race: when one rolls {acct}.log→{acct}.log.1 the other keeps writing the
+        # stale inode, freezing the live {acct}.log (root cause of trb/tra logs going dead while the
+        # worker kept trading). wd_h's AccountScopedFilter already writes EVERYTHING for this account
+        # (incl weather snapshots), so the weather handler was a redundant, conflicting subset.
+        # Net: tradier_manage_{acct}.log now has exactly ONE writer → no dupes, no rotation freeze,
+        # every decision traceable.
 
         # --- WAIT LOG: tradier_manage_wait_trb.log (Wait/Hold lines) ---
         wait_path = os.path.join(base_path, f"tradier_manage_wait_{acct_l}.log")
@@ -1030,13 +1027,33 @@ def setup_logger_per_account(logger_name: str, base_path: str, target_accounts: 
         wd_h = RotatingFileHandler(wd_path, maxBytes=5*1024*1024, backupCount=2, encoding='utf-8')
         wd_h.setLevel(logging.INFO)
         wd_h.addFilter(AccountScopedFilter(acct))
+        wd_h.addFilter(NoWaitSnapshotFilter())
         wd_h.setFormatter(logging.Formatter('%(asctime)s - %(message)s', datefmt='%m-%d %H:%M:%S'))
         logger_obj.addHandler(wd_h)
 
     _logger_setup_done = True
     return logger_obj
 
-logger = setup_logger_per_account("tradier_manage", config.LOG_DIR, config.ACCOUNT_KEYS)
+# 2026-06-03 LOG-HIJACK ROOT FIX: open log handlers ONLY for THIS process's own account(s)
+# (parsed from --accounts), not for every config.ACCOUNT_KEYS. Previously every tradier proc
+# opened a RotatingFileHandler on all three {acct}.log files; the cross-process rollover race
+# froze whichever account's log started last (e.g. tra), which then made run_with_watchdog's
+# no-output timer kill+restart-loop that worker. Scoping handlers to the proc's own account
+# means each log has exactly one writer — no race, no false "stuck" restarts.
+def _own_accounts_from_argv():
+    _all = list(getattr(config, 'ACCOUNT_KEYS', ['trc']))
+    if '--accounts' in sys.argv:
+        _picked = []
+        for a in sys.argv[sys.argv.index('--accounts') + 1:]:
+            if a.startswith('-'):
+                break
+            if a in _all:
+                _picked.append(a)
+        if _picked:
+            return _picked
+    return _all
+_own_accounts = _own_accounts_from_argv()
+logger = setup_logger_per_account("tradier_manage", config.LOG_DIR, _own_accounts)
 account_keys = getattr(config, 'ACCOUNT_KEYS', ['trc'])
 wait_logger = logging.getLogger("tradier_manage_wait") # This will be handled by the same setup above or we can define it separately
 _log_throttle: Dict[str, float] = {}
@@ -1045,7 +1062,8 @@ async def log_stoch_snapshot(trade_manager, account_key: str, context_label: str
         # --- 1. Setup & Data Extraction ---
         if score is None: score = 0.0
         # Access logger safely
-        main_logger = getattr(trade_manager, 'logger', logging.getLogger(__name__))
+        main_logger = logging.getLogger("tradier_manage")
+        #main_logger = getattr(trade_manager, 'logger', logging.getLogger(__name__))
         
         now_ts = time.time()
         is_long = position_key.endswith("_LONG")
@@ -1098,9 +1116,9 @@ async def log_stoch_snapshot(trade_manager, account_key: str, context_label: str
         _log_throttle[throttle_key] = now_ts
 
         # --- 3. Indicator Processing ---
-        k_1m = _g('stoch_k_1m', _g('k_1m')); d_1m = _g('stoch_d_1m', _g('d_1m'))
-        k_5m = _g('stoch_k_5m', _g('k_5m')); d_5m = _g('stoch_d_5m', _g('d_5m'))
-        k_15m = _g('stoch_k_15m', _g('k_15m')); d_15m = _g('stoch_d_15m', _g('d_15m'))
+        k_1m = _g('k_1m', _g('k_1m')); d_1m = _g('d_1m', _g('d_1m'))
+        k_5m = _g('k_5m', _g('k_5m')); d_5m = _g('d_5m', _g('d_5m'))
+        k_15m = _g('k_15m', _g('k_15m')); d_15m = _g('d_15m', _g('d_15m'))
         
         # Weather Icons
         def get_weather(k, d=None, prev=None):
@@ -1108,7 +1126,7 @@ async def log_stoch_snapshot(trade_manager, account_key: str, context_label: str
             if d is not None: return "☀️" if k > d else "☁️"
             return "•"
             
-        w_str = f"[{get_weather(k_1m, d=d_1m)}{get_weather(k_5m, d=d_5m)}{get_weather(k_15m, d=d_15m)}{get_weather(_g('stoch_k_1h'), d=_g('stoch_d_1h'))}{get_weather(_g('stoch_k_4h'), d=_g('stoch_d_4h'))}{get_weather(_g('stoch_k_D'), d=_g('stoch_d_D'))}]"
+        w_str = f"[{get_weather(k_1m, d=d_1m)}{get_weather(k_5m, d=d_5m)}{get_weather(k_15m, d=d_15m)}{get_weather(_g('k_1h'), d=_g('d_1h'))}{get_weather(_g('k_4h'), d=_g('d_4h'))}{get_weather(_g('k_D'), d=_g('d_D'))}]"
         # --- 3. REVISED Age Calculation (Match get_indicators) ---
         ts_raw = indicators.get('timestamp_1m') or indicators.get('timestamp')
         lag_disp = "UNK"
@@ -1285,6 +1303,18 @@ def is_regular_trading_hours():
     market_close = dt_time(16, 0)
     current_time = now_est.time()
     return market_open <= current_time <= market_close
+
+async def safe_check_server_heartbeat_tradier(account_key: str) -> bool:
+    try:
+        import asyncio
+        import platform as _pf
+        import subprocess
+        import time
+        from pathlib import Path
+        if _pf.system() != "Darwin": return (time.time() - (Path("/home/niels/binance/data") / f"tradier_manage_running_{account_key}").stat().st_mtime) < 45 if (Path("/home/niels/binance/data") / f"tradier_manage_running_{account_key}").exists() else False
+        res = await asyncio.to_thread(subprocess.run, ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", "s1-int", f"stat -c %Y /home/niels/binance/data/tradier_manage_running_{account_key}"], capture_output=True, text=True, timeout=3)
+        return (time.time() - float(res.stdout.strip())) < 45 if res.returncode == 0 else False
+    except Exception: return False
 
 def in_opening_buffer(min_minutes: float = None) -> tuple[bool, float]:
     """Return (is_in_buffer, mins_since_open). True means within OPENING_BUFFER_NO_CLOSE_MINUTES
@@ -1531,7 +1561,8 @@ async def obligatory_sector_hedge_or_close_loop(trade_manager):
             if not is_regular_trading_hours():
                 continue
             try:
-                from tradier_sector_ls_ratio import _load_sector_map, get_sector
+                from tradier_sector_ls_ratio import (_load_sector_map,
+                                                     get_sector)
             except Exception as _ie:
                 logger.error(f"[OBLIGATORY_SECTOR_HEDGE_LOOP] sector helper import failed: {_ie}")
                 continue
@@ -1753,7 +1784,8 @@ async def overnight_gap_hedge_loop(trade_manager):
             hedge_for_shorts = sentiment_score > sentiment_threshold
             logger.warning(f"[OVERNIGHT_GAP_HEDGE] FIRING: sentiment={sentiment_score:.1f} → hedging {'LONGs→SHORT' if hedge_for_longs else 'SHORTs→LONG'}")
             try:
-                from tradier_sector_ls_ratio import _load_sector_map, get_sector
+                from tradier_sector_ls_ratio import (_load_sector_map,
+                                                     get_sector)
             except Exception as _ie:
                 logger.error(f"[OVERNIGHT_GAP_HEDGE] sector import failed: {_ie}")
                 _hedges_fired_today = True
@@ -1827,6 +1859,32 @@ async def overnight_gap_hedge_loop(trade_manager):
         except Exception as e:
             logger.error(f"[OVERNIGHT_GAP_HEDGE] loop error: {e}", exc_info=True)
             await asyncio.sleep(30)
+
+
+def mtf_arrow_score(ind, is_long, cfg):
+    """USER 2026-07-20 multi-TF arrow system — port of tools/mtf_arrow_lab (ARM 5.81x b&h sized).
+    Score the higher-TF context for a 5m entry: the closer each HTF sits to its LOWER regression
+    band the higher the score, and the steeper its rising slope the higher the score. Returns
+    (score, detail). Score feeds BOTH the entry gate (>= MTF_ARROW_THETA) and the size multiplier."""
+    weights = getattr(cfg, "MTF_ARROW_WEIGHTS", None) or {"1h": 0.35, "4h": 0.35, "D": 0.30}
+    lam = float(getattr(cfg, "MTF_ARROW_SLOPE_LAMBDA", 1.0))
+    norm = max(1e-9, float(getattr(cfg, "MTF_ARROW_SLOPE_NORM_PCT_DAY", 0.3)))
+    per_day = {"1h": 6.5, "4h": 1.625, "D": 1.0}
+    score = 0.0
+    parts = []
+    for tf, w in weights.items():
+        pb = ind.get(f"lrL_pct_b_{tf}")
+        sl = ind.get(f"lrL_slope_{tf}")
+        if pb is None or sl is None:
+            continue
+        pb_f = float(pb)
+        sl_day = float(sl) * per_day.get(tf, 1.0)
+        depth = max(0.0, min(1.2, (1.0 - pb_f) if is_long else pb_f))
+        fav = (sl_day > 0) if is_long else (sl_day < 0)
+        contrib = w * (depth + lam * min(abs(sl_day) / norm, 1.0) if fav else depth - w * 0.5)
+        score += contrib
+        parts.append(f"{tf}:d{depth:.2f}s{sl_day:+.2f}")
+    return score, " ".join(parts)
 
 
 async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key: str, position_keys=None, event_type=None, is_priority_add: bool = False, force: bool = False):
@@ -2015,8 +2073,8 @@ def detect_stdev_breakout_t(symbol: str, is_long: bool, i: dict) -> dict:
     # Phase 2: Retest
     for tf in retest_tf_list:
         pctb = _get_bb_pctb_t(symbol, tf, i)
-        k_tf = safe_fetch_float(i.get(f'stoch_k_{tf}', 50), 50)
-        d_tf = safe_fetch_float(i.get(f'stoch_d_{tf}', 50), 50)
+        k_tf = safe_fetch_float(i.get(f'k_{tf}', 50), 50)
+        d_tf = safe_fetch_float(i.get(f'd_{tf}', 50), 50)
         if is_long:
             if retest_pctb_min <= pctb <= retest_pctb_max and k_tf > d_tf and k_tf < 65:
                 state['retest_count'] += 1
@@ -2118,7 +2176,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
 
         i = trade_manager.strategy.parse_market_data(indicators_raw)
         if symbol.upper() in trade_manager.blacklist and not has_position: return "BLOCKED_BLACKLIST"
-        if (i.get('stoch_k_1m') == 50.0 and i.get('stoch_k_5m') == 50.0):
+        if (i.get('k_1m') == 50.0 and i.get('k_5m') == 50.0):
              if force: logger.info(f"[{account_key}] SKIP {symbol}: Flatline Data (50/50).")
              return "DATA_ERROR"
 
@@ -2164,6 +2222,36 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             except Exception as _trv1_err:
                 logger.warning(f"[TR_TREND_V1_SHADOW] eval_error acct={account_key} sym={symbol} side={position_side}: {_trv1_err}")
         # ═══════════════════════════════════════════════════════════════════════
+        # DYN_STRUCT_TRAIL (2026-07-19, default OFF) — monotone structure-following
+        # trail: stop = trailing dc_low_{tf} (dc_high for shorts), ratchets only in
+        # the favorable direction; arms once gain >= DYN_STRUCT_TRAIL_MIN_GAIN_PCT.
+        # Live mirror of the engine block (parity); reason FROZEN_STOP_* bypass.
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+           bool(_cfg('DYN_STRUCT_TRAIL_ENABLED', False, account_key, symbol, position_side)):
+            try:
+                _dst_tf = str(_cfg('DYN_STRUCT_TRAIL_TF', '4h', account_key, symbol, position_side) or '4h')
+                _dst_min_g = safe_float(_cfg('DYN_STRUCT_TRAIL_MIN_GAIN_PCT', 0.0, account_key, symbol, position_side), 0.0)
+                _dst_key = ('dc_low_' if is_long else 'dc_high_') + _dst_tf
+                _dst_cur = safe_fetch_float(i.get(_dst_key), 0.0)
+                _dst_st = getattr(position, 'dyn_strail_state', None)
+                if not isinstance(_dst_st, dict):
+                    _dst_st = {'lvl': 0.0, 'armed': _dst_min_g <= 0.0}
+                    position.dyn_strail_state = _dst_st
+                _dst_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                if _dst_gain >= _dst_min_g:
+                    _dst_st['armed'] = True
+                if _dst_cur > 0:
+                    if _dst_st['lvl'] <= 0:
+                        _dst_st['lvl'] = _dst_cur
+                    elif is_long and _dst_cur > _dst_st['lvl']:
+                        _dst_st['lvl'] = _dst_cur
+                    elif (not is_long) and _dst_cur < _dst_st['lvl']:
+                        _dst_st['lvl'] = _dst_cur
+                if _dst_st['armed'] and _dst_st['lvl'] > 0 and ((is_long and current_price <= _dst_st['lvl']) or ((not is_long) and current_price >= _dst_st['lvl'])):
+                    logger.error(f"⛔ [DYN_STRUCT_TRAIL] {position_key}: g={_dst_gain:.2f}% px={current_price:.4f} lvl={_dst_st['lvl']:.4f} tf={_dst_tf} → CLOSE")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"FROZEN_STOP_DYN_STRUCT_TRAIL_{_dst_tf}_g{_dst_gain:.2f}", 100.0, override_qty=999999)
+            except Exception as _dst_e:
+                logger.warning(f"[DYN_STRUCT_TRAIL] error {position_key}: {_dst_e}")
         # R1 — DC_LOW4 EMERGENCY CLOSE (USER 2026-05-09, stocks mirror).
         # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured
         # 5m DC channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL.
@@ -2171,21 +2259,27 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
            bool(_cfg('R1_DC_LOW4_3M_EMERGENCY_ENABLED', True, account_key, symbol, position_side)):
             try:
-                # Fixed stop price set at open/augment time — no time window.
-                _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
-                # Fallback: if stop was never stored (position opened before R1 wiring or via other path),
-                # read LIVE dc channel level. This ensures R1 fires for every open position.
-                if _r1_stop <= 0:
-                    _r1_live_key = 'dc_low4_5m' if is_long else 'dc_high4_5m'
-                    _r1_stop_live = safe_fetch_float(i.get(_r1_live_key), 0.0)
-                    if _r1_stop_live > 0:
-                        _r1_stop = _r1_stop_live
-                        position.r1_stop_price = _r1_stop_live  # persist so next bar uses same level
-                        logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised from live {_r1_live_key}={_r1_stop_live:.4f}")
-                _r1_age_min = 0.0  # kept for log only
+                # 2026-07-11 RESTORED per CLAUDE.md R1 mandate + MU_LONG capture artifact:
+                # R1 is a NEWBORN emergency (first R1_NEWBORN_WINDOW_MIN of a position's life),
+                # NOT a permanent stop. The windowless version + live-channel lazy re-seed
+                # ratcheted the stop up behind price and closed 28-day-old positions at g~0
+                # in a loop (mandatory reentry made it churn: MU_LONG b&h +744% vs strategy
+                # -0.2% over 47 trades). Window gate enforced below; lazy seed only inside
+                # the window and only once (frozen thereafter).
+                _r1_age_min = 0.0
                 _r1_opened = getattr(position, 'opened_at', None)
                 if isinstance(_r1_opened, datetime):
                     _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                _r1_window_min = float(_cfg('R1_NEWBORN_WINDOW_MIN', 15.0, account_key, symbol, position_side) or 15.0)
+                _r1_in_window = _r1_age_min <= _r1_window_min
+                _r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0) if _r1_in_window else 0.0
+                if _r1_stop <= 0 and _r1_in_window:
+                    _r1_live_key = ('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')  # 2026-07-01 R1_USE_DC_4BAR wired: True=4-bar (stocks default, pending A/B); False=20-bar dc_low_5m
+                    _r1_stop_live = safe_fetch_float(i.get(_r1_live_key), 0.0)
+                    if _r1_stop_live > 0:
+                        _r1_stop = _r1_stop_live
+                        position.r1_stop_price = _r1_stop_live  # frozen once set; never re-seeded from live channel
+                        logger.info(f"[R1_STOP_LAZY_SET] {position_key}: r1_stop_price not set — initialised (newborn, age={_r1_age_min:.1f}m) from live {_r1_live_key}={_r1_stop_live:.4f}")
                 if _r1_stop > 0:
                     _r1_breached = (
                         (is_long and current_price <= _r1_stop) or
@@ -2227,6 +2321,37 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         return f"R1_DC_LOW4_EMERGENCY_FAILED:{str(_r1_err_str)[:40]}"
             except Exception as _r1_err:
                 logger.debug(f"[R1_DC_LOW4] {position_key} err: {_r1_err}")
+        # ═══════════════════════════════════════════════════════════════════════
+        # HYBRID EXIT — Timeframe Exit Combinations for Lower-HL exits (Structure-Breakdown)
+        # ═══════════════════════════════════════════════════════════════════════
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0:
+            try:
+                _se_tf = _cfg("EXIT_STRUCT_TF", "None", account_key, symbol, position_side)
+                if _se_tf == "None" or not _se_tf: _se_tf = _cfg("LONG_STRUCT_EXIT_TF" if is_long else "SHORT_STRUCT_EXIT_TF", "None", account_key, symbol, position_side)
+                if _se_tf != "None" and _se_tf and i:
+                    _se_open = safe_fetch_float(i.get(f"open_{_se_tf}"), 0.0)
+                    _se_high_prev = safe_fetch_float(i.get(f"high_{_se_tf}_prev"), 0.0)
+                    _se_low_prev = safe_fetch_float(i.get(f"low_{_se_tf}_prev"), 0.0)
+                    if _se_open > 0 and _se_high_prev > 0 and _se_low_prev > 0:
+                        _last_open = getattr(position, "_last_struct_open", None)
+                        if _last_open is None:
+                            setattr(position, "_last_struct_open", _se_open)
+                            setattr(position, "_last_high_prev", _se_high_prev)
+                            setattr(position, "_last_low_prev", _se_low_prev)
+                        elif abs(_se_open - _last_open) > 1e-8:
+                            _last_hp = getattr(position, "_last_high_prev", _se_high_prev)
+                            _last_lp = getattr(position, "_last_low_prev", _se_low_prev)
+                            _se_fire = (_se_high_prev < _last_hp and _se_low_prev < _last_lp) if is_long else (_se_high_prev > _last_hp and _se_low_prev > _last_lp)
+                            setattr(position, "_last_struct_open", _se_open)
+                            setattr(position, "_last_high_prev", _se_high_prev)
+                            setattr(position, "_last_low_prev", _se_low_prev)
+                            if _se_fire:
+                                _se_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                                logger.error(f"⛔ [HYBRID_STRUCT_EXIT] {position_key}: structure breakdown on {_se_tf} (high_prev={_se_high_prev:.4f} vs last_hp={_last_hp:.4f}, low_prev={_se_low_prev:.4f} vs last_lp={_last_lp:.4f}) → CLOSE")
+                                await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"HYBRID_STRUCT_EXIT_{_se_tf}_g{_se_gain:.2f}%", 100.0, override_qty=999999)
+                                return "HYBRID_STRUCT_EXIT_CLOSED"
+            except Exception as _se_err:
+                logger.debug(f"[HYBRID_STRUCT_EXIT] {position_key} err: {_se_err}")
         # ═══════════════════════════════════════════════════════════════════════
         # R1c — FROZEN_ACT_STOP (USER 2026-05-18 stocks team finding).
         # Frozen dc_low_4h@entry (LONG) / dc_high_4h@entry (SHORT) + -8% absolute floor.
@@ -2315,6 +2440,23 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # 2026-05-18 per-sym overlay
         if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and bool(_cfg('R3_HTF_FLIP_EXIT_ENABLED', False, account_key, symbol, position_side))):
             try:
+                _r3_newborn_min = float(getattr(config, 'R3_HTF_FLIP_NEWBORN_WINDOW_MIN', 15.0))
+                _r3_opened = getattr(position, 'opened_at', None)
+                _r3_skip_newborn = False
+                if _r3_newborn_min > 0 and isinstance(_r3_opened, datetime):
+                    _r3_age_min = (datetime.now(timezone.utc) - _r3_opened).total_seconds() / 60.0
+                    if _r3_age_min < _r3_newborn_min:
+                        logger.debug(f"[R3_HTF_FLIP] {position_key}: newborn ({_r3_age_min:.1f}m < {_r3_newborn_min:.0f}m) — suppressed, R1 dc_low4_5m active")
+                        _r3_skip_newborn = True
+                _r3_skip_r1_guard = False
+                _r3_r1_stop = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
+                if _r3_r1_stop <= 0:
+                    _r3_dc_key = 'dc_low4_5m' if is_long else 'dc_high4_5m'
+                    _r3_r1_stop = safe_fetch_float(i.get(_r3_dc_key) or indicators_raw.get(_r3_dc_key), 0.0)
+                if _r3_r1_stop > 0:
+                    if (is_long and current_price > _r3_r1_stop) or ((not is_long) and current_price < _r3_r1_stop):
+                        _r3_skip_r1_guard = True
+                        logger.debug(f"[R3_HTF_FLIP] {position_key}: r1_stop={_r3_r1_stop:.4f} active, price={current_price:.4f} not breached — R3 deferred to R1")
                 _r3hf_w1_D = safe_fetch_float(i.get('wt1_D'), 0)
                 _r3hf_w2_D = safe_fetch_float(i.get('wt2_D'), 0)
                 _r3hf_w1_W = safe_fetch_float(i.get('wt1_W'), 0)
@@ -2346,7 +2488,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _r3hf_fire = True
                             _r3hf_tier = "4H"
                             _r3hf_detail = f"px={current_price:.4f}_ema4h={_r3hf_ema_20_4h:.4f}_atr4h={_r3hf_atr_4h:.4f}_w1_4h={_r3hf_w1_4h:.2f}_w2_4h={_r3hf_w2_4h:.2f}"
-                if _r3hf_fire:
+                if _r3hf_fire and not _r3_skip_newborn and not _r3_skip_r1_guard:
                     _r3hf_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                     _r3hf_reason_tag = "R3_HTF_FLIP" if _r3hf_tier == "DAILY" else "R3_HTF_FLIP_4H"
                     logger.error(f"⛔ [{_r3hf_reason_tag}] {position_key}: tier={_r3hf_tier} gain={_r3hf_gain:.2f}% {_r3hf_detail} → CLOSE")
@@ -2522,14 +2664,23 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     if _wf_anchor <= 0:
                         _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
                     _wf_buf = float(getattr(config, 'WT_3M_FORCE_OPEN_DIST_PCT', 0.0)) / 100.0
-                    _wf_wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_3m')), 0.0)
-                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
-                    _wf_wt1_5m_prev = safe_fetch_float(i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m)), _wf_wt2_5m)
+                    _wf_tf = str(getattr(config, 'WT_FORCE_OPEN_TRIGGER_TF', '5m'))  # [2026-06-26] configurable trigger TF (5m=current/churn, 15m/1h=less churn); A/B-tested
+                    _wf_wt1_5m = safe_fetch_float(i.get(f'wt1_{_wf_tf}', i.get('wt1_5m', i.get('wt1_3m'))), 0.0)
+                    _wf_wt2_5m = safe_fetch_float(i.get(f'wt2_{_wf_tf}', i.get('wt2_5m', i.get('wt2_3m'))), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
+                    _wf_wt1_5m_prev = safe_fetch_float(i.get(f'wt1_{_wf_tf}_prev', i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m))), _wf_wt2_5m)
                     _above = (is_long and _wf_anchor > 0 and current_price > _wf_anchor * (1.0 + _wf_buf)) or ((not is_long) and _wf_anchor > 0 and current_price < _wf_anchor * (1.0 - _wf_buf))
                     # USER 2026-06-03 ABSOLUTE: WT must be GOING the right way — WT-against = NO add/hold,
                     # no exceptions. WT-in-favor = keep adding bigger. wt1_5m rising AND not below its signal.
-                    _wf_wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_3m')), _wf_wt1_5m)
+                    _wf_wt2_5m = safe_fetch_float(i.get(f'wt2_{_wf_tf}', i.get('wt2_5m', i.get('wt2_3m'))), _wf_wt1_5m)
                     _wt_favor = (is_long and _wf_wt1_5m > _wf_wt1_5m_prev and _wf_wt1_5m >= _wf_wt2_5m) or ((not is_long) and _wf_wt1_5m < _wf_wt1_5m_prev and _wf_wt1_5m <= _wf_wt2_5m)
+                    if bool(getattr(config, 'WT_FORCE_OPEN_FRESH_CROSS_ONLY', False)):  # [2026-06-27] fire on FRESH WT cross event, not standing state (kills refire churn)
+                        _wf_maxb = int(getattr(config, 'WT_FORCE_OPEN_FRESH_MAX_BARS', 0))
+                        if _wf_maxb <= 0:
+                            _wt_favor = (is_long and safe_fetch_float(i.get(f'wt_cross_bull_{_wf_tf}'), 0.0) >= 1) or ((not is_long) and safe_fetch_float(i.get(f'wt_cross_bear_{_wf_tf}'), 0.0) >= 1)
+                        else:
+                            _wf_ba = safe_fetch_float(i.get(f'wt_cross_bars_ago_{_wf_tf}'), 999.0)
+                            _wf_rising = i.get(f'wt_cross_rising_{_wf_tf}')
+                            _wt_favor = (_wf_ba <= _wf_maxb) and ((is_long and _wf_rising is True) or ((not is_long) and _wf_rising is False))
                     if _above and _wt_favor and current_price > 0:
                         _wf_mult = 1.0
                         if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
@@ -2548,7 +2699,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _wf_act = "AUGMENT" if has_position else "OPEN"
                             _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_above_sma200_15m_x{_wf_mult:.0f}_posval{_wf_pos_val:.0f}of{_wf_target:.0f}_px{current_price:.4f}"
                             logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: tradeable + {'above' if is_long else 'below'} sma200_15m({_wf_anchor:.2f}) + moving → {_wf_act} qty={_wf_qty:.2f} (${_wf_size_usd:.0f}, ladder x{_wf_mult:.0f}, posval ${_wf_pos_val:.0f}/${_wf_target:.0f})")
-                            _wf_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                            _wf_stop = safe_fetch_float(i.get(('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')), 0.0)
                             if _wf_stop > 0:
                                 _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
                                 if _cur_r1_wf <= 0 or (is_long and _wf_stop > _cur_r1_wf) or (not is_long and _wf_stop < _cur_r1_wf):
@@ -2577,9 +2728,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _ra_w2_15m = safe_fetch_float(i.get('wt2_15m'), 0)
                     _ra_w1_1h = safe_fetch_float(i.get('wt1_1h'), 0)
                     _ra_w2_1h = safe_fetch_float(i.get('wt2_1h'), 0)
-                    _ra_k_3m = safe_fetch_float(i.get('stoch_k_3m') or i.get('k_3m'), 50)
-                    _ra_d_3m = safe_fetch_float(i.get('stoch_d_3m') or i.get('d_3m'), 50)
-                    _ra_k_3m_prev = safe_fetch_float(i.get('k_3m_prev') or i.get('stoch_k_3m_prev'), _ra_k_3m)
+                    _ra_k_3m = safe_fetch_float(i.get('k_3m') or i.get('k_3m'), 50)
+                    _ra_d_3m = safe_fetch_float(i.get('d_3m') or i.get('d_3m'), 50)
+                    _ra_k_3m_prev = safe_fetch_float(i.get('k_3m_prev') or i.get('k_3m_prev'), _ra_k_3m)
                     _ra_data_ok = (abs(_ra_w1_D) > 1e-9 and abs(_ra_w2_D) > 1e-9 and _ra_dc_basis_D > 0 and _ra_atr_D > 0 and current_price > 0)
                     if _ra_data_ok:
                         # 2026-05-18 per-sym overlay
@@ -2808,7 +2959,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             log_reason = aug_reason
                             logger.info(f"[{account_key}] 🟢 REVIEWING AUGMENT {symbol}: {aug_reason} Qty: {aug_qty}")
                             if market_open:
-                                _aug_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                                _aug_stop = safe_fetch_float(i.get(('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')), 0.0)
                                 if _aug_stop > 0:
                                     _cur_r1_aug = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
                                     if _cur_r1_aug <= 0 or (is_long and _aug_stop > _cur_r1_aug) or (not is_long and _aug_stop < _cur_r1_aug):
@@ -2879,6 +3030,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 conf = 0
                 _delta_entry = False
                 _xb_reentry_fired = False
+                # 2026-07-20 USER band mandate: LONG-only mode — short entries skip so the short
+                # side can never squat the symbol and block LONG entries during upswings
+                # (has_opposing_pos starved every band entry in the both-sides engine sim).
+                if (not is_long) and bool(getattr(config, 'TRADIER_LONG_ONLY_ENTRIES', False)):
+                    return "LONG_ONLY_ENTRIES_SKIP_SHORT"
+                if os.environ.get("V8_LRBAND_DEBUG"):
+                    _lbp0 = globals().setdefault("_LRBAND_P0", {"n": 0})
+                    _lbp0["n"] += 1
+                    if _lbp0["n"] % 2000 == 1:
+                        print(f"V8_LOG LRBAND_P0 branchB_flat_reach={_lbp0['n']} is_long={is_long} sym={symbol}", flush=True)
                 _entry_score = 0.0  # 2026-05-28 C1 FIX: bind before branches — reentry/GR/delta entry paths set action_type="OPEN" without running wt_dc_score_entry, so the ENTRY_SCORE_THRESHOLD veto (~3023) hit UnboundLocalError when a per-sym ENTRY_SCORE_THRESHOLD>0 override was present (41 crashes/day on IBIT/CIBR/DAR/ROBO).
                 if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)) and trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
                     _xb_last_t = trade_manager.last_exit_times.get(symbol, 0)
@@ -2951,8 +3112,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     _delta_blocked = True
                                     _block_reason = "HTF_D_against"
                             if _htf_gate == "4h_D_strict" and not _delta_blocked:
-                                _k4h = float(i.get("stoch_k_4h", 50))
-                                _kD = float(i.get("stoch_k_D", 50))
+                                _k4h = float(i.get("k_4h", 50))
+                                _kD = float(i.get("k_D", 50))
                                 if is_long and (_k4h > 80 or _kD > 80):
                                     _delta_blocked = True
                                     _block_reason = "HTF_K_overextended"
@@ -2977,9 +3138,69 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         else:
                             logger.info(f"[DELTA_BLOCKED] {symbol} {'L' if is_long else 'S'}: {_block_reason}")
                 # Fallback: WT/DC scorer if delta didn't trigger
+                # ═══ MTF ARROW ENTRY (USER 2026-07-20) — the ported lab decision function.
+                # Runs FIRST and unconditionally for LONGs: HTF band-depth + slope score gates the
+                # entry and sets the size. This is the system proven at 5.81x b&h (ARM) in
+                # tools/mtf_arrow_lab; everything below stays as fallback when it does not fire.
+                if (bool(getattr(config, 'MTF_ARROW_ENTRY_ENABLED', False))
+                        and action_type != "OPEN" and is_long):
+                    _ma_ind = indicators_raw if indicators_raw else i
+                    _ma_score, _ma_detail = mtf_arrow_score(_ma_ind, True, config)
+                    _ma_theta = float(getattr(config, 'MTF_ARROW_THETA', 0.3))
+                    if _ma_score >= _ma_theta:
+                        _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                        _ma_mult = max(0.5, min(float(getattr(config, 'MTF_ARROW_SIZE_MAX', 4.0)),
+                                                1.0 + float(getattr(config, 'MTF_ARROW_SIZE_GAIN', 1.0)) * _ma_score))
+                        action_type = "OPEN"
+                        qty = int(max(1, _ma_base * _ma_mult))
+                        conf = 90.0
+                        reason = f"MTF_ARROW_ENTRY_L_s{_ma_score:.2f}_x{_ma_mult:.2f}_{_ma_detail}"[:110]
+                        # The post-entry VARIANCE_FIX veto gates on _entry_score (default
+                        # TRADIER_ENTRY_SCORE_THRESHOLD=30). Paths that open without running
+                        # wt_dc_score_entry leave it 0.0 and are silently dropped AFTER having
+                        # claimed the action slot — the documented C1 bug class (see ~3043).
+                        # The arrow score IS this path's conviction, so publish it.
+                        _entry_score = max(float(_entry_score or 0.0), float(conf))
+                        logger.info(f"[MTF_ARROW_ENTRY] {account_key}:{symbol}: score={_ma_score:.3f}>=θ{_ma_theta} mult={_ma_mult:.2f} {_ma_detail}")
+                # 2026-07-20 USER band mandate — PRIORITY band entry. The band block used to sit
+                # LAST in the cascade, so it was almost never consulted (an earlier path had already
+                # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
+                # With LR_BAND_ENTRY_PRIORITY the band/regime test runs FIRST for LONGs, matching the
+                # arrow-lab finding that band+slope context beats momentum-score ordering.
+                if (bool(getattr(config, 'LR_BAND_ENTRY_PRIORITY', False))
+                        and bool(getattr(config, 'LR_BAND_ENTRY_ENABLED', False))
+                        and action_type != "OPEN" and is_long):
+                    _pb_tf = getattr(config, 'LR_BAND_ENTRY_TF', 'D')
+                    _pb_src = indicators_raw if indicators_raw else i
+                    _pb_pb = _pb_src.get(f"lrL_pct_b_{_pb_tf}")
+                    _pb_sl = _pb_src.get(f"lrL_slope_{_pb_tf}")
+                    _pb_r2 = _pb_src.get(f"lrL_r2_{_pb_tf}")
+                    if _pb_pb is not None and _pb_sl is not None:
+                        _pb_pb_f, _pb_sl_f = float(_pb_pb), float(_pb_sl)
+                        _pb_r2_f = float(_pb_r2) if _pb_r2 is not None else 1.0
+                        _pb_lo = float(getattr(config, 'LR_BAND_ENTRY_LO', 0.3))
+                        if bool(getattr(config, 'LR_BAND_REGIME_ENABLED', False)):
+                            _pb_lo = max(_pb_lo, float(getattr(config, 'LR_BAND_REGIME_MAX_PB', 0.6)))
+                        if _pb_pb_f <= _pb_lo and _pb_sl_f > 0 and _pb_r2_f >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)):
+                            _pb_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            # USER sizing law: deeper in the channel AND steeper slope = bigger trade.
+                            _pb_depth = max(0.0, 1.0 - _pb_pb_f)
+                            _pb_mult = 1.0 + float(getattr(config, 'LR_BAND_SIZE_DEPTH_GAIN', 1.0)) * _pb_depth \
+                                + float(getattr(config, 'LR_BAND_SIZE_SLOPE_GAIN', 1.0)) * min(abs(_pb_sl_f) / max(1e-9, float(getattr(config, 'LR_BAND_SLOPE_NORM_PCT_DAY', 0.3))), 1.0)
+                            _pb_mult = max(0.5, min(float(getattr(config, 'LR_BAND_SIZE_MAX', 3.0)), _pb_mult))
+                            action_type = "OPEN"
+                            qty = int(max(1, _pb_base * _pb_mult))
+                            conf = 88.0
+                            reason = f"LR_BAND_ENTRY_L_prio_pb={_pb_pb_f:.3f}_sl={_pb_sl_f:+.3f}_x{_pb_mult:.2f}"
+                            logger.info(f"[LR_BAND_ENTRY_PRIO] {account_key}:{symbol}: pb={_pb_pb_f:.3f} slope={_pb_sl_f:+.4f} mult={_pb_mult:.2f} tf={_pb_tf}")
                 if action_type != "OPEN":
                     _entry_ind = indicators_raw if indicators_raw else i
                     _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price)
+                    if os.environ.get("V8_LRBAND_DEBUG"):
+                        _lbp1 = globals().setdefault("_LRBAND_P1", {"n": 0})
+                        _lbp1["n"] += 1
+                        if _lbp1["n"] % 2000 == 1:
+                            print(f"V8_LOG LRBAND_P1 post_score_reach={_lbp1['n']} score={_entry_score:.0f}", flush=True)
                     # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
                     # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
                     if getattr(config, 'LIVE_ENTRY_ENGINE_ENABLED', False):
@@ -3017,7 +3238,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     if getattr(config, 'BB_RSI_STOCH_SCALP_ENABLED', False):
                         _brs_bb = float((_entry_ind or {}).get('bb_pct_b_5m', 0.5) or 0.5)
                         _brs_rsi = float((_entry_ind or {}).get('rsi_5m', 50) or 50)
-                        _brs_k = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                        _brs_k = float((_entry_ind or {}).get('k_5m', 50) or 50)
                         _brs_long = _brs_bb < 0.2 and _brs_rsi < 30 and _brs_k < 20
                         _brs_short = _brs_bb > 0.8 and _brs_rsi > 70 and _brs_k > 80
                         if (is_long and _brs_long) or ((not is_long) and _brs_short):
@@ -3031,7 +3252,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _entry_threshold = float(getattr(config, 'TRA_WT_DC_ENTRY_THRESHOLD', 85))
                     else:
                         _entry_threshold = getattr(config, 'WT_DC_ENTRY_THRESHOLD', 55)
-                    _k5m_now = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                    _k5m_now = float((_entry_ind or {}).get('k_5m', 50) or 50)
                     _k5m_block = (is_long and _k5m_now > float(getattr(config, 'WT_DC_ENTRY_K5M_MAX_LONG', 100))) or ((not is_long) and _k5m_now < float(getattr(config, 'WT_DC_ENTRY_K5M_MIN_SHORT', 0)))
                     # 2026-04-27 — HTF gate on WT_DC_ENTRY path (matches DELTA_HTF_GATE pattern). Closes the
                     # SHORT-into-uptrend gap that allowed PLTR loss. Default 'none' = inert; live config sets '4h'.
@@ -3079,7 +3300,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _htf_align_block = True
                     _stoch_gate_thr = float(getattr(config, 'COMBINED_STOCH_GATE_TRADIER', 100.0))
                     if _stoch_gate_thr < 100.0:
-                        _k5m_g = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                        _k5m_g = float((_entry_ind or {}).get('k_5m', 50) or 50)
                         if is_long and _k5m_g >= _stoch_gate_thr:
                             _stoch_gate_block = True
                         elif (not is_long) and _k5m_g <= (100.0 - _stoch_gate_thr):
@@ -3150,7 +3371,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         logger.info(f"[RZ_BREAKOUT] {account_key}:{symbol} {'L' if is_long else 'S'}: bb_pctb_1h={_rz_bb_1h:.2f} band=[{_rz_bot_b if is_long else _rz_top_b - _rz_band_b:.2f},{(_rz_bot_b + _rz_band_b) if is_long else _rz_top_b:.2f}]")
                 if action_type != "OPEN" and getattr(config, 'LR_PCTB_D_LONG_ENTRY_ENABLED', False):
                     if is_long:
-                        _lr_pb = i.get("lr_pct_b_D")
+                        _lr_pb = (indicators_raw if indicators_raw else i).get("lr_pct_b_D")
                         if _lr_pb is not None and float(_lr_pb) <= float(getattr(config, "LR_PCTB_D_LONG_ENTRY_THRESHOLD", 0.20)):
                             _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                             action_type = "OPEN"
@@ -3158,6 +3379,50 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             conf = 80.0
                             reason = f"LR_PCTB_D_LONG_bb={_lr_pb:.4f}"
                             logger.info(f"[LR_PCTB_D_LONG] {symbol}: lr_pct_b_D={_lr_pb:.4f} action={action_type}")
+                if os.environ.get("V8_LRBAND_DEBUG") and action_type != "OPEN":
+                    _lbd0 = globals().setdefault("_LRBAND_DBG0", {"n": 0})
+                    _lbd0["n"] += 1
+                    if _lbd0["n"] % 2000 == 1:
+                        print(f"V8_LOG LRBAND_DBG0 region_reach={_lbd0['n']} enabled={getattr(config, 'LR_BAND_ENTRY_ENABLED', 'MISSING')} regime={getattr(config, 'LR_BAND_REGIME_ENABLED', 'MISSING')} cfg_id={id(config)}", flush=True)
+                if action_type != "OPEN" and getattr(config, 'LR_BAND_ENTRY_ENABLED', False):
+                    _lb_tf = getattr(config, 'LR_BAND_ENTRY_TF', 'D')
+                    # 2026-07-20: MUST read the RAW snapshot (mirror RZ_BREAKOUT above) — the reduced
+                    # `i` dict lacks lrL_* in the engine context, which silently killed every band entry.
+                    _lb_src = indicators_raw if indicators_raw else i
+                    _lb_pb = _lb_src.get(f"lrL_pct_b_{_lb_tf}")
+                    _lb_sl = _lb_src.get(f"lrL_slope_{_lb_tf}")
+                    _lb_r2 = _lb_src.get(f"lrL_r2_{_lb_tf}")
+                    if os.environ.get("V8_LRBAND_DEBUG"):
+                        _lbd = globals().setdefault("_LRBAND_DBG", {"reach": 0, "have": 0, "fired": 0, "keys": ""})
+                        _lbd["reach"] += 1
+                        if _lb_pb is not None and _lb_sl is not None and _lb_r2 is not None:
+                            _lbd["have"] += 1
+                        elif _lbd["keys"] == "":
+                            _lbd["keys"] = ",".join(sorted(k for k in (_lb_src or {}) if "lr" in str(k).lower()))[:200] or "NO_LR_KEYS"
+                        if _lbd["reach"] % 2000 == 1:
+                            print(f"V8_LOG LRBAND_DBG reach={_lbd['reach']} have={_lbd['have']} fired={_lbd['fired']} is_long={is_long} src_keys~{_lbd['keys'][:120]}", flush=True)
+                    if _lb_pb is not None and _lb_sl is not None and _lb_r2 is not None:
+                        _lb_pb = float(_lb_pb)
+                        _lb_sl = float(_lb_sl)
+                        _lb_r2 = float(_lb_r2)
+                        _lb_lo = float(getattr(config, 'LR_BAND_ENTRY_LO', 0.3))
+                        # USER 2026-07-20 REGIME mode: catch EVERY upswing — while the channel RISES,
+                        # be long from anywhere below the top band (not only on lower-band touches);
+                        # entries above REGIME_MAX_PB wait for a dip (post-harvest re-add throttle).
+                        if bool(getattr(config, 'LR_BAND_REGIME_ENABLED', False)):
+                            _lb_lo = max(_lb_lo, float(getattr(config, 'LR_BAND_REGIME_MAX_PB', 0.6)))
+                        _lb_sides = str(getattr(config, 'LR_BAND_ENTRY_SIDES', 'L'))
+                        _lb_long_ok = is_long and _lb_pb <= _lb_lo and _lb_sl > 0
+                        _lb_short_ok = (not is_long) and 'S' in _lb_sides and _lb_pb >= 1.0 - _lb_lo and _lb_sl < 0
+                        if _lb_r2 >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)) and (_lb_long_ok or _lb_short_ok):
+                            _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _base_qty))
+                            conf = 85.0
+                            reason = f"LR_BAND_ENTRY_{'L' if is_long else 'S'}_pb={_lb_pb:.3f}_r2={_lb_r2:.2f}"
+                            if os.environ.get("V8_LRBAND_DEBUG"):
+                                globals().setdefault("_LRBAND_DBG", {"reach": 0, "have": 0, "fired": 0, "keys": ""})["fired"] += 1
+                            logger.info(f"[LR_BAND_ENTRY] {account_key}:{symbol}: pb={_lb_pb:.3f} slope={_lb_sl:+.4f} r2={_lb_r2:.2f} tf={_lb_tf}")
                 # ═══════════════════════════════════════════════════════════════════════
                 # 🚩 GR_HTF_DIRECT_ENTRY — 2026-05-12 USER MANDATE
                 # Direct entry signal: Score = n_tfs_aligned × GOLDEN_RULE_MIN_IND.
@@ -3168,7 +3433,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # ═══════════════════════════════════════════════════════════════════════
                 if action_type != "OPEN" and bool(getattr(config, 'GR_HTF_DIRECT_ENTRY_ENABLED', True)):
                     try:
-                        from golden_rule_htf import score_entry_htf as _gr_htf_direct_entry
+                        from golden_rule_htf import \
+                            score_entry_htf as _gr_htf_direct_entry
                         _grde_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
                         _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_direct_entry(
                             indicators_raw if indicators_raw else i, is_long, 'tradier',
@@ -3209,7 +3475,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _veto = f"ENTRY_SCORE_GATE({_entry_score:.0f}<{_min_es:.0f})"
                     # K_ZONE_LONG/SHORT_THRESHOLD: if enabled, require K_4h in the zone.
                     if _veto is None and getattr(config, 'K_ZONE_VETO_ENABLED_TRADIER', False):
-                        _k4h_vf = float(i.get('stoch_k_4h', 50) or 50)
+                        _k4h_vf = float(i.get('k_4h', 50) or 50)
                         if is_long:
                             _kz_l = float(_cfg('K_ZONE_LONG_THRESHOLD_TRADIER', 100, account_key, symbol, _side_vf) or 100)
                             if _k4h_vf >= _kz_l:
@@ -3389,7 +3655,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                         logger.info(f"[CATALYST_VOLUME_GATE_BLOCK] {account_key}:{symbol} {'L' if is_long else 'S'}: {_cvg_detail}")
                                 # ═══ END CATALYST_VOLUME_GATE ═══
                                 if not _cvg_blocked:
-                                    _pre_r1_stop = safe_fetch_float(i.get('dc_low4_5m' if is_long else 'dc_high4_5m'), 0.0)
+                                    _pre_r1_stop = safe_fetch_float(i.get(('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')), 0.0)
                                     if _pre_r1_stop > 0 and position:
                                         _cur_r1_pre = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
                                         if _cur_r1_pre <= 0 or (is_long and _pre_r1_stop > _cur_r1_pre) or (not is_long and _pre_r1_stop < _cur_r1_pre):
@@ -3571,6 +3837,14 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
     try:
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
+        try:
+            _qa_act = (action or '').upper()
+            if reason and ('OPEN' in _qa_act or 'AUGMENT' in _qa_act or 'ENTRY' in _qa_act) and 'CLOSE' not in _qa_act and 'REDUCE' not in _qa_act:
+                if getattr(trade_manager, '_pending_entry_reason', None) is None:
+                    trade_manager._pending_entry_reason = {}
+                trade_manager._pending_entry_reason[position_key] = (str(reason)[:120], time.time())
+        except Exception:
+            pass
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚨 BALANCE_FLOOR_HALT — NEVER GO BELOW $0 (user 2026-05-01)
         # balance_floor_watchdog writes data/HALT_TRADING_<acct> sentinel when
@@ -3603,7 +3877,9 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                              'BREAK_REVERSE' in str(reason or '').upper() or
                              'ALL_TF_AGAINST' in str(reason or '').upper() or
                              'INTERVENTION' in str(reason or '').upper() or
-                             'MANUAL' in str(reason or '').upper())
+                             'MANUAL' in str(reason or '').upper() or
+                             'WT_3M_FORCE_OPEN' in str(reason or '').upper() or
+                             'OBLIGATORY' in str(reason or '').upper())
                 if _ot_max > 0 and not _ot_emerg:
                     global _OVERTRADE_COUNTER
                     if '_OVERTRADE_COUNTER' not in globals():
@@ -3616,9 +3892,34 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     if _ot_n >= _ot_max:
                         logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
                         return False
-                    _OVERTRADE_COUNTER[_ot_key] = _ot_n + 1
+                    # [2026-07-03] counter no longer incremented on ATTEMPT — moved to confirmed
+                    # order submission (see [TRADE] SENT site). Blocked attempts kept burning the
+                    # whole 8/day allowance with 0 actual opens (shorts died on their own attempts).
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
+        # ⏳ CLOSE_REFIRE_GUARD [2026-07-03]: do not resubmit a CLOSE/REDUCE while the previous
+        # close order for this key is still working at the broker (TXN logged 241 duplicate
+        # "closes" of the same 2 shares — every resubmission was recorded as a trade).
+        try:
+            _cr_act = (action or '').upper()
+            if 'CLOSE' in _cr_act or 'REDUCE' in _cr_act:
+                _cr_map = getattr(trade_manager, '_last_close_order', None) or {}
+                _cr_rec = _cr_map.get(position_key)
+                if _cr_rec and (time.time() - _cr_rec[1]) < 900.0:
+                    _cr_acct = position_key.split(':')[0]
+                    _cr_status = ''
+                    try:
+                        _cr_cli = TradierAPIClient(config, account_key=_cr_acct)
+                        _cr_res = await _cr_cli.get_order_status(_cr_acct, _cr_rec[0]) or {}
+                        _cr_status = str((_cr_res.get('order', _cr_res) or {}).get('status', _cr_res.get('status', ''))).lower()
+                    except Exception:
+                        _cr_status = ''
+                    if _cr_status in ('open', 'pending', 'submitted', 'queued', 'partially_filled', 'calculated', 'accepted_for_bidding'):
+                        logger.info(f"⏳ [CLOSE_REFIRE_GUARD] {position_key}: prior close order {_cr_rec[0]} still '{_cr_status}' — not resubmitting. reason={(reason or '')[:60]}")
+                        return False
+                    trade_manager._last_close_order.pop(position_key, None)
+        except Exception as _cr_e:
+            logger.warning(f"[CLOSE_REFIRE_GUARD] check error (fail-open): {_cr_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE — STOCKS mirror of ez_manage).
         # NO open/augment/reentry whose side is against wt1_1h. Reads LIVE wt1_1h (not gain — a
@@ -3639,7 +3940,26 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     _ctb_is_long = _ctb_side == "LONG"
                     _ctb_w1 = safe_fetch_float(_ctb_ind.get("wt1_1h", 0), 0.0)
                     _ctb_w2 = safe_fetch_float(_ctb_ind.get("wt2_1h", 0), 0.0)
-                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                    # 2026-06-04 USER directional rule (STOCKS mirror of ez_manage): a SHORT below sma_200_15m (LONG above) WITH
+                    # 1h structure confirming (1h lower-low / higher-high, OR wt1_1h already agreeing) is TREND-ALIGNED, not
+                    # counter-trend — the laggy wt1_1h must NOT block it. Genuine counter-trend (wrong side of sma_200_15m) stays
+                    # blocked. ROLLBACK: COUNTER_TREND_SMA200_BYPASS_ENABLED=False.
+                    _ctb_aligned = False
+                    if bool(getattr(config, "COUNTER_TREND_SMA200_BYPASS_ENABLED", True)):
+                        _ctb_sma200 = safe_fetch_float(_ctb_ind.get("sma_200_15m", 0), 0.0)
+                        _ctb_px = safe_fetch_float(_ctb_ind.get("price", _ctb_ind.get("current_price", _ctb_ind.get("mark_price", 0))), 0.0)
+                        if _ctb_sma200 > 0 and _ctb_px > 0:
+                            if _ctb_is_long:
+                                _ctb_hh_n = safe_fetch_float(_ctb_ind.get("high_1h", 0), 0.0)
+                                _ctb_hh_p = safe_fetch_float(_ctb_ind.get("high_1h_prev", 0), 0.0)
+                                _ctb_struct = (_ctb_hh_n > 0 and _ctb_hh_p > 0 and _ctb_hh_n > _ctb_hh_p) or (_ctb_w1 > _ctb_w2)
+                                _ctb_aligned = (_ctb_px > _ctb_sma200) and _ctb_struct
+                            else:
+                                _ctb_ll_n = safe_fetch_float(_ctb_ind.get("low_1h", 0), 0.0)
+                                _ctb_ll_p = safe_fetch_float(_ctb_ind.get("low_1h_prev", 0), 0.0)
+                                _ctb_struct = (_ctb_ll_n > 0 and _ctb_ll_p > 0 and _ctb_ll_n < _ctb_ll_p) or (_ctb_w1 < _ctb_w2)
+                                _ctb_aligned = (_ctb_px < _ctb_sma200) and _ctb_struct
+                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
                         logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
                         return False
         except Exception as _ctbe:
@@ -3933,6 +4253,36 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key} side={position_side}: dist={_bsl_dist:.2f}% past ema_200_15m → qty {_bsl_orig:.4f}→{quantity:.4f} (×{_bsl_mult}). reason={(reason or '')[:40]}")
         except Exception as _bsle:
             logger.warning(f"[BREAKOUT_SIZE_LADDER] {position_key}: check error (fail-open): {_bsle}")
+        try:
+            if (bool(getattr(config, "D_STRUCT_ENTRY_MULT_ENABLED", True))
+                    and action in ("OPEN", "AUGMENT", "REENTER", "REENTRY")
+                    and quantity and quantity > 0):
+                _dsm_is_long = position_side == "LONG"
+                _dsm_i = trade_manager.get_indicators(symbol) if symbol else {}
+                _dsm_high = safe_fetch_float(_dsm_i.get("high_D"), 0.0)
+                _dsm_low = safe_fetch_float(_dsm_i.get("low_D"), 0.0)
+                _dsm_highp = safe_fetch_float(_dsm_i.get("high_D_prev"), 0.0)
+                _dsm_lowp = safe_fetch_float(_dsm_i.get("low_D_prev"), 0.0)
+                _dsm_sma200 = safe_fetch_float(_dsm_i.get("sma_200_D"), 0.0)
+                _dsm_wt1_D = safe_fetch_float(_dsm_i.get("wt1_D"), 0.0)
+                if _dsm_high > 0 and _dsm_highp > 0 and _dsm_low > 0 and _dsm_lowp > 0:
+                    _dsm_wt1_min = float(getattr(config, "D_STRUCT_ENTRY_WT1_MIN", -40.0))
+                    _dsm_wt1_max = float(getattr(config, "D_STRUCT_ENTRY_WT1_MAX", 40.0))
+                    if _dsm_is_long:
+                        _dsm_ok = (_dsm_high > _dsm_highp and _dsm_low > _dsm_lowp
+                                   and (float(current_price) > _dsm_sma200 if _dsm_sma200 > 0 else True)
+                                   and (_dsm_wt1_D > _dsm_wt1_min if _dsm_wt1_D != 0 else True))
+                    else:
+                        _dsm_ok = (_dsm_high < _dsm_highp and _dsm_low < _dsm_lowp
+                                   and (float(current_price) < _dsm_sma200 if _dsm_sma200 > 0 else True)
+                                   and (_dsm_wt1_D < _dsm_wt1_max if _dsm_wt1_D != 0 else True))
+                    if _dsm_ok:
+                        _dsm_mult = float(getattr(config, "D_STRUCT_ENTRY_MULT", 1.3))
+                        _dsm_orig = quantity
+                        quantity = quantity * _dsm_mult
+                        logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key} side={position_side}: D {'HH+HL' if _dsm_is_long else 'LL+LH'} + SMA200 + WT → qty {_dsm_orig:.4f}→{quantity:.4f} (×{_dsm_mult:.2f}). reason={(reason or '')[:40]}")
+        except Exception as _dsme:
+            logger.warning(f"[D_STRUCT_ENTRY_MULT] {position_key}: check error (fail-open): {_dsme}")
         if config.SYMBOL_PERF_ENABLED and action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
             try:
                 from utils import get_performance_multiplier
@@ -4202,7 +4552,7 @@ async def periodic_override_check(trade_manager, account_key):
                                 logger.info(f"[OVERRIDE_CHECK] {position_key}: Market against + loss {gain:.2f}% + {min_since_aug:.0f}m since aug → reducing 30%")
                                 await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REDUCE", reason, 75.0, override_qty=reduce_qty)
 
-                    if is_long and i.get('stoch_k_5m', 50) > 85 and i.get('rsi_5m', 50) > 75 and i.get('stoch_k_5m', 50) < i.get('stoch_d_5m', 50) :
+                    if is_long and i.get('k_5m', 50) > 85 and i.get('rsi_5m', 50) > 75 and i.get('k_5m', 50) < i.get('d_5m', 50) :
                         if gain > 2.0:
                             if not _ovr_min_hold_ok:
                                 logger.info(f"[OVERBOUGHT_TP_MIN_HOLD_BLOCK] {position_key}: hold={_ovr_hold_min:.0f}m<{_ovr_min_hold:.0f}m — overbought-TP gated")
@@ -4214,7 +4564,7 @@ async def periodic_override_check(trade_manager, account_key):
                                     trade_manager.order_queue, trade_manager, position_key,
                                     "REDUCE", reason, 75.0, override_qty=reduce_qty    )
 
-                    elif not is_long and i.get('stoch_k_5m', 50) < 15 and i.get('rsi_5m', 50) < 25 and i.get('stoch_k_5m', 50) > i.get('stoch_d_5m', 50) :
+                    elif not is_long and i.get('k_5m', 50) < 15 and i.get('rsi_5m', 50) < 25 and i.get('k_5m', 50) > i.get('d_5m', 50) :
                         if gain > 2.0 and _ovr_min_hold_ok:
                             reduce_qty = max(1, int(position_amt * 0.25))
                             reason = f"Oversold_Take_Profit_Gain_{gain:.1f}%"
@@ -4580,14 +4930,14 @@ class TradierHedgeEngine:
                 continue
             neg_strength = max(0, -corr)
             ind = indicators_cache.get(sym, {})
-            stoch_k = float(ind.get('stoch_k_1h', 50))
+            k = float(ind.get('k_1h', 50))
             stoch_score = 0
             if target_side == "LONG":
-                if stoch_k < 25: stoch_score += 5
-                if stoch_k < 15: stoch_score += 5
+                if k < 25: stoch_score += 5
+                if k < 15: stoch_score += 5
             else:
-                if stoch_k > 75: stoch_score += 5
-                if stoch_k > 85: stoch_score += 5
+                if k > 75: stoch_score += 5
+                if k > 85: stoch_score += 5
             combined = neg_strength * 0.4 + min(stoch_score / 10.0, 1.0) * 0.4 + 0.2
             if combined > 0.2:
                 candidates.append((sym, combined, target_side))
@@ -4601,15 +4951,15 @@ class TradierHedgeEngine:
                 candidates.append((broad, 0.15, target_side))
         candidates.sort(key=lambda x: x[1], reverse=True)
         return candidates[:5]
-    def should_trigger_hedge(self, pnl_pct: float, position_side: str, stoch_k_1h: float, stoch_d_1h: float, zone: str = "") -> Tuple[bool, str]:
+    def should_trigger_hedge(self, pnl_pct: float, position_side: str, k_1h: float, d_1h: float, zone: str = "") -> Tuple[bool, str]:
         # RZ zone awareness: if zone confirms the HEDGE direction, trigger earlier
         _zone_confirms = (position_side == "LONG" and zone == "TOP") or (position_side == "SHORT" and zone == "BOTTOM")
         _loss_threshold = -0.15 if _zone_confirms else -0.3
         if pnl_pct >= _loss_threshold:
             return False, ""
-        if position_side == "LONG" and stoch_k_1h < stoch_d_1h and pnl_pct < _loss_threshold:
+        if position_side == "LONG" and k_1h < d_1h and pnl_pct < _loss_threshold:
             return True, f"LOSS_{pnl_pct:.2f}%_STOCH_BEARISH{f'_RZ_{zone}' if zone else ''}"
-        if position_side == "SHORT" and stoch_k_1h > stoch_d_1h and pnl_pct < _loss_threshold:
+        if position_side == "SHORT" and k_1h > d_1h and pnl_pct < _loss_threshold:
             return True, f"LOSS_{pnl_pct:.2f}%_STOCH_BULLISH{f'_RZ_{zone}' if zone else ''}"
         if pnl_pct < -1.0:
             return True, f"DEEP_LOSS_{pnl_pct:.2f}%_FORCED"
@@ -4846,7 +5196,7 @@ class StockStrategy:
         if not is_exit and getattr(config, 'BACKTEST_VALIDATED_GATES_TRADIER', True):
             _atr_1h = g('atr_1h', 0); _atr_4h = g('atr_4h', 0)
             _mfi_4h = g('mfi_4h', 50); _wt1_1h = g('wt1_1h', 0); _wt1_4h = g('wt1_4h', 0)
-            _k_4h = g('stoch_k_4h', 50)
+            _k_4h = g('k_4h', 50)
             _dc_w_1h = g('dc_width_1h', 10); _dc_w_4h = g('dc_width_4h', 10)
             _dc_pos_4h = g('dc_position_4h', 0.5)
             _wt_vel_1h = g('wt_velocity_1h', 0)
@@ -4880,12 +5230,12 @@ class StockStrategy:
                 _vel_min = float(getattr(config, 'CT_WT_VELOCITY_1H_MIN', 0.0))
                 if is_long and _wt_vel_1h < _vel_min: return 0.0, "WAIT", f"CT_VEL_LONG({_wt_vel_1h:.1f}<{_vel_min})"
                 if not is_long and _wt_vel_1h > -_vel_min: return 0.0, "WAIT", f"CT_VEL_SHORT({_wt_vel_1h:.1f}>-{_vel_min})"
-        k_1m, d_1m, k_1m_prev = g('stoch_k_1m', 50), g('stoch_d_1m', 50), g('stoch_k_1m_prev', 50)
-        k_5m, d_5m, k_5m_prev = g('stoch_k_5m', 50), g('stoch_d_5m', 50), g('stoch_k_5m_prev', 50)
-        k_15m, d_15m = g('stoch_k_15m', 50), g('stoch_d_15m', 50)
-        k_1h, d_1h = g('stoch_k_1h', 50), g('stoch_d_1h', 50)
-        k_4h, d_4h = g('stoch_k_4h', 50), g('stoch_d_4h', 50)
-        k_D, d_D = g('stoch_k_D', 50), g('stoch_d_D', 50)
+        k_1m, d_1m, k_1m_prev = g('k_1m', 50), g('d_1m', 50), g('k_1m_prev', 50)
+        k_5m, d_5m, k_5m_prev = g('k_5m', 50), g('d_5m', 50), g('k_5m_prev', 50)
+        k_15m, d_15m = g('k_15m', 50), g('d_15m', 50)
+        k_1h, d_1h = g('k_1h', 50), g('d_1h', 50)
+        k_4h, d_4h = g('k_4h', 50), g('d_4h', 50)
+        k_D, d_D = g('k_D', 50), g('d_D', 50)
 
         dc_high_15m, dc_low_15m = g('dc_high_15m'), g('dc_low_15m')
         dc_high_1h, dc_low_1h = g('dc_high_1h'), g('dc_low_1h')
@@ -5166,7 +5516,7 @@ class StockStrategy:
                     setup_points -= 3 # Chasing top
                 
                 # 1H Stoch: Ideally turning up
-                if k_1h < 40 and k_1h > g('stoch_k_1h_prev'): 
+                if k_1h < 40 and k_1h > g('k_1h_prev'): 
                     setup_points += 3; reasons.append("1h_Turn_Up")
                 elif k_1h < 80 and k_1h > d_1h:
                     setup_points += 2
@@ -5190,7 +5540,7 @@ class StockStrategy:
                     setup_points += 2  
                 else:
                     setup_points -= 3 # Chasing bottom
-                if k_1h > 60 and k_1h < g('stoch_k_1h_prev'): 
+                if k_1h > 60 and k_1h < g('k_1h_prev'): 
                     setup_points += 3; reasons.append("1h_Turn_Down")
                 elif k_1h > 20 and k_1h < d_1h:
                     setup_points += 2         
@@ -5469,8 +5819,8 @@ class StockStrategy:
         
         for tf in timeframes:
             # Stochastics & RSI
-            d[f'stoch_k_{tf}'] = self._get_val(i, f'stoch_k_{tf}', 50); d[f'stoch_d_{tf}'] = self._get_val(i, f'stoch_d_{tf}', 50)
-            d[f'stoch_k_{tf}_prev'] = self._get_val(i, f'stoch_k_{tf}_prev', 50)
+            d[f'k_{tf}'] = self._get_val(i, f'k_{tf}', 50); d[f'd_{tf}'] = self._get_val(i, f'd_{tf}', 50)
+            d[f'k_{tf}_prev'] = self._get_val(i, f'k_{tf}_prev', 50)
             d[f'rsi_{tf}'] = self._get_val(i, f'rsi_{tf}', 50)
             
             # WaveTrend & HA
@@ -5483,6 +5833,7 @@ class StockStrategy:
             d[f'ema_50_{tf}'] = self._get_val(i, f'ema_50_{tf}', 0)
             d[f'ema_200_{tf}'] = self._get_val(i, f'ema_200_{tf}', 0) # FIX: Added extraction of ema_200
             d[f'dc_high_{tf}'] = self._get_val(i, f'dc_high_{tf}', 0); d[f'dc_low_{tf}'] = self._get_val(i, f'dc_low_{tf}', 0)
+            d[f'dc_high4_{tf}'] = self._get_val(i, f'dc_high4_{tf}', 0); d[f'dc_low4_{tf}'] = self._get_val(i, f'dc_low4_{tf}', 0)
             d[f'dc_basis_{tf}'] = self._get_val(i, f'dc_basis_{tf}', 0)
             
             # ATR & Vol & MFI
@@ -5577,14 +5928,14 @@ class StockStrategy:
         reduction_factor = 1.0
         
         # Check if K aligns with D on 15m (basic alignment)
-        k_15m = i.get('stoch_k_15m', 50)
-        d_15m = i.get('stoch_d_15m', 50)
+        k_15m = i.get('k_15m', 50)
+        d_15m = i.get('d_15m', 50)
         k_ok = (k_15m >= d_15m) if is_long else (k_15m <= d_15m)
         if not k_ok:
             reduction_factor *= 0.3
 
-        k_5m = i.get('stoch_k_5m', 50)
-        k_1h = i.get('stoch_k_1h', 50)
+        k_5m = i.get('k_5m', 50)
+        k_1h = i.get('k_1h', 50)
 
         if is_long_term_focus:
             if is_long and k_1h > 80: reduction_factor *= 0.7
@@ -5811,7 +6162,7 @@ class StockStrategy:
             if wt1_5m > wt2_5m and k_15m < 50: qty += 0.3 * SP
             if wt1_1h > wt2_1h: qty += 0.5 * SP
         else:
-            if i.get('wt1_5m', 0) < i.get('wt2_5m', 0) and i.get('stoch_k_15m', 50) > 50:
+            if i.get('wt1_5m', 0) < i.get('wt2_5m', 0) and i.get('k_15m', 50) > 50:
                 qty += 0.3 * SP
             if i.get('wt1_1h', 0) < i.get('wt2_1h', 0) and i.get('wt1_4h', 0) < i.get('wt2_4h', 0):
                 qty += 0.5 * SP
@@ -5856,14 +6207,14 @@ class StockStrategy:
             qty += _mi_eb
         # Donchian Breakout bonuses
         if is_long:
-            if current_price > i.get('dc_high_15m', 999999) and i.get('stoch_k_15m', 50) < 70:
+            if current_price > i.get('dc_high_15m', 999999) and i.get('k_15m', 50) < 70:
                 qty += 0.5 * SP  # Breakout without being overbought
 
             if current_price > i.get('dc_high_1h', 999999) and i.get('ha_1h', 'neutral') == 'green':
                 qty += 0.8 * SP  # Strong 1h breakout
 
         else:
-            if current_price < i.get('dc_low_15m', 0) and i.get('stoch_k_15m', 50) > 30:
+            if current_price < i.get('dc_low_15m', 0) and i.get('k_15m', 50) > 30:
                 qty += 0.5 * SP
 
             if current_price < i.get('dc_low_1h', 0) and i.get('ha_1h', 'neutral') == 'red':
@@ -6038,9 +6389,12 @@ class StockStrategy:
                 qty = 50.0 / current_price
             else:
                 qty = 0.0 #
-        qty = max(0.0, float(int(qty)))
+        # USER 2026-06-22: 1 share is always minimum for stocks. int() truncates 0.505 → 0
+        # for high-priced stocks (MU $1188 = 0.505 shares → id=NONE chronic failure). If qty
+        # was computed as non-zero, round up to 1 rather than returning 0.
+        qty = float(max(1, int(qty)) if qty > 0.0 else 0.0)
         if qty * current_price < 25.0: return 0.0
-        return max(0.0, float(int(qty)))
+        return float(max(1, int(qty)) if qty > 0.0 else 0.0)
 
     @staticmethod
     def evaluate_multi_tf_exit(i: dict, is_long: bool, gain: float, hold_time_min: float, current_price: float) -> tuple:
@@ -6087,7 +6441,7 @@ class StockStrategy:
             wt1 = g(f'wt1_{tf}'); wt2 = g(f'wt2_{tf}')
             if is_long and wt1 < wt2: tf_score_local += 1
             elif not is_long and wt1 > wt2: tf_score_local += 1
-            k = g(f'stoch_k_{tf}', 50); d = g(f'stoch_d_{tf}', 50)
+            k = g(f'k_{tf}', 50); d = g(f'd_{tf}', 50)
             if is_long and k < d: tf_score_local += 1
             elif not is_long and k > d: tf_score_local += 1
             dc_pos = g(f'dc_position_{tf}', 0.5)
@@ -6112,8 +6466,8 @@ class StockStrategy:
         # --- 6. STOCH CROSS AGAINST (confirmation) ---
         stoch_against = 0
         for tf in ('5m', '15m', '1h'):
-            k = g(f'stoch_k_{tf}', 50); kp = g(f'stoch_k_{tf}_prev', 50)
-            d = g(f'stoch_d_{tf}', 50); dp = g(f'stoch_d_{tf}_prev', 50)
+            k = g(f'k_{tf}', 50); kp = g(f'k_{tf}_prev', 50)
+            d = g(f'd_{tf}', 50); dp = g(f'd_{tf}_prev', 50)
             if is_long and kp >= dp and k < d: stoch_against += 1
             elif not is_long and kp <= dp and k > d: stoch_against += 1
         if stoch_against >= 2:
@@ -6124,6 +6478,14 @@ class StockStrategy:
             score += 6; parts.append(f"MFI_EXHST_L({mfi_1h:.0f},{mfi_4h:.0f})")
         elif not is_long and mfi_1h < 20 and mfi_4h < 30:
             score += 6; parts.append(f"MFI_EXHST_S({mfi_1h:.0f},{mfi_4h:.0f})")
+        # --- 8. D-BAR PRICE STRUCTURE (LL+LH bearish for LONG / HH+HL for SHORT) ---
+        _dh = g('high_D', 0); _dl = g('low_D', 0)
+        _dhp = g('high_D_prev', 0); _dlp = g('low_D_prev', 0)
+        if _dh > 0 and _dhp > 0 and _dl > 0 and _dlp > 0:
+            if is_long and _dh < _dhp and _dl < _dlp:
+                score += 8; parts.append(f"D_LL_LH({_dl:.2f}<{_dlp:.2f})")
+            elif not is_long and _dh > _dhp and _dl > _dlp:
+                score += 8; parts.append(f"D_HH_HL({_dh:.2f}>{_dhp:.2f})")
         # --- GAIN-AWARE URGENCY BOOST ---
         if gain > 3.0 and score >= 20: score *= 1.3
         elif gain > 1.0 and score >= 25: score *= 1.2
@@ -6307,6 +6669,41 @@ class StockStrategy:
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
 
+        # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit/trim at the UPPER regression
+        # band — the sell-at-top half of LR_BAND_ENTRY (knobs existed, consumed nowhere). Profit-only;
+        # loss exits stay with R1/R2/HEDGE_FAILED. Default OFF pending Tier-2 pack proof.
+        if bool(getattr(config, 'LR_BAND_HARVEST_ENABLED', False)) and gain > 0:
+            _lbh_tf = str(getattr(config, 'LR_BAND_ENTRY_TF', 'D'))
+            _lbh_ind = indicators if indicators else i
+            _lbh_pb = _lbh_ind.get(f'lrL_pct_b_{_lbh_tf}')
+            _lbh_sl = _lbh_ind.get(f'lrL_slope_{_lbh_tf}')
+            if _lbh_pb is not None:
+                _lbh_pb_f = float(_lbh_pb)
+                _lbh_hi = float(getattr(config, 'LR_BAND_HARVEST_HI', 0.7))
+                _lbh_top = (_lbh_pb_f >= _lbh_hi) if is_long else (_lbh_pb_f <= (1.0 - _lbh_hi))
+                # USER 2026-07-20: slope-flip = the channel stopped rising — sell the whole
+                # position in profit (downswings are not to be held through). Profit-only;
+                # loss exits remain R1/R2/HEDGE_FAILED per the exit-rules mandate.
+                # 2026-07-20 DEADBAND (MU_LONG evidence: 60/80 trades exited via slope-flip after
+                # 0.1h at +0.0x% — lrL_slope_D oscillates around zero so a bare <=0 test fires on
+                # noise, then re-enters minutes later). Require the slope to be decisively negative
+                # (< -MIN_PCT_DAY, normalized per TF) AND the position to have held MIN_HOLD_MIN.
+                _lbh_flip = False
+                if bool(getattr(config, 'LR_BAND_SLOPE_FLIP_EXIT_ENABLED', False)) and _lbh_sl is not None:
+                    _lbh_per_day = {'1h': 6.5, '4h': 1.625, 'D': 1.0}.get(_lbh_tf, 1.0)
+                    _lbh_sl_day = float(_lbh_sl) * _lbh_per_day
+                    _lbh_dead = abs(float(getattr(config, 'LR_BAND_SLOPE_FLIP_MIN_PCT_DAY', 0.05)))
+                    _lbh_min_hold = float(getattr(config, 'LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN', 240.0))
+                    _lbh_held_ok = hold_time_min >= _lbh_min_hold
+                    _lbh_flip = _lbh_held_ok and ((_lbh_sl_day < -_lbh_dead) if is_long else (_lbh_sl_day > _lbh_dead))
+                if _lbh_flip:
+                    logger.warning(f"[LR_BAND_SLOPE_FLIP] {symbol} {'L' if is_long else 'S'}: slope={float(_lbh_sl):+.4f} g={gain:.2f}% → FULL CLOSE")
+                    return True, f"LR_BAND_SLOPE_FLIP_{_lbh_tf}_g{gain:.2f}%", qty
+                if _lbh_top:
+                    _lbh_frac = max(0.05, min(1.0, float(getattr(config, 'LR_BAND_HARVEST_FRAC', 0.25))))
+                    _lbh_qty = qty if _lbh_frac >= 1.0 else max(1.0, round(qty * _lbh_frac))
+                    logger.warning(f"[LR_BAND_HARVEST] {symbol} {'L' if is_long else 'S'}: lrL_pct_b_{_lbh_tf}={_lbh_pb_f:.3f} hi={_lbh_hi:.2f} g={gain:.2f}% frac={_lbh_frac:.2f} qty={_lbh_qty}")
+                    return True, f"LR_BAND_HARVEST_{_lbh_tf}_pb{_lbh_pb_f:.2f}_g{gain:.2f}%", _lbh_qty
         # ═══ PEAK_GIVEBACK_PROTECTION + DC_LOW4_5M (2026-04-20) ═══
         # "Positions that were in gain and fall back below 0 must close."
         # 2026-04-27 user rule: NOW respects STOCK_MIN_HOLD (was bypassing). Stocks are
@@ -6387,7 +6784,8 @@ class StockStrategy:
         # ═══════════════════════════════════════════════════════════════════════
         if not _is_opts_check and bool(getattr(config, 'GR_HTF_DIRECT_EXIT_ENABLED', True)):
             try:
-                from golden_rule_htf import score_entry_htf as _gr_htf_direct_exit_fn
+                from golden_rule_htf import \
+                    score_entry_htf as _gr_htf_direct_exit_fn
                 _grde_exit_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 1))
                 _grde_exit_ind = indicators if indicators else i
                 # Score opposite-direction alignment (is_long=False for LONG pos means we look for bearish)
@@ -6469,10 +6867,10 @@ class StockStrategy:
             _srs_band = _srs_prox_bps / 10000.0
             _srs_k_high = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 80.0))
             _srs_k_low = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 20.0))
-            _srs_k1h = float((_srs_ind).get('stoch_k_1h', 50) or 50)
-            _srs_k15m = float((_srs_ind).get('stoch_k_15m', 50) or 50)
-            _srs_k5m = float((_srs_ind).get('stoch_k_5m', 50) or 50)
-            _srs_k5m_prev = float((_srs_ind).get('stoch_k_5m_prev', 50) or 50)
+            _srs_k1h = float((_srs_ind).get('k_1h', 50) or 50)
+            _srs_k15m = float((_srs_ind).get('k_15m', 50) or 50)
+            _srs_k5m = float((_srs_ind).get('k_5m', 50) or 50)
+            _srs_k5m_prev = float((_srs_ind).get('k_5m_prev', 50) or 50)
             if _srs_entry > 0 and _srs_high > 0 and _srs_low > 0:
                 if is_long and _srs_entry > _srs_high:
                     _srs_prox = abs(current_price - _srs_high) / _srs_high <= _srs_band
@@ -6505,10 +6903,13 @@ class StockStrategy:
             _ppl_be_buffer_t = float(_cfg('PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER', 0.02, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_frac_t = float(_cfg('PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_pk_t = f"{_exit_acct_top}:{symbol}_{'LONG' if is_long else 'SHORT'}"
-            _tm_t = self.trade_manager if hasattr(self, 'trade_manager') else self
-            if not hasattr(_tm_t, 'partial_profit_lock_state'):
-                _tm_t.partial_profit_lock_state = {}
-            _ppl_state_t = _tm_t.partial_profit_lock_state.get(_ppl_pk_t, {})
+            _tm_t = self.trade_manager if (hasattr(self, 'trade_manager') and self.trade_manager is not None and hasattr(self.trade_manager, 'execute_trade_action')) else None
+            if _tm_t is None:
+                logger.error(f"[PPL_TRADIER_TP_SKIP] {_ppl_pk_t}: trade_manager/execute_trade_action not available — skipping PPL block")
+            else:
+                if not hasattr(_tm_t, 'partial_profit_lock_state'):
+                    _tm_t.partial_profit_lock_state = {}
+            _ppl_state_t = _tm_t.partial_profit_lock_state.get(_ppl_pk_t, {}) if _tm_t is not None else {}
             _ppl_fired_t = _ppl_state_t.get('fired', False)
             _ppl_first_exit_px_t = float(_ppl_state_t.get('first_exit_price', 0.0))
             _ppl_stop_level_t = float(_ppl_state_t.get('stop_level', 0.0))
@@ -6517,7 +6918,7 @@ class StockStrategy:
             _ppl_min_qty_t = self.min_qty.get(symbol, 1.0) if hasattr(self, 'min_qty') else 1.0
             _ppl_close_side_t = "SELL" if is_long else "BUY"
             _ppl_pos_side_t = "LONG" if is_long else "SHORT"
-            if not _ppl_fired_t and gain >= _ppl_min_gain_t and qty > _ppl_min_qty_t and _ppl_entry_px_t > 0:
+            if _tm_t is not None and not _ppl_fired_t and gain >= _ppl_min_gain_t and qty > _ppl_min_qty_t and _ppl_entry_px_t > 0:
                 _ppl_reduce_qty_t = qty * _ppl_frac_t
                 _ppl_keep_qty_t = qty - _ppl_reduce_qty_t
                 if _ppl_reduce_qty_t >= _ppl_min_qty_t and _ppl_keep_qty_t >= _ppl_min_qty_t:
@@ -6526,7 +6927,7 @@ class StockStrategy:
                     _ppl_reason_t = f"PPL_TP_gain{gain:.2f}_50pct"
                     logger.warning(f"[PARTIAL_PROFIT_LOCK_TRADIER_TP] {_ppl_pk_t}: gain={gain:.2f}% ≥ {_ppl_min_gain_t}% — closing 50% ({_ppl_reduce_qty_t:.4f}/{qty:.4f}) + BE stop @ {_ppl_be_stop_t:.4f}")
                     try:
-                        _ppl_res_t = await self.execute_trade_action(account_key=_exit_acct_top, position_key=_ppl_pk_t, symbol=symbol, quantity=_ppl_reduce_qty_t, current_price=current_price, side=_ppl_close_side_t, position_side=_ppl_pos_side_t, unique_id=_ppl_uid_t, is_full_close=False, action='REDUCE', reason=_ppl_reason_t, override_qty=_ppl_reduce_qty_t)
+                        _ppl_res_t = await _tm_t.execute_trade_action(account_key=_exit_acct_top, position_key=_ppl_pk_t, symbol=symbol, quantity=_ppl_reduce_qty_t, current_price=current_price, side=_ppl_close_side_t, position_side=_ppl_pos_side_t, unique_id=_ppl_uid_t, is_full_close=False, action='REDUCE', reason=_ppl_reason_t, override_qty=_ppl_reduce_qty_t)
                         _ppl_ok_t = _ppl_res_t and "BLOCK" not in str(_ppl_res_t).upper() and "FAIL" not in str(_ppl_res_t).upper() and "MARKET_CLOSED" not in str(_ppl_res_t).upper()
                     except Exception as _ppl_e_t:
                         logger.error(f"[PPL_TRADIER_TP_ERR] {_ppl_pk_t}: {type(_ppl_e_t).__name__}: {_ppl_e_t}")
@@ -6534,16 +6935,55 @@ class StockStrategy:
                     if _ppl_ok_t:
                         _tm_t.partial_profit_lock_state[_ppl_pk_t] = {'fired': True, 'first_exit_price': current_price, 'stop_level': _ppl_be_stop_t, 'stop_upgraded': False}
                         return False, f"PPL_TP_gain{gain:.2f}_BEstop{_ppl_be_stop_t:.4f}", 0
-            if _ppl_fired_t and not _ppl_stop_upgraded_t and gain >= _ppl_arm_gain_t and _ppl_first_exit_px_t > 0:
+            if _tm_t is not None and _ppl_fired_t and not _ppl_stop_upgraded_t and gain >= _ppl_arm_gain_t and _ppl_first_exit_px_t > 0:
                 _tm_t.partial_profit_lock_state[_ppl_pk_t] = {**_ppl_state_t, 'stop_level': _ppl_first_exit_px_t, 'stop_upgraded': True}
                 logger.warning(f"[PPL_TRADIER_STOP_UPGRADED] {_ppl_pk_t}: gain={gain:.2f}% ≥ {_ppl_arm_gain_t}% — stop BE→first_exit {_ppl_first_exit_px_t:.4f} (locks +0.5% scalp)")
-            if _ppl_fired_t and _ppl_stop_level_t > 0 and qty > _ppl_min_qty_t:
+            if _tm_t is not None and _ppl_fired_t and _ppl_stop_level_t > 0 and qty > _ppl_min_qty_t:
                 _sl_hit_t = (is_long and current_price <= _ppl_stop_level_t) or (not is_long and current_price >= _ppl_stop_level_t)
                 if _sl_hit_t:
                     _tm_t.partial_profit_lock_state.pop(_ppl_pk_t, None)
                     _ppl_sl_label_t = 'upgraded-0.5pct' if _ppl_stop_upgraded_t else 'BE+buffer'
                     logger.warning(f"[PARTIAL_PROFIT_LOCK_TRADIER_SL_HIT] {_ppl_pk_t}: price={current_price:.4f} hit stop={_ppl_stop_level_t:.4f} ({_ppl_sl_label_t}) — closing remaining {qty:.4f}")
                     return True, f"PPL_SL_CLOSE_{_ppl_sl_label_t}_px{current_price:.4f}_stop{_ppl_stop_level_t:.4f}", qty
+        if getattr(config, 'EXIT_STRUCT_DC_BREAK_ENABLED', True):
+            _close_5m_prev = float(i.get('close_5m_prev', current_price) or current_price)
+            if is_long:
+                if hold_time_min <= 20.0:
+                    _dc_stop = i.get('dc_low4_5m', 0)
+                    _level_name = "DC4_5m"
+                    _buf = 0.004
+                    _confirmed = _close_5m_prev < _dc_stop if _dc_stop > 0 else False
+                elif hold_time_min <= 60.0:
+                    _dc_stop = i.get('dc_low_5m', 0)
+                    _level_name = "DC_5m"
+                    _buf = 0.0015
+                    _confirmed = True
+                else:
+                    _dc_stop = i.get('dc_low_1h', 0)
+                    _level_name = "DC_1h"
+                    _buf = 0.001
+                    _confirmed = True
+                if _dc_stop > 0 and current_price < _dc_stop * (1 - _buf) and _confirmed:
+                    return True, f"STRUCT_BREAK_{_level_name}_LOW_({_dc_stop:.2f})_gain:{gain:.2f}%", qty
+            else:
+                if hold_time_min <= 20.0:
+                    _dc_stop = i.get('dc_high4_5m', 999999)
+                    _level_name = "DC4_5m"
+                    _buf = 0.004
+                    _close_5m_prev_h = float(i.get('close_5m_prev', current_price) or current_price)
+                    _confirmed = _close_5m_prev_h > _dc_stop if _dc_stop < 999999 else False
+                elif hold_time_min <= 60.0:
+                    _dc_stop = i.get('dc_high_5m', 999999)
+                    _level_name = "DC_5m"
+                    _buf = 0.0015
+                    _confirmed = True
+                else:
+                    _dc_stop = i.get('dc_high_1h', 999999)
+                    _level_name = "DC_1h"
+                    _buf = 0.001
+                    _confirmed = True
+                if _dc_stop < 999999 and current_price > _dc_stop * (1 + _buf) and _confirmed:
+                    return True, f"STRUCT_BREAK_{_level_name}_HIGH_({_dc_stop:.2f})_gain:{gain:.2f}%", qty
         # ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) — AFTER SRS so SRS can exit at a loss ═══
         # trb/trc were bleeding because DELTA_EXIT/RZ_EXIT/WT_DC_EXIT/MI_EXIT
         # paths fired on technicals REGARDLESS of gain — closing GLD at -0.09%,
@@ -6592,17 +7032,25 @@ class StockStrategy:
             if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)) and bool(getattr(config, 'DELTA_EXIT_REQUIRE_NONZERO_SCORE', True)) and (abs(float(getattr(_d_sig, 'bull_speed', 0) or 0)) + abs(float(getattr(_d_sig, 'bear_speed', 0) or 0)) + float(getattr(_d_sig, 'bull_tf_count', 0) or 0) + float(getattr(_d_sig, 'bear_tf_count', 0) or 0)) == 0.0:
                 logger.info(f"[DELTA_EXIT_ZEROSCORE_SUPPRESSED] {symbol} {'L' if is_long else 'S'}: delta exit fired with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) = closing on NO signal (the 0%-gain commission-burn). HOLDING. USER MANDATE 2026-06-02. Rollback: config_tradier.DELTA_EXIT_REQUIRE_NONZERO_SCORE=False")
             elif _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
-                # STRICT_NO_LOSS gate (2026-04-17): delta can signal exit but we REFUSE to close at a loss.
-                # System was closing GLD -0.09%, COPX -1.09%, XOM -3.34%, TTD -9.96% on "delta exit" signals.
-                # L/S ratio is the hedge — don't realize losses. Wait for gain >= NOLOSS floor.
-                _noloss_min = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
-                if _noloss_min > 0 and gain < _noloss_min:
-                    logger.info(f"[DELTA_EXIT_BLOCKED_NOLOSS] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} gain={gain:.2f}% < NOLOSS={_noloss_min:.2f}% — HOLDING (ratio hedges, no realized loss)")
+                # DELTA_EXIT 45-min cooldown after reentry fill (USER 2026-06-22).
+                # Prevents immediate re-exit when indicator state hasn't changed since last reentry.
+                # Rollback: DELTA_EXIT_REENTRY_COOLDOWN_MIN=0 in config_tradier.py
+                _delta_last_reentry = getattr(position, 'last_reentry_time', None)
+                _delta_cooldown_min = float(getattr(config, 'DELTA_EXIT_REENTRY_COOLDOWN_MIN', 45.0))
+                if isinstance(_delta_last_reentry, datetime) and (datetime.now(timezone.utc) - _delta_last_reentry).total_seconds() / 60.0 < _delta_cooldown_min:
+                    logger.debug(f"[DELTA_EXIT_COOLDOWN] {symbol} {'L' if is_long else 'S'}: reentry {(datetime.now(timezone.utc) - _delta_last_reentry).total_seconds()/60:.1f}m ago < {_delta_cooldown_min:.0f}m — DELTA_EXIT suppressed")
                 else:
-                    _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
-                    _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
-                    logger.warning(f"[DELTA_EXIT] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} {_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
-                    return True, f"{_reason}_g={gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                    # STRICT_NO_LOSS gate (2026-04-17): delta can signal exit but we REFUSE to close at a loss.
+                    # System was closing GLD -0.09%, COPX -1.09%, XOM -3.34%, TTD -9.96% on "delta exit" signals.
+                    # L/S ratio is the hedge — don't realize losses. Wait for gain >= NOLOSS floor.
+                    _noloss_min = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
+                    if _noloss_min > 0 and gain < _noloss_min:
+                        logger.info(f"[DELTA_EXIT_BLOCKED_NOLOSS] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} gain={gain:.2f}% < NOLOSS={_noloss_min:.2f}% — HOLDING (ratio hedges, no realized loss)")
+                    else:
+                        _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
+                        _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
+                        logger.warning(f"[DELTA_EXIT] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} {_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                        return True, f"{_reason}_g={gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
             # ═══ WT CROSSUNDER FINAL RESORT ═══ (user: "if delta fucked up")
             # RULE: LTF (5m for stocks / 3m for crypto) must be going down
             #   PLUS 15m must be going down OR be above 95 (overbought)
@@ -6857,9 +7305,9 @@ class StockStrategy:
         # Frees capital for the opposite-side trade (breakdown/breakout)
         _wt_vel_1h = float(i.get('wt_velocity_1h', 0) or 0)
         _wt_bull_1h = float(i.get('wt1_1h', 0) or 0) > float(i.get('wt2_1h', 0) or 0)
-        _k_1h = float(i.get('stoch_k_1h', 50) or 50); _d_1h = float(i.get('stoch_d_1h', 50) or 50)
+        _k_1h = float(i.get('k_1h', 50) or 50); _d_1h = float(i.get('d_1h', 50) or 50)
         if False and gain > 0.05 and gain < getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0):  # DISABLED: was closing at 0.05-3% gain (below noloss_min). STRICT_NO_LOSS means hold until 3%+.
-            _k_1h = float(i.get('stoch_k_1h', 50) or 50); _d_1h = float(i.get('stoch_d_1h', 50) or 50)
+            _k_1h = float(i.get('k_1h', 50) or 50); _d_1h = float(i.get('d_1h', 50) or 50)
             _wt_against = (is_long and _wt_vel_1h < -3.0 and not _wt_bull_1h) or (not is_long and _wt_vel_1h > 3.0 and _wt_bull_1h)
             _k_against = (is_long and _k_1h < _d_1h) or (not is_long and _k_1h > _d_1h)
             if _wt_against and _k_against:
@@ -6927,11 +7375,11 @@ class StockStrategy:
         # HTF QUICK TP — 1h exhausted but 4h trend intact → take profit, reenter bigger on resume
         # Stocks: 1h K>90 + short-TFs turning down + 4h K<60 still up → exit for quick TP
         if gain >= _noloss_min_t:
-            _k4h_s = float(i.get('stoch_k_4h', 50) or 50); _d4h_s = float(i.get('stoch_d_4h', 50) or 50)
-            _k4h_prev_s = float(i.get('stoch_k_4h_prev', _k4h_s) or _k4h_s)
+            _k4h_s = float(i.get('k_4h', 50) or 50); _d4h_s = float(i.get('d_4h', 50) or 50)
+            _k4h_prev_s = float(i.get('k_4h_prev', _k4h_s) or _k4h_s)
             _wt_bull_4h_s = float(i.get('wt1_4h', 0) or 0) > float(i.get('wt2_4h', 0) or 0)
-            _k5m = float(i.get('stoch_k_5m', 50) or 50); _k5m_prev = float(i.get('stoch_k_5m_prev', 50) or 50)
-            _k15m_s = float(i.get('stoch_k_15m', 50) or 50); _k15m_prev_s = float(i.get('stoch_k_15m_prev', 50) or 50)
+            _k5m = float(i.get('k_5m', 50) or 50); _k5m_prev = float(i.get('k_5m_prev', 50) or 50)
+            _k15m_s = float(i.get('k_15m', 50) or 50); _k15m_prev_s = float(i.get('k_15m_prev', 50) or 50)
             _ltf_down = _k5m < _k5m_prev and _k15m_s < _k15m_prev_s
             _ltf_up = _k5m > _k5m_prev and _k15m_s > _k15m_prev_s
             if is_long and _k_1h > 90 and _ltf_down and (_wt_bull_4h_s or _k4h_s > _d4h_s) and _k4h_s < 60:
@@ -6951,8 +7399,8 @@ class StockStrategy:
         _bt_min_loss = getattr(config, 'BOUNCE_TOP_MIN_LOSS_PCT', -3.0)
         _bt_max_loss = getattr(config, 'BOUNCE_TOP_MAX_LOSS_PCT', -50.0)
         if _bt_enabled and gain < _bt_min_loss and gain > _bt_max_loss and hold_time_min > _bt_min_hold:
-            _k5m_bt = float(i.get('stoch_k_5m', 50) or 50)
-            _k15m_bt = float(i.get('stoch_k_15m', 50) or 50)
+            _k5m_bt = float(i.get('k_5m', 50) or 50)
+            _k15m_bt = float(i.get('k_15m', 50) or 50)
             _wt_vel_5m_bt = float(i.get('wt_velocity_5m', 0) or 0)
             _wt_vel_15m_bt = float(i.get('wt_velocity_15m', 0) or 0)
             _wt_bull_5m_bt = float(i.get('wt1_5m', 0) or 0) > float(i.get('wt2_5m', 0) or 0)
@@ -6977,53 +7425,7 @@ class StockStrategy:
         #     return True, f"HARD_STOP_LOSS_MAX_PAIN_(-1.5%)_Actual:{gain:.2f}%_qty_{qty}", qty
         pass
 
-        # B. TIME-BASED STRUCTURAL STOPS (cascading: tight→medium→wide)
-        # 0-20 min : dc_low4_5m  (4-period tight) — wide buffer (0.4%) to hold firm
-        # 20-60 min: dc_low_5m   (20-period 5m)   — standard buffer (0.15%)
-        # 60+ min  : dc_low_1h   (20-period 1h)   — standard buffer (0.1%)
-        # Early stop also requires the PREVIOUS 5m candle to have closed below (confirmation).
-        close_5m_prev = float(i.get('close_5m_prev', current_price) or current_price)
-
-        if is_long:
-            if hold_time_min <= 20.0:
-                dc_stop = i.get('dc_low4_5m', 0)
-                level_name = "DC4_5m"
-                buf = 0.004  # 0.4% — wide buffer, hold firm vs noise
-                # Also require prev 5m candle to confirm break
-                confirmed = close_5m_prev < dc_stop if dc_stop > 0 else False
-            elif hold_time_min <= 60.0:
-                dc_stop = i.get('dc_low_5m', 0)
-                level_name = "DC_5m"
-                buf = 0.0015
-                confirmed = True
-            else:
-                dc_stop = i.get('dc_low_1h', 0)
-                level_name = "DC_1h"
-                buf = 0.001
-                confirmed = True
-
-            if dc_stop > 0 and current_price < dc_stop * (1 - buf) and confirmed and gain >= getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0):
-                return True, f"STRUCT_BREAK_{level_name}_LOW_({dc_stop:.2f})_gain:{gain:.2f}%", qty
-        else:
-            if hold_time_min <= 20.0:
-                dc_stop = i.get('dc_high4_5m', 999999)
-                level_name = "DC4_5m"
-                buf = 0.004
-                close_5m_prev_h = float(i.get('close_5m_prev', current_price) or current_price)
-                confirmed = close_5m_prev_h > dc_stop if dc_stop < 999999 else False
-            elif hold_time_min <= 60.0:
-                dc_stop = i.get('dc_high_5m', 999999)
-                level_name = "DC_5m"
-                buf = 0.0015
-                confirmed = True
-            else:
-                dc_stop = i.get('dc_high_1h', 999999)
-                level_name = "DC_1h"
-                buf = 0.001
-                confirmed = True
-
-            if dc_stop < 999999 and current_price > dc_stop * (1 + buf) and confirmed and gain >= getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0):
-                return True, f"STRUCT_BREAK_{level_name}_HIGH_({dc_stop:.2f})_gain:{gain:.2f}%", qty
+        pass
 
         # --------------------------------------------------
         # 2. EMERGENCY SIZE KILL (The Fix for Huge Pos)
@@ -7074,7 +7476,7 @@ class StockStrategy:
         # 3.5. K5M MOMENTUM EXIT (BOUNCE-TURN / REAL DROP)
         # Now gated by multi-TF WT confirmation
         # --------------------------------------------------
-        k_5m = float(i.get('stoch_k_5m', 50)); k_5m_prev = float(i.get('stoch_k_5m_prev', 50)); k_15m = float(i.get('stoch_k_15m', 50)); k_1h = float(i.get('stoch_k_1h', 50))
+        k_5m = float(i.get('k_5m', 50)); k_5m_prev = float(i.get('k_5m_prev', 50)); k_15m = float(i.get('k_15m', 50)); k_1h = float(i.get('k_1h', 50))
         low_5m = float(i.get('low_5m', 0)); low_5m_prev = float(i.get('low_5m_prev', 0)); high_5m = float(i.get('high_5m', 0)); high_5m_prev = float(i.get('high_5m_prev', 0))
         dc_low_5m = float(i.get('dc_low_5m', 0)); dc_high_5m = float(i.get('dc_high_5m', 0)); close_5m_prev = float(i.get('close_5m_prev', current_price) or current_price)
         # K5M exits: raised from gain>0.5 to gain>=noloss_min — was losing -$1,804 total on stocks
@@ -7167,14 +7569,14 @@ class StockStrategy:
                 return True, f"Structure_Break_1H_Basis_gain:{gain:.2f}%", qty
             if gain > 1.5 and current_price > i.get('dc_high_1h', 999999) and i.get('rsi_15m', 50) > 80:
                 return True, f"Extreme_Overbought_TP_gain:{gain:.2f}%", qty
-            if gain >= _noloss_min_t and i.get('rsi_15m', 50) < 40 and i.get('stoch_k_15m', 50) < i.get('stoch_d_15m', 50) and i.get('ha_15m', 'neutral') == 'red':
+            if gain >= _noloss_min_t and i.get('rsi_15m', 50) < 40 and i.get('k_15m', 50) < i.get('d_15m', 50) and i.get('ha_15m', 'neutral') == 'red':
                  return True, f"Technical_Breakdown_15m_gain:{gain:.2f}%", qty
         else:
             if gain >= _noloss_min_t and current_price > i.get('dc_basis_1h', 999999) and i.get('lr_trend_15m', 0) > 0:
                 return True, f"Structure_Break_1H_Basis_gain:{gain:.2f}%", qty
             if gain > 1.5 and current_price < i.get('dc_low_1h', 0) and i.get('rsi_15m', 50) < 20:
                 return True, f"Extreme_Oversold_TP_gain:{gain:.2f}%", qty
-            if gain >= _noloss_min_t and i.get('rsi_15m', 50) > 60 and i.get('stoch_k_15m', 50) > i.get('stoch_d_15m', 50) and i.get('ha_15m', 'neutral') == 'green':
+            if gain >= _noloss_min_t and i.get('rsi_15m', 50) > 60 and i.get('k_15m', 50) > i.get('d_15m', 50) and i.get('ha_15m', 'neutral') == 'green':
                  return True, f"Technical_Breakdown_15m_gain:{gain:.2f}%", qty
                  
         return False, "", 0.0
@@ -7299,8 +7701,8 @@ class StockStrategy:
                 _custom_idx = self.trade_manager.get_custom_universe_index()
                 _universe_score = _custom_idx.get('composite', 0.0)
                 _qqq = self.trade_manager.market_snapshot.get('QQQ', indicators)
-                _k1h = float(_qqq.get('stoch_k_1h', 50) or 50)
-                _d1h = float(_qqq.get('stoch_d_1h', 50) or 50)
+                _k1h = float(_qqq.get('k_1h', 50) or 50)
+                _d1h = float(_qqq.get('d_1h', 50) or 50)
                 _qqq_momentum = 30.0 if (_k1h > _d1h and _k1h > 50) else (-30.0 if (_k1h < _d1h and _k1h < 50) else 0.0)
                 # Active book breadth (our actual traded symbols)
                 _active_score = 0.0
@@ -7365,9 +7767,9 @@ class StockStrategy:
         # Circuit breaker: check & update
         self.circuit_breaker.check_positions(self.trade_manager.positions if self.trade_manager else {})
         score, rec, reason = 0.0, "WAIT", "uncalculated"
-        k5 = i.get('stoch_k_5m', 50)
-        d5 = i.get('stoch_d_5m', 50)
-        k5_prev = i.get('stoch_k_5m_prev', 50)
+        k5 = i.get('k_5m', 50)
+        d5 = i.get('d_5m', 50)
+        k5_prev = i.get('k_5m_prev', 50)
         
         # Entry requires price to be on a genuine pullback — at or near DC support/resistance.
         # This prevents chasing mid-range after a close.
@@ -7377,10 +7779,10 @@ class StockStrategy:
         dc_high5 = i.get('dc_high_5m', 999999)
         dc_basis1h = i.get('dc_basis_1h', 0)
         # Stoch direction vars — used by both LONG and SHORT DC paths below
-        _k5e = float(i.get('stoch_k_5m', 50) or 50)
-        _d5e = float(i.get('stoch_d_5m', 50) or 50)
-        _k15e = float(i.get('stoch_k_15m', 50) or 50)
-        _d15e = float(i.get('stoch_d_15m', 50) or 50)
+        _k5e = float(i.get('k_5m', 50) or 50)
+        _d5e = float(i.get('d_5m', 50) or 50)
+        _k15e = float(i.get('k_15m', 50) or 50)
+        _d15e = float(i.get('d_15m', 50) or 50)
 
         if is_long:
             # DC LONG fast-path: check BEFORE stoch hook guard
@@ -7406,8 +7808,8 @@ class StockStrategy:
                 if _dc_long_tf_l == "DC5M":
                     _wt1_1h_l = float(i.get('wt1_1h', 0) or 0)
                     _wt2_1h_l = float(i.get('wt2_1h', 0) or 0)
-                    _k1h_l = float(i.get('stoch_k_1h', 50) or 50)
-                    _d1h_l = float(i.get('stoch_d_1h', 50) or 50)
+                    _k1h_l = float(i.get('k_1h', 50) or 50)
+                    _d1h_l = float(i.get('d_1h', 50) or 50)
                     _dch1h_l = float(i.get('dc_high_1h', 0) or 0)
                     _dcb1h_l = float(i.get('dc_basis_1h', 0) or 0)
                     # 1H must AGREE with LONG: WT bullish + stoch bullish + price above dc_basis_1h
@@ -7439,9 +7841,9 @@ class StockStrategy:
 
             # === OVERSOLD_TURN entry (Grid test winner: 87% WR, PF 22.4) ===
             # k_15m < 30 (oversold on higher TF) AND k_5m rising (turn confirmed)
-            _k15_os = float(i.get('stoch_k_15m', 50) or 50)
-            _k1h_l = float(i.get('stoch_k_1h', 50) or 50)
-            _d1h_l = float(i.get('stoch_d_1h', 50) or 50)
+            _k15_os = float(i.get('k_15m', 50) or 50)
+            _k1h_l = float(i.get('k_1h', 50) or 50)
+            _d1h_l = float(i.get('d_1h', 50) or 50)
             # NEVER open LONG below dc_low_5m — wrong side of the channel
             if dc_low5 > 0 and current_price < dc_low5:
                 return "NO_ACTION", f"Below_DC_Low5m_no_long({dc_low5:.2f})", 0.0, 0.0
@@ -7478,8 +7880,8 @@ class StockStrategy:
                 if _dc_short_tf == "DC5M":
                     _wt1_1h_s = float(i.get('wt1_1h', 0) or 0)
                     _wt2_1h_s = float(i.get('wt2_1h', 0) or 0)
-                    _k1h_s = float(i.get('stoch_k_1h', 50) or 50)
-                    _d1h_s2 = float(i.get('stoch_d_1h', 50) or 50)
+                    _k1h_s = float(i.get('k_1h', 50) or 50)
+                    _d1h_s2 = float(i.get('d_1h', 50) or 50)
                     _dcb1h_s = float(i.get('dc_basis_1h', 0) or 0)
                     # 1H must AGREE with SHORT: WT bearish + stoch bearish + price below dc_basis_1h
                     _1h_wt_bear = _wt1_1h_s < _wt2_1h_s
@@ -7510,8 +7912,8 @@ class StockStrategy:
 
             # === OVERBOUGHT_SHORT entry (Grid test winner: 89% WR, PF 40.2) ===
             # k_15m > 70 (overbought on higher TF) AND k_5m falling (turn confirmed)
-            _k1h_s = float(i.get('stoch_k_1h', 50) or 50)
-            _d1h_s = float(i.get('stoch_d_1h', 50) or 50)
+            _k1h_s = float(i.get('k_1h', 50) or 50)
+            _d1h_s = float(i.get('d_1h', 50) or 50)
             # NEVER open SHORT above dc_high_5m — wrong side of the channel
             if dc_high5 < 999999 and dc_high5 > 0 and current_price > dc_high5:
                 return "NO_ACTION", f"Above_DC_High5m_no_short({dc_high5:.2f})", 0.0, 0.0
@@ -7586,7 +7988,7 @@ class StockStrategy:
                     
             # Fast bounce off 5m low
             dist_5m_low = (current_price - i.get('dc_low_5m', 0)) / max(current_price, 1e-9)
-            bounce_1m_long = i.get('stoch_k_1m', 50) > i.get('stoch_d_1m', 50) and i.get('stoch_k_1m', 50) < 30
+            bounce_1m_long = i.get('k_1m', 50) > i.get('d_1m', 50) and i.get('k_1m', 50) < 30
             if dist_5m_low < 0.008 and bounce_1m_long:
                 base_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9))
                 final_qty = await self.calculate_quantity_complex(symbol, "OPEN", "LONG", base_qty, indicators, None, market_context)
@@ -7602,7 +8004,7 @@ class StockStrategy:
                     
             # Fast bounce off 5m high
             dist_5m_high = (i.get('dc_high_5m', 999999) - current_price) / max(current_price, 1e-9)
-            bounce_1m_short = i.get('stoch_k_1m', 50) < i.get('stoch_d_1m', 50) and i.get('stoch_k_1m', 50) > 70
+            bounce_1m_short = i.get('k_1m', 50) < i.get('d_1m', 50) and i.get('k_1m', 50) > 70
             if dist_5m_high < 0.008 and bounce_1m_short:
                 base_qty = (config.START_POSITION_SIZE / max(current_price, 1e-9))
                 final_qty = await self.calculate_quantity_complex(symbol, "OPEN", "SHORT", base_qty, indicators, None, market_context)
@@ -7611,10 +8013,10 @@ class StockStrategy:
 
 
         # --- LOGGING FOR DEBUGGING (Why didn't we trade?) ---
-        if is_long and (i.get('stoch_k_5m', 50) > i.get('stoch_d_5m', 50)):
+        if is_long and (i.get('k_5m', 50) > i.get('d_5m', 50)):
             if not uptrend_1h: return "NO_ACTION", f"Wait_Trend_1H (Price < EMA200)", 0.0, 0.0
             if not pullback_long: return "NO_ACTION", f"Wait_Pullback (DistToLow {dist_to_low:.2%})", 0.0, 0.0
-            if not trigger_long: return "NO_ACTION", f"Stoch_High ({i.get('stoch_k_5m', 50):.0f} > 50)", 0.0, 0.0
+            if not trigger_long: return "NO_ACTION", f"Stoch_High ({i.get('k_5m', 50):.0f} > 50)", 0.0, 0.0
         return "NO_ACTION", "", 0.0, 0.0
 
 
@@ -7913,7 +8315,8 @@ class StockStrategy:
                 _xb_favorable = (is_long and current_price >= _xb_last_px) or ((not is_long) and current_price <= _xb_last_px)
                 _xb_within_band = _xb_dist_pct <= _xb_band_pct
                 if _xb_favorable or _xb_within_band:
-                    from ez_reentry import check_reentry_confirmation as _chk_re
+                    from ez_reentry import \
+                        check_reentry_confirmation as _chk_re
                     _xb_gate_ok, _xb_gate_reason = _chk_re(i, is_long, config)
                     # 2026-05-29 USER: also require a 4-bar Donchian breakout (dc_high4_5m / dc_low4_5m
                     # on already-closed bars). Mirror of crypto REENTRY_LIVE_MONITOR_DC_BREAK. Fail-open.
@@ -7976,7 +8379,7 @@ class StockStrategy:
                             _ra_wt_ok = (is_long and _ra_w1 > _ra_w2) or ((not is_long) and _ra_w1 < _ra_w2)
                         _ra_gate_ok = True
                         if bool(getattr(config, 'REENTRY_CONFIRMATION_GATES_ENABLED', True)):
-                            _k5 = float(i.get('stoch_k_5m', 50) or 50); _kp5 = float(i.get('stoch_k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
+                            _k5 = float(i.get('k_5m', 50) or 50); _kp5 = float(i.get('k_5m_prev', 50) or 50); _wt1 = float(i.get('wt1_5m', 0) or 0); _wt2 = float(i.get('wt2_5m', 0) or 0)
                             if is_long: _ra_gate_ok = (_k5 < float(getattr(config, 'REENTRY_STOCH_K_MAX_LONG', 40.0))) or (_k5 > _kp5 and _wt1 > _wt2)
                             else: _ra_gate_ok = (_k5 > float(getattr(config, 'REENTRY_STOCH_K_MIN_SHORT', 60.0))) or (_k5 < _kp5 and _wt1 < _wt2)
                         if _ra_wt_ok and _ra_gate_ok and _ra_gain_ok:
@@ -8033,7 +8436,7 @@ class StockStrategy:
         _t2_min_t = getattr(config, 'REENTRY_TIER2_MIN_MINUTES_TRADIER', 10.0)
         _t2_max_t = getattr(config, 'REENTRY_TIER2_MAX_MINUTES_TRADIER', 120.0)
         _t2_size_t = getattr(config, 'REENTRY_TIER2_SIZE_MULT_TRADIER', 0.8)
-        k_5m_t2 = float(i.get('stoch_k_5m', 50) or 50); k_5m_prev_t2 = float(i.get('stoch_k_5m_prev', 50) or 50); k_15m_t2 = float(i.get('stoch_k_15m', 50) or 50)
+        k_5m_t2 = float(i.get('k_5m', 50) or 50); k_5m_prev_t2 = float(i.get('k_5m_prev', 50) or 50); k_15m_t2 = float(i.get('k_15m', 50) or 50)
         if _last_red_px > 0 and last_red_age_min >= _t2_min_t and last_red_age_min < 1200:
             _trend_past_t = (is_long and current_price > _last_red_px * (1.0 + _t2_pct_t)) or (not is_long and current_price < _last_red_px * (1.0 - _t2_pct_t))
             _mom_ok_t = (is_long and k_5m_t2 > k_5m_prev_t2) or (not is_long and k_5m_t2 < k_5m_prev_t2)
@@ -8109,15 +8512,19 @@ class StockStrategy:
             if _wt1_4h < _wt2_4h: _wt_fav += 1
         logger.info(f"[REENTRY_GATE] {symbol} {'L' if is_long else 'S'}: wt_fav={_wt_fav}/4 5m={_wt1_5m:.0f}/{_wt2_5m:.0f} 15m={_wt1_15m:.0f}/{_wt2_15m:.0f} 1h={_wt1_1h:.0f}/{_wt2_1h:.0f} 4h={_wt1_4h:.0f}/{_wt2_4h:.0f} k5m={k_5m_t2:.0f}/prev={k_5m_prev_t2:.0f}")
         if _wt_fav >= 2:
-            # STOCH GATE: k_5m < 50 AND rising (LONG) or > 50 AND falling (SHORT)
-            # Bypass if position has been waiting >2h (k_5m may be stuck at a low/high during flat market)
+            # STOCH GATE: k_5m favorable (LONG: <50 rising; SHORT: >50 falling).
+            # 2026-06-09: when overdue (>2h) AND wt_fav>=2, bypass stoch entirely — k5m=50 was
+            # blocking GLD (26h overdue) and USO (24h overdue) because 50 is NOT < 50.0.
             _stoch_overdue = last_red_age_min >= 120.0
-            if is_long and not (k_5m_t2 < 50.0 and (k_5m_t2 > k_5m_prev_t2 or _stoch_overdue)):
-                logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
-                return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
-            if not is_long and not (k_5m_t2 > 50.0 and (k_5m_t2 < k_5m_prev_t2 or _stoch_overdue)):
-                logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
-                return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
+            if not _stoch_overdue:
+                if is_long and not (k_5m_t2 < 50.0 and k_5m_t2 > k_5m_prev_t2):
+                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
+                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
+                if not is_long and not (k_5m_t2 > 50.0 and k_5m_t2 < k_5m_prev_t2):
+                    logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
+                    return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
+            else:
+                logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_BYPASSED overdue={last_red_age_min:.0f}m k5m={k_5m_t2:.0f} wt_fav={_wt_fav}")
             # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs)
             _rally_k15m_max = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0))
             _rally_htf_min = int(getattr(config, 'REENTRY_RALLY_HTF_MIN', 1))
@@ -8135,8 +8542,8 @@ class StockStrategy:
         _wt_cross_bear_5m = i.get('wt_cross_bear_5m', i.get('wt_cross_5m') == "BEAR")
         _dc_pos = float(i.get('dc_position_1h', 0.5) or 0.5)
         # Fallback to stoch for symbols without WT data
-        k_5m = float(i.get('stoch_k_5m', 50)); d_5m = float(i.get('stoch_d_5m', 50))
-        k_15m = float(i.get('stoch_k_15m', 50)); d_15m = float(i.get('stoch_d_15m', 50))
+        k_5m = float(i.get('k_5m', 50)); d_5m = float(i.get('d_5m', 50))
+        k_15m = float(i.get('k_15m', 50)); d_15m = float(i.get('d_15m', 50))
         # WT cross value analysis — is this cross HIGHER than previous? (strengthening trend)
         _wt_cross_val = float(i.get('wt_cross_value_5m') or i.get('wt_cross_value_15m') or 0)
         _wt_cross_prev = float(i.get('wt_cross_prev_value_5m') or i.get('wt_cross_prev_value_15m') or 0)
@@ -9388,8 +9795,8 @@ class TradierTradeManager:
             except (TypeError, ValueError):
                 return default
         i = indicators or {}
-        d_1h = _f(i.get('stoch_d_1h', 0))
-        d_4h = _f(i.get('stoch_d_4h', 0))
+        d_1h = _f(i.get('d_1h', 0))
+        d_4h = _f(i.get('d_4h', 0))
         high_1h = _f(i.get('high_1h', 0)); high_1h_prev = _f(i.get('high_1h_prev', 0))
         low_1h = _f(i.get('low_1h', 0)); low_1h_prev = _f(i.get('low_1h_prev', 0))
         high_4h = _f(i.get('high_4h', 0)); high_4h_prev = _f(i.get('high_4h_prev', 0))
@@ -9440,8 +9847,8 @@ class TradierTradeManager:
         if not isinstance(i, dict): return {}
         
         # Standard Mappings
-        i['stoch_k_3m'] = i.get('stoch_k_5m')
-        i['stoch_d_3m'] = i.get('stoch_d_5m')
+        i['k_3m'] = i.get('k_5m')
+        i['d_3m'] = i.get('d_5m')
         
         # Punctual Timestamp Fix: Convert all your specific JSON keys to UTC Datetimes
         ts_keys = ['timestamp', 'timestamp_1m', 'timestamp_5m', 'timestamp_15m', 'timestamp_1h', 'timestamp_4h']
@@ -9452,8 +9859,8 @@ class TradierTradeManager:
 
     # def _adapt_indicators_for_ez_manage(self, i: Dict[str, Any]) -> Dict[str, Any]:
     #     if not isinstance(i, dict): return {}
-    #     i['stoch_k_3m'] = i.get('stoch_k_5m')
-    #     i['stoch_d_3m'] = i.get('stoch_d_5m')
+    #     i['k_3m'] = i.get('k_5m')
+    #     i['d_3m'] = i.get('d_5m')
     #     for ts_key in ['timestamp', 'timestamp_1m', 'timestamp_5m', 'timestamp_15m', 'timestamp_1h', 'timestamp_4h', 'timestamp_D']:
     #         if ts_key in i and isinstance(i[ts_key], str):
     #             i[ts_key] = safe_datetime(i[ts_key])
@@ -9467,7 +9874,7 @@ class TradierTradeManager:
     #             m1_keys = [k for k in adapted.keys() if '_1m' in k or k in ['k_1m', 'd_1m']]
     #             m1_keys = [k for k in m1_keys if k not in ['1m_updated_at', 'timestamp_1m']]
     #             for k in m1_keys: adapted.pop(k, None)
-    #     mappings_1m = {  'k_1m': 'stoch_k_1m', 'd_1m': 'stoch_d_1m',  'k_1m_prev': 'stoch_k_1m_prev', 'd_1m_prev': 'stoch_d_1m_prev' }
+    #     mappings_1m = {  'k_1m': 'k_1m', 'd_1m': 'd_1m',  'k_1m_prev': 'k_1m_prev', 'd_1m_prev': 'd_1m_prev' }
     #     for target_key, source_key in mappings_1m.items():
     #         if source_key in adapted:
     #             adapted[target_key] = adapted[source_key]
@@ -9628,7 +10035,7 @@ class TradierTradeManager:
         # 2. NUMERIC CONVERSION
         float_keys = [
             'current_price', 'current_price',
-            'stoch_k_1m', 'stoch_d_1m', 'stoch_k_5m', 'stoch_d_5m',
+            'k_1m', 'd_1m', 'k_5m', 'd_5m',
             'rsi_1m', 'rsi_5m', '0sentiment_rank'
         ]
         for k in float_keys:
@@ -9923,7 +10330,7 @@ class TradierTradeManager:
             # --- QUANTITY CALCULATION ---
             if action in ["OPEN", "AUGMENT", "REENTER", "REENTRY"]:
                 remaining_usd = max(0, max_pos - (current_qty * last))
-                base_target = config.START_POSITION_SIZE if current_qty == 0 else (quantity * last)
+                base_target = (quantity * last) if quantity > 0 else config.START_POSITION_SIZE
                 target_usd = base_target * 3.0 if is_exception else base_target
                 calc_qty = int(min(target_usd, max_order, remaining_usd) / last)
             else:
@@ -10235,6 +10642,20 @@ class TradierTradeManager:
             logger.info(f"[{account_key}] ⛔ {symbol} {side}: {'LONG' if side == 'LONG' else 'SHORT'}_ENABLED=False (neg-Sharpe/disabled) — no new entry/reentry")
             return False
 
+        # 3c. 2026-07-20 USER: trc is a TEMPORARY live A/B control arm that must trade ONLY
+        #     trb's symbols that also have real per_sym + 7D-overlay results for trc itself
+        #     (data/hourly_reconfig/trc/active_config.json). symbols_trc_long/short.json
+        #     (step 3 above) is meant to mirror trb's fully-processed universe but the
+        #     ranking pipeline that maintains it has been stalling — that let trc hold a
+        #     tradeable symbol (e.g. UUUU) with no trc-specific per_sym+7D result behind it.
+        #     Gate NEW entries only; exits/reduces bypass is_symbol_tradeable so existing
+        #     positions can still be closed.
+        if account_key == 'trc':
+            _trc_cfgs = _load_tradier_per_sym_cfgs(Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trc" / "active_config.json")
+            if f"{symbol}_{side}" not in _trc_cfgs:
+                logger.info(f"[trc] ⛔ {symbol} {side}: no trc per_sym+7D result in active_config.json — no new entry/reentry")
+                return False
+
         # 4. ALWAYS_TRADEABLE/EXCEPTIONS are now only an enabler ON TOP of same_side_syms —
         #    they were already de-fanged in step 3, but kept here for any future restrictive use.
         return True
@@ -10297,12 +10718,12 @@ class TradierTradeManager:
         timestamp = safe_datetime(timestamp_str)
         
         # Unpack variables (Using 5m instead of 3m as per user instruction)
-        k_1m, k_1m_prev, d_1m = g('stoch_k_1m', 50), g('stoch_k_1m_prev', 50), g('stoch_d_1m', 50)
-        k_5m, k_5m_prev, d_5m = g('stoch_k_5m', 50), g('stoch_k_5m_prev', 50), g('stoch_d_5m', 50)
-        k_15m, k_15m_prev, d_15m = g('stoch_k_15m', 50), g('stoch_k_15m_prev', 50), g('stoch_d_15m', 50)
-        k_1h, k_1h_prev, d_1h = g('stoch_k_1h', 50), g('stoch_k_1h_prev', 50), g('stoch_d_1h', 50)
-        k_4h, k_4h_prev, d_4h = g('stoch_k_4h', 50), g('stoch_k_4h_prev', 50), g('stoch_d_4h', 50)
-        k_D, k_D_prev, d_D = g('stoch_k_D', 50), g('stoch_k_D_prev', 50), g('stoch_d_D', 50)
+        k_1m, k_1m_prev, d_1m = g('k_1m', 50), g('k_1m_prev', 50), g('d_1m', 50)
+        k_5m, k_5m_prev, d_5m = g('k_5m', 50), g('k_5m_prev', 50), g('d_5m', 50)
+        k_15m, k_15m_prev, d_15m = g('k_15m', 50), g('k_15m_prev', 50), g('d_15m', 50)
+        k_1h, k_1h_prev, d_1h = g('k_1h', 50), g('k_1h_prev', 50), g('d_1h', 50)
+        k_4h, k_4h_prev, d_4h = g('k_4h', 50), g('k_4h_prev', 50), g('d_4h', 50)
+        k_D, k_D_prev, d_D = g('k_D', 50), g('k_D_prev', 50), g('d_D', 50)
 
         wt1_5m, wt2_5m = g('wt1_5m'), g('wt2_5m')
         wt1_15m, wt2_15m = g('wt1_15m'), g('wt2_15m')
@@ -10535,7 +10956,8 @@ class TradierTradeManager:
             _gr_min_tfs_tr = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
             if _gr_min_tfs_tr > 0:
                 try:
-                    from golden_rule_htf import score_entry_htf as _gr_score_entry_tr
+                    from golden_rule_htf import \
+                        score_entry_htf as _gr_score_entry_tr
                     _gr_min_ind_tr = int(getattr(config, "GOLDEN_RULE_MIN_IND", 2))
                     _gr_pass_tr, _gr_n_tfs_tr, _gr_detail_tr = _gr_score_entry_tr(i, is_long, "tradier", _gr_min_tfs_tr, _gr_min_ind_tr, current_price, True)
                     if not _gr_pass_tr:
@@ -10680,6 +11102,9 @@ class TradierTradeManager:
                 return (False, "")
             notional = float(quantity or 0) * px
             is_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() or 'AGENT_FORCE_OPEN' in (reason or '').upper()
+            # SMA200 structural-bear bypass: price below 200-SMA = D-level bear context regardless of candle color.
+            _sma200_15m = safe_fetch_float(ind.get('sma_200_15m', 0))
+            _dg_short_below_sma200 = (not is_long) and bool(getattr(config, 'DG_SMA200_SHORT_BYPASS', True)) and _sma200_15m > 0 and px < _sma200_15m
             # ── Control 1+2: daily intraday return guard ──
             day_open = safe_fetch_float(ind.get('open_D', 0)) or safe_fetch_float(ind.get('open_1h', 0))
             if day_open > 0:
@@ -10707,18 +11132,19 @@ class TradierTradeManager:
             bias_1h = _bias(close_1h, open_1h)
             want = 1 if is_long else -1
             if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_D', True)):
-                # For shorts: block if D is actively bullish (bias_D == 1) OR neutral/stale (bias_D == 0)
-                # Neutral = close_D ≈ open_D = stale pre-market data; "uncertain" must block shorts
+                # For shorts: block ONLY if D is actively bullish (bias_D == 1).
+                # Neutral/stale (0) is allowed — stale data should not permanently block strong intraday shorts.
                 # For longs: only block if D is actively bearish (bias_D == -1)
-                if (not is_long) and bias_D >= 0:
-                    logger.critical(f"🛑 [DG_3D_HTF_D_NOT_BEAR] {position_key}: D bias={'bull' if bias_D>0 else 'neutral/stale'} (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
+                # SMA200 bypass: below sma_200_15m = structural bear — skip D-candle check.
+                if (not is_long) and bias_D == 1 and not _dg_short_below_sma200:
+                    logger.critical(f"🛑 [DG_3D_HTF_D_NOT_BEAR] {position_key}: D bias=bull (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
                     return (True, "DG_HTF_D_NOT_BEAR")
                 elif is_long and bias_D != 0 and bias_D == -want:
                     logger.critical(f"🛑 [DG_3D_HTF_D_AGAINST] {position_key}: D bias={'bull' if bias_D>0 else 'bear'} but want bull entry — REFUSING. reason={reason}")
                     return (True, "DG_HTF_D_AGAINST")
             if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_4H', True)):
-                if (not is_long) and bias_4h >= 0:
-                    logger.critical(f"🛑 [DG_3H4_HTF_4H_NOT_BEAR] {position_key}: 4h bias={'bull' if bias_4h>0 else 'neutral/stale'} (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
+                if (not is_long) and bias_4h == 1 and not _dg_short_below_sma200:
+                    logger.critical(f"🛑 [DG_3H4_HTF_4H_NOT_BEAR] {position_key}: 4h bias=bull (need bear=-1 to allow short) — REFUSING SHORT. reason={reason}")
                     return (True, "DG_HTF_4H_NOT_BEAR")
                 elif is_long and bias_4h != 0 and bias_4h == -want:
                     logger.critical(f"🛑 [DG_3H4_HTF_4H_AGAINST] {position_key}: 4h bias={'bull' if bias_4h>0 else 'bear'} but want bull entry — REFUSING. reason={reason}")
@@ -10818,12 +11244,14 @@ class TradierTradeManager:
                 _agree = False
                 if bias_D == want and bias_D != 0: _agree = True
                 if bias_4h == want and bias_4h != 0: _agree = True
+                if _dg_short_below_sma200: _agree = True
                 if not _agree:
                     logger.critical(f"🛑 [DG_10_SHORT_NO_HTF_CONFIRM] {position_key}: short requires D OR 4h bearish, got D={bias_D} 4h={bias_4h} want={want} — REFUSING SHORT. reason={reason}")
                     return (True, "DG_SHORT_NO_HTF_CONFIRM")
             # ── Control 11: WT daily-level directional block for shorts ──
             # If D-level WaveTrend is bullish (wt1_D > wt2_D), refuse to SHORT.
-            if not is_long:
+            # Bypassed when price < sma_200_15m (structural bear context).
+            if not is_long and not _dg_short_below_sma200:
                 _wt1_D = safe_fetch_float(ind.get('wt1_D', 0))
                 _wt2_D = safe_fetch_float(ind.get('wt2_D', 0))
                 if _wt1_D != 0 and _wt2_D != 0 and _wt1_D > _wt2_D:
@@ -10848,8 +11276,7 @@ class TradierTradeManager:
             import platform as _pf
             if _pf.system() == "Darwin" and bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", True)):
                 try:
-                    from ez_manage import safe_check_server_heartbeat as _ssh_hb
-                    _srv_live = await _ssh_hb(account_key)
+                    _srv_live = await safe_check_server_heartbeat_tradier(account_key)
                 except Exception:
                     _srv_live = False
                 if _srv_live:
@@ -10912,7 +11339,14 @@ class TradierTradeManager:
                 _guar_ra_trd_mtf = bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) and ('AUGMENT' in (action or '').upper() or 'REENTRY' in (action or '').upper() or 'REENTRY' in (reason or '').upper())
                 # USER 2026-06-03: with-trend force-open (above 200MA + WT-favor) bypasses MTF FILTER too — its own gate is the entry test.
                 _wf_force_mtf = ('WT_3M_FORCE_OPEN' in (reason or '').upper()) and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
-                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                # USER 2026-07-20 band mandate: LR_BAND entries are band+slope gated upstream — MTF armed-state
+                # structurally fails at swing bottoms (needs post-turn confirmation) and starved every band entry.
+                _lr_band_mtf = 'LR_BAND' in (reason or '').upper() or 'MTF_ARROW' in (reason or '').upper()
+                _wf_force_mtf = _wf_force_mtf or _lr_band_mtf
+                _mtf_skip_short_trd = ((position_side or "LONG") == "SHORT" and bool(_cfg("MTF_ARMED_ENTRY_SKIP_SHORT", True, account_key, symbol, position_side)))
+                if _mtf_skip_short_trd and is_entry_action and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+                    logger.warning(f"[MTF_GATE_SHORT_SKIP] {position_key}: SHORT entry bypasses MTF armed-gate (A/B: MTF hurts stock shorts -0.20). act={action}")
+                if is_entry_action and not _pxc_back_reentry and not _guar_ra_trd_mtf and not _wf_force_mtf and not _mtf_skip_short_trd and bool(_cfg("MTF_ARMED_ENTRY_ENABLED", False, account_key, symbol, position_side)):
                     import mtf_live_evaluator as _mle
                     if not hasattr(self, "mtf_states"):
                         self.mtf_states = {}
@@ -11096,9 +11530,30 @@ class TradierTradeManager:
             
             # STRICT_NO_LOSS guard — block reductions at a loss (unless Part 15 sweep disables it)
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
+            # 2026-07-15 FIX: this switch never consulted config.UNIVERSAL_NOLOSS_GATE (the master
+            # on/off flag, set False 2026-04-27 with explicit intent "technical exits still fire at
+            # loss. Targeted, not blanket.") — it was a separate, independently-hardcoded blanket
+            # blocker with a 4-string allowlist that ignored that flag entirely. Mirrors the crypto
+            # architecture (ez_manage.py ~25111/25182: config.UNIVERSAL_NOLOSS_GATE gates whether the
+            # block applies at all; config.UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS is the allowlist when
+            # it does). Live proof this was broken: MTF_ATR_TRAIL fired correctly on PLTR_SHORT/
+            # ASTS_SHORT (trb) after the MTF_EXIT_MIN_OPEN_TS fix, then got rejected here every time
+            # as NOLOSS_BLOCK because "MTF_ATR_TRAIL..." matched none of the 4 hardcoded strings.
+            # Same class of bug very likely explains "R1 DC emergency close 31,429 fires -> 6
+            # submitted" (R1's reason is "R1_DC_LOW4_EMERGENCY_...", also not in the old 4-string list).
+            # ROLLBACK: set UNIVERSAL_NOLOSS_GATE=True in config_tradier.py to re-arm the blanket
+            # block (matches crypto's current True); do not revert this code to the 4-string check.
             if is_reduce and not is_hedge:
+                _ung_active_t = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
-                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper() or 'REENTRY_BREAKOUT' in str(reason or '').upper() or 'OVERNIGHT_GAP_HEDGE_REMOVE' in str(reason or '').upper())
+                _en_reason_up = str(reason or '').upper()
+                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in _en_reason_up or 'DD_BOUNCE_STOP' in _en_reason_up or 'REENTRY_BREAKOUT' in _en_reason_up or 'OVERNIGHT_GAP_HEDGE_REMOVE' in _en_reason_up)
+                _en_tech_bypass_list = getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
+                _en_tech_bypass_hit = None
+                for _en_brk in _en_tech_bypass_list:
+                    if _en_brk and str(_en_brk).upper() in _en_reason_up:
+                        _en_tech_bypass_hit = _en_brk
+                        break
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
@@ -11119,7 +11574,7 @@ class TradierTradeManager:
                             _bbl_1h = float(_br_ind.get('bb_low_1h', 0) or 0)
                             _br_atr = float(_br_ind.get('atr_3m', 0) or 0)
                             _br_ha = _br_ind.get('ha_3m', 'neutral')
-                            _br_k3 = float(_br_ind.get('stoch_k_3m', 0) or 0)
+                            _br_k3 = float(_br_ind.get('k_3m', 0) or 0)
                             _br_k3p = float(_br_ind.get('k_3m_prev', _br_k3) or _br_k3)
                             _br_tol_pct = float(getattr(config, 'BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER', 0.30) or 0.30)
                             _br_tol_atr_m = float(getattr(config, 'BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER', 0.0) or 0.0)
@@ -11135,10 +11590,14 @@ class TradierTradeManager:
                                     logger.warning(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: SHORT entry={_br_entry:.4f}<bb_low_1h={_bbl_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%")
                     except Exception as _br_e:
                         logger.debug(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}")
-                if _en_srs:
+                if not _ung_active_t:
+                    pass  # master switch OFF (config_tradier.UNIVERSAL_NOLOSS_GATE=False) — targeted, not blanket; technical exits fire freely
+                elif _en_srs:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
                 elif _bb_recov_bypass:
                     pass
+                elif _en_tech_bypass_hit:
+                    logger.warning(f"[EXECUTE_NOW_NOLOSS_TECH_BYPASS] {position_key}: gain={_en_gain:.2f}% — technical exit '{_en_tech_bypass_hit}' allowed to close at loss (reason={reason[:80]})")
                 elif _en_noloss_min > 0 and _en_gain < _en_noloss_min:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}")
                     if lock_acquired and self.redis_manager:
@@ -11166,7 +11625,8 @@ class TradierTradeManager:
                             _stale_age_s = 0.0
                     _live_stale_blocked = _stale_age_s > _stale_max_age
                     try:
-                        from vec_paths.stale_mark_price import evaluate_stale_mark_block_core as _vec_stale_fn
+                        from vec_paths.stale_mark_price import \
+                            evaluate_stale_mark_block_core as _vec_stale_fn
                         _stale_ts_shadow = getattr(position, "mark_price_last_updated", None)
                         if isinstance(_stale_ts_shadow, str):
                             try: _stale_ts_shadow = isoparse(_stale_ts_shadow)
@@ -11251,7 +11711,8 @@ class TradierTradeManager:
                             _live_eb_blocked = True
                             _live_eb_reason = "EMERGENCY_BRAKE_SYMBOL_CHURN"
                 try:
-                    from vec_paths.emergency_brake import evaluate_emergency_brake_core as _vec_eb_fn
+                    from vec_paths.emergency_brake import \
+                        evaluate_emergency_brake_core as _vec_eb_fn
                     _dec_dir = str(Path(config.BASE_PATH) / "data" / "decisions")
                     _dt_now = datetime.now(timezone.utc)
                     _vec_eb_blocked, _vec_eb_res = _vec_eb_fn(_acct, _dt_now, position_key or "", action or "", is_profitable_close=_is_profitable_close, config=config, decisions_dir_path=_dec_dir)
@@ -11298,7 +11759,8 @@ class TradierTradeManager:
                         break
             except Exception: pass
             try:
-                from vec_paths.quarantine_strategy_validation import evaluate_quarantine_core as _vec_q_fn
+                from vec_paths.quarantine_strategy_validation import \
+                    evaluate_quarantine_core as _vec_q_fn
                 _vec_q_blocked, _vec_q_res = _vec_q_fn(position_key, reason, action, is_hedge, original_position_amt, set(_quarantine), config)
                 _divergent_q = (_live_q_blocked != _vec_q_blocked)
                 _compare_q = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": position_key, "action": action, "module": "quarantine_strategy", "live_result": "BLOCKED" if _live_q_blocked else "OK", "vec_result": "BLOCKED" if _vec_q_blocked else "OK", "divergent": _divergent_q, "live_reason": f"QUARANTINED({_live_q_name})" if _live_q_blocked else "OK", "vec_reason": _vec_q_res}
@@ -11582,8 +12044,22 @@ class TradierTradeManager:
                     log_msg = f"[TRADE] SENT: ✅ {symbol:<5} {action:<7} {side:<4} | Qty: {quantity:<4} @ ${current_price:<7.2f} | Status: {order_status} | ID: {order_id}"
                     logger.info(log_msg)
                     tradier_action_logger.info(f"{position_key}: {log_msg}")
-                    
+
                     self.recently_processed_signals[position_key] = time.time()
+                    # [2026-07-03] OVERTRADE counts confirmed submissions (not attempts) — see queue_trade_action guard.
+                    if not is_reduce:
+                        try:
+                            global _OVERTRADE_COUNTER
+                            if '_OVERTRADE_COUNTER' not in globals(): _OVERTRADE_COUNTER = {}
+                            _ots_key = f"{datetime.now(timezone.utc).strftime('%Y%m%d')}:{position_key}"
+                            _OVERTRADE_COUNTER[_ots_key] = _OVERTRADE_COUNTER.get(_ots_key, 0) + 1
+                        except Exception: pass
+                    # [2026-07-03] CLOSE_REFIRE_GUARD bookkeeping: remember the working close order.
+                    if is_reduce and order_id != "GHOST_CLEARED":
+                        try:
+                            if not hasattr(self, '_last_close_order'): self._last_close_order = {}
+                            self._last_close_order[position_key] = (order_id, time.time())
+                        except Exception: pass
                     # ═══ TRA DAILY BUY COUNTER: increment on successful buy ═══
                     if not is_reduce and account_key == 'tra':
                         if hasattr(self, '_tra_daily_buy_count'):
@@ -11612,7 +12088,8 @@ class TradierTradeManager:
                                 _trade_pnl = (current_price - _ep) * quantity if _ps == 'LONG' else (_ep - current_price) * quantity
                                 # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
                                 try:
-                                    from per_trade_logger import log_close as _ptl_log_close
+                                    from per_trade_logger import \
+                                        log_close as _ptl_log_close
                                     _ptl_pnl_pct = ((current_price - _ep) / _ep * 100.0) if _ps == 'LONG' else ((_ep - current_price) / _ep * 100.0)
                                     _ptl_opened = getattr(_pos_for_pnl, 'opened_at', None)
                                     _ptl_hold_min = 0.0
@@ -11706,8 +12183,34 @@ class TradierTradeManager:
                 except Exception: pass
             return f"EXCEPTION_{str(e)[:50]}"
 
+    def _resolve_entry_reason(self, position_key: str) -> str:
+        try:
+            _m = getattr(self, '_pending_entry_reason', None)
+            if _m:
+                _v = _m.pop(position_key, None)
+                if _v and (time.time() - _v[1]) <= 600.0:
+                    return _v[0]
+        except Exception:
+            pass
+        return "SYNC_DETECTION"
+
     async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, reason: str = ""):
         try:
+            # SYNC-DEDUPE [2026-07-03]: broker-sync re-detections of the SAME held position must not
+            # spam the ledger (was 97% of all OPEN events, forcing rotation that destroyed real fills).
+            if trade_type == "OPEN" and reason == "SYNC_DETECTION":
+                _sd = getattr(self, '_sync_open_seen', None)
+                if _sd is None:
+                    _sd = self._sync_open_seen = {}
+                _sd_prev = _sd.get(position_key)
+                _sd_now = time.time()
+                if _sd_prev is not None:
+                    if abs(_sd_prev[0] - float(qty)) < 1e-9 and abs(_sd_prev[1] - float(price)) < 1e-6:
+                        _sd[position_key] = (float(qty), float(price), _sd_now)
+                        return
+                    if (_sd_now - _sd_prev[2]) < 1800.0:
+                        return
+                _sd[position_key] = (float(qty), float(price), _sd_now)
             parts = position_key.split(':')
             account_key = parts[0] if len(parts) > 0 else "unknown"
             symbol_side = parts[1] if len(parts) > 1 else position_key
@@ -11718,8 +12221,8 @@ class TradierTradeManager:
             if filename.exists():
                 try:
                     if filename.stat().st_size > MAX_SIZE_BYTES:
-                        backup = filename.with_name(f"{filename.name}.bak")
-                        if backup.exists(): backup.unlink()
+                        # ROTATION ARCHIVE [2026-07-03]: timestamped generations — never unlink history.
+                        backup = filename.with_name(f"{filename.name}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.bak")
                         filename.rename(backup)
                 except Exception: pass
             entry = {"ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 4), "value": round(float(qty) * float(price), 2), "reason": reason or "Manual/System Detection", "indicators": {}}
@@ -11891,6 +12394,20 @@ class TradierTradeManager:
                     changed = False
                     now_utc = datetime.now(timezone.utc)
                     for pk, cand in list(candidates.items()):
+                        status = cand.get("status", "WAITING")
+                        if status == "REENTERED" or status == "EXPIRED":
+                            continue
+                        # RETRY: FAILED candidates get a second chance after a backoff
+                        if status.startswith("FAILED:"):
+                            fail_count = cand.get("fail_count", 0)
+                            last_fail_ts = cand.get("last_fail_ts", 0)
+                            if fail_count >= 5:
+                                continue  # give up after 5 attempts
+                            backoff_s = min(120 * (2 ** fail_count), 900)
+                            if time.time() - last_fail_ts < backoff_s:
+                                continue
+                            cand["status"] = "WAITING"
+                            changed = True
                         if cand.get("status") != "WAITING":
                             continue
                         symbol = cand.get("symbol", "")
@@ -11929,12 +12446,12 @@ class TradierTradeManager:
                         if current_price <= 0:
                             logger.warning(f"[REENTRY_MONITOR] {pk}: No price available for {symbol}, skipping")
                             continue
-                        k_5m = float(i.get("stoch_k_5m", 50))
-                        k_5m_prev = float(i.get("stoch_k_5m_prev", 50))
-                        d_5m = float(i.get("stoch_d_5m", 50))
-                        k_15m = float(i.get("stoch_k_15m", 50))
-                        k_15m_prev = float(i.get("stoch_k_15m_prev", 50))
-                        k_1h_rm = float(i.get("stoch_k_1h", 50))
+                        k_5m = float(i.get("k_5m", 50))
+                        k_5m_prev = float(i.get("k_5m_prev", 50))
+                        d_5m = float(i.get("d_5m", 50))
+                        k_15m = float(i.get("k_15m", 50))
+                        k_15m_prev = float(i.get("k_15m_prev", 50))
+                        k_1h_rm = float(i.get("k_1h", 50))
                         wt1_5m = float(i.get("wt1_5m", 0))
                         wt2_5m = float(i.get("wt2_5m", 0))
                         wt1_15m = float(i.get("wt1_15m", 0))
@@ -11964,6 +12481,23 @@ class TradierTradeManager:
                         # ═══ PATHWAY 0: 5m-exit rescue (user directive 2026-04-16) ═══
                         _er_str = str(cand.get("exit_reason", "")).upper()
                         _was_5m_exit = any(t in _er_str for t in ('5M', '_5M_', 'DELTA_EXIT', 'STOCH_CROSS', 'WT_CROSSUNDER', 'WT_CROSSOVER', 'MANDATORY_REENTRY', 'WT_DC_EXIT'))
+                        # ═══ MANDATORY_REENTRY dc4 gate (USER 2026-06-22): within 30min of a
+                        # DELTA_EXIT/WT_CROSS/MANDATORY_REENTRY exit, reentry REQUIRES price ≥ dc_high4_5m
+                        # (LONG) / ≤ dc_low4_5m (SHORT). If unmet within window, falls through to
+                        # normal tier gates (exit_price cross-back). All paths blocked — no P0 bypass.
+                        # Rollback: MANDATORY_REENTRY_DC4_WINDOW_MIN=0 in config_tradier.py ═══
+                        _mandatory_dc4_window_min = float(getattr(config, 'MANDATORY_REENTRY_DC4_WINDOW_MIN', 30.0))
+                        if 'MANDATORY_REENTRY' in _er_str and _mandatory_dc4_window_min > 0 and hours_since * 60.0 <= _mandatory_dc4_window_min:
+                            _mand_dc_hi = float(i.get('dc_high4_5m', 0) or 0)
+                            _mand_dc_lo = float(i.get('dc_low4_5m', 0) or 0)
+                            if side == "LONG":
+                                _mand_price_ok = _mand_dc_hi > 0 and current_price >= _mand_dc_hi
+                            else:
+                                _mand_price_ok = _mand_dc_lo > 0 and current_price <= _mand_dc_lo
+                            if not _mand_price_ok:
+                                _mand_level = _mand_dc_hi if side == "LONG" else _mand_dc_lo
+                                logger.debug(f"[REENTRY_MANDATORY_DC4] {pk}: MANDATORY exit {hours_since*60:.0f}/{_mandatory_dc4_window_min:.0f}m — price {current_price:.2f} not past dc4={'hi' if side=='LONG' else 'lo'} {_mand_level:.2f} — blocked (normal path opens after window)")
+                                continue
                         if side == "LONG":
                             _1h_still_trending = wt1_1h > wt2_1h
                             _5m_entry_fires = (wt1_5m > wt2_5m) and (k_5m > d_5m)
@@ -12011,13 +12545,18 @@ class TradierTradeManager:
                         _g60_fired = False
                         if _g60_enabled and not _p0_rescue and not _fav_fired and not _aggr_fired and hours_since * 60.0 <= _g60_window_min:
                             _g60_exit_px = float(cand.get("exit_price", 0) or 0)
+                            _g60_dc_hi = float(i.get('dc_high4_5m', 0) or 0)
+                            _g60_dc_lo = float(i.get('dc_low4_5m', 0) or 0)
                             if side == "LONG":
-                                _g60_price_ok = _g60_exit_px > 0 and current_price >= _g60_exit_px * (1.0 + _g60_min_pct)
+                                _g60_price_ok = _g60_dc_hi > 0 and current_price >= _g60_dc_hi
                             else:
-                                _g60_price_ok = _g60_exit_px > 0 and current_price <= _g60_exit_px * (1.0 - _g60_min_pct)
+                                _g60_price_ok = _g60_dc_lo > 0 and current_price <= _g60_dc_lo
                             if _g60_price_ok:
                                 _g60_fired = True
-                                logger.critical(f"⚡ [REENTRY_60MIN_UNCONDITIONAL] {pk}: exit={_g60_exit_px:.2f} cur={current_price:.2f} move={(current_price/_g60_exit_px-1)*100:+.2f}% {hours_since*60:.0f}min since exit — 50% REENTRY NO QUESTIONS ASKED")
+                                _g60_dc_level = _g60_dc_hi if side == "LONG" else _g60_dc_lo
+                                logger.critical(f"⚡ [REENTRY_60MIN_UNCONDITIONAL] {pk}: exit={_g60_exit_px:.2f} cur={current_price:.2f} dc4_break={_g60_dc_level:.2f} {hours_since*60:.0f}min since exit — DC BREAK REENTRY")
+                            elif _g60_dc_hi > 0 or _g60_dc_lo > 0:
+                                logger.debug(f"[REENTRY_60MIN_UNCONDITIONAL] {pk}: price {current_price:.2f} not past dc4 {'hi' if side == 'LONG' else 'lo'}={_g60_dc_hi if side == 'LONG' else _g60_dc_lo:.2f} — blocked")
                         # STOCH GATE — 3 tiers based on hours since exit (skipped if P0 rescue OR aggressive fast-path fires):
                         # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
                         # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone)
@@ -12088,8 +12627,23 @@ class TradierTradeManager:
                             logger.info(f"[REENTRY_MONITOR] {pk}: {side}_ENABLED=False / not tradeable (neg-Sharpe/disabled) — skipping reopen")
                             reenter = False
                         if reenter:
+                            # Skip if position is already open (regular scan may have reopened it)
+                            _existing_pos = self.get_position(pk)
+                            _existing_qty = 0.0
+                            if _existing_pos:
+                                _existing_qty = abs(float(getattr(_existing_pos, 'positionAmt', 0) or getattr(_existing_pos, 'quantity', 0)))
+                            if _existing_qty > 0:
+                                logger.info(f"[REENTRY_MONITOR] {pk}: already OPEN qty={_existing_qty:.2f} — marking REENTERED, no order")
+                                cand["status"] = "REENTERED"
+                                cand["reentry_note"] = "already_open_by_scanner"
+                                changed = True
+                                continue
                             pos_amt_at_exit = float(cand.get("position_amt_at_exit", 0))
-                            reentry_qty = max(1, int(pos_amt_at_exit)) if pos_amt_at_exit > 0 else max(1, int(await self.calculate_position_size(symbol, current_price, account_key=acc)))
+                            _calc_size = max(1, int(await self.calculate_position_size(symbol, current_price, account_key=acc)))
+                            if pos_amt_at_exit > 0:
+                                reentry_qty = max(_calc_size, max(1, int(pos_amt_at_exit)))
+                            else:
+                                reentry_qty = _calc_size
                             if _g60_fired or (_fav_fired and _fav_k15m_partial):
                                 reentry_qty = max(1, int(reentry_qty * 0.5))
                             position_side = side
@@ -12104,11 +12658,25 @@ class TradierTradeManager:
                             try:
                                 result = await self.place_order(symbol, api_side, float(reentry_qty), "market", duration="day", action="REENTRY", position_side=side, account_key=acc)
                                 order_id = result.get("order", {}).get("id", "NONE") if isinstance(result, dict) else str(result)
-                                status = result.get("order", {}).get("status", "UNKNOWN") if isinstance(result, dict) else "UNKNOWN"
-                                logger.warning(f"[REENTRY_MONITOR] {pk}: ORDER RESULT id={order_id} status={status}")
-                                cand["status"] = "REENTERED" if "GHOST" not in str(order_id) and order_id != "NONE" else f"FAILED:{order_id}"
+                                order_status = result.get("order", {}).get("status", "UNKNOWN") if isinstance(result, dict) else "UNKNOWN"
+                                logger.warning(f"[REENTRY_MONITOR] {pk}: ORDER RESULT id={order_id} status={order_status}")
+                                if "GHOST" not in str(order_id) and order_id != "NONE":
+                                    cand["status"] = "REENTERED"
+                                else:
+                                    fail_count = cand.get("fail_count", 0) + 1
+                                    cand["fail_count"] = fail_count
+                                    cand["last_fail_ts"] = time.time()
+                                    if fail_count >= 5:
+                                        cand["status"] = f"FAILED:{order_id}"
+                                        logger.error(f"[REENTRY_MONITOR] {pk}: GIVING UP after {fail_count} attempts — FAILED")
+                                    else:
+                                        cand["status"] = f"FAILED:{order_id}"
+                                        logger.warning(f"[REENTRY_MONITOR] {pk}: attempt {fail_count}/5 failed (id={order_id}) — will retry with backoff")
                             except Exception as oe:
                                 logger.error(f"[REENTRY_MONITOR] {pk}: ORDER FAILED: {oe}")
+                                fail_count = cand.get("fail_count", 0) + 1
+                                cand["fail_count"] = fail_count
+                                cand["last_fail_ts"] = time.time()
                                 cand["status"] = f"FAILED:{oe}"
                             cand["reentry_price"] = current_price
                             cand["reentry_time"] = now_utc.isoformat()
@@ -12123,7 +12691,12 @@ class TradierTradeManager:
                                 _pos.entry_price = _fill_price
                                 _pos.mark_price = current_price
                                 _pos.opened_at = now_utc
-                                logger.warning(f"[REENTRY_ENTRY_PRICE] {pk}: Set entry_price={_fill_price:.2f} from fill (was {cand.get('entry_price', 0):.2f})")
+                                _pos.last_reentry_time = now_utc
+                                _r1_sk = 'dc_low4_5m' if side == 'LONG' else 'dc_high4_5m'
+                                _r1_sv = float(i.get(_r1_sk, 0) or 0)
+                                if _r1_sv > 0:
+                                    _pos.r1_stop_price = _r1_sv
+                                logger.warning(f"[REENTRY_ENTRY_PRICE] {pk}: Set entry_price={_fill_price:.2f} from fill (was {cand.get('entry_price', 0):.2f}) r1_stop={_r1_sv:.4f} last_reentry_time=NOW")
                             # 2026-05-28 USER: this reopen path uses place_order() directly and bypassed
                             # execute_trade_action's _append_to_history — every reopen was invisible in
                             # /history/. Log it here on a real fill so the trade ledger is complete.
@@ -12272,10 +12845,10 @@ class TradierTradeManager:
             final_score = float(indicators.get('0final_score_norm', 0))
             ranking_points = float(indicators.get('0ranking_points', 0))
             lr_trend_15m = float(indicators.get('lr_trend_15m', 0))
-            k_1h = float(indicators.get('stoch_k_1h', 50))
-            d_1h = float(indicators.get('stoch_d_1h', 50))
-            k_4h = float(indicators.get('stoch_k_4h', 50))
-            d_4h = float(indicators.get('stoch_d_4h', 50))
+            k_1h = float(indicators.get('k_1h', 50))
+            d_1h = float(indicators.get('d_1h', 50))
+            k_4h = float(indicators.get('k_4h', 50))
+            d_4h = float(indicators.get('d_4h', 50))
             if config.VERBOSE:
                 logger.info(f"[VERBOSE][CALC][LONG] {symbol} ENTRY CALCULATION START: final_score={final_score:.3f} ranking_points={ranking_points:.1f} lr_trend_15m={lr_trend_15m:.3f} k_1h={k_1h:.1f} d_1h={d_1h:.1f} k_4h={k_4h:.1f} d_4h={d_4h:.1f}")
             # BACKTEST_CHANGE_T19: time zone stoch threshold gate
@@ -12353,7 +12926,7 @@ class TradierTradeManager:
                 _al_count = 0
                 if k_1h > d_1h: _al_count += 1
                 if k_4h > d_4h: _al_count += 1
-                if float(indicators.get('stoch_k_15m', 50)) > float(indicators.get('stoch_d_15m', 50)): _al_count += 1
+                if float(indicators.get('k_15m', 50)) > float(indicators.get('d_15m', 50)): _al_count += 1
                 if lr_trend_15m > 0: _al_count += 1
                 _al_total_max = getattr(config, 'ALIGNMENT_GATE_TOTAL', 12)
                 if _al_count < getattr(config, 'ALIGNMENT_GATE_MIN', 4):
@@ -12411,13 +12984,17 @@ class TradierTradeManager:
             ranking_ok = True  # BACKTEST_CHANGE_T41: near-zero signal in 0xxx sweep
             final_result = score_ok and ranking_ok
             if config.VERBOSE:
+                in_top_20_val = in_top_20 if config.LEADERBOARD_FILTER and 'in_top_20' in locals() else (True if not config.LEADERBOARD_FILTER else False)
+                trend_ok_val = trend_ok if config.TREND_GATES and 'trend_ok' in locals() else (True if not config.TREND_GATES else (lr_trend_15m > 0))
+                htf1_ok_val = htf1_ok if config.HTF1_CONF and 'htf1_ok' in locals() else (True if not config.HTF1_CONF else (k_1h > d_1h))
+                htf4_ok_val = htf4_ok if config.HTF4_CONF and 'htf4_ok' in locals() else (True if not config.HTF4_CONF else (k_4h > d_4h))
                 logger.info(f"\n[DECISION SCORECARD] {symbol} LONG EVALUATION")
                 logger.info(f"{'Metric':<15} | {'Value':<10} | {'Threshold':<10} | {'Result'}")
                 logger.info("-" * 55)
-                logger.info(f"{'Leaderboard':<15} | {str(in_top_20):<10} | {'True':<10} | {'✅' if in_top_20 else '!!'}")
-                logger.info(f"{'Trend (15m)':<15} | {lr_trend_15m:<10.3f} | {'> 0':<10} | {'✅' if trend_ok else '!!'}")
-                logger.info(f"{'HTF1 (1h)':<15} | {k_1h:.1f}/{d_1h:.1f}  | {'K > D':<10} | {'✅' if htf1_ok else '!!'}")
-                logger.info(f"{'HTF4 (4h)':<15} | {k_4h:.1f}/{d_4h:.1f}  | {'K > D':<10} | {'✅' if htf4_ok else '!!'}")
+                logger.info(f"{'Leaderboard':<15} | {str(in_top_20_val):<10} | {'True':<10} | {'✅' if in_top_20_val else '!!'}")
+                logger.info(f"{'Trend (15m)':<15} | {lr_trend_15m:<10.3f} | {'> 0':<10} | {'✅' if trend_ok_val else '!!'}")
+                logger.info(f"{'HTF1 (1h)':<15} | {k_1h:.1f}/{d_1h:.1f}  | {'K > D':<10} | {'✅' if htf1_ok_val else '!!'}")
+                logger.info(f"{'HTF4 (4h)':<15} | {k_4h:.1f}/{d_4h:.1f}  | {'K > D':<10} | {'✅' if htf4_ok_val else '!!'}")
                 logger.info(f"{'Final Score':<15} | {final_score:<10.3f} | {'> '+str(score_threshold):<10} | {'✅' if final_score>score_threshold else '!!'}")
                 logger.info(f"{'Rank Points':<15} | {ranking_points:<10.1f} | {'BYPASSED':<10} | {'✅ (T41)'}")
                 logger.info("-" * 55)
@@ -12553,10 +13130,10 @@ class TradierTradeManager:
             final_score = indicators.get('0final_score_norm', 0)
             ranking_points = indicators.get('0ranking_points', 0)
             lr_trend_15m = indicators.get('lr_trend_15m', 0)
-            k_1h = indicators.get('stoch_k_1h', 50)
-            d_1h = indicators.get('stoch_d_1h', 50)
-            k_4h = indicators.get('stoch_k_4h', 50)
-            d_4h = indicators.get('stoch_d_4h', 50)
+            k_1h = indicators.get('k_1h', 50)
+            d_1h = indicators.get('d_1h', 50)
+            k_4h = indicators.get('k_4h', 50)
+            d_4h = indicators.get('d_4h', 50)
             if config.VERBOSE:
                 logger.info(f"[VERBOSE][CALC][SHORT] {symbol} ENTRY CALCULATION START: final_score={final_score:.3f} ranking_points={ranking_points:.1f} lr_trend_15m={lr_trend_15m:.3f} k_1h={k_1h:.1f} d_1h={d_1h:.1f} k_4h={k_4h:.1f} d_4h={d_4h:.1f}")
             # BACKTEST_CHANGE_T19: time zone stoch threshold gate
@@ -12625,7 +13202,7 @@ class TradierTradeManager:
                 _al_count = 0
                 if k_1h < d_1h: _al_count += 1
                 if k_4h < d_4h: _al_count += 1
-                if float(indicators.get('stoch_k_15m', 50)) < float(indicators.get('stoch_d_15m', 50)): _al_count += 1
+                if float(indicators.get('k_15m', 50)) < float(indicators.get('d_15m', 50)): _al_count += 1
                 if lr_trend_15m < 0: _al_count += 1
                 _al_total_max = getattr(config, 'ALIGNMENT_GATE_TOTAL', 12)
                 if _al_count < getattr(config, 'ALIGNMENT_GATE_MIN', 4):
@@ -12633,7 +13210,7 @@ class TradierTradeManager:
                     return False
             # BACKTEST_CHANGE_T10: LR %B daily threshold for shorts
             if getattr(config, 'LR_PCTB_D_SHORT_THRESHOLD', 0) > 0:
-                _lr_pctb_d = float(indicators.get('lr_pctb_D', 0.5) or 0.5)
+                _lr_pctb_d = float(indicators.get('lr_pct_b_D', 0.5) or 0.5)  # 2026-07-15 key fix: was 'lr_pctb_D' (never written live) → gate was inert
                 if _lr_pctb_d < getattr(config, 'LR_PCTB_D_SHORT_THRESHOLD', 0.1):
                     if config.VERBOSE: logger.info(f"[VERBOSE][CALC][SHORT] {symbol} BLOCKED: lr_pctb_D={_lr_pctb_d:.2f} < {config.LR_PCTB_D_SHORT_THRESHOLD}")
                     return False
@@ -12734,9 +13311,9 @@ class TradierTradeManager:
     #             # BACKTEST_CHANGE_T17: stoch cross 1h exit (k crosses below d = exit long if in profit)
     #             _stoch_cross_1h_exit = False
     #             if getattr(config, 'STOCH_CROSS_1H_EXIT_ENABLED', False) and gain > 0:
-    #                 _k_1h = float(indicators.get('stoch_k_1h', 50) or 50)
-    #                 _d_1h = float(indicators.get('stoch_d_1h', 50) or 50)
-    #                 _k_1h_prev = float(indicators.get('stoch_k_1h_prev', 50) or 50)
+    #                 _k_1h = float(indicators.get('k_1h', 50) or 50)
+    #                 _d_1h = float(indicators.get('d_1h', 50) or 50)
+    #                 _k_1h_prev = float(indicators.get('k_1h_prev', 50) or 50)
     #                 if _k_1h < _d_1h and _k_1h_prev >= _d_1h:
     #                     _stoch_cross_1h_exit = True
     #                     logger.info(f"[STOCH_CROSS_1H_EXIT] LONG {symbol}: k_1h={_k_1h:.1f} crossed below d_1h={_d_1h:.1f} gain={gain:.2f}%")
@@ -12818,9 +13395,9 @@ class TradierTradeManager:
     #             # BACKTEST_CHANGE_T17: stoch cross 1h exit (k crosses above d = exit short if in profit)
     #             _stoch_cross_1h_exit = False
     #             if getattr(config, 'STOCH_CROSS_1H_EXIT_ENABLED', False) and gain > 0:
-    #                 _k_1h = float(indicators.get('stoch_k_1h', 50) or 50)
-    #                 _d_1h = float(indicators.get('stoch_d_1h', 50) or 50)
-    #                 _k_1h_prev = float(indicators.get('stoch_k_1h_prev', 50) or 50)
+    #                 _k_1h = float(indicators.get('k_1h', 50) or 50)
+    #                 _d_1h = float(indicators.get('d_1h', 50) or 50)
+    #                 _k_1h_prev = float(indicators.get('k_1h_prev', 50) or 50)
     #                 if _k_1h > _d_1h and _k_1h_prev <= _d_1h:
     #                     _stoch_cross_1h_exit = True
     #                     logger.info(f"[STOCH_CROSS_1H_EXIT] SHORT {symbol}: k_1h={_k_1h:.1f} crossed above d_1h={_d_1h:.1f} gain={gain:.2f}%")
@@ -12918,6 +13495,26 @@ class TradierTradeManager:
                         logger.info(f"[{account_key}] [VIX_REGIME] {get_vix_regime_label(config)} size_mult={_vix_mult:.2f} → max_value=${max_value:.0f}")
                 except Exception as _vix_e:
                     logger.warning(f"[{account_key}] [VIX_REGIME] check failed: {_vix_e}")
+            if getattr(config, 'BAND_SLOPE_SIZING_V2_ENABLED', False):
+                try:
+                    _bs_ind = (self.market_snapshot or {}).get(symbol.upper(), {}) or {}
+                    _bs_tf = getattr(config, 'BAND_SLOPE_SIZING_V2_TF', 'D')
+                    _bs_pb = _bs_ind.get(f'lrL_pct_b_{_bs_tf}')
+                    _bs_sl = _bs_ind.get(f'lrL_slope_{_bs_tf}')
+                    if _bs_pb is not None and _bs_sl is not None:
+                        _bs_pb = float(_bs_pb)
+                        _bs_slope_day = float(_bs_sl) * {'1h': 6.5, '4h': 1.625, 'D': 1.0}.get(_bs_tf, 1.0)
+                        _bs_long = (side == 'LONG')
+                        _bs_edge = (1.0 - _bs_pb) if _bs_long else _bs_pb
+                        _bs_m = 1.0 + float(getattr(config, 'BAND_SLOPE_SIZING_V2_DEPTH_GAIN', 1.0)) * (_bs_edge - 0.5) * 2.0
+                        _bs_sn = min(abs(_bs_slope_day) / float(getattr(config, 'BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY', 1.0)), 1.0)
+                        _bs_fav = _bs_slope_day > 0 if _bs_long else _bs_slope_day < 0
+                        _bs_m *= (1.0 + 0.5 * _bs_sn) if _bs_fav else max(0.5, 1.0 - 0.5 * _bs_sn)
+                        _bs_m = max(float(getattr(config, 'BAND_SLOPE_SIZING_V2_MIN', 0.5)), min(float(getattr(config, 'BAND_SLOPE_SIZING_V2_MAX', 2.5)), _bs_m))
+                        max_value *= _bs_m
+                        logger.info(f"[BAND_SLOPE_SIZING_V2] {symbol} {side}: lrL_pct_b_{_bs_tf}={_bs_pb:.3f} slope_day={_bs_slope_day:+.3f}%/d mult={_bs_m:.2f} → ${max_value:.0f}")
+                except Exception as _bs_e:
+                    logger.warning(f"[BAND_SLOPE_SIZING_V2] {symbol} sizing check failed: {_bs_e}")
             shares = max_value / price
             shares_int = max(1, int(round(shares)))
             return float(shares_int)
@@ -13019,9 +13616,9 @@ class TradierTradeManager:
     #             current_price = float(current_price)
     #             # BACKTEST_CHANGE: k_4h cross (not k_1h) — tradier uses higher TF
     #             global _ls_ratio_4h_adj_tradier
-    #             _k4h_ps = float(indicators.get('stoch_k_4h', 50) or 50)
-    #             _d4h_ps = float(indicators.get('stoch_d_4h', 50) or 50)
-    #             _k4h_prev_ps = float(indicators.get('stoch_k_4h_prev', 50) or 50)
+    #             _k4h_ps = float(indicators.get('k_4h', 50) or 50)
+    #             _d4h_ps = float(indicators.get('d_4h', 50) or 50)
+    #             _k4h_prev_ps = float(indicators.get('k_4h_prev', 50) or 50)
     #             if _k4h_ps > _d4h_ps and _k4h_prev_ps <= _d4h_ps:
     #                 _ls_ratio_4h_adj_tradier["adj"] = min(0.50, _ls_ratio_4h_adj_tradier.get("adj", 0.0) + 0.10)
     #                 _ls_ratio_4h_adj_tradier["last_cross_ts"] = time.time()
@@ -13357,8 +13954,8 @@ class TradierTradeManager:
                     current_price,ts = await self.get_current_price(symbol)
                     current_price = float(current_price)
                     if current_price <= 0: continue
-                    k_5m = i.get('stoch_k_5m', 50)
-                    d_5m = i.get('stoch_d_5m', 50)
+                    k_5m = i.get('k_5m', 50)
+                    d_5m = i.get('d_5m', 50)
                     
                     momentum_confirmed = (k_5m > d_5m) if is_long else (k_5m < d_5m)
 
@@ -13837,7 +14434,7 @@ class TradierTradeManager:
                             logger.error(f"[SYNC] Failed to create {long_key}: {e}")
                     if long_pos:
                         if raw_qty > 0:
-                            if float(getattr(long_pos, 'positionAmt', 0.0) or 0) == 0.0: long_pos.opened_at = now; long_pos.max_gain = 0.0; long_pos.cycle_peak_gain = 0.0; long_pos.gain = 0.0; long_pos.was_reduced = False; long_pos.was_reentered = False; await self._append_to_history(long_key, "OPEN", abs(raw_qty), avg_price or current_price, "SYNC_DETECTION")
+                            if float(getattr(long_pos, 'positionAmt', 0.0) or 0) == 0.0: long_pos.opened_at = now; long_pos.max_gain = 0.0; long_pos.cycle_peak_gain = 0.0; long_pos.gain = 0.0; long_pos.was_reduced = False; long_pos.was_reentered = False; await self._append_to_history(long_key, "OPEN", abs(raw_qty), avg_price or current_price, self._resolve_entry_reason(long_key))
                             long_pos.positionAmt = abs(raw_qty)
                             if avg_price > 0: long_pos.entry_price = avg_price
                             if date_acquired: long_pos.entry_time = date_acquired
@@ -13898,7 +14495,7 @@ class TradierTradeManager:
                             logger.error(f"[SYNC] Failed to create {short_key}: {e}")
                     if short_pos:
                         if raw_qty < 0:
-                            if float(getattr(short_pos, 'positionAmt', 0.0) or 0) == 0.0: short_pos.opened_at = now; short_pos.max_gain = 0.0; short_pos.cycle_peak_gain = 0.0; short_pos.gain = 0.0; short_pos.was_reduced = False; short_pos.was_reentered = False; await self._append_to_history(short_key, "OPEN", abs(raw_qty), avg_price or current_price, "SYNC_DETECTION")
+                            if float(getattr(short_pos, 'positionAmt', 0.0) or 0) == 0.0: short_pos.opened_at = now; short_pos.max_gain = 0.0; short_pos.cycle_peak_gain = 0.0; short_pos.gain = 0.0; short_pos.was_reduced = False; short_pos.was_reentered = False; await self._append_to_history(short_key, "OPEN", abs(raw_qty), avg_price or current_price, self._resolve_entry_reason(short_key))
                             short_pos.positionAmt = abs(raw_qty)
                             if avg_price > 0: short_pos.entry_price = avg_price
                             if date_acquired: short_pos.entry_time = date_acquired
@@ -14147,6 +14744,12 @@ class TradierTradeManager:
             try:
                 heartbeat_file.parent.mkdir(parents=True, exist_ok=True)
                 heartbeat_file.write_text(datetime.now(timezone.utc).isoformat())
+                import platform as _pf
+                if _pf.system() != "Darwin":
+                    for acc in self.target_accounts:
+                        hb_p = self.config.DATA_DIR / f"tradier_manage_running_{acc}"
+                        hb_p.parent.mkdir(parents=True, exist_ok=True)
+                        hb_p.touch(exist_ok=True)
                 await asyncio.sleep(30)
             except asyncio.CancelledError:
                 break
@@ -14969,7 +15572,7 @@ class TradierTradeManager:
             current_price = float(data.get('current_price', 0) or 0)
             if current_price <= 0:
                 _sf_no_price += 1; continue
-            k5m = float(data.get('stoch_k_5m', 50) or 50)
+            k5m = float(data.get('k_5m', 50) or 50)
             wt1_5m = float(data.get('wt1_5m', 0) or 0); wt2_5m = float(data.get('wt2_5m', 0) or 0)
             wt1_15m = float(data.get('wt1_15m', 0) or 0); wt2_15m = float(data.get('wt2_15m', 0) or 0)
             wt1_1h = float(data.get('wt1_1h', 0) or 0); wt2_1h = float(data.get('wt2_1h', 0) or 0)
@@ -15681,6 +16284,7 @@ class TradierTradeManager:
             logger.info(f"[HEDGE_ENGINE] Initialized with {len(all_syms)} symbols (HEDGE_MODE_TRADIER={getattr(config, 'HEDGE_MODE_TRADIER', False)})")
         _metrics_port = {"tra": 8818, "trb": 8819, "trc": 8820}.get(self.target_accounts[0], 8820) if self.target_accounts else 8820
         self.background_tasks.append(asyncio.create_task(self.metrics_server_loop(host="0.0.0.0", port=_metrics_port)))
+        self.background_tasks.append(asyncio.create_task(self.heartbeat_loop()))
         self.background_tasks.append(asyncio.create_task(self.periodic_sentiment_rebalancing()))
         self.scalp_strategy = StockScalpStrategy(self)
         self.background_tasks.append(asyncio.create_task(self.scalp_strategy.run_loop()))
@@ -15708,7 +16312,7 @@ class TradierTradeManager:
         self.background_tasks.append(asyncio.create_task(self.order_queue.process_orders()))
         self.background_tasks.append(asyncio.create_task(self._options_watchdog_loop()))
         self.background_tasks.append(asyncio.create_task(self.last_hour_balancing_loop()))
-        #self.background_tasks.append(asyncio.create_task(self._rotation_rsi2_loop())) #SUSPICIOUS - should be MFI if credible at all
+        self.background_tasks.append(asyncio.create_task(self._rotation_rsi2_loop()))  # RESTORED 2026-07-09: commented out in autosave ca8a2d2d (2026-04-14) with no documented reason; 2026-06-02 USER policy mandates augmenter strategies stay ON (each gated by its own *_ENABLED flag + PARITY_COMPARISON_MODE)
         for acc in self.target_accounts:
             self.background_tasks.append(asyncio.create_task(monitor_stale_augmentations(self, acc, self.order_queue)))
             self.background_tasks.append(asyncio.create_task(periodic_direct_high_gain_reopen(self, self.order_queue, acc)))
@@ -16170,7 +16774,7 @@ class StockSentimentStrategy:
             # Entry Logic (Adjusted for Stocks - Slightly slower pace)
             # LONG
             if allow_long and is_long_allowed and divergence > 8 and div_delta > 3:
-                k15 = safe_fetch_float(data.get('stoch_k_15m', 50))
+                k15 = safe_fetch_float(data.get('k_15m', 50))
                 if k15 < 85:
                     candidates.append({
                         'symbol': symbol, 'side': 'LONG',
@@ -16181,7 +16785,7 @@ class StockSentimentStrategy:
             # SHORT (Check non-shortable)
             elif allow_short and is_short_allowed and divergence < -8 and div_delta < -3:
                 if symbol in self.trade_manager.non_shortable_symbols: continue
-                k15 = safe_fetch_float(data.get('stoch_k_15m', 50))
+                k15 = safe_fetch_float(data.get('k_15m', 50))
                 if k15 > 15:
                     candidates.append({
                         'symbol': symbol, 'side': 'SHORT',
@@ -16347,7 +16951,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
         if is_long:
             # For LONG: RSI not overbought, Stoch crossing up, Heikin Ashi green
             rsi_ok = i.get('rsi_5m', 50) < 75
-            stoch_ok = i.get('stoch_k_5m', 50) > i.get('stoch_d_5m', 50)
+            stoch_ok = i.get('k_5m', 50) > i.get('d_5m', 50)
             ha_ok = i.get('ha_5m', 'neutral') == 'green'
             volume_ok = i.get('rel_vol_5m', 1.0) > 1.2
             
@@ -16357,7 +16961,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
         else:
             # For SHORT: RSI not oversold, Stoch crossing down, Heikin Ashi red
             rsi_ok = i.get('rsi_5m', 50) > 25
-            stoch_ok = i.get('stoch_k_5m', 50) < i.get('stoch_d_5m', 50)
+            stoch_ok = i.get('k_5m', 50) < i.get('d_5m', 50)
             ha_ok = i.get('ha_5m', 'neutral') == 'red'
             volume_ok = i.get('rel_vol_5m', 1.0) > 1.2
             
@@ -16502,10 +17106,10 @@ class StockScalpStrategy:
             pos_s = positions.get(pk_short)
             has_any = (pos_l and abs(float(getattr(pos_l, 'positionAmt', 0))) > 0) or (pos_s and abs(float(getattr(pos_s, 'positionAmt', 0))) > 0)
             if has_any: continue
-            k5 = safe_fetch_float(data.get('stoch_k_5m', 50))
-            k5_prev = safe_fetch_float(data.get('stoch_k_5m_prev', k5))
-            d5 = safe_fetch_float(data.get('stoch_d_5m', 50))
-            k1 = safe_fetch_float(data.get('stoch_k_1m', 50))
+            k5 = safe_fetch_float(data.get('k_5m', 50))
+            k5_prev = safe_fetch_float(data.get('k_5m_prev', k5))
+            d5 = safe_fetch_float(data.get('d_5m', 50))
+            k1 = safe_fetch_float(data.get('k_1m', 50))
             # Check pullback-reexpansion setup for heavy artillery sizing
             ha_setup, ha_score, ha_dir, ha_detail = self.trade_manager.check_pullback_reexpansion(symbol, data)
             if allow_long and k5 < 25 and k5 > k5_prev and k5 > d5 and k1 < 40:
@@ -16582,8 +17186,8 @@ class StockBreakoutScalper:
                     if not isinstance(i, dict): continue
                     cp = safe_fetch_float(i.get('current_price', i.get('last', i.get('price'))), 0)
                     if cp <= 0: continue
-                    k_5m = safe_fetch_float(i.get('stoch_k_5m'), 50)
-                    d_5m = safe_fetch_float(i.get('stoch_d_5m'), 50)
+                    k_5m = safe_fetch_float(i.get('k_5m'), 50)
+                    d_5m = safe_fetch_float(i.get('d_5m'), 50)
                     wt1_5m = safe_fetch_float(i.get('wt1_5m', i.get('wt1_15m')), 0)
                     wt2_5m = safe_fetch_float(i.get('wt2_5m', i.get('wt2_15m')), 0)
                     high_5m = safe_fetch_float(i.get('high_5m', i.get('high_15m', i.get('high'))), cp)
@@ -16727,7 +17331,7 @@ class StockDaytradeWing:
         if price <= 0: return signals
         require_expansion = getattr(config, 'DC_DAYTRADE_REQUIRE_1H_EXPANSION', True)
         stoch_filter = getattr(config, 'DC_DAYTRADE_STOCH_FILTER', True)
-        k_15m = safe_fetch_float(data.get('stoch_k_15m', 50))
+        k_15m = safe_fetch_float(data.get('k_15m', 50))
         k_exh_long = getattr(config, 'DC_DAYTRADE_K_EXHAUSTED_LONG', 85)
         k_exh_short = getattr(config, 'DC_DAYTRADE_K_EXHAUSTED_SHORT', 15)
         for tf, size_mult in [('5m', 1.0), ('15m', 1.5)]:
@@ -16967,11 +17571,31 @@ class StockDaytradeWing:
             await asyncio.sleep(2)
 
 
+def _shutdown_watchdog_force_exit(timeout_s=30.0):
+    """Runs in a plain OS thread, NOT asyncio -- immune to the event loop being
+    blocked. 2026-07-15: ez_manage.py's mirror of this signal handler hung
+    indefinitely on SIGTERM ('men' account, stuck 3+ min after logging its
+    last cleanup step, requiring an external SIGKILL). This file's shutdown
+    relies on 'raise KeyboardInterrupt' propagating up through manager.start()
+    to reach 'finally: await manager.stop()' -- if anything downstream blocks
+    the event loop synchronously (or the exception gets swallowed by a broad
+    except somewhere in the call stack) the process never exits and the
+    watchdog wrapper can't relaunch a working replacement. Hard backstop:
+    force-exit unconditionally if still alive timeout_s after the first signal.
+    """
+    time.sleep(timeout_s)
+    logging.getLogger(__name__).critical(
+        f"[SHUTDOWN_WATCHDOG] graceful shutdown did not complete within {timeout_s:.0f}s of signal -- force exiting"
+    )
+    os._exit(1)
+
+
 async def main():
     import argparse
     def signal_handler(signum, frame):
         """Handle shutdown signals"""
         logger.info(f"Received signal {signum}, shutting down...")
+        threading.Thread(target=_shutdown_watchdog_force_exit, daemon=True).start()
         raise KeyboardInterrupt
         
     parser = argparse.ArgumentParser(description="Tradier Trade Manager")

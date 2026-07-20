@@ -25,6 +25,19 @@ Per CLAUDE.md:
 """
 from __future__ import annotations
 
+def _bible125_stamp():
+    import hashlib as _h, os as _os
+    base = _os.path.dirname(_os.path.abspath(__file__))
+    parts = []
+    for tag, f in (("eng", "backtest_v8_engine.py"), ("tm", "tradier_manage.py"), ("wdd", "wt_dc_delta.py"), ("cfgt", "config_tradier.py")):
+        try:
+            parts.append(tag + ":" + _h.md5(open(_os.path.join(base, f), "rb").read()).hexdigest()[:10])
+        except Exception:
+            parts.append(tag + ":?")
+    return "+".join(parts)
+
+
+
 import argparse
 import json
 import math
@@ -40,6 +53,7 @@ from typing import Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
+SIDE_MEMBERSHIP: dict = {}
 
 import numpy as np
 # Defensive: some NPZ fields (bar_pattern_codes, bar_vol_regime_codes) are object
@@ -133,6 +147,16 @@ PROMOTE_WSHARPE_FLOOR = 0.7
 MIN_TRADES_FOR_OPINION = 6
 TPD_MIN = 0.5
 TPD_MAX = 12.0
+# 2026-06-04 SAMPLE-FLOOR GATE (CLAUDE.md IMPOSTER-BLOCK / no-lies): a per-sym
+# key may only become LIVE-ACTIVE with >=30 trades. This 20d window is < 1yr by
+# construction so anything it promotes is recency-diagnostic; the >=30-trade
+# floor is the minimum bar for the `promote` flag to be honoured downstream
+# (promote_pending floor-gate guard also re-checks). Below floor => DIAGNOSTIC.
+try:
+    import metrics_guard as _mg
+    LIVE_PROMOTE_MIN_TRADES = int(_mg.MIN_TRADES_PER_SYM_FOR_SYM_SHARPE)
+except Exception:
+    LIVE_PROMOTE_MIN_TRADES = 30
 
 ACCOUNTS = ('trb', 'trc')
 
@@ -233,7 +257,9 @@ def evaluate_20d(sym: str, params: SymParamsStocks) -> Optional[Dict]:
     20 trading days × 78 5m bars/day = 1,560 bars (sub-floor — DIAGNOSTIC tier).
     """
     yrs = WINDOW_DAYS / 365.25
-    m = simulate_dual_stocks(sym, params, years_back=yrs)
+    _sides = SIDE_MEMBERSHIP.get(sym)
+    _only_side = next(iter(_sides)) if (_sides and len(_sides) == 1) else None
+    m = simulate_dual_stocks(sym, params, years_back=yrs, only_side=_only_side)
     if m is None:
         return None
     trades = m.get('trade_list', [])
@@ -298,9 +324,18 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
     eligible = [(t, r) for t, r in results if r['trades'] >= MIN_TRADES_FOR_OPINION]
     if not eligible:
         eligible = results
-    winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
+    # 2026-07-08 GAINMO (USER): objective = max gain constrained to wsharpe>0
+    # (churn law — unconstrained gain-max selects fee-bleed churn); wsharpe fallback.
+    _positive = [(t, r) for t, r in eligible if r['wsharpe'] > 0.0]
+    if _positive:
+        winner_tag, winner_r = max(_positive, key=lambda x: x[1].get('gain_per_week', 0.0))
+    else:
+        winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
+    winner_r['winner_overrides'] = dict(variants).get(winner_tag, {})  # Bible 12.5 full recipe
     base_r = next((r for t, r in results if t == 'baseline'), winner_r)
+    sample_floor_ok = winner_r['trades'] >= LIVE_PROMOTE_MIN_TRADES
     promote = (
+        sample_floor_ok and
         winner_r['wsharpe'] >= PROMOTE_WSHARPE_FLOOR and
         winner_r['wsharpe'] - base_r['wsharpe'] >= PROMOTE_DELTA_WSHARPE and
         winner_r['trades_per_day'] >= TPD_MIN and
@@ -369,6 +404,8 @@ def reconfig_one_sym(sym: str, account: str, ts: int,
         'follow_through_count': winner_r['follow_through_count'],
         'open_at_end_count': winner_r['open_at_end_count'],
         'promote': promote,
+        'sample_floor_ok': sample_floor_ok,
+        'sample_tag': ('FLOOR_OK' if sample_floor_ok else f"[DIAGNOSTIC sub-floor · trades={winner_r['trades']}<{LIVE_PROMOTE_MIN_TRADES}]"),
         'params': winner_r['params'],
         'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades'],
                           'wr_pct': r.get('wr_pct', 0.0), 'max_dd_pct': r.get('max_dd_pct', 0.0),
@@ -411,6 +448,8 @@ def write_active_20d(account: str, results: List[Dict], dry_run: bool) -> int:
         sym = r['sym']
         payload[sym] = {
             'winning_tag': r['winner_tag'],
+            'overrides': r.get('winner_overrides', {}),
+            'settings_stamp': _bible125_stamp(),
             'wsharpe': r['winner_wsharpe'],
             'baseline_wsharpe': r['baseline_wsharpe'],
             'delta_wsharpe': r['delta_wsharpe'],
@@ -582,9 +621,14 @@ def load_account_syms(account: str, include_universe: bool) -> List[str]:
             continue
         if not isinstance(data, list):
             continue
+        file_side = 'LONG' if '_long' in f else 'SHORT'
         for s in data:
             if not isinstance(s, str):
                 continue
+            # Universe mandate 2026-07-18 (Bible §12.7): retain WHICH side file each
+            # symbol came from — single-sided symbols must not be simulated/promoted
+            # on the side live hard-refuses (BLOCKED_NON_TRADEABLE).
+            SIDE_MEMBERSHIP.setdefault(s, set()).add(file_side)
             if s in seen:
                 continue
             if not (NPZ_DIR / f'{s}.npz').exists():

@@ -60,6 +60,98 @@ BARS_PER_DAY_STOCKS = 78
 _npz_cache_stocks: Dict[str, Dict[str, np.ndarray]] = {}
 
 
+def _vec_wtdc_gr_gate(base: Dict[str, np.ndarray], n_5m: int,
+                      wtdc_threshold: float, gr_min_tfs: int, gr_min_ind: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Vectorized WT_DC entry score + GR_HTF gate — mirrors tradier_manage.py entry gates.
+
+    Returns (long_ok_5m, short_ok_5m) boolean arrays at 5m resolution.
+    LONG entry allowed where both gates pass; same for SHORT.
+    Bars with missing data return True (gate disabled for that bar) to avoid killing
+    legitimate entries where NPZ has gaps — the engine's own signal already handles that.
+    """
+    n = n_5m
+    def _g(k): return base.get(k)
+    def _safe_arr(k, fill=np.nan):
+        a = _g(k)
+        if a is None:
+            return np.full(n, fill, dtype=np.float32)
+        return np.asarray(a, dtype=np.float32)[:n]
+
+    # ── WT_DC multi-TF score (mirrors score_entry_multitf) ──────────────────
+    # LONG: D+4h WT bullish + 1h cross BULL + dc_1h<0.5 + k_5m<40  → max 100
+    # SHORT: D+4h WT bearish + 1h cross BEAR + dc_1h>0.5 + k_5m>60 → max 100
+    wt1_D  = _safe_arr('wt1_D');  wt2_D  = _safe_arr('wt2_D')
+    wt1_4h = _safe_arr('wt1_4h'); wt2_4h = _safe_arr('wt2_4h')
+    dc_1h  = _safe_arr('dc_position_1h', 0.5)
+    k_5m   = _safe_arr('stoch_k_5m', 50)
+    bull_1h = (_g('wt_cross_bull_1h') is not None and
+               np.asarray(_g('wt_cross_bull_1h'), dtype=np.int8)[:n].astype(bool))
+    bear_1h = (_g('wt_cross_bear_1h') is not None and
+               np.asarray(_g('wt_cross_bear_1h'), dtype=np.int8)[:n].astype(bool))
+    if isinstance(bull_1h, bool): bull_1h = np.zeros(n, dtype=bool)
+    if isinstance(bear_1h, bool): bear_1h = np.zeros(n, dtype=bool)
+
+    score_long  = (np.float32(25) * (wt1_D  > wt2_D).astype(np.float32) +
+                   np.float32(25) * (wt1_4h > wt2_4h).astype(np.float32) +
+                   np.float32(30) * bull_1h.astype(np.float32) +
+                   np.float32(10) * (dc_1h  < np.float32(0.5)).astype(np.float32) +
+                   np.float32(10) * (k_5m   < np.float32(40)).astype(np.float32))
+    score_short = (np.float32(25) * (wt1_D  < wt2_D).astype(np.float32) +
+                   np.float32(25) * (wt1_4h < wt2_4h).astype(np.float32) +
+                   np.float32(30) * bear_1h.astype(np.float32) +
+                   np.float32(10) * (dc_1h  > np.float32(0.5)).astype(np.float32) +
+                   np.float32(10) * (k_5m   > np.float32(60)).astype(np.float32))
+
+    # If ALL driver fields are NaN at a bar → data gap → don't block (gate disabled)
+    all_nan = (np.isnan(wt1_D) & np.isnan(wt2_D) & np.isnan(wt1_4h) & np.isnan(wt2_4h))
+    thr = np.float32(wtdc_threshold) if wtdc_threshold > 0 else np.float32(0.0)
+    wtdc_long_ok  = (score_long  >= thr) | all_nan
+    wtdc_short_ok = (score_short >= thr) | all_nan
+
+    # ── GR_HTF gate (mirrors golden_rule_htf.score_entry_htf, mode='tradier') ──
+    # TFs: 5m, 15m, 1h, 4h, D, W — for each TF count how many indicators agree
+    # Indicators (7 per TF, matching golden_rule_htf feature set):
+    #   wt1>wt2, RSI>50, MFI>50, DC_pos<0.65/>.35, bb_pct_b<0.5/>0.5, rvol>1, stoch_k<50/>50
+    # A TF "confirms" when ≥ gr_min_ind indicators agree.
+    # NOTE: live golden_rule_htf counts 8 indicators (wt1+wt2 as separate features).
+    #   Here wt1>wt2 counts as 1 combined indicator → 7 total.
+    #   With gr_min_ind=5 (historical baseline): 5/7=71% ≈ 5/8=62.5% live equivalent.
+    gr_long_ok  = np.ones(n, dtype=bool)
+    gr_short_ok = np.ones(n, dtype=bool)
+    if gr_min_tfs > 0:
+        GR_TFS = ('5m', '15m', '1h', '4h', 'D', 'W')
+        confirmed_long  = np.zeros(n, dtype=np.int8)
+        confirmed_short = np.zeros(n, dtype=np.int8)
+        for tf in GR_TFS:
+            w1 = _safe_arr(f'wt1_{tf}'); w2 = _safe_arr(f'wt2_{tf}')
+            rs = _safe_arr(f'rsi_{tf}',  -1.0)
+            mf = _safe_arr(f'mfi_{tf}',  -1.0)
+            dc = _safe_arr(f'dc_position_{tf}', -1.0)
+            bb = _safe_arr(f'bb_pct_b_{tf}', -1.0)
+            rv = _safe_arr(f'relative_volume_{tf}', -1.0)
+            sk = _safe_arr(f'stoch_k_{tf}', -1.0)
+            ind_l = ((w1 > w2).astype(np.int8) +
+                     (rs > 50).astype(np.int8) * (rs >= 0).astype(np.int8) +
+                     (mf > 50).astype(np.int8) * (mf >= 0).astype(np.int8) +
+                     ((dc < 0.65).astype(np.int8) * (dc >= 0).astype(np.int8)) +
+                     ((bb < 0.50).astype(np.int8) * (bb >= 0).astype(np.int8)) +
+                     ((rv > 1.0).astype(np.int8) * (rv >= 0).astype(np.int8)) +
+                     ((sk < 50.0).astype(np.int8) * (sk >= 0).astype(np.int8)))
+            ind_s = ((w1 < w2).astype(np.int8) +
+                     (rs < 50).astype(np.int8) * (rs >= 0).astype(np.int8) +
+                     (mf < 50).astype(np.int8) * (mf >= 0).astype(np.int8) +
+                     ((dc > 0.35).astype(np.int8) * (dc >= 0).astype(np.int8)) +
+                     ((bb > 0.50).astype(np.int8) * (bb >= 0).astype(np.int8)) +
+                     ((rv > 1.0).astype(np.int8) * (rv >= 0).astype(np.int8)) +
+                     ((sk > 50.0).astype(np.int8) * (sk >= 0).astype(np.int8)))
+            confirmed_long  += (ind_l >= gr_min_ind).astype(np.int8)
+            confirmed_short += (ind_s >= gr_min_ind).astype(np.int8)
+        gr_long_ok  = confirmed_long  >= gr_min_tfs
+        gr_short_ok = confirmed_short >= gr_min_tfs
+
+    return (wtdc_long_ok & gr_long_ok), (wtdc_short_ok & gr_short_ok)
+
+
 @dataclass
 class SymParamsStocks:
     """Stocks SymParams — mirrors crypto SymParams structure with stocks-tuned defaults."""
@@ -149,6 +241,9 @@ class SymParamsStocks:
     # HEDGE_HTF_VETO + HTF_TREND_VETO (Phase 2A patch 4)
     HEDGE_HTF_VETO_ENABLED: bool = False
     HTF_TREND_VETO_ENABLED: bool = False
+    EXIT_STRUCT_TF: str = 'None'
+    LONG_STRUCT_EXIT_TF: str = 'D'
+    SHORT_STRUCT_EXIT_TF: str = '15m'
 
     # Reentry / reverse / augment / hedge / NOLOSS
     REVERSE_ON_EXIT_ENABLED: bool = False
@@ -369,6 +464,32 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
     elif only_side == 'SHORT':
         enter_long = np.zeros_like(enter_long)
 
+    # ─── WT_DC + GR_HTF entry gates — must mirror tradier_manage.py live gates ───
+    # Read thresholds from config_tradier so per_sym backtest = live quality gates.
+    # SymParamsStocks overrides take precedence (allow per-sym sweep to vary these).
+    try:
+        import config_tradier as _ct
+        _wtdc_thr   = float(getattr(params, 'WT_DC_ENTRY_THRESHOLD',
+                                     getattr(_ct, 'WT_DC_ENTRY_THRESHOLD', 45)))
+        _gr_min_tfs = int(getattr(params, 'GOLDEN_RULE_HTF_MIN_TFS',
+                                   getattr(_ct, 'GOLDEN_RULE_HTF_MIN_TFS', 3)))
+        _gr_min_ind = int(getattr(params, 'GOLDEN_RULE_MIN_IND',
+                                   getattr(_ct, 'GOLDEN_RULE_MIN_IND', 3)))
+    except Exception:
+        _wtdc_thr = 45.0; _gr_min_tfs = 3; _gr_min_ind = 3
+    _n_5m_gate = len(base.get('close_5m', base['close']))
+    _gate_long_5m, _gate_short_5m = _vec_wtdc_gr_gate(
+        base, _n_5m_gate, _wtdc_thr, _gr_min_tfs, _gr_min_ind)
+    # Subsample gate from 5m → 15m grid (take the LAST 5m bar of each 15m window)
+    _ratio_gate = TF_BARS_5M['15m']  # 3
+    def _ss_gate(arr_5m):
+        cut = (len(arr_5m) // _ratio_gate) * _ratio_gate
+        sub = arr_5m[:cut][_ratio_gate - 1::_ratio_gate]
+        if len(sub) >= n_15m: return sub[:n_15m]
+        return np.concatenate([np.ones(n_15m - len(sub), dtype=bool), sub])
+    enter_long  = enter_long  & _ss_gate(_gate_long_5m)
+    enter_short = enter_short & _ss_gate(_gate_short_5m)
+
     # ─── USER 2026-05-06 mandate: stocks backtest mirrors live safety guards ───
     # Same masks as crypto engine. Stocks 5m base; subsample every 3rd to 15m grid.
     n_15m_safety = len(tf_data['15m']['close'])
@@ -549,6 +670,36 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
             bb_lo_5m = base.get(f'bb_lower_{bb_tf}')
             if bb_lo_5m is not None:
                 x7_bb_freeze_15m = _ss_5m_arr_to_15m(bb_lo_5m)
+    struct_long_open = struct_long_high_prev = struct_long_low_prev = None
+    struct_short_open = struct_short_high_prev = struct_short_low_prev = None
+    long_tf = getattr(params, 'EXIT_STRUCT_TF', 'None')
+    if long_tf == 'None' or not long_tf: long_tf = getattr(params, 'LONG_STRUCT_EXIT_TF', 'D')
+    if long_tf != 'None' and long_tf in tf_data:
+        tfd = tf_data[long_tf]; o_arr = tfd['open']; h_arr = tfd['high']; l_arr = tfd['low']
+        h_prev = np.concatenate([[h_arr[0]], h_arr[:-1]]); l_prev = np.concatenate([[l_arr[0]], l_arr[:-1]])
+        rep_ratio = TF_BARS_5M[long_tf] // TF_BARS_5M['15m']
+        struct_long_open = np.repeat(o_arr, rep_ratio)[:n_15m]
+        struct_long_high_prev = np.repeat(h_prev, rep_ratio)[:n_15m]
+        struct_long_low_prev = np.repeat(l_prev, rep_ratio)[:n_15m]
+        if len(struct_long_open) < n_15m:
+            pad = n_15m - len(struct_long_open)
+            struct_long_open = np.concatenate([struct_long_open, np.full(pad, o_arr[-1])])
+            struct_long_high_prev = np.concatenate([struct_long_high_prev, np.full(pad, h_prev[-1])])
+            struct_long_low_prev = np.concatenate([struct_long_low_prev, np.full(pad, l_prev[-1])])
+    short_tf = getattr(params, 'EXIT_STRUCT_TF', 'None')
+    if short_tf == 'None' or not short_tf: short_tf = getattr(params, 'SHORT_STRUCT_EXIT_TF', '15m')
+    if short_tf != 'None' and short_tf in tf_data:
+        tfd = tf_data[short_tf]; o_arr = tfd['open']; h_arr = tfd['high']; l_arr = tfd['low']
+        h_prev = np.concatenate([[h_arr[0]], h_arr[:-1]]); l_prev = np.concatenate([[l_arr[0]], l_arr[:-1]])
+        rep_ratio = TF_BARS_5M[short_tf] // TF_BARS_5M['15m']
+        struct_short_open = np.repeat(o_arr, rep_ratio)[:n_15m]
+        struct_short_high_prev = np.repeat(h_prev, rep_ratio)[:n_15m]
+        struct_short_low_prev = np.repeat(l_prev, rep_ratio)[:n_15m]
+        if len(struct_short_open) < n_15m:
+            pad = n_15m - len(struct_short_open)
+            struct_short_open = np.concatenate([struct_short_open, np.full(pad, o_arr[-1])])
+            struct_short_high_prev = np.concatenate([struct_short_high_prev, np.full(pad, h_prev[-1])])
+            struct_short_low_prev = np.concatenate([struct_short_low_prev, np.full(pad, l_prev[-1])])
 
     # Use crypto walker but inject stocks commission via monkey patch
     orig_comm = _crypto.COMMISSION_RT_PCT
@@ -588,6 +739,12 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
             x7_abs_floor_pct=float(getattr(params, 'X7_ABS_FLOOR_PCT', -8.0)),
             hedge_htf_ok_long=hedge_htf_ok_long,
             hedge_htf_ok_short=hedge_htf_ok_short,
+            struct_long_open=struct_long_open,
+            struct_long_high_prev=struct_long_high_prev,
+            struct_long_low_prev=struct_long_low_prev,
+            struct_short_open=struct_short_open,
+            struct_short_high_prev=struct_short_high_prev,
+            struct_short_low_prev=struct_short_low_prev,
         )
     finally:
         _crypto.COMMISSION_RT_PCT = orig_comm
@@ -647,7 +804,7 @@ if __name__ == '__main__':
     args = ap.parse_args()
     print(f"smoke test stocks engine on {args.syms}")
     for s in [x.strip() for x in args.syms.split(',') if x.strip()]:
-        p = SymParamsStocks()
+        p = SymParamsStocks(); p.USE_V8_AGGREGATORS = False
         r = simulate_dual_stocks(s, p, years_back=4.0)
         if r is None:
             print(f"  {s}: NPZ MISS or insufficient data"); continue

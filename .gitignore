@@ -1,0 +1,62 @@
+# Repo convention: only flat top-level code/doc files are tracked in git.
+# Every subdirectory (data caches, klines, backups, logs, results, IDE state,
+# worktrees, per-account working dirs, etc.) is excluded by default. This is
+# deliberate: this repo mirrors code to GitHub for Claude Code web access —
+# it must never carry multi-GB market-data caches or machine-local state.
+#
+# If a real code subdirectory needs to be tracked, add it explicitly with
+# `git add -f <dir>` after reviewing it for secrets/size — do not blanket-allow.
+*/
+
+# Symlinks to directories (the trailing-slash `*/` rule above does NOT match
+# symlinks, only real directories — confirmed 2026-07-20: .binance_env is a
+# symlink to a full conda env, indicator_cache to a data dir; both would have
+# slipped past `*/` and been added to git as symlink entries otherwise).
+.binance_env
+indicator_cache
+
+# Loose junk files that land directly at repo root (atomic-write leftovers,
+# editor/OS state, secrets). These accumulate outside any subdirectory so the
+# `*/` rule above does not catch them.
+.DS_Store
+*.pyc
+*.tmp
+.tmp_*
+price_cache_*.tmp
+signals_*.tmp
+.rating_registry.json.*.tmp
+dump.rdb
+*.log
+
+# Secrets — never commit raw credentials. .env.gpg (encrypted) is fine.
+.env
+.env.*
+!.env.gpg
+auth-profiles.json
+
+# Databases and generated report artifacts (data, not code) — found bloating
+# .git to 12GB on the first sync commit (signals.json alone was 69MB and
+# growing daily). GitHub hard-blocks any single file over 100MB, and even
+# well under that these have no business in a code-mirror repo.
+*.db
+*.sqlite
+*.sqlite3
+signals.json
+sweep_tournament.db
+per_sym_report.html
+backtest_marathon_results.csv
+backtest_results_20260331.csv
+phase1_4h.json
+latest_market_data.json
+function_call_grid.xlsx
+history_audit_advanced_20260514.xlsx
+
+# Stray top-level backup/variant copies of live scripts (redundant with the
+# backups/ directory convention in CLAUDE.md, already excluded via `*/`).
+*.bak
+*.bak_*
+*_BEFORE_*
+ez_manage.py.with_pts
+tradier_manage.with_3_new_exits.py
+config_tradier.with_3_new_exits.py
+ez_positions_quick.py.20260305_001014

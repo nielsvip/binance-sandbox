@@ -2403,8 +2403,18 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         shutil.copy2(config.DATA_DIR / f"losers_15m_{timestamp}.json", config.DATA_DIR / "losers_15m")
         for _pfx in ["winners_20_", "losers_20_", "winners_30_", "losers_30_", "winners_30r_", "losers_30r_", "winners_15m_", "losers_15m_"]:
             _prune_tiered(config.DATA_DIR, _pfx)
+        for _ms in getattr(config, 'TRADIER_MANDATORY_LONG_TRB', []):
+            if _ms not in symbols_trb_long: symbols_trb_long.append(_ms)
+        for _ms in getattr(config, 'TRADIER_MANDATORY_SHORT_TRB', []):
+            if _ms not in symbols_trb_short: symbols_trb_short.append(_ms)
         _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
         _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
+        # 2026-07-19 USER: trc now mirrors trb's fully-processed symbol universe (same
+        # per_sym baseline + daily 7D reconfig methodology, run as its own independent
+        # instance) so the two accounts are a live apples-to-apples comparison instead
+        # of trading disjoint symbol sets. See BACKTEST_BIBLE.md §trb/trc parity.
+        symbols_trc_long = list(symbols_trb_long)
+        symbols_trc_short = list(symbols_trb_short)
         await _save_json_async(config.BASE_PATH / "symbols_tra_long.json", symbols_tra_long)
         await _save_json_async(config.BASE_PATH / "symbols_tra_short.json", symbols_tra_short)
         await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)

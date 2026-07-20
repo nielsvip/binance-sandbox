@@ -515,6 +515,12 @@ WEBHOOK_FAIL_WINDOW_S = 300        # look back 5 min for WEBHOOK_FAIL events
 WEBHOOK_FAIL_RATE_THRESHOLD = 10   # > N fails in window → rate-burst alert
 LOG_STALE_SECONDS = 300            # ez_manage logs every ~30s even idle; 5min stale = dead worker
 _CRYPTO_ACCTS = ["ang", "fin", "flz", "men", "inf"]
+# 2026-06-03: tradier accounts to monitor for log-staleness (= "running worker died").
+# Roles: tra = LIVE cash (GFV-restricted, ≤1 buy/day, settled-cash-only buys), trb = LIVE
+# ($70k), trc = PAPER. tra was re-added to start_stocks.sh (now launched) so it's monitored
+# again — a running tradier_manage logs every cycle, so a stale log = dead worker. The tradier
+# branch below uses the freshest of {main log, today's decisions log} (trb main log is
+# hijack-unreliable), so a quiet-but-alive account won't false-alarm.
 _STOCK_ACCTS = ["tra", "trb", "trc"]
 _LOG_TS_RE = re.compile(r'^\d{1,2} (\d{2}):(\d{2}):(\d{2})')
 
@@ -607,13 +613,37 @@ def check_live_log_freshness(state: dict) -> None:
         if age > LOG_STALE_SECONDS:
             stale.append(f"ez_manage[{acct}] +{int(age)}s")
     if is_tradier_alert_window():
+        # 2026-06-03: tradier_manage_{acct}.log is unreliable for trb (known log-hijack: the
+        # account-scoped handler is sometimes opened by another tradier proc so trb's own log
+        # freezes while trb keeps trading). Use the FRESHEST of {main log, today's decisions
+        # log} as the health signal — a working trb writes decisions even when its main log is
+        # hijacked, while a genuinely stalled trb (both stale, as during a real hang) still fires.
+        _dec_dir = Path(__file__).resolve().parent / "data" / "decisions"
+        _today = datetime.utcnow().strftime("%Y%m%d")
         for acct in _STOCK_ACCTS:
-            lp = log_dir / f"tradier_manage_{acct}.log"
-            if not lp.exists():
+            ages = []
+            for cand in (log_dir / f"tradier_manage_{acct}.log",
+                         _dec_dir / f"decisions_{acct}_{_today}.jsonl"):
+                if cand.exists():
+                    ages.append(now - cand.stat().st_mtime)
+            if not ages:
                 continue
-            age = now - lp.stat().st_mtime
-            if age > LOG_STALE_SECONDS:
-                stale.append(f"tradier[{acct}] +{int(age)}s")
+            age = min(ages)
+            if age <= LOG_STALE_SECONDS:
+                continue
+            # PROC-AWARE: the tradier per-account logs are hijack-unreliable (a worker can be
+            # alive + trading while its own log file freezes; low-freq tra makes this worse).
+            # Only alarm "dead worker" if the account's process is genuinely GONE — otherwise a
+            # live-but-hijacked/quiet worker would false-fire. The run_with_watchdog 600s
+            # no-output timeout restarts a truly hung worker, so proc-absence is the real signal.
+            try:
+                _pr = subprocess.run(["pgrep", "-f", f"tradier_manage.py --accounts {acct}"],
+                                     capture_output=True, text=True, timeout=5)
+                _alive = bool(_pr.stdout.strip())
+            except Exception:
+                _alive = True  # fail-safe: assume alive, don't false-alarm on pgrep failure
+            if not _alive:
+                stale.append(f"tradier[{acct}] +{int(age)}s (proc DOWN)")
     if stale:
         key = "live_log_stale_alert_ts"
         if now - state.get(key, 0) >= 300:

@@ -14,8 +14,24 @@ from typing import Any, Dict, Optional, Set
 import aiofiles
 
 from config import Config
-from ez_positions_service import (Position, PositionService, WebSocketManager, bootstrap_position_service, ii, load_accounts_from_config, minutes_since)
-from utils import (REDIS_CHANNELS, get_simple_redis_manager, is_sandbox_account, load_environment_from_gpg, orjson_default, parse_position_key, safe_fetch_float)
+from ez_positions_service import (
+    Position,
+    PositionService,
+    WebSocketManager,
+    bootstrap_position_service,
+    ii,
+    load_accounts_from_config,
+    minutes_since,
+)
+from utils import (
+    REDIS_CHANNELS,
+    get_simple_redis_manager,
+    is_sandbox_account,
+    load_environment_from_gpg,
+    orjson_default,
+    parse_position_key,
+    safe_fetch_float,
+)
 
 try:
     from typing import Any, Dict, List, Optional, Union
@@ -64,7 +80,7 @@ log_path = str(_logs_dir / "ez_positions.log")
 file_handler = RotatingFileHandler(log_path, maxBytes=100 * 1024 * 1024, backupCount=5, encoding="utf-8", mode="a")
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
-file_handler.setFormatter(file_formatter)
+file_handler.setFormatter(file_formatter)  # type: ignore[arg-type]
 logger.addHandler(file_handler)
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
@@ -77,8 +93,11 @@ _last_backup_time = {}
 
 def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dict[str, Any]], file_paths_by_side: Dict[str, Path], do_backup_by_side: Dict[str, bool]) -> Dict[str, str]:
     # WHY: keeps fsync + shutil.copy2 + temp-file write off the asyncio event loop. Pre-2026-05-20 this block ran inline and stalled process_account_update past the 120s wait_for tripwire (3 pau_stall events for flz/men/inf in 30 min on 2026-05-20).
-    import os as _os, shutil as _shutil, time as _t
-    from datetime import datetime as _dt, timezone as _tz
+    import os as _os
+    import shutil as _shutil
+    import time as _t
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
     results: Dict[str, str] = {}
     for side, positions_dict in all_positions_by_side.items():
         if not positions_dict:
@@ -219,14 +238,17 @@ def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dic
 #         raise
 
 async def atomic_save_positions(position_service: PositionService, account_key: str, force=None) -> None:
-    if account_key not in _save_locks:_save_locks[account_key] = asyncio.Lock()
+    if account_key not in _save_locks:
+        _save_locks[account_key] = asyncio.Lock()
     lock = _save_locks[account_key]
+    
     # Debounce: skip if saved recently
     now = time.time()
     last_save = _last_save_time.get(account_key, 0.0)
-    if (now - last_save) < _save_debounce_seconds:
+    if not force and (now - last_save) < _save_debounce_seconds:
         logger.debug(f"[atomic_save][{account_key}] ⏱️ Debounced - last save {now-last_save:.1f}s ago")
         return
+        
     async with lock:
         now = time.time()
         last_save = _last_save_time.get(account_key, 0.0)
@@ -234,10 +256,11 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
             logger.debug(f"[atomic_save][{account_key}] ⏱️ Debounced - last save {now-last_save:.1f}s ago")
             return
         try:
-            account_positions = position_service.positions_by_account.get( account_key, {}   )
+            account_positions = position_service.positions_by_account.get(account_key, {})
             if not account_positions:
                 logger.error(f"[atomic_save][{account_key}] ❌❌❌ CRITICAL: No positions in memory - CANNOT SAVE!")
                 return
+                
             from datetime import datetime, timezone
             now_utc = datetime.now(timezone.utc)
             newest_position_time = None
@@ -246,44 +269,25 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                     try:
                         pos_time = pos_obj.last_updated
                         if isinstance(pos_time, str):
-                            pos_time = datetime.fromisoformat( pos_time.replace("Z", "+00:00") )
+                            pos_time = datetime.fromisoformat(pos_time.replace("Z", "+00:00"))
                         if pos_time.tzinfo is None:
                             pos_time = pos_time.replace(tzinfo=timezone.utc)
-                        if ( newest_position_time is None or pos_time > newest_position_time ):
+                        if newest_position_time is None or pos_time > newest_position_time:
                             newest_position_time = pos_time
                     except Exception:
                         pass
-            fresh_positions = (  account_positions    )
-            logger.info(  f"[atomic_save][{account_key}] 💾 Saving {len(fresh_positions)} positions to files")
-            for side in ["LONG", "SHORT"]:
-                main_file = position_service.get_position_file(account_key, side)
-                if main_file.exists() and not force: # Add 'and not force'
-                    file_mtime = datetime.fromtimestamp(main_file.stat().st_mtime, tz=timezone.utc)
-                    file_age = (now_utc - file_mtime).total_seconds()
-                    if file_age < 1.0:
-                        logger.warning(f"File recently updated, skipping debounce save")
-                        continue
-
-            # for side in ["LONG", "SHORT"]:
-            #     main_file = position_service.get_position_file(account_key, side)
-            #     if main_file.exists():
-            #         file_mtime = datetime.fromtimestamp( main_file.stat().st_mtime, tz=timezone.utc  )
-            #         file_age = (now_utc - file_mtime).total_seconds()
-            #         if file_age < 1.0:
-            #             logger.warning( f"[atomic_save][{account_key}:{side}] ⚠️ File was just updated {file_age:.2f}s ago - waiting 0.5s to prevent race condition"  )
-            #             await asyncio.sleep(0.5)
-            #             if main_file.exists():
-            #                 file_mtime = datetime.fromtimestamp( main_file.stat().st_mtime, tz=timezone.utc   )
-            #                 file_age = ( datetime.now(timezone.utc) - file_mtime ).total_seconds()
-            #                 if file_age < 1.0:
-            #                     logger.warning(   f"[atomic_save][{account_key}:{side}] ⚠️ File still being written ({file_age:.2f}s) - skipping this save" )
-            #                     continue
+                        
+            fresh_positions = account_positions
+            logger.info(f"[atomic_save][{account_key}] 💾 Saving {len(fresh_positions)} positions to files")
+            
             # Group by side (use fresh_positions, not account_positions)
             all_positions_by_side: Dict[str, Dict[str, Any]] = {"LONG": {}, "SHORT": {}}
             for pos_key, pos_obj in fresh_positions.items():
-                if not pos_obj or not hasattr(pos_obj, "to_dict"):continue
+                if not pos_obj or not hasattr(pos_obj, "to_dict"):
+                    continue
                 side = getattr(pos_obj, "position_side", None)
-                if side not in ["LONG", "SHORT"]:  continue
+                if side not in ["LONG", "SHORT"]:
+                    continue
                 try:
                     pos_dict = pos_obj.to_dict()
                     if isinstance(pos_dict, dict):
@@ -291,6 +295,7 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                         ep = float(pos_dict.get('entry_price', 0))
                         oa = pos_dict.get('opened_at')
                         mg = float(pos_dict.get('max_gain', 0))
+                        
                         # Guard: if entry_price zeroed but other fields exist, restore from disk
                         if ep == 0 and (oa is not None or mg > 0):
                             try:
@@ -303,7 +308,9 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                                     if _dep > 0:
                                         pos_dict['entry_price'] = _dep
                                         logger.critical(f"[atomic_save][{account_key}] 🛡️ ENTRY_PRICE_GUARD: {pos_key} entry_price was 0 in memory, restored {_dep} from disk")
-                            except Exception: pass
+                            except Exception:
+                                pass
+                                
                         if amt == 0 and ep == 0 and oa is None and mg == 0:
                             existing_on_disk = None
                             try:
@@ -312,7 +319,8 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                                     with open(disk_file) as _df:
                                         disk_data = json.load(_df)
                                     existing_on_disk = disk_data.get(pos_key, {})
-                            except Exception: pass
+                            except Exception:
+                                pass
                             if existing_on_disk and isinstance(existing_on_disk, dict):
                                 disk_amt = abs(float(existing_on_disk.get('positionAmt', 0)))
                                 disk_ep = float(existing_on_disk.get('entry_price', 0))
@@ -326,13 +334,14 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                 except Exception as e:
                     logger.error(f"[atomic_save][{account_key}] to_dict failed for {pos_key}: {e}")
                     continue
-            # CRITICAL: Save each side - ALWAYS save fresh data from memory (source of truth)
-            # 2026-05-20: prep paths + backup decisions on event loop; do the heavy file work in a worker thread so fsync/shutil.copy2/move/JSON write don't stall asyncio. Pre-fix this block ran inline and tripped the 120s PAU watchdog.
+                    
+            # 2026-05-20: prep paths + backup decisions on event loop
             sorted_by_side: Dict[str, Dict[str, Any]] = {}
             file_paths_by_side: Dict[str, Path] = {}
             do_backup_by_side: Dict[str, bool] = {}
             backup_dirs_by_side: Dict[str, Path] = {}
             now_ts = time.time()
+            
             for side, positions_dict in all_positions_by_side.items():
                 if not positions_dict:
                     logger.warning(f"[atomic_save][{account_key}:{side}] ⚠️ No positions to save for {side} side")
@@ -346,6 +355,7 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                 if do_backup:
                     backup_dirs_by_side[side] = main_file.parent / "backups"
                     _last_backup_time[bk_key] = now_ts
+                    
             if sorted_by_side:
                 results = await asyncio.to_thread(_atomic_save_blocking, account_key, sorted_by_side, file_paths_by_side, do_backup_by_side)
                 for side, status in results.items():
@@ -360,11 +370,160 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                 for side, backup_dir in backup_dirs_by_side.items():
                     main_file = file_paths_by_side[side]
                     asyncio.create_task(position_service.prune_old_backups(str(backup_dir), main_file.stem))
+                    
             logger.info(f"[atomic_save][{account_key}] ✅ COMPLETED - All positions saved")
             _last_save_time[account_key] = time.time()
         except Exception as e:
             logger.error(f"[atomic_save][{account_key}] ❌ FAILED: {e}", exc_info=True)
             raise
+
+# async def atomic_save_positions(position_service: PositionService, account_key: str, force=None) -> None:
+#     if account_key not in _save_locks:_save_locks[account_key] = asyncio.Lock()
+#     lock = _save_locks[account_key]
+#     # Debounce: skip if saved recently
+#     now = time.time()
+#     last_save = _last_save_time.get(account_key, 0.0)
+#     if (now - last_save) < _save_debounce_seconds:
+#         logger.debug(f"[atomic_save][{account_key}] ⏱️ Debounced - last save {now-last_save:.1f}s ago")
+#         return
+#     async with lock:
+#         now = time.time()
+#         last_save = _last_save_time.get(account_key, 0.0)
+#         if not force and (now - last_save) < _save_debounce_seconds:
+#             logger.debug(f"[atomic_save][{account_key}] ⏱️ Debounced - last save {now-last_save:.1f}s ago")
+#             return
+#         try:
+#             account_positions = position_service.positions_by_account.get( account_key, {}   )
+#             if not account_positions:
+#                 logger.error(f"[atomic_save][{account_key}] ❌❌❌ CRITICAL: No positions in memory - CANNOT SAVE!")
+#                 return
+#             from datetime import datetime, timezone
+#             now_utc = datetime.now(timezone.utc)
+#             newest_position_time = None
+#             for pos_key, pos_obj in account_positions.items():
+#                 if pos_obj and hasattr(pos_obj, "last_updated"):
+#                     try:
+#                         pos_time = pos_obj.last_updated
+#                         if isinstance(pos_time, str):
+#                             pos_time = datetime.fromisoformat( pos_time.replace("Z", "+00:00") )
+#                         if pos_time.tzinfo is None:
+#                             pos_time = pos_time.replace(tzinfo=timezone.utc)
+#                         if ( newest_position_time is None or pos_time > newest_position_time ):
+#                             newest_position_time = pos_time
+#                     except Exception:
+#                         pass
+#             fresh_positions = (  account_positions    )
+#             logger.info(  f"[atomic_save][{account_key}] 💾 Saving {len(fresh_positions)} positions to files")
+#             for side in ["LONG", "SHORT"]:
+#                 main_file = position_service.get_position_file(account_key, side)
+#                 if main_file.exists() and not force: # Add 'and not force'
+#                     file_mtime = datetime.fromtimestamp(main_file.stat().st_mtime, tz=timezone.utc)
+#                     file_age = (now_utc - file_mtime).total_seconds()
+#                     if file_age < 1.0:
+#                         logger.warning(f"File recently updated, skipping debounce save")
+#                         continue
+
+#             # for side in ["LONG", "SHORT"]:
+#             #     main_file = position_service.get_position_file(account_key, side)
+#             #     if main_file.exists():
+#             #         file_mtime = datetime.fromtimestamp( main_file.stat().st_mtime, tz=timezone.utc  )
+#             #         file_age = (now_utc - file_mtime).total_seconds()
+#             #         if file_age < 1.0:
+#             #             logger.warning( f"[atomic_save][{account_key}:{side}] ⚠️ File was just updated {file_age:.2f}s ago - waiting 0.5s to prevent race condition"  )
+#             #             await asyncio.sleep(0.5)
+#             #             if main_file.exists():
+#             #                 file_mtime = datetime.fromtimestamp( main_file.stat().st_mtime, tz=timezone.utc   )
+#             #                 file_age = ( datetime.now(timezone.utc) - file_mtime ).total_seconds()
+#             #                 if file_age < 1.0:
+#             #                     logger.warning(   f"[atomic_save][{account_key}:{side}] ⚠️ File still being written ({file_age:.2f}s) - skipping this save" )
+#             #                     continue
+#             # Group by side (use fresh_positions, not account_positions)
+#             all_positions_by_side: Dict[str, Dict[str, Any]] = {"LONG": {}, "SHORT": {}}
+#             for pos_key, pos_obj in fresh_positions.items():
+#                 if not pos_obj or not hasattr(pos_obj, "to_dict"):continue
+#                 side = getattr(pos_obj, "position_side", None)
+#                 if side not in ["LONG", "SHORT"]:  continue
+#                 try:
+#                     pos_dict = pos_obj.to_dict()
+#                     if isinstance(pos_dict, dict):
+#                         amt = abs(float(pos_dict.get('positionAmt', 0)))
+#                         ep = float(pos_dict.get('entry_price', 0))
+#                         oa = pos_dict.get('opened_at')
+#                         mg = float(pos_dict.get('max_gain', 0))
+#                         # Guard: if entry_price zeroed but other fields exist, restore from disk
+#                         if ep == 0 and (oa is not None or mg > 0):
+#                             try:
+#                                 disk_file = position_service.get_position_file(account_key, side)
+#                                 if disk_file.exists():
+#                                     with open(disk_file) as _df2:
+#                                         _disk2 = json.load(_df2)
+#                                     _dpos = _disk2.get(pos_key, {})
+#                                     _dep = float(_dpos.get('entry_price', 0))
+#                                     if _dep > 0:
+#                                         pos_dict['entry_price'] = _dep
+#                                         logger.critical(f"[atomic_save][{account_key}] 🛡️ ENTRY_PRICE_GUARD: {pos_key} entry_price was 0 in memory, restored {_dep} from disk")
+#                             except Exception: pass
+#                         if amt == 0 and ep == 0 and oa is None and mg == 0:
+#                             existing_on_disk = None
+#                             try:
+#                                 disk_file = position_service.get_position_file(account_key, side)
+#                                 if disk_file.exists():
+#                                     with open(disk_file) as _df:
+#                                         disk_data = json.load(_df)
+#                                     existing_on_disk = disk_data.get(pos_key, {})
+#                             except Exception: pass
+#                             if existing_on_disk and isinstance(existing_on_disk, dict):
+#                                 disk_amt = abs(float(existing_on_disk.get('positionAmt', 0)))
+#                                 disk_ep = float(existing_on_disk.get('entry_price', 0))
+#                                 disk_oa = existing_on_disk.get('opened_at')
+#                                 if disk_amt > 0 or disk_ep > 0 or disk_oa:
+#                                     import traceback
+#                                     stack = "".join(traceback.format_stack()[-8:])
+#                                     logger.critical(f"[SAVE_WATCHDOG] {pos_key}: ABOUT TO OVERWRITE REAL DATA WITH ZEROS! disk_amt={disk_amt} disk_ep={disk_ep} disk_oa={disk_oa} | mem_amt={amt} mem_ep={ep} mem_oa={oa} | BLOCKING SAVE. Stack:\n{stack}")
+#                                     pos_dict = existing_on_disk
+#                         all_positions_by_side[side][pos_key] = pos_dict
+#                 except Exception as e:
+#                     logger.error(f"[atomic_save][{account_key}] to_dict failed for {pos_key}: {e}")
+#                     continue
+#             # CRITICAL: Save each side - ALWAYS save fresh data from memory (source of truth)
+#             # 2026-05-20: prep paths + backup decisions on event loop; do the heavy file work in a worker thread so fsync/shutil.copy2/move/JSON write don't stall asyncio. Pre-fix this block ran inline and tripped the 120s PAU watchdog.
+#             sorted_by_side: Dict[str, Dict[str, Any]] = {}
+#             file_paths_by_side: Dict[str, Path] = {}
+#             do_backup_by_side: Dict[str, bool] = {}
+#             backup_dirs_by_side: Dict[str, Path] = {}
+#             now_ts = time.time()
+#             for side, positions_dict in all_positions_by_side.items():
+#                 if not positions_dict:
+#                     logger.warning(f"[atomic_save][{account_key}:{side}] ⚠️ No positions to save for {side} side")
+#                     continue
+#                 main_file = position_service.get_position_file(account_key, side)
+#                 sorted_by_side[side] = position_service._sort_positions_dict(positions_dict)
+#                 file_paths_by_side[side] = main_file
+#                 bk_key = f"{account_key}_{side}"
+#                 do_backup = (now_ts - _last_backup_time.get(bk_key, 0)) > 300
+#                 do_backup_by_side[side] = do_backup
+#                 if do_backup:
+#                     backup_dirs_by_side[side] = main_file.parent / "backups"
+#                     _last_backup_time[bk_key] = now_ts
+#             if sorted_by_side:
+#                 results = await asyncio.to_thread(_atomic_save_blocking, account_key, sorted_by_side, file_paths_by_side, do_backup_by_side)
+#                 for side, status in results.items():
+#                     if status == "OK":
+#                         logger.info(f"[atomic_save][{account_key}:{side}] ✅ SAVED {len(sorted_by_side.get(side, {}))} positions to {file_paths_by_side[side].name}")
+#                     elif status == "EMPTY":
+#                         continue
+#                     elif status == "MISSING_AFTER_MOVE":
+#                         logger.error(f"[atomic_save][{account_key}:{side}] ❌ File missing after move!")
+#                     else:
+#                         logger.error(f"[atomic_save][{account_key}:{side}] ❌ {status}")
+#                 for side, backup_dir in backup_dirs_by_side.items():
+#                     main_file = file_paths_by_side[side]
+#                     asyncio.create_task(position_service.prune_old_backups(str(backup_dir), main_file.stem))
+#             logger.info(f"[atomic_save][{account_key}] ✅ COMPLETED - All positions saved")
+#             _last_save_time[account_key] = time.time()
+#         except Exception as e:
+#             logger.error(f"[atomic_save][{account_key}] ❌ FAILED: {e}", exc_info=True)
+#             raise
 
 class PositionsFetcher:
     """Fetches positions from Binance API and WebSocket, updates position service - INTEGRATED INTO ez_positions.py"""
@@ -415,7 +574,7 @@ class PositionsFetcher:
         asyncio.create_task(initial_fetch_background())
         total_positions = sum(len(acc_pos) for acc_pos in self.position_service.positions_by_account.values())
         if total_positions == 0:
-            logger.error(f"[PositionsFetcher.start] CRITICAL: No positions loaded! Cannot start WebSocket or fetch loops!")
+            logger.error("[PositionsFetcher.start] CRITICAL: No positions loaded! Cannot start WebSocket or fetch loops!")
             return
         logger.info(f"[PositionsFetcher.start] 🚀🚀🚀 STEP 4: Starting fetch loops and WebSockets for {len(self.position_service.accounts)} accounts")
         fetch_tasks, websocket_tasks = [], []
@@ -435,10 +594,10 @@ class PositionsFetcher:
                 try:
                     ws_manager = WebSocketManager(account_keys=[account_key], api_key=api_key, api_secret=api_secret, config=self.position_service.config, symbols=None, service=self.position_service)
                     original_handle = ws_manager.handle_account_update
-                    async def handle_with_save_broadcast(data: dict, account_key_param: str):
+                    async def handle_with_save_broadcast(data: dict, account_key: str):
                         try:
-                            await original_handle(data, account_key_param)
-                            account_positions = self.position_service.positions_by_account.get(account_key_param, {})
+                            await original_handle(data, account_key)
+                            account_positions = self.position_service.positions_by_account.get(account_key, {})
                             if not account_positions: return
                             updated_keys = set()
                             if isinstance(data, dict) and "a" in data:
@@ -447,11 +606,11 @@ class PositionsFetcher:
                                     symbol = pos_data.get("s")
                                     raw_amt = safe_fetch_float(pos_data.get("pa"), 0.0)
                                     side = (pos_data.get("ps") or ("LONG" if raw_amt >= 0 else "SHORT")).upper()
-                                    if symbol: updated_keys.add(f"{account_key_param}:{symbol}_{side}")
+                                    if symbol: updated_keys.add(f"{account_key}:{symbol}_{side}")
                             if updated_keys:
-                                await self.position_service._broadcast_positions_to_redis(account_key_param, updated_keys)
+                                await self.position_service._broadcast_positions_to_redis(account_key, updated_keys)
                         except Exception as e:
-                            logger.error(f"[WS_UPDATE][{account_key_param}] ❌ Error: {e}", exc_info=True)
+                            logger.error(f"[WS_UPDATE][{account_key}] ❌ Error: {e}", exc_info=True)
                     ws_manager.handle_account_update = handle_with_save_broadcast
                     self.ws_managers[account_key] = ws_manager
                     ws_task = asyncio.create_task(ws_manager.start(account_key))

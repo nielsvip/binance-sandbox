@@ -30,12 +30,17 @@ from flask import Flask, jsonify, request, send_from_directory
 # Single chokepoint for canonical Sharpe per CLAUDE.md NO-LIES MANDATE.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import metrics_guard  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+import results_dashboard_lib  # noqa: E402
 
 BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/niels/Documents/binance"))
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 HISTORY_DIR = BASE_PATH / "data" / "history"
 STOCK_ACCOUNT_KEYS = {"trb", "trc", "tra"}
+# Open rounds below this notional whose entry came from a SYNC_DETECTION snapshot
+# are leftover reconciliation dust, not live trades — suppressed in the review UI.
+OPEN_DUST_NOTIONAL_USD = 100.0
 # data/history/<acct> is the canonical per-account live trade log for ALL
 # accounts (crypto + stocks). Stocks dirs (trb/trc/tra) are symlinks into
 # data/tradier/history/<acct> where tradier_positions.append_to_position_history_file
@@ -56,6 +61,7 @@ def _history_dir_for(account: str) -> Path:
 _DEFAULT_EXTRA_ROOTS = [
     "data/hourly_reconfig/*/runs/*",       # latest hourly cycles per account
     "data/canonical_trades/*",             # big-sweep canonical trade JSONLs
+    "data/sweep_results/persym_campaign_*",  # 2026-07-19: per-sym baseline campaign cells (pulled from S1; run id psc::<cell>)
 ]
 EXTRA_ROOTS_CFG = os.environ.get("V8_TRADES_EXTRA_ROOTS", "").strip()
 if EXTRA_ROOTS_CFG:
@@ -173,6 +179,9 @@ def _build_run_registry() -> Dict[str, Path]:
                         run_id_keyed = run_id
                 elif "/canonical_trades/" in s:
                     run_id_keyed = f"bigsweep::{run_id}"
+                elif "persym_campaign_" in s:
+                    # campaign cell dirs hold cell__<SYM>.jsonl; the SETTING is the dir name
+                    run_id_keyed = f"psc::{p.parent.name}"
                 else:
                     run_id_keyed = run_id  # legacy /tmp/v8_trades
                 try:
@@ -205,6 +214,8 @@ def _resolve_trade_path(run: str, sym: str) -> Optional[Path]:
     reg = _get_run_registry()
     # Strip prefix if present — bare run_id is used in filename.
     bare_run = run.split("::", 1)[1] if "::" in run else run
+    if run.startswith("psc::"):
+        bare_run = "cell"  # campaign files are cell__<SYM>.jsonl inside the setting dir
     if run in reg:
         p = reg[run]
         candidate = p.parent / f"{bare_run}__{sym}.jsonl"
@@ -226,12 +237,106 @@ _precompute_lock = __import__("threading").Lock()
 _file_agg_cache: Dict[str, Any] = {}
 
 
+# 2026-07-20: Mac's local backtest_v8/indicators (28GB on S1) was pulled off disk
+# during a prior cleanup (Mac disk stays ~96% full, no room for the full S1 set —
+# see project_mac_disk_cleanup_20260616 memory). Symbol dropdown + candles now
+# fetch NPZ lazily from S1 on demand into a small bounded local cache instead of
+# requiring the full corpus locally. Never bulk-syncs — one file at a time, LRU
+# evicted, capped well under free disk space per CLAUDE.md disk-full incident
+# (2026-06-11 S1 disk full crashed live ez_manage).
+_REMOTE_NPZ_HOST = "s1-int"
+_REMOTE_NPZ_DIR = "/home/niels/binance-sandbox/backtest_v8/indicators"
+_NPZ_LOCAL_CACHE_CAP_BYTES = 2 * 1024 * 1024 * 1024  # 2GB ceiling, Mac has ~20GB free total
+_remote_npz_list_cache: Tuple[float, List[str]] = (0.0, [])
+_REMOTE_NPZ_LIST_TTL = 300.0
+
+
+def _evict_npz_cache_if_over_cap(just_fetched: Optional[Path] = None) -> None:
+    """LRU-evict local NPZ cache files (by mtime) down to _NPZ_LOCAL_CACHE_CAP_BYTES,
+    never evicting the file we just fetched."""
+    try:
+        files = [p for p in NPZ_DIR.glob("*.npz") if p.is_file()]
+        total = sum(p.stat().st_size for p in files)
+        if total <= _NPZ_LOCAL_CACHE_CAP_BYTES:
+            return
+        files.sort(key=lambda p: p.stat().st_mtime)  # oldest first
+        for p in files:
+            if just_fetched is not None and p == just_fetched:
+                continue
+            if total <= _NPZ_LOCAL_CACHE_CAP_BYTES:
+                break
+            try:
+                size = p.stat().st_size
+                p.unlink()
+                _npz_cache.pop(p.stem, None)
+                total -= size
+            except OSError:
+                continue
+    except OSError:
+        pass
+
+
+def _fetch_npz_from_s1(symbol: str) -> Optional[Path]:
+    """Pull a single symbol's NPZ from S1's backtest_v8/indicators into the local
+    cache dir via rsync. Returns the local Path on success, None if S1 is
+    unreachable or the symbol doesn't exist there (offline/VPN-down is expected —
+    fail quiet, callers already handle a missing NPZ as 'no data yet')."""
+    import subprocess
+    NPZ_DIR.mkdir(parents=True, exist_ok=True)
+    dest = NPZ_DIR / f"{symbol}.npz"
+    tmp_dest = NPZ_DIR / f".{symbol}.npz.part"
+    cmd = ["rsync", "-az", "--timeout=20", "-e",
+           "ssh -o ConnectTimeout=8 -o BatchMode=yes",
+           f"{_REMOTE_NPZ_HOST}:{_REMOTE_NPZ_DIR}/{symbol}.npz", str(tmp_dest)]
+    try:
+        # Crypto NPZ run up to ~400MB and the S1 link has measured ~1.2MB/s
+        # throughput — a short timeout here kills the transfer before it lands.
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
+        if result.returncode != 0 or not tmp_dest.exists():
+            if tmp_dest.exists():
+                tmp_dest.unlink()
+            return None
+        tmp_dest.rename(dest)
+        _evict_npz_cache_if_over_cap(just_fetched=dest)
+        return dest
+    except (subprocess.TimeoutExpired, OSError):
+        if tmp_dest.exists():
+            try:
+                tmp_dest.unlink()
+            except OSError:
+                pass
+        return None
+
+
+def _remote_npz_symbols() -> List[str]:
+    """Symbols available on S1 (not necessarily cached locally yet), cached 5min
+    so the dropdown stays populated even though files download lazily on click."""
+    global _remote_npz_list_cache
+    now = time.time()
+    cached_at, cached = _remote_npz_list_cache
+    if cached and (now - cached_at) < _REMOTE_NPZ_LIST_TTL:
+        return cached
+    import subprocess
+    cmd = ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", _REMOTE_NPZ_HOST,
+           f"ls {_REMOTE_NPZ_DIR}/*.npz 2>/dev/null"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        syms = sorted(Path(line.strip()).stem for line in result.stdout.splitlines() if line.strip())
+        if syms:
+            _remote_npz_list_cache = (now, syms)
+        return syms
+    except (subprocess.TimeoutExpired, OSError):
+        return cached  # S1 unreachable this cycle — keep serving last-known list
+
+
 def _load_npz(symbol: str):
     if symbol in _npz_cache:
         return _npz_cache[symbol]
     path = NPZ_DIR / f"{symbol}.npz"
     if not path.exists():
-        return None
+        path = _fetch_npz_from_s1(symbol)
+        if path is None:
+            return None
     z = np.load(path, mmap_mode="r")
     _npz_cache[symbol] = z
     return z
@@ -260,6 +365,116 @@ def index():
     return _no_cache(send_from_directory(app.static_folder, "chart.html"))
 
 
+@app.route("/focus4")
+def focus4_page():
+    """LIVE test-progress board (USER 2026-07-20): focus-4 ladder cells, swing coverage,
+    OFAT cell counts and the LEAN-baseline arms — auto-refreshing so a run can be followed
+    without SSH. Data pulled from S1 by cron into data/_diagnostic + data/reports."""
+    import json as _j
+    base = BASE_PATH
+    def _load(rel, default=None):
+        try:
+            return _j.loads((base / rel).read_text())
+        except Exception:
+            return default
+    board = (_load("data/_diagnostic/focus4_scoreboard.json", {}) or {}).get("board", {})
+    cap = _load("data/reports/stocks_bh_capture.json", {}) or {}
+    cov_rows = (_load("data/_diagnostic/focus4_coverage/_combined.json", {}) or {}).get("rows", [])
+    cov_by = {}
+    for r in cov_rows:
+        cov_by[(r.get("sym"), r.get("tag"))] = r
+    html = ["<!DOCTYPE html><html><head><meta charset=utf-8><title>FOCUS-4 live</title>",
+            "<meta http-equiv=refresh content=60>",
+            "<style>body{background:#0c0e12;color:#e6e8eb;font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px}",
+            "h1{font-size:16px}h2{font-size:13px;color:#8cf;margin-top:18px}",
+            "table{border-collapse:collapse;font-size:12px;margin-bottom:10px}",
+            "th,td{padding:4px 10px;border-bottom:1px solid #1c2029;text-align:right}",
+            "th{color:#6a7383;font-size:10px;text-transform:uppercase}td.l,th.l{text-align:left}",
+            "a{color:#7fb069}.g{color:#5a9060}.r{color:#a04040}.dim{color:#6a7383;font-size:11px}</style></head><body>",
+            "<h1>FOCUS-4 live test board <span class=dim>(auto-refresh 60s · DIAGNOSTIC n_syms=1 per key)</span></h1>",
+            "<div class=dim>goal: gain_vs_bh &ge; 2.0 (target 10.0) &middot; up_capture = share of every &ge;10%% up-swing actually held</div>"]
+    for sym in ("MU", "ARM", "ROKU", "NVDA"):
+        cells = board.get(sym) or {}
+        if not cells:
+            continue
+        bh = next(iter(cells.values())).get("bh_pct")
+        html.append("<h2>%s_LONG &mdash; b&amp;h %s%%</h2><table><tr><th class=l>cell</th><th>gain%%</th>"
+                    "<th>vs b&amp;h</th><th>trades</th><th>up_capture</th><th>missed</th><th>down_abs</th>"
+                    "<th class=l>chart</th></tr>" % (sym, bh))
+        for tag, s in sorted(cells.items(), key=lambda kv: -(kv[1].get("gain_vs_bh") or -9)):
+            c = cov_by.get((sym, tag), {})
+            vs = s.get("gain_vs_bh")
+            cls = "g" if (vs or 0) >= 2 else ("r" if (vs or 0) < 0 else "")
+            html.append("<tr><td class=l>%s</td><td>%s</td><td class='%s'><b>%s</b></td><td>%s</td>"
+                        "<td>%s</td><td>%s/%s</td><td>%s</td>"
+                        "<td class=l><a href='/?run=psc::%s&sym=%s' target=_blank>trades</a></td></tr>" % (
+                            tag, s.get("gain_long_pct"), cls, vs, s.get("trades_long"),
+                            s.get("up_capture_ratio", c.get("up_capture_ratio", "&mdash;")),
+                            s.get("n_up_missed", c.get("n_up_missed", "?")), s.get("n_up", c.get("n_up", "?")),
+                            s.get("down_absorbed", c.get("down_absorbed_total", "&mdash;")), tag, sym))
+        html.append("</table>")
+    rows = (cap.get("rows") or [])[:15]
+    if rows:
+        html.append("<h2>B&amp;H winners capture scoreboard (campaign store)</h2><table>"
+                    "<tr><th class=l>key</th><th>b&amp;h/mo</th><th>gain/mo</th><th>capture</th><th>trades</th></tr>")
+        for r in rows:
+            c = r.get("capture_vs_bh")
+            html.append("<tr><td class=l>%s</td><td>%s</td><td>%s</td><td class='%s'>%s</td><td>%s</td></tr>" % (
+                r.get("key"), r.get("bh_per_mo"), r.get("gain_per_mo"),
+                "g" if isinstance(c, (int, float)) and c >= 1 else "r", c, r.get("trades")))
+        html.append("</table>")
+    import glob as _g
+    sw = {}
+    for _f in _g.glob(str(base / "data/_diagnostic/switch_ladder/*_valued.json")):
+        try:
+            sw[Path(_f).name.replace("_valued.json", "")] = _j.loads(Path(_f).read_text())
+        except Exception:
+            pass
+    if not sw:
+        sw = _load("data/_diagnostic/switch_ladder/_all.json", {}) or {}
+    if sw:
+        html.append("<h2>ADDITIVE-SWITCH TRACK &mdash; baseline = bare 5m WT-cross system "
+                    "<span class=dim>(only switches that INCREASE gain_vs_bh are kept)</span></h2>")
+        for sym, blk in sw.items():
+            b = blk.get("baseline", {})
+            html.append("<h2 style='color:#7fb069'>%s &mdash; baseline %s&times; b&amp;h "
+                        "<span class=dim>(gain %s%% / b&amp;h %s%% &middot; ps=%s &middot; dd=%s%% &middot; tr=%s)</span></h2>" % (
+                            sym, b.get("gain_vs_bh"), b.get("gain_pct"), b.get("bh_pct"),
+                            b.get("pool_sharpe"), b.get("max_dd_pct"), b.get("trades")))
+            st = blk.get("stack") or []
+            if st:
+                html.append("<table><tr><th class=l>+switch</th><th>vs b&amp;h</th><th>gain%%</th>"
+                            "<th>trades</th><th>ps</th><th>dd%%</th><th>tim%%</th></tr>")
+                for r in st:
+                    html.append("<tr><td class=l>%s</td><td class=g><b>%s</b></td><td>%s</td><td>%s</td>"
+                                "<td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                                    (r.get("stack") or [""])[-1], r.get("gain_vs_bh"), r.get("gain_pct"),
+                                    r.get("trades"), r.get("pool_sharpe"), r.get("max_dd_pct"),
+                                    r.get("time_in_mkt_pct")))
+                html.append("</table>")
+            tops = [r for r in (blk.get("singles") or []) if (r.get("delta_vs_bh") or 0) > 0][:12] or (blk.get("singles") or [])[:8]
+            if tops:
+                html.append("<table><tr><th class=l>single switch</th><th>vs b&amp;h</th><th>&Delta;</th>"
+                            "<th>trades</th><th>dd%%</th></tr>")
+                for r in tops:
+                    cls = "g" if (r.get("delta_vs_bh") or 0) > 0 else "r"
+                    html.append("<tr><td class=l>%s</td><td>%s</td><td class='%s'>%+.3f</td><td>%s</td>"
+                                "<td>%s</td></tr>" % (r.get("switch"), r.get("gain_vs_bh"), cls,
+                                                      r.get("delta_vs_bh") or 0, r.get("trades"),
+                                                      r.get("max_dd_pct")))
+                html.append("</table>")
+    prog = ""
+    try:
+        prog = (base / "data/_diagnostic/ofat_progress.txt").read_text()[:4000]
+    except Exception:
+        prog = "(no ofat_progress.txt yet — pulled from S1 by cron)"
+    html.append("<h2>OFAT / campaign progress</h2><pre class=dim style='white-space:pre-wrap'>%s</pre>" % prog)
+    html.append("<div class=dim>sources: data/_diagnostic/focus4_scoreboard.json &middot; "
+                "focus4_coverage/_combined.json &middot; data/reports/stocks_bh_capture.json</div>")
+    html.append("</body></html>")
+    return "".join(html)
+
+
 @app.route("/heatmap")
 @app.route("/heatmap.html")
 def heatmap_page():
@@ -272,13 +487,358 @@ def leaderboard_page():
     return _no_cache(send_from_directory(app.static_folder, "leaderboard.html"))
 
 
+@app.route("/trb_review")
+@app.route("/trb_review/<mode>")
+def trb_review(mode=None):
+    """Audited per_sym-applied-to-live review (stocks trb/trc/tra + crypto). Shows each
+    symbol's applied config, previous config, and backtest sharpe/gain. Filter via
+    /trb_review/<trb|trc|tra|crypto>."""
+    import json as _json
+    CFG = {"crypto": BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json",
+           "trb": BASE_PATH / "data" / "hourly_reconfig" / "trb" / "active_config.json",
+           "trc": BASE_PATH / "data" / "hourly_reconfig" / "trc" / "active_config.json",
+           "tra": BASE_PATH / "data" / "hourly_reconfig" / "tra" / "active_config.json"}
+    want = (mode or request.args.get("mode") or "").lower()
+    modes = [want] if want in CFG else list(CFG)
+    rows = []
+    for m in modes:
+        try: d = _json.load(open(CFG[m]))
+        except Exception: d = {}
+        want_crypto = (m == "crypto")
+        for key, v in d.items():
+            if key.startswith("_") or not isinstance(v, dict):
+                continue
+            base = key.rsplit("_", 1)[0] if (key.endswith("_LONG") or key.endswith("_SHORT")) else key
+            # HARD SEPARATION: crypto (config.py, USDT/USDC) and stocks (config_tradier.py)
+            # are completely different systems — never mix, never compare. A stock key that
+            # leaked into the crypto file (or vice-versa) is dropped from the wrong tab.
+            if _is_crypto_sym(base) != want_crypto:
+                continue
+            meta = v.get("_meta", {}) if isinstance(v.get("_meta"), dict) else {}
+            rows.append({"mode": m, "key": key, "wsharpe": v.get("wsharpe"),
+                         "trades": v.get("trades"), "pnl": v.get("total_pnl_pct"),
+                         "tag": v.get("winning_tag", ""), "applied": meta.get("promoted_ts_utc", meta.get("source_ts_utc", "")),
+                         "overrides": v.get("overrides", {})})
+    # flag SUSPECT per-side results: LONG and SHORT byte-identical = the old
+    # tradier_hourly_reconfig both-sides-copy bug (not a real short backtest).
+    _bysym = {}
+    for r in rows:
+        k = r.get("key", "")
+        if k.endswith("_LONG") or k.endswith("_SHORT"):
+            base, side = k.rsplit("_", 1)
+            _bysym.setdefault((r.get("mode"), base), {})[side] = (r.get("wsharpe"), r.get("trades"), r.get("pnl"))
+    for r in rows:
+        k = r.get("key", "")
+        if k.endswith("_LONG") or k.endswith("_SHORT"):
+            base, side = k.rsplit("_", 1)
+            pair = _bysym.get((r.get("mode"), base), {})
+            r["suspect"] = ("LONG" in pair and "SHORT" in pair and pair["LONG"] == pair["SHORT"])
+    def _wf(r):
+        try: return float(r.get("wsharpe") or -9)
+        except Exception: return -9
+    rows.sort(key=_wf, reverse=True)
+    def _f(v):
+        try: return "%.3f" % float(v)
+        except Exception: return "—"
+    n_pos = sum(1 for r in rows if _wf(r) > 0)
+    n_05 = sum(1 for r in rows if _wf(r) > 0.5)
+    n_suspect = sum(1 for r in rows if r.get("suspect"))
+    _warn = ""
+    if want == "crypto" and not rows:
+        _warn = ("<div style='background:#502;color:#fbb;padding:10px;border-radius:5px;margin:8px 0'>"
+                 "⚠️ No crypto (USDT/USDC) per_sym keys found. The crypto live per_sym file "
+                 "<code>data/hourly_reconfig/per_sym_active_config.json</code> is currently populated "
+                 "with STOCK keys (config_tradier system) — crypto per_sym overrides are NOT being "
+                 "applied to live crypto. This file is read by ez_manage + ez_positions_quick for "
+                 "crypto; it must contain only USDT/USDC keys. Needs repair (trace the producer "
+                 "mis-writing stock keys here).</div>")
+    elif want in CFG and not rows and not CFG[want].exists():
+        _warn = ("<div style='background:#432;color:#fd8;padding:10px;border-radius:5px;margin:8px 0'>"
+                 "⚠️ No active_config.json found yet for <b>%s</b> at <code>%s</code> — this account has "
+                 "no per_sym overrides applied to live yet (not an error; just nothing to show).</div>"
+                 ) % (want, CFG[want])
+    tabs = "".join('<a href="/trb_review/%s" style="margin:0 8px;padding:4px 10px;background:#223;color:#8cf;border-radius:4px;text-decoration:none">%s</a>' % (m, m.upper()) for m in ["trb", "trc", "tra", "crypto"])
+    trs = []
+    for r in rows:
+        w = _wf(r)
+        color = "#3c3" if w > 0.5 else ("#cc3" if w > 0 else "#c66")
+        susp = "<span style='color:#f80;font-weight:bold' title='LONG==SHORT identical = old both-sides-copy bug, not a real per-side result'>⚠️ SUSPECT</span>" if r.get("suspect") else ""
+        key = r.get("key", "")
+        base_sym = key.rsplit("_", 1)[0] if (key.endswith("_LONG") or key.endswith("_SHORT")) else key
+        chart_class = "crypto" if _is_crypto_sym(base_sym) else "stocks"
+        chart_link = "<a href='/?sym=%s&class=%s' target='_blank' style='color:#8cf'>chart</a>" % (base_sym, chart_class)
+        trs.append(
+            "<tr%s><td>%s</td><td><b>%s</b> %s</td><td style='color:%s'><b>%s</b></td><td>%s</td><td>%s</td>"
+            "<td>%s</td><td>%s</td><td style='font:11px monospace;max-width:520px;overflow:hidden'>%s</td><td>%s</td></tr>" % (
+                " style='opacity:0.5'" if r.get("suspect") else "", r.get("mode", ""), r.get("key", ""), susp, color,
+                _f(r.get("wsharpe")), r.get("trades", "—"),
+                _f(r.get("pnl")), r.get("tag", "")[:28], str(r.get("applied", ""))[:19],
+                _json.dumps(r.get("overrides", {}))[:520], chart_link))
+    html = ("<html><head><title>per_sym applied review</title><meta http-equiv=refresh content=120></head>"
+            "<body style='background:#111;color:#ddd;font-family:sans-serif;padding:16px'>"
+            "<h2>per_sym → live APPLIED configs <span style='font-size:13px;color:#888'>(auto-refresh 120s · %d keys · %d positive · %d >0.5 · <span style='color:#f80'>%d SUSPECT (fake per-side)</span>)</span></h2>"
+            "<div style='margin:10px 0'>Filter: <a href='/trb_review'>ALL</a> %s · <a href='/symbols_overview' style='color:#7fb069'>📁 full symbols overview + XLS</a></div>"
+            "%s"
+            "<table cellpadding=6 style='border-collapse:collapse;width:100%%'>"
+            "<tr style='background:#223;color:#8cf'><th>mode</th><th>symbol_key</th><th>wsharpe</th>"
+            "<th>trades</th><th>pnl%%</th><th>winning_tag</th><th>applied</th><th>config (overrides)</th><th>trades/chart</th></tr>%s</table>"
+            "<p style='color:#888'>green=wsharpe&gt;0.5 · yellow=positive · red=&le;0 · these are LIVE on the Mac now · XLS: SPREADSHEETS/PERSYM_APPLIED_REVIEW.xlsx · full backtest results: <a href='/symbols_overview' style='color:#8cf'>/symbols_overview</a></p>"
+            "</body></html>") % (len(rows), n_pos, n_05, n_suspect, tabs, _warn, "".join(trs))
+    return _no_cache(app.response_class(html, mimetype="text/html"))
+
+
+SPREADSHEETS_DIR = BASE_PATH / "SPREADSHEETS"
+
+
+@app.route("/spreadsheets/<path:fname>")
+def spreadsheets_download(fname):
+    """Serve a file out of SPREADSHEETS/ for download (XLS/CSV outputs referenced
+    by /symbols_overview and /trb_review). send_from_directory rejects path
+    traversal on its own."""
+    return send_from_directory(str(SPREADSHEETS_DIR), fname, as_attachment=True)
+
+
+def _results_fmt_sharpe(v):
+    return "%.4f" % v if isinstance(v, (int, float)) else "&mdash;"
+
+
+def _results_fmt_pct(v):
+    return "%.2f%%" % v if isinstance(v, (int, float)) else "&mdash;"
+
+
+def _results_section_html(rep):
+    mode_label = "CRYPTO (USDT/USDC)" if rep["mode"] == "crypto" else "STOCKS"
+    cov_pct = (100.0 * rep["real_engine_confirmed_keys"] / rep["vec_screened_keys"]) if rep["vec_screened_keys"] else 0.0
+    cards = "".join(
+        "<div class='card'><div class='card_n'>%s</div><div class='card_l'>%s</div></div>" % (n, l)
+        for n, l in [
+            (rep["total_keys"], "total keys (live-applied config)"),
+            (rep["enabled_keys"], "ENABLED (trading)"),
+            (rep["gated_off_keys"], "GATED OFF (real-engine negative)"),
+            (rep["winners_count"], "winners (real-engine &gt;0.5)"),
+            (rep["mid_count"], "0&ndash;0.5 (real-engine, sub-threshold)"),
+            (rep["rescued_count"], "rescued &gt;0.5 this run"),
+        ])
+    def _wrow(w):
+        return ("<tr><td>%s</td><td class='g'><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td></tr>" %
+                (w["key"], _results_fmt_sharpe(w.get("real_sharpe")), _results_fmt_pct(w.get("gain_vs_bh")),
+                 w.get("trades", "&mdash;"), (w.get("date") or "")[:19]))
+    def _grow(g):
+        return ("<tr><td>%s</td><td class='r'>%s</td><td>%s</td><td>%s</td></tr>" %
+                (g["key"], _results_fmt_sharpe(g.get("real_sharpe")), g.get("trades", "&mdash;"), (g.get("date") or "")[:19]))
+    def _rrow(r):
+        changed = ", ".join("%s=%s" % (k, v) for k, v in (r.get("changed") or {}).items())
+        return ("<tr><td>%s</td><td>%s &rarr; <b class='g'>%s</b></td><td>%s</td><td style='font:11px monospace'>%s</td></tr>" %
+                (r["key"], _results_fmt_sharpe(r.get("before_sharpe")), _results_fmt_sharpe(r.get("real_sharpe")),
+                 (r.get("date") or "")[:19], changed[:200]))
+    winners_rows = "".join(_wrow(w) for w in rep["winners"]) or "<tr><td colspan=5 style='color:#888'>none yet</td></tr>"
+    gated_rows = "".join(_grow(g) for g in rep["gated"][:60]) or "<tr><td colspan=4 style='color:#888'>none</td></tr>"
+    rescued_rows = "".join(_rrow(r) for r in rep["rescued"]) or "<tr><td colspan=4 style='color:#888'>none yet this run</td></tr>"
+    return """
+    <section class='modeblock'>
+      <h2>%s</h2>
+      <div class='cards'>%s</div>
+      <p class='cov'>coverage: <b>%d/%d</b> vec-screened keys real-engine-confirmed (%.0f%%) &middot; %d still vec-screen-only [DIAGNOSTIC]</p>
+      <h3>Winners &mdash; real-engine <code>real_sharpe_1sym</code> &gt; 0.5 (sorted best-first)</h3>
+      <table class='t'><tr><th>key</th><th>real_sharpe_1sym</th><th>gain_vs_bh</th><th>trades</th><th>confirmed</th></tr>%s</table>
+      <h3>Gated off &mdash; real-engine negative, NOT trading live</h3>
+      <table class='t'><tr><th>key</th><th>real_sharpe_1sym</th><th>trades</th><th>gated</th></tr>%s</table>
+      <h3>Rescued this run &mdash; reopt search lifted vec false-negatives to real-engine &gt;0.5</h3>
+      <table class='t'><tr><th>key</th><th>before &rarr; after real_sharpe_1sym</th><th>when</th><th>what changed</th></tr>%s</table>
+    </section>""" % (mode_label, cards, rep["real_engine_confirmed_keys"], rep["vec_screened_keys"], cov_pct,
+                      rep["vec_only_keys"], winners_rows, gated_rows, rescued_rows)
+
+
+@app.route("/results")
+def results_dashboard():
+    """Clean live-results monitoring view of the vec-screen -> reopt/gating ->
+    real-engine pipeline. Crypto and stocks are always kept separate (classified
+    by USDT/USDC suffix vs everything else) — see results_dashboard_lib.py.
+    Real-engine numbers are single-symbol (n_syms=1) confirmations of the vec
+    screen, not multi-symbol pool_sharpe — DIAGNOSTIC per CLAUDE.md sample
+    floor (rule 5), shown here for monitoring only, never for promotion."""
+    try:
+        rep_crypto = results_dashboard_lib.build_report("crypto")
+        rep_stock = results_dashboard_lib.build_report("stock")
+        live = results_dashboard_lib.get_s1_liveness()
+    except Exception as e:
+        return _no_cache(app.response_class("<pre>results_dashboard error: %s</pre>" % e, mimetype="text/html", status=500))
+    prog_c = (live.get("progress") or {}).get("crypto", {})
+    prog_s = (live.get("progress") or {}).get("stock", {})
+    liveness_html = (
+        "<p class='cov'>S1: %s &middot; %s &middot; reopt queue &mdash; crypto %s/%s done (rescued=%s enabled=%s hopeless=%s) "
+        "&middot; stock %s/%s done (rescued=%s enabled=%s hopeless=%s)</p>" % (
+            html_escape(live.get("cpu_line") or "unreachable"), html_escape(live.get("mem_line") or ""),
+            prog_c.get("done", "?"), prog_c.get("queue_total", "?"), prog_c.get("rescued", 0), prog_c.get("enabled", 0), prog_c.get("hopeless", 0),
+            prog_s.get("done", "?"), prog_s.get("queue_total", "?"), prog_s.get("rescued", 0), prog_s.get("enabled", 0), prog_s.get("hopeless", 0)))
+    xls_links = "".join(
+        "<a href='/spreadsheets/%s' target='_blank'>%s</a>" % (f, f)
+        for f in ["SYMBOL_OVERVIEW_crypto.xlsx", "SYMBOL_OVERVIEW_stocks.xlsx", "PERSYM_APPLIED_REVIEW.xlsx",
+                   "FULL_PARAM_MATRIX_crypto.xlsx", "FULL_PARAM_MATRIX_stocks.xlsx"])
+    html = """<html><head><title>Results — live optimization state</title>
+    <meta http-equiv=refresh content=120>
+    <style>
+    body{background:#0d0d0f;color:#ddd;font-family:-apple-system,Segoe UI,Arial,sans-serif;padding:18px;max-width:1300px;margin:0 auto}
+    h1{color:#fff;margin-bottom:2px} h2{color:#8cf;margin-top:6px;border-bottom:1px solid #334;padding-bottom:4px}
+    h3{color:#bbb;margin:14px 0 6px 0;font-size:14px}
+    a{color:#8cf} .nav{margin:8px 0 16px 0} .nav a{margin-right:14px}
+    .cards{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+    .card{background:#181820;border:1px solid #2a2a35;border-radius:8px;padding:10px 16px;min-width:150px}
+    .card_n{font-size:26px;font-weight:700;color:#fff} .card_l{font-size:11px;color:#999;margin-top:2px}
+    table.t{border-collapse:collapse;width:100%%;margin-bottom:6px}
+    table.t th{background:#1a1a24;color:#8cf;text-align:left;padding:5px 8px;font-size:11px}
+    table.t td{padding:4px 8px;border-bottom:1px solid #222;font-size:12px}
+    .g{color:#3c3} .r{color:#c66} .cov{color:#999;font-size:12px}
+    .modeblock{margin-bottom:28px;padding-bottom:10px;border-bottom:2px solid #223}
+    .footer{color:#888;font-size:11.5px;margin-top:22px;padding:10px;background:#181820;border-radius:6px;line-height:1.5}
+    .ts{color:#666;font-size:11px}
+    </style></head>
+    <body>
+    <h1>Optimization machine &mdash; live results</h1>
+    <div class='nav'>
+      <a href='/trb_review/crypto'>trb_review/crypto</a>
+      <a href='/trb_review/trb'>trb_review/trb</a>
+      <a href='/trb_review/trc'>trb_review/trc</a>
+      <a href='/symbols_overview'>symbols_overview</a>
+      %s
+    </div>
+    %s
+    %s
+    %s
+    <div class='footer'>
+      <b>Honest caveat:</b> every real_sharpe_1sym number above is a SINGLE-SYMBOL real-engine backtest
+      (n_syms=1) &mdash; below the 48-crypto / 100-stock sample floor, so per CLAUDE.md rule 5 it is
+      [DIAGNOSTIC] and must not be used alone to promote/deploy/recommend; it exists here to confirm
+      or refute the vec-screen false-negative/false-positive on that one symbol. Sharpe values are
+      capped at &plusmn;5.0 (metrics_guard.PER_SYM_SHARPE_CAP). &quot;ENABLED&quot; = currently applied
+      to live via active_config overrides; keys with no explicit *_ENABLED override default to enabled
+      (not confirmed gated off). Vec-screen-only keys (not yet real-engine-confirmed) are excluded from
+      winners/gated/rescued tables entirely &mdash; they are a screen, not a truth.
+      <div class='ts'>vec_baselines: %s &middot; gating_corrections: %s &middot; rescues: %s &middot; page generated %s UTC</div>
+    </div>
+    </body></html>""" % (xls_links, liveness_html, _results_section_html(rep_crypto), _results_section_html(rep_stock),
+                          rep_crypto.get("vec_mtime"), rep_crypto.get("gating_mtime"), rep_crypto.get("rescues_mtime"),
+                          datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"))
+    return _no_cache(app.response_class(html, mimetype="text/html"))
+
+
+@app.route("/symbols_overview")
+def symbols_overview_page():
+    """Full per-symbol picture — current settings + best-known backtest result —
+    for BOTH crypto and stocks, everywhere EXCEPT the applied-config review
+    (/trb_review covers that). Crypto and stocks are NEVER mixed in one table
+    (classified by USDT/USDC suffix per CLAUDE.md USDC-over-USDT policy).
+    Pulls: per_sym active configs (current settings) + data/test_results_central.db
+    (best backtest result per symbol, canonical columns only). Links out to the
+    full re-runnable XLS built by tools/build_symbol_overview_xls.py."""
+    # Reuse the exact same DB-read + rule-6-compliant selection logic as
+    # tools/build_symbol_overview_xls.py (single source of truth — no drift
+    # between the XLS and this live page). That module caps sym_sharpe at
+    # +/-5.0, prefers >=30-trade samples over cherry-picked few-trade noise,
+    # and NEVER labels the result bare "pool_sharpe" per CLAUDE.md rule 8.
+    sys.path.insert(0, str(BASE_PATH / "tools"))
+    import build_symbol_overview_xls as _sov
+    by_key = _sov.load_all_from_db()
+    best_by_sym: Dict[str, Dict[str, Any]] = {}
+    db_note = "" if _sov.DB_PATH.exists() else f"central DB not found at {_sov.DB_PATH} (pull from S1: data/test_results_central.db)"
+    for (sym, side), candidates in by_key.items():
+        if not candidates:
+            continue
+        best, capped, status = _sov.pick_best(candidates)
+        cur_best = best_by_sym.get(sym)
+        if cur_best is None or capped > cur_best["sym_sharpe_capped"]:
+            best_by_sym[sym] = {"side": side, "sym_sharpe_capped": capped, "status": status,
+                                "acc_gain_pct": best.get("acc_gain_pct"), "avg_gain_trade": best.get("avg_gain_trade"),
+                                "max_dd_pct": best.get("max_dd_pct"), "gain_vs_bh": best.get("gain_vs_bh"),
+                                "years": best.get("years"), "trades": best.get("trades"), "run_id": best.get("run_id")}
+
+    def _load_cfg(path: Path) -> Dict[str, Any]:
+        try:
+            return json.loads(path.read_text())
+        except Exception:
+            return {}
+
+    cfg_sources = {
+        "crypto": BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json",
+        "trb": BASE_PATH / "data" / "hourly_reconfig" / "trb" / "active_config.json",
+        "trc": BASE_PATH / "data" / "hourly_reconfig" / "trc" / "active_config.json",
+        "tra": BASE_PATH / "data" / "hourly_reconfig" / "tra" / "active_config.json",
+    }
+    applied: Dict[str, Dict[str, Any]] = {}
+    for acct, path in cfg_sources.items():
+        for key, v in _load_cfg(path).items():
+            if key.startswith("_") or not isinstance(v, dict):
+                continue
+            applied[key] = {"acct": acct, "wsharpe": v.get("wsharpe"), "trades": v.get("trades"),
+                            "overrides": v.get("overrides", {})}
+
+    all_syms = sorted(set(best_by_sym) | {k.rsplit("_", 1)[0] if (k.endswith("_LONG") or k.endswith("_SHORT")) else k for k in applied})
+    crypto_syms = [s for s in all_syms if _is_crypto_sym(s)]
+    stock_syms = [s for s in all_syms if not _is_crypto_sym(s)]
+
+    def _row(sym: str) -> str:
+        best = best_by_sym.get(sym, {})
+        applied_keys = [k for k in applied if k.rsplit("_", 1)[0] == sym or k == sym]
+        aw = ", ".join(f"{k}={applied[k].get('wsharpe')}" for k in applied_keys) if applied_keys else "—"
+        chart_class = "crypto" if _is_crypto_sym(sym) else "stocks"
+        ps = best.get("sym_sharpe_capped")
+        is_diag = isinstance(best.get("status"), str) and best["status"].startswith("[DIAGNOSTIC")
+        color = "#888" if is_diag else ("#3c3" if (ps or 0) > 0.5 else ("#cc3" if (ps or 0) > 0 else "#c66"))
+        return ("<tr><td><a href='/?sym=%s&class=%s' target='_blank' style='color:#8cf'>%s</a></td>"
+                "<td style='color:%s'>%s</td><td style='font-size:11px;color:#999'>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
+                "<td style='font:11px monospace'>%s</td></tr>") % (
+            sym, chart_class, sym, color,
+            ("sym_sharpe=%.4f" % ps) if ps is not None else "—",
+            best.get("status", "no_backtest_data"),
+            "%.1f" % best["max_dd_pct"] if best.get("max_dd_pct") is not None else "—",
+            best.get("trades", "—"),
+            "%.1f" % best["gain_vs_bh"] if best.get("gain_vs_bh") is not None else "—",
+            best.get("run_id", "—")[:24] if best.get("run_id") else "—", aw)
+
+    def _section(title: str, syms: List[str]) -> str:
+        rows_html = "".join(_row(s) for s in syms)
+        return ("<h3>%s <span style='color:#888;font-size:12px'>(%d symbols)</span></h3>"
+                "<table cellpadding=6 style='border-collapse:collapse;width:100%%'>"
+                "<tr style='background:#223;color:#8cf'><th>symbol</th><th>best sym_sharpe (capped &plusmn;5)</th>"
+                "<th>sample status</th><th>max_dd%%</th><th>trades</th><th>gain_vs_bh%%</th><th>best run_id</th>"
+                "<th>applied per_sym (wsharpe)</th></tr>%s</table>") % (title, len(syms), rows_html)
+
+    xls_links = ("<p>XLS downloads (re-run <code>tools/build_symbol_overview_xls.py</code> any time): "
+                 "<a href='/spreadsheets/SYMBOL_OVERVIEW_crypto.xlsx' style='color:#8cf'>SYMBOL_OVERVIEW_crypto.xlsx</a> · "
+                 "<a href='/spreadsheets/SYMBOL_OVERVIEW_stocks.xlsx' style='color:#8cf'>SYMBOL_OVERVIEW_stocks.xlsx</a> · "
+                 "<a href='/spreadsheets/PRIORITY_config_crypto.xlsx' style='color:#8cf'>PRIORITY_config_crypto.xlsx</a> · "
+                 "<a href='/spreadsheets/PRIORITY_config_tradier.xlsx' style='color:#8cf'>PRIORITY_config_tradier.xlsx</a> · "
+                 "<a href='/spreadsheets/PERSYM_APPLIED_REVIEW.xlsx' style='color:#8cf'>PERSYM_APPLIED_REVIEW.xlsx (applied-config audit)</a> · "
+                 "<a href='/spreadsheets/FULL_PARAM_MATRIX_crypto.xlsx' style='color:#8cf'>FULL_PARAM_MATRIX_crypto.xlsx (every param x every symbol, re-run tools/build_full_param_matrix_xls.py)</a> · "
+                 "<a href='/spreadsheets/FULL_PARAM_MATRIX_stocks.xlsx' style='color:#8cf'>FULL_PARAM_MATRIX_stocks.xlsx</a></p>")
+    db_warn = ("<p style='color:#fd8'>⚠️ %s</p>" % db_note) if db_note else ""
+    html = ("<html><head><title>symbols overview</title></head>"
+            "<body style='background:#111;color:#ddd;font-family:sans-serif;padding:16px'>"
+            "<h2>Symbols Overview — current settings + best backtest result per symbol"
+            "<span style='font-size:13px;color:#888'> (crypto/stocks NEVER mixed; excludes /trb_review "
+            "which is the applied-config audit, not full history)</span></h2>"
+            "%s%s"
+            "<div style='margin:10px 0'><a href='/trb_review' style='color:#dcc26b'>&larr; back to trb_review (applied configs)</a> · "
+            "<a href='/' style='color:#dcc26b'>&larr; back to chart</a></div>"
+            "%s%s"
+            "<p style='color:#888'>green=sym_sharpe&gt;0.5 · yellow=positive · red=&le;0 · grey=[DIAGNOSTIC ONLY] "
+            "(best available candidate had &lt;30 trades — noise, not a real edge) · sym_sharpe is per-symbol "
+            "per-trade Sharpe CAPPED AT &plusmn;5.0, preferring &ge;30-trade samples, per CLAUDE.md rule 6 — never "
+            "a cherry-picked few-trade outlier and never labeled bare 'pool_sharpe' · best backtest pulled from "
+            "data/test_results_central.db · 'applied' column is the live per_sym config, NOT necessarily the best-ever result</p>"
+            "</body></html>") % (xls_links, db_warn, _section("CRYPTO (USDT/USDC)", crypto_syms),
+                                  _section("STOCKS", stock_syms))
+    return _no_cache(app.response_class(html, mimetype="text/html"))
+
+
 @app.route("/symbols")
 def symbols():
     """All symbols with NPZ indicators on disk. Optional ?asset_class=crypto|stocks
     filters to that class only. The chart UI uses this to populate the symbol
     dropdown after the user picks a top-level tab."""
     asset_class = (request.args.get("asset_class") or "").strip().lower()
-    syms = sorted(p.stem for p in NPZ_DIR.glob("*.npz"))
+    local_syms = set(p.stem for p in NPZ_DIR.glob("*.npz"))
+    syms = sorted(local_syms | set(_remote_npz_symbols()))
     if asset_class == "crypto":
         syms = [s for s in syms if _is_crypto_sym(s)]
     elif asset_class == "stocks":
@@ -461,6 +1021,50 @@ def rundown():
         return jsonify({"error": str(e)}), 500
 
 
+def _pair_trade_events(events):
+    """Convert a raw OPEN/AUGMENT/CLOSE/REDUCE event stream (schema: {ts, type,
+    side, price, pnl_pct}) into canonical paired trades (schema: {entry_ts,
+    exit_ts, side, pnl_pct}) so `_file_aggregates` counts real round-trips
+    instead of raw event lines. AUGMENT is folded into the open trade (does not
+    close it); REDUCE without a prior OPEN is dropped (partial-fill artifact,
+    can't attribute an entry). pnl_pct on the closing event is treated as the
+    round-trip return, matching how this event schema is actually written."""
+    def _unix(ev):
+        ts = str(ev.get("ts", "") or ev.get("timestamp", ""))
+        try:
+            return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+        except Exception:
+            return 0
+    out = []
+    open_trade = None
+    for ev in events:
+        etype = ev.get("type")
+        if etype == "OPEN":
+            open_trade = {"entry_ts": _unix(ev), "side": ev.get("side", ""), "entry_price": ev.get("price")}
+        elif etype == "AUGMENT":
+            continue
+        elif etype in ("CLOSE", "REDUCE"):
+            if open_trade is None:
+                continue
+            open_trade["exit_ts"] = _unix(ev)
+            open_trade["exit_price"] = ev.get("price")
+            open_trade["pnl_pct"] = ev.get("pnl_pct", 0)
+            out.append(open_trade)
+            open_trade = None
+    return out
+
+
+def _maybe_pair_events(trades: list) -> list:
+    """Same event-stream detection as `_file_aggregates` (see there for the
+    2026-07-06 root-cause note), exposed standalone for the other trade-loading
+    call sites (/backtest_trades, /equity_curves) that read a run's JSONL
+    directly instead of going through `_file_aggregates`. A no-op for the
+    canonical entry_ts/exit_ts schema used by every current trade producer."""
+    if trades and not any(t.get("entry_ts") for t in trades) and any(t.get("type") in ("OPEN", "CLOSE", "REDUCE", "AUGMENT") for t in trades):
+        return _pair_trade_events(trades)
+    return trades
+
+
 def _file_aggregates(p):
     """Return aggregate dict for a single jsonl file, using mtime cache.
     Per CLAUDE.md STANDARD METRIC SET: stores sum_pnl + sum_pnl_sq so we can
@@ -483,6 +1087,16 @@ def _file_aggregates(p):
                     pass
     except OSError:
         return None
+    if trades and not any(t.get("entry_ts") for t in trades) and any(t.get("type") in ("OPEN", "CLOSE", "REDUCE", "AUGMENT") for t in trades):
+        # Event-stream schema (one line per OPEN/AUGMENT/CLOSE/REDUCE event, keyed
+        # by "ts" ISO string) instead of the canonical paired-trade schema
+        # (entry_ts/exit_ts unix ints). Found 2026-07-06 in the only files
+        # currently under V8_TRADES_OUT_DIR (tr_trend_v1_validation_20260517__*)
+        # — treating raw event lines as if they were trades doubled the trade
+        # count, halved the win-rate, and left ts_first/ts_last at 0 (which then
+        # produced nonsense gain_per_day figures downstream). Pair events into
+        # real round-trip trades before aggregating.
+        trades = _pair_trade_events(trades)
     if len(trades) < 5:
         _file_agg_cache[sp] = (mtime, None)
         return None
@@ -758,14 +1372,20 @@ def backtest_trades():
     path = _resolve_trade_path(run, sym)
     if path is None or not path.exists():
         return jsonify({"trades": [], "stats": {}, "missing_run": run, "missing_sym": sym})
-    trades = []
+    raw = []
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
         try:
-            t = json.loads(line)
+            raw.append(json.loads(line))
         except Exception:
             continue
+    # See _maybe_pair_events: some legacy trade dumps under V8_TRADES_OUT_DIR are a
+    # raw OPEN/CLOSE event stream, not canonical entry_ts/exit_ts trades — pairing
+    # must happen BEFORE the start/end filter below (which reads entry_ts/exit_ts).
+    raw = _maybe_pair_events(raw)
+    trades = []
+    for t in raw:
         if start is not None and t.get("entry_ts", 0) < start:
             continue
         if end is not None and t.get("exit_ts", 0) > end:
@@ -804,14 +1424,17 @@ def equity_curves():
             out_runs[run] = []
             run_totals[run] = 0.0
             continue
-        trades: List[Dict[str, Any]] = []
+        raw: List[Dict[str, Any]] = []
         for line in path.read_text().splitlines():
             if not line.strip():
                 continue
             try:
-                t = json.loads(line)
+                raw.append(json.loads(line))
             except Exception:
                 continue
+        raw = _maybe_pair_events(raw)  # see _maybe_pair_events: legacy event-stream dumps
+        trades: List[Dict[str, Any]] = []
+        for t in raw:
             ets = int(t.get("exit_ts", 0) or 0)
             if start is not None and ets < start:
                 continue
@@ -908,12 +1531,75 @@ def historic_trades():
                 events.append(ev)
         events.sort(key=lambda e: e.get("unix_ts", 0))
         trades = _reconstruct_trades_from_events(events)
+        open_rounds = _find_open_rounds(events)
+        all_trades = sorted(trades + open_rounds, key=lambda t: t.get("entry_ts", 0))
         out_per_acct[acct] = {
             "events": events,
-            "trades": trades,
+            "trades": all_trades,
             "stats": _trade_stats(trades),
         }
     return jsonify(out_per_acct)
+
+
+def _find_open_rounds(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Return currently-open (unclosed) trade rounds from an event stream.
+    Replays OPEN/AUGMENT/REDUCE/CLOSE to find rounds that never closed."""
+    rounds: Dict[Tuple[str, str], Optional[Dict[str, Any]]] = {}
+    for ev in events:
+        side = ev.get("side")
+        sym = ev.get("symbol") or ""
+        kind = (ev.get("type") or "").upper()
+        qty = float(ev.get("qty") or 0)
+        price = float(ev.get("price") or 0)
+        ts = ev.get("unix_ts", 0)
+        if not side or not sym or qty <= 0 or price <= 0:
+            continue
+        key = (sym, side)
+        rd = rounds.get(key)
+        is_sync = "SYNC_DETECTION" in str(ev.get("reason", ""))
+        if kind in ("OPEN", "AUGMENT", "REENTRY"):
+            if rd is None or rd.get("qty", 0) <= 0:
+                rounds[key] = {"side": side, "account": ev.get("account"), "symbol": sym,
+                               "entry_ts": ts, "entry_price": price, "qty": qty, "peak_qty": qty,
+                               "entry_reason": ev.get("reason", ""), "last_sync": is_sync}
+            elif is_sync:
+                # SYNC_DETECTION = absolute position snapshot (see _reconstruct_trades_from_events).
+                rd["entry_price"] = price
+                rd["qty"] = qty
+                rd["peak_qty"] = max(rd.get("peak_qty", 0), qty)
+                rd["last_sync"] = True
+            else:
+                new_qty = rd["qty"] + qty
+                rd["entry_price"] = (rd["entry_price"] * rd["qty"] + price * qty) / new_qty
+                rd["qty"] = new_qty
+                rd["peak_qty"] = max(rd.get("peak_qty", 0), new_qty)
+                rd["last_sync"] = False
+        elif kind in ("REDUCE", "CLOSE") and rd is not None:
+            close_qty = min(qty, rd["qty"])
+            rd["qty"] -= close_qty
+            rd["last_sync"] = False
+            dust = max(1e-9, rd.get("peak_qty", 0) * 0.005)
+            if rd["qty"] <= dust or kind == "CLOSE":
+                rounds[key] = None
+    out = []
+    for rd in rounds.values():
+        if rd is None:
+            continue
+        # Suppress phantom dust: a sub-$DUST position whose CURRENT size was last set
+        # by a SYNC_DETECTION reconciliation snapshot is a leftover artifact (e.g. BNO
+        # 1 share @ 52.46 after the real position was whittled away + ghost-closed),
+        # NOT a live trade. Real fills (DC_BREAK, WT_*, REENTRY...) are always kept.
+        notional = (rd.get("qty") or 0) * (rd.get("entry_price") or 0)
+        if notional < OPEN_DUST_NOTIONAL_USD and rd.get("last_sync"):
+            continue
+        out.append(
+            {"account": rd["account"], "symbol": rd["symbol"], "side": rd["side"],
+             "entry_ts": rd["entry_ts"], "entry_price": rd["entry_price"],
+             "exit_ts": None, "exit_price": None, "pnl_pct": None,
+             "qty": rd.get("qty", 0), "peak_qty": rd.get("peak_qty", 0),
+             "entry_reason": rd["entry_reason"], "exit_reason": None, "status": "OPEN"}
+        )
+    return out
 
 
 def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -938,7 +1624,8 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
             continue
         key = (sym, side)
         rd = rounds.get(key)
-        if kind in ("OPEN", "AUGMENT"):
+        is_sync = "SYNC_DETECTION" in str(reason)
+        if kind in ("OPEN", "AUGMENT", "REENTRY"):
             if rd is None or rd.get("qty", 0) <= 0:
                 rd = {
                     "side": side, "account": ev.get("account"), "symbol": sym,
@@ -947,6 +1634,16 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
                     "entry_reason": reason, "events": [ev],
                 }
                 rounds[key] = rd
+            elif is_sync:
+                # SYNC_DETECTION reports the ABSOLUTE current position (total qty +
+                # avg entry price), NOT a delta fill. Earlier code added it as an
+                # augment, inflating size up to 6x (e.g. LSCC_LONG: 291 snapshots →
+                # phantom 89 shares vs real 14). SET the round to the snapshot;
+                # preserve the original entry_ts.
+                rd["entry_price"] = price
+                rd["qty"] = qty
+                rd["peak_qty"] = max(rd.get("peak_qty", 0), qty)
+                rd["events"].append(ev)
             else:
                 new_qty = rd["qty"] + qty
                 rd["entry_price"] = (rd["entry_price"] * rd["qty"] + price * qty) / new_qty
@@ -969,6 +1666,7 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
                     "account": rd["account"], "symbol": rd.get("symbol", ""), "side": side,
                     "entry_ts": rd["entry_ts"], "entry_price": rd["entry_price"],
                     "exit_ts": ts, "exit_price": price,
+                    "qty": close_qty, "peak_qty": rd.get("peak_qty", close_qty),
                     "entry_reason": rd["entry_reason"], "exit_reason": reason,
                     "pnl_pct": pnl_pct, "pnl_usd": (pnl_pct / 100.0) * (rd["entry_price"] * close_qty),
                     "duration_sec": ts - rd["entry_ts"],
@@ -4989,6 +5687,7 @@ def health():
         "trades_dir": str(TRADES_DIR),
         "history_dir": str(HISTORY_DIR),
         "npz_count": len(list(NPZ_DIR.glob("*.npz"))),
+        "npz_remote_count": len(_remote_npz_symbols()),
         "trade_files": len(list(TRADES_DIR.glob("*.jsonl"))) if TRADES_DIR.exists() else 0,
     })
 
@@ -5032,6 +5731,76 @@ def persym_backtest_trades():
             unix_ts = None
         events.append({"symbol": sym, "side": d.get("side"), "type": d.get("type"), "price": d.get("price"), "qty": d.get("qty"), "value": d.get("value"), "reason": d.get("reason"), "pnl_pct": d.get("pnl_pct"), "ts": ts, "unix_ts": unix_ts, "source": "backtest"})
     return jsonify({"events": events, "source": src_tag})
+
+
+@app.route("/trb_gen_bt_trades")
+def trb_gen_bt_trades():
+    """Return exact trades from the latest per_sym_20d_agent backtest for this symbol.
+    Reads from data/hourly_reconfig/{acct}/_trade_lists/{sym}_trades.json
+    which is written by per_sym_20d_agent_stocks.py on every cycle and synced via autosync.
+    Falls back to SSH-based simulation only if the file doesn't exist yet.
+    """
+    import subprocess, time as _time
+    sym = request.args.get("sym", "").upper()
+    acct = request.args.get("acct", "trb")
+    days = int(request.args.get("days", 180))
+    force = request.args.get("force", "0") == "1"
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+
+    # Primary: exact trades from the per_sym_20d_agent backtest
+    trade_list_path = BASE_PATH / "data" / "hourly_reconfig" / acct / "_trade_lists" / f"{sym}_trades.json"
+    if not force and trade_list_path.exists():
+        try:
+            data = json.loads(trade_list_path.read_text())
+            trades = data.get("trades", [])
+            # pnl_pct from per_sym_engine is percentage (e.g. 3.6), frontend expects fraction (0.036)
+            for t in trades:
+                if t.get("pnl_pct") is not None:
+                    t["pnl_pct"] = t["pnl_pct"] / 100.0
+                if t.get("pnl_gross_pct") is not None:
+                    t["pnl_gross_pct"] = t["pnl_gross_pct"] / 100.0
+            return jsonify({"sym": sym, "acct": acct, "source": "persym_agent",
+                            "updated_at": data.get("updated_at"),
+                            "window_days": data.get("window_days"),
+                            "n_trades": len(trades),
+                            "trades": trades})
+        except Exception:
+            pass
+
+    # Fallback: SSH to S1 to run approximation script (cache 2h)
+    cache_dir = BASE_PATH / "data" / "hourly_reconfig" / "_pending_review"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"{sym}_BT_{acct}_trades_cache.json"
+    if not force and cache_file.exists():
+        age = _time.time() - cache_file.stat().st_mtime
+        if age < 7200:
+            try:
+                return jsonify(json.loads(cache_file.read_text()))
+            except Exception:
+                pass
+
+    # SSH to S1 and run approximation script
+    remote_script = "/home/niels/binance/tools/gen_persym_bt_trades.py"
+    python_bin = "/home/niels/.conda/envs/binance_env/bin/python"
+    cmd = ["ssh", "-o", "ConnectTimeout=15", "-o", "BatchMode=yes", "s1-int",
+           f"{python_bin} {remote_script} --sym {sym} --acct {acct} --days {days}"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            return jsonify({"error": "ssh_failed", "stderr": result.stderr[:300], "trades": []})
+        raw = result.stdout.strip()
+        # Find the last JSON line (in case there's logging before it)
+        json_line = next((ln for ln in reversed(raw.splitlines()) if ln.startswith("{")), None)
+        if not json_line:
+            return jsonify({"error": "no_json_output", "stdout": raw[:300], "trades": []})
+        data = json.loads(json_line)
+        cache_file.write_text(json.dumps(data))
+        return jsonify(data)
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "ssh_timeout", "trades": []})
+    except Exception as e:
+        return jsonify({"error": str(e), "trades": []})
 
 
 @app.route("/klines_cache")
@@ -5198,6 +5967,687 @@ def _precompute_loop():
             print(f"[precompute] error: {e}", flush=True)
             traceback.print_exc()
         _t.sleep(30)
+
+
+# ============================================================
+# TRB REVIEW PAGE — /trb_review
+# ============================================================
+# yfinance klines cache: {sym -> (expires_unix, bars_list)}
+_yf_cache: Dict[str, Any] = {}
+_YF_TTL = 300  # 5 minutes
+
+
+def _parse_disk_klines(path: Path, interval: str = "5m") -> Dict[int, Dict]:
+    """Parse a klines_cache JSON file into {unix_ts: bar} dict. Handles both
+    tradier format (timestamp ISO string) and generic {t,o,h,l,c,v} format."""
+    out: Dict[int, Dict] = {}
+    try:
+        rows = json.loads(path.read_text())
+    except Exception:
+        return out
+    for r in rows:
+        ts_raw = r.get("timestamp") or r.get("close_time") or r.get("t")
+        if not ts_raw:
+            continue
+        try:
+            if isinstance(ts_raw, (int, float)):
+                unix_ts = int(ts_raw)
+            else:
+                unix_ts = int(datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00")).timestamp())
+        except Exception:
+            continue
+        try:
+            c = float(r.get("close") or r.get("c") or 0)
+        except Exception:
+            continue
+        if c <= 0 or unix_ts in out:
+            continue
+        out[unix_ts] = {
+            "t": unix_ts,
+            "o": float(r.get("open") or r.get("o") or c),
+            "h": float(r.get("high") or r.get("h") or c),
+            "l": float(r.get("low") or r.get("l") or c),
+            "c": c,
+            "v": float(r.get("volume") or r.get("v") or 0),
+        }
+    return out
+
+
+def _yf_klines(sym: str, interval: str = "5m") -> List[Dict]:
+    """Fetch last 60d of OHLCV from yfinance (5-min in-memory TTL, ~20min delayed).
+    Returns list of {t,o,h,l,c,v} dicts. 5m/15m yfinance cap = 60 days."""
+    now = time.time()
+    cache_key = f"{sym}_yf_{interval}"
+    cached = _yf_cache.get(cache_key)
+    if cached and cached[0] > now:
+        return cached[1]
+    try:
+        import yfinance as yf
+        tk = yf.Ticker(sym)
+        df = tk.history(period="60d", interval=interval, auto_adjust=True)
+        if df is None or df.empty:
+            _yf_cache[cache_key] = (now + 60, [])
+            return []
+        out = []
+        for idx, row in df.iterrows():
+            out.append({
+                "t": int(idx.timestamp()),
+                "o": round(float(row["Open"]), 4),
+                "h": round(float(row["High"]), 4),
+                "l": round(float(row["Low"]), 4),
+                "c": round(float(row["Close"]), 4),
+                "v": int(row.get("Volume", 0) or 0),
+            })
+        _yf_cache[cache_key] = (now + _YF_TTL, out)
+        return out
+    except Exception as e:
+        print(f"[trb_review] yfinance {sym}: {e}", flush=True)
+        _yf_cache[cache_key] = (now + 60, [])
+        return []
+
+
+def _merged_stock_klines(sym: str, interval: str = "5m", max_bars: int = 5000) -> Tuple[List[Dict], str]:
+    """Merge all disk klines sources + yfinance into a single deduplicated series.
+
+    Priority (all merged — later sources fill gaps in earlier):
+      1. klines_cache/tradier/<SYM>_<tf>.json   — S1-synced, freshest (Jun 2026)
+      2. klines_cache/<SYM>_<tf>.json           — S1 live sync (Mar 2026)
+      3. klines_cache_backtest/tradier/<SYM>_<tf>.json  — backtest (May 2026)
+      4. klines_cache_backtest/<SYM>_<tf>.json  — backtest flat
+      5. yfinance                               — last 60d, ~20min delayed
+
+    Merged bars give the widest time window without relying on any single source.
+    """
+    merged: Dict[int, Dict] = {}
+    sources_used: List[str] = []
+    disk_candidates = [
+        BASE_PATH / "klines_cache" / "tradier" / f"{sym}_{interval}.json",
+        BASE_PATH / "klines_cache" / f"{sym}_{interval}.json",
+        BASE_PATH / "klines_cache_backtest" / "tradier" / f"{sym}_{interval}.json",
+        BASE_PATH / "klines_cache_backtest" / f"{sym}_{interval}.json",
+    ]
+    for p in disk_candidates:
+        if p.exists():
+            bars = _parse_disk_klines(p, interval)
+            if bars:
+                merged.update(bars)
+                sources_used.append(p.parts[-2] + "/" + p.name)
+    yf_bars = _yf_klines(sym, interval)
+    if yf_bars:
+        for b in yf_bars:
+            merged[b["t"]] = b
+        sources_used.append("yfinance")
+    out = sorted(merged.values(), key=lambda b: b["t"])
+    if len(out) > max_bars:
+        out = out[-max_bars:]
+    return out, "+".join(sources_used) if sources_used else "none"
+
+
+def _is_stock_sym(sym: str) -> bool:
+    """True if sym looks like a plain stock ticker (no USDT/USDC suffix, no option chain)."""
+    if not sym:
+        return False
+    if sym.endswith("USDT") or sym.endswith("USDC"):
+        return False
+    # Filter out options like ABT260618C00097500
+    import re
+    if re.search(r'\d{6}[CP]\d{5}', sym):
+        return False
+    return True
+
+
+def _trb_symbol_list() -> List[str]:
+    """Union of symbols from history/trb/, symbols_trb_long/short.json, active_config (trb+trc)."""
+    syms: set = set()
+    history_dir = _history_dir_for("trb")
+    if history_dir.exists():
+        for p in history_dir.glob("*.jsonl"):
+            parts = p.stem.rsplit("_", 1)
+            if len(parts) == 2 and parts[1] in ("LONG", "SHORT"):
+                sym = parts[0]
+                if _is_stock_sym(sym):
+                    syms.add(sym)
+    for fname in ("symbols_trb_long.json", "symbols_trb_short.json"):
+        try:
+            lst = json.loads((BASE_PATH / fname).read_text())
+            for s in lst:
+                if _is_stock_sym(s):
+                    syms.add(s)
+        except Exception:
+            pass
+    for acct in ("trb", "trc"):
+        ac_path = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
+        if ac_path.exists():
+            try:
+                ac = json.loads(ac_path.read_text())
+                for k in ac:
+                    sym = k.rsplit("_", 1)[0]
+                    if _is_stock_sym(sym):
+                        syms.add(sym)
+            except Exception:
+                pass
+    return sorted(syms)
+
+
+def _per_sym_meta_for(acct: str) -> Dict[str, Dict]:
+    """Return dict keyed by SYM_SIDE from active_config for an account."""
+    ac_path = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
+    if not ac_path.exists():
+        return {}
+    try:
+        return json.loads(ac_path.read_text())
+    except Exception:
+        return {}
+
+
+def _pending_review_trades(sym: str, side: str) -> List[Dict]:
+    """Read _pending_review/<SYM>_<SIDE>_trades.jsonl if exists."""
+    p = BASE_PATH / "data" / "hourly_reconfig" / "_pending_review" / f"{sym}_{side}_trades.jsonl"
+    if not p.exists():
+        return []
+    out = []
+    try:
+        for line in p.read_text().splitlines():
+            if line.strip():
+                try:
+                    out.append(json.loads(line))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return out
+
+
+def _live_trade_summary(sym: str, acct: str) -> Dict:
+    """Count open/close events for (sym, acct) and return last_ts, total_closes."""
+    base = _history_dir_for(acct)
+    n_events = 0
+    n_closes = 0
+    last_ts = 0
+    for side in ("LONG", "SHORT"):
+        p = base / f"{sym}_{side}.jsonl"
+        if not p.exists():
+            continue
+        try:
+            for line in p.read_text().splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    ev = json.loads(line)
+                    n_events += 1
+                    if ev.get("type") in ("CLOSE", "REDUCE"):
+                        n_closes += 1
+                    ts_str = ev.get("ts", "")
+                    try:
+                        t = int(datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp())
+                        if t > last_ts:
+                            last_ts = t
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return {"n_events": n_events, "n_closes": n_closes, "last_ts": last_ts}
+
+
+@app.route("/trb_review.html")
+def trb_review_page():
+    # NOTE: legacy static SPA. The bare "/trb_review" URL is owned by the
+    # dynamic table-based `trb_review()` view above (line ~278) — it was
+    # ALSO registered here before 2026-07-06, which silently made this static
+    # file unreachable at "/trb_review" (Flask/Werkzeug just picked whichever
+    # rule matched first). Removed the duplicate registration; this legacy
+    # page is now only reachable via the explicit ".html" suffix.
+    return _no_cache(send_from_directory(app.static_folder, "trb_review.html"))
+
+
+@app.route("/trb_symbols_overview")
+def trb_symbols_overview():
+    """Return all trb symbols with per_sym metrics + live trade summaries + direction classification.
+    Called every 5 minutes by the trb_review page to keep data fresh."""
+    trb_meta = _per_sym_meta_for("trb")
+    trc_meta = _per_sym_meta_for("trc")
+    all_syms = _trb_symbol_list()
+    # Load long/short candidate lists for direction tabs
+    def _load_list(fname: str) -> set:
+        try:
+            return set(json.loads((BASE_PATH / fname).read_text()))
+        except Exception:
+            return set()
+    long_candidates = _load_list("symbols_trb_long.json")
+    short_candidates = _load_list("symbols_trb_short.json")
+    rows = []
+    pending_dir = BASE_PATH / "data" / "hourly_reconfig" / "_pending_review"
+    for sym in all_syms:
+        trb_long = trb_meta.get(f"{sym}_LONG", {})
+        trb_short = trb_meta.get(f"{sym}_SHORT", {})
+        trc_long = trc_meta.get(f"{sym}_LONG", {})
+        trc_short = trc_meta.get(f"{sym}_SHORT", {})
+        trb_summary = _live_trade_summary(sym, "trb")
+        trc_summary = _live_trade_summary(sym, "trc")
+        pending = {}
+        for side in ("LONG", "SHORT"):
+            pfile = pending_dir / f"{sym}_{side}_trades.jsonl"
+            if pfile.exists():
+                try:
+                    n = sum(1 for line in pfile.read_text().splitlines() if line.strip())
+                    pending[side] = {"n_trades": n}
+                except Exception:
+                    pending[side] = {"n_trades": 0}
+        rows.append({
+            "sym": sym,
+            "long_candidate": sym in long_candidates,
+            "short_candidate": sym in short_candidates,
+            "trb_long": {"wsharpe": trb_long.get("wsharpe"), "trades": trb_long.get("trades"), "winning_tag": trb_long.get("winning_tag"), "sample_tag": trb_long.get("sample_tag")},
+            "trb_short": {"wsharpe": trb_short.get("wsharpe"), "trades": trb_short.get("trades"), "winning_tag": trb_short.get("winning_tag"), "sample_tag": trb_short.get("sample_tag")},
+            "trc_long": {"wsharpe": trc_long.get("wsharpe"), "trades": trc_long.get("trades")},
+            "trc_short": {"wsharpe": trc_short.get("wsharpe"), "trades": trc_short.get("trades")},
+            "trb_live": trb_summary,
+            "trc_live": trc_summary,
+            "pending_review": pending,
+        })
+    rows.sort(key=lambda r: -(r["trb_live"]["last_ts"] or 0))
+    return jsonify({
+        "symbols": rows,
+        "generated_at": int(time.time()),
+        "n": len(rows),
+        "n_long_candidates": len(long_candidates),
+        "n_short_candidates": len(short_candidates),
+    })
+
+
+@app.route("/trb_klines_live")
+def trb_klines_live():
+    """Merged stock klines from all disk sources + yfinance (5-min TTL).
+    Sources tried in order: klines_cache/tradier/, klines_cache/, klines_cache_backtest/tradier/,
+    klines_cache_backtest/, then yfinance for the last 60d (~20min delayed).
+    All are merged and deduplicated to give maximum time coverage.
+    ?sym=X&interval=5m&max=N"""
+    sym = request.args.get("sym", "").upper()
+    interval = request.args.get("interval", "5m")
+    max_bars = int(request.args.get("max", 5000))
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    bars, source = _merged_stock_klines(sym, interval=interval, max_bars=max_bars)
+    return jsonify({"bars": bars, "source": source, "sym": sym, "n": len(bars)})
+
+
+@app.route("/trb_pending_trades")
+def trb_pending_trades():
+    """Per-sym backtest trade records from _pending_review JSONL.
+    ?sym=X&side=LONG|SHORT|BOTH"""
+    sym = request.args.get("sym", "").upper()
+    side_filter = request.args.get("side", "BOTH").upper()
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    sides = ["LONG", "SHORT"] if side_filter in ("BOTH", "") else [side_filter]
+    all_trades = []
+    for side in sides:
+        trades = _pending_review_trades(sym, side)
+        for t in trades:
+            t["_side"] = side
+            all_trades.append(t)
+    all_trades.sort(key=lambda t: int(t.get("entry_ts", 0)))
+    return jsonify({"trades": all_trades, "n": len(all_trades), "sym": sym})
+
+
+# ============================================================
+# LIVE (past baseline) vs SANDBOX-BT (new per-sym config) per-symbol comparison
+# ============================================================
+# For each symbol that actually traded live in the last N days, compares:
+#   LIVE  = realized /history/ trades (the config that was live then = "past baseline")
+#   BT    = real per_sym engine (simulate_dual_stocks) over the SAME N-day window using
+#           the CURRENT active_config overrides (= "new sandbox baseline now running"),
+#           run on S1 where the NPZ live. Symbols without a per-sym override fall back to
+#           engine-default params (≈ the global config_tradier baseline) — flagged src=default.
+# HONESTY (CLAUDE.md NO-LIES): per-symbol sharpe is n_syms=1 → DIAGNOSTIC ONLY, never a
+# promotion signal. Live typically trades 1-3x/mo (no-loss few-exit policy) so its sharpe is
+# noise (<30 trades) — the solid live signal is realized $. The headline metric is usually
+# BT churn (trades/mo) and per-trade edge (avg%/trade, sharpe over n>=30).
+import threading as _threading
+
+_LVB_LOCK = _threading.Lock()
+_LVB_JOBS: Dict[str, bool] = {}
+_LVB_TTL = 6 * 3600
+_LVB_DAYS = 35
+
+
+def _lvb_cache_path(acct: str, scope: str = "all") -> Path:
+    d = BASE_PATH / "data" / "hourly_reconfig" / "_review"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"live_vs_bt_{acct}_{scope}.json"
+
+
+def _ret_stats(returns_pct: List[float]) -> Dict[str, Any]:
+    """Stats over a list of per-trade returns expressed in PERCENT."""
+    n = len(returns_pct)
+    if n == 0:
+        return {"n": 0, "win": None, "avg": None, "sharpe": None, "tot": None}
+    wins = sum(1 for r in returns_pct if r > 0)
+    avg = sum(returns_pct) / n
+    sd = (sum((r - avg) ** 2 for r in returns_pct) / n) ** 0.5 if n > 1 else 0.0
+    sharpe = (avg / sd) if sd > 1e-9 else 0.0
+    return {"n": n, "win": 100.0 * wins / n, "avg": avg, "sharpe": sharpe, "tot": sum(returns_pct)}
+
+
+def _live_closed_in_window(acct: str, days: float) -> Dict[str, Dict[str, Any]]:
+    """{sym: {rets:[pct], usd}} for closed live trades whose exit is within `days`."""
+    cut = time.time() - days * 86400
+    base = _history_dir_for(acct)
+    out: Dict[str, Dict[str, Any]] = {}
+    if not base.exists():
+        return out
+    for p in base.glob("*.jsonl"):
+        stem = p.stem
+        if not (stem.endswith("_LONG") or stem.endswith("_SHORT")):
+            continue
+        sym, side = stem.rsplit("_", 1)
+        if not _is_stock_sym(sym):
+            continue
+        events: List[Dict[str, Any]] = []
+        for line in p.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                ev = json.loads(line)
+            except Exception:
+                continue
+            ev["side"] = side
+            ev["account"] = acct
+            ev["symbol"] = sym
+            try:
+                ev["unix_ts"] = int(datetime.fromisoformat(str(ev.get("ts")).replace("Z", "+00:00")).timestamp())
+            except Exception:
+                ev["unix_ts"] = 0
+            events.append(ev)
+        events.sort(key=lambda e: e.get("unix_ts", 0))
+        for t in _reconstruct_trades_from_events(events):
+            if (t.get("exit_ts") or 0) < cut or t.get("pnl_pct") is None:
+                continue
+            rec = out.setdefault(sym, {"rets": [], "usd": 0.0})
+            rec["rets"].append(t["pnl_pct"])
+            rec["usd"] += (t.get("pnl_usd") or 0.0)
+    return out
+
+
+def _bt_batch_s1(acct: str, syms: List[str], days: float) -> Dict[str, Dict[str, Any]]:
+    """One SSH to S1 → persym_bt_batch.py (engine loaded once, COMPACT output).
+    The old per-symbol gen loop overflowed SSH stdout at ~100-sym scale (full trade
+    lists) and silently dropped most symbols. {sym: stats + rets(%) + src + window}."""
+    import subprocess
+    syms = [s for s in syms if s and s.replace(".", "").isalnum()]
+    if not syms:
+        return {}
+    py = "/home/niels/.conda/envs/binance_env/bin/python"
+    remote = (f"cd /home/niels/binance && {py} tools/persym_bt_batch.py "
+              f"--acct {acct} --days {days} --syms {','.join(syms)} 2>/dev/null")
+    out: Dict[str, Dict[str, Any]] = {}
+    try:
+        res = subprocess.run(["ssh", "-o", "ConnectTimeout=15", "-o", "BatchMode=yes", "s1-int", remote],
+                             capture_output=True, text=True, timeout=1800)
+    except Exception as e:
+        return {"_error": str(e)}
+    for line in res.stdout.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        rets = [(r or 0) * 100.0 for r in d.get("rets", [])]  # fraction -> percent
+        st = _ret_stats(rets)
+        st["window"] = days
+        st["rets"] = rets
+        st["src"] = d.get("src")
+        out[d.get("sym")] = st
+    return out
+
+
+def _candidate_syms(acct: str) -> List[str]:
+    """Union of symbols_<acct>_long.json + symbols_<acct>_short.json (the full traded universe)."""
+    syms: set = set()
+    for side in ("long", "short"):
+        p = BASE_PATH / f"symbols_{acct}_{side}.json"
+        if not p.exists():
+            continue
+        try:
+            for s in json.loads(p.read_text()):
+                if isinstance(s, str) and _is_stock_sym(s):
+                    syms.add(s)
+        except Exception:
+            pass
+    return sorted(syms)
+
+
+def _pool_sharpe(returns: List[float]) -> Optional[float]:
+    if len(returns) < 2:
+        return None
+    mean = sum(returns) / len(returns)
+    sd = (sum((r - mean) ** 2 for r in returns) / len(returns)) ** 0.5
+    return (mean / sd) if sd > 1e-9 else 0.0
+
+
+def _override_source(acct: str, sym: str) -> str:
+    ac = _per_sym_meta_for(acct)
+    le = ac.get(f"{sym}_LONG", {})
+    se = ac.get(f"{sym}_SHORT", {})
+    lo = le.get("overrides", {}) if isinstance(le, dict) else {}
+    so = se.get("overrides", {}) if isinstance(se, dict) else {}
+    return "persym" if (lo or so) else "default"
+
+
+def _claimed_persym(acct: str, sym: str) -> Dict[str, Any]:
+    """The per_sym agent's CLAIMED winner metrics for this symbol (best side), from
+    active_config. These are what the sandbox reports as 'best' — often on tiny samples."""
+    ac = _per_sym_meta_for(acct)
+    best = {"wsharpe": None, "trades": None}
+    for side in ("LONG", "SHORT"):
+        e = ac.get(f"{sym}_{side}", {})
+        if not isinstance(e, dict):
+            continue
+        ws = e.get("wsharpe")
+        if ws is None:
+            continue
+        if best["wsharpe"] is None or ws > best["wsharpe"]:
+            best = {"wsharpe": ws, "trades": e.get("trades")}
+    return best
+
+
+def _build_live_vs_bt(acct: str, days: float = _LVB_DAYS, scope: str = "all") -> Dict[str, Any]:
+    live = _live_closed_in_window(acct, days)
+    if scope == "live":
+        syms = sorted(live.keys())
+    else:
+        # FULL universe: every symbols_<acct>_long/short candidate ∪ anything traded live.
+        syms = sorted(set(_candidate_syms(acct)) | set(live.keys()))
+    bt = _bt_batch_s1(acct, syms, days)
+    bt_err = bt.get("_error")
+    pooled_bt: List[float] = []
+    pooled_live: List[float] = []
+    rows = []
+    agg = {"bt_better": 0, "live_better": 0, "same": 0, "bt_diag": 0, "insufficient": 0}
+    agg_keep = {"keep": 0, "ditch": 0, "nodata": 0}
+    live_usd_total = 0.0
+    for sym in syms:
+        live.setdefault(sym, {"rets": [], "usd": 0.0})
+        L = _ret_stats(live[sym]["rets"])
+        Lusd = live[sym]["usd"]
+        live_usd_total += Lusd
+        B = bt.get(sym, {"n": 0, "win": None, "avg": None, "sharpe": None, "tot": None, "window": days})
+        src = B.get("src") or _override_source(acct, sym)
+        verdict = "insufficient"
+        note = ""
+        if L["n"] >= 5 and B["n"] >= 30 and L["sharpe"] is not None:
+            ds = B["sharpe"] - L["sharpe"]
+            verdict = "bt_better" if ds > 0.05 else "live_better" if ds < -0.05 else "same"
+        elif B["n"] >= 30:
+            verdict = "bt_diag"
+            note = f"live n={L['n']} too small for sharpe — judge on realized ${Lusd:.0f} + BT churn"
+        else:
+            note = f"both samples small (live n={L['n']}, bt n={B['n']})"
+        agg[verdict] = agg.get(verdict, 0) + 1
+        pooled_bt += bt.get(sym, {}).get("rets", [])
+        pooled_live += [r * 100.0 for r in live[sym]["rets"]]
+        claimed = _claimed_persym(acct, sym)
+        # KEEP/DITCH per USER policy: a config is only worth keeping if its REAL backtest
+        # sharpe clears 0.5 (baseline 0.58) on a real sample (>=30 trades). Tiny-sample or
+        # sub-0.5 = ditch. claimed wsharpe shown alongside to expose sandbox inflation.
+        if B["sharpe"] is None or B["n"] < 30:
+            keep = "nodata"
+        elif B["sharpe"] >= 0.5:
+            keep = "keep"
+        else:
+            keep = "ditch"
+        agg_keep[keep] = agg_keep.get(keep, 0) + 1
+        rows.append({
+            "sym": sym, "src": src,
+            "live": {"n": L["n"], "win": L["win"], "avg": L["avg"], "sharpe": L["sharpe"], "usd": Lusd},
+            "bt": {"n": B["n"], "win": B.get("win"), "avg": B.get("avg"), "sharpe": B.get("sharpe"),
+                   "tot": B.get("tot"), "window": B.get("window")},
+            "claimed": claimed,
+            "churn": (B["n"] / L["n"]) if (L["n"] and B["n"]) else None,
+            "verdict": verdict, "keep": keep, "note": note,
+        })
+    rows.sort(key=lambda r: -((r["bt"]["n"] or 0)))
+    n_traded = sum(1 for r in rows if r["live"]["n"] > 0)
+    n_bt = sum(1 for r in rows if r["bt"]["n"] > 0)
+    payload = {"acct": acct, "days": days, "scope": scope,
+               "generated_at": int(time.time()), "n": len(rows), "n_traded": n_traded, "n_bt": n_bt,
+               "summary": agg, "keep_summary": agg_keep, "live_usd_total": round(live_usd_total, 2),
+               "pool_sharpe_bt": _pool_sharpe(pooled_bt), "pool_trades_bt": len(pooled_bt),
+               "pool_sharpe_live": _pool_sharpe(pooled_live), "pool_trades_live": len(pooled_live),
+               "bt_error": bt_err, "rows": rows}
+    try:
+        _lvb_cache_path(acct, scope).write_text(json.dumps(payload))
+    except Exception:
+        pass
+    return payload
+
+
+@app.route("/trb_live_vs_bt")
+def trb_live_vs_bt():
+    """Serve cached live-vs-sandbox-BT comparison; regen in background if stale/forced.
+    ?acct=trb|trc&force=1"""
+    acct = request.args.get("acct", "trb")
+    scope = request.args.get("scope", "all")
+    if scope not in ("all", "live"):
+        scope = "all"
+    force = request.args.get("force", "0") == "1"
+    jobkey = f"{acct}:{scope}"
+    cache = None
+    path = _lvb_cache_path(acct, scope)
+    if path.exists():
+        try:
+            cache = json.loads(path.read_text())
+        except Exception:
+            cache = None
+    fresh = bool(cache) and (time.time() - cache.get("generated_at", 0) < _LVB_TTL)
+    running = _LVB_JOBS.get(jobkey, False)
+    if fresh and not force:
+        return jsonify({"status": "ready", "running": running, "data": cache})
+
+    def _job(a=acct, sc=scope, jk=jobkey):
+        try:
+            _build_live_vs_bt(a, scope=sc)
+        finally:
+            _LVB_JOBS[jk] = False
+    # Single-flight GLOBALLY: only one S1 BT batch at a time. Running two concurrent
+    # 100-symbol batches on a memory-starved S1 (sweeps + ~200MB free) silently OOMs
+    # most per-symbol runs → lost coverage. Serialize so each batch gets clean results.
+    msg = "generating"
+    with _LVB_LOCK:
+        any_running = any(_LVB_JOBS.values())
+        if _LVB_JOBS.get(jobkey):
+            running = True
+        elif any_running:
+            running = True
+            msg = "queued"  # another acct/scope batch is running; this one waits
+        else:
+            _LVB_JOBS[jobkey] = True
+            _threading.Thread(target=_job, daemon=True).start()
+            running = True
+    return jsonify({"status": msg, "running": running, "data": cache})
+
+
+@app.route("/trb_vs_trc_data")
+def trb_vs_trc_data():
+    """trb(per_sym) vs trc(7D) live A/B: latest snapshot + full time series from the tracker CSV."""
+    csv_path = BASE_PATH / "data" / "reports" / "trb_vs_trc_timeseries.csv"
+    start_path = BASE_PATH / "data" / "reports" / "trb_vs_trc_start.json"
+    series, latest = [], {"trb": {}, "trc": {}}
+    rows_by_snap: Dict[str, Dict[str, Any]] = {}
+    if csv_path.exists():
+        lines = csv_path.read_text().splitlines()
+        hdr = lines[0].split(",") if lines else []
+        for ln in lines[1:]:
+            parts = ln.split(",")
+            if len(parts) < len(hdr):
+                continue
+            row = dict(zip(hdr, parts))
+            snap, acct = row.get("snapshot_utc"), row.get("acct")
+            def fnum(v):
+                try:
+                    return float(v)
+                except Exception:
+                    return None
+            rec = {"trades": fnum(row.get("trades")), "win_pct": fnum(row.get("win_pct")),
+                   "cumul_pct": fnum(row.get("cumul_pct")), "sharpe": fnum(row.get("sharpe")),
+                   "max_dd_pct": fnum(row.get("max_dd_pct")), "usd": fnum(row.get("realized_usd")),
+                   "avg_pct": fnum(row.get("avg_pct"))}
+            latest[acct] = rec
+            rows_by_snap.setdefault(snap, {})[acct] = rec.get("cumul_pct")
+            rows_by_snap[snap][acct + "_sharpe"] = rec.get("sharpe")
+        for snap in sorted(rows_by_snap):
+            d = rows_by_snap[snap]
+            series.append({"t": snap, "trb": d.get("trb"), "trc": d.get("trc"),
+                           "trb_sharpe": d.get("trb_sharpe"), "trc_sharpe": d.get("trc_sharpe")})
+    start = {}
+    if start_path.exists():
+        try:
+            start = json.loads(start_path.read_text())
+        except Exception:
+            start = {}
+    return jsonify({"latest": latest, "series": series, "start": start.get("start_iso", "")})
+
+
+@app.route("/trb_vs_trc")
+def trb_vs_trc_page():
+    html = """<!DOCTYPE html><html><head><meta charset=utf-8><title>trb vs trc — 7D A/B</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>body{background:#0c0e12;color:#e6e8eb;font-family:-apple-system,system-ui,sans-serif;margin:0;padding:14px}
+h1{font-size:15px}.sub{color:#6a7383;font-size:11px;margin-bottom:10px}
+table{border-collapse:collapse;font-size:12px;margin-bottom:14px}th,td{padding:5px 12px;border-bottom:1px solid #1c2029;text-align:right}
+th{color:#6a7383;font-size:10px;text-transform:uppercase}td.l,th.l{text-align:left}
+.pos{color:#5a9060}.neg{color:#a04040}.trb{color:#7fb069}.trc{color:#4a90e2}
+#chart{height:340px;border:1px solid #1c2029;border-radius:5px}</style></head><body>
+<h1>⚖ trb (per_sym 4yr) vs trc (7D recency) — live A/B</h1>
+<div class=sub id=sub>loading…</div>
+<table id=tbl></table>
+<div id=chart></div>
+<div class=sub style="margin-top:8px">Verdict metric = per-trade return + pool_sharpe (fair; $ differs by account size — trb $70k vs trc $30k). Backtest said 7D is recency-overfit (4yr per_sym≥7D); this is the forward check. Refreshes every 60s; tracker snapshots hourly.</div>
+<script>
+const BASE=location.origin;
+function n(x,d){return x==null?"—":(x>=0&&d>0?"+":"")+(+x).toFixed(d)}
+async function load(){
+ const r=await fetch(BASE+"/trb_vs_trc_data").then(x=>x.json()).catch(()=>null); if(!r)return;
+ const b=r.latest.trb||{},c=r.latest.trc||{};
+ document.getElementById("sub").textContent=`A/B start ${r.start||"?"} · ${r.series.length} snapshots`;
+ const rows=[["trades","trades",0],["win %","win_pct",1],["avg %/trade","avg_pct",3],["cumulative %","cumul_pct",3],["pool_sharpe","sharpe",4],["max drawdown %","max_dd_pct",2],["realized $","usd",0]];
+ let h=`<tr><th class=l>metric</th><th class=trb>trb · per_sym</th><th class=trc>trc · 7D</th><th>7D ahead?</th></tr>`;
+ for(const[label,k,d]of rows){const vb=b[k],vc=c[k];let win="";if(typeof vb=="number"&&typeof vc=="number"){const better=(k=="max_dd_pct")?(vc>vb):(vc>vb);win=vc==vb?"=":(better?"<span class=trc>✓ 7D</span>":"<span class=trb>✗</span>")}
+  h+=`<tr><td class=l>${label}</td><td>${n(vb,d)}</td><td>${n(vc,d)}</td><td>${win}</td></tr>`}
+ document.getElementById("tbl").innerHTML=h;
+ if(!window._ch){window._ch=LightweightCharts.createChart(document.getElementById("chart"),{layout:{background:{color:"#0c0e12"},textColor:"#5a6470"},grid:{vertLines:{color:"#0f1215"},horzLines:{color:"#0f1215"}},rightPriceScale:{borderColor:"#1c2029"},timeScale:{borderColor:"#1c2029",timeVisible:true}});window._tb=window._ch.addLineSeries({color:"#7fb069",lineWidth:2,title:"trb per_sym cumul%"});window._tc=window._ch.addLineSeries({color:"#4a90e2",lineWidth:2,title:"trc 7D cumul%"});}
+ const toT=s=>Math.floor(new Date(s).getTime()/1000);
+ const seen=new Set();const tb=[],tc=[];
+ for(const p of r.series){const t=toT(p.t);if(seen.has(t))continue;seen.add(t);if(p.trb!=null)tb.push({time:t,value:p.trb});if(p.trc!=null)tc.push({time:t,value:p.trc});}
+ if(tb.length)window._tb.setData(tb);if(tc.length)window._tc.setData(tc);if(tb.length||tc.length)window._ch.timeScale().fitContent();
+}
+load();setInterval(load,60000);
+</script></body></html>"""
+    return _no_cache(app.response_class(html, mimetype="text/html"))
 
 
 if __name__ == "__main__":

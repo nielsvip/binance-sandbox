@@ -42,6 +42,25 @@ import time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+# ── Promotion gates: CLAUDE.md sample-floor + USER 2026-06-04 quality rule ──
+# A per_sym key may go LIVE only if BOTH hold:
+#   (1) SAMPLE FLOOR  — trades >= LIVE_PROMOTE_MIN_TRADES AND (years unknown or >= 1yr).
+#   (2) QUALITY       — wsharpe > PROMOTE_MIN_WSHARPE AND a decent gain.
+# (2) replaces the old wsharpe>=0.7 bar (USER): positive sharpe that makes decent
+# money is promotable. Gain = summed per-trade return % (CLAUDE.md: summed, not
+# compounded). A true per-month figure needs a backtest-window stamp the daemon
+# does not yet write, so we gate on summed gain over the window via
+# PROMOTE_MIN_GAIN_PCT (tunable); when gain data is absent we do not block (the
+# sample floor + positive sharpe are already required).
+try:
+    import metrics_guard as _mg
+    LIVE_PROMOTE_MIN_TRADES = int(getattr(_mg, "MIN_TRADES_PER_SYM_FOR_SYM_SHARPE", 30))
+except Exception:
+    LIVE_PROMOTE_MIN_TRADES = 30
+LIVE_PROMOTE_MIN_YEARS = 1.0
+PROMOTE_MIN_WSHARPE = 0.0
+PROMOTE_MIN_GAIN_PCT = 5.0
+
 ROOT = Path(__file__).resolve().parent
 PENDING_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "_pending_per_sym_active_config.json"
 LIVE_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
@@ -130,11 +149,85 @@ def cmd_list(pending: Dict) -> int:
     return 0
 
 
+def _is_disable_entry(entry: Dict) -> bool:
+    wt = str(entry.get("winning_tag", "") or "")
+    if "PER_SYM_SIDE_DISABLED" in wt:
+        return True
+    if entry.get("wsharpe") in (0, 0.0) and entry.get("trades") is None:
+        return True
+    return False
+
+
+def _is_sub_floor(entry: Dict) -> Tuple[bool, str]:
+    if _is_disable_entry(entry):
+        return False, ""
+    tr = entry.get("trades")
+    if tr is None:
+        return True, "trades=None"
+    try:
+        tr = int(tr)
+    except Exception:
+        return True, f"trades={tr!r}"
+    if tr < LIVE_PROMOTE_MIN_TRADES:
+        return True, f"trades={tr}<{LIVE_PROMOTE_MIN_TRADES}"
+    yrs = entry.get("years")
+    if isinstance(yrs, (int, float)) and yrs < LIVE_PROMOTE_MIN_YEARS:
+        return True, f"years={yrs:.3f}<{LIVE_PROMOTE_MIN_YEARS}"
+    return False, ""
+
+
+def _total_gain_pct(entry: Dict):
+    g = entry.get("total_pnl_pct")
+    if isinstance(g, (int, float)):
+        return float(g)
+    rr = entry.get("raw_returns")
+    if isinstance(rr, list) and rr:
+        try:
+            return float(sum(float(x) for x in rr))
+        except Exception:
+            return None
+    return None
+
+
+def _is_promotable(entry: Dict) -> Tuple[bool, str]:
+    if _is_disable_entry(entry):
+        return True, "disable_entry"
+    try:
+        ws = float(entry.get("wsharpe"))
+    except (TypeError, ValueError):
+        return False, "wsharpe=NA"
+    if ws <= PROMOTE_MIN_WSHARPE:
+        return False, f"wsharpe={ws:.4f}<={PROMOTE_MIN_WSHARPE:.2f}"
+    gain = _total_gain_pct(entry)
+    if gain is None:
+        return True, f"wsharpe={ws:.3f}|gain=unknown"
+    if gain < PROMOTE_MIN_GAIN_PCT:
+        return False, f"gain={gain:.1f}%<{PROMOTE_MIN_GAIN_PCT:.0f}%"
+    return True, f"wsharpe={ws:.3f}|gain={gain:.1f}%"
+
+
 def cmd_promote_reject(pending: Dict, promote_keys: List[str],
                        reject_keys: List[str], yes: bool,
                        payload_source: Dict = None) -> int:
     promote_keys = [k for k in promote_keys if k in pending]
     reject_keys = [k for k in reject_keys if k in pending]
+    _blocked = {}
+    _kept = []
+    for k in promote_keys:
+        sf, sreason = _is_sub_floor(pending[k])
+        if sf:
+            _blocked[k] = f"SUB_FLOOR:{sreason}"
+            continue
+        ok, qreason = _is_promotable(pending[k])
+        if not ok:
+            _blocked[k] = f"NOT_PROMOTABLE:{qreason}"
+            continue
+        _kept.append(k)
+    if _blocked:
+        print(f"BLOCKED {len(_blocked)} (gate: trades>={LIVE_PROMOTE_MIN_TRADES}, wsharpe>{PROMOTE_MIN_WSHARPE}, gain>={PROMOTE_MIN_GAIN_PCT:.0f}%):")
+        for k in sorted(_blocked):
+            print(f"  - {k}: {_blocked[k]}")
+    promote_keys = _kept
     if not promote_keys and not reject_keys:
         print("Nothing to promote or reject.")
         return 0
@@ -186,6 +279,10 @@ def main() -> int:
                     help="Comma-separated SYM_SIDE keys to promote.")
     ap.add_argument("--reject", default="",
                     help="Comma-separated SYM_SIDE keys to reject.")
+    ap.add_argument("--promote-eligible", action="store_true",
+                    help="Auto-select & promote every pending key passing the "
+                         "sample-floor + wsharpe>0 + decent-gain gate that is new "
+                         "or improves on live (used by the gated cron). Implies --yes.")
     ap.add_argument("--yes", "-y", action="store_true",
                     help="Skip confirmation prompt.")
     ap.add_argument("--use-classified", action="store_true",
@@ -199,7 +296,7 @@ def main() -> int:
     args = ap.parse_args()
     pending = _load(PENDING_CFG_PATH)
     if args.review_charts_first or (not any([args.list, args.promote_all, args.use_classified,
-                                              args.promote, args.reject])):
+                                              args.promote, args.reject, args.promote_eligible])):
         return cmd_review(pending)
     if args.list:
         return cmd_list(pending)
@@ -229,6 +326,22 @@ def main() -> int:
             payload_source = {**full_map, **min_map}
         reject_keys = list(rej_map.keys())
         print(f"[--use-classified] promote_full={len(full_map)} promote_min={len(min_map)} reject={len(rej_map)}")
+    if args.promote_eligible:
+        live_now = _load(LIVE_CFG_PATH)
+        for k, v in pending.items():
+            if k.startswith("_") or not isinstance(v, dict):
+                continue
+            if _is_sub_floor(v)[0] or not _is_promotable(v)[0]:
+                continue
+            lw = (live_now.get(k) or {}).get("wsharpe")
+            pw = v.get("wsharpe")
+            try:
+                improver = (lw is None) or (float(pw) > float(lw))
+            except (TypeError, ValueError):
+                improver = lw is None
+            if improver:
+                promote_keys.append(k)
+        args.yes = True
     if args.promote_all:
         promote_keys = list(pending.keys())
     if args.promote:

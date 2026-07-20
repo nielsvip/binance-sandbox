@@ -165,7 +165,7 @@ class Config:
     SCALP_V3_REENTRY_BOUNCE_MODE: str = "3M_BAR_OR_K15M"
     SCALP_V3_REENTRY_BOUNCE_BAR_3M: str = "HH_AND_HL"  # LONG convention; SHORT mirrors
     SCALP_V3_REENTRY_BOUNCE_K_15M_MAX: int = 25
-    SCALP_V3_REENTRY_COOLDOWN_S: int = 0
+    SCALP_V3_REENTRY_COOLDOWN_S: int = 300  # 2026-07-08 GAINMO anti-churn: 0→300 (match V2; churn law: >100 trades/sym/yr collapses pool_sharpe to <0.05)
     # --- RANKING BOOST (ez_rankings.py; feeds final_score_raw_st → symbols_inf_*) ---
     # 2026-04-22 user-authorized: enabled with small weight — paper test observability.
     SCALP_V3_BOOST_ENABLED: bool = True
@@ -436,7 +436,7 @@ class Config:
     TF_HTF2: str = "1h"   # Second HTF confirmation
     TF_HTF3: str = "4h"   # Third HTF confirmation (strongest trend signal)
     TF_MACRO: str = "D"   # Macro trend — weekly/daily direction
-    TF_ALL: list = None    # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO]
+    TF_ALL: Optional[list] = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO]
     TF_ALIGNMENT_MIN_TOTAL: int = 4  # 2026-03-30: Entries need 3/3 LTF + D mandatory + 2/3 HTF = 4+ TFs. Hardcoded in check_entry_alignment.
     TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against
     TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against
@@ -763,8 +763,8 @@ class Config:
     # inside ez_manage immediately after exits. Daemon subprocess owns this path now.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = False
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
-    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.10  # 2026-07-08 GAINMO anti-churn: 0.0→0.10 — daemon reentry requires 0.10% price improvement past the cross (bare cross-back was #1 fill reason; commission = 41% of the 16d loss)
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 300.0   # 2026-06-25 anti-churn (USER: crypto >50% loss / commission bleed). Was 60.0 — same-key daemon reentry no more than 1/5min. DAEMON_PRICE_CROSS_REENTRY was #1 fill reason (ang 1075/16d) feeding -$120 commission. ROLLBACK: 60.0.
     # 2026-06-03 DISABLED — DO NOT re-enable in the daemon. The reentry DAEMON has NO indicators
     # (Redis indicators:{sym} keys don't exist on its 6379 feed → dc_high4_3m always 0), so this
     # guard fail-closed and blocked EVERY first-hour reentry (20k+ CHURN_GUARD blocks). The
@@ -782,7 +782,7 @@ class Config:
     # all route through execute_now. Reuses the existing _recent_reduces stamp. DEFAULT-OFF — proven in
     # backtest/counterfactual before enabling live. ROLLBACK: RECENT_REDUCTION_GUARD_ENABLED=False.
     RECENT_REDUCTION_GUARD_ENABLED: bool = True   # 2026-06-03 ENABLED (USER: crypto churning) — blocks bare exit-price cross-back re-adds (DAEMON_PRICE_CROSS_REENTRY/QUICK_OPEN/WT_3M_ESCALATE) within WINDOW_S of a reduce unless a genuine Donchian breakout. ROLLBACK: False.
-    RECENT_REDUCTION_GUARD_WINDOW_S: float = 900.0
+    RECENT_REDUCTION_GUARD_WINDOW_S: float = 3600.0   # 2026-06-25 anti-churn (USER: crypto >50% loss). Was 900.0 — widen guard window to 1hr so the 13-min reenter→stale-exit→reenter loop (DAEMON_REENTRY_STALE_EXIT ang 283/16d) is blocked unless a genuine 4-bar DC breakout. ROLLBACK: 900.0.
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
     # 2026-06-03 USER MANDATE: S1 = live trader, Mac = testing only. On a NON-server box, execute_now
     # + send_webhook refuse live orders when the server holds a fresh heartbeat for the account → no
@@ -797,9 +797,10 @@ class Config:
     REENTRY_SMA200_BACKUP_ENABLED: bool = False
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
-    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
+    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 3  # 2026-07-08 GAINMO anti-churn: 20→3 fires/tick
     REENTRY_MAX_PRICE_DIVERGENCE_PCT: float = 20.0
     QUICK_HEDGE_SAME_SYM_LAST_RESORT_ENABLED: bool = False
+    REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT: float = 0.002
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = True
     BREAKOUT_LEASH_ENABLED: bool = True
     BREAKOUT_LEASH_QTY_MULT: float = 0.25
@@ -1044,8 +1045,33 @@ class Config:
     LIVE_VEC_QUARANTINE_STRATEGY_ENABLED: bool = False
     LR_PCTB_D_LONG_ENTRY_ENABLED: bool = False
     LR_PCTB_D_LONG_ENTRY_THRESHOLD: float = 0.20
+    # 2026-07-15 grey-band long regression channel (bt_band_bounce v2: long windows >> LINREG_LENGTH=50)
+    LR_CHANNEL_LONG_LENGTHS: dict = field(default_factory=lambda: {"1h": 200, "4h": 200, "D": 300})
+    BAND_SLOPE_SIZING_V2_ENABLED: bool = True      # 2026-07-15 v2-v5 campaign: grad sizing uplift positive on 176-sym 6.5yr (L200+ quality subsets +2.3..+8.4%/trade); entry system stays OFF (Noise) — sizing only, conservative clamps
+    BAND_SLOPE_SIZING_V2_TF: str = "4h"
+    BAND_SLOPE_SIZING_V2_DEPTH_GAIN: float = 1.0
+    BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 1.0
+    BAND_SLOPE_SIZING_V2_MIN: float = 0.7
+    BAND_SLOPE_SIZING_V2_MAX: float = 1.8
+    # 2026-07-15 LR_BAND swing-harvest strategy (bt_band_bounce v7: crypto 4h_L200 r2_0.7 L-only
+    # pool_sharpe 0.4427 / sym_sharpe 0.51 / +24.6%/sym/yr). DEFAULT OFF — Tier-2 A/B required
+    # (kill switch per NEW STRATEGY PROHIBITION). Harvest/BE/readd knobs declared for the engine.
+    LR_BAND_ENTRY_ENABLED: bool = False
+    LR_BAND_ENTRY_TF: str = "4h"
+    LR_BAND_ENTRY_LO: float = 0.1
+    LR_BAND_ENTRY_R2_MIN: float = 0.7
+    LR_BAND_ENTRY_SIDES: str = "L"
+    LR_BAND_HARVEST_HI: float = 0.7
+    LR_BAND_HARVEST_FRAC: float = 0.25
+    LR_BAND_HARVEST_ENABLED: bool = False          # 2026-07-19 USER band mandate: upper-band exit wired in ez_manage (was dead knob); OFF until Tier-2 pack proof
+    LR_BAND_REGIME_ENABLED: bool = False           # 2026-07-20 USER: catch EVERY upswing — long anywhere below REGIME_MAX_PB while channel slope>0
+    LR_BAND_REGIME_MAX_PB: float = 0.6
+    LR_BAND_SLOPE_FLIP_EXIT_ENABLED: bool = False  # 2026-07-20 USER: channel slope flip → full PROFIT exit
+    LR_BAND_READD_LO: float = 0.3
+    LR_BAND_BE_RATCHET: bool = True
+    LR_BAND_EXIT_EXEMPT: bool = True
     FROZEN_ABSOLUTE_FLOOR_PCT_CRYPTO: float = -10.0  # crypto more volatile than stocks; loosen vs -8 default. Sweep range: -5/-8/-10/-15.
-    R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
+    R1_USE_DC_4BAR: bool = False                   # 2026-07-01 USER: was DEAD (never read); now WIRED. 4-bar dc_low4_3m (tight) churned R1; 20-bar dc_low_3m (wide) proven better for CRYPTO → False. True=4-bar, False=20-bar dc_low_3m. ROLLBACK True.
     # Backtest DC stop loss sweep flags (crypto uses 3m TF):
     DC_LOW4_STOP_ENABLED: bool = False             # stop at dc_low4_3m/dc_high4_3m recorded at entry
     DC_LOW_STOP_ENABLED: bool = False              # stop at dc_low_3m/dc_high_3m (1-bar, wider)
@@ -1069,7 +1095,7 @@ class Config:
     # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
-    TRADES_PER_SYM_PER_DAY_MAX: int = 50  # 2026-05-21 LOOSENED 8→50: filter-block triage. OVERTRADE_GUARD counter increments on every queued attempt (not just fills) — 99-100% block rates meant the first 8 failed attempts capped the symbol for the rest of the day. ROLLBACK: 8. Applies to crypto AND tradier.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 8  # 2026-07-08 GAINMO anti-churn: 50→8 rollback. The 2026-05-21 starvation (attempt-time counting + 99-100% block rates) no longer applies post-loosening; force-open/OBLIGATORY reasons bypass this guard anyway (ez_manage.py ~23247). CAVEAT: crypto still counts attempts (tradier counts submissions since 2026-07-03) — if BLOCKED_OVERTRADE starves real entries, port the count-on-submission fix, do NOT re-raise the cap.
     FOOTHOLD_PILEON_ENABLED: bool = False  # 2026-05-12 ADDED: emergency kill of hardcoded 5-min lock that fires on 3 attempts. Was blocking breakouts. Default OFF.
     # 2026-05-09 USER MANDATE — sweep gating thresholds.
     # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
@@ -1221,7 +1247,7 @@ class Config:
     STALL_GAIN_ABS_MAX: float = 0.5  # |gain| must be below this % to count as stalled.
     STALL_DELTA_SPEED_MAX: float = 1.0  # max(bull_speed, bear_speed) must be below this for "delta dead".
     STALL_MAX_CLOSES_PER_CYCLE: int = 2  # Max stall-closes per account per 30s cycle.
-    RATIO_MULTIPLIER: float = 4.0  # BC_160: 4x = +2052% vs 3x = +1593% on WT exit/reentry backtest (12 sym, 2025). 60/40 → 90/10. DD 0.7%.
+    RATIO_MULTIPLIER: float = 3.0  # 2026-07-08 GAINMO: 4.0→3.0 per CLAUDE.md STATE OF AFFAIRS mandate. The 4.0 justification (BC_160) was 12-sym sub-floor [DIAGNOSTIC] — re-raise only after a >=48-sym Tier-2 proof.
     # === V4 BACKTEST-PROVEN EXIT TUNING (2026-03-27) ===
     # Crypto sweep: vel-6/frac15 = Sharpe 0.457 vs baseline 0.404 (+13%), DD 9.67% vs 10.93%
     WT_EXIT_VEL_THRESHOLD: float = -6.0  # V4: was -2.0 hardcoded. Calmer exits = let winners run longer.
@@ -1268,7 +1294,7 @@ class Config:
     # When True: execute_now blocks ALL reduce/close where real_gain < 0%
     # Exceptions: hedges (is_hedge=True), STRUCTURAL_RANGE_SHIFT_EXIT, LIQUIDATION
     # This replaces Finandy's external NO_LOSS so it can be turned off safely.
-    UNIVERSAL_NOLOSS_GATE: bool = False
+    UNIVERSAL_NOLOSS_GATE: bool = True  # 2026-07-06 RE-ARMED: was False → all 3 protections (this, STRICT_NO_LOSS_ACCOUNTS=[], HEDGE_MODE=False) were OFF, so ~40 exit reasons freely closed losers → 10,622 loss-closes drained live accounts. Re-arming restores the no-loss gate at ez_manage.py:25051. ROLLBACK: False (removes ALL loss protection — do not).
     # 2026-04-16: bypass for technical-exit reasons so WT/DC/structure reversals can close losers.
     # Without this, UNIVERSAL_NOLOSS_GATE turns all technical exits into no-ops on losing positions,
     # which is the exact pattern that kept ATOMUSDT SHORT bleeding from 0 to -2.78%.
@@ -1407,6 +1433,7 @@ class Config:
     # ROLLBACK: MTF_ARMED_ENTRY_ENABLED=False.
     # ═══════════════════════════════════════════════════════════════════
     MTF_ARMED_ENTRY_ENABLED: bool = True             # 2026-05-22 02:37 Re-enabled post persistent hydration fix
+    MTF_ARMED_ENTRY_SKIP_SHORT: bool = True          # 2026-06-04 USER ("MTF it's live ... badly written, throttles shorts, fix RIGHT NOW"): the execute_now MTF armed-gate was applied to SHORT opens identically to LONG, but A/B (project_persym_mtf_interaction_20260531) shows MTF HELPS longs (+0.02) and HURTS shorts (crypto -0.10). Skip the MTF armed-gate for SHORT entries only (longs keep it — see force-opener mandate below); still ENFORCED during the cold-start window so the flood guard holds. Site: ez_manage.py execute_now ~23147. ROLLBACK: False = gate both sides.
     # 2026-06-03 USER MANDATE: the force-opener (watchdog REQ1 sma±pct+wt-cross + REQ3 multi-TF DC)
     # MUST require MTF armed-state + GR confirmation (via mtf_entry_filter_passes). A/B proved
     # MTF-gating = pool_sharpe 0.53 vs 0.11 ungated. The watchdog applies this at source so live ==
@@ -1424,6 +1451,17 @@ class Config:
     # 2026-05-22 21:30 — RE-ENABLED: TOP_OF_RANGE_BLOCK now catches ORDI-type dc_pos≥0.95 entries.
     # Without this bypass, zero entries for 15.5h post-restart (MTF takes hours to re-arm).
     MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = True
+    # ═══ 2026-06-04 COLD-START FLOOD GUARD + OPEN-RATE CIRCUIT BREAKER (ez_manage execute_now) ═══
+    # After a simultaneous cold restart of all 5 crypto procs, the QUICK_OPEN/breakout/reentry
+    # MTF-bypasses opened ~96 junk shorts in seconds against an empty (un-armed) MTF state.
+    # (A) For COLD_START_OPEN_BYPASS_SUPPRESS_SEC after proc start, those opener bypasses are
+    #     suppressed so fresh opens must pass MTF normally (blocked until armed). 0 = disabled.
+    # (B) OPEN_RATE breaker caps fresh OPEN/ENTRY/REENTRY to OPEN_RATE_MAX per OPEN_RATE_WINDOW_SEC
+    #     per process — a hard backstop against ANY open flood. Exits/reduces never affected.
+    COLD_START_OPEN_BYPASS_SUPPRESS_SEC: float = 30.0
+    OPEN_RATE_BREAKER_ENABLED: bool = True
+    OPEN_RATE_MAX: int = 30
+    OPEN_RATE_WINDOW_SEC: float = 30.0
     MTF_ARMED_HTF_LIST: str = '1h,4h,D,W'
     MTF_ARMED_BANDTYPES: str = 'dc,bb,wt'
     # 2026-05-21 19:35 — REVERTED 19:25 False back to True per user mandate "no switch-off, change parameters instead".
@@ -1507,10 +1545,19 @@ class Config:
     MTF_ATR_TRAIL_ENABLED: bool = True                   # 2026-05-20 ON (Phase I)
     MTF_ATR_TRAIL_MULT: float = 2.0                      # 2026-05-20 USER MANDATE: 2x ATR 15m trail from current price. Was 3.0 (loose), now tightened to spec. Phase I tested {1.5,2,3,4} all tied on Sharpe/DD.
     # 2026-05-20 USER MANDATE: MTF compound exit ONLY applies to positions opened
-    # AFTER this timestamp. Default 0 → falls back to trade_manager startup time,
-    # so positions open at restart ride through with legacy exits and only future
-    # opens get MTF-managed. To explicitly set: assign Unix epoch (e.g. `date +%s`).
-    MTF_EXIT_MIN_OPEN_TS: float = 0.0
+    # AFTER this timestamp.
+    # 2026-07-14 FIX: was 0.0 -> code fell back to trade_manager startup time
+    # (time.time() at process start), which re-arms on EVERY restart and
+    # permanently orphans any position that predates the CURRENT process
+    # instance from MTF_ATR_TRAIL/DC_REJECT/BB_REJECT/WT_EXIT for the rest of
+    # its life. Verified live: after an 18:15-18:20 UTC restart, EVERY open
+    # crypto position (all 5 accounts) and every open trb stock position lost
+    # this protection, including ones opened hours earlier the same day.
+    # Fixed epoch = 2026-05-20T00:00:00Z (when this feature actually shipped)
+    # restores the ORIGINAL intent -- protect everything opened after the
+    # feature launched -- without being reset by restarts. Do not revert to
+    # 0.0 / time.time().
+    MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
     MTF_ATR_TRAIL_TF: str = '15m'                        # Phase I winner
     MTF_DC_REJECT_EXIT_ENABLED: bool = True              # 2026-05-20 ON (Phase I)
     MTF_DC_REJECT_EXIT_LOOKBACK: int = 5
@@ -1614,10 +1661,26 @@ class Config:
     # Delta = sizing ADDITION, NOT a filter. Set False until NPZ speed_z fields are validated + retest sweep done.
     DELTA_REENTRY_FILTER_ENABLED: bool = False
     WT_COMPOSITE_SCORING_ENABLED: bool = True  # reach existing bonus block at ez_positions_quick.py:1715-1751 (stocks already on via WT_COMPOSITE_SCORING_ENABLED_TRADIER)
+    # 2026-07-04 audit fix — register knobs that were read only via getattr(config, X, <default>)
+    # (absent from config.py → frozen at the hardcoded default → sweeps were no-ops). Defaults
+    # below == the exact prior getattr fallbacks, so ZERO behavior change; now tunable/sweepable.
+    WT_COMPOSITE_ENTRY_BLOCK: float = -20.0     # ez_positions_quick.py:2399
+    WT_COMPOSITE_ENTRY_STRONG: float = 50.0     # :2409
+    WT_COMPOSITE_ENTRY_GOOD: float = 30.0       # :2410
+    WT_COMPOSITE_ENTRY_OK: float = 10.0         # :2411
+    WT_COMPOSITE_HTF_GATE: bool = False         # :2384
+    WT15M_AGAINST_PENALTY: float = -5.0         # :2478
+    RZ_BREAKOUT_ENTRY_ENABLED: bool = False     # ez_manage.py:33414
+    RZ_BREAKOUT_BAND: float = 0.05              # :33418
+    REENTRY_GR_HTF_MIN_TFS: int = 0            # ez_manage.py:31682 (0 → GR-HTF reentry gate dead until raised)
+    REENTRY_GR_MIN_IND: int = 2                # :31687
+    K3M_CAP_BREAKOUT_BYPASS: bool = True        # ez_positions_quick.py:2722
+    OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS: bool = True  # :4407
+    WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS: bool = True  # 2026-07-04 USER: WT_3M reentry only on higher-high (LONG)/lower-low (SHORT) crossover PRICE
     DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5
-    DELTA_TF_WEIGHTS: dict = None  # Set in __post_init__ — 3m dominant
+    DELTA_TF_WEIGHTS: Optional[dict] = None  # Set in __post_init__ — 3m dominant
     DELTA_TF_Z_THRESHOLD: float = 1.5  # WINNER: tz=1.5
     DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # WINNER: ez=2.5 (was 1.5). NOTE: crypto_t13 2026-04-10 reversal: 1.5=2.045 vs 2.5=1.961 Sharpe on 4sym. Keeping 2.5 until larger cross-symbol sweep confirms reversal.
     DELTA_ENTRY_ACCEL_THRESHOLD: float = 0.0  # WINNER: ea=0.0
@@ -1711,7 +1774,7 @@ class Config:
     RZ_DIV_EXIT_ENABLED: bool = True
     RZ_ZSCORE_EXIT_ENABLED: bool = True
     # ═══ REENTRY — user directive "reenter ASAP" ═══
-    REENTRY_COOLDOWN_S: float = 0.0          # Was 15s; zero for instant reentry
+    REENTRY_COOLDOWN_S: float = 300.0        # 2026-07-08 GAINMO anti-churn: 0→300s ("reenter ASAP" churned; matches EZ_REENTRY_PRICE_CROSS_MIN_GAP_S=300 locked 2026-06-25; churn law in GAINMO_MAXIMIZATION_20260708.md)
     # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
     # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)
@@ -1786,9 +1849,26 @@ class Config:
     MOMENTUM_SMA_WATCHDOG_ENABLED: bool = True
     MOMENTUM_SMA_WATCHDOG_INTERVAL_S: float = 60.0
     MOMENTUM_SMA_WATCHDOG_PCT: float = 1.0          # 2026-05-31 USER: 2.0->1.0 (global per_sym sweep: 1% median pool_sharpe 0.155 > 2% 0.150). Per-sym pct_entry from FINAL book overrides this. price must be > this % above sma_200_15m
+    OBLIGATORY_SMA200_WT3M_ENABLED: bool = True     # 2026-06-04 USER: unblockable obligatory open in momentum_sma_watchdog_loop — runs BEFORE the cooldown/per-tick gates (was missing 24h tumbles: 4800 SKIP cooldown). SHORT when price >OBLIGATORY_SMA200_PCT% BELOW sma_200_15m AND wt1_3m falling; LONG when >PCT% ABOVE AND wt1_3m rising. reason OBLIGATORY_OPEN bypasses COUNTER_TREND (+ shorts bypass MTF); flood rate-breaker/cold-start still apply. ROLLBACK: False.
+    OBLIGATORY_SMA200_PCT: float = 1.0              # distance beyond sma_200_15m (%) that triggers the obligatory open
+    OBLIGATORY_OPEN_USD: float = 400.0              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     PERSYM_FINAL_BOOK_ENABLED: bool = True          # 2026-05-31 USER "put all new per_sym settings live + block negative-sharpe keys". data/persym_final_book.json: 96 tradeable (>=30tr & ps>0 & not-short-uptrend) enabled + per-sym pct_entry/size_cap; 54 tested-but-excluded -> side disabled (PER_SYM_SIDE_DISABLED gate blocks entries, never exits). ROLLBACK: False.
     CONVICTION_SIZING_ENABLED: bool = True          # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
     CONVICTION_SIZING_MAX: float = 8.0              # safety cap on conviction multiplier (crypto-validated cap; prevents runaway). ZEC size_mult ~3.3 -> base $45 x 3.3 ~= $147.
+    # ═══════════════════════════════════════════════════════════════════
+    # 🏆 INF DEDICATED-WINNERS MODE — USER 2026-07-08 mandate: "dedicate inf account to only
+    # trade the absolute winners (per_sym gainers that manage to get a better 7D score get big
+    # trades)". Gate lives in ez_manage.execute_now (the single order chokepoint): any inf
+    # OPEN/AUGMENT/ENTRY for a symbol NOT in INF_DEDICATED_WINNERS is BLOCKED — no force-open/
+    # OBLIGATORY/emergency-reason bypass. CLOSE/REDUCE/exit paths are NEVER touched.
+    # ROLLBACK: INF_DEDICATED_WINNERS_ENABLED=False.
+    INF_DEDICATED_WINNERS_ENABLED: bool = True
+    # Consistent positives — median sym_sharpe 0.41-0.56, 76-100% of central-DB runs positive,
+    # n=52-136 runs each; source GAINMO_MAXIMIZATION_20260708.md. All 12 are legacy-USDT syms
+    # (no USDC perp exists for any of them — USDC-over-USDT policy respected).
+    INF_DEDICATED_WINNERS: set = field(default_factory=lambda: {"SKLUSDT", "NKNUSDT", "COTIUSDT", "CELRUSDT", "SXPUSDT", "BATUSDT", "STORJUSDT", "RVNUSDT", "KNCUSDT", "YFIUSDT", "ZENUSDT", "GTCUSDT"})
+    INF_7D_BEAT_SIZE_MULT: float = 2.0              # winner-set keys whose per_sym 7D-agent winner beats baseline (delta_wsharpe from data/hourly_reconfig/inf/active_config_7d.json) get this x entry size on inf; downstream MAX_ORDER_VALUE caps still clamp
+    INF_7D_BEAT_MIN_DELTA: float = 0.0              # delta_wsharpe must EXCEED this for the 7D boost to fire
     MOMENTUM_SMA_WATCHDOG_WT_CAP: float = 80.0      # wt1_15m must be BELOW this (not yet overbought)
     MOMENTUM_SMA_WATCHDOG_COOLDOWN_S: float = 300.0 # per-key re-fire cooldown
     # ═══════════════════════════════════════════════════════════════════
@@ -1822,6 +1902,7 @@ class Config:
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = True     # close ANY position (winner OR loser) the instant wt1_1h is against its side
     HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = False # also require wt1_4h against (sharper); default just 1h per user mandate
     COUNTER_TREND_ADD_BLOCK_ENABLED: bool = True     # block any OPEN/AUGMENT/REENTRY whose side is against wt1_1h (kills martingale)
+    COUNTER_TREND_SMA200_BYPASS_ENABLED: bool = True # 2026-06-04 USER directional rule: a SHORT below sma_200_15m (LONG above) WITH 1h structure (1h lower-low/higher-high OR wt1_1h agreeing) is TREND-ALIGNED → bypass the laggy wt1_1h COUNTER_TREND_ADD_BLOCK so tumble-shorts fire (was 14k BLOCKED_COUNTER_TREND_1H_AGAINST_SHORT/2h). Genuine counter-trend (wrong side of sma_200_15m) stays blocked. ROLLBACK: False.
     # USER 2026-05-30: NEVER MISS A MOVE. A true breakout — price breaking the PREVIOUS-bar 1h Donchian
     # (LONG: price>dc_high_1h_prev; SHORT: price<dc_low_1h_prev) — is a 100% pass: it bypasses the MTF
     # armed-state gate (#1 live open-blocker, BLOCKED_MTF_NO_ARMED_STATE) for ANY tradeable symbol. Prev-bar
@@ -2021,6 +2102,7 @@ class Config:
         "BB_SQUEEZE_BREAKOUT",
         "OVERRIDE_DC_PRICE_MOVE",   # existing enforcement at ez_manage.py:18113
         "STDEV_BREAKOUT",
+        "OBLIGATORY_OPEN",
     ])
     HTF_GATE_BYPASS_RZ: bool = True  # preserve RZ bounce bypass (bounce logic HTF-validates internally)
     # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
@@ -3399,19 +3481,21 @@ class Config:
         if env_base:
             base = Path(env_base).expanduser()
             candidates = [base]
-            if base.name.lower() != "binance":
-                candidates.append(base / "binance")
+            if base.name.lower() != "binance": candidates.append(base / "binance")
             for candidate in candidates:
                 try:
-                    if candidate.exists():
-                        return candidate
-                except Exception:
-                    pass
+                    if candidate.exists(): return candidate
+                except Exception: pass
             return candidates[0]
+        try:
+            curr_dir = Path(__file__).resolve().parent
+            if curr_dir.exists() and any(name in curr_dir.name.lower() for name in ("binance", "sandbox")): return curr_dir
+        except Exception: pass
         system_name = platform.system()
-        if system_name == "Darwin":
-            return Path("/Users/niels/Documents/binance")
+        if system_name == "Darwin": return Path("/Users/niels/Documents/binance")
         if system_name == "Linux":
+            sandbox = Path("/home/niels/binance-sandbox")
+            if sandbox.exists(): return sandbox
             return Path("/home/niels/binance")
         return Path.home() / "Documents" / "binance"
 
@@ -3441,8 +3525,12 @@ class Config:
     SYMBOLS: Path = BASE_PATH / "symbols.json"
     SYMBOLS_ACTIVE_FILE: Path = BASE_PATH / "symbols_active.json"
     SYMBOLS_ANG_LONG: Path = BASE_PATH / "symbols_ang_long.json"
-    SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_inf_long.json"
-    SYMBOLS_INF_SHORT: Path = BASE_PATH / "symbols_inf_short.json"
+    # 2026-07-19 USER: inf redirected onto men's symbol universe (symbols_men_long/short.json,
+    # per_sym settings + 7D reapplied on top) for a live A/B comparison, instead of its own
+    # momentum-ranked list. ez_rankings.py still writes the old symbols_inf_long.json/short.json
+    # (now unused/orphaned) — kept for a fast revert. See BACKTEST_BIBLE.md §inf/men parity.
+    SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_men_long.json"
+    SYMBOLS_INF_SHORT: Path = BASE_PATH / "symbols_men_short.json"
     # ================================================================
     # INF RANKING PRIORITY BYPASS — 2026-04-16
     # When a symbol is in symbols_inf_long/short (built by ez_rankings
@@ -3738,7 +3826,7 @@ class Config:
     # + guaranteed reentry) is default; sweep validates Path A (hedge) too.
     # CRITICAL: paper-live-backtest parity — same Python function objects.
     # ════════════════════════════════════════════════════════════════════
-    BTC_DEDICATED_ENABLED: bool = True                                   # MASTER kill switch — flip True only after sweep proof + paper days + user approval
+    BTC_DEDICATED_ENABLED: bool = False                                  # 2026-07-01 USER: DISABLED — btc_loop.py v0/WIP has UNBUILT safety knobs (BTC_TECH_EXIT_AT_ANY_PNL wired but BTC_PYRAMID_DISABLED/REGIME_PAUSE/REVERSE_REQUIRE_HTF gate nonexistent logic) → unsafe at 20x. Re-enable only after those are built+proven. ROLLBACK True.
     BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
     BTC_DEDICATED_SYMBOLS: List[str] = field(default_factory=lambda: ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT"])  # all flz BTC_DEDICATED symbols
     BTC_PER_SYM_CONFIG_ENABLED: bool = True                               # load per-symbol overrides from data/hourly_reconfig/flz/active_config.json

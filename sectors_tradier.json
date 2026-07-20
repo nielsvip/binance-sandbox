@@ -1,0 +1,38 @@
+{
+  "_comment": "Sector groupings for per-sector tradier (stocks) backtest sweeps. Created 2026-05-13. Updated 2026-05-14: removed BKR/SLB/XLE/GDXJ (not in symbols_trb/trc lists). All symbols verified against symbols_trb_long/short + symbols_trc_long/short.",
+  "tech_ai_chips": [
+    "NVDA", "AMD", "AVGO", "MU", "INTC", "LRCX", "TXN", "ARM",
+    "PLTR", "CRWD", "CIBR", "IBM", "SAP", "ACN", "MA", "PYPL",
+    "TTD", "WDAY", "FIVN", "AXON", "OLED", "SNDK", "RBLX",
+    "ASTS", "CRWV", "MSTR", "GOOGL", "ROBO", "BOTZ"
+  ],
+  "energy_oil_gas": [
+    "COP", "EOG", "DVN", "FANG", "CRK", "EQT", "AR", "RRC",
+    "CHRD", "PR", "CTRA", "LNG", "OKE", "TRGP", "EPD",
+    "MPC", "VLO", "PSX", "PBF", "DINO",
+    "XOP", "USO", "BNO", "COPX"
+  ],
+  "precious_metals": [
+    "NEM", "GDX", "WPM", "AEM", "AU", "AGI", "EGO",
+    "KGC", "FNV", "RGLD", "PAAS", "HL", "AG", "GLD", "CDE"
+  ],
+  "base_metals_mining": [
+    "CLF", "NUE", "STLD", "CMC", "RS", "VALE", "BHP", "RIO",
+    "TECK", "SCCO", "FCX", "MP", "LAC", "ALB"
+  ],
+  "uranium_nuclear": [
+    "UEC", "NXE", "NLR", "NUKZ", "UUUU"
+  ],
+  "agriculture_fertilizer": [
+    "MOS", "CF", "UAN", "BG", "SMG", "AGCO", "DE", "DAR"
+  ],
+  "defense_aerospace": [
+    "NOC", "HII", "LDOS", "TDG"
+  ],
+  "consumer_media": [
+    "ROKU", "GM", "DIS", "RBLX", "STZ"
+  ],
+  "commodities_crypto_etf": [
+    "IBIT", "MSTR", "PDBC", "GLD", "USO", "BNO"
+  ]
+}

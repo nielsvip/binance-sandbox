@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>BTC/USDT Live Chart</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#060a10;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#d1d4dc}
+#header{position:absolute;top:0;left:0;right:0;height:44px;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(6,10,16,0.90);backdrop-filter:blur(4px);border-bottom:1px solid #1a1e28}
+#header-left{display:flex;align-items:center;gap:16px}
+#symbol-label{font-size:18px;font-weight:700;color:#e0e3eb;letter-spacing:0.5px}
+#current-price{font-size:18px;font-weight:700}
+#price-change{font-size:12px;margin-left:4px}
+#header-right{display:flex;align-items:center;gap:10px}
+#tf-buttons{display:flex;gap:3px}
+#tf-buttons button{background:#151a24;color:#787b86;border:none;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+#tf-buttons button:hover{background:#363a45;color:#d1d4dc}
+#tf-buttons button.active{background:#2962ff;color:#fff}
+#rotate-btn{background:#151a24;color:#787b86;border:1px solid #1a1e28;padding:2px 8px;border-radius:4px;font-size:14px;cursor:pointer;transition:all .15s}
+#rotate-btn:hover{color:#d1d4dc}
+#rotate-btn.active{color:#ff9800;border-color:#ff9800}
+#conn-status{width:8px;height:8px;border-radius:50%;background:#ef5350;margin-left:6px;flex-shrink:0}
+#change-24h{font-size:12px;font-weight:600}
+.chart-panel{position:absolute;left:0;right:0}
+.panel-label{position:absolute;left:8px;top:2px;z-index:5;font-size:10px;color:#787b86;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="header">
+  <div id="header-left">
+    <span id="symbol-label">BTC/USDT</span>
+    <span id="current-price">--</span>
+    <span id="price-change"></span>
+  </div>
+  <div id="header-right">
+    <div id="tf-buttons">
+      <button data-tf="1m">1m</button>
+      <button data-tf="3m">3m</button>
+      <button data-tf="15m" class="active">15m</button>
+      <button data-tf="1h">1h</button>
+      <button data-tf="4h">4h</button>
+      <button data-tf="1d">1D</button>
+    </div>
+    <button id="rotate-btn" title="Auto-rotate TFs (15s)">&#x21bb;</button>
+    <span id="change-24h"></span>
+    <div id="conn-status" title="Disconnected"></div>
+  </div>
+</div>
+<div id="main-chart" class="chart-panel"></div>
+<div id="vol-chart" class="chart-panel"><div class="panel-label">Vol + EMA20</div></div>
+<div id="mfi-chart" class="chart-panel"><div class="panel-label">MFI [14] + StochRSI</div></div>
+<div id="wt-chart" class="chart-panel"><div class="panel-label" id="wt-label">WT</div></div>
+<script>
+(function(){
+"use strict";
+const HEADER_H=44, MAX_BARS=1000;
+let COL_CHART='#0a0e17';
+const COL_UP='#089981', COL_DN='#ef5350';
+let COL_GRID='#0f1318';
+const COL_BORDER='#1a1e28', COL_TEXT='#787b86';
+// Per-TF background: lighter for fast TFs, blacker for slow TFs
+const TF_BG={'1m':'#14181f','3m':'#101520','15m':'#0c1018','1h':'#080c14','4h':'#060a10','1d':'#030508'};
+const TF_GRID={'1m':'#1a1e26','3m':'#151a22','15m':'#10151c','1h':'#0c1016','4h':'#080c12','1d':'#05080c'};
+function applyTFTheme(tf){
+  COL_CHART=TF_BG[tf]||'#0a0e17';
+  COL_GRID=TF_GRID[tf]||'#0f1318';
+  const bg={layout:{background:{type:'solid',color:COL_CHART},textColor:COL_TEXT},grid:{vertLines:{color:COL_GRID},horzLines:{color:COL_GRID}}};
+  [mainChart,volChart,mfiChart,wtChart].forEach(c=>{if(c)c.applyOptions(bg);});
+  document.body.style.background=COL_CHART;
+  document.querySelector('#header').style.background=COL_CHART+'e6';
+}
+const WT_TF_PARAMS={
+  '1m':{esa:6,chan:8,sig:12,smooth:3,esa_ma:'dema',chan_ma:'ema',ci:0.010},
+  '3m':{esa:6,chan:10,sig:12,smooth:3,esa_ma:'dema',chan_ma:'ema',ci:0.010},
+  '15m':{esa:8,chan:25,sig:30,smooth:5,esa_ma:'dema',chan_ma:'ema',ci:0.020},
+  '1h':{esa:8,chan:10,sig:12,smooth:3,esa_ma:'dema',chan_ma:'ema',ci:0.010},
+  '4h':{esa:8,chan:14,sig:15,smooth:3,esa_ma:'dema',chan_ma:'ema',ci:0.010},
+  '1d':{esa:10,chan:14,sig:15,smooth:3,esa_ma:'dema',chan_ma:'ema',ci:0.015},
+};
+let currentTF='15m', ws=null, reconnectDelay=1000, reconnectTimer=null;
+let candleData=[], volumeRaw=[];
+let sma200Data=[], ema50Data=[], dcUpperData=[], dcLowerData=[], dcBasisData=[];
+let volBarData=[], volEma20Data=[], mfiData=[], stochKData=[], stochDData=[];
+let wt1Data=[], wt2Data=[], wtHistData=[];
+let total3Data=[], ethData=[];
+const TOTAL3_ALTS=['SOLUSDC','XRPUSDC','ADAUSDC','DOGEUSDT','AVAXUSDC'];
+let altKlines={};
+let altWs=[];
+let prevClose=null, pendingUpdate=null, rafId=null;
+const mainEl=document.getElementById('main-chart');
+const volEl=document.getElementById('vol-chart');
+const mfiEl=document.getElementById('mfi-chart');
+const wtEl=document.getElementById('wt-chart');
+const priceEl=document.getElementById('current-price');
+const changeEl=document.getElementById('price-change');
+const change24El=document.getElementById('change-24h');
+const connEl=document.getElementById('conn-status');
+const wtLabelEl=document.getElementById('wt-label');
+// Layout: candles 48%, volume 12%, MFI 16%, WT 24%
+function layoutCharts(){
+  const h=window.innerHeight-HEADER_H;
+  const mainH=Math.round(h*0.48);
+  const volH=Math.round(h*0.12);
+  const mfiH=Math.round(h*0.16);
+  const wtH=h-mainH-volH-mfiH;
+  mainEl.style.top=HEADER_H+'px';
+  mainEl.style.height=mainH+'px';
+  volEl.style.top=(HEADER_H+mainH)+'px';
+  volEl.style.height=volH+'px';
+  mfiEl.style.top=(HEADER_H+mainH+volH)+'px';
+  mfiEl.style.height=mfiH+'px';
+  wtEl.style.top=(HEADER_H+mainH+volH+mfiH)+'px';
+  wtEl.style.height=wtH+'px';
+  if(mainChart)mainChart.resize(window.innerWidth,mainH);
+  if(volChart)volChart.resize(window.innerWidth,volH);
+  if(mfiChart)mfiChart.resize(window.innerWidth,mfiH);
+  if(wtChart)wtChart.resize(window.innerWidth,wtH);
+}
+const chartOpts=(el,hideTime)=>({
+  width:el.clientWidth||window.innerWidth,
+  height:el.clientHeight||200,
+  layout:{background:{type:'solid',color:COL_CHART},textColor:COL_TEXT,fontSize:11},
+  grid:{vertLines:{color:COL_GRID},horzLines:{color:COL_GRID}},
+  crosshair:{mode:0},
+  rightPriceScale:{borderColor:COL_BORDER,scaleMargins:{top:0.05,bottom:0.05}},
+  timeScale:{borderColor:COL_BORDER,timeVisible:true,secondsVisible:false,rightOffset:5,visible:!hideTime},
+  handleScroll:{vertTouchDrag:false},
+});
+// Create 4 charts
+let mainChart=LightweightCharts.createChart(mainEl,{...chartOpts(mainEl,true),leftPriceScale:{borderColor:COL_BORDER,scaleMargins:{top:0.05,bottom:0.05},visible:true}});
+let volChart=LightweightCharts.createChart(volEl,{...chartOpts(volEl,true),rightPriceScale:{borderColor:COL_BORDER,scaleMargins:{top:0.1,bottom:0.0}}});
+let mfiChart=LightweightCharts.createChart(mfiEl,chartOpts(mfiEl,true));
+let wtChart=LightweightCharts.createChart(wtEl,chartOpts(wtEl,false));
+// Main: candles + SMA200 + EMA50 + DC20 + TOTAL3 + ETH
+let candleSeries=mainChart.addCandlestickSeries({upColor:COL_UP,downColor:COL_DN,borderUpColor:COL_UP,borderDownColor:COL_DN,wickUpColor:COL_UP,wickDownColor:COL_DN});
+let sma200Series=mainChart.addLineSeries({color:'#ef5350',lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let ema50Series=mainChart.addLineSeries({color:'#2962ff',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let dcUpperSeries=mainChart.addLineSeries({color:'#2196f3',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let dcLowerSeries=mainChart.addLineSeries({color:'#2196f3',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let dcBasisSeries=mainChart.addLineSeries({color:'#8b6914',lineWidth:1,lineStyle:0,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let total3Series=mainChart.addLineSeries({color:'#ff9800',lineWidth:1.5,lineStyle:2,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,priceScaleId:'left'});
+let ethSeries=mainChart.addLineSeries({color:'#627eea',lineWidth:1.5,lineStyle:2,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,priceScaleId:'left'});
+// Volume: bars + EMA20
+let volSeries=volChart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,priceFormat:{type:'volume'}});
+let volEmaSeries=volChart.addLineSeries({color:'#f7d060',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+// MFI + StochRSI shadow
+let mfiSeries=mfiChart.addLineSeries({color:'#7e57c2',lineWidth:1.5,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+let stochKSeries=mfiChart.addLineSeries({color:'#2196f355',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let stochDSeries=mfiChart.addLineSeries({color:'#ff980055',lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let mfiOB=mfiChart.addLineSeries({color:'#787b8644',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let mfiOS=mfiChart.addLineSeries({color:'#787b8644',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let mfi50=mfiChart.addLineSeries({color:'#787b8633',lineWidth:1,lineStyle:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+// WT: histogram + WT1 + WT2 + divergence markers + OB/OS
+let wtHistSeries=wtChart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,priceFormat:{type:'price',precision:1,minMove:0.1}});
+let wt1Series=wtChart.addLineSeries({color:COL_UP,lineWidth:1.5,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let wt2Series=wtChart.addLineSeries({color:COL_DN,lineWidth:1.5,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let wtOB=wtChart.addLineSeries({color:'#787b8644',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let wtOS=wtChart.addLineSeries({color:'#787b8644',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+let wt0=wtChart.addLineSeries({color:'#787b8622',lineWidth:1,lineStyle:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+// Sync all 4 time scales
+const allCharts=[mainChart,volChart,mfiChart,wtChart];
+let syncing=false;
+function syncRange(source){
+  const r=source.timeScale().getVisibleLogicalRange();
+  if(!r||syncing)return;
+  syncing=true;
+  allCharts.forEach(c=>{if(c!==source)c.timeScale().setVisibleLogicalRange(r);});
+  syncing=false;
+}
+allCharts.forEach(c=>{c.timeScale().subscribeVisibleLogicalRangeChange(()=>syncRange(c));});
+layoutCharts();
+window.addEventListener('resize',layoutCharts);
+// Math helpers
+function calcEMA(src,period){
+  if(!src.length)return[];
+  const k=2/(period+1);
+  const out=[{time:src[0].time,value:src[0].value}];
+  for(let i=1;i<src.length;i++){out.push({time:src[i].time,value:src[i].value*k+out[i-1].value*(1-k)});}
+  return out;
+}
+function calcDEMA(src,period){
+  if(!src.length)return[];
+  const e1=calcEMA(src,period);
+  const e2=calcEMA(e1,period);
+  return e1.map((v,i)=>({time:v.time,value:2*v.value-e2[i].value}));
+}
+function calcMA(src,period,type){return type==='dema'?calcDEMA(src,period):calcEMA(src,period);}
+function calcSMA(src,period){
+  const out=[];let sum=0;
+  for(let i=0;i<src.length;i++){sum+=src[i].value;if(i>=period)sum-=src[i-period].value;if(i>=period-1)out.push({time:src[i].time,value:sum/period});}
+  return out;
+}
+function calcSMAFull(src,period){
+  const out=[];let sum=0;
+  for(let i=0;i<src.length;i++){sum+=src[i].value;if(i>=period)sum-=src[i-period].value;if(i>=period-1)out.push({time:src[i].time,value:sum/period});else out.push({time:src[i].time,value:sum/(i+1)});}
+  return out;
+}
+function calcDonchian(candles,period){
+  const upper=[],lower=[];
+  for(let i=0;i<candles.length;i++){
+    if(i<period-1)continue;
+    let hi=-Infinity,lo=Infinity;
+    for(let j=i-period+1;j<=i;j++){if(candles[j].high>hi)hi=candles[j].high;if(candles[j].low<lo)lo=candles[j].low;}
+    upper.push({time:candles[i].time,value:hi});
+    lower.push({time:candles[i].time,value:lo});
+  }
+  return{upper,lower};
+}
+function calcMFI(candles,volumes,period){
+  if(candles.length<period+1)return[];
+  const tp=candles.map(c=>(c.high+c.low+c.close)/3);
+  const out=[];
+  for(let i=period;i<candles.length;i++){
+    let pf=0,nf=0;
+    for(let j=i-period+1;j<=i;j++){const mf=tp[j]*volumes[j];if(tp[j]>tp[j-1])pf+=mf;else if(tp[j]<tp[j-1])nf+=mf;}
+    out.push({time:candles[i].time,value:nf===0?100:100-100/(1+pf/nf)});
+  }
+  return out;
+}
+// StochRSI: RSI(14) -> Stochastic(14) -> smooth K(3), D(3), scaled 0-100
+function calcStochRSI(candles,rsiP,stochP,kSmooth,dSmooth){
+  if(candles.length<rsiP+stochP+kSmooth)return{k:[],d:[]};
+  // RSI
+  const closes=candles.map(c=>c.close);
+  const rsi=[];
+  let avgG=0,avgL=0;
+  for(let i=1;i<=rsiP;i++){const d=closes[i]-closes[i-1];if(d>0)avgG+=d;else avgL-=d;}
+  avgG/=rsiP;avgL/=rsiP;
+  rsi.push(avgL===0?100:100-100/(1+avgG/avgL));
+  for(let i=rsiP+1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    const g=d>0?d:0,l=d<0?-d:0;
+    avgG=(avgG*(rsiP-1)+g)/rsiP;
+    avgL=(avgL*(rsiP-1)+l)/rsiP;
+    rsi.push(avgL===0?100:100-100/(1+avgG/avgL));
+  }
+  // Stochastic of RSI
+  const stoch=[];
+  for(let i=stochP-1;i<rsi.length;i++){
+    let hi=-Infinity,lo=Infinity;
+    for(let j=i-stochP+1;j<=i;j++){if(rsi[j]>hi)hi=rsi[j];if(rsi[j]<lo)lo=rsi[j];}
+    stoch.push(hi===lo?50:(rsi[i]-lo)/(hi-lo)*100);
+  }
+  // Smooth K
+  const kArr=[];
+  for(let i=kSmooth-1;i<stoch.length;i++){
+    let s=0;for(let j=i-kSmooth+1;j<=i;j++)s+=stoch[j];kArr.push(s/kSmooth);
+  }
+  // Smooth D
+  const dArr=[];
+  for(let i=dSmooth-1;i<kArr.length;i++){
+    let s=0;for(let j=i-dSmooth+1;j<=i;j++)s+=kArr[j];dArr.push(s/dSmooth);
+  }
+  // Map back to candle timestamps
+  const kOffset=rsiP+stochP-1+kSmooth-1;
+  const dOffset=kOffset+dSmooth-1;
+  const kOut=kArr.map((v,i)=>({time:candles[kOffset+i].time,value:v}));
+  const dOut=dArr.map((v,i)=>({time:candles[dOffset+i].time,value:v}));
+  return{k:kOut,d:dOut};
+}
+function calcWaveTrend(candles,tf){
+  if(!candles.length)return{wt1:[],wt2:[],hist:[]};
+  const p=WT_TF_PARAMS[tf]||WT_TF_PARAMS['15m'];
+  const ap=candles.map(c=>({time:c.time,value:(c.high+c.low+c.close)/3}));
+  const esa=calcMA(ap,p.esa,p.esa_ma);
+  const dSrc=ap.map((a,i)=>({time:a.time,value:Math.abs(a.value-esa[i].value)}));
+  const d=calcMA(dSrc,p.chan,p.chan_ma);
+  const ci=ap.map((a,i)=>{const dv=d[i].value;return{time:a.time,value:dv===0?0:(a.value-esa[i].value)/(p.ci*dv)};});
+  const wt1=calcEMA(ci,p.sig);
+  const wt2=calcSMAFull(wt1,p.smooth);
+  const hist=wt1.map((w,i)=>{const diff=w.value-wt2[i].value;return{time:w.time,value:diff,color:diff>=0?COL_UP+'99':COL_DN+'99'};});
+  return{wt1,wt2,hist};
+}
+// Generic divergence finder using swing highs/lows
+function findDivergences(candles,oscArr,lb){
+  const markers=[];
+  if(!oscArr||oscArr.length<20||candles.length<20)return markers;
+  lb=lb||5;
+  const timeMap={};candles.forEach((c,i)=>{timeMap[c.time]=i;});
+  const mins=[],maxs=[];
+  for(let i=lb;i<oscArr.length-lb;i++){
+    let isMin=true,isMax=true;
+    for(let j=i-lb;j<=i+lb;j++){
+      if(j===i)continue;
+      if(j<0||j>=oscArr.length)continue;
+      if(oscArr[j].value<=oscArr[i].value)isMin=false;
+      if(oscArr[j].value>=oscArr[i].value)isMax=false;
+    }
+    if(isMin)mins.push({val:oscArr[i].value,time:oscArr[i].time});
+    if(isMax)maxs.push({val:oscArr[i].value,time:oscArr[i].time});
+  }
+  for(let k=1;k<mins.length;k++){
+    const prev=mins[k-1],curr=mins[k];
+    const pi=timeMap[prev.time],ci=timeMap[curr.time];
+    if(pi===undefined||ci===undefined)continue;
+    if(candles[ci].low<candles[pi].low&&curr.val>prev.val){
+      markers.push({time:curr.time,position:'belowBar',color:COL_UP,shape:'arrowUp',text:'B'});
+    }
+  }
+  for(let k=1;k<maxs.length;k++){
+    const prev=maxs[k-1],curr=maxs[k];
+    const pi=timeMap[prev.time],ci=timeMap[curr.time];
+    if(pi===undefined||ci===undefined)continue;
+    if(candles[ci].high>candles[pi].high&&curr.val<prev.val){
+      markers.push({time:curr.time,position:'aboveBar',color:COL_DN,shape:'arrowDown',text:'B'});
+    }
+  }
+  return markers;
+}
+// TOTAL3 + ETH synthetic index
+function buildTotal3(){
+  if(!candleData.length)return;
+  const btcTimes=candleData.map(c=>c.time);
+  const syms=TOTAL3_ALTS.filter(s=>altKlines[s]&&altKlines[s].length>0);
+  if(!syms.length){total3Data=[];return;}
+  const maps=syms.map(s=>{const m={};altKlines[s].forEach(k=>{m[k.time]=k.close;});return m;});
+  total3Data=[];
+  const bases=syms.map((_,si)=>{for(let i=0;i<btcTimes.length;i++){if(maps[si][btcTimes[i]])return maps[si][btcTimes[i]];}return null;});
+  if(bases.some(b=>b===null)){total3Data=[];return;}
+  for(let i=0;i<btcTimes.length;i++){
+    const t=btcTimes[i];let sum=0,count=0;
+    for(let si=0;si<syms.length;si++){const v=maps[si][t];if(v){sum+=(v/bases[si])*100;count++;}}
+    if(count>0)total3Data.push({time:t,value:sum/count});
+  }
+}
+function buildETH(){
+  if(!candleData.length||!altKlines['ETHUSDC']||!altKlines['ETHUSDC'].length){ethData=[];return;}
+  const btcTimes=candleData.map(c=>c.time);
+  const m={};altKlines['ETHUSDC'].forEach(k=>{m[k.time]=k.close;});
+  let base=null;
+  for(let i=0;i<btcTimes.length;i++){if(m[btcTimes[i]]){base=m[btcTimes[i]];break;}}
+  if(!base){ethData=[];return;}
+  ethData=[];
+  for(let i=0;i<btcTimes.length;i++){const v=m[btcTimes[i]];if(v)ethData.push({time:btcTimes[i],value:(v/base)*100});}
+}
+async function fetchAltKlines(){
+  const allSyms=[...TOTAL3_ALTS,'ETHUSDC'];
+  const promises=allSyms.map(async sym=>{
+    try{
+      const url=`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${currentTF}&limit=500`;
+      const resp=await fetch(url);
+      const data=await resp.json();
+      altKlines[sym]=data.map(k=>({time:Math.floor(k[0]/1000),close:parseFloat(k[4])}));
+    }catch(e){altKlines[sym]=[];}
+  });
+  await Promise.all(promises);
+  buildTotal3();
+  buildETH();
+}
+function connectAltWS(){
+  altWs.forEach(w=>{try{w.close()}catch(e){}});
+  altWs=[];
+  const allSyms=[...TOTAL3_ALTS,'ETHUSDC'];
+  allSyms.forEach(sym=>{
+    const stream=`${sym.toLowerCase()}@kline_${currentTF}`;
+    const w=new WebSocket(`wss://stream.binance.com:9443/ws/${stream}`);
+    w.onmessage=(evt)=>{
+      const msg=JSON.parse(evt.data);if(!msg.k)return;
+      const k=msg.k,t=Math.floor(k.t/1000),c=parseFloat(k.c);
+      if(!altKlines[sym])altKlines[sym]=[];
+      const arr=altKlines[sym];
+      if(arr.length>0&&arr[arr.length-1].time===t)arr[arr.length-1].close=c;
+      else arr.push({time:t,close:c});
+      if(arr.length>MAX_BARS)arr.splice(0,arr.length-MAX_BARS);
+    };
+    altWs.push(w);
+  });
+}
+function updateWTLabel(){
+  const p=WT_TF_PARAMS[currentTF]||WT_TF_PARAMS['15m'];
+  wtLabelEl.textContent=`WT [${p.esa}/${p.chan}/${p.sig}] ${p.esa_ma.toUpperCase()}`;
+}
+function buildIndicators(){
+  const closeSrc=candleData.map(c=>({time:c.time,value:c.close}));
+  const volSrc=volumeRaw.map((v,i)=>({time:candleData[i].time,value:v}));
+  sma200Data=calcSMA(closeSrc,200);
+  ema50Data=calcEMA(closeSrc,50);
+  const dc=calcDonchian(candleData,20);
+  dcUpperData=dc.upper;dcLowerData=dc.lower;
+  dcBasisData=dc.upper.map((u,i)=>({time:u.time,value:(u.value+dc.lower[i].value)/2}));
+  volBarData=candleData.map((c,i)=>({time:c.time,value:volumeRaw[i],color:c.close>=c.open?COL_UP+'88':COL_DN+'88'}));
+  volEma20Data=calcEMA(volSrc,20);
+  mfiData=calcMFI(candleData,volumeRaw,14);
+  const sr=calcStochRSI(candleData,14,14,3,3);
+  stochKData=sr.k;stochDData=sr.d;
+  const wt=calcWaveTrend(candleData,currentTF);
+  wt1Data=wt.wt1;wt2Data=wt.wt2;wtHistData=wt.hist;
+}
+function setAllData(){
+  candleSeries.setData(candleData);
+  sma200Series.setData(sma200Data);
+  ema50Series.setData(ema50Data);
+  dcUpperSeries.setData(dcUpperData);
+  dcLowerSeries.setData(dcLowerData);
+  dcBasisSeries.setData(dcBasisData);
+  total3Series.setData(total3Data);
+  ethSeries.setData(ethData);
+  volSeries.setData(volBarData);
+  volEmaSeries.setData(volEma20Data);
+  mfiSeries.setData(mfiData);
+  stochKSeries.setData(stochKData);
+  stochDSeries.setData(stochDData);
+  wtHistSeries.setData(wtHistData);
+  wt1Series.setData(wt1Data);
+  wt2Series.setData(wt2Data);
+  // Divergence markers on all oscillator panels
+  const wtDiv=findDivergences(candleData,wt1Data,5);
+  wt1Series.setMarkers(wtDiv);
+  const mfiDiv=findDivergences(candleData,mfiData,5);
+  mfiSeries.setMarkers(mfiDiv);
+  const stochDiv=findDivergences(candleData,stochKData,5);
+  stochKSeries.setMarkers(stochDiv);
+  if(candleData.length>1){
+    const t0=candleData[0].time,t1=candleData[candleData.length-1].time;
+    mfiOB.setData([{time:t0,value:80},{time:t1,value:80}]);
+    mfiOS.setData([{time:t0,value:20},{time:t1,value:20}]);
+    mfi50.setData([{time:t0,value:50},{time:t1,value:50}]);
+    wtOB.setData([{time:t0,value:60},{time:t1,value:60}]);
+    wtOS.setData([{time:t0,value:-60},{time:t1,value:-60}]);
+    wt0.setData([{time:t0,value:0},{time:t1,value:0}]);
+  }
+  updateWTLabel();
+}
+function updateUI(price,prevC){
+  priceEl.textContent=price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(prevC!==null){
+    const up=price>=prevC;
+    priceEl.style.color=up?COL_UP:COL_DN;
+    const pct=((price-prevC)/prevC*100);
+    changeEl.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
+    changeEl.style.color=up?COL_UP:COL_DN;
+  }
+}
+function setConn(state){
+  connEl.style.background=state==='ok'?COL_UP:state==='retry'?'#f7d060':COL_DN;
+  connEl.title=state==='ok'?'Connected':state==='retry'?'Reconnecting':'Disconnected';
+}
+// Incremental last-bar update
+function updateLastBarIndicators(){
+  if(!candleData.length)return;
+  const n=candleData.length;
+  const last=candleData[n-1];
+  function upsert(arr,pt){if(arr.length>0&&arr[arr.length-1].time===pt.time)arr[arr.length-1]=pt;else arr.push(pt);}
+  // EMA50
+  if(n>=2&&ema50Data.length>=1){
+    const k=2/51;const pt={time:last.time,value:last.close*k+ema50Data[ema50Data.length-1].value*(1-k)};
+    upsert(ema50Data,pt);ema50Series.update(pt);
+  }
+  // SMA200
+  if(n>=200){let sum=0;for(let i=n-200;i<n;i++)sum+=candleData[i].close;const pt={time:last.time,value:sum/200};upsert(sma200Data,pt);sma200Series.update(pt);}
+  // DC20
+  if(n>=20){
+    let hi=-Infinity,lo=Infinity;for(let i=n-20;i<n;i++){if(candleData[i].high>hi)hi=candleData[i].high;if(candleData[i].low<lo)lo=candleData[i].low;}
+    const pu={time:last.time,value:hi},pl={time:last.time,value:lo},pb={time:last.time,value:(hi+lo)/2};
+    upsert(dcUpperData,pu);upsert(dcLowerData,pl);upsert(dcBasisData,pb);
+    dcUpperSeries.update(pu);dcLowerSeries.update(pl);dcBasisSeries.update(pb);
+  }
+  // Volume
+  const vb={time:last.time,value:volumeRaw[n-1],color:last.close>=last.open?COL_UP+'88':COL_DN+'88'};
+  upsert(volBarData,vb);volSeries.update(vb);
+  if(volEma20Data.length>=1){const k=2/21;const ve={time:last.time,value:volumeRaw[n-1]*k+volEma20Data[volEma20Data.length-1].value*(1-k)};upsert(volEma20Data,ve);volEmaSeries.update(ve);}
+  // MFI
+  if(n>=15){
+    const tp=i=>(candleData[i].high+candleData[i].low+candleData[i].close)/3;
+    let pf=0,nf=0;for(let j=n-13;j<n;j++){const mf=tp(j)*volumeRaw[j];if(tp(j)>tp(j-1))pf+=mf;else if(tp(j)<tp(j-1))nf+=mf;}
+    const mp={time:last.time,value:nf===0?100:100-100/(1+pf/nf)};upsert(mfiData,mp);mfiSeries.update(mp);
+  }
+  // StochRSI — full recompute last values
+  const sr=calcStochRSI(candleData,14,14,3,3);
+  stochKData=sr.k;stochDData=sr.d;
+  if(stochKData.length>0)stochKSeries.update(stochKData[stochKData.length-1]);
+  if(stochDData.length>0)stochDSeries.update(stochDData[stochDData.length-1]);
+  // TOTAL3 + ETH
+  buildTotal3();buildETH();
+  if(total3Data.length>0)total3Series.update(total3Data[total3Data.length-1]);
+  if(ethData.length>0)ethSeries.update(ethData[ethData.length-1]);
+  // WT
+  const wt=calcWaveTrend(candleData,currentTF);
+  wt1Data=wt.wt1;wt2Data=wt.wt2;wtHistData=wt.hist;
+  const wIdx=wt1Data.length-1;
+  if(wIdx>=0){wt1Series.update(wt1Data[wIdx]);wt2Series.update(wt2Data[wIdx]);wtHistSeries.update(wtHistData[wIdx]);}
+  // Reference lines
+  if(candleData.length>1){
+    const tL=last.time;
+    mfiOB.update({time:tL,value:80});mfiOS.update({time:tL,value:20});mfi50.update({time:tL,value:50});
+    wtOB.update({time:tL,value:60});wtOS.update({time:tL,value:-60});wt0.update({time:tL,value:0});
+  }
+}
+// Binance REST
+async function fetchCandles(){
+  const url=`https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=${currentTF}&limit=500`;
+  const resp=await fetch(url);
+  const data=await resp.json();
+  candleData=[];volumeRaw=[];
+  data.forEach(k=>{
+    candleData.push({time:Math.floor(k[0]/1000),open:parseFloat(k[1]),high:parseFloat(k[2]),low:parseFloat(k[3]),close:parseFloat(k[4])});
+    volumeRaw.push(parseFloat(k[5]));
+  });
+  if(candleData.length>1)prevClose=candleData[candleData.length-2].close;
+  await fetchAltKlines();
+  buildIndicators();
+  setAllData();
+  applyTFTheme(currentTF);
+  updateUI(candleData[candleData.length-1].close,prevClose);
+  mainChart.timeScale().scrollToRealTime();
+  wtChart.timeScale().scrollToRealTime();
+}
+async function fetch24hChange(){
+  try{const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDC');const d=await r.json();const pct=parseFloat(d.priceChangePercent);change24El.textContent='24h: '+(pct>=0?'+':'')+pct.toFixed(2)+'%';change24El.style.color=pct>=0?COL_UP:COL_DN;}catch(e){}
+}
+// WebSocket
+function connectWS(){
+  if(ws){try{ws.close()}catch(e){}}
+  ws=new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${currentTF}`);
+  ws.onopen=()=>{setConn('ok');reconnectDelay=1000;};
+  ws.onclose=()=>{setConn('retry');scheduleReconnect();};
+  ws.onerror=()=>{setConn('retry');};
+  ws.onmessage=(evt)=>{
+    const msg=JSON.parse(evt.data);if(!msg.k)return;const k=msg.k;
+    pendingUpdate={time:Math.floor(k.t/1000),open:parseFloat(k.o),high:parseFloat(k.h),low:parseFloat(k.l),close:parseFloat(k.c),volume:parseFloat(k.v),closed:k.x};
+    if(!rafId)rafId=requestAnimationFrame(processPending);
+  };
+}
+function processPending(){
+  rafId=null;if(!pendingUpdate)return;
+  const u=pendingUpdate;pendingUpdate=null;
+  const bar={time:u.time,open:u.open,high:u.high,low:u.low,close:u.close};
+  const n=candleData.length;
+  if(n>0&&candleData[n-1].time===bar.time){candleData[n-1]=bar;volumeRaw[n-1]=u.volume;}
+  else{if(n>0)prevClose=candleData[n-1].close;candleData.push(bar);volumeRaw.push(u.volume);}
+  if(candleData.length>MAX_BARS){const t=candleData.length-MAX_BARS;candleData.splice(0,t);volumeRaw.splice(0,t);}
+  candleSeries.update(bar);
+  updateLastBarIndicators();
+  updateUI(bar.close,prevClose);
+}
+function scheduleReconnect(){if(reconnectTimer)clearTimeout(reconnectTimer);reconnectTimer=setTimeout(()=>{connectWS();},reconnectDelay);reconnectDelay=Math.min(reconnectDelay*2,30000);}
+// TF switching
+document.querySelectorAll('#tf-buttons button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    stopRotate();document.getElementById('rotate-btn').classList.remove('active');
+    const prev=document.querySelector('#tf-buttons .active');
+    if(prev)prev.classList.remove('active');
+    btn.classList.add('active');currentTF=btn.dataset.tf;
+    fetchCandles().then(()=>{connectWS();connectAltWS();}).catch(e=>console.error('TF switch error:',e));
+  });
+});
+document.getElementById('rotate-btn').addEventListener('click',()=>{
+  const rb=document.getElementById('rotate-btn');
+  if(autoRotate){stopRotate();rb.classList.remove('active');}
+  else{startRotate();rb.classList.add('active');}
+});
+// Auto-rotate
+const ROTATE_TFS=['1m','3m','15m','1h','4h','1d'];
+const ROTATE_HOLD_MS=10000;// show each TF for 10s after it loads
+let rotateIdx=0, rotateTimer=null, autoRotate=false;
+function startRotate(){
+  autoRotate=true;
+  rotateNext();
+}
+function rotateNext(){
+  if(!autoRotate)return;
+  rotateIdx=(rotateIdx+1)%ROTATE_TFS.length;
+  const tf=ROTATE_TFS[rotateIdx];
+  document.querySelector('#tf-buttons .active').classList.remove('active');
+  const btn=document.querySelector(`#tf-buttons button[data-tf="${tf}"]`);
+  if(btn){btn.classList.add('active');currentTF=tf;
+    fetchCandles().then(()=>{connectWS();connectAltWS();
+      // Wait 10s AFTER data loads, then rotate to next
+      if(autoRotate)rotateTimer=setTimeout(rotateNext,ROTATE_HOLD_MS);
+    });
+  }
+}
+function stopRotate(){autoRotate=false;if(rotateTimer){clearTimeout(rotateTimer);rotateTimer=null;}}
+// Fullscreen on double-click
+document.addEventListener('dblclick',()=>{
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){(el.requestFullscreen||el.webkitRequestFullscreen).call(el);}
+  else{(document.exitFullscreen||document.webkitExitFullscreen).call(document);}
+});
+// Init
+fetchCandles().then(()=>{connectWS();connectAltWS();fetch24hChange();});
+setInterval(fetch24hChange,60000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,650 @@
+// =====================================================================
+// btc_loop_strategy_v3.pine — Pine v6 port of btc_loop.py (2026-04-27)
+// =====================================================================
+// Self-contained mirror of the LATEST state of:
+//   /Users/niels/Documents/binance/btc_loop.py
+//   v8_quick_engine.py:_btc_dedicated_simulate_per_sym
+// Defaults imported from backtest_v8/btc_loop_results/override_btc_BEST.json
+// (sweep iter=18, sharpe=0.5563, trades=4197, dd=0.47%, +644%/4yr).
+//
+// Differences from v1 (btc_loop_strategy.pine): cleaner inputs, fresh
+// defaults from BEST.json, pivot-based divergence, 4-stage entry order
+// (BREAKOUT → FOLLOW-THROUGH reentry → BOUNCE reentry → PRIMARY BOUNCE),
+// REVERSE-ON-EXIT, BREAKOUT vs BOUNCE entry-type with separate exit
+// clusters, RZ-as-boost softener.
+//
+// MAPPING (input → btc_loop.py / config key):
+//   btc_dedicated_enabled              → cfg.BTC_DEDICATED_ENABLED
+//   rz_as_boost_enabled                → cfg.BTC_RZ_AS_BOOST_ENABLED
+//   rz_soften_accel_by                 → cfg.BTC_RZ_SOFTEN_ACCEL_BY
+//   rz_use_fib / round / wt_dc         → cfg.BTC_RZ_USE_*
+//   rz_proximity_pct                   → cfg.BTC_RZ_PROXIMITY_PCT
+//   accel_ramp_min_tfs                 → cfg.BTC_ACCEL_RAMP_MIN_TFS
+//   accel_ramp_require_positive        → cfg.BTC_ACCEL_RAMP_REQUIRE_POSITIVE
+//   divergence_block_against           → cfg.BTC_DIVERGENCE_BLOCK_AGAINST
+//   divergence_exit_against            → cfg.BTC_DIVERGENCE_EXIT_AGAINST
+//   divergence_min_tf                  → cfg.BTC_DIVERGENCE_MIN_TF
+//   divergence_*_min_inds              → cfg.BTC_DIVERGENCE_BULL/BEAR_MIN_INDS
+//   div_lb_*                           → cfg.BTC_DIVERGENCE_LB_3M/15M/1H/4H/D
+//   div_d_confirm_bars                 → cfg.BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS
+//   entry_primary_require_rz           → cfg.BTC_ENTRY_PRIMARY_REQUIRE_RZ
+//   entry_primary_require_accel_ramp   → cfg.BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP
+//   breakout_entry_enabled             → cfg.BTC_BREAKOUT_ENTRY_ENABLED
+//   breakout_block_opposing_div        → cfg.BTC_BREAKOUT_BLOCK_OPPOSING_DIV
+//   breakout_require_htf_aligned       → cfg.BTC_BREAKOUT_REQUIRE_HTF_ALIGNED
+//   breakout_htf_min_aligned           → cfg.BTC_BREAKOUT_HTF_MIN_ALIGNED
+//   breakout_accel_min_tfs             → cfg.BTC_BREAKOUT_ACCEL_MIN_TFS
+//   breakout_min_hold_bars             → cfg.BTC_BREAKOUT_MIN_HOLD_BARS
+//   breakout_cooldown_bars             → cfg.BTC_BREAKOUT_COOLDOWN_BARS
+//   breakout_hard_loss_usd_per_trade   → cfg.BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE
+//   reverse_on_exit_enabled            → cfg.BTC_REVERSE_ON_EXIT_ENABLED
+//   follow_through_reentry_enabled     → cfg.BTC_FOLLOW_THROUGH_REENTRY_ENABLED
+//   follow_through_min_move_pct        → cfg.BTC_FOLLOW_THROUGH_MIN_MOVE_PCT
+//   guaranteed_reentry_enabled         → cfg.BTC_GUARANTEED_REENTRY_ENABLED
+//   guaranteed_reentry_min_gap_bars    → cfg.BTC_GUARANTEED_REENTRY_MIN_GAP_BARS
+//   guaranteed_reentry_max_age_bars    → cfg.BTC_GUARANTEED_REENTRY_MAX_AGE_BARS
+//   guaranteed_reentry_require_rz      → cfg.BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE
+//   tech_exit_wt_min_tfs               → cfg.BTC_TECH_EXIT_WT_MIN_TFS
+//   intrabar_reversal_exit             → cfg.BTC_INTRABAR_REVERSAL_EXIT
+//   cooldown_bars                      → cfg.BTC_COOLDOWN_BARS
+//   min_hold_bars                      → cfg.BTC_MIN_HOLD_BARS
+//   hard_loss_usd_per_trade            → cfg.BTC_HARD_LOSS_USD_PER_TRADE
+//   per_trade_notional_usd_max         → cfg.BTC_PER_TRADE_NOTIONAL_USD_MAX
+//   leverage                           → cfg.BTC_LEVERAGE
+//   fib_lookback_w                     → cfg.BTC_FIB_LOOKBACK_W
+//   round_inc_primary_usd              → cfg.BTC_ROUND_INC_PRIMARY_USD
+//   round_inc_secondary_usd            → cfg.BTC_ROUND_INC_SECONDARY_USD
+//   round_bands_each_side              → cfg.BTC_ROUND_BANDS_EACH_SIDE
+// =====================================================================
+//@version=6
+strategy("BTC Dedicated Loop v3 (btc_loop.py port)", "BTC_LOOP_V3",
+     overlay=true,
+     pyramiding=0,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=100,
+     initial_capital=10000,
+     commission_type=strategy.commission.percent,
+     commission_value=0.04,
+     calc_on_every_tick=false,
+     calc_on_order_fills=false,
+     process_orders_on_close=true,
+     max_bars_back=5000,
+     max_lines_count=300,
+     max_labels_count=300,
+     max_boxes_count=100)
+
+// ──────────────── INPUTS — Master switches ─────────────────────────
+g_master = "Master switches"
+btc_dedicated_enabled            = input.bool(true,  "BTC dedicated loop enabled",          group=g_master)
+btc_trend_mode_enabled           = input.bool(false, "Trend mode (bypass dedicated loop)",  group=g_master)
+
+// ──────────────── INPUTS — Red zone composition ────────────────────
+g_rz = "Red zone composition"
+rz_as_boost_enabled              = input.bool(false, "RZ as accel-softener (not gate)",      group=g_rz)
+rz_soften_accel_by               = input.int (1,     "RZ soften accel min_tfs by",          minval=0, maxval=4, group=g_rz)
+rz_use_fib                       = input.bool(true,  "RZ use fib retracements",             group=g_rz)
+rz_use_round                     = input.bool(true,  "RZ use round-number bands",           group=g_rz)
+rz_use_wt_dc                     = input.bool(true,  "RZ use wt_dc zone hint",              group=g_rz)
+rz_proximity_pct                 = input.float(1.0,  "RZ proximity %",                      minval=0.05, maxval=5.0, step=0.05, group=g_rz)
+fib_lookback_w                   = input.int (78,    "Fib swing lookback (4h bars)",        minval=10, group=g_rz)
+round_inc_primary_usd            = input.float(5000, "Round inc primary (USD)",             minval=100,  group=g_rz)
+round_inc_secondary_usd          = input.float(1000, "Round inc secondary (USD)",           minval=50,   group=g_rz)
+round_bands_each_side            = input.int (12,    "Round bands each side",               minval=1, maxval=30, group=g_rz)
+
+// ──────────────── INPUTS — Accel-ramp gate ─────────────────────────
+g_acc = "Accel-ramp gate"
+accel_ramp_min_tfs               = input.int (2,     "Accel-ramp min TFs aligned",          minval=1, maxval=5, group=g_acc)
+accel_ramp_require_positive      = input.bool(false, "Accel-ramp require sign positive",    group=g_acc)
+entry_primary_require_accel_ramp = input.bool(false, "Primary entry: require accel ramp",   group=g_acc)
+
+// ──────────────── INPUTS — Divergence detection (pivot-based) ──────
+g_div = "Divergence detection (pivot-based)"
+divergence_enabled               = input.bool(true,  "Divergence detection enabled",        group=g_div)
+divergence_block_against         = input.bool(true,  "Block entry on opposing divergence",  group=g_div)
+divergence_exit_against          = input.bool(false, "Exit on opposing divergence",         group=g_div)
+divergence_min_tf                = input.string("1h", "Min TF counted (filter LTF noise)",  options=["3m","15m","1h","4h","D"], group=g_div)
+divergence_bull_min_inds         = input.int (2,     "Bull div: min indicators aligned",    minval=1, maxval=3, group=g_div)
+divergence_bear_min_inds         = input.int (2,     "Bear div: min indicators aligned",    minval=1, maxval=3, group=g_div)
+div_lb_3m                        = input.int (5,     "Div lookback 3m",                     minval=3, group=g_div)
+div_lb_15m                       = input.int (10,    "Div lookback 15m",                    minval=3, group=g_div)
+div_lb_1h                        = input.int (20,    "Div lookback 1h",                     minval=3, group=g_div)
+div_lb_4h                        = input.int (20,    "Div lookback 4h",                     minval=3, group=g_div)
+div_lb_D                         = input.int (10,    "Div lookback D",                      minval=3, group=g_div)
+div_strict                       = input.bool(true,  "Pivot must be in latter half of window", group=g_div)
+div_d_confirm_bars               = input.int (2,     "Days of D-div persistence required",  minval=1, group=g_div)
+div_strong_tfs_threshold         = input.int (3,     "Strong-div TFs threshold",            minval=1, maxval=5, group=g_div)
+
+// ──────────────── INPUTS — Entry triggers ──────────────────────────
+g_ent = "Entry triggers"
+entry_primary_require_rz         = input.bool(false, "Primary entry: require RZ active",    group=g_ent)
+guaranteed_reentry_enabled       = input.bool(false, "Path-B guaranteed reentry enabled",   group=g_ent)
+guaranteed_reentry_min_gap_bars  = input.int (1,     "Reentry min gap bars",                minval=0, group=g_ent)
+guaranteed_reentry_max_age_bars  = input.int (960,   "Reentry max age bars",                minval=10, group=g_ent)
+guaranteed_reentry_require_rz    = input.bool(false, "Reentry require RZ bounce",           group=g_ent)
+follow_through_reentry_enabled   = input.bool(true,  "Follow-through reentry enabled",      group=g_ent)
+follow_through_min_move_pct      = input.float(0.05, "Follow-through min move %",           minval=0.01, step=0.01, group=g_ent)
+cooldown_bars                    = input.int (1,     "BOUNCE cooldown bars",                minval=0, group=g_ent)
+min_hold_bars                    = input.int (3,     "BOUNCE min hold bars",                minval=0, group=g_ent)
+
+// ──────────────── INPUTS — Breakout entry mode ─────────────────────
+g_bk = "Breakout entry mode"
+breakout_entry_enabled           = input.bool(true,  "Breakout entry enabled",              group=g_bk)
+breakout_block_opposing_div      = input.bool(true,  "Breakout: block opposing div",        group=g_bk)
+breakout_require_htf_aligned     = input.bool(true,  "Breakout: require HTF aligned",       group=g_bk)
+breakout_htf_min_aligned         = input.int (2,     "Breakout: min HTFs aligned (1h/4h/D)", minval=0, maxval=3, group=g_bk)
+breakout_accel_min_tfs           = input.int (2,     "Breakout: accel-ramp min TFs",        minval=1, maxval=5, group=g_bk)
+breakout_min_hold_bars           = input.int (1,     "Breakout min hold bars",              minval=0, group=g_bk)
+breakout_cooldown_bars           = input.int (1,     "Breakout cooldown bars",              minval=0, group=g_bk)
+
+// ──────────────── INPUTS — Reverse-on-exit ─────────────────────────
+g_rev = "Reverse-on-exit"
+reverse_on_exit_enabled          = input.bool(true,  "Flip side on exit + opposite breakout", group=g_rev)
+
+// ──────────────── INPUTS — Risk caps & sizing ──────────────────────
+g_rsk = "Risk caps & sizing"
+per_trade_notional_usd_max       = input.float(90.0, "Per-trade own capital max (USD)",     minval=10, group=g_rsk)
+leverage                         = input.float(20.0, "Leverage",                            minval=1,  maxval=125, group=g_rsk)
+hard_loss_usd_per_trade          = input.float(5.4,  "Hard-loss USD (BOUNCE)",              minval=1,  group=g_rsk)
+breakout_hard_loss_usd_per_trade = input.float(3.75, "Hard-loss USD (BREAKOUT)",            minval=1,  group=g_rsk)
+tech_exit_wt_min_tfs             = input.int (2,     "Tech exit: min WT TFs against",       minval=1, maxval=5, group=g_rsk)
+intrabar_reversal_exit           = input.bool(true,  "Exit on accel reversal (BOUNCE)",     group=g_rsk)
+
+// ──────────────── INPUTS — Stats / visuals ─────────────────────────
+g_viz = "Stats/Visuals"
+show_stats_table                 = input.bool(true,  "Show stats table",                    group=g_viz)
+show_entry_shapes                = input.bool(true,  "Show entry/exit shapes",              group=g_viz)
+show_rz_levels                   = input.bool(false, "Plot RZ levels (debug)",              group=g_viz)
+
+// ──────────────── HARD-LOSS PCT (own × leverage) ───────────────────
+hard_loss_pct          = per_trade_notional_usd_max > 0 and leverage > 0 ? -(hard_loss_usd_per_trade          / (per_trade_notional_usd_max * leverage)) * 100.0 : -0.555
+breakout_hard_loss_pct = per_trade_notional_usd_max > 0 and leverage > 0 ? -(breakout_hard_loss_usd_per_trade / (per_trade_notional_usd_max * leverage)) * 100.0 : hard_loss_pct / 2.0
+
+// ──────────────── WAVETREND (LazyBear, 10/21) ──────────────────────
+f_wt(_src) =>
+    n1 = 10
+    n2 = 21
+    ap = _src
+    esa = ta.ema(ap, n1)
+    d   = ta.ema(math.abs(ap - esa), n1)
+    ci  = (ap - esa) / (0.015 * d)
+    tci = ta.ema(ci, n2)
+    wt1 = tci
+    wt2 = ta.sma(wt1, 4)
+    [wt1, wt2]
+
+// Per-TF wt1/wt2 + velocity arrays via request.security
+[wt1_3m,  wt2_3m]  = request.security(syminfo.tickerid, "3",   f_wt(hl2), lookahead=barmerge.lookahead_off)
+[wt1_15m, wt2_15m] = request.security(syminfo.tickerid, "15",  f_wt(hl2), lookahead=barmerge.lookahead_off)
+[wt1_1h,  wt2_1h]  = request.security(syminfo.tickerid, "60",  f_wt(hl2), lookahead=barmerge.lookahead_off)
+[wt1_4h,  wt2_4h]  = request.security(syminfo.tickerid, "240", f_wt(hl2), lookahead=barmerge.lookahead_off)
+[wt1_D,   wt2_D]   = request.security(syminfo.tickerid, "D",   f_wt(hl2), lookahead=barmerge.lookahead_off)
+
+// Per-TF closes (for divergence) and OHLC (for fib swing / DC channels)
+close_3m  = request.security(syminfo.tickerid, "3",   close, lookahead=barmerge.lookahead_off)
+close_15m = request.security(syminfo.tickerid, "15",  close, lookahead=barmerge.lookahead_off)
+close_1h  = request.security(syminfo.tickerid, "60",  close, lookahead=barmerge.lookahead_off)
+close_4h  = request.security(syminfo.tickerid, "240", close, lookahead=barmerge.lookahead_off)
+close_D   = request.security(syminfo.tickerid, "D",   close, lookahead=barmerge.lookahead_off)
+
+high_4h   = request.security(syminfo.tickerid, "240", high, lookahead=barmerge.lookahead_off)
+low_4h    = request.security(syminfo.tickerid, "240", low,  lookahead=barmerge.lookahead_off)
+high_D    = request.security(syminfo.tickerid, "D",   high, lookahead=barmerge.lookahead_off)
+low_D     = request.security(syminfo.tickerid, "D",   low,  lookahead=barmerge.lookahead_off)
+
+// RSI / MFI per TF (additional indicators for divergence aggregation)
+rsi_3m   = request.security(syminfo.tickerid, "3",   ta.rsi(close, 14),                   lookahead=barmerge.lookahead_off)
+rsi_15m  = request.security(syminfo.tickerid, "15",  ta.rsi(close, 14),                   lookahead=barmerge.lookahead_off)
+rsi_1h   = request.security(syminfo.tickerid, "60",  ta.rsi(close, 14),                   lookahead=barmerge.lookahead_off)
+rsi_4h   = request.security(syminfo.tickerid, "240", ta.rsi(close, 14),                   lookahead=barmerge.lookahead_off)
+rsi_D    = request.security(syminfo.tickerid, "D",   ta.rsi(close, 14),                   lookahead=barmerge.lookahead_off)
+
+mfi_3m   = request.security(syminfo.tickerid, "3",   ta.mfi(hlc3, 14),                    lookahead=barmerge.lookahead_off)
+mfi_15m  = request.security(syminfo.tickerid, "15",  ta.mfi(hlc3, 14),                    lookahead=barmerge.lookahead_off)
+mfi_1h   = request.security(syminfo.tickerid, "60",  ta.mfi(hlc3, 14),                    lookahead=barmerge.lookahead_off)
+mfi_4h   = request.security(syminfo.tickerid, "240", ta.mfi(hlc3, 14),                    lookahead=barmerge.lookahead_off)
+mfi_D    = request.security(syminfo.tickerid, "D",   ta.mfi(hlc3, 14),                    lookahead=barmerge.lookahead_off)
+
+// BB %B 4h (proxy for wt_dc zone hint)
+[_bb_mid, _bb_up, _bb_dn] = request.security(syminfo.tickerid, "240", ta.bb(close, 20, 2.0), lookahead=barmerge.lookahead_off)
+bb_pct_b_4h = (close - _bb_dn) / math.max(_bb_up - _bb_dn, 1e-9)
+
+// DC channels on 3m base TF: prev-bar high/low to avoid lookahead
+dc_high_3m_now  = request.security(syminfo.tickerid, "3", ta.highest(high, 20), lookahead=barmerge.lookahead_off)
+dc_low_3m_now   = request.security(syminfo.tickerid, "3", ta.lowest (low,  20), lookahead=barmerge.lookahead_off)
+dc_high4_3m_now = request.security(syminfo.tickerid, "3", ta.highest(high, 4),  lookahead=barmerge.lookahead_off)
+dc_low4_3m_now  = request.security(syminfo.tickerid, "3", ta.lowest (low,  4),  lookahead=barmerge.lookahead_off)
+// Bound [1] offsets — on bar 0 the buffer has no prev bar.
+dc_high_3m_prev  = bar_index >= 1 ? nz(dc_high_3m_now[1],  dc_high_3m_now)  : dc_high_3m_now
+dc_low_3m_prev   = bar_index >= 1 ? nz(dc_low_3m_now[1],   dc_low_3m_now)   : dc_low_3m_now
+dc_high4_3m_prev = bar_index >= 1 ? nz(dc_high4_3m_now[1], dc_high4_3m_now) : dc_high4_3m_now
+dc_low4_3m_prev  = bar_index >= 1 ? nz(dc_low4_3m_now[1],  dc_low4_3m_now)  : dc_low4_3m_now
+
+// ──────────────── ACCEL-RAMP (compute_accel_ramp) ──────────────────
+// velocity = wt1 − wt1_prev; accel-ramp side = (vel > vel_prev > 0) for bull
+vel_3m  = wt1_3m  - wt1_3m[1]
+vel_15m = wt1_15m - wt1_15m[1]
+vel_1h  = wt1_1h  - wt1_1h[1]
+vel_4h  = wt1_4h  - wt1_4h[1]
+vel_D   = wt1_D   - wt1_D[1]
+
+f_accel_count(_v, _vp, _require_pos) =>
+    bull = _require_pos ? (_v > _vp and _vp > 0) : (_v > _vp)
+    bear = _require_pos ? (_v < _vp and _vp < 0) : (_v < _vp)
+    [bull, bear]
+
+[b_3m,  br_3m ] = f_accel_count(vel_3m,  vel_3m[1],  accel_ramp_require_positive)
+[b_15m, br_15m] = f_accel_count(vel_15m, vel_15m[1], accel_ramp_require_positive)
+[b_1h,  br_1h ] = f_accel_count(vel_1h,  vel_1h[1],  accel_ramp_require_positive)
+[b_4h,  br_4h ] = f_accel_count(vel_4h,  vel_4h[1],  accel_ramp_require_positive)
+[b_D,   br_D  ] = f_accel_count(vel_D,   vel_D[1],   accel_ramp_require_positive)
+
+bull_aligned_tfs = (b_3m  ? 1 : 0) + (b_15m ? 1 : 0) + (b_1h  ? 1 : 0) + (b_4h  ? 1 : 0) + (b_D   ? 1 : 0)
+bear_aligned_tfs = (br_3m ? 1 : 0) + (br_15m? 1 : 0) + (br_1h ? 1 : 0) + (br_4h ? 1 : 0) + (br_D  ? 1 : 0)
+accel_side = bull_aligned_tfs > bear_aligned_tfs and bull_aligned_tfs > 0 ? "bull" : (bear_aligned_tfs > bull_aligned_tfs and bear_aligned_tfs > 0 ? "bear" : "none")
+
+// ──────────────── DIVERGENCE (PIVOT-BASED) ────────────────────────
+// Mirror of btc_loop.py:detect_divergence_at — window-min comparison,
+// indicator-at-pivot, optional "pivot in latter half" strict check.
+f_pivot_div(_p_now, _i_now, _p_min, _p_max, _i_at_min, _i_at_max, _idx_min, _idx_max, _winlen, _strict) =>
+    bull = (_p_now < _p_min) and (_i_now > _i_at_min)
+    bear = (_p_now > _p_max) and (_i_now < _i_at_max)
+    if _strict
+        half = math.max(1, _winlen / 2)
+        bull := bull and (_idx_min >= _winlen - half)
+        bear := bear and (_idx_max >= _winlen - half)
+    [bull, bear]
+
+// Per-TF divergence helper: takes a price series + indicator series (both already
+// resampled to the same TF) and looks back N bars on THAT TF.
+// We compute the window min/max on the indicator's own TF using ta.lowest/highest.
+// All historical offsets are bounded by min(idx, bar_index, _lb-1) to stay within
+// the loaded historical buffer (TradingView limit ~302 default, max_bars_back caps it).
+f_div_tf(_close_tf, _ind_tf, _lb, _strict) =>
+    p_now = _close_tf
+    i_now = _ind_tf
+    // Cap window length to what's actually loaded: lookback can never exceed bar_index.
+    win_cap = math.max(1, math.min(_lb - 1, bar_index))
+    // Window = bars [_lb..1] back on the SAME TF (exclude current bar) — bounded.
+    p_min = ta.lowest (_close_tf[1], win_cap)
+    p_max = ta.highest(_close_tf[1], win_cap)
+    // Find offset of pivot within window (1..lb-1) — bounded so [idx] never overshoots.
+    raw_idx_min = ta.barssince(_close_tf == p_min)
+    raw_idx_max = ta.barssince(_close_tf == p_max)
+    idx_min = math.min(nz(raw_idx_min, win_cap), win_cap)
+    idx_max = math.min(nz(raw_idx_max, win_cap), win_cap)
+    // Bound the indicator-history index by both the window cap AND bar_index.
+    safe_off_min = math.min(math.max(idx_min, 1), bar_index)
+    safe_off_max = math.min(math.max(idx_max, 1), bar_index)
+    i_at_min = nz(_ind_tf[safe_off_min], _ind_tf)
+    i_at_max = nz(_ind_tf[safe_off_max], _ind_tf)
+    // Express pivot offset as "index inside window of length _lb-1"
+    // detect_divergence_at strict: idx >= len(win) - half  ⇔ pivot in last half
+    win_len = win_cap
+    pivot_min_idx = win_len - idx_min   // 0=oldest in win, win_len-1=most recent
+    pivot_max_idx = win_len - idx_max
+    [bull, bear] = f_pivot_div(p_now, i_now, p_min, p_max, i_at_min, i_at_max, pivot_min_idx, pivot_max_idx, win_len, _strict)
+    [bull, bear]
+
+// TF index map for MIN_TF filter
+f_tf_idx(_tf) =>
+    _tf == "3m" ? 0 : _tf == "15m" ? 1 : _tf == "1h" ? 2 : _tf == "4h" ? 3 : _tf == "D" ? 4 : 0
+
+min_tf_idx = f_tf_idx(divergence_min_tf)
+
+// Per-(indicator, TF) div, gated by min_tf
+[wt_b_3m,  wt_br_3m ] = f_div_tf(close_3m,  wt1_3m,  div_lb_3m,  div_strict)
+[wt_b_15m, wt_br_15m] = f_div_tf(close_15m, wt1_15m, div_lb_15m, div_strict)
+[wt_b_1h,  wt_br_1h ] = f_div_tf(close_1h,  wt1_1h,  div_lb_1h,  div_strict)
+[wt_b_4h,  wt_br_4h ] = f_div_tf(close_4h,  wt1_4h,  div_lb_4h,  div_strict)
+[wt_b_D,   wt_br_D  ] = f_div_tf(close_D,   wt1_D,   div_lb_D,   div_strict)
+
+[rsi_b_3m,  rsi_br_3m ] = f_div_tf(close_3m,  rsi_3m,  div_lb_3m,  div_strict)
+[rsi_b_15m, rsi_br_15m] = f_div_tf(close_15m, rsi_15m, div_lb_15m, div_strict)
+[rsi_b_1h,  rsi_br_1h ] = f_div_tf(close_1h,  rsi_1h,  div_lb_1h,  div_strict)
+[rsi_b_4h,  rsi_br_4h ] = f_div_tf(close_4h,  rsi_4h,  div_lb_4h,  div_strict)
+[rsi_b_D,   rsi_br_D  ] = f_div_tf(close_D,   rsi_D,   div_lb_D,   div_strict)
+
+[mfi_b_3m,  mfi_br_3m ] = f_div_tf(close_3m,  mfi_3m,  div_lb_3m,  div_strict)
+[mfi_b_15m, mfi_br_15m] = f_div_tf(close_15m, mfi_15m, div_lb_15m, div_strict)
+[mfi_b_1h,  mfi_br_1h ] = f_div_tf(close_1h,  mfi_1h,  div_lb_1h,  div_strict)
+[mfi_b_4h,  mfi_br_4h ] = f_div_tf(close_4h,  mfi_4h,  div_lb_4h,  div_strict)
+[mfi_b_D,   mfi_br_D  ] = f_div_tf(close_D,   mfi_D,   div_lb_D,   div_strict)
+
+f_tf_passes(_tf) => f_tf_idx(_tf) >= min_tf_idx
+pass_3m  = f_tf_passes("3m")
+pass_15m = f_tf_passes("15m")
+pass_1h  = f_tf_passes("1h")
+pass_4h  = f_tf_passes("4h")
+pass_D   = f_tf_passes("D")
+
+// Per-indicator: count of TFs (gated by min_tf) showing bull/bear div
+wt_bull_tfs  = (pass_3m  and wt_b_3m  ? 1 : 0) + (pass_15m and wt_b_15m ? 1 : 0) + (pass_1h  and wt_b_1h  ? 1 : 0) + (pass_4h  and wt_b_4h  ? 1 : 0) + (pass_D   and wt_b_D   ? 1 : 0)
+wt_bear_tfs  = (pass_3m  and wt_br_3m ? 1 : 0) + (pass_15m and wt_br_15m? 1 : 0) + (pass_1h  and wt_br_1h ? 1 : 0) + (pass_4h  and wt_br_4h ? 1 : 0) + (pass_D   and wt_br_D  ? 1 : 0)
+rsi_bull_tfs = (pass_3m  and rsi_b_3m ? 1 : 0) + (pass_15m and rsi_b_15m? 1 : 0) + (pass_1h  and rsi_b_1h ? 1 : 0) + (pass_4h  and rsi_b_4h ? 1 : 0) + (pass_D   and rsi_b_D  ? 1 : 0)
+rsi_bear_tfs = (pass_3m  and rsi_br_3m? 1 : 0) + (pass_15m and rsi_br_15m? 1 : 0)+ (pass_1h  and rsi_br_1h? 1 : 0) + (pass_4h  and rsi_br_4h? 1 : 0) + (pass_D   and rsi_br_D ? 1 : 0)
+mfi_bull_tfs = (pass_3m  and mfi_b_3m ? 1 : 0) + (pass_15m and mfi_b_15m? 1 : 0) + (pass_1h  and mfi_b_1h ? 1 : 0) + (pass_4h  and mfi_b_4h ? 1 : 0) + (pass_D   and mfi_b_D  ? 1 : 0)
+mfi_bear_tfs = (pass_3m  and mfi_br_3m? 1 : 0) + (pass_15m and mfi_br_15m? 1 : 0)+ (pass_1h  and mfi_br_1h? 1 : 0) + (pass_4h  and mfi_br_4h? 1 : 0) + (pass_D   and mfi_br_D ? 1 : 0)
+
+// Aggregate: count indicators with at least one TF showing div
+bull_inds_aligned = (wt_bull_tfs > 0 ? 1 : 0) + (rsi_bull_tfs > 0 ? 1 : 0) + (mfi_bull_tfs > 0 ? 1 : 0)
+bear_inds_aligned = (wt_bear_tfs > 0 ? 1 : 0) + (rsi_bear_tfs > 0 ? 1 : 0) + (mfi_bear_tfs > 0 ? 1 : 0)
+bull_inds_strong  = (wt_bull_tfs >= div_strong_tfs_threshold ? 1 : 0) + (rsi_bull_tfs >= div_strong_tfs_threshold ? 1 : 0) + (mfi_bull_tfs >= div_strong_tfs_threshold ? 1 : 0)
+bear_inds_strong  = (wt_bear_tfs >= div_strong_tfs_threshold ? 1 : 0) + (rsi_bear_tfs >= div_strong_tfs_threshold ? 1 : 0) + (mfi_bear_tfs >= div_strong_tfs_threshold ? 1 : 0)
+
+// D-side presence (for D-confirmation persistence)
+bull_d_present = (pass_D and (wt_b_D  or rsi_b_D  or mfi_b_D))
+bear_d_present = (pass_D and (wt_br_D or rsi_br_D or mfi_br_D))
+var int bull_d_persist = 0
+var int bear_d_persist = 0
+bull_d_persist := bull_d_present ? bull_d_persist + 1 : 0
+bear_d_persist := bear_d_present ? bear_d_persist + 1 : 0
+// If MIN_TF=D, gate on persistence
+bull_inds_eff = (divergence_min_tf == "D" and bull_d_persist < div_d_confirm_bars) ? 0 : bull_inds_aligned
+bear_inds_eff = (divergence_min_tf == "D" and bear_d_persist < div_d_confirm_bars) ? 0 : bear_inds_aligned
+
+// ──────────────── FIB LEVELS (compute_fib_levels) ──────────────────
+// Cap lookback to what's actually loaded (bar_index+1) to prevent buffer overrun.
+fib_lb_eff = math.max(2, math.min(fib_lookback_w, bar_index + 1))
+swing_h_4h = ta.highest(high_4h, fib_lb_eff)
+swing_l_4h = ta.lowest (low_4h,  fib_lb_eff)
+swing_h_D  = ta.highest(high_D,  fib_lb_eff)
+swing_l_D  = ta.lowest (low_D,   fib_lb_eff)
+
+f_fib_within(_p, _h, _l, _prox_pct) =>
+    rng = _h - _l
+    cnt = 0
+    if rng > 0
+        cnt := cnt + (math.abs(_p - (_h - rng * 0.236)) / _p <= _prox_pct/100.0 ? 1 : 0)
+        cnt := cnt + (math.abs(_p - (_h - rng * 0.382)) / _p <= _prox_pct/100.0 ? 1 : 0)
+        cnt := cnt + (math.abs(_p - (_h - rng * 0.500)) / _p <= _prox_pct/100.0 ? 1 : 0)
+        cnt := cnt + (math.abs(_p - (_h - rng * 0.618)) / _p <= _prox_pct/100.0 ? 1 : 0)
+        cnt := cnt + (math.abs(_p - (_h - rng * 0.786)) / _p <= _prox_pct/100.0 ? 1 : 0)
+    cnt
+
+fib_count_within = rz_use_fib ? f_fib_within(close, swing_h_4h, swing_l_4h, rz_proximity_pct) + f_fib_within(close, swing_h_D, swing_l_D, rz_proximity_pct) : 0
+
+// ──────────────── ROUND LEVELS (compute_round_levels) ──────────────
+f_round_within(_p, _inc, _bands, _prox_pct) =>
+    if _p <= 0 or _inc <= 0
+        false
+    else
+        base = math.floor(_p / _inc) * _inc
+        hit = false
+        // walk bands_each_side levels above and below
+        for k = 0 to _bands
+            below = base - _inc * k
+            above = base + _inc * (k + 1)
+            if below > 0 and math.abs(_p - below) / _p <= _prox_pct/100.0
+                hit := true
+                break
+            if math.abs(_p - above) / _p <= _prox_pct/100.0
+                hit := true
+                break
+        hit
+
+round_within = rz_use_round and (f_round_within(close, round_inc_primary_usd, round_bands_each_side, rz_proximity_pct) or f_round_within(close, round_inc_secondary_usd, round_bands_each_side, rz_proximity_pct))
+
+// ──────────────── RED ZONE (build_red_zone_state) ──────────────────
+wt_dc_zone = rz_use_wt_dc ? (bb_pct_b_4h >= 0.85 ? "TOP" : bb_pct_b_4h <= 0.15 ? "BOTTOM" : "BASELINE") : "none"
+wt_dc_active = rz_use_wt_dc and (wt_dc_zone == "BASELINE" or wt_dc_zone == "TOP" or wt_dc_zone == "BOTTOM")
+rz_active = (fib_count_within > 0) or round_within or wt_dc_active
+
+// ──────────────── WT-AGAINST COUNT (per-TF wt1 vs wt2) ─────────────
+wt_bear_count = (wt1_3m < wt2_3m ? 1 : 0) + (wt1_15m < wt2_15m ? 1 : 0) + (wt1_1h < wt2_1h ? 1 : 0) + (wt1_4h < wt2_4h ? 1 : 0) + (wt1_D < wt2_D ? 1 : 0)
+wt_bull_count = (wt1_3m > wt2_3m ? 1 : 0) + (wt1_15m > wt2_15m ? 1 : 0) + (wt1_1h > wt2_1h ? 1 : 0) + (wt1_4h > wt2_4h ? 1 : 0) + (wt1_D > wt2_D ? 1 : 0)
+
+// HTF-aligned counts (1h+4h+D only) for breakout HTF gate
+htf_long_n  = (wt1_1h > wt2_1h ? 1 : 0) + (wt1_4h > wt2_4h ? 1 : 0) + (wt1_D > wt2_D ? 1 : 0)
+htf_short_n = (wt1_1h < wt2_1h ? 1 : 0) + (wt1_4h < wt2_4h ? 1 : 0) + (wt1_D < wt2_D ? 1 : 0)
+
+// ──────────────── ENTRY DECISIONS ──────────────────────────────────
+// should_enter_btc_long / _short (with RZ-as-boost softener)
+soften_long  = rz_as_boost_enabled and rz_active ? rz_soften_accel_by : 0
+soften_short = rz_as_boost_enabled and rz_active ? rz_soften_accel_by : 0
+eff_min_tfs_long  = math.max(1, accel_ramp_min_tfs - soften_long)
+eff_min_tfs_short = math.max(1, accel_ramp_min_tfs - soften_short)
+
+f_can_enter_long() =>
+    bool ok = btc_dedicated_enabled
+    if ok and divergence_block_against and divergence_enabled and bear_inds_eff >= divergence_bear_min_inds
+        ok := false
+    if ok and not rz_as_boost_enabled and entry_primary_require_rz and not rz_active
+        ok := false
+    if ok and entry_primary_require_accel_ramp
+        if accel_side != "bull"
+            ok := false
+        else if bull_aligned_tfs < eff_min_tfs_long
+            ok := false
+    ok
+
+f_can_enter_short() =>
+    bool ok = btc_dedicated_enabled
+    if ok and divergence_block_against and divergence_enabled and bull_inds_eff >= divergence_bull_min_inds
+        ok := false
+    if ok and not rz_as_boost_enabled and entry_primary_require_rz and not rz_active
+        ok := false
+    if ok and entry_primary_require_accel_ramp
+        if accel_side != "bear"
+            ok := false
+        else if bear_aligned_tfs < eff_min_tfs_short
+            ok := false
+    ok
+
+ok_long  = f_can_enter_long()
+ok_short = f_can_enter_short()
+
+// ──────────────── BREAKOUT (detect_btc_breakout) ───────────────────
+f_detect_breakout() =>
+    string side = "NONE"
+    if btc_dedicated_enabled and breakout_entry_enabled
+        // LONG breakout
+        if close > dc_high_3m_prev and dc_high_3m_prev > 0 and bull_aligned_tfs >= breakout_accel_min_tfs and accel_side == "bull"
+            htf_ok = not breakout_require_htf_aligned or htf_long_n >= breakout_htf_min_aligned
+            div_ok = not breakout_block_opposing_div  or bear_inds_eff < divergence_bear_min_inds
+            if htf_ok and div_ok
+                side := "LONG"
+        // SHORT breakdown
+        if side == "NONE" and close < dc_low_3m_prev and dc_low_3m_prev > 0 and bear_aligned_tfs >= breakout_accel_min_tfs and accel_side == "bear"
+            htf_ok = not breakout_require_htf_aligned or htf_short_n >= breakout_htf_min_aligned
+            div_ok = not breakout_block_opposing_div  or bull_inds_eff < divergence_bull_min_inds
+            if htf_ok and div_ok
+                side := "SHORT"
+    side
+
+bk_side = f_detect_breakout()
+
+// ──────────────── STATE: cooldown + reentry tracking ───────────────
+var int    last_exit_bar    = -100000
+var float  last_exit_price  = 0.0
+var string last_exit_side   = "NONE"
+var string last_exit_type   = "NONE"      // BOUNCE | BREAKOUT
+var int    entry_bar        = 0
+var string entry_type       = "BOUNCE"    // BOUNCE | BREAKOUT
+
+is_long  = strategy.position_size > 0
+is_short = strategy.position_size < 0
+is_flat  = strategy.position_size == 0
+
+cur_pnl_pct = is_flat or strategy.position_avg_price == 0 ? 0.0 : is_long ? (close - strategy.position_avg_price) / strategy.position_avg_price * 100.0 : (strategy.position_avg_price - close) / strategy.position_avg_price * 100.0
+
+// Cooldown (use breakout cooldown after a breakout exit)
+cd_bars = last_exit_type == "BREAKOUT" ? breakout_cooldown_bars : cooldown_bars
+cooldown_ok = (bar_index - last_exit_bar) >= cd_bars
+
+// Follow-through reentry: same-side, price past last exit, accel aligned
+ft_long  = follow_through_reentry_enabled and last_exit_side == "LONG"  and last_exit_price > 0 and (bar_index - last_exit_bar) >= guaranteed_reentry_min_gap_bars and (bar_index - last_exit_bar) <= guaranteed_reentry_max_age_bars and ((close - last_exit_price) / last_exit_price * 100.0) >=  follow_through_min_move_pct and accel_side == "bull" and bull_aligned_tfs >= 1
+ft_short = follow_through_reentry_enabled and last_exit_side == "SHORT" and last_exit_price > 0 and (bar_index - last_exit_bar) >= guaranteed_reentry_min_gap_bars and (bar_index - last_exit_bar) <= guaranteed_reentry_max_age_bars and ((close - last_exit_price) / last_exit_price * 100.0) <= -follow_through_min_move_pct and accel_side == "bear" and bear_aligned_tfs >= 1
+
+// Path-B BOUNCE reentry: respects RZ + side-specific re-eval
+reentry_age_ok = (bar_index - last_exit_bar) >= guaranteed_reentry_min_gap_bars and (bar_index - last_exit_bar) <= guaranteed_reentry_max_age_bars
+reentry_rz_ok  = not guaranteed_reentry_require_rz or rz_active
+bounce_reenter_long  = guaranteed_reentry_enabled and last_exit_side == "LONG"  and reentry_age_ok and reentry_rz_ok and ok_long
+bounce_reenter_short = guaranteed_reentry_enabled and last_exit_side == "SHORT" and reentry_age_ok and reentry_rz_ok and ok_short
+
+// ──────────────── ENTRY ORDERS (4-stage priority) ──────────────────
+// Stage 1: BREAKOUT
+// Stage 2: FOLLOW-THROUGH reentry (BREAKOUT-typed)
+// Stage 3: BOUNCE reentry
+// Stage 4: PRIMARY BOUNCE
+fire_long_breakout    = is_flat and cooldown_ok and bk_side == "LONG"
+fire_short_breakout   = is_flat and cooldown_ok and bk_side == "SHORT" and not fire_long_breakout
+fire_long_ft          = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and ft_long
+fire_short_ft         = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and not fire_long_ft and ft_short
+fire_long_reentry     = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and not fire_long_ft and not fire_short_ft and bounce_reenter_long
+fire_short_reentry    = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and not fire_long_ft and not fire_short_ft and not fire_long_reentry and bounce_reenter_short
+fire_long_primary     = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and not fire_long_ft and not fire_short_ft and not fire_long_reentry and not fire_short_reentry and ok_long  and not ok_short
+fire_short_primary    = is_flat and cooldown_ok and not fire_long_breakout  and not fire_short_breakout and not fire_long_ft and not fire_short_ft and not fire_long_reentry and not fire_short_reentry and ok_short and not ok_long
+
+if fire_long_breakout
+    strategy.entry("BREAKOUT_L", strategy.long, comment="BREAKOUT_L")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+if fire_short_breakout
+    strategy.entry("BREAKOUT_S", strategy.short, comment="BREAKOUT_S")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+if fire_long_ft
+    strategy.entry("FT_REENTRY_L", strategy.long, comment="FT_REENTRY_L")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+if fire_short_ft
+    strategy.entry("FT_REENTRY_S", strategy.short, comment="FT_REENTRY_S")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+if fire_long_reentry
+    strategy.entry("REENTRY_L", strategy.long, comment="REENTRY_L")
+    entry_type := "BOUNCE"
+    entry_bar  := bar_index
+if fire_short_reentry
+    strategy.entry("REENTRY_S", strategy.short, comment="REENTRY_S")
+    entry_type := "BOUNCE"
+    entry_bar  := bar_index
+if fire_long_primary
+    strategy.entry("PRIMARY_L", strategy.long, comment="PRIMARY_L")
+    entry_type := "BOUNCE"
+    entry_bar  := bar_index
+if fire_short_primary
+    strategy.entry("PRIMARY_S", strategy.short, comment="PRIMARY_S")
+    entry_type := "BOUNCE"
+    entry_bar  := bar_index
+
+// ──────────────── EXIT DECISION (should_exit_btc) ──────────────────
+is_breakout_pos = entry_type == "BREAKOUT"
+eff_hard_loss   = is_breakout_pos ? breakout_hard_loss_pct : hard_loss_pct
+eff_min_hold    = is_breakout_pos ? breakout_min_hold_bars : min_hold_bars
+
+// BOUNCE exit triggers
+wt_against_count = is_long ? wt_bear_count : wt_bull_count
+exit_wt_against    = wt_against_count >= tech_exit_wt_min_tfs
+exit_accel_rev     = intrabar_reversal_exit and ((is_long and accel_side == "bear") or (is_short and accel_side == "bull"))
+exit_div_against   = divergence_exit_against and divergence_enabled and ((is_long and bear_inds_eff >= divergence_bear_min_inds) or (is_short and bull_inds_eff >= divergence_bull_min_inds))
+
+// BREAKOUT exit triggers
+wt_3m_against      = (is_long and wt1_3m < wt2_3m) or (is_short and wt1_3m > wt2_3m)
+dc_low4_breach     = is_long  and close < dc_low4_3m_prev  and dc_low4_3m_prev  > 0
+dc_high4_breach    = is_short and close > dc_high4_3m_prev and dc_high4_3m_prev > 0
+exit_breakout_struct = is_breakout_pos and (dc_low4_breach or dc_high4_breach)
+exit_breakout_3mflip = is_breakout_pos and wt_3m_against
+exit_breakout_accel  = is_breakout_pos and ((is_long and accel_side == "bear") or (is_short and accel_side == "bull"))
+
+// Compose
+do_exit = false
+exit_reason = ""
+if not is_flat
+    if is_breakout_pos
+        if exit_breakout_struct
+            do_exit := true
+            exit_reason := is_long ? "BREAKOUT_DC_LOW4_3M_BREACH" : "BREAKOUT_DC_HIGH4_3M_BREACH"
+        else if exit_breakout_3mflip
+            do_exit := true
+            exit_reason := "BREAKOUT_WT_3M_FLIP"
+        else if exit_breakout_accel
+            do_exit := true
+            exit_reason := "BREAKOUT_ACCEL_REVERSAL"
+    else
+        if exit_wt_against
+            do_exit := true
+            exit_reason := "WT_AGAINST"
+        else if exit_accel_rev
+            do_exit := true
+            exit_reason := is_long ? "ACCEL_REVERSAL_BEAR" : "ACCEL_REVERSAL_BULL"
+        else if exit_div_against
+            do_exit := true
+            exit_reason := is_long ? "BEAR_DIV_EXIT" : "BULL_DIV_EXIT"
+    // Min-hold gate: cancel exit unless deep in red
+    if (bar_index - entry_bar) < eff_min_hold and cur_pnl_pct > eff_hard_loss
+        do_exit := false
+    // Hard-loss override: always exit
+    if cur_pnl_pct <= eff_hard_loss
+        do_exit := true
+        exit_reason := is_breakout_pos ? "BREAKOUT_HARD_LOSS_USD_FLOOR" : "HARD_LOSS_USD_FLOOR"
+
+if do_exit
+    exited_side = is_long ? "LONG" : "SHORT"
+    strategy.close_all(comment=exit_reason)
+    last_exit_bar   := bar_index
+    last_exit_price := close
+    last_exit_side  := exited_side
+    last_exit_type  := entry_type
+
+// ──────────────── REVERSE-ON-EXIT ──────────────────────────────────
+// If we just closed and an OPPOSITE breakout fires this bar, flip.
+exited_this_bar    = do_exit
+just_exited_long   = exited_this_bar and last_exit_side == "LONG"
+just_exited_short  = exited_this_bar and last_exit_side == "SHORT"
+reverse_to_short   = reverse_on_exit_enabled and just_exited_long  and bk_side == "SHORT"
+reverse_to_long    = reverse_on_exit_enabled and just_exited_short and bk_side == "LONG"
+
+if reverse_to_short
+    strategy.entry("REVERSE_S", strategy.short, comment="REVERSE_S")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+if reverse_to_long
+    strategy.entry("REVERSE_L", strategy.long, comment="REVERSE_L")
+    entry_type := "BREAKOUT"
+    entry_bar  := bar_index
+
+// ──────────────── VISUALS — entry/exit shapes ──────────────────────
+plotshape(show_entry_shapes and fire_long_primary,  title="PRIMARY_L",  style=shape.triangleup,   location=location.belowbar, color=color.new(color.green, 0),   size=size.tiny)
+plotshape(show_entry_shapes and fire_short_primary, title="PRIMARY_S",  style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0),     size=size.tiny)
+plotshape(show_entry_shapes and fire_long_reentry,  title="REENTRY_L",  style=shape.triangleup,   location=location.belowbar, color=color.new(color.aqua, 0),    size=size.tiny)
+plotshape(show_entry_shapes and fire_short_reentry, title="REENTRY_S",  style=shape.triangledown, location=location.abovebar, color=color.new(color.fuchsia, 0), size=size.tiny)
+plotshape(show_entry_shapes and fire_long_breakout, title="BREAKOUT_L", style=shape.diamond,      location=location.belowbar, color=color.new(color.green, 0),   size=size.small)
+plotshape(show_entry_shapes and fire_short_breakout,title="BREAKOUT_S", style=shape.diamond,      location=location.abovebar, color=color.new(color.red, 0),     size=size.small)
+plotshape(show_entry_shapes and reverse_to_long,    title="REVERSE_L",  style=shape.xcross,       location=location.belowbar, color=color.new(color.yellow, 0),  size=size.small)
+plotshape(show_entry_shapes and reverse_to_short,   title="REVERSE_S",  style=shape.xcross,       location=location.abovebar, color=color.new(color.yellow, 0),  size=size.small)
+plotshape(show_entry_shapes and fire_long_ft,       title="FT_REENTRY_L", style=shape.cross,      location=location.belowbar, color=color.new(color.lime, 0),    size=size.tiny)
+plotshape(show_entry_shapes and fire_short_ft,      title="FT_REENTRY_S", style=shape.cross,      location=location.abovebar, color=color.new(color.maroon, 0),  size=size.tiny)
+plotshape(show_entry_shapes and do_exit,            title="EXIT",         style=shape.xcross,     location=location.absolute, color=color.new(color.gray, 0),    size=size.tiny)
+
+// Optional RZ overlay (debug)
+plot(show_rz_levels and rz_use_fib ? swing_h_4h - (swing_h_4h - swing_l_4h) * 0.382 : na, title="fib 0.382 (4h)", color=color.new(color.orange, 60))
+plot(show_rz_levels and rz_use_fib ? swing_h_4h - (swing_h_4h - swing_l_4h) * 0.500 : na, title="fib 0.500 (4h)", color=color.new(color.orange, 40))
+plot(show_rz_levels and rz_use_fib ? swing_h_4h - (swing_h_4h - swing_l_4h) * 0.618 : na, title="fib 0.618 (4h)", color=color.new(color.orange, 60))
+plot(show_rz_levels ? dc_high_3m_prev : na, title="dc_high_3m_prev", color=color.new(color.green, 60), style=plot.style_stepline)
+plot(show_rz_levels ? dc_low_3m_prev  : na, title="dc_low_3m_prev",  color=color.new(color.red,   60), style=plot.style_stepline)
+
+// ──────────────── STATS TABLE ──────────────────────────────────────
+var table tbl = table.new(position.top_right, 2, 10, border_width=1)
+
+if show_stats_table and barstate.islast
+    table.cell(tbl, 0, 0, "BTC LOOP V3",                           bgcolor=color.new(color.black, 70), text_color=color.white)
+    table.cell(tbl, 1, 0, btc_dedicated_enabled ? "ON" : "OFF",    bgcolor=color.new(color.black, 70), text_color=btc_dedicated_enabled ? color.lime : color.gray)
+    table.cell(tbl, 0, 1, "RZ active",                              text_color=color.white)
+    table.cell(tbl, 1, 1, str.tostring(rz_active),                  text_color=rz_active ? color.lime : color.gray)
+    table.cell(tbl, 0, 2, "Accel side / TFs",                       text_color=color.white)
+    table.cell(tbl, 1, 2, accel_side + " " + str.tostring(accel_side == "bull" ? bull_aligned_tfs : bear_aligned_tfs) + "/5", text_color=accel_side == "bull" ? color.lime : accel_side == "bear" ? color.red : color.gray)
+    table.cell(tbl, 0, 3, "Div bull / bear inds",                   text_color=color.white)
+    table.cell(tbl, 1, 3, str.tostring(bull_inds_eff) + " / " + str.tostring(bear_inds_eff),                                  text_color=color.white)
+    table.cell(tbl, 0, 4, "WT against L / S",                       text_color=color.white)
+    table.cell(tbl, 1, 4, str.tostring(wt_bear_count) + " / " + str.tostring(wt_bull_count),                                  text_color=color.white)
+    table.cell(tbl, 0, 5, "HTF aligned L / S",                      text_color=color.white)
+    table.cell(tbl, 1, 5, str.tostring(htf_long_n) + " / " + str.tostring(htf_short_n),                                       text_color=color.white)
+    table.cell(tbl, 0, 6, "Entry type",                              text_color=color.white)
+    table.cell(tbl, 1, 6, is_flat ? "FLAT" : entry_type,            text_color=is_flat ? color.gray : entry_type == "BREAKOUT" ? color.orange : color.aqua)
+    table.cell(tbl, 0, 7, "Pos pnl %",                               text_color=color.white)
+    table.cell(tbl, 1, 7, str.tostring(cur_pnl_pct, "#.###") + "%", text_color=cur_pnl_pct >= 0 ? color.lime : color.red)
+    table.cell(tbl, 0, 8, "Hard loss %",                             text_color=color.white)
+    table.cell(tbl, 1, 8, str.tostring(eff_hard_loss, "#.###") + "%", text_color=color.fuchsia)
+    table.cell(tbl, 0, 9, "Last exit",                               text_color=color.white)
+    table.cell(tbl, 1, 9, last_exit_side + " (" + last_exit_type + ")", text_color=color.white)

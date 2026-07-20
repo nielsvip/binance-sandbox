@@ -131,6 +131,19 @@ class TradierPriceFetcher:
                             'timestamp': ts.isoformat(),
                         }
                 except Exception: continue
+
+        # Ensure all self.symbols are present in all_quotes. Carry forward or alert.
+        for symbol in self.symbols:
+            if symbol not in all_quotes:
+                cached = self.price_cache.get(symbol)
+                if cached and isinstance(cached, dict) and cached.get('price', 0.0) > 0:
+                    all_quotes[symbol] = cached
+                else:
+                    try:
+                        import ez_alert
+                        ez_alert.alert_missing_price(symbol)
+                    except Exception as e:
+                        logger.error(f"Error alerting missing price for {symbol}: {e}")
         return all_quotes
 
     async def broadcast_to_redis(self, prices: Dict[str, Dict]):

@@ -103,3 +103,33 @@ def alert_bad_exit(account, position_key, gain, reason, entry_signal, entry_ts, 
         _osascript_notify(title=f"{_short_reason} — {position_key}", subtitle=f"{account or '?'} | g={gain:.2f}% | see :5057", body=f"reason={str(reason)[:60]}")
     except Exception:
         pass
+
+
+def alert_missing_price(symbol: str):
+    """Alert when a coin has no current price in any source (meaning it may not exist anymore)."""
+    rec = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "account": "global",
+        "position_key": f"global:{symbol}",
+        "gain_pct": 0.0,
+        "exit_reason": f"PRICE_MISSING_ALERT: {symbol} has no price in any source",
+        "entry_signal": "N/A",
+        "entry_ts": "N/A",
+        "current_price": 0.0,
+    }
+    try:
+        os.makedirs(os.path.dirname(ALERT_LOG), exist_ok=True)
+        with open(ALERT_LOG, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception:
+        pass
+    try:
+        _key = ("global", symbol, "PRICE_MISSING")
+        _now = time.time()
+        _last = _NOTIFY_LAST.get(_key, 0.0)
+        if _now - _last < ALERT_NOTIFY_THROTTLE_SEC:
+            return
+        _NOTIFY_LAST[_key] = _now
+        _osascript_notify(title=f"🛑 PRICE MISSING — {symbol}", subtitle="Delisted?", body=f"No price found in ANY source. Remove it.")
+    except Exception:
+        pass

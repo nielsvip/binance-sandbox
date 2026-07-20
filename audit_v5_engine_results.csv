@@ -1,0 +1,28 @@
+V5 ENGINE AUDIT — ATOMUSDT — March 2026 (24 days)
+
+METRIC,VALUE,ASSESSMENT
+Capital,"$10,000",
+Final Equity,"$9,977.03",LOST MONEY
+Total PnL %,-0.23%,NEGATIVE
+Realized PnL,$+0.62,2 winning closes = $0.62 total
+Unrealized PnL,$-23.59,BOTH open positions underwater
+Sharpe,0.000,ZERO — no alpha
+Max Drawdown,0.30%,
+Total Trades,37,37 trades but only 2 opens + 2 closes = 4 real decisions
+Signal Opens (non-seed),2,ZERO new entries — engine cannot find trades
+Closes,2,"2 closes, both winners (STRICT_NO_LOSS blocks losers)"
+Win Rate,100.0%,"FAKE 100% — only closes winners, holds losers forever"
+Hedge Actions,0,ZERO hedges
+
+OPEN POSITION,ENTRY,MARK,GAIN%,PnL$,QTY
+ang:ATOMUSDT_LONG,1.9471,1.769,-9.15%,$-20.58,115.568854
+ang:ATOMUSDT_SHORT,1.7463,1.769,-1.30%,$-3.01,132.253273
+
+CRITICAL FINDINGS
+1,ZERO signal-driven entries in 24 days,Engine seeds LONG+SHORT at bar 0 but NEVER opens new positions via entry logic
+2,100% WR is fake,"Only 2 closes in 24 days, both at tiny profit. LONG at -9.15% held indefinitely."
+3,33 of 37 trades are QUICK_AUGMENT,Engine augments existing seeded positions but never opens or closes meaningfully
+4,STRICT_NO_LOSS blocks all exits,WT_4H_VEL_EXIT fires repeatedly but gets blocked because position is in loss
+5,LONG entry_price 1.9471 vs mark 1.769 = -9.15%,"Seeded at bar 0 at unfortunate price, trapped forever"
+6,No fees modeled,All 37 trades execute at 0% cost. Real cost ~0.04-0.08% per round trip.
+7,No slippage modeled,Fills at exact bar close price. Real spreads 0.02-0.05%.

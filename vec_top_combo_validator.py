@@ -140,7 +140,15 @@ def main():
                 "max_dd_pct": max_dd_pct,
                 "n_syms": n_syms, "years": round(years, 2),
                 "ts_utc": ts_iso, "mode": args.mode,
-                "iter": f"{r['side']}_{r['combo']}_h{h}", "side": side, "horizon": h,
+                # 2026-07-07: "iter" is coerced to float by the DB ingester (it's a
+                # numeric column elsewhere) — that was silently nulling this row's
+                # only identifier (combo+horizon string) for every one of this
+                # producer's rows (the single largest source, ~700k rows / 56% of
+                # the central DB). Recorded in "label" too, which the ingester
+                # keeps as text, so "what was tested" survives ingestion.
+                "iter": f"{r['side']}_{r['combo']}_h{h}",
+                "label": f"{r['side']}_{r['combo']}_h{h}",
+                "combo": r["combo"], "side": side, "horizon": h,
                 "wr": round(eff_wr, 1), "pf": round(m["pf"], 3), "engine": "vec_top_combo_validator",
             }, mode=args.mode)
         except Exception as e:

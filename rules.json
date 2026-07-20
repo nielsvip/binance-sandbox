@@ -1,0 +1,50 @@
+{
+  "watchlist_source": "symbols_trb",
+  "timeframes": ["15m", "1h", "4h", "D"],
+  "output_path": "data/tv_morning_brief.json",
+
+  "long_bias": {
+    "description": "WT bullish + stoch not overbought + MFI rising",
+    "wt_direction": "bullish",
+    "min_tfs_aligned": 2,
+    "stoch_k_max": 80,
+    "mfi_min": 40,
+    "required_tfs": ["4h", "D"]
+  },
+
+  "short_bias": {
+    "description": "WT bearish + stoch not oversold + MFI falling",
+    "wt_direction": "bearish",
+    "min_tfs_aligned": 2,
+    "stoch_k_min": 20,
+    "mfi_max": 60,
+    "required_tfs": ["4h", "D"]
+  },
+
+  "strength_scoring": {
+    "wt_1h_aligned": 1,
+    "wt_4h_aligned": 1,
+    "wt_D_aligned": 1,
+    "stoch_not_extreme": 1,
+    "mfi_confirming": 1
+  },
+
+  "output_schema": {
+    "generated_at": "ISO8601 UTC timestamp",
+    "symbols_long_count": "int",
+    "symbols_short_count": "int",
+    "summary": "e.g. '12 long setups, 7 short setups from 114 trb symbols'",
+    "market_bias": "LONG | SHORT | NEUTRAL",
+    "top_longs": ["symbol list ordered by strength desc"],
+    "top_shorts": ["symbol list ordered by strength desc"],
+    "bias": {
+      "<SYMBOL>": {
+        "side": "long | short",
+        "signal": "LONG | SHORT | NEUTRAL",
+        "strength": "0-5 int",
+        "wt_tfs_aligned": "int count of aligned TFs",
+        "note": "brief human-readable note e.g. 'WT 1h+4h+D bullish, stoch K 45'"
+      }
+    }
+  }
+}

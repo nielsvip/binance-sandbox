@@ -1,0 +1,56 @@
+{
+  "sweeps": [
+    {
+      "id": "crypto_gr_dcbb_20260513",
+      "mode": "crypto",
+      "tier": "gr_dcbb_threshold",
+      "symbols": "BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC,ADAUSDC,BNBUSDC,LINKUSDC,LTCUSDC",
+      "start": "2026-03-01",
+      "workers": 1,
+      "timeout": 5400,
+      "account": "ang",
+      "status": "pending",
+      "error": null,
+      "retries": 0
+    },
+    {
+      "id": "crypto_gr_vote_score_20260513",
+      "mode": "crypto",
+      "tier": "gr_vote_score",
+      "symbols": "BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC,ADAUSDC,BNBUSDC,LINKUSDC,LTCUSDC",
+      "start": "2026-03-01",
+      "workers": 1,
+      "timeout": 5400,
+      "account": "ang",
+      "status": "pending",
+      "error": null,
+      "retries": 0
+    },
+    {
+      "id": "tradier_grtf7_hunt_resume_20260513",
+      "mode": "tradier",
+      "tier": "tradier_grtf7_hunt_resume",
+      "symbols": "AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS",
+      "start": "2026-01-01",
+      "workers": 1,
+      "timeout": 5400,
+      "account": "trb",
+      "status": "running",
+      "error": null,
+      "retries": 0
+    },
+    {
+      "id": "crypto_system_combo_20260513",
+      "mode": "crypto",
+      "tier": "system_combo",
+      "symbols": "BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC,ADAUSDC,BNBUSDC,LINKUSDC,LTCUSDC",
+      "start": "2026-03-01",
+      "workers": 1,
+      "timeout": 5400,
+      "account": "ang",
+      "status": "running",
+      "error": null,
+      "retries": 0
+    }
+  ]
+}

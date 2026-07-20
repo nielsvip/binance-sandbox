@@ -2,6 +2,11 @@
 
 This file acts as the primary "continue from last time" index, ensuring 100% accurate session continuity across conversations.
 
+## 🎯 2026-07-08 — GAINMO APPLY (full-system change set)
+- **Snapshot backup (ROLLBACK POINT): `backups/SNAPSHOT_BEFORE_GAINMO_APPLY_202607082130/`** — all touched code+data+S1 state pre-change, see its README.md.
+- Analysis + suggestion list applied: `GAINMO_MAXIMIZATION_20260708.md`.
+
+
 ---
 
 ## 🔗 Active Memory Anchors
@@ -16,7 +21,8 @@ This file acts as the primary "continue from last time" index, ensuring 100% acc
 
 ## 🎯 Immediate Next Steps
 
-1. **Remove Hold File**: Remove `/tmp/REENTRY_DAEMON_HOLD` once you are ready to resume live reentry evaluation.
-2. **Restart Services**: Restart the account services to load the new files from disk (e.g. `ez_manage.py`, `tradier_manage.py`, and `ez_reentry_daemon.py`).
-3. **Verify Performance**: Watch active logs for any reentry confirmation decisions and ensure they align with the stochastic and WT indicators.
-4. **Sweeps**: Ensure S1 continues sweeps correctly now that the codebase matches MacBook perfectly.
+1. **Monitor Reentry Performance**: Check sweep logs on S1 to ensure the new 0.2% trend-resumption bypass is triggering and correctly re-entering strong runners (long and short) that previously starved in the confirmation gate.
+2. **Push to Server**: Once you verify MacBook live trading has logic parity and performs well, push the updated files to your live servers.
+3. **Audit Results Digest**: Verify the results digest email correctly displays negative short benchmarks and signed `gain_vs_bh` ratios.
+
+## 📚 TEST_SUMMARY.md — comprehensive catalog of ALL backtests/analyses (Mac + S1): live A/B, per_sym-vs-7D, OAT/sensitivity, sweep_results types, central DBs, data pipeline, regenerate cheat-sheet. (added 2026-06-27)

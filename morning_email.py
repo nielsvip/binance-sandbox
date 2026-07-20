@@ -1674,6 +1674,26 @@ def build_hedge_proposals_section():
     return "\n".join(out)
 
 
+def build_persym_campaign_section():
+    digest = DATA_DIR / "reports" / "persym_campaign_digest.md"
+    uni = DATA_DIR / "reports" / "universe_vs_random_baseline.json"
+    parts = []
+    try:
+        if digest.exists():
+            age_h = (datetime.now(timezone.utc).timestamp() - digest.stat().st_mtime) / 3600
+            body = digest.read_text()
+            lines = [ln for ln in body.splitlines() if ln.strip()][:28]
+            parts.append(f'<div class="box"><p style="font-size:11px;color:#888">digest age {age_h:.1f}h (S1 pulls hourly; stale &gt;24h = campaign stalled)</p><pre style="font-size:11px;white-space:pre-wrap">{chr(10).join(lines)}</pre></div>')
+        if uni.exists():
+            data = json.loads(uni.read_text())
+            rows = "".join(f"<tr><td>{k}</td><td>{v.get('n_keys')}</td><td>{v.get('mean_pool_sharpe')}</td><td>{v.get('trades')}</td><td>{v.get('mean_delta_vs_bh_mo')}</td></tr>" for k, v in data.items() if isinstance(v, dict))
+            if rows:
+                parts.append(f'<div class="box"><b>Universe (curated point-in-time) vs off-universe keys — identical baseline runs</b><table><tr><th>set</th><th>keys</th><th>mean pool_sharpe</th><th>trades</th><th>mean Δgain/mo vs b&amp;h</th></tr>{rows}</table></div>')
+    except Exception as e:
+        parts.append(f'<p class="gr">campaign section error: {e}</p>')
+    return "".join(parts) or '<p class="gr">No campaign digest yet (S1 grind not reporting).</p>'
+
+
 def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_closed=None):
     now_utc = datetime.now(timezone.utc)
     now_et = now_utc - timedelta(hours=4)
@@ -1733,6 +1753,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 <h2>&#127981; Corrupt Politicians' Trades to Copy</h2>
 {build_congress_section()}
 
+<h2>&#128300; Per-Sym Baseline Campaign (S1)</h2>
+{build_persym_campaign_section()}
+
 <hr style="margin-top:30px;border:none;border-top:1px solid #ccc">
 <p style="font-size:10px;color:#aaa">Generated {now_utc.strftime('%Y-%m-%d %H:%M')} UTC &mdash; positions and prices from local files &mdash; news from Yahoo Finance + CNBC RSS</p>
 </body></html>"""
@@ -1753,17 +1776,26 @@ def send_email(html_body, to=None, subject=None):
     msg["To"] = ", ".join(recipients)
     msg.attach(MIMEText("Open in HTML email client.", "plain"))
     msg.attach(MIMEText(html_body, "html"))
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
-        server.starttls()
-        server.login(FROM_EMAIL, pwd)
-        server.sendmail(FROM_EMAIL, recipients, msg.as_string())
-        server.quit()
-        logger.info(f"Email sent to {', '.join(recipients)}")
-        return True
-    except Exception as e:
-        logger.error(f"Send failed: {e}")
-        return False
+    # 2026-06-04: this network blocks outbound 587 (STARTTLS) but allows 465 (SSL) — all email
+    # was failing "Connection refused" on 587. Try SSL/465 first, fall back to STARTTLS/587.
+    last_err = None
+    for mode, port in (("ssl", 465), ("starttls", 587)):
+        try:
+            if mode == "ssl":
+                server = smtplib.SMTP_SSL("smtp.gmail.com", port, timeout=30)
+            else:
+                server = smtplib.SMTP("smtp.gmail.com", port, timeout=30)
+                server.starttls()
+            server.login(FROM_EMAIL, pwd)
+            server.sendmail(FROM_EMAIL, recipients, msg.as_string())
+            server.quit()
+            logger.info(f"Email sent to {', '.join(recipients)} via {mode}:{port}")
+            return True
+        except Exception as e:
+            last_err = e
+            logger.warning(f"Send via {mode}:{port} failed: {e}")
+    logger.error(f"Send failed on all transports: {last_err}")
+    return False
 
 
 def run_scanner_if_stale():

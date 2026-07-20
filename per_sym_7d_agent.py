@@ -19,6 +19,19 @@ for reading the active config and routing through execute_now().
 """
 from __future__ import annotations
 
+def _bible125_stamp():
+    import hashlib as _h, os as _os
+    base = _os.path.dirname(_os.path.abspath(__file__))
+    parts = []
+    for tag, f in (("eng", "backtest_v8_engine.py"), ("tm", "tradier_manage.py"), ("wdd", "wt_dc_delta.py"), ("cfgt", "config_tradier.py")):
+        try:
+            parts.append(tag + ":" + _h.md5(open(_os.path.join(base, f), "rb").read()).hexdigest()[:10])
+        except Exception:
+            parts.append(tag + ":?")
+    return "+".join(parts)
+
+
+
 import argparse
 import json
 import math
@@ -136,6 +149,16 @@ PROMOTE_WSHARPE_FLOOR = 0.7
 MIN_TRADES_FOR_OPINION = 6
 TPD_MIN = 5.0
 TPD_MAX = 15.0
+# 2026-06-04 SAMPLE-FLOOR GATE (CLAUDE.md IMPOSTER-BLOCK / no-lies): a per-sym
+# key may only become LIVE-ACTIVE with >=30 trades. This 7d window is < 1yr by
+# construction so anything it promotes is recency-diagnostic; the >=30-trade
+# floor is the minimum bar for the `promote` flag to be honoured downstream
+# (promote_pending floor-gate guard also re-checks). Below floor => DIAGNOSTIC.
+try:
+    import metrics_guard as _mg
+    LIVE_PROMOTE_MIN_TRADES = int(_mg.MIN_TRADES_PER_SYM_FOR_SYM_SHARPE)
+except Exception:
+    LIVE_PROMOTE_MIN_TRADES = 30
 
 
 def time_weighted_pool_sharpe(returns_with_ts: List[Tuple[float, int]],
@@ -210,6 +233,10 @@ def neighborhood_variants(base: SymParams) -> List[Tuple[str, SymParams]]:
     variants.append(('toggle_meanrev', p))
     p = base.copy(); p.NOLOSS_ENABLED = not base.NOLOSS_ENABLED
     variants.append(('toggle_noloss', p))
+    p = base.copy(); p.EXIT_STRUCT_TF = '15m'; variants.append(('struct_tf_15m', p))
+    p = base.copy(); p.EXIT_STRUCT_TF = '1h'; variants.append(('struct_tf_1h', p))
+    p = base.copy(); p.EXIT_STRUCT_TF = '4h'; variants.append(('struct_tf_4h', p))
+    p = base.copy(); p.EXIT_STRUCT_TF = 'D'; variants.append(('struct_tf_D', p))
     return variants
 
 
@@ -295,14 +322,24 @@ def reconfig_one_sym(sym: str) -> Optional[Dict]:
         results.append((tag, r))
     if not results:
         return None
-    # Pick winner by weighted Sharpe; require min trades
+    # Pick winner by gain (2026-07-08 GAINMO, USER mandate) constrained to wsharpe>0;
+    # require min trades. Unconstrained gain-max selects fee-bleed churn (churn law:
+    # GAINMO_MAXIMIZATION_20260708.md), so sharpe<=0 variants can never win; fallback
+    # to the old wsharpe pick when no variant is sharpe-positive.
     eligible = [(t, r) for t, r in results if r['trades'] >= MIN_TRADES_FOR_OPINION]
     if not eligible:
         eligible = results
-    winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
+    _positive = [(t, r) for t, r in eligible if r['wsharpe'] > 0.0]
+    if _positive:
+        winner_tag, winner_r = max(_positive, key=lambda x: x[1].get('gain_per_week', 0.0))
+    else:
+        winner_tag, winner_r = max(eligible, key=lambda x: x[1]['wsharpe'])
+    winner_r['winner_overrides'] = dict(variants).get(winner_tag, {})  # Bible 12.5 full recipe
     base_tag = 'baseline'
     base_r = next((r for t, r in results if t == base_tag), winner_r)
+    sample_floor_ok = winner_r['trades'] >= LIVE_PROMOTE_MIN_TRADES
     promote = (
+        sample_floor_ok and
         winner_r['wsharpe'] >= PROMOTE_WSHARPE_FLOOR and
         winner_r['wsharpe'] - base_r['wsharpe'] >= PROMOTE_DELTA_WSHARPE and
         winner_r['trades_per_day'] >= TPD_MIN and
@@ -329,6 +366,8 @@ def reconfig_one_sym(sym: str) -> Optional[Dict]:
         'hedge_count': winner_r['hedge_count'],
         'follow_through_count': winner_r['follow_through_count'],
         'promote': promote,
+        'sample_floor_ok': sample_floor_ok,
+        'sample_tag': ('FLOOR_OK' if sample_floor_ok else f"[DIAGNOSTIC sub-floor · trades={winner_r['trades']}<{LIVE_PROMOTE_MIN_TRADES}]"),
         'params': winner_r['params'],
         'all_variants': [{'tag': t, 'wsharpe': r['wsharpe'], 'trades': r['trades'],
                           'wr_pct': r.get('wr_pct', 0.0), 'max_dd_pct': r.get('max_dd_pct', 0.0),
@@ -356,6 +395,8 @@ def write_active_7d(account: str, results: List[Dict]) -> int:
         sym = r['sym']
         payload[sym] = {
             'winning_tag': r['winner_tag'],
+            'overrides': r.get('winner_overrides', {}),
+            'settings_stamp': _bible125_stamp(),
             'wsharpe': r['winner_wsharpe'],
             'baseline_wsharpe': r['baseline_wsharpe'],
             'delta_wsharpe': r['delta_wsharpe'],
@@ -438,7 +479,9 @@ def load_account_syms(account: str) -> List[str]:
         'fin': ['symbols_fin.json'],
         'men': ['symbols_men.json'],
         'ang': ['symbols_ang_long.json', 'symbols_ang_short.json'],
-        'inf': ['symbols_inf_long.json', 'symbols_inf_short.json'],
+        # 2026-07-19 USER: inf now reconfigures over men's universe (per_sym + 7D reapplied
+        # on the same symbols as men) for a live A/B comparison. See BACKTEST_BIBLE.md.
+        'inf': ['symbols_men_long.json', 'symbols_men_short.json'],
     }.get(account, [])
     syms: List[str] = []
     seen = set()

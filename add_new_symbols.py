@@ -2,8 +2,8 @@ import json
 import os
 import shutil
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Try importing redis
 try:
@@ -183,29 +183,29 @@ def main():
                 except Exception as e:
                     print(f"    ❌ Failed to write {filename}: {e}")
 
-    # 3. UPDATE TRADEABLE KEYS
-    print("\n📜 Updating tradeable_keys.json...")
-    try:
-        existing_keys = set()
-        if TRADEABLE_KEYS_FILE.exists():
-            with open(TRADEABLE_KEYS_FILE, 'r') as f:
-                try:
-                    content = json.load(f)
-                    if isinstance(content, list):
-                        existing_keys = set(content)
-                except Exception: pass
+    # # 3. UPDATE TRADEABLE KEYS
+    # print("\n📜 Updating tradeable_keys.json...")
+    # try:
+    #     existing_keys = set()
+    #     if TRADEABLE_KEYS_FILE.exists():
+    #         with open(TRADEABLE_KEYS_FILE, 'r') as f:
+    #             try:
+    #                 content = json.load(f)
+    #                 if isinstance(content, list):
+    #                     existing_keys = set(content)
+    #             except Exception: pass
         
-        # Merge new keys, but drop removed keys based on our master loop
-        updated_keys = sorted(list((existing_keys | all_generated_keys)))
-        # Strictly, only keep keys that correspond to current master_symbols
-        strict_updated_keys = [k for k in updated_keys if any(k.endswith(f":{sym}_LONG") or k.endswith(f":{sym}_SHORT") for sym in master_symbols_set)]
+    #     # Merge new keys, but drop removed keys based on our master loop
+    #     updated_keys = sorted(list((existing_keys | all_generated_keys)))
+    #     # Strictly, only keep keys that correspond to current master_symbols
+    #     strict_updated_keys = [k for k in updated_keys if any(k.endswith(f":{sym}_LONG") or k.endswith(f":{sym}_SHORT") for sym in master_symbols_set)]
         
-        with open(TRADEABLE_KEYS_FILE, 'w') as f:
-            json.dump(strict_updated_keys, f, indent=2)
-        print(f"✅ Updated {TRADEABLE_KEYS_FILE.name} with {len(strict_updated_keys)} keys.")
+    #     with open(TRADEABLE_KEYS_FILE, 'w') as f:
+    #         json.dump(strict_updated_keys, f, indent=2)
+    #     print(f"✅ Updated {TRADEABLE_KEYS_FILE.name} with {len(strict_updated_keys)} keys.")
         
-    except Exception as e:
-        print(f"❌ Failed to update tradeable_keys.json: {e}")
+    # except Exception as e:
+    #     print(f"❌ Failed to update tradeable_keys.json: {e}")
 
     # 4. REDIS FLUSH
     print("\n🧹 Flushing Redis Cache...")
