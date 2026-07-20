@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-20T20:27:25.942725+00:00",
+  "timestamp": "2026-07-20T20:42:41.356004+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,16 @@
   },
   "unified_ranking": [
     {
-      "symbol": "SKLUSDT",
-      "net_score": -11.4,
+      "symbol": "VETUSDT",
+      "net_score": -10.3,
       "long_score": 0,
-      "short_score": 11.4
+      "short_score": 10.3
+    },
+    {
+      "symbol": "SKLUSDT",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "USUALUSDT",
@@ -98,12 +104,6 @@
     },
     {
       "symbol": "BCHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -863,8 +863,13 @@
   "top_shorts": [
     [
       "SKLUSDT",
-      11.4,
-      0.00390251
+      10.3,
+      0.00390397
+    ],
+    [
+      "VETUSDT",
+      10.3,
+      0.00470873
     ]
   ],
   "hedge_usage": {

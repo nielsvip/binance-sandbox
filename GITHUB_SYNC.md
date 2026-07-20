@@ -27,10 +27,19 @@ flows from GitHub back into a live machine automatically.**
   anything that scanned positive for live credentials (found and fixed
   2026-07-20: `auth-profiles.json` had a live Anthropic OAuth token +
   OpenRouter/Google keys in plaintext — that file must never be tracked).
-- **S1 (`/home/niels/binance-sandbox`)** — backtesting sandbox. Has
-  substantial code that has diverged from Mac (hundreds of experiment
-  scripts never pushed back). Not yet wired to GitHub as of 2026-07-20 —
-  see the open item at the bottom of this file.
+- **S1 (`/home/niels/binance-sandbox`)** — backtesting sandbox. Had zero
+  git history despite ~900 changed files; got its own local repo + matching
+  `.gitignore` on 2026-07-20 (776 files, ~11MB, scanned clean of secrets —
+  first commit `88ac8f2`). Pushes to a **separate `s1-sandbox` branch**
+  (never `main`) via `github_sync.sh`, cron'd every 15 min, using its own
+  dedicated deploy-key identity (`~/.ssh/id_ed25519_github_binance_s1` on
+  S1, remote name `github-s1`, SSH host alias `github-binance-s1`) — kept
+  separate from Mac's key so a compromise of one machine's key doesn't grant
+  push access from the other. Same no-pull/no-force-push rules apply.
+  `~/binance` (a second, actively cron-driven directory on S1 — live-safety
+  watchdogs like `binance_ban_watchdog.py`/`hedge_safety_monitor.py` run
+  from there every 1-5 min) is explicitly **out of scope** — not touched,
+  not tracked, needs separate investigation before anyone decides to git it.
 
 ## THE RULE: no pull, no fetch-and-merge, no reset-from-remote — ever
 
@@ -73,11 +82,22 @@ flows from GitHub back into a live machine automatically.**
    — after that, `autosave_15min.py`'s next 15-min cycle starts pushing
    automatically (the code already no-ops safely until the remote exists).
 4. **Branch-protect `main`** on GitHub (Settings → Branches) once populated.
-5. **Decide on S1.** S1's `binance-sandbox` has hundreds of files that never
-   existed on Mac (experiment scripts) and zero git history of its own.
-   Recommended: `git init` + this same `.gitignore` pattern on S1, commit
-   locally for safety, and push to a **separate branch** (e.g.
-   `s1-sandbox`) on the same repo — never merge that branch into `main`
-   automatically. Not yet done as of 2026-07-20; flagged for the user to
-   decide since it requires reviewing ~900 changed files for anything that
-   shouldn't leave the sandbox.
+5. **Add S1's deploy key too** (`~/.ssh/id_ed25519_github_binance_s1.pub`
+   on S1, printed during the 2026-07-20 session) to the *same* repo as a
+   second deploy key, **with write access**. Then on S1:
+   `cd ~/binance-sandbox && git remote add github-s1 git@github-binance-s1:<owner>/<repo>.git`
+   — `github_sync.sh`'s next cron tick (every 15 min) starts pushing to the
+   `s1-sandbox` branch automatically once that remote exists.
+6. **S1 disk cleanup done 2026-07-20**: freed ~7GB (91%→89% used) by
+   deleting regenerable remote-IDE-server caches (`.cursor-server`,
+   `.antigravity-server`, `.antigravity-ide-server`, `.windsurf-server`,
+   `.gemini` — none had an active process using them) and pip/node caches.
+   Deliberately left untouched: `~/.local` (may hold load-bearing
+   `pip install --user` packages), `~/logs/` (2.9GB, live process logs),
+   `~/logs/{baseline,iter41}_t2_trades` and `~/hedge_ab_20260426` (looked
+   like real backtest results, not junk — didn't touch). `~/binance-agent-handoff/.git`
+   was 369MB from 13k+ uncompacted snapshot commits; `git gc --aggressive
+   --prune=now` was started 2026-07-20 20:1x UTC — check
+   `git -C ~/binance-agent-handoff count-objects -v` / `du -sh .git` if it's
+   still large, it may have needed a second pass under S1's load (17-22
+   load average observed same session).
