@@ -3465,6 +3465,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # evaluate_open. This block applies them as post-entry veto gates so flipping
                 # them in V8 sweeps produces real paired-run variance. Defaults are non-restrictive
                 # (preserve current live behaviour); sweeps that flip them tighter will gate trades.
+                _open_claim = reason if (action_type == "OPEN" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))) else None
                 if action_type == "OPEN" and account_key != 'tra':
                     _veto = None
                     _side_vf = "LONG" if is_long else "SHORT"
@@ -3526,7 +3527,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _uve_mode = _cfg("UVE_STRATEGY_MODE", "legacy", account_key, symbol, _side_vf)
                         _veto = f"UVE_ENTRY_BLOCK(mode={_uve_mode})"
                     if _veto is not None:
-                        logger.info(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto}")
+                        logger.warning(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto} orig_reason={(reason or '')[:70]}")
                         action_type = "NO_ACTION"
                         reason = _veto
                 if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
@@ -3673,6 +3674,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # Strategy returned NO_ACTION
                     log_rec = "WAIT"
                     log_reason = f"Sc:{int(tech_score)} {strategy_reason}"[:20]
+                if _open_claim and not action_taken:
+                    logger.critical(f"[ARROW_CLAIM_DROPPED] {account_key}:{symbol}_{position_side}: claimed='{_open_claim[:80]}' final_action={action_type} log_rec={locals().get('log_rec')} log_reason={str(locals().get('log_reason'))[:70]} market_open={locals().get('market_open')}")
 
         if action_taken:
              _entry = float(getattr(position, 'entry_price', 0.0) or 0.0) if position else 0.0
@@ -3837,6 +3840,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
     try:
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
+        if ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')) and 'CLOSE' not in (action or '').upper() and 'REDUCE' not in (action or '').upper():
+            logger.warning(f"[ARROW_QTA_RECEIVED] {position_key} {action} reason={(reason or '')[:90]}")
         try:
             _qa_act = (action or '').upper()
             if reason and ('OPEN' in _qa_act or 'AUGMENT' in _qa_act or 'ENTRY' in _qa_act) and 'CLOSE' not in _qa_act and 'REDUCE' not in _qa_act:

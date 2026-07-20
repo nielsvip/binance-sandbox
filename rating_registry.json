@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-20T20:58:21.430210+00:00",
+  "timestamp": "2026-07-20T21:13:20.586632+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "KAVAUSDT",
-      "net_score": -18.0,
+      "net_score": -17.4,
       "long_score": 0,
-      "short_score": 18.0
+      "short_score": 17.4
     },
     {
-      "symbol": "VETUSDT",
-      "net_score": -11.8,
+      "symbol": "NVDAUSDT",
+      "net_score": -11.5,
       "long_score": 0,
-      "short_score": 11.8
+      "short_score": 11.5
     },
     {
       "symbol": "USUALUSDT",
@@ -104,6 +104,12 @@
     },
     {
       "symbol": "BCHUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "VETUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -434,12 +440,6 @@
     },
     {
       "symbol": "SEIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -869,13 +869,13 @@
   "top_shorts": [
     [
       "KAVAUSDT",
-      18.0,
-      0.044415
+      17.4,
+      0.04447252
     ],
     [
-      "VETUSDT",
-      11.8,
-      0.004708
+      "NVDAUSDT",
+      11.5,
+      202.85
     ]
   ],
   "hedge_usage": {
