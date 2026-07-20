@@ -2413,12 +2413,18 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         # per_sym baseline + daily 7D reconfig methodology, run as its own independent
         # instance) so the two accounts are a live apples-to-apples comparison instead
         # of trading disjoint symbol sets. See BACKTEST_BIBLE.md §trb/trc parity.
-        symbols_trc_long = list(symbols_trb_long)
-        symbols_trc_short = list(symbols_trb_short)
         await _save_json_async(config.BASE_PATH / "symbols_tra_long.json", symbols_tra_long)
         await _save_json_async(config.BASE_PATH / "symbols_tra_short.json", symbols_tra_short)
         await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)
         await _save_json_async(config.BASE_PATH / "symbols_trb_short.json", symbols_trb_short)
+        # 2026-07-20 USER: trc MUST match trb exactly — read back the file just written to
+        # disk (not the in-memory list) so trc can never desync from trb's actual saved
+        # content, no matter what caused prior drift (observed: trb/trc diverging even on
+        # freshly-completed cycles, e.g. UUUU present in trc_short but missing from trb_short).
+        with open(config.BASE_PATH / "symbols_trb_long.json") as _trb_l_fh:
+            symbols_trc_long = json.load(_trb_l_fh)
+        with open(config.BASE_PATH / "symbols_trb_short.json") as _trb_s_fh:
+            symbols_trc_short = json.load(_trb_s_fh)
         await _save_json_async(config.BASE_PATH / "symbols_trc_long.json", symbols_trc_long)
         await _save_json_async(config.BASE_PATH / "symbols_trc_short.json", symbols_trc_short)
         logger.info(f"[rankings] Saved leaderboards: winners_20={len(to_save_top20)}, winners_30r={len(to_save_top30_r)}, symbols_trc_long={len(symbols_trc_long)}, symbols_trc_short={len(symbols_trc_short)}")
