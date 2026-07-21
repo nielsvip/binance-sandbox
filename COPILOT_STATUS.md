@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-21 04:43:01 UTC
+# Copilot Status — 2026-07-21 04:58:15 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T04:40:18
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T04:40:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T04:40:18
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:40:18
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:41:19
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T04:42:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T04:42:19
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T04:42:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T04:42:19
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:42:19
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T04:54:32
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T04:54:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T04:54:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:54:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:55:33
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T04:56:33
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T04:56:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T04:56:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:56:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T04:57:34
 
 ## Missed Trades (trader comparison)
 
@@ -37,8 +37,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 34
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for men is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_klines.py is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+- [LOW] tradier_rankings.py is NOT running
