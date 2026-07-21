@@ -1373,13 +1373,14 @@ class TradierConfig:
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True  # T25 sweep 2026-04-14 (10sym, fixed gates): True avg=0.492 vs False=0.229 (+115%). Previous stale result (False=0.548) was from broken-gate run.
-    RZ_TOP_BB_THRESHOLD: float = 0.85
-    RZ_BOT_BB_THRESHOLD: float = 0.375
+    RZ_TOP_BB_THRESHOLD: float = 0.99
+    RZ_BOT_BB_THRESHOLD: float = 0.01
+    RZ_EXIT_MIN_HTF: int = 2
     RZ_LEGS_MIN: float = 20.0
     RZ_REQUIRE_STRUCT: bool = False
-    RZ_K_EXIT: float = 80.0  # Stocks: exit long when k_1h > 80
-    RZ_MFI_EXIT: float = 85.0
-    RZ_K_ENTRY_MAX: float = 50.0  # Stocks: enter long only when k_1h < 50
+    RZ_K_EXIT: float = 105.0  # Stocks: exit long when k_1h > 80
+    RZ_MFI_EXIT: float = 95.0
+    RZ_K_ENTRY_MAX: float = 90.0  # Stocks: enter long only when k_1h < 50
     # Stock-specific RZ tuning — needs to differ from crypto since base TF is 5m not 3m,
     # intraday volatility is much smaller, and bars/day is RTH-limited (78 vs 480).
     RZ_LTF_MICRO: str = "5m"  # Stocks: 5m base; crypto uses 3m
@@ -1388,7 +1389,7 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
+    TRADIER_MIN_HOLD_MINUTES: float = 0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
     # === PRICE CROSS-BACK REENTRY (2026-04-27 user rule) ===
     # When a stock position is fully closed and price subsequently returns to within
     # a tight band of last_reduction_price, immediately reopen — bypasses ANTI_CHURN,
@@ -1484,12 +1485,12 @@ class TradierConfig:
     SMFI_SHORT_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     SMFI_MAX_PER_SIDE: int = 5  # Max concurrent SMFI positions per side
     # --- Minervini SEPA Screen — DISABLED on trb, paper on trc ---
-    MINERVINI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
-    MINERVINI_POSITION_SIZE: float = 800.0
+    MINERVINI_ENABLED: bool = True  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
+    MINERVINI_POSITION_SIZE: float = 80.0
     MINERVINI_MIN_SEPA_SCORE: int = 5  # Need 5 of 6 conditions
     MINERVINI_MAX_HOLD_DAYS: int = 40  # Swing trade hold
     MINERVINI_TARGET_PCT: float = 25.0  # Take profit at 25%
-    MINERVINI_LONG_BUDGET: float = 4000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
+    MINERVINI_LONG_BUDGET: float = 400.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     # --- Connors RSI Composite — DISABLED on trb, paper on trc ---
     CONNORS_RSI_ENABLED: bool = False  # DISABLED 2026-03-30: augmented MRVL at -6.74% on real money. Needs V5 validation.
     CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0  # Buy when CRSI < 10

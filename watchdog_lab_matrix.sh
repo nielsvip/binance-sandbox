@@ -40,6 +40,13 @@ launch_pmx w3 "MU,HAO"
 launch_pmx w4 "MU,TTD"
 launch_pmx w5 "MU,AXTI"
 launch_pmx w6 "MU,MNTS"
+# surge workers: claim the cores the tradeable_keys replay releases when it finishes
+if ! pgrep -f "precompute_tradeable_keys_histor[y]" >/dev/null; then
+  launch_pmx w7 "MU,ARM"
+  launch_pmx w8 "MU,NVDA"
+  launch_pmx w9 "MU,HAO"
+  launch_pmx w10 "MU,TTD"
+fi
 # VEC_SCREEN lane (USER 2026-07-21 "vectorize everything"): 2 workers cover the
 # manifest params the Tier-2 fleet skips (sweep_tier==VEC_SCREEN) via v8_vec_sweep.
 # Rows land in param_cells with source_file 'vec_screen/' — Tier-1 screen, not proof.

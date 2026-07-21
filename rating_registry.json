@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-07-21T15:05:04.852505+00:00",
+  "timestamp": "2026-07-21T15:20:34.079210+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 158
   },
   "unified_ranking": [
-    {
-      "symbol": "PENGUUSDC",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
-    },
     {
       "symbol": "USUALUSDT",
       "net_score": 0,
@@ -187,6 +181,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BTCDOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SUIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -296,6 +296,12 @@
     },
     {
       "symbol": "1000BONKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -679,6 +685,12 @@
       "short_score": 0
     },
     {
+      "symbol": "PENGUUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XMRUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -883,6 +895,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MUUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -913,6 +931,12 @@
       "short_score": 0
     },
     {
+      "symbol": "APEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "HBARUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -929,61 +953,10 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
-      "net_score": 10.6,
-      "long_score": 10.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "MUUSDT",
-      "net_score": 11.2,
-      "long_score": 11.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPCXUSDT",
-      "net_score": 14.4,
-      "long_score": 14.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 14.7,
-      "long_score": 14.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "BTCDOMUSDT",
-      14.7,
-      5571.1
-    ],
-    [
-      "SPCXUSDT",
-      14.4,
-      127.76983533
-    ],
-    [
-      "MUUSDT",
-      11.2,
-      946.14
-    ],
-    [
-      "APEUSDT",
-      10.6,
-      0.1453
-    ]
-  ],
-  "top_shorts": [
-    [
-      "PENGUUSDC",
-      10.5,
-      0.006349
-    ]
-  ],
+  "top_longs": [],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

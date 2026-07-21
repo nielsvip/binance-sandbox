@@ -313,6 +313,67 @@ def _parabolic_state(ind: dict, cfg) -> tuple:
         return (pp_up, pp_dn, eob, eos)
     except Exception:
         return (False, False, False, False)
+
+
+def _rz_standalone_exit_gate(indicators: dict, is_long: bool, signal, config) -> tuple:
+    """Allow RZ exits only after HTF zone and LTF breakdown confirmation."""
+    action = getattr(signal, "zone_action", "")
+    expected_action = "EXIT_LONG" if is_long else "EXIT_SHORT"
+    if action != expected_action:
+        return False, f"action={action or 'NONE'}"
+
+    ind = indicators or {}
+    top_threshold = float(getattr(config, "RZ_TOP_BB_THRESHOLD", 0.85))
+    bottom_threshold = float(getattr(config, "RZ_BOT_BB_THRESHOLD", 0.15))
+    min_htf = max(1, int(getattr(config, "RZ_EXIT_MIN_HTF", 2)))
+    htf_tfs = ("1h", "4h", "D")
+
+    def value(key, default=None):
+        raw = ind.get(key, default)
+        try:
+            return float(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return default
+
+    def in_red_zone(tf):
+        bb = value(f"bb_pct_b_{tf}")
+        dc = value(f"dc_position_{tf}")
+        if is_long:
+            return (bb is not None and bb >= top_threshold) or (dc is not None and dc >= top_threshold)
+        return (bb is not None and bb <= bottom_threshold) or (dc is not None and dc <= bottom_threshold)
+
+    htf_flags = {tf: in_red_zone(tf) for tf in htf_tfs}
+    htf_count = sum(htf_flags.values())
+
+    ltf_tf = str(getattr(config, "RZ_LTF_MICRO", "5m"))
+    wt1_ltf = value(f"wt1_{ltf_tf}")
+    wt2_ltf = value(f"wt2_{ltf_tf}")
+    wt1_15m = value("wt1_15m")
+    wt2_15m = value("wt2_15m")
+    if None in (wt1_ltf, wt2_ltf, wt1_15m, wt2_15m):
+        return False, f"htf={htf_count}/{len(htf_tfs)} missing_ltf_wt"
+
+    ltf_break = wt1_ltf < wt2_ltf if is_long else wt1_ltf > wt2_ltf
+    mid_break = wt1_15m < wt2_15m if is_long else wt1_15m > wt2_15m
+    close_ltf = value(f"close_{ltf_tf}", value("current_price"))
+    prev_low = value(f"low_{ltf_tf}_prev")
+    prev_high = value(f"high_{ltf_tf}_prev")
+    low_ltf = value(f"low_{ltf_tf}")
+    high_ltf = value(f"high_{ltf_tf}")
+    if is_long:
+        structure_break = ((close_ltf is not None and prev_low is not None and close_ltf < prev_low)
+                           or (low_ltf is not None and prev_low is not None and low_ltf < prev_low))
+    else:
+        structure_break = ((close_ltf is not None and prev_high is not None and close_ltf > prev_high)
+                           or (high_ltf is not None and prev_high is not None and high_ltf > prev_high))
+
+    passed = htf_count >= min_htf and ltf_break and mid_break and structure_break
+    reason = (f"action={action} htf={htf_count}/{len(htf_tfs)} "
+              f"ltf_wt={ltf_break} 15m_wt={mid_break} structure={structure_break} "
+              f"zones={','.join(tf for tf, ok in htf_flags.items() if ok) or 'none'}")
+    return passed, reason
+
+
 def _ee_reentry_boost(symbol, indicators, is_long, cfg):
     """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
     Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
@@ -7188,17 +7249,20 @@ class StockStrategy:
                         _xo_D = _wt1_D > _wt2_D
                         logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
                         return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
-        # RZ EXIT standalone — fires independently when DELTA_ENGINE is OFF but RZ zones are enabled
-        if not _is_opts_check and not _delta_exit_gate and getattr(config, 'RZ_EXIT_ENABLED', True) and self.trade_manager.delta_tracker:
+        # RZ EXIT standalone — runs when the delta exit gate is disabled, but only for explicit RZ actions.
+        if not _is_opts_check and not _delta_exit_gate and bool(getattr(config, 'RZ_EXIT_ENABLED', False)) and self.trade_manager.delta_tracker:
             _rz_ind = indicators if indicators else i
             _rz_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
             _rz_sig = self.trade_manager.delta_tracker.update(symbol, _rz_ind, _rz_pos_state)
-            if _rz_sig and ((is_long and _rz_sig.exit_long) or (not is_long and _rz_sig.exit_short)):
+            _rz_ok, _rz_gate_reason = _rz_standalone_exit_gate(_rz_ind, is_long, _rz_sig, config) if _rz_sig else (False, "no_signal")
+            if _rz_sig and _rz_ok:
                 _rz_zone = getattr(_rz_sig, 'zone', '') or ''
                 _rz_zr = _rz_sig.zone_reason or f"zone={_rz_zone}"
-                logger.warning(f"[RZ_EXIT_STANDALONE] {symbol} {'L' if is_long else 'S'}: zone={_rz_zone} {_rz_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                logger.warning(f"[RZ_EXIT_STANDALONE] {symbol} {'L' if is_long else 'S'}: {_rz_gate_reason} zone={_rz_zone} {_rz_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
                 return True, f"RZ_EXIT_{_rz_zone}_{_rz_zr}_g={gain:.2f}%_hold{hold_time_min:.0f}m", qty
-        # WT CROSSUNDER FINAL standalone — fires independently when DELTA_ENGINE is OFF
+            elif _rz_sig and ((is_long and _rz_sig.exit_long) or (not is_long and _rz_sig.exit_short)):
+                logger.info(f"[RZ_EXIT_SUPPRESSED] {symbol} {'L' if is_long else 'S'}: {_rz_gate_reason}")
+        # WT CROSSUNDER FINAL standalone — runs when the delta exit gate is disabled.
         if not _is_opts_check and not _delta_exit_gate:
             _xu_ind = indicators if indicators else i
             _wt1_5m = float((_xu_ind or {}).get('wt1_5m', (_xu_ind or {}).get('wt1_3m', 0)) or 0)
@@ -9029,7 +9093,7 @@ class TradierTradeManager:
             "rz_two_phase_exit_enabled": getattr(config, "RZ_TWO_PHASE_EXIT_ENABLED", True),
             "rz_div_exit_enabled": getattr(config, "RZ_DIV_EXIT_ENABLED", True),
             "rz_zscore_exit_enabled": getattr(config, "RZ_ZSCORE_EXIT_ENABLED", True),
-        }) if config.DELTA_ENGINE_ENABLED else None
+        }) if (config.DELTA_ENGINE_ENABLED or getattr(config, "RZ_EXIT_ENABLED", False)) else None
         self.running = False
         self.background_tasks = []
         self.partial_profit_lock_state = {}
