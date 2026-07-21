@@ -1,16 +1,22 @@
 {
-  "timestamp": "2026-07-21T20:30:24.229685+00:00",
+  "timestamp": "2026-07-21T20:45:29.052918+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 100
+    "total_ranked": 102
   },
   "unified_ranking": [
     {
       "symbol": "VIRTUALUSDT",
-      "net_score": -13.2,
+      "net_score": -11.2,
       "long_score": 0,
-      "short_score": 13.2
+      "short_score": 11.2
+    },
+    {
+      "symbol": "SKYUSDT",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
     },
     {
       "symbol": "ZECUSDC",
@@ -116,6 +122,12 @@
     },
     {
       "symbol": "PARTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BSVUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -475,7 +487,7 @@
       "short_score": 0
     },
     {
-      "symbol": "SKYUSDT",
+      "symbol": "XVGUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -577,6 +589,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BTCUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -596,29 +614,28 @@
     },
     {
       "symbol": "BEATUSDT",
-      "net_score": 12.9,
-      "long_score": 12.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCUSDC",
-      "net_score": 30.0,
-      "long_score": 30.0,
+      "net_score": 10.5,
+      "long_score": 10.5,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "BEATUSDT",
-      12.9,
+      10.5,
       2.65331236
     ]
   ],
   "top_shorts": [
     [
       "VIRTUALUSDT",
-      13.2,
+      11.2,
       0.65312856
+    ],
+    [
+      "SKYUSDT",
+      10.9,
+      0.06281
     ]
   ],
   "hedge_usage": {
