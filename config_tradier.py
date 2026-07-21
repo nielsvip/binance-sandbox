@@ -117,7 +117,7 @@ class TradierConfig:
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
     TRADIER_MANDATORY_LONG_TRB = ["MU", "NVDA", "SNDK", "MRVL", "VLO", "INTC", "VT", "OLED", "USAR"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21 top positive longs not tradeable
-    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY"]
+    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY","HAO"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===
@@ -2349,7 +2349,7 @@ class TradierConfig:
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True   # USER 2026-05-30: enabled for stocks
     R3_HTF_FLIP_NEWBORN_WINDOW_MIN: float = 15.0  # suppress R3 for first 15min after open (USER 2026-06-22); Rollback: 0
     MANDATORY_REENTRY_DC4_WINDOW_MIN: float = 30.0  # require dc_high4_5m break within 30min for MANDATORY_REENTRY exits (USER 2026-06-22); Rollback: 0
-    DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 45.0   # block DELTA_EXIT for 45min after reentry fill (USER 2026-06-22); Rollback: 0
+    DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 15.0   # block DELTA_EXIT for 45min after reentry fill (USER 2026-06-22); Rollback: 0
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30

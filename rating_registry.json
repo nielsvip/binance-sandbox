@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-07-21T14:34:10.805043+00:00",
+  "timestamp": "2026-07-21T14:49:44.287638+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 158
   },
   "unified_ranking": [
-    {
-      "symbol": "AIAUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
-    },
     {
       "symbol": "USUALUSDT",
       "net_score": 0,
@@ -703,6 +697,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AIAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AWEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -907,6 +907,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XRPUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -938,42 +944,30 @@
     },
     {
       "symbol": "XLMUSDT",
-      "net_score": 11.6,
-      "long_score": 11.6,
+      "net_score": 12.1,
+      "long_score": 12.1,
       "short_score": 0
     },
     {
       "symbol": "SPCXUSDT",
-      "net_score": 15.2,
-      "long_score": 15.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "XRPUSDC",
-      "net_score": 60.0,
-      "long_score": 60.0,
+      "net_score": 14.6,
+      "long_score": 14.6,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "SPCXUSDT",
-      15.2,
-      128.1
+      14.6,
+      127.50006452
     ],
     [
       "XLMUSDT",
-      11.6,
-      0.19351345
+      12.1,
+      0.19431
     ]
   ],
-  "top_shorts": [
-    [
-      "AIAUSDT",
-      10.2,
-      0.05621
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
