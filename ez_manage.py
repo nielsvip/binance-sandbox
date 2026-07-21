@@ -6766,6 +6766,9 @@ class MultiAccountTradeManager:
                         if getattr(config, "DELTA_EXIT_DOM_TF_ENABLED", False)
                         else "ANY"
                     ),
+                    "structural_exit_gate_enabled": getattr(
+                        config, "STRUCTURAL_EXIT_GATE_ENABLED", True
+                    ),
                 }
             )
             logger.warning(

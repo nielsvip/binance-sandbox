@@ -64,6 +64,7 @@ class QuickConfig:
     DELTA_ENGINE_ENABLED: bool = True
     DELTA_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True
+    STRUCTURAL_EXIT_GATE_ENABLED: bool = True  # USER MANDATE 2026-07-21: no exit into a rising price — LTF collapse or 1h/4h LH+LL only. Mirrors wt_dc_delta.structural_exit_permitted(). ROLLBACK: False.
     SATOSHIT_ENABLED: bool = True
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
@@ -855,7 +856,32 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'CYCLE_TP_TIERED_ENABLED', False):
         # Engine has PROFIT_TARGET_PCT; CYCLE_TP_PCT acts as upper cap
         pass  # handled in simulate() via PROFIT_TARGET_PCT
-    return delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+    _all_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+    # ═══ STRUCTURAL EXIT VETO — vectorized twin of wt_dc_delta.structural_exit_permitted() ═══
+    # USER MANDATE 2026-07-21: never exit while price is going up (long) / down (short).
+    # Only an LTF collapse or a 1h/4h lower-high+lower-low earns an exit.
+    if getattr(cfg, 'STRUCTURAL_EXIT_GATE_ENABLED', True):
+        _ltf = '3m' if _safe(npz, 'high_3m', n).sum() > 0 else '5m'
+        _hi, _hip = _safe(npz, f'high_{_ltf}', n), _safe(npz, f'high_{_ltf}_prev', n)
+        _lo, _lop = _safe(npz, f'low_{_ltf}', n), _safe(npz, f'low_{_ltf}_prev', n)
+        _op, _cl = _safe(npz, f'open_{_ltf}', n), _safe(npz, f'close_{_ltf}', n)
+        _h1, _h1p = _safe(npz, 'high_1h', n), _safe(npz, 'high_1h_prev', n)
+        _l1, _l1p = _safe(npz, 'low_1h', n), _safe(npz, 'low_1h_prev', n)
+        _h4, _h4p = _safe(npz, 'high_4h', n), _safe(npz, 'high_4h_prev', n)
+        _l4, _l4p = _safe(npz, 'low_4h', n), _safe(npz, 'low_4h_prev', n)
+        _px = close
+        _have = (_hip.sum() > 0) or (_h1p.sum() > 0) or (_h4p.sum() > 0)
+        if is_long:
+            _rising = (_cl > _op) | (_hi > _hip) | (_px > _hip)
+            _ltf_collapse = (_hi < _hip) & (_lo < _lop) & (_px < _lop)
+            _htf_lhll = ((_h1 < _h1p) & (_l1 < _l1p)) | ((_h4 < _h4p) & (_l4 < _l4p))
+        else:
+            _rising = (_cl < _op) | (_lo < _lop) | (_px < _lop)
+            _ltf_collapse = (_hi > _hip) & (_lo > _lop) & (_px > _hip)
+            _htf_lhll = ((_h1 > _h1p) & (_l1 > _l1p)) | ((_h4 > _h4p) & (_l4 > _l4p))
+        _permitted = (_ltf_collapse | _htf_lhll) & (~_rising) if _have else np.zeros(n, dtype=bool)
+        _all_exit = _all_exit & _permitted
+    return _all_exit
 
 
 def simulate(stores, cfg, capital=10000.0):

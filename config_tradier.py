@@ -117,7 +117,7 @@ class TradierConfig:
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
     TRADIER_MANDATORY_LONG_TRB = ["MU", "NVDA", "SNDK", "MRVL", "VLO", "INTC", "VT", "OLED", "USAR"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21 top positive longs not tradeable
-    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY",]
+    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY","HAO"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===
@@ -1373,6 +1373,7 @@ class TradierConfig:
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True  # T25 sweep 2026-04-14 (10sym, fixed gates): True avg=0.492 vs False=0.229 (+115%). Previous stale result (False=0.548) was from broken-gate run.
+    STRUCTURAL_EXIT_GATE_ENABLED: bool = True  # USER MANDATE 2026-07-21 (MU_LONG trb: 20 closes in 88min while price rallied +3.15%, every close ~0.00% gain). NEVER exit while price is going up (long) / down (short); an exit needs an LTF collapse (lower high AND lower low AND close below prev low) OR a lower-high+lower-low on 1h or 4h. Enforced in wt_dc_delta.structural_exit_permitted() (live crypto + live stocks + Tier-2) and vectorized in v8_quick_engine.compute_exit_signals (Tier-1). Kills the k_1h>80 / dc_pos>0.7 top-zone churn. Loss exits R1/R2/HEDGE_FAILED are NOT affected. ROLLBACK: False.
     RZ_TOP_BB_THRESHOLD: float = 0.85
     RZ_BOT_BB_THRESHOLD: float = 0.375
     RZ_LEGS_MIN: float = 20.0

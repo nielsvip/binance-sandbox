@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T19:44:24.371443+00:00",
+  "timestamp": "2026-07-21T19:59:53.991056+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -403,6 +403,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ORDIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ARKMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -793,12 +799,6 @@
       "short_score": 0
     },
     {
-      "symbol": "TRXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -955,17 +955,17 @@
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 10.7,
-      "long_score": 10.7,
+      "symbol": "TRXUSDT",
+      "net_score": 10.3,
+      "long_score": 10.3,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "ORDIUSDC",
-      10.7,
-      3.647
+      "TRXUSDT",
+      10.3,
+      0.32931
     ]
   ],
   "top_shorts": [],

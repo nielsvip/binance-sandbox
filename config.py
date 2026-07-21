@@ -1985,6 +1985,7 @@ class Config:
     # of baseline-bounce DISABLED until sweep-validated. LONG side stays on. Gate site: wt_dc_delta.py.
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False
     RZ_EXIT_ENABLED: bool = False  # 2026-04-19: premature exits dropped Sharpe 2.5→1.25 on 48-sym sweep. Was True.
+    STRUCTURAL_EXIT_GATE_ENABLED: bool = True  # USER MANDATE 2026-07-21 (MU_LONG trb: 20 closes in 88min while price rallied +3.15%, every close ~0.00% gain). NEVER exit while price is going up (long) / down (short); an exit needs an LTF collapse (lower high AND lower low AND close below prev low) OR a lower-high+lower-low on 1h or 4h. Enforced in wt_dc_delta.structural_exit_permitted() (live crypto + live stocks + Tier-2) and vectorized in v8_quick_engine.compute_exit_signals (Tier-1). Kills the k_1h>80 / dc_pos>0.7 top-zone churn. Loss exits R1/R2/HEDGE_FAILED are NOT affected. ROLLBACK: False.
     RZ_TOP_BB_THRESHOLD: float = 0.85  # bb_pct_b above this = TOP zone (sweep: 0.85/0.92/0.97)
     RZ_BOT_BB_THRESHOLD: float = 0.15  # bb_pct_b below this = BOTTOM zone (sweep: 0.15/0.08/0.03)
     RZ_LEGS_MIN: float = 20.0  # Minimum legs remaining for entry (sweep: 10/20/35)

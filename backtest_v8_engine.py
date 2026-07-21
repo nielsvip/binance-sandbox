@@ -6070,6 +6070,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             "RZ_REQUIRE_STRUCT": "rz_require_struct",
             "RZ_ZSCORE_ZONE_ENABLED": "rz_zscore_zone_enabled",
             "DELTA_ENTRY_ENABLED": "entry_enabled",
+            "STRUCTURAL_EXIT_GATE_ENABLED": "structural_exit_gate_enabled",
         }
         _dt_applied = 0
         for _tk, _tv in _t_overrides.items():

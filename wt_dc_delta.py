@@ -43,12 +43,59 @@ DEFAULT_CFG = {
     # if 2+ of {1h,4h,D} WT still aligned with position, veto the exit (LTF noise only).
     "exit_require_htf_slowdown": True,
     "exit_htf_veto_min_aligned": 2,
+    # USER MANDATE 2026-07-21: never exit into a rising price. See structural_exit_permitted().
+    "structural_exit_gate_enabled": True,
     # Pyramid
     "pyramid_min_tf": 4,
     "pyramid_price_tolerance": 0.02,
     "pyramid_qty_mult": 1.5,
     "pyramid_max": 8,
 }
+
+
+def structural_exit_permitted(indicators, is_long, cfg=None):
+    """USER MANDATE 2026-07-21 (MU_LONG: 20 closes in 88min while price rallied +3.15%).
+    NEVER exit while price is going up (long) / down (short). An exit is permitted ONLY when
+    (A) the lower timeframe collapses, OR (B) 1h or 4h prints a lower high AND a lower low.
+    Pure function — never raises. Returns (permitted: bool, reason: str).
+    Rollback: STRUCTURAL_EXIT_GATE_ENABLED=False in config.py / config_tradier.py."""
+    try:
+        ind = indicators or {}
+        _cfg = cfg or {}
+        ltf = _cfg.get("rz_ltf_micro", "3m") if hasattr(_cfg, "get") else "3m"
+        def v(key):
+            return _safe_float(ind.get(key))
+        px = v("current_price") or v("close") or v(f"close_{ltf}")
+        hi, hi_p = v(f"high_{ltf}"), v(f"high_{ltf}_prev")
+        lo, lo_p = v(f"low_{ltf}"), v(f"low_{ltf}_prev")
+        op, cl = v(f"open_{ltf}"), v(f"close_{ltf}")
+        h1, h1p, l1, l1p = v("high_1h"), v("high_1h_prev"), v("low_1h"), v("low_1h_prev")
+        h4, h4p, l4, l4p = v("high_4h"), v("high_4h_prev"), v("low_4h"), v("low_4h_prev")
+        if is_long:
+            rising = ((cl is not None and op is not None and cl > op)
+                      or (hi is not None and hi_p is not None and hi > hi_p)
+                      or (px is not None and hi_p is not None and px > hi_p))
+            ltf_collapse = (hi is not None and hi_p is not None and lo is not None and lo_p is not None
+                            and px is not None and hi < hi_p and lo < lo_p and px < lo_p)
+            htf_1h = h1 is not None and h1p is not None and l1 is not None and l1p is not None and h1 < h1p and l1 < l1p
+            htf_4h = h4 is not None and h4p is not None and l4 is not None and l4p is not None and h4 < h4p and l4 < l4p
+        else:
+            rising = ((cl is not None and op is not None and cl < op)
+                      or (lo is not None and lo_p is not None and lo < lo_p)
+                      or (px is not None and lo_p is not None and px < lo_p))
+            ltf_collapse = (hi is not None and hi_p is not None and lo is not None and lo_p is not None
+                            and px is not None and hi > hi_p and lo > lo_p and px > hi_p)
+            htf_1h = h1 is not None and h1p is not None and l1 is not None and l1p is not None and h1 > h1p and l1 > l1p
+            htf_4h = h4 is not None and h4p is not None and l4 is not None and l4p is not None and h4 > h4p and l4 > l4p
+        if not (ltf_collapse or htf_1h or htf_4h):
+            if hi_p is None and h1p is None and h4p is None:
+                return False, "STRUCT_VETO_no_structure_data"
+            return False, f"STRUCT_VETO_no_collapse(ltf={ltf_collapse}_1h={htf_1h}_4h={htf_4h})"
+        if rising:
+            return False, f"STRUCT_VETO_price_still_{'rising' if is_long else 'falling'}(ltf={ltf_collapse}_1h={htf_1h}_4h={htf_4h})"
+        return True, f"STRUCT_OK(ltf={ltf_collapse}_1h={htf_1h}_4h={htf_4h})"
+    except Exception:
+        return False, "STRUCT_VETO_exception"
 
 
 class DeltaSignal:
@@ -650,6 +697,30 @@ class DeltaTracker:
             # Find the _run_redzone frame to pinpoint the line
             _loc = next((l for l in _tb if "_run_redzone" in l and "line" in l), "unknown")
             logger.warning(f"[RZ_ERROR] {type(_rz_err).__name__}: {_rz_err} at {_loc.strip()}")
+            # A raised zone_reason f-string leaves zone_action set but exit_long/exit_short unset.
+            # Consumers that gate on zone_action alone then close off a CRASHED signal
+            # (MU_LONG 2026-07-21: 10 RZ_EXIT closes with empty zone_reason). Neutralize it.
+            sig.zone_action = "HOLD"
+            sig.zone_reason = ""
+        # ═══ STRUCTURAL EXIT VETO — USER MANDATE 2026-07-21 ═══
+        # Never exit while price is going up (long) / down (short). Only an LTF collapse or a
+        # 1h/4h lower-high+lower-low earns an exit. Applies to EVERY exit this module emits
+        # (two-phase, delta weakness, divergence, zscore, TOP/BOTTOM zone, SMART_RZ).
+        # Loss exits R1 / R2 / HEDGE_FAILED do NOT route through DeltaTracker and are untouched.
+        if cfg.get("structural_exit_gate_enabled", True) and (sig.exit_long or sig.exit_short or sig.zone_action in ("EXIT_LONG", "EXIT_SHORT")):
+            _sv_is_long = bool(sig.exit_long or sig.zone_action == "EXIT_LONG")
+            _sv_ok, _sv_reason = structural_exit_permitted(indicators, _sv_is_long, cfg)
+            if not _sv_ok:
+                logger.info(f"[STRUCTURAL_EXIT_VETO] {symbol} {'L' if _sv_is_long else 'S'}: {_sv_reason} — HOLDING (was: exit_long={sig.exit_long} exit_short={sig.exit_short} zone_action={sig.zone_action} zone_reason={sig.zone_reason})")
+                sig.exit_long = False
+                sig.exit_short = False
+                sig.exit_pending_long = False
+                sig.exit_pending_short = False
+                prev["_exit_pending_long"] = False
+                prev["_exit_pending_short"] = False
+                if sig.zone_action in ("EXIT_LONG", "EXIT_SHORT"):
+                    sig.zone_action = "HOLD"
+                sig.tf_lost = _sv_reason
 
         if not cfg.get("entry_enabled", True):
             sig.entry_long = False

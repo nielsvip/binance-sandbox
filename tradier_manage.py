@@ -7302,7 +7302,11 @@ class StockStrategy:
             _rz_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
             _rz_sig = self.trade_manager.delta_tracker.update(symbol, _rz_ind, _rz_pos_state)
             _rz_ok, _rz_gate_reason = _rz_standalone_exit_gate(_rz_ind, is_long, _rz_sig, config) if _rz_sig else (False, "no_signal")
-            if _rz_sig and _rz_ok:
+            # 2026-07-21: zone_action alone is NOT proof of an exit. When the red-zone f-string
+            # raises, DeltaTracker returns zone_action="EXIT_LONG" with exit_long NEVER set —
+            # this path then closed off a CRASHED signal (MU_LONG: 10 closes, empty zone_reason,
+            # price +3.15% through the whole sequence). Require the real flag.
+            if _rz_sig and _rz_ok and ((is_long and _rz_sig.exit_long) or (not is_long and _rz_sig.exit_short)):
                 _rz_zone = getattr(_rz_sig, 'zone', '') or ''
                 _rz_zr = _rz_sig.zone_reason or f"zone={_rz_zone}"
                 logger.warning(f"[RZ_EXIT_STANDALONE] {symbol} {'L' if is_long else 'S'}: {_rz_gate_reason} zone={_rz_zone} {_rz_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
@@ -9141,6 +9145,8 @@ class TradierTradeManager:
             "rz_two_phase_exit_enabled": getattr(config, "RZ_TWO_PHASE_EXIT_ENABLED", True),
             "rz_div_exit_enabled": getattr(config, "RZ_DIV_EXIT_ENABLED", True),
             "rz_zscore_exit_enabled": getattr(config, "RZ_ZSCORE_EXIT_ENABLED", True),
+            # USER MANDATE 2026-07-21: never exit into a rising price — LTF collapse or 1h/4h LH+LL only.
+            "structural_exit_gate_enabled": getattr(config, "STRUCTURAL_EXIT_GATE_ENABLED", True),
         }) if (config.DELTA_ENGINE_ENABLED or getattr(config, "RZ_EXIT_ENABLED", False)) else None
         self.running = False
         self.background_tasks = []
