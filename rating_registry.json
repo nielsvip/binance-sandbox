@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-07-21T00:04:17.660591+00:00",
+  "timestamp": "2026-07-21T00:19:51.200083+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 147
+    "total_ranked": 148
   },
   "unified_ranking": [
     {
@@ -236,6 +236,12 @@
     },
     {
       "symbol": "EGLDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "STRKUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
