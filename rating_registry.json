@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T11:13:06.463687+00:00",
+  "timestamp": "2026-07-21T11:28:47.304001+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,16 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "SKLUSDT",
-      "net_score": -11.9,
-      "long_score": 0,
-      "short_score": 11.9
-    },
-    {
       "symbol": "EGLDUSDT",
-      "net_score": -11.3,
+      "net_score": -10.0,
       "long_score": 0,
-      "short_score": 11.3
+      "short_score": 10.0
     },
     {
       "symbol": "USUALUSDT",
@@ -379,6 +373,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SKLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ZENUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -386,12 +386,6 @@
     },
     {
       "symbol": "CRVUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "EIGENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -953,19 +947,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "EIGENUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "EIGENUSDT",
+      10.0,
+      0.24038144
+    ]
+  ],
   "top_shorts": [
     [
-      "SKLUSDT",
-      11.9,
-      0.00392493
-    ],
-    [
       "EGLDUSDT",
-      11.3,
-      3.108
+      10.0,
+      3.112
     ]
   ],
   "hedge_usage": {
