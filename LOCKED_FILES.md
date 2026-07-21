@@ -9,6 +9,10 @@
 
 ---
 
+## Change Log — Authorized Edits (do NOT revert)
+
+- **2026-07-21 (USER "unlock all"):** `config_tradier.py:119` — added `OLED`,`USAR` to `TRADIER_MANDATORY_LONG_TRB` (were positive-wsharpe top longs — OLED 0.80, USAR 0.59 — but absent from `symbols_trb_long.json`, so never traded). Backup `backups/before_add_oled_usar_mandatory_long_20260721*.py`. Rankings restarted to reload config; live pickup verified (`trb:OLED_LONG LONG BUY` 13:32:52). Synced S1 sandbox via direct rsync (md5 0d7a0143). Also `chart_server.py:566` — :5077 SUSPECT flag hardened to require trades>0 (real long→short copy) so zero-baseline untuned symbols stop false-alarming. DO NOT revert. NEXT (unbuilt): >50%/>20% top-N in-market allocation — needs Tier-2 proof before live.
+
 ## Currently Locked Files
 
 | File | Locked Since | Reason / What Is Working | Who Locked |
