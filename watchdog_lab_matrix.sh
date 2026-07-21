@@ -23,22 +23,23 @@ launch stocks w2
 launch crypto w1
 launch crypto w2
 launch_pmx() {
-  tag=$1
+  tag=$1; first=$2
   if ! pgrep -f "param_matrix_daemon.py --tag $tag" >/dev/null; then
-    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py --tag "$tag" \
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py --tag "$tag" --first "$first" \
       >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null &
     disown
     echo "$(date -u +%FT%TZ) relaunched param_matrix $tag" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 }
-launch_pmx w1
-launch_pmx w2
-launch_pmx w3
-launch_pmx w4
+# dedicated lanes (USER 2026-07-21): HAO gets its own worker; all 8 priority syms in parallel
+launch_pmx w1 "ARM,MU"
+launch_pmx w2 "NVDA,ROKU"
+launch_pmx w3 "HAO,AXTI"
+launch_pmx w4 "MNTS,TTD"
 # hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
 if [ "$(date +%M)" -lt 10 ]; then
   cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
   cd "$SBX" && timeout 600 "$PY" tools/ingest_lab_matrix_to_central.py >> "$LOGDIR/lab_matrix_ingest.log" 2>&1
   cd "$SBX" && timeout 600 "$PY" tools/export_mega_matrix.py >> "$LOGDIR/mega_matrix_export.log" 2>&1
-  cd "$SBX" && timeout 300 "$PY" tools/param_keep_drop_report.py >> "$LOGDIR/param_keep_drop.log" 2>&1
+  cd "$SBX" && timeout 300 "$PY" tools/param_keep_drop_report.py --min-keys 3 >> "$LOGDIR/param_keep_drop.log" 2>&1
 fi
