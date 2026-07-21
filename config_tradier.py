@@ -116,7 +116,7 @@ class TradierConfig:
     ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX","SNDK","MU","VT"]
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
-    TRADIER_MANDATORY_LONG_TRB = ["MU", "NVDA", "SNDK", "MRVL", "VLO", "INTC", "VT"]  # VT added USER 2026-07-11
+    TRADIER_MANDATORY_LONG_TRB = ["MU", "NVDA", "SNDK", "MRVL", "VLO", "INTC", "VT", "OLED", "USAR"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21 top positive longs not tradeable
     TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
