@@ -1561,7 +1561,7 @@ class TradierConfig:
     TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone
 
     # RSI2 — 2-period RSI exit gate
-    TRADIER_RSI2_ENABLED: bool = True
+    TRADIER_RSI2_ENABLED: bool = False
     TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0      # exit long when RSI2 > this
     TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0     # exit short when RSI2 < this
 

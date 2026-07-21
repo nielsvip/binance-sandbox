@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T15:20:34.079210+00:00",
+  "timestamp": "2026-07-21T15:35:59.781186+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -296,12 +296,6 @@
     },
     {
       "symbol": "1000BONKUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -895,12 +889,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MUUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -953,9 +941,32 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "MUUSDT",
+      "net_score": 11.7,
+      "long_score": 11.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPCXUSDT",
+      "net_score": 13.0,
+      "long_score": 13.0,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "SPCXUSDT",
+      13.0,
+      128.35
+    ],
+    [
+      "MUUSDT",
+      11.7,
+      952.47
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
