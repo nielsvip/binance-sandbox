@@ -2259,6 +2259,30 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"FROZEN_STOP_DYN_STRUCT_TRAIL_{_dst_tf}_g{_dst_gain:.2f}", 100.0, override_qty=999999)
             except Exception as _dst_e:
                 logger.warning(f"[DYN_STRUCT_TRAIL] error {position_key}: {_dst_e}")
+        # MTF_ARROW_TRAIL — lab-faithful exit half of the arrow system (mtf_arrow_lab
+        # phase_b :178: exit when px retraces CONFIRM_PCT off the running high). Default
+        # OFF; enabled per-pack in sweeps. Loss-closes require MTF_ARROW_TRAIL in
+        # UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS (pack-scoped) or the gate holds them.
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and is_long and \
+           bool(getattr(config, 'MTF_ARROW_TRAIL_EXIT_ENABLED', False)):
+            try:
+                _mat_conf = float(getattr(config, 'MTF_ARROW_CONFIRM_PCT', 2.0))
+                _mat_st = getattr(position, 'arrow_trail_state', None)
+                _mat_opened = str(getattr(position, 'opened_at', ''))
+                if not isinstance(_mat_st, dict) or _mat_st.get('opened_at') != _mat_opened:
+                    _mat_st = {'hi': current_price, 'opened_at': _mat_opened}
+                    position.arrow_trail_state = _mat_st
+                _mat_hi = safe_fetch_float(_mat_st.get('hi', 0.0), 0.0)
+                if current_price > _mat_hi:
+                    _mat_st['hi'] = current_price
+                    _mat_hi = current_price
+                if _mat_hi > 0 and current_price <= _mat_hi * (1.0 - _mat_conf / 100.0):
+                    _mat_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    logger.error(f"⛔ [MTF_ARROW_TRAIL] {position_key}: px={current_price:.4f} hi={_mat_hi:.4f} conf={_mat_conf}% g={_mat_gain:.2f}% → CLOSE")
+                    _arrow_dbg(f"TRAIL_EXIT {position_key} px={current_price:.2f} hi={_mat_hi:.2f} g={_mat_gain:.2f}")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"MTF_ARROW_TRAIL_g{_mat_gain:.2f}_hi{_mat_hi:.2f}", 100.0, override_qty=999999)
+            except Exception as _mat_e:
+                logger.warning(f"[MTF_ARROW_TRAIL] error {position_key}: {_mat_e}")
         # R1 — DC_LOW4 EMERGENCY CLOSE (USER 2026-05-09, stocks mirror).
         # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured
         # 5m DC channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL.
