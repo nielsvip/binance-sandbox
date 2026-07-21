@@ -234,10 +234,18 @@ run_script() {
 
     # Scripts using Python logging write to their own log file — stdout to /dev/null
     # Exception: ez_klines uses print() so redirect stdout to its monitored log file
+    # 2026-07-21: stderr was going to /dev/null, so every "Script exited with code: 1"
+    # was undiagnosable (tradier_indicators exited 1 twice at 19:18/19:20 with zero trace).
+    # Capture stderr to a SEPARATE file (never PYTHON_LOG — that would feed the
+    # no-output heartbeat check and mask a dead process).
+    local stderr_log="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_stderr.log"
+    if [[ -f "$stderr_log" ]] && (( $(wc -c < "$stderr_log" 2>/dev/null || echo 0) > 20971520 )); then
+        mv -f "$stderr_log" "${stderr_log}.1" 2>/dev/null || true
+    fi
     if [[ "$SCRIPT_BASE" == "ez_klines" ]]; then
-        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" >> "$PYTHON_LOG" 2>&1 &
+        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" >> "$PYTHON_LOG" 2>> "$stderr_log" &
     else
-        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" > /dev/null 2>&1 &
+        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" > /dev/null 2>> "$stderr_log" &
     fi
     local script_pid=$!
     CHILD_PID=$script_pid

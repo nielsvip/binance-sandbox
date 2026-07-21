@@ -1911,7 +1911,9 @@ class MarkPriceStreamer:
             try:
                 # Log WebSocket connection status
                 current_time = time.time()
-                if hasattr(self, 'last_websocket_message_time'):
+                if getattr(self, 'last_websocket_message_time', None) is None:
+                    logger.error("🚨 WebSocket health: NO mark-price WS message has EVER been received by ez_mark_prices — feed is dead, running on fallback only")
+                else:
                     time_since_last_message = current_time - self.last_websocket_message_time
                     if time_since_last_message > 300:  # 5 minutes
                         logger.warning(f"⚠️ No WebSocket messages received for {time_since_last_message:.0f} seconds")
@@ -1919,8 +1921,6 @@ class MarkPriceStreamer:
                         logger.info(f"ℹ️ WebSocket quiet for {time_since_last_message:.0f} seconds")
                     else:
                         logger.debug(f"✅ WebSocket active, last message {time_since_last_message:.0f}s ago")
-                else:
-                    logger.info("ℹ️ WebSocket health check initialized")
                 
                 await asyncio.sleep(60)  # Check every minute
                 

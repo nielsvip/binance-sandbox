@@ -36,7 +36,8 @@ MIN_KLINES_PER_INTERVAL={'3m': 220, '15m': 250, '1h': 250, '4h': 250, 'D': 50}
 MIN_KLINES_THRESHOLD=200
 MAX_DATA_FILE=cfg.BASE_PATH/'klines_maxed_symbols.json'
 MAX_DATA_RETRY_HOURS=168
-_throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None,'ban_until':0.0}
+_throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None,'ban_until':0.0,'ban_wall_ms':0.0,'last_pause_log':0.0}
+BAN_STATE_FILE=cfg.BASE_PATH/'data'/'ez_klines_ban_state.json'
 _maxed_cache=None
 ENVIRONMENT=get_current_environment()['env']
 NETIFACES_AVAILABLE=True
@@ -118,6 +119,23 @@ def merge_and_write(symbol, interval, rows):
     with open(tmp_path,'w') as tmp: tmp.write(df_out.to_json(orient='records', indent=2))
     os.replace(tmp_path,file_path)
     return added
+def _save_ban_state(ban_ms):
+    try:
+        os.makedirs(os.path.dirname(str(BAN_STATE_FILE)), exist_ok=True)
+        tmp=f'{BAN_STATE_FILE}.tmp'
+        with open(tmp,'w') as fh: json.dump({'ban_until_ms':float(ban_ms)}, fh)
+        os.replace(tmp, str(BAN_STATE_FILE))
+    except Exception as exc: log(f"⚠️ could not persist ban state: {exc}")
+def _load_ban_state():
+    try:
+        if not os.path.exists(str(BAN_STATE_FILE)): return
+        with open(str(BAN_STATE_FILE)) as fh: ban_ms=float(json.load(fh).get('ban_until_ms', 0.0))
+    except Exception: return
+    remaining=(ban_ms/1000.0)-time.time()
+    if remaining<=0: return
+    _throttle_state['ban_until']=time.monotonic()+remaining
+    _throttle_state['ban_wall_ms']=ban_ms
+    log(f"⛔ RATE-LIMIT CIRCUIT BREAKER restored from disk: IP ban still active for {remaining:.0f}s — holding ALL klines REST (no startup burst)")
 def _record_api_ban(status, text):
     if status not in (418, 429): return
     m=re.search(r'banned until (\d+)', text or '')
@@ -126,6 +144,8 @@ def _record_api_ban(status, text):
     ban_until_mono=time.monotonic()+max(0.0, (ban_ms/1000.0)-time.time())
     if ban_until_mono>_throttle_state.get('ban_until', 0.0):
         _throttle_state['ban_until']=ban_until_mono
+        _throttle_state['ban_wall_ms']=float(ban_ms)
+        _save_ban_state(ban_ms)
         log(f"⛔ RATE-LIMIT CIRCUIT BREAKER: status {status}, pausing ALL klines REST until ban lifts ({max(0.0,(ban_ms/1000.0)-time.time()):.0f}s)")
 async def throttle_api_request():
     state=_throttle_state
@@ -139,7 +159,11 @@ async def throttle_api_request():
             remaining=state.get('ban_until', 0.0)-time.monotonic()
             if remaining<=0:
                 break
-            await asyncio.sleep(min(remaining+0.5, 60.0))
+            now_mono=time.monotonic()
+            if now_mono-state.get('last_pause_log', 0.0)>=60.0:
+                state['last_pause_log']=now_mono
+                log(f"⏸️ RATE-LIMIT PAUSE heartbeat — klines REST held {remaining:.0f}s more (watchdog keepalive)")
+            await asyncio.sleep(min(remaining+0.5, 30.0))
     while True:
         now=time.monotonic()
         while per_second and now-per_second[0]>=1: per_second.popleft()
@@ -827,6 +851,7 @@ async def scheduler(symbol_filter=None):
         await asyncio.sleep(CHECK_INTERVAL_SECONDS)
 
 async def _main():
+    _load_ban_state()
     asyncio.create_task(fetch_all_max_historical(['3m', '15m', '1h', '4h', 'D']))
     await asyncio.gather(scheduler(), ws_1m_klines())
 

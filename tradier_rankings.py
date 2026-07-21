@@ -2123,8 +2123,12 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     # Calculate final scores (use same logic as ez_rankings but with Tradier timeframes)
     final_ranking_data_scalars = []
     all_raw_proximity_scores_1m_for_norm = []
-    for item in intermediate_symbol_data:
+    _score_loop_start = time.time()
+    for _score_idx, item in enumerate(intermediate_symbol_data):
         sym = item["symbol"]
+        if _score_idx % 10 == 0:
+            logger.info(f"[ranking] Scoring {_score_idx}/{len(intermediate_symbol_data)} (next={sym}) elapsed={time.time() - _score_loop_start:.1f}s")
+        _sym_score_start = time.time()
         dfs_calc = item["dfs_for_calc"]
         df_1m = dfs_calc.get("1m", pd.DataFrame())
         df_5m = dfs_calc.get("5m", pd.DataFrame())
@@ -2214,6 +2218,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             "mean_proximity_score_raw_5m": mean_prox_score_raw_1m, "band_score": band_score,
             "weighted_gains_lt": weighted_gains_lt, "weighted_gains_st": weighted_gains_st,
             "dfs_for_calc": dfs_calc })
+        _sym_score_elapsed = time.time() - _sym_score_start
+        if _sym_score_elapsed > 5.0:
+            logger.warning(f"[ranking] SLOW scoring {sym} took {_sym_score_elapsed:.1f}s")
+    logger.info(f"[ranking] Scoring loop done: {len(final_ranking_data_scalars)} symbols in {time.time() - _score_loop_start:.1f}s")
     if not final_ranking_data_scalars:
         return [], {}
     # Normalize final scores (same approach as ez_rankings)

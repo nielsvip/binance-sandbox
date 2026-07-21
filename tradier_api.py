@@ -307,7 +307,7 @@ class TradierAPIClient:
                 # return {}
 
         except (AttributeError, aiohttp.ClientConnectionError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
-            logger.warning(f"⚠️ Net Error ({type(e).__name__}) on {self._current_ip}. Reconnecting...")
+            logger.warning(f"⚠️ Net Error ({type(e).__name__}: {e}) on {self._current_ip} for {method} {endpoint}. Reconnecting... (retry {retry_count})")
             await self.connect()
             return await self._request(method, endpoint, params, data, use_data_context, headers, retry_count + 1)
 
