@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T23:33:35.169905+00:00",
+  "timestamp": "2026-07-21T23:49:09.234301+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,16 @@
   },
   "unified_ranking": [
     {
-      "symbol": "SKYUSDT",
-      "net_score": -10.5,
+      "symbol": "VIRTUALUSDT",
+      "net_score": -11.1,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 11.1
+    },
+    {
+      "symbol": "SKYUSDT",
+      "net_score": -10.8,
+      "long_score": 0,
+      "short_score": 10.8
     },
     {
       "symbol": "HMSTRUSDT",
@@ -691,12 +697,6 @@
       "short_score": 0
     },
     {
-      "symbol": "VIRTUALUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -808,8 +808,13 @@
   "top_longs": [],
   "top_shorts": [
     [
+      "VIRTUALUSDT",
+      11.1,
+      0.65312856
+    ],
+    [
       "SKYUSDT",
-      10.5,
+      10.8,
       0.06281
     ]
   ],
