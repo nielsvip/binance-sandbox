@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T10:41:50.065242+00:00",
+  "timestamp": "2026-07-21T10:57:32.020330+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "VANRYUSDT",
-      "net_score": -12.3,
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 12.3
+      "short_score": 11.8
     },
     {
       "symbol": "USUALUSDT",
@@ -959,8 +959,8 @@
   "top_shorts": [
     [
       "VANRYUSDT",
-      12.3,
-      0.004641
+      11.8,
+      0.00460865
     ]
   ],
   "hedge_usage": {
