@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T03:58:49.024126+00:00",
+  "timestamp": "2026-07-21T04:13:55.175495+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -409,12 +409,6 @@
       "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -494,6 +488,12 @@
     },
     {
       "symbol": "BLURUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -859,12 +859,6 @@
       "short_score": 0
     },
     {
-      "symbol": "UNIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -907,17 +901,28 @@
       "short_score": 0
     },
     {
-      "symbol": "WLDUSDC",
-      "net_score": 10.4,
-      "long_score": 10.4,
+      "symbol": "UNIUSDC",
+      "net_score": 14.4,
+      "long_score": 14.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
+      "net_score": 14.9,
+      "long_score": 14.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "WLDUSDC",
-      10.4,
-      0.38550219
+      "NEARUSDC",
+      14.9,
+      2.031
+    ],
+    [
+      "UNIUSDC",
+      14.4,
+      3.71613417
     ]
   ],
   "top_shorts": [],
