@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T06:34:05.985890+00:00",
+  "timestamp": "2026-07-21T06:49:36.169441+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -787,6 +787,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000LUNCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -914,38 +920,27 @@
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 11.2,
-      "long_score": 11.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "1000LUNCUSDT",
-      "net_score": 12.4,
-      "long_score": 12.4,
+      "net_score": 10.8,
+      "long_score": 10.8,
       "short_score": 0
     },
     {
       "symbol": "IOUSDT",
-      "net_score": 14.8,
-      "long_score": 14.8,
+      "net_score": 14.2,
+      "long_score": 14.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "IOUSDT",
-      14.8,
-      0.1533
-    ],
-    [
-      "1000LUNCUSDT",
-      12.4,
-      0.05746
+      14.2,
+      0.15418467
     ],
     [
       "NEARUSDC",
-      11.2,
-      2.054
+      10.8,
+      2.04531892
     ]
   ],
   "top_shorts": [],
