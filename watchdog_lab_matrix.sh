@@ -34,19 +34,27 @@ launch_pmx() {
 # USER 2026-07-21 13:30: ALL workers converge on MU until EVERY param is filled, then the
 # next priority sym, etc. (claims table splits MU's cells across the workers).
 # 6 workers during the MU push (RAM guard self-throttles each below 8GB free).
-# USER 2026-07-21 evening: SWITCH_MATRIX_TRB must be COMPLETE for MU_LONG, so the whole
-# Tier-2 fleet is pinned to MU (--only) instead of drifting to ARM/NVDA/HAO once MU's cells
-# are claimed. Measured cost: one MU run = 9m11s / 632MB RSS, and it fills MU_LONG *and*
-# MU_SHORT, so 14 workers ~= one core each on S1's 16 and stays inside the 30GB RAM budget.
-# Floor for a complete 6,277-row MU grid is ~60 core-hours; do not add workers past ~14, the
-# oversubscription measured at load 31 cut per-worker throughput by ~2.4x.
+# USER 2026-07-21 evening: "concentrate all instances on one tickr at a time". The whole
+# Tier-2 fleet works ONE key until its grid is complete, then matrix_focus.py advances to the
+# next of MU_LONG -> HAO_SHORT -> NVDA_LONG -> VT_LONG. Measured cost: one single-symbol run =
+# 9m11s / 632MB RSS, so 14 workers ~= one core each on S1's 16 within the 30GB budget. Do not
+# add workers past ~14: oversubscription measured at load 31 cut per-worker throughput ~2.4x.
+"$PY" "$SBX/tools/matrix_focus.py" advance >> "$LOGDIR/matrix_focus.log" 2>&1
+FOCUS=$("$PY" "$SBX/tools/matrix_focus.py" symbol 2>/dev/null)
+[ -z "$FOCUS" ] && FOCUS=MU
 for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14; do
+  # a worker pinned to a stale ticker is drift, not work — kill it so it relaunches on FOCUS
+  if pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null && \
+     ! pgrep -f "param_matrix_daemon.py --tag $t --only $FOCUS " >/dev/null; then
+    pkill -f "param_matrix_daemon.py --tag $t "
+    echo "$(date -u +%FT%TZ) $t was off-focus, killed (focus=$FOCUS)" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
   if ! pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null; then
     cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py \
-      --tag "$t" --only MU --all-tiers \
+      --tag "$t" --only "$FOCUS" --all-tiers \
       >> "$LOGDIR/param_matrix_${t}.log" 2>&1 < /dev/null &
     disown
-    echo "$(date -u +%FT%TZ) relaunched param_matrix $t (MU push)" >> "$LOGDIR/lab_matrix_watchdog.log"
+    echo "$(date -u +%FT%TZ) relaunched param_matrix $t (focus=$FOCUS)" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 done
 
@@ -62,24 +70,33 @@ launch_vec() {
     echo "$(date -u +%FT%TZ) relaunched vec_screen $tag" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 }
-launch_vec v1
-launch_vec v2
+# PARKED 2026-07-21 evening (USER "concentrate all instances on one tickr at a time"): the vec
+# lane screens OTHER symbols and competes for the same 16 cores as the MU push, and it is the
+# lane that produced the tier-lie (Tier-1 deltas differenced against a Tier-2 baseline) and
+# silently no-ops knobs it does not implement. Its cells are diagnostic-only anyway. Re-enable
+# by uncommenting once the four pilot keys are complete.
+# launch_vec v1
+# launch_vec v2
 # COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
-# USER 2026-07-21: plan mode — MU_LONG until 10x b&h, then HAO_SHORT, then the rest.
+# USER 2026-07-21 evening: the first four keys are MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG.
+# MU_LONG must be fully figured out — OFAT *and* combinations — before the fleet moves on.
 # MU is LONG-only; shorts hunt on HAO. Continuous rounds (no hourly wait).
 # HANG GUARD (2026-07-21): combo_search held the shared param_results_stocks.db for 5h06m
-# with zero log progress, starving every matrix writer — workers crash-looped on "database is
-# locked" and 9-minute engine units were silently discarded. If its log has not advanced in
-# 60 min, it is hung: kill it so the writers get the lock back, then relaunch below.
-if pgrep -f "combo_search.py --plan" >/dev/null && [ -f "$LOGDIR/combo_plan.log" ] \
-   && [ -z "$(find "$LOGDIR/combo_plan.log" -mmin -60)" ]; then
-  pkill -9 -f "combo_search.py --plan"
-  echo "$(date -u +%FT%TZ) killed HUNG combo_search (log stale >60min, was holding the DB)" >> "$LOGDIR/lab_matrix_watchdog.log"
+# with zero log progress, starving every matrix writer. But it only logs AFTER each probe, and
+# one probe is a full engine run (9-15min, timeout 3600) — a stale log alone is NOT a hang and
+# a 60min-stale test killed 5 legitimate runs. The real discriminator: a working combo_search
+# has an engine CHILD; a hung one has none. Require both signals, and a 2h staleness floor.
+COMBO_PID=$(pgrep -f "combo_search.py --plan" | head -1)
+if [ -n "$COMBO_PID" ] && [ -f "$LOGDIR/combo_plan.log" ] \
+   && [ -z "$(find "$LOGDIR/combo_plan.log" -mmin -120)" ] \
+   && ! pgrep -P "$COMBO_PID" -f backtest_v8_engine >/dev/null; then
+  kill -9 "$COMBO_PID"
+  echo "$(date -u +%FT%TZ) killed HUNG combo_search (log stale >2h AND no engine child)" >> "$LOGDIR/lab_matrix_watchdog.log"
 fi
 if ! pgrep -f "combo_search.py --plan" >/dev/null; then
   cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py \
-    --plan "MU:LONG,HAO:SHORT,ARM:LONG,NVDA:LONG,ROKU:LONG,AXTI:SHORT,MNTS:SHORT,TTD:SHORT" --target 10.0 \
+    --plan "MU:LONG,HAO:SHORT,NVDA:LONG,VT:LONG" --target 10.0 \
     >> "$LOGDIR/combo_plan.log" 2>&1 < /dev/null &
   disown
   echo "$(date -u +%FT%TZ) relaunched combo_search plan" >> "$LOGDIR/lab_matrix_watchdog.log"
