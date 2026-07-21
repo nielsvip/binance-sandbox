@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T17:25:00.766920+00:00",
+  "timestamp": "2026-07-21T17:40:29.945440+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "WLFIUSDC",
-      "net_score": -12.5,
+      "net_score": -10.9,
       "long_score": 0,
-      "short_score": 12.5
+      "short_score": 10.9
     },
     {
       "symbol": "USUALUSDT",
@@ -164,12 +164,6 @@
     },
     {
       "symbol": "DOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -949,35 +943,46 @@
       "short_score": 0
     },
     {
+      "symbol": "INXUSDT",
+      "net_score": 10.6,
+      "long_score": 10.6,
+      "short_score": 0
+    },
+    {
       "symbol": "MUUSDT",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 13.1,
+      "long_score": 13.1,
       "short_score": 0
     },
     {
       "symbol": "HMSTRUSDT",
-      "net_score": 18.6,
-      "long_score": 18.6,
+      "net_score": 21.2,
+      "long_score": 21.2,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "HMSTRUSDT",
-      18.6,
-      0.0001866
+      21.2,
+      0.00018956
     ],
     [
       "MUUSDT",
-      13.0,
-      973.88520212
+      13.1,
+      973.89
+    ],
+    [
+      "INXUSDT",
+      10.6,
+      0.007063
     ]
   ],
   "top_shorts": [
     [
       "WLFIUSDC",
-      12.5,
-      0.05619282
+      10.9,
+      0.05617488
     ]
   ],
   "hedge_usage": {

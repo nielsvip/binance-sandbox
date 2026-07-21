@@ -5379,6 +5379,53 @@ class StockStrategy:
                 _vel_min = float(getattr(config, 'CT_WT_VELOCITY_1H_MIN', 0.0))
                 if is_long and _wt_vel_1h < _vel_min: return 0.0, "WAIT", f"CT_VEL_LONG({_wt_vel_1h:.1f}<{_vel_min})"
                 if not is_long and _wt_vel_1h > -_vel_min: return 0.0, "WAIT", f"CT_VEL_SHORT({_wt_vel_1h:.1f}>-{_vel_min})"
+
+            _entry_atr_min = float(getattr(config, 'ENTRY_ATR_PCT_MIN', 0.0))
+            if _entry_atr_min > 0 and _atr_1h > 0 and current_price > 0:
+                _entry_atr_pct = _atr_1h / current_price * 100.0
+                if _entry_atr_pct < _entry_atr_min:
+                    return 0.0, "WAIT", f"ATR_TOO_LOW({_entry_atr_pct:.2f}%<{_entry_atr_min:.2f})"
+
+            _entry_rvol_5m = safe_fetch_float(i.get('relative_volume_5m', i.get('rel_vol_5m', 0)), 0)
+            _entry_rvol_15m = safe_fetch_float(i.get('relative_volume_15m', i.get('rel_vol_15m', 0)), 0)
+            _entry_vol_min = float(getattr(config, 'ENTRY_VOL_MIN_RATIO', 0.0))
+            if _entry_vol_min > 0 and max(_entry_rvol_5m, _entry_rvol_15m) < _entry_vol_min:
+                return 0.0, "WAIT", f"VOL_TOO_LOW(max={max(_entry_rvol_5m, _entry_rvol_15m):.2f}<{_entry_vol_min:.2f})"
+
+            if getattr(config, 'TR_ADX4H_GATE_ENABLED', True):
+                _adx_4h_entry = safe_fetch_float(i.get('adx_4h'), 25)
+                _adx_max = float(getattr(config, 'TR_ADX4H_MAX', 20.0))
+                if _adx_4h_entry > _adx_max:
+                    _penalty = float(getattr(config, 'TR_ADX4H_BOYCOTT_SCORE', -40))
+                    score += _penalty; reasons.append(f"TR_ADX4H_TREND({_adx_4h_entry:.0f}>{_adx_max:.0f},{_penalty:.0f})")
+            if getattr(config, 'TR_BBWIDTH4H_GATE_ENABLED', True):
+                _bb_upper_4h = safe_fetch_float(i.get('bb_upper_4h'), 0)
+                _bb_lower_4h = safe_fetch_float(i.get('bb_lower_4h'), 0)
+                _bb_width_4h = ((_bb_upper_4h - _bb_lower_4h) / current_price * 100.0) if current_price > 0 and _bb_upper_4h > 0 and _bb_lower_4h > 0 else 0.0
+                _bb_max = float(getattr(config, 'TR_BBWIDTH4H_MAX', 10.0))
+                if _bb_width_4h > _bb_max:
+                    _penalty = float(getattr(config, 'TR_BBWIDTH4H_BOYCOTT_SCORE', -35))
+                    score += _penalty; reasons.append(f"TR_BBW4H_WIDE({_bb_width_4h:.1f}%>{_bb_max:.1f},{_penalty:.0f})")
+            if getattr(config, 'TR_CHOP4H_GATE_ENABLED', True):
+                _chop_4h = safe_fetch_float(i.get('choppiness_4h'), 50)
+                if _chop_4h >= float(getattr(config, 'TR_CHOP4H_MIN', 50.0)):
+                    _bonus = float(getattr(config, 'TR_CHOP4H_BONUS', 15))
+                    score += _bonus; reasons.append(f"TR_CHOP4H_OK({_chop_4h:.0f},+{_bonus:.0f})")
+                elif _chop_4h < float(getattr(config, 'TR_CHOP4H_TREND_MAX', 38.0)):
+                    _penalty = float(getattr(config, 'TR_CHOP4H_PENALTY', -20))
+                    score += _penalty; reasons.append(f"TR_CHOP4H_TREND({_chop_4h:.0f},{_penalty:.0f})")
+            _mfi_4h_entry = safe_fetch_float(i.get('mfi_4h'), 50)
+            if getattr(config, 'TR_MFI4H_LONG_ENABLED', True) and is_long and _mfi_4h_entry < float(getattr(config, 'TR_MFI4H_LONG_MIN', 40.0)):
+                _penalty = float(getattr(config, 'TR_MFI4H_LONG_BOYCOTT_SCORE', -25))
+                score += _penalty; reasons.append(f"TR_MFI4H_LOW_LONG({_mfi_4h_entry:.0f},{_penalty:.0f})")
+            if getattr(config, 'TR_DCWIDTH4H_SHORT_ENABLED', True) and not is_long:
+                _dc_high_4h_entry = safe_fetch_float(i.get('dc_high_4h'), 0)
+                _dc_low_4h_entry = safe_fetch_float(i.get('dc_low_4h'), 0)
+                _dc_width_4h = ((_dc_high_4h_entry - _dc_low_4h_entry) / current_price * 100.0) if current_price > 0 and _dc_high_4h_entry > 0 and _dc_low_4h_entry > 0 else 0.0
+                _dc_max = float(getattr(config, 'TR_DCWIDTH4H_SHORT_MAX', 15.0))
+                if _dc_width_4h > _dc_max:
+                    _penalty = float(getattr(config, 'TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE', -25))
+                    score += _penalty; reasons.append(f"TR_DCW4H_WIDE_SHORT({_dc_width_4h:.1f}%,{_penalty:.0f})")
         k_1m, d_1m, k_1m_prev = g('k_1m', 50), g('d_1m', 50), g('k_1m_prev', 50)
         k_5m, d_5m, k_5m_prev = g('k_5m', 50), g('d_5m', 50), g('k_5m_prev', 50)
         k_15m, d_15m = g('k_15m', 50), g('d_15m', 50)
@@ -7670,9 +7717,10 @@ class StockStrategy:
         # Quantitativo research: IBS > 0.9 = close in top 10% of range → exhaustion for longs
         #                        IBS < 0.1 = close in bottom 10% of range → exhaustion for shorts
         # Uses previous COMPLETED 5m bar for clean signal.
-        # Minimum gain guard (>1.0%) to avoid premature exits on flat/losing trades.
+        # Minimum gain guard avoids premature exits on flat/losing trades.
         # --------------------------------------------------
-        if gain > 1.0:
+        _ibs_gain_min = float(getattr(config, 'EXIT_GAIN_THRESHOLD_MIN', 1.0))
+        if gain > _ibs_gain_min:
             h5p = float(i.get('high_5m_prev', 0)); l5p = float(i.get('low_5m_prev', 0)); c5p = float(i.get('close_5m_prev', 0) or 0)
             bar_range_5m = h5p - l5p
             if bar_range_5m > 0 and c5p > 0:
