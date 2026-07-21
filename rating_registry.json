@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T05:00:19.533790+00:00",
+  "timestamp": "2026-07-21T05:16:03.744415+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "VANRYUSDT",
-      "net_score": -11.0,
+      "net_score": -13.7,
       "long_score": 0,
-      "short_score": 11.0
+      "short_score": 13.7
+    },
+    {
+      "symbol": "1000XECUSDT",
+      "net_score": -10.8,
+      "long_score": 0,
+      "short_score": 10.8
     },
     {
       "symbol": "USUALUSDT",
@@ -403,12 +409,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1000XECUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "KSMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -416,6 +416,12 @@
     },
     {
       "symbol": "PARTIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -638,6 +644,12 @@
     },
     {
       "symbol": "RSRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "IOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -905,37 +917,19 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "IOUSDT",
-      "net_score": 12.6,
-      "long_score": 12.6,
-      "short_score": 0
-    },
-    {
-      "symbol": "NEARUSDC",
-      "net_score": 12.8,
-      "long_score": 12.8,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "NEARUSDC",
-      12.8,
-      2.033
-    ],
-    [
-      "IOUSDT",
-      12.6,
-      0.1516
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "VANRYUSDT",
-      11.0,
-      0.004808
+      13.7,
+      0.00480104
+    ],
+    [
+      "1000XECUSDT",
+      10.8,
+      0.00712182
     ]
   ],
   "hedge_usage": {
