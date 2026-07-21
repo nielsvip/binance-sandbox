@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T09:24:22.050520+00:00",
+  "timestamp": "2026-07-21T09:39:17.866298+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,21 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "TLMUSDT",
-      "net_score": -13.5,
+      "net_score": -11.6,
       "long_score": 0,
-      "short_score": 13.5
-    },
-    {
-      "symbol": "QTUMUSDT",
-      "net_score": -11.3,
-      "long_score": 0,
-      "short_score": 11.3
-    },
-    {
-      "symbol": "XVGUSDT",
-      "net_score": -10.8,
-      "long_score": 0,
-      "short_score": 10.8
+      "short_score": 11.6
     },
     {
       "symbol": "USUALUSDT",
@@ -475,6 +463,12 @@
       "short_score": 0
     },
     {
+      "symbol": "QTUMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -775,6 +769,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XVGUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "VANRYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -959,18 +959,8 @@
   "top_shorts": [
     [
       "TLMUSDT",
-      13.5,
-      0.00166588
-    ],
-    [
-      "QTUMUSDT",
-      11.3,
-      0.7022
-    ],
-    [
-      "XVGUSDT",
-      10.8,
-      0.00213182
+      11.6,
+      0.001664
     ]
   ],
   "hedge_usage": {
