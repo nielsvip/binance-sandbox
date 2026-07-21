@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T05:16:03.744415+00:00",
+  "timestamp": "2026-07-21T05:31:40.401829+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "VANRYUSDT",
-      "net_score": -13.7,
+      "net_score": -13.5,
       "long_score": 0,
-      "short_score": 13.7
+      "short_score": 13.5
     },
     {
       "symbol": "1000XECUSDT",
-      "net_score": -10.8,
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 10.8
+      "short_score": 12.5
     },
     {
       "symbol": "USUALUSDT",
@@ -421,12 +421,6 @@
       "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -649,12 +643,6 @@
       "short_score": 0
     },
     {
-      "symbol": "IOUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "PENGUUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -787,12 +775,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1000LUNCUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -917,19 +899,53 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "net_score": 11.1,
+      "long_score": 11.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "IOUSDT",
+      "net_score": 11.3,
+      "long_score": 11.3,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
+      "net_score": 15.5,
+      "long_score": 15.5,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "NEARUSDC",
+      15.5,
+      2.04103874
+    ],
+    [
+      "IOUSDT",
+      11.3,
+      0.1519
+    ],
+    [
+      "1000LUNCUSDT",
+      11.1,
+      0.05725037
+    ]
+  ],
   "top_shorts": [
     [
       "VANRYUSDT",
-      13.7,
-      0.00480104
+      13.5,
+      0.00479425
     ],
     [
       "1000XECUSDT",
-      10.8,
-      0.00712182
+      12.5,
+      0.00707112
     ]
   ],
   "hedge_usage": {
