@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T02:41:09.662569+00:00",
+  "timestamp": "2026-07-21T02:56:38.934599+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "SUSHIUSDT",
-      "net_score": -10.5,
+      "symbol": "DASHUSDT",
+      "net_score": -10.3,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 10.3
     },
     {
       "symbol": "USUALUSDT",
@@ -170,12 +170,6 @@
     },
     {
       "symbol": "INXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -661,6 +655,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SUSHIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -910,9 +910,9 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "SUSHIUSDT",
-      10.5,
-      0.16420667
+      "DASHUSDT",
+      10.3,
+      33.91
     ]
   ],
   "hedge_usage": {
