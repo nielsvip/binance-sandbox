@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-07-21T00:51:32.234752+00:00",
+  "timestamp": "2026-07-21T01:06:56.286899+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 148
   },
   "unified_ranking": [
+    {
+      "symbol": "DASHUSDT",
+      "net_score": -11.1,
+      "long_score": 0,
+      "short_score": 11.1
+    },
     {
       "symbol": "USUALUSDT",
       "net_score": 0,
@@ -158,12 +164,6 @@
     },
     {
       "symbol": "INXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -896,7 +896,13 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "DASHUSDT",
+      11.1,
+      34.19037616
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
