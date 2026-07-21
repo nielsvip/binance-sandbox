@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-07-21T11:28:47.304001+00:00",
+  "timestamp": "2026-07-21T11:44:19.898980+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 158
   },
   "unified_ranking": [
-    {
-      "symbol": "EGLDUSDT",
-      "net_score": -10.0,
-      "long_score": 0,
-      "short_score": 10.0
-    },
     {
       "symbol": "USUALUSDT",
       "net_score": 0,
@@ -253,6 +247,12 @@
       "short_score": 0
     },
     {
+      "symbol": "EGLDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "STRKUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -386,6 +386,12 @@
     },
     {
       "symbol": "CRVUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "EIGENUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -947,28 +953,10 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "EIGENUSDT",
-      "net_score": 10.0,
-      "long_score": 10.0,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "EIGENUSDT",
-      10.0,
-      0.24038144
-    ]
-  ],
-  "top_shorts": [
-    [
-      "EGLDUSDT",
-      10.0,
-      3.112
-    ]
-  ],
+  "top_longs": [],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
