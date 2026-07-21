@@ -6688,7 +6688,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _v8ns_sf_bonus_r > 0 and _wt_dc_thr > 0:
                     _wt_dc_thr = max(0.0, _wt_dc_thr - _v8ns_sf_bonus_r)
                 _wt_dc_score = None
-                if _wt_dc_thr > 0:
+                # 2026-07-21: MTF_ARROW/LR_BAND entries are band+slope gated upstream — the
+                # wt_dc momentum score is structurally LOW at the swing bottoms they buy, so
+                # this gate silently starved them (305 blocks in the ARM forensic run).
+                if _wt_dc_thr > 0 and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
                         _wt_dc_ind = manager.market_snapshot.get(str(symbol).upper(), {})

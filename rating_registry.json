@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T08:38:35.373437+00:00",
+  "timestamp": "2026-07-21T08:53:45.969529+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -122,6 +122,12 @@
     },
     {
       "symbol": "JASMYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -811,6 +817,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "TRUMPUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -931,34 +943,17 @@
       "short_score": 0
     },
     {
-      "symbol": "MRVLUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
-      "short_score": 0
-    },
-    {
       "symbol": "XLMUSDT",
-      "net_score": 17.1,
-      "long_score": 17.1,
-      "short_score": 0
-    },
-    {
-      "symbol": "BNBUSDC",
-      "net_score": 60.0,
-      "long_score": 60.0,
+      "net_score": 16.9,
+      "long_score": 16.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "XLMUSDT",
-      17.1,
-      0.19290764
-    ],
-    [
-      "MRVLUSDT",
-      10.3,
-      208.4
+      16.9,
+      0.1936093
     ]
   ],
   "top_shorts": [],
