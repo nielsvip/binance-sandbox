@@ -105,13 +105,17 @@ def load_existing_flags():
 
 def save_flags(flags):
     """Save flags atomically."""
-    tmp = FLAGS_FILE.with_suffix(".tmp")
+    tmp = FLAGS_FILE.with_suffix(f".{os.getpid()}.tmp")
     try:
         with open(tmp, "w") as f:
             json.dump(flags, f, indent=2, default=str)
         os.replace(tmp, FLAGS_FILE)
     except Exception as e:
         logger.error(f"Failed to save flags: {e}")
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def save_history(event):
