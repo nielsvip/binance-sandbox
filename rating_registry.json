@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T04:13:55.175495+00:00",
+  "timestamp": "2026-07-21T04:29:08.105790+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -367,12 +367,6 @@
       "short_score": 0
     },
     {
-      "symbol": "EIGENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ORDIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -488,12 +482,6 @@
     },
     {
       "symbol": "BLURUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "WLDUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -626,12 +614,6 @@
     },
     {
       "symbol": "RSRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "IOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -847,12 +829,6 @@
       "short_score": 0
     },
     {
-      "symbol": "MUUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -901,28 +877,67 @@
       "short_score": 0
     },
     {
+      "symbol": "IOUSDT",
+      "net_score": 10.4,
+      "long_score": 10.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "EIGENUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "MUUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "WLDUSDC",
+      "net_score": 11.5,
+      "long_score": 11.5,
+      "short_score": 0
+    },
+    {
       "symbol": "UNIUSDC",
-      "net_score": 14.4,
-      "long_score": 14.4,
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 14.9,
-      "long_score": 14.9,
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "NEARUSDC",
-      14.9,
-      2.031
+      14.0,
+      2.02848779
     ],
     [
       "UNIUSDC",
-      14.4,
-      3.71613417
+      13.6,
+      3.703
+    ],
+    [
+      "WLDUSDC",
+      11.5,
+      0.3837
+    ],
+    [
+      "EIGENUSDT",
+      10.7,
+      0.2384
+    ],
+    [
+      "MUUSDT",
+      10.7,
+      904.07409647
     ]
   ],
   "top_shorts": [],
