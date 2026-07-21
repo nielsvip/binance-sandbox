@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T10:10:26.683359+00:00",
+  "timestamp": "2026-07-21T10:26:04.957998+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "VANRYUSDT",
-      "net_score": -14.4,
+      "net_score": -13.9,
       "long_score": 0,
-      "short_score": 14.4
+      "short_score": 13.9
     },
     {
       "symbol": "BTCUSDC",
@@ -356,12 +356,6 @@
     },
     {
       "symbol": "LTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ONDOUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -821,14 +815,26 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "net_score": 12.4,
+      "long_score": 12.4,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "ONDOUSDT",
+      12.4,
+      0.40647956
+    ]
+  ],
   "top_shorts": [
     [
       "VANRYUSDT",
-      14.4,
-      0.0046379
+      13.9,
+      0.004646
     ]
   ],
   "hedge_usage": {
