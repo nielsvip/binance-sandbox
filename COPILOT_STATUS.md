@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-21 17:55:03 UTC
+# Copilot Status — 2026-07-21 18:10:23 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:54:00
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:54:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T17:54:31
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:54:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T17:54:31
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:55:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T17:55:01
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:55:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T17:55:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:55:02
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:09:21
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:09:21
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:09:21
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T18:09:52
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:09:52
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:09:52
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T18:10:22
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:10:22
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:10:22
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:10:23
 
 ## Missed Trades (trader comparison)
 
@@ -31,15 +31,15 @@ _None_
 
 - HELD: **CIBR** LONG (tradier) peak +7.6%, now +1.2%
 
-- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 0m ago
+- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 13
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 12
 - [HIGH] ez_klines.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_klines.py is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_indicators.py is NOT running
