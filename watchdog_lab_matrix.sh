@@ -25,7 +25,7 @@ launch crypto w2
 launch_pmx() {
   tag=$1; first=$2
   if ! pgrep -f "param_matrix_daemon.py --tag $tag" >/dev/null; then
-    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py --tag "$tag" --first "$first" \
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py --tag "$tag" --first "$first" --all-tiers \
       >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null &
     disown
     echo "$(date -u +%FT%TZ) relaunched param_matrix $tag" >> "$LOGDIR/lab_matrix_watchdog.log"
@@ -65,6 +65,15 @@ launch_vec v2
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
 # USER 2026-07-21: plan mode — MU_LONG until 10x b&h, then HAO_SHORT, then the rest.
 # MU is LONG-only; shorts hunt on HAO. Continuous rounds (no hourly wait).
+# HANG GUARD (2026-07-21): combo_search held the shared param_results_stocks.db for 5h06m
+# with zero log progress, starving every matrix writer — workers crash-looped on "database is
+# locked" and 9-minute engine units were silently discarded. If its log has not advanced in
+# 60 min, it is hung: kill it so the writers get the lock back, then relaunch below.
+if pgrep -f "combo_search.py --plan" >/dev/null && [ -f "$LOGDIR/combo_plan.log" ] \
+   && [ -z "$(find "$LOGDIR/combo_plan.log" -mmin -60)" ]; then
+  pkill -9 -f "combo_search.py --plan"
+  echo "$(date -u +%FT%TZ) killed HUNG combo_search (log stale >60min, was holding the DB)" >> "$LOGDIR/lab_matrix_watchdog.log"
+fi
 if ! pgrep -f "combo_search.py --plan" >/dev/null; then
   cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py \
     --plan "MU:LONG,HAO:SHORT,ARM:LONG,NVDA:LONG,ROKU:LONG,AXTI:SHORT,MNTS:SHORT,TTD:SHORT" --target 10.0 \
