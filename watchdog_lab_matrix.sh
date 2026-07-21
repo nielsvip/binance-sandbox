@@ -18,9 +18,14 @@ launch() {
 }
 launch stocks w1
 launch stocks w2
+launch stocks w3
+launch stocks w4
 launch crypto w1
 launch crypto w2
-# hourly export (cheap) — only from the w1 slot minute window to avoid dupes
+launch crypto w3
+launch crypto w4
+# hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
 if [ "$(date +%M)" -lt 10 ]; then
   cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
+  cd "$SBX" && timeout 600 "$PY" tools/ingest_lab_matrix_to_central.py >> "$LOGDIR/lab_matrix_ingest.log" 2>&1
 fi
