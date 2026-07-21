@@ -117,7 +117,7 @@ class TradierConfig:
     # 2026-07-10 USER MANDATE: these must be in the trb universes every rankings cycle
     # ("need to be trading no matter what"); injected by tradier_rankings before save.
     TRADIER_MANDATORY_LONG_TRB = ["MU", "NVDA", "SNDK", "MRVL", "VLO", "INTC", "VT", "OLED", "USAR"]  # VT added USER 2026-07-11; OLED(wsh0.80) USAR(wsh0.59) added USER 2026-07-21 top positive longs not tradeable
-    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY","HAO"]
+    TRADIER_MANDATORY_SHORT_TRB = ["MSTR", "WDAY",]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===
@@ -1305,7 +1305,7 @@ class TradierConfig:
     # Stocks Broad (121 sym): Sharpe 0.485, WR 70.7%, mtf=2, ez=2.5, tw=equal
     DELTA_ENGINE_ENABLED: bool = True  # 121 sym/2yr: Sharpe 0.038→0.485. T25 2026-04-14: True=0.346 vs False=0.373 (-7%). False marginally better but diff is small; keeping True for live delta tracking.
     DELTA_ENTRY_ENABLED: bool = False  # T25 sweep: False avg=0.527 vs True=0.507 (-4%). Best tested.
-    DELTA_EXIT_ENABLED: bool = False  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
+    DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
     DELTA_EXIT_REQUIRE_NONZERO_SCORE: bool = True  # 2026-06-02 USER MANDATE: refuse DELTA_EXIT_BASELINE closes that fire with ALL-ZERO scores (bs=0/es=0/btf=0/etf=0) — 57 such 0-signal closes seen in /history burning commissions at ~0% gain. When True, a delta exit only fires if it carries a real bull/bear speed or TF count. Gate: tradier_manage.py ~6513. ROLLBACK: False.
     # WT_DC scorer exit guards
     WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)
@@ -1373,14 +1373,13 @@ class TradierConfig:
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True  # T25 sweep 2026-04-14 (10sym, fixed gates): True avg=0.492 vs False=0.229 (+115%). Previous stale result (False=0.548) was from broken-gate run.
-    RZ_TOP_BB_THRESHOLD: float = 0.99
-    RZ_BOT_BB_THRESHOLD: float = 0.01
-    RZ_EXIT_MIN_HTF: int = 2
+    RZ_TOP_BB_THRESHOLD: float = 0.85
+    RZ_BOT_BB_THRESHOLD: float = 0.375
     RZ_LEGS_MIN: float = 20.0
     RZ_REQUIRE_STRUCT: bool = False
-    RZ_K_EXIT: float = 105.0  # Stocks: exit long when k_1h > 80
-    RZ_MFI_EXIT: float = 95.0
-    RZ_K_ENTRY_MAX: float = 90.0  # Stocks: enter long only when k_1h < 50
+    RZ_K_EXIT: float = 80.0  # Stocks: exit long when k_1h > 80
+    RZ_MFI_EXIT: float = 85.0
+    RZ_K_ENTRY_MAX: float = 50.0  # Stocks: enter long only when k_1h < 50
     # Stock-specific RZ tuning — needs to differ from crypto since base TF is 5m not 3m,
     # intraday volatility is much smaller, and bars/day is RTH-limited (78 vs 480).
     RZ_LTF_MICRO: str = "5m"  # Stocks: 5m base; crypto uses 3m
@@ -1389,7 +1388,7 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    TRADIER_MIN_HOLD_MINUTES: float = 0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
+    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # 2026-07-08 GAINMO triage: 42→4320 restore. 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
     # === PRICE CROSS-BACK REENTRY (2026-04-27 user rule) ===
     # When a stock position is fully closed and price subsequently returns to within
     # a tight band of last_reduction_price, immediately reopen — bypasses ANTI_CHURN,
@@ -1485,12 +1484,12 @@ class TradierConfig:
     SMFI_SHORT_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     SMFI_MAX_PER_SIDE: int = 5  # Max concurrent SMFI positions per side
     # --- Minervini SEPA Screen — DISABLED on trb, paper on trc ---
-    MINERVINI_ENABLED: bool = True  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
-    MINERVINI_POSITION_SIZE: float = 80.0
+    MINERVINI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
+    MINERVINI_POSITION_SIZE: float = 800.0
     MINERVINI_MIN_SEPA_SCORE: int = 5  # Need 5 of 6 conditions
     MINERVINI_MAX_HOLD_DAYS: int = 40  # Swing trade hold
     MINERVINI_TARGET_PCT: float = 25.0  # Take profit at 25%
-    MINERVINI_LONG_BUDGET: float = 400.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
+    MINERVINI_LONG_BUDGET: float = 4000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     # --- Connors RSI Composite — DISABLED on trb, paper on trc ---
     CONNORS_RSI_ENABLED: bool = False  # DISABLED 2026-03-30: augmented MRVL at -6.74% on real money. Needs V5 validation.
     CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0  # Buy when CRSI < 10
@@ -1561,7 +1560,7 @@ class TradierConfig:
     TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone
 
     # RSI2 — 2-period RSI exit gate
-    TRADIER_RSI2_ENABLED: bool = False
+    TRADIER_RSI2_ENABLED: bool = True
     TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0      # exit long when RSI2 > this
     TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0     # exit short when RSI2 < this
 
@@ -2350,7 +2349,7 @@ class TradierConfig:
     R3_HTF_FLIP_4H_TIER_ENABLED: bool = True   # USER 2026-05-30: enabled for stocks
     R3_HTF_FLIP_NEWBORN_WINDOW_MIN: float = 15.0  # suppress R3 for first 15min after open (USER 2026-06-22); Rollback: 0
     MANDATORY_REENTRY_DC4_WINDOW_MIN: float = 30.0  # require dc_high4_5m break within 30min for MANDATORY_REENTRY exits (USER 2026-06-22); Rollback: 0
-    DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 15.0   # block DELTA_EXIT for 45min after reentry fill (USER 2026-06-22); Rollback: 0
+    DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 45.0   # block DELTA_EXIT for 45min after reentry fill (USER 2026-06-22); Rollback: 0
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False          # was True 2026-05-17; reverted — no sample-floor proof. Rule A retest dead until isolated vec sweep validates.
     BREAKOUT_RETEST_ARMED_WINDOW_DAYS: int = 7
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.30
