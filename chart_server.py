@@ -563,7 +563,9 @@ def trb_review(mode=None):
         if k.endswith("_LONG") or k.endswith("_SHORT"):
             base, side = k.rsplit("_", 1)
             pair = _bysym.get((r.get("mode"), base), {})
-            r["suspect"] = ("LONG" in pair and "SHORT" in pair and pair["LONG"] == pair["SHORT"])
+            identical = ("LONG" in pair and "SHORT" in pair and pair["LONG"] == pair["SHORT"])
+            _ltr = (pair.get("LONG") or (None, 0, None))[1] or 0
+            r["suspect"] = bool(identical and _ltr > 0)
     def _wf(r):
         try: return float(r.get("wsharpe") or -9)
         except Exception: return -9
