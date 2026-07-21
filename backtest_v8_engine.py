@@ -6323,7 +6323,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     return f"BLOCKED_LS_RATIO_LONG_{_ratio_pt:.2f}gt{_ls_max_pt}"
                 if position_side == 'SHORT' and _ratio_pt < _ls_min_pt and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                     return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
-        if not is_reduce:
+        if not is_reduce and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
             _gr_min_tfs_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
             if _gr_min_tfs_pt > 0:
                 try:
@@ -6759,7 +6759,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # min_tfs=0 means disabled (default). Wire GOLDEN_RULE_HTF_MIN_TFS≥1 to activate.
                 # invert_dc_bb=True for GR-sourced entries: DC/BB extension = bullish (breakout mode).
                 _gr_min_tfs_r = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
-                if _gr_min_tfs_r > 0:
+                if _gr_min_tfs_r > 0 and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
                     try:
                         from golden_rule_htf import score_entry_htf as _gr_score_entry
                         _gr_min_ind_r = int(getattr(tm_mod.config, 'GOLDEN_RULE_MIN_IND', 2))

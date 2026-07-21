@@ -659,6 +659,7 @@ class TradierConfig:
     MTF_ARROW_SIZE_GAIN: float = 1.0               # size = 1 + gain*score (deeper HTF + steeper slope = bigger)
     MTF_ARROW_SIZE_MAX: float = 4.0
     MTF_ARROW_SLOPE_LAMBDA: float = 1.0            # weight of the slope term vs depth term
+    MTF_ARROW_CONFIRM_PCT: float = 2.0             # 5m green-arrow confirm: entry only when price reverses >= this % off the running low (lab phase_b)
     MTF_ARROW_SLOPE_NORM_PCT_DAY: float = 0.3
     MTF_ARROW_WEIGHTS: dict = field(default_factory=lambda: {"1h": 0.35, "4h": 0.35, "D": 0.30})
     LR_BAND_READD_LO: float = 0.3

@@ -1873,22 +1873,24 @@ def mtf_arrow_score(ind, is_long, cfg):
     (score, detail). Score feeds BOTH the entry gate (>= MTF_ARROW_THETA) and the size multiplier."""
     weights = getattr(cfg, "MTF_ARROW_WEIGHTS", None) or {"1h": 0.35, "4h": 0.35, "D": 0.30}
     lam = float(getattr(cfg, "MTF_ARROW_SLOPE_LAMBDA", 1.0))
-    norm = max(1e-9, float(getattr(cfg, "MTF_ARROW_SLOPE_NORM_PCT_DAY", 0.3)))
-    per_day = {"1h": 6.5, "4h": 1.625, "D": 1.0}
     score = 0.0
     parts = []
+    # 2026-07-21 lab-faithful rewrite (tools/mtf_arrow_lab.py phase_b :154-158): depth raw
+    # (neutral bar scores ~0.5 — the CONFIRM trigger is the entry timing, score is the HTF
+    # gate+sizer), slope clipped [-2,2] in raw per-bar units (no per-day rescale), favorable
+    # slope adds lam*slope, adverse slope subtracts a flat w*0.5 penalty.
     for tf, w in weights.items():
         pb = ind.get(f"lrL_pct_b_{tf}")
         sl = ind.get(f"lrL_slope_{tf}")
         if pb is None or sl is None:
             continue
         pb_f = float(pb)
-        sl_day = float(sl) * per_day.get(tf, 1.0)
+        sl_f = max(-2.0, min(2.0, float(sl) if is_long else -float(sl)))
         depth = max(0.0, min(1.2, (1.0 - pb_f) if is_long else pb_f))
-        fav = (sl_day > 0) if is_long else (sl_day < 0)
-        contrib = w * (depth + lam * min(abs(sl_day) / norm, 1.0) if fav else depth - w * 0.5)
-        score += contrib
-        parts.append(f"{tf}:d{depth:.2f}s{sl_day:+.2f}")
+        score += w * (depth + lam * max(sl_f, 0.0))
+        if sl_f < 0:
+            score -= w * 0.5
+        parts.append(f"{tf}:d{depth:.2f}s{sl_f:+.2f}")
     return score, " ".join(parts)
 
 
@@ -3046,6 +3048,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     if _lbp0["n"] % 2000 == 1:
                         print(f"V8_LOG LRBAND_P0 branchB_flat_reach={_lbp0['n']} is_long={is_long} sym={symbol}", flush=True)
                 _entry_score = 0.0  # 2026-05-28 C1 FIX: bind before branches — reentry/GR/delta entry paths set action_type="OPEN" without running wt_dc_score_entry, so the ENTRY_SCORE_THRESHOLD veto (~3023) hit UnboundLocalError when a per-sym ENTRY_SCORE_THRESHOLD>0 override was present (41 crashes/day on IBIT/CIBR/DAR/ROBO).
+                _entry_ind = indicators_raw if indicators_raw else i  # 2026-07-21 C1-class FIX: same bug — MTF_ARROW/LR_BAND priority entries claim OPEN before the fallback that bound _entry_ind, so the UVE veto line crashed UnboundLocalError, the except handler swallowed it, and BOTH the claimed entry and the fallback evaporated (13,091 of 13,119 arrow claims died this way in the 2026-07-21 ARM forensic run).
                 if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)) and trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
                     _xb_last_t = trade_manager.last_exit_times.get(symbol, 0)
                     _xb_last_px = trade_manager.last_exit_prices.get(symbol, 0)
@@ -3156,7 +3159,24 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     globals()['_ARROW_EVAL_COUNT'] = _ma_n
                     if _ma_n <= 5 or _ma_n % 1000 == 0:
                         _arrow_dbg(f"EVAL#{_ma_n} {symbol} score={_ma_score:.3f} theta={_ma_theta} detail={_ma_detail}")
-                    if _ma_score >= _ma_theta:
+                    # 2026-07-21 lab-faithful 5m CONFIRM trigger (mtf_arrow_lab phase_b :168-175):
+                    # the score is the HTF gate+sizer, NOT the entry timing. Entry = the 5m green
+                    # arrow — price reversing >= CONFIRM_PCT off the running low since last flat.
+                    # Without this the port fired on every score>=theta bar (13k claims/run).
+                    # State resets lo=px on the first flat evaluation after a claim (lab resets at
+                    # exit; a refused execute costs some low history — acceptable, refusals are
+                    # rare post gate-bypass).
+                    _ma_conf = float(getattr(config, 'MTF_ARROW_CONFIRM_PCT', 2.0))
+                    if not hasattr(trade_manager, '_arrow_swing'):
+                        trade_manager._arrow_swing = {}
+                    _ma_st = trade_manager._arrow_swing.get(symbol)
+                    if _ma_st is None or _ma_st.get('opened'):
+                        _ma_st = {'lo': current_price, 'opened': False}
+                        trade_manager._arrow_swing[symbol] = _ma_st
+                    if current_price < _ma_st['lo']:
+                        _ma_st['lo'] = current_price
+                    _ma_confirmed = current_price >= _ma_st['lo'] * (1.0 + _ma_conf / 100.0)
+                    if _ma_confirmed and _ma_score >= _ma_theta:
                         _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         _ma_mult = max(0.5, min(float(getattr(config, 'MTF_ARROW_SIZE_MAX', 4.0)),
                                                 1.0 + float(getattr(config, 'MTF_ARROW_SIZE_GAIN', 1.0)) * _ma_score))
@@ -3170,8 +3190,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         # claimed the action slot — the documented C1 bug class (see ~3043).
                         # The arrow score IS this path's conviction, so publish it.
                         _entry_score = max(float(_entry_score or 0.0), float(conf))
+                        _ma_st['opened'] = True
                         logger.info(f"[MTF_ARROW_ENTRY] {account_key}:{symbol}: score={_ma_score:.3f}>=θ{_ma_theta} mult={_ma_mult:.2f} {_ma_detail}")
-                        _arrow_dbg(f"CLAIM {account_key}:{symbol} score={_ma_score:.3f} mult={_ma_mult:.2f} qty={qty}")
+                        _arrow_dbg(f"CLAIM {account_key}:{symbol} score={_ma_score:.3f} mult={_ma_mult:.2f} qty={qty} lo={_ma_st['lo']:.2f} px={current_price:.2f}")
                 # 2026-07-20 USER band mandate — PRIORITY band entry. The band block used to sit
                 # LAST in the cascade, so it was almost never consulted (an earlier path had already
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
@@ -3707,6 +3728,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
     except Exception as e:
         import traceback as _tb
         _tb_lines = _tb.format_exc().splitlines()
+        if os.environ.get("V8_ARROW_DEBUG"):
+            _arrow_dbg(f"MONITOR_EXC {position_key} {type(e).__name__}: {str(e)[:120]} | {(_tb_lines[-3] if len(_tb_lines) >= 3 else '')[:120]}")
         # 2026-05-21 19:30 — widen traceback capture: first try tradier_manage.py frames,
         # fall back to the LAST 'File "...", line N' frame anywhere (utils.py, ez_*, etc.)
         # so cross-module crashes (e.g. float(datetime) in utils) get a location.
@@ -10864,8 +10887,12 @@ class TradierTradeManager:
                     logger.warning(f"[TRADIER_ALIGNMENT_BLOCK] {position_key}: alignment={_al}/{_min_al}{' (relaxed)' if _is_proven_strategy else ''}")
                     return f"BLOCKED_ALIGNMENT_{_al}/{_min_al}"
             # dc_low4 hard bottom (applies to all entries including reentries)
+            # 2026-07-21 USER band mandate: MTF_ARROW/LR_BAND entries BUY swing bottoms by
+            # design (band+slope gated upstream) — the falling-knife block structurally
+            # starves them, same class as the MTF armed-state gate (bypassed 2026-07-20).
+            _band_entry_etf = 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')
             _dc4l_5m = dc_low4_5m; _dc4h_5m = dc_high4_5m
-            if is_long and _dc4l_5m > 0 and current_price < _dc4l_5m:
+            if is_long and _dc4l_5m > 0 and current_price < _dc4l_5m and not _band_entry_etf:
                 logger.warning(f"[TRADIER_DC4_BLOCK] {position_key}: price {current_price:.2f} < dc_low4_5m {_dc4l_5m:.2f}")
                 return f"BLOCKED_DC4_BOTTOM"
             if not is_long and _dc4h_5m > 0 and current_price > _dc4h_5m:
@@ -10989,7 +11016,7 @@ class TradierTradeManager:
         # 7. Final Execution
         final_shares = int(round(quantity))
         if final_shares < 1: return "QTY_ZERO_FINAL"
-        if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'):
+        if action in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN') and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
             _gr_min_tfs_tr = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
             if _gr_min_tfs_tr > 0:
                 try:
