@@ -56,18 +56,15 @@ launch_vec v1
 launch_vec v2
 # COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
-# USER 2026-07-21: MU is LONG-only; the short hunt runs on HAO (the flagged short ticker)
-launch_combo() {
-  sym=$1; side=$2
-  if ! pgrep -f "combo_search.py --sym $sym --side $side" >/dev/null; then
-    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py --sym "$sym" --side "$side" \
-      >> "$LOGDIR/combo_${sym}_${side}.log" 2>&1 < /dev/null &
-    disown
-    echo "$(date -u +%FT%TZ) relaunched combo_search ${sym}_$side" >> "$LOGDIR/lab_matrix_watchdog.log"
-  fi
-}
-launch_combo MU LONG
-launch_combo HAO SHORT
+# USER 2026-07-21: plan mode — MU_LONG until 10x b&h, then HAO_SHORT, then the rest.
+# MU is LONG-only; shorts hunt on HAO. Continuous rounds (no hourly wait).
+if ! pgrep -f "combo_search.py --plan" >/dev/null; then
+  cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py \
+    --plan "MU:LONG,HAO:SHORT,ARM:LONG,NVDA:LONG,ROKU:LONG,AXTI:SHORT,MNTS:SHORT,TTD:SHORT" --target 10.0 \
+    >> "$LOGDIR/combo_plan.log" 2>&1 < /dev/null &
+  disown
+  echo "$(date -u +%FT%TZ) relaunched combo_search plan" >> "$LOGDIR/lab_matrix_watchdog.log"
+fi
 # hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
 if [ "$(date +%M)" -lt 10 ]; then
   cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
