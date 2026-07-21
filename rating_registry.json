@@ -1,22 +1,28 @@
 {
-  "timestamp": "2026-07-21T21:00:27.923394+00:00",
+  "timestamp": "2026-07-21T21:15:42.863327+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 106
+    "total_ranked": 109
   },
   "unified_ranking": [
     {
       "symbol": "VIRTUALUSDT",
-      "net_score": -12.5,
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 12.5
+      "short_score": 11.8
     },
     {
-      "symbol": "XRPUSDC",
-      "net_score": -10.4,
+      "symbol": "SKYUSDT",
+      "net_score": -11.1,
       "long_score": 0,
-      "short_score": 10.4
+      "short_score": 11.1
+    },
+    {
+      "symbol": "GRASSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
     },
     {
       "symbol": "MASKUSDT",
@@ -50,12 +56,6 @@
     },
     {
       "symbol": "SPCXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -140,6 +140,12 @@
     },
     {
       "symbol": "BSVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -403,6 +409,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ICPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "PUMPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -457,6 +469,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XRPUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETHUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -500,12 +518,6 @@
     },
     {
       "symbol": "FARTCOINUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SKYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -589,6 +601,12 @@
       "short_score": 0
     },
     {
+      "symbol": "TIAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000SHIBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -631,35 +649,29 @@
       "short_score": 0
     },
     {
-      "symbol": "HBARUSDC",
+      "symbol": "SNXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BEATUSDT",
-      "net_score": 12.3,
-      "long_score": 12.3,
+      "symbol": "HBARUSDC",
+      "net_score": 0,
+      "long_score": 0,
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "BEATUSDT",
-      12.3,
-      2.65331236
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "VIRTUALUSDT",
-      12.5,
+      11.8,
       0.65312856
     ],
     [
-      "XRPUSDC",
-      10.4,
-      1.15528516
+      "SKYUSDT",
+      11.1,
+      0.06281
     ]
   ],
   "hedge_usage": {
