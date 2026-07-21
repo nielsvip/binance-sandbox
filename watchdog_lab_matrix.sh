@@ -32,11 +32,14 @@ launch_pmx() {
   fi
 }
 # USER 2026-07-21 13:30: ALL workers converge on MU until EVERY param is filled, then the
-# next priority sym, etc. (claims table splits MU's cells across the 4 workers).
+# next priority sym, etc. (claims table splits MU's cells across the workers).
+# 6 workers during the MU push (RAM guard self-throttles each below 8GB free).
 launch_pmx w1 "MU,ARM"
 launch_pmx w2 "MU,NVDA"
 launch_pmx w3 "MU,HAO"
 launch_pmx w4 "MU,TTD"
+launch_pmx w5 "MU,AXTI"
+launch_pmx w6 "MU,MNTS"
 # VEC_SCREEN lane (USER 2026-07-21 "vectorize everything"): 2 workers cover the
 # manifest params the Tier-2 fleet skips (sweep_tier==VEC_SCREEN) via v8_vec_sweep.
 # Rows land in param_cells with source_file 'vec_screen/' — Tier-1 screen, not proof.
@@ -51,13 +54,20 @@ launch_vec() {
 }
 launch_vec v1
 launch_vec v2
-# COMBO hunt (USER 2026-07-21): greedy best-combination for MU_LONG, re-ranks hourly
-if ! pgrep -f "combo_search.py --sym MU --side LONG" >/dev/null; then
-  cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py --sym MU --side LONG \
-    >> "$LOGDIR/combo_MU_LONG.log" 2>&1 < /dev/null &
-  disown
-  echo "$(date -u +%FT%TZ) relaunched combo_search MU_LONG" >> "$LOGDIR/lab_matrix_watchdog.log"
-fi
+# COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
+# probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
+# USER 2026-07-21: MU is LONG-only; the short hunt runs on HAO (the flagged short ticker)
+launch_combo() {
+  sym=$1; side=$2
+  if ! pgrep -f "combo_search.py --sym $sym --side $side" >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py --sym "$sym" --side "$side" \
+      >> "$LOGDIR/combo_${sym}_${side}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched combo_search ${sym}_$side" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+}
+launch_combo MU LONG
+launch_combo HAO SHORT
 # hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
 if [ "$(date +%M)" -lt 10 ]; then
   cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
