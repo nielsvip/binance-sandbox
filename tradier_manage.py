@@ -2268,7 +2268,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             try:
                 _mat_conf = float(getattr(config, 'MTF_ARROW_CONFIRM_PCT', 2.0))
                 _mat_st = getattr(position, 'arrow_trail_state', None)
-                _mat_opened = str(getattr(position, 'opened_at', ''))
+                # Cycle key includes entry_price: engine/live position objects are REUSED on
+                # reopen without refreshing opened_at, so opened_at alone kept the previous
+                # trade's high → instant exit at the new lower entry (median 5-min holds,
+                # 714/807 trail exits in the 2026-07-21 ARROW_PURE ARM forensic cell).
+                _mat_opened = f"{getattr(position, 'opened_at', '')}|{getattr(position, 'entry_price', 0)}"
                 if not isinstance(_mat_st, dict) or _mat_st.get('opened_at') != _mat_opened:
                     _mat_st = {'hi': current_price, 'opened_at': _mat_opened}
                     position.arrow_trail_state = _mat_st
