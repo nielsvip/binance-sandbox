@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-21 18:25:47 UTC
+# Copilot Status — 2026-07-21 18:41:11 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:24:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:24:44
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:24:44
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:25:15
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:25:15
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:25:15
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:25:45
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:25:45
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T18:25:45
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:25:46
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:39:39
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:39:39
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:40:09
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:40:09
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:40:09
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:40:40
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:40:40
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T18:41:10
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T18:41:10
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T18:41:11
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **CIBR** LONG (tradier) peak +7.6%, now +1.2%
 
-- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 0m ago
+- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 1m ago
 
 ## Supervisor
 
@@ -40,6 +40,6 @@ _None_
 **Issues (last 1h):** 8
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_indicators.py is NOT running
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_indicators.py is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_klines.py is NOT running

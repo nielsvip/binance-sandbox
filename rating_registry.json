@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T18:27:03.416699+00:00",
+  "timestamp": "2026-07-21T18:42:28.838205+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -44,12 +44,6 @@
     },
     {
       "symbol": "XTZUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "HMSTRUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -170,12 +164,6 @@
     },
     {
       "symbol": "DOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -470,6 +458,12 @@
     },
     {
       "symbol": "ASTERUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "TLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -955,17 +949,28 @@
       "short_score": 0
     },
     {
-      "symbol": "TLMUSDT",
-      "net_score": 10.5,
-      "long_score": 10.5,
+      "symbol": "INXUSDT",
+      "net_score": 13.6,
+      "long_score": 13.6,
+      "short_score": 0
+    },
+    {
+      "symbol": "HMSTRUSDT",
+      "net_score": 15.8,
+      "long_score": 15.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "TLMUSDT",
-      10.5,
-      0.001893
+      "HMSTRUSDT",
+      15.8,
+      0.00018759
+    ],
+    [
+      "INXUSDT",
+      13.6,
+      0.00708188
     ]
   ],
   "top_shorts": [],
