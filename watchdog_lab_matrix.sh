@@ -36,6 +36,20 @@ launch_pmx w1 "ARM,MU"
 launch_pmx w2 "NVDA,ROKU"
 launch_pmx w3 "HAO,AXTI"
 launch_pmx w4 "MNTS,TTD"
+# VEC_SCREEN lane (USER 2026-07-21 "vectorize everything"): 2 workers cover the
+# manifest params the Tier-2 fleet skips (sweep_tier==VEC_SCREEN) via v8_vec_sweep.
+# Rows land in param_cells with source_file 'vec_screen/' — Tier-1 screen, not proof.
+launch_vec() {
+  tag=$1
+  if ! pgrep -f "vec_screen_daemon.py --tag $tag" >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/vec_screen_daemon.py --tag "$tag" \
+      >> "$LOGDIR/vec_screen_${tag}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched vec_screen $tag" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+}
+launch_vec v1
+launch_vec v2
 # hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
 if [ "$(date +%M)" -lt 10 ]; then
   cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
