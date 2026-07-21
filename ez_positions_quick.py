@@ -221,7 +221,7 @@ log_filename = str(logs_dir / f"ez_positions_quick_general_{current_log_suffix}.
 file_handler = logging.handlers.RotatingFileHandler( log_filename, maxBytes=20 * 1024 * 1024, backupCount=5, encoding="utf-8", mode="a", delay=True, )
 file_formatter = logging.Formatter("[%(asctime)s] %(message)s")
 datefmt='%d %H:%M:%S'
-file_handler.setFormatter(file_formatter)
+file_handler.setFormatter(file_formatter) # type: ignore
 logger.addHandler(file_handler)
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(file_formatter)
@@ -248,10 +248,10 @@ def setup_service_logger():
         except (ValueError, IndexError): pass
     log_filename = logs_dir / f"ez_positions_quick_general_{current_log_suffix}.log"
     file_handler = logging.handlers.RotatingFileHandler( str(log_filename), maxBytes=20*1024*1024, backupCount=5, encoding="utf-8", mode="a", delay=True )
-    file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT))
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)) # type: ignore
     logger.addHandler(file_handler)
     stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT))
+    stream_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)) # type: ignore
     logger.addHandler(stream_handler)
     return logger
 logger = setup_service_logger()
@@ -268,10 +268,10 @@ def get_account_logger(account_key: str) -> logging.Logger:
                 acc_logger.removeHandler(h)
         acc_log_filename = str(logs_dir / f"ez_positions_quick_{account_key}.log")
         acc_file_handler = logging.handlers.RotatingFileHandler( acc_log_filename, maxBytes=20*1024*1024, backupCount=5, encoding='utf-8', mode='a', delay=True )
-        acc_file_handler.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT))
+        acc_file_handler.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT)) # type: ignore
         acc_logger.addHandler(acc_file_handler)
         acc_stream = logging.StreamHandler(sys.stdout)
-        acc_stream.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT))
+        acc_stream.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT)) # type: ignore
         acc_logger.addHandler(acc_stream)
         account_loggers[account_key] = acc_logger
     return account_loggers[account_key]
@@ -289,7 +289,7 @@ def get_wait_logger(account_key: str) -> logging.Logger:
                 w_logger.removeHandler(h)
         w_log_filename = str(logs_dir / f"ez_positions_quick_wait_{account_key}.log")
         w_file_handler = logging.handlers.RotatingFileHandler( w_log_filename, maxBytes=20*1024*1024, backupCount=5, encoding="utf-8", mode="a", delay=True )
-        w_file_handler.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT))
+        w_file_handler.setFormatter(logging.Formatter(f"[%(asctime)s] [{account_key}] %(message)s", datefmt=DATE_FORMAT)) # type: ignore
         w_logger.addHandler(w_file_handler)
         wait_loggers[account_key] = w_logger
     return wait_loggers[account_key]
@@ -314,7 +314,7 @@ class AccountConfig:
     webhook_secret: str = field(init=False)
     client: Optional[Client] = field(default=None, init=False)
     _last_used_weight: int = field(default=0, init=False)
-    _connector_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _connector_lock: threading.Lock = field(default_factory=threading.Lock, init=False) # type: ignore
     _ip_cycle: Optional[deque] = field(default=None, init=False)
     _current_ip: Optional[str] = field(default=None, init=False)
     _banned_ips: dict = field(default_factory=dict, init=False)
@@ -414,7 +414,7 @@ class AccountConfig:
     def handle_api_ban(self, cooldown_seconds: int = 900):
         banned_ip = getattr(self, "_current_ip", None)
         logger.info(f"[{self.prefix}] 🚫 IP BAN DETECTED on {banned_ip}, switching IPs...")
-        self._mark_ip_banned(banned_ip, cooldown_seconds)
+        if banned_ip: self._mark_ip_banned(banned_ip, cooldown_seconds)
         if self.client:
             self._apply_ip_binding(self.client) if hasattr(self, '_apply_ip_binding') else None
         try:
@@ -480,7 +480,7 @@ async def load_initial_market_data(data_manager, config):
     except Exception as e:
         logger.error(f"❌ [STARTUP] Failed to load initial market data: {e}")
 
-def get_server_heartbeat_path(account_key: str = None) -> Path:
+def get_server_heartbeat_path(account_key: Optional[str] = None) -> Path:
     if account_key: return config.DATA_DIR / f"ez_positions_quick_running_{account_key}"
     return config.DATA_DIR / "ez_positions_quick_running"
 SERVER_HOST = "s1-int"
@@ -488,7 +488,7 @@ HEARTBEAT_STALE_THRESHOLD = 30
 HEARTBEAT_UPDATE_INTERVAL = 30
 _heartbeat_deleted_due_to_ban = False
 
-async def check_server_heartbeat(account_key: str = None) -> bool:
+async def check_server_heartbeat(account_key: Optional[str] = None) -> bool:
     try:
         if current_env['env'] == 'server':
             accounts_to_check = [account_key] if account_key else config.ACCOUNT_KEYS
@@ -506,9 +506,9 @@ async def check_server_heartbeat(account_key: str = None) -> bool:
         logger.debug(f"[HEARTBEAT] Check failed: {e}")
         return True
 
-async def safe_check_server_heartbeat(account_key: str = None) -> bool: return await check_server_heartbeat(account_key)
+async def safe_check_server_heartbeat(account_key: Optional[str] = None) -> bool: return await check_server_heartbeat(account_key)
 
-async def update_server_heartbeat(account_key: str = None):
+async def update_server_heartbeat(account_key: Optional[str] = None):
     try:
         if current_env['env'] == 'server':
             server_path_local = Path("/home/niels/binance/data")
@@ -1058,12 +1058,12 @@ def _zec_flz_long_size_mult(account_key, symbol, is_long, config_obj) -> float:
     # 2026-05-21 USER MANDATE: flz:ZECUSDC_LONG gets ZEC_FLZ_LONG_SIZE_MULT (default 5.0).
     # Returns 1.0 (no-op) for everything else. ROLLBACK: set ZEC_FLZ_LONG_SIZE_MULT=1.0 in config.
     if account_key == 'flz' and symbol == 'ZECUSDC' and is_long:
-        return safe_fetch_float(getattr(config_obj, 'ZEC_FLZ_LONG_SIZE_MULT', 1.0), 1.0)
+        return float(safe_fetch_float(getattr(config_obj, 'ZEC_FLZ_LONG_SIZE_MULT', 1.0), 1.0) or 1.0)
     return 1.0
 
-def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, config_obj, trade_manager, tracker_data: Dict[str, Any] = None, is_long: bool = True, indicators: Dict[str, Any] = None, metrics: Dict[str, Any] = None, curr_amt: float = 0.0, account_key: str = None) -> float:
+def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, config_obj, trade_manager, tracker_data: Dict[str, Any] = None, is_long: bool = True, indicators: Dict[str, Any] = None, metrics: Dict[str, Any] = None, curr_amt: float = 0.0, account_key: Optional[str] = None) -> float:
     if current_price <= 0: return 0.0
-    base_usdc_size = safe_fetch_float(getattr(config_obj, 'START_POSITION_SIZE', 45.0), 45.0)
+    _htfc = 0; base_usdc_size = safe_fetch_float(getattr(config_obj, 'START_POSITION_SIZE', 45.0), 45.0)
     # SIZE_TIER multiplier based on HTF alignment + relative volume (same logic as rate())
     if indicators:
         _rv3 = safe_fetch_float(indicators.get('relative_volume_3m'), 1.0)
@@ -1212,7 +1212,7 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
         if not is_long and local_sentiment < 0:
             crash_mult = min(_cm_max, 1.0 + _strength / 40.0)
         elif is_long and global_sentiment < 0:
-            crash_mult = min(_cm_max, 1.0 + abs(global_sentiment) / 40.0)
+            crash_mult = min(_cm_max, 1.0 + abs(float(global_sentiment or 0.0)) / 40.0)
         elif is_long and local_sentiment > 0:
             crash_mult = min(_cm_max, 1.0 + local_sentiment / 40.0)
     else:
@@ -1239,7 +1239,7 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
         _ha_dir = 'green' if (_ha3 == 'green' and _ha15 == 'green') else ('red' if (_ha3 == 'red' and _ha15 == 'red') else '')
     _dir_up = _wt_bull_dir or (_ha_dir == 'green')
     _dir_dn = (not _wt_bull_dir) or (_ha_dir == 'red')
-    _dir_strength = min(1.0, abs(_wt_vel_dir) / 10.0)
+    _dir_strength = min(1.0, abs(float(_wt_vel_dir or 0.0)) / 10.0)
     # Direction multiplier: 2x-3x WITH trend, 0.2x-0.5x AGAINST trend
     dir_mult = 1.0
     if _dir_up:
@@ -1565,7 +1565,7 @@ class BreakoutHunter:
         self.STATE_FILE.write_text(json.dumps(self._state, indent=2, default=str))
     async def run(self, trade_manager=None):
         """Main entry — call every 2 min. Scans breakouts, manages positions."""
-        now = time.time()
+        now = int(time.time())
         if now - self._last_run < 110: return  # Cooldown 110s
         self._last_run = now
         try:
@@ -1575,16 +1575,17 @@ class BreakoutHunter:
                 if not tickers: return
                 await self._manage_exits(tickers, trade_manager)
                 breakouts = await self._scan(session, tickers)
-                cur = len(self._state.get("positions", {}))
+                positions = self._state.get("positions", {}); positions = positions if isinstance(positions, dict) else {}
+                cur = len(positions)
                 entered = 0
                 for bo in breakouts:
                     if cur + entered >= self.MAX_POSITIONS: break
                     k = f"{bo['sym']}_{bo['side']}"
                     opp = f"{bo['sym']}_{'SHORT' if bo['side'] == 'LONG' else 'LONG'}"
-                    if k in self._state.get("positions", {}) or opp in self._state.get("positions", {}): continue
+                    if k in positions or opp in positions: continue
                     logger.info(f"[BREAKOUT_HUNTER] 🎯 {bo['sym']} {bo['side']} dist={bo['dist']:+.1f}% 24h={bo['chg']:+.1f}% sz={bo['sz']:.1f}x")
                     if await self._enter(session, bo, trade_manager): entered += 1
-                if entered: logger.warning(f"[BREAKOUT_HUNTER] Entered {entered} new. Total: {len(self._state.get('positions', {}))}")
+                if entered: logger.warning(f"[BREAKOUT_HUNTER] Entered {entered} new. Total: {len(positions)}")
             self._save_state()
         except Exception as e:
             logger.error(f"[BREAKOUT_HUNTER] Error: {e}")
@@ -1990,7 +1991,7 @@ def _btc_dedicated_entry_decision(account_key: str, symbol: str, is_long: bool,
     score=score_threshold to clear gates downstream; if not firing, score=0."""
     cfg = _get_btc_sym_cfg(account_key, symbol, "LONG" if is_long else "SHORT", cfg)
     rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
-    if rz is None:
+    if rz is None or div is None:
         return None
     if is_long:
         ok, why = _btc_loop.should_enter_btc_long(
@@ -2011,7 +2012,7 @@ def _btc_dedicated_exit_decision(account_key: str, symbol: str, is_long: bool,
     """Returns (score, rec, reason) for exit decision, or None."""
     cfg = _get_btc_sym_cfg(account_key, symbol, "LONG" if is_long else "SHORT", cfg)
     rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
-    if rz is None or entry_price <= 0:
+    if rz is None or entry_price <= 0 or div is None:
         return None
     side = "LONG" if is_long else "SHORT"
     pnl_pct = ((current_price - entry_price) / entry_price * 100.0) if is_long else ((entry_price - current_price) / entry_price * 100.0)
@@ -2575,7 +2576,7 @@ class AdvancedSignalRater:
             _ha_color = str(ind.get(f'ha_{_ha_tf}', '') or '').lower()
             _ha_aligned = (is_long and _ha_color == 'green') or ((not is_long) and _ha_color == 'red')
             if _ha_aligned and _ha_streak > 0:
-                _bonus = _ha_w * min(float(_ha_streak), 5.0)
+                _bonus = _ha_w * min(float(_ha_streak or 0.0), 5.0)
                 score += _bonus; reasons.append(f"R_S4_HA_STREAK({_ha_tf}={_ha_streak:.0f},+{_bonus:.0f})")
         # === R-S5 SENT_VEL — sentiment velocity accelerator ===
         if bool(getattr(config, 'R_S5_SENT_VEL_ENABLED', False)) and not is_exit:
@@ -2583,7 +2584,7 @@ class AdvancedSignalRater:
             _sv_thr = float(getattr(config, 'R_S5_SENT_VEL_PCT_THR', 75.0))
             _sv_bonus = float(getattr(config, 'R_S5_SENT_VEL_BONUS', 5.0))
             _sv_align = (is_long and _sv > 0) or ((not is_long) and _sv < 0)
-            if _sv_align and abs(_sv) >= _sv_thr:
+            if _sv_align and abs(float(_sv or 0.0)) >= _sv_thr:
                 score += _sv_bonus; reasons.append(f"R_S5_SENT_VEL({_sv:+.0f},+{_sv_bonus:.0f})")
         # === MARKET REGIME DETECTION (replaces old ADX_REGIME_FILTER) ===
         _regime_info = None
@@ -2644,7 +2645,7 @@ class AdvancedSignalRater:
             _rp_bonus = float(getattr(config, 'RP_STRONG_BONUS', 15.0))
             _rp_weak_pen = float(getattr(config, 'RP_WEAK_PENALTY', -10.0))
             _rp_opp_pen = float(getattr(config, 'RP_OPPOSITE_PENALTY', -20.0))
-            _rp_abs = abs(_rp)
+            _rp_abs = abs(float(_rp or 0.0))
             _rp_dir_match = (is_long and _rp > 0) or (not is_long and _rp < 0)
             _rp_dir_opposite = (is_long and _rp < 0) or (not is_long and _rp > 0)
             if _rp_dir_match and _rp_abs >= _rp_strong:
@@ -2890,7 +2891,7 @@ class AdvancedSignalRater:
                 if _mf_k_zone:
                     _k_ok = (is_long and k_3m < 40) or (not is_long and k_3m > 60)
                 if _k_ok:
-                    score += _mf_bonus; reasons.append(f"MOM_FADE({'L' if is_long else 'S'},rng={_body_vs_atr:.1f}xATR,rv={max(rel_vol_3m,rel_vol_15m):.1f}x,k={k_3m:.0f},+{_mf_bonus})_bc113b")
+                    score += _mf_bonus; reasons.append(f"MOM_FADE({'L' if is_long else 'S'},rng={_body_vs_atr:.1f}xATR,rv={max(float(rel_vol_3m or 0.0),float(rel_vol_15m or 0.0)):.1f}x,k={k_3m:.0f},+{_mf_bonus})_bc113b")
         # SATOSHIT2024: 3-of-5 voting score bonus — 100% WR on 48 symbols backtest
         if getattr(config, 'SATOSHIT_ENABLED', False) and account_key in getattr(config, 'SATOSHIT_ACCOUNTS', []) and not is_exit:
             from ez_satoshit import satoshit_score_bonus
@@ -3144,7 +3145,7 @@ class AdvancedSignalRater:
                 from ez_reentry import \
                     evaluate_obligatory_reentry as _eval_obl_reentry
                 _obl_ok, _obl_size_mult, _obl_reason, _obl_score = _eval_obl_reentry(
-                    ind, current_price, actual_last_red_price, prev_cross_price, is_long, config
+                    ind, float(current_price or 0.0), float(actual_last_red_price or 0.0), float(prev_cross_price or 0.0), is_long, config
                 )
                 if _obl_ok:
                     _tier1_forced = True
@@ -3202,7 +3203,7 @@ class AdvancedSignalRater:
                 from ez_reentry import \
                     evaluate_obligatory_reentry as _eval_obl_lt
                 _olt_ok, _olt_size, _olt_reason, _olt_score = _eval_obl_lt(
-                    ind, current_price, _olt_exit_px, prev_cross_price, is_long, config
+                    ind, float(current_price or 0.0), float(_olt_exit_px or 0.0), float(prev_cross_price or 0.0), is_long, config
                 )
                 if _olt_ok:
                     _tier1_forced = True
@@ -4076,7 +4077,7 @@ class AdvancedSignalRater:
             if rel_vol > 1.5: score += 1.0; reasons.append("HighVol")
             elif rel_vol < 0.5: score -= 1.5; reasons.append("LowVol")
             z_conviction = safe_fetch_float(ind.get(f'zconviction_augment_{"long" if is_long else "short"}'), 0.0)
-            if z_conviction > 20: score += 2.0; reasons.append(f"Z_Conviction({int(z_conviction)})")
+            if z_conviction > 20: score += 2.0; reasons.append(f"Z_Conviction({int(z_conviction or 0.0)})")
             if is_long:
                 if current_price > dc_high_1h * 0.995 and rel_vol < 2.0: score -= 2.0; reasons.append("Near_1H_Res")
             else:
@@ -4089,7 +4090,7 @@ class AdvancedSignalRater:
             history_score_mod = 0.0
             if tracker_data and not is_exit:
                 win_rate = safe_fetch_float(tracker_data.get('win_rate_%', 0), 0)
-                total_trades = int(safe_fetch_float(tracker_data.get('total_trades', 0), 0))
+                total_trades = int(safe_fetch_float(tracker_data.get('total_trades', 0), 0) or 0.0)
                 if total_trades >= 3:
                     if win_rate >= 70: history_score_mod += 2.0; reasons.append(f"HighWinRate_{win_rate:.0f}%")
                     elif win_rate <= 30: history_score_mod -= 3.0; reasons.append(f"LowWinRate_{win_rate:.0f}%")
@@ -4483,7 +4484,7 @@ class RatingRegistry:
                 now = time.time()
                 if now - getattr(self, 'last_save_time', 0) < 15:
                     return
-                self.last_save_time = now
+                self.last_save_time = int(now)
 
                 long_scores = {sym: sc for sym, sc, _ in self.top_longs}
                 short_scores = {sym: sc for sym, sc, _ in self.top_shorts}
@@ -4493,8 +4494,8 @@ class RatingRegistry:
                     ls = long_scores.get(sym, 0)
                     ss = short_scores.get(sym, 0)
                     if sym in self.cache:
-                        ls = max(ls, safe_fetch_float(self.cache[sym].get('LONG', {}).get('score', 0), 0))
-                        ss = max(ss, safe_fetch_float(self.cache[sym].get('SHORT', {}).get('score', 0), 0))
+                        ls = max(ls, float(safe_fetch_float(self.cache[sym].get('LONG', {}).get('score', 0), 0) or 0.0))
+                        ss = max(ss, float(safe_fetch_float(self.cache[sym].get('SHORT', {}).get('score', 0), 0) or 0.0))
                     unified.append({"symbol": sym, "net_score": round(ls - ss, 2), "long_score": ls, "short_score": ss})
                 unified.sort(key=lambda x: x['net_score'])
                 _tl = list(self.top_longs); _ts = list(self.top_shorts)
@@ -4730,7 +4731,7 @@ class RatingRegistry:
             avg_short_p = sum(float(r[1]) if isinstance(r, (tuple, list)) else 0 for r in _shorts[:10]) / min(max(len(_shorts), 1), 10)
             self.market_panic = avg_short_p > 22
         else: self.market_panic = False
-        self.last_update = time.time()
+        self.last_update = int(time.time())
         await self._save_state()
 
     async def scan_movers(self):
@@ -4745,7 +4746,7 @@ class RatingRegistry:
         max_movers = getattr(config, 'MOVER_MAX_POSITIONS', 6)
         tm = self.trade_manager
         inf_positions = tm.positions_by_account.get(mover_account, {}) if hasattr(tm, 'positions_by_account') else {}
-        n_mover_pos = sum(1 for pk, p in inf_positions.items() if abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0 and 'MOVER' in str(getattr(p, 'augment_reason', '') or ''))
+        n_mover_pos = sum(1 for pk, p in inf_positions.items() if abs(float(safe_fetch_float(getattr(p, 'positionAmt', 0), 0) or 0.0)) > 0 and 'MOVER' in str(getattr(p, 'augment_reason', '') or ''))
         if n_mover_pos >= max_movers: return
         movers_long = []
         movers_short = []
@@ -4759,7 +4760,7 @@ class RatingRegistry:
             k_15m_prev = safe_fetch_float(data.get('k_15m_prev', k_15m))
             rv_3m = safe_fetch_float(data.get('relative_volume_3m', 1.0))
             rv_15m = safe_fetch_float(data.get('relative_volume_15m', 1.0))
-            rv = max(rv_3m, rv_15m)
+            rv = max(float(rv_3m or 0.0), float(rv_15m or 0.0))
             ema_20_3m = safe_fetch_float(data.get('ema_20_3m', 0))
             dc_high_3m = safe_fetch_float(data.get('dc_high_3m', 0))
             dc_low_3m = safe_fetch_float(data.get('dc_low_3m', 0))
@@ -4884,8 +4885,8 @@ class RatingRegistry:
             pos_l = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(pos_key_l)
             pos_s = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(pos_key_s)
 
-            amt_l = abs(safe_fetch_float(getattr(pos_l, 'positionAmt', 0))) if pos_l else 0.0
-            amt_s = abs(safe_fetch_float(getattr(pos_s, 'positionAmt', 0))) if pos_s else 0.0
+            amt_l = abs(float(safe_fetch_float(getattr(pos_l, 'positionAmt', 0)) or 0.0)) if pos_l else 0.0
+            amt_s = abs(float(safe_fetch_float(getattr(pos_s, 'positionAmt', 0)) or 0.0)) if pos_s else 0.0
 
             if amt_l > 0 or amt_s > 0:
                 continue
@@ -5061,7 +5062,7 @@ class HedgeEngine:
             if _losing_pos:
                 hedge_record['losing_entry_price'] = safe_fetch_float(getattr(_losing_pos, 'entry_price', 0), 0)
                 hedge_record['losing_pnl_at_hedge'] = safe_fetch_float(getattr(_losing_pos, 'gain', 0), 0)
-                _losing_amt = abs(safe_fetch_float(getattr(_losing_pos, 'positionAmt', 0), 0))
+                _losing_amt = abs(float(safe_fetch_float(getattr(_losing_pos, 'positionAmt', 0), 0) or 0.0))
                 _losing_val = _losing_amt * safe_fetch_float(getattr(_losing_pos, 'mark_price', 0), 0)
                 hedge_record['losing_value_at_hedge'] = _losing_val
                 hedge_record['hedge_pct_of_losing'] = (hedge_record.get('notional_usd', 0) / _losing_val * 100) if _losing_val > 0 else 0
@@ -5170,7 +5171,7 @@ class HedgeEngine:
                 _sym_lock_key = f"{account_key}:{_sym_lock}"
                 _hedge_side_for_lock = 'SHORT' if position_key.endswith('_LONG') else 'LONG'
                 _hedge_side_pos = positions.get(f"{account_key}:{_sym_lock}_{_hedge_side_for_lock}")
-                _hedge_side_qty = abs(safe_fetch_float(getattr(_hedge_side_pos, 'positionAmt', 0), 0)) if _hedge_side_pos else 0.0
+                _hedge_side_qty = abs(float(safe_fetch_float(getattr(_hedge_side_pos, 'positionAmt', 0), 0) or 0.0)) if _hedge_side_pos else 0.0
                 if _sym_lock_key in self._symbol_hedge_active:
                     if _hedge_side_qty > 0:
                         if int(_now_scan) % 60 == 0: logger.info(f"🛡️ [HEDGE_SYMBOL_LOCK] {position_key}: hedge side {_hedge_side_for_lock} still has qty={_hedge_side_qty:.4f} — NO new hedge until that hedge is killed")
@@ -5218,7 +5219,7 @@ class HedgeEngine:
                     if not _hk:
                         _stale_scan.append(_h); continue
                     _hp = positions.get(_hk)
-                    _hq = abs(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0)) if _hp else 0.0
+                    _hq = abs(float(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0) or 0.0)) if _hp else 0.0
                     if _hq <= 0:
                         _stale_scan.append(_h)
                         logger.warning(f"🧹 [HEDGE_TRACKER_STALE_CLEAR_SCAN] {position_key}: recorded hedge {_hk} qty={_hq} — stale, removing")
@@ -5230,7 +5231,7 @@ class HedgeEngine:
                 if _live_scan > 0:
                     continue  # at least one live hedge — block
                 logger.warning(f"✅ [HEDGE_TRACKER_STALE_CLEARED_SCAN] {position_key}: {len(_stale_scan)} stale entries removed — proceeding")
-            qty = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0)))
+            qty = abs(float(safe_fetch_float(getattr(pos, 'positionAmt', 0)) or 0.0))
             entry_price = safe_fetch_float(getattr(pos, 'entry_price', 0))
             mark_price = safe_fetch_float(getattr(pos, 'mark_price', 0))
             if qty <= 0 or entry_price <= 0 or mark_price <= 0: continue
@@ -5263,8 +5264,7 @@ class HedgeEngine:
             # 2026-05-09 USER MANDATE: this gate is BYPASSED when wt1_3m AND wt1_1h are both against —
             # the 2-TF-against signal IS the hedge trigger and supersedes "is dropping right now".
             # SKY at -17% for 11 days flat would never satisfy deteriorating gain on its own.
-            _peek_3m_against = False
-            _peek_1h_against = False
+            _peek_3m_against = False; _peek_1h_against = False; _peek_ind = {}; _peek_is_long = False
             try:
                 _peek_ind = self.data_manager._cold_data.get(position_key.split(':')[1].replace('_LONG','').replace('_SHORT',''), {}) if self.data_manager else {}
                 _peek_w1_3m = safe_fetch_float(_peek_ind.get('wt1_3m'), 0)
@@ -5393,7 +5393,7 @@ class HedgeEngine:
             hedge_side = 'SHORT' if is_long else 'LONG'
             _same_hedge_key = f"{account_key}:{symbol}_{hedge_side}"
             _same_pos = positions.get(_same_hedge_key)
-            _same_already = _same_pos and abs(safe_fetch_float(getattr(_same_pos, 'positionAmt', 0))) > 0
+            _same_already = _same_pos and abs(float(safe_fetch_float(getattr(_same_pos, 'positionAmt', 0)) or 0.0)) > 0
             if _same_already: continue
             # FIX 2026-04-07: ONE hedge only. Open same-symbol hedge. NO dual on top.
             # 2026-04-17 OVERHAUL: sizing switch HEDGE_SAME_SYMBOL_PCT (default 1.0 = 100% of loser qty).
@@ -5471,7 +5471,7 @@ class HedgeEngine:
         positions = self.positions_service.positions_by_account.get(account_key, {})
         hedge_pos = positions.get(hedge_key)
         losing_position = positions.get(losing_key)
-        real_hedge_qty = abs(safe_fetch_float(getattr(hedge_pos, 'positionAmt', 0))) if hedge_pos else 0.0
+        real_hedge_qty = abs(float(safe_fetch_float(getattr(hedge_pos, 'positionAmt', 0)) or 0.0)) if hedge_pos else 0.0
         if hedge_pos and real_hedge_qty > 0:
             hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0)
             if hedge_gain < -0.01:
@@ -5497,7 +5497,7 @@ class HedgeEngine:
         # based on pnl_pct/history_loss meant shallow-loss hedges undersized at 50% (e.g., a -0.4%
         # position got a 50% hedge — undersized when the trade went deeper). One flat ratio now.
         # 2026-05-18 per-sym overlay
-        target_ratio = float(_psym_get(symbol, losing_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        target_ratio = float(_psym_get(symbol, losing_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0) or 1.0)
         if target_ratio == 0: return
         if real_hedge_qty > 0 and existing_hedge_value >= (losing_value * _max_hedge_ratio):
              logger.debug(f"[HEDGE_GUARD] {losing_key} already has hedge {hedge_key} with value ${existing_hedge_value:.2f} >= ${losing_value*_max_hedge_ratio:.2f} (cap 200%). Skipping.")
@@ -6960,7 +6960,7 @@ class HedgeEngine:
         logger.info(f"✅ [HEDGE_GATES_PASSED] {losing_position_key}: all gates cleared, calling find_hedge_candidates...")
         try:
           async with self._get_account_lock(account_key):
-            results = { 'elected_symbol': {'status': 'pending'}, 'actual_symbol': {'status': 'pending'}, 'overall_status': 'pending' }
+            results: dict[str, Any] = { 'elected_symbol': {'status': 'pending'}, 'actual_symbol': {'status': 'pending'}, 'overall_status': 'pending' }
             try:
                 candidates = await asyncio.wait_for(
                     self.find_hedge_candidates(account_key=account_key, losing_symbol=losing_symbol, losing_side=losing_side),
@@ -7090,9 +7090,9 @@ class HedgeEngine:
                             position = await self.tracker_manager.get_position(hedge_position_key)
                             if not position:
                                 position = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_position_key)
-                            positionAmt_abs = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0) if not isinstance(position, dict) else position.get('positionAmt', 0.0), 0.0))
+                            positionAmt_abs = abs(float(safe_fetch_float(getattr(position, 'positionAmt', 0.0) if not isinstance(position, dict) else position.get('positionAmt', 0.0), 0.0) or 0.0))
                             if positionAmt_abs > 0:
-                                existing_gain = safe_fetch_float(getattr(position, 'gain', 0.0) if not isinstance(position, dict) else position.get('gain', 0.0), 0.0)
+                                existing_gain = float(safe_fetch_float(getattr(position, 'gain', 0.0) if not isinstance(position, dict) else position.get('gain', 0.0), 0.0) or 0.0)
                                 if existing_gain < -0.01:
                                     logger.critical(f"[HEDGE_ACTUAL_BLOCK] {hedge_position_key} already exists and LOSING {existing_gain:.2f}%! Not augmenting a losing hedge.")
                                     results['actual_symbol'] = {'status': 'blocked_losing', 'reason': f'hedge_losing_{existing_gain:.2f}%'}
@@ -7338,7 +7338,7 @@ class HedgeEngine:
                     if not _hk:
                         _stale.append(_h); continue
                     _hp = _positions_for_check.get(_hk)
-                    _hq = abs(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0)) if _hp else 0.0
+                    _hq = abs(float(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0) or 0.0)) if _hp else 0.0
                     if _hq <= 0:
                         _stale.append(_h)
                         logger.warning(f"🧹 [HEDGE_TRACKER_STALE_CLEAR] {origin_key}: recorded hedge {_hk} qty={_hq} — stale tracker entry, removing")
@@ -7378,7 +7378,7 @@ class HedgeEngine:
                     try:
                         _opp_key = f"{account_key}:{symbol}_{_opp_side}"
                         _opp_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(_opp_key)
-                        _opp_amt = abs(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0)) if _opp_pos else 0.0
+                        _opp_amt = abs(float(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0) or 0.0)) if _opp_pos else 0.0
                         if _opp_amt <= 0.0:
                             _orphan = True
                     except Exception: pass
@@ -7456,7 +7456,7 @@ class HedgeEngine:
                 _opp_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
                 _opp_key = f"{account_key}:{symbol}_{_opp_side}"
                 _opp_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(_opp_key)
-                _opp_amt = abs(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0)) if _opp_pos else 0.0
+                _opp_amt = abs(float(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0) or 0.0)) if _opp_pos else 0.0
                 _is_orphan = _opp_amt <= 0.0
                 for _mark in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
                     if _mark in _aug_reason:
@@ -7488,7 +7488,7 @@ class HedgeEngine:
             return False
         existing_hedge = await self.tracker_manager.get_position(hedge_key)
         if not existing_hedge: existing_hedge = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key)
-        positionAmt = abs(safe_fetch_float(getattr(existing_hedge, 'positionAmt', 0.0), 0.0))
+        positionAmt = abs(float(safe_fetch_float(getattr(existing_hedge, 'positionAmt', 0.0), 0.0) or 0.0))
         if positionAmt > 0:
             # FIX 2026-04-07: Hedge exists = DONE. NO resize. NO augment. ONE entry only.
             logger.info(f"[HEDGE_SAME_EXISTS] {hedge_key}: already open (amt={positionAmt:.6f}). ONE HEDGE ONLY — no resize/augment.")
@@ -7556,11 +7556,11 @@ class HedgeEngine:
         # $25 absolute cap meant a $49 SHORT got a $25 hedge target; downstream paths sized it
         # even smaller ($6.94). Now: target = origin_val × HEDGE_MAX_PCT_OF_LOSER (default 1.0).
         # Absolute cap from config (default 100k, effectively unbound).
-        _origin_val = abs(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0)) * current_price
+        _origin_val = abs(float(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0) or 0.0)) * current_price
         if _origin_val < 1.0: return True
         # 2026-05-18 per-sym overlay (origin_side from caller)
-        _hsize_max_pct = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
-        _hsize_max_abs = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_ABSOLUTE_USD', 100000.0))
+        _hsize_max_pct = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_PCT_OF_LOSER', 1.0) or 1.0)
+        _hsize_max_abs = float(_psym_get(symbol, origin_side, 'HEDGE_MAX_ABSOLUTE_USD', 100000.0) or 100000.0)
         _target_val = min(_origin_val * _hsize_max_pct, _hsize_max_abs)
         logger.warning(f"📐 [HEDGE_SAME_SIZE_100PCT] {hedge_key}: origin=${_origin_val:.2f} × pct={_hsize_max_pct:.2f} → target=${_target_val:.2f} (abs_cap=${_hsize_max_abs:.0f})")
         # 2026-04-26 USER RULE — STOP ACCUMULATION. Before firing a new hedge order, check the
@@ -7571,7 +7571,7 @@ class HedgeEngine:
             _existing_hedge_pos = None
             if hasattr(self.tracker_manager, 'positions_service') and self.tracker_manager.positions_service:
                 _existing_hedge_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key)
-            _existing_hedge_qty = abs(safe_fetch_float(getattr(_existing_hedge_pos, 'positionAmt', 0), 0)) if _existing_hedge_pos else 0.0
+            _existing_hedge_qty = abs(float(safe_fetch_float(getattr(_existing_hedge_pos, 'positionAmt', 0), 0) or 0.0)) if _existing_hedge_pos else 0.0
             _existing_notional = _existing_hedge_qty * current_price
             _cover_threshold = float(getattr(self.config, 'HEDGE_ALREADY_COVERED_THRESHOLD', 0.9))
             if _existing_notional >= _target_val * _cover_threshold and _target_val > 0:
@@ -7762,7 +7762,7 @@ class SentimentMomentumStrategy:
                 async with self._iteration_lock:
                     snapshot = self.data_manager._cold_data or {}
                     btc_data = snapshot.get('BTCUSDC', {})
-                    global_score = safe_fetch_float(btc_data.get('0market_sentiment_score', 0.0))
+                    global_score = float(safe_fetch_float(btc_data.get('0market_sentiment_score', 0.0)) or 0.0)
                     global_ema = safe_fetch_float(btc_data.get('0market_sentiment_score_ema', global_score))
                     self._update_history(snapshot, global_score)
                     diff = global_score - global_ema
@@ -8785,7 +8785,7 @@ class TrackerManager:
                 candidate_data[fld] = candidate_data[fld][-50:]
         return candidate_data
 
-    async def send_webhook(self, position_key: str, positionAmt:float, side: str, current_price: float, quantity: float, is_full_close: bool, reason: str) -> bool:
+    async def send_webhook(self, position_key: str, positionAmt:float, side: str, current_price: float, quantity: float, is_full_close: bool, reason: str) -> Union[bool, str]:
         try:
             account_key, symbol, position_side = parse_position_key(position_key)
             account_key = account_key.lower()
@@ -12020,7 +12020,7 @@ async def reallocate_capital_for_winner(trade_manager, tracker_manager, hedge_en
         return 0.0, None
 
 
-async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, hedge_engine: HedgeEngine, account_key: str, position_key: str, positionAmt:float, action: str, current_price: float, qty: float, reason: str, already_locked: bool = False, is_hedge: bool = False, hedge_for: Optional[str] = None, override_qty: Optional[float] = None, verify_via_websocket: bool = True, data_manager: Optional[FastDataManager] = None) -> tuple[bool, str]:
+async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, hedge_engine: Optional[HedgeEngine], account_key: str, position_key: str, positionAmt:float, action: str, current_price: float, qty: float, reason: str, already_locked: bool = False, is_hedge: bool = False, hedge_for: Optional[str] = None, override_qty: Optional[float] = None, verify_via_websocket: bool = True, data_manager: Optional[FastDataManager] = None) -> tuple[bool, str]:
     if hasattr(trade_manager, '_allowed_accounts') and account_key not in trade_manager._allowed_accounts:
         logger.critical(f"🛑 [EXECUTE_BLOCKED] Attempted trade for {account_key} but instance is restricted to {trade_manager._allowed_accounts}")
         return False, "ACCOUNT_MISMATCH"
@@ -16365,7 +16365,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
 
                     # Use position's last reduction price as exit price; current_price is from caller scope
                     _gr_obl_ok, _gr_obl_size, _gr_obl_reason, _gr_obl_score = _eval_obl_reentry_gr(
-                        indicators, current_price, exit_price, current_price, is_long, config
+                        indicators, float(current_price or 0.0), float(exit_price or 0.0), float(current_price or 0.0), is_long, config
                     )
                     if _gr_obl_ok:
                         # OBLIGATORY granted — apply size_mult on top of existing _qty_mult
