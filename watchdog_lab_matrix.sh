@@ -34,19 +34,22 @@ launch_pmx() {
 # USER 2026-07-21 13:30: ALL workers converge on MU until EVERY param is filled, then the
 # next priority sym, etc. (claims table splits MU's cells across the workers).
 # 6 workers during the MU push (RAM guard self-throttles each below 8GB free).
-launch_pmx w1 "MU,ARM"
-launch_pmx w2 "MU,NVDA"
-launch_pmx w3 "MU,HAO"
-launch_pmx w4 "MU,TTD"
-launch_pmx w5 "MU,AXTI"
-launch_pmx w6 "MU,MNTS"
-# surge workers: claim the cores the tradeable_keys replay releases when it finishes
-if ! pgrep -f "precompute_tradeable_keys_histor[y]" >/dev/null; then
-  launch_pmx w7 "MU,ARM"
-  launch_pmx w8 "MU,NVDA"
-  launch_pmx w9 "MU,HAO"
-  launch_pmx w10 "MU,TTD"
-fi
+# USER 2026-07-21 evening: SWITCH_MATRIX_TRB must be COMPLETE for MU_LONG, so the whole
+# Tier-2 fleet is pinned to MU (--only) instead of drifting to ARM/NVDA/HAO once MU's cells
+# are claimed. Measured cost: one MU run = 9m11s / 632MB RSS, and it fills MU_LONG *and*
+# MU_SHORT, so 14 workers ~= one core each on S1's 16 and stays inside the 30GB RAM budget.
+# Floor for a complete 6,277-row MU grid is ~60 core-hours; do not add workers past ~14, the
+# oversubscription measured at load 31 cut per-worker throughput by ~2.4x.
+for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14; do
+  if ! pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py \
+      --tag "$t" --only MU --all-tiers \
+      >> "$LOGDIR/param_matrix_${t}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched param_matrix $t (MU push)" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+done
+
 # VEC_SCREEN lane (USER 2026-07-21 "vectorize everything"): 2 workers cover the
 # manifest params the Tier-2 fleet skips (sweep_tier==VEC_SCREEN) via v8_vec_sweep.
 # Rows land in param_cells with source_file 'vec_screen/' — Tier-1 screen, not proof.
