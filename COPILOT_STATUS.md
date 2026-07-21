@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-21 17:39:38 UTC
+# Copilot Status — 2026-07-21 17:55:03 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:38:06
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:38:06
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:38:36
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:38:36
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:38:36
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:39:07
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:39:07
-- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:39:37
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:39:37
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:39:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:54:00
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:54:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T17:54:31
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:54:31
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T17:54:31
+- **STALE_INDICATORS** [tradier]  — 2026-07-21T17:55:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-21T17:55:01
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-21T17:55:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-21T17:55:01
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-21T17:55:02
 
 ## Missed Trades (trader comparison)
 
@@ -29,17 +29,17 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **CIBR** LONG (tradier) peak +7.6%, now +1.0%
+- HELD: **CIBR** LONG (tradier) peak +7.6%, now +1.2%
 
-- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 1m ago
+- WATCHING: **NVDA** LONG (tradier) peaked +5.8%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 14
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+**Issues (last 1h):** 13
 - [HIGH] ez_manage.py for men is NOT running
 - [HIGH] ez_manage.py for men is NOT running
 - [HIGH] ez_klines.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_klines.py is NOT running
