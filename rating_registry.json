@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T18:45:57.765014+00:00",
+  "timestamp": "2026-07-22T19:00:56.849244+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,15 +8,15 @@
   "unified_ranking": [
     {
       "symbol": "AIAUSDT",
-      "net_score": -21.1,
+      "net_score": -21.3,
       "long_score": 0,
-      "short_score": 21.1
+      "short_score": 21.3
     },
     {
       "symbol": "BIOUSDC",
-      "net_score": -18.3,
+      "net_score": -18.7,
       "long_score": 0,
-      "short_score": 18.3
+      "short_score": 18.7
     },
     {
       "symbol": "KAVAUSDT",
@@ -25,43 +25,49 @@
       "short_score": 17.7
     },
     {
-      "symbol": "AAVEUSDC",
-      "net_score": -15.8,
-      "long_score": 0,
-      "short_score": 15.8
-    },
-    {
       "symbol": "ENAUSDC",
-      "net_score": -14.8,
+      "net_score": -16.3,
       "long_score": 0,
-      "short_score": 14.8
+      "short_score": 16.3
     },
     {
-      "symbol": "ARBUSDC",
-      "net_score": -14.2,
+      "symbol": "AAVEUSDC",
+      "net_score": -15.7,
       "long_score": 0,
-      "short_score": 14.2
+      "short_score": 15.7
     },
     {
       "symbol": "HBARUSDC",
-      "net_score": -13.7,
+      "net_score": -14.5,
       "long_score": 0,
-      "short_score": 13.7
+      "short_score": 14.5
     },
     {
-      "symbol": "SKYUSDT",
-      "net_score": -13.0,
+      "symbol": "ARBUSDC",
+      "net_score": -12.2,
       "long_score": 0,
-      "short_score": 13.0
+      "short_score": 12.2
     },
     {
       "symbol": "1000XECUSDT",
-      "net_score": -12.1,
+      "net_score": -12.0,
       "long_score": 0,
-      "short_score": 12.1
+      "short_score": 12.0
     },
     {
       "symbol": "RKLBUSDT",
+      "net_score": -11.7,
+      "long_score": 0,
+      "short_score": 11.7
+    },
+    {
+      "symbol": "ETHUSDC",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
+    },
+    {
+      "symbol": "GALAUSDT",
       "net_score": -10.0,
       "long_score": 0,
       "short_score": 10.0
@@ -331,12 +337,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "RENDERUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -374,6 +374,12 @@
     },
     {
       "symbol": "WLFIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SKYUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -494,12 +500,6 @@
     },
     {
       "symbol": "ARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -656,6 +656,12 @@
     },
     {
       "symbol": "GRTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -841,6 +847,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BTCDOMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SEIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -865,147 +877,135 @@
       "short_score": 0
     },
     {
-      "symbol": "NEARUSDC",
-      "net_score": 10.9,
-      "long_score": 10.9,
-      "short_score": 0
-    },
-    {
       "symbol": "XLMUSDT",
-      "net_score": 11.9,
-      "long_score": 11.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "ORDIUSDC",
-      "net_score": 12.7,
-      "long_score": 12.7,
+      "net_score": 12.3,
+      "long_score": 12.3,
       "short_score": 0
     },
     {
       "symbol": "1000LUNCUSDT",
-      "net_score": 13.5,
-      "long_score": 13.5,
+      "net_score": 12.4,
+      "long_score": 12.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORDIUSDC",
+      "net_score": 12.8,
+      "long_score": 12.8,
       "short_score": 0
     },
     {
       "symbol": "HYPEUSDT",
-      "net_score": 15.1,
-      "long_score": 15.1,
+      "net_score": 12.8,
+      "long_score": 12.8,
       "short_score": 0
     },
     {
       "symbol": "RUNEUSDT",
-      "net_score": 16.5,
-      "long_score": 16.5,
+      "net_score": 16.2,
+      "long_score": 16.2,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 17.0,
-      "long_score": 17.0,
+      "net_score": 16.6,
+      "long_score": 16.6,
       "short_score": 0
     },
     {
       "symbol": "ZECUSDC",
-      "net_score": 18.2,
-      "long_score": 18.2,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 43,
-      "long_score": 43,
+      "net_score": 16.7,
+      "long_score": 16.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "BTCDOMUSDT",
-      43,
-      5552.8
-    ],
-    [
       "ZECUSDC",
-      18.2,
+      16.7,
       531.60016966
     ],
     [
       "RIFUSDT",
-      17.0,
+      16.6,
       0.07889624
     ],
     [
       "RUNEUSDT",
-      16.5,
+      16.2,
       0.45108167
     ],
     [
       "HYPEUSDT",
-      15.1,
+      12.8,
       60.04155952
     ],
     [
-      "1000LUNCUSDT",
-      13.5,
-      0.05789
-    ],
-    [
       "ORDIUSDC",
-      12.7,
+      12.8,
       3.68259137
     ],
     [
-      "XLMUSDT",
-      11.9,
-      0.1934
+      "1000LUNCUSDT",
+      12.4,
+      0.05789
     ],
     [
-      "NEARUSDC",
-      10.9,
-      1.931
+      "XLMUSDT",
+      12.3,
+      0.1934
     ]
   ],
   "top_shorts": [
     [
       "AIAUSDT",
-      21.1,
+      21.3,
       0.0561495
     ],
     [
       "BIOUSDC",
-      18.3,
+      18.7,
       0.02608055
     ],
     [
-      "AAVEUSDC",
-      15.8,
-      95.08
-    ],
-    [
       "ENAUSDC",
-      14.8,
+      16.3,
       0.08611776
     ],
     [
+      "AAVEUSDC",
+      15.7,
+      95.08
+    ],
+    [
       "HBARUSDC",
-      13.7,
+      14.5,
       0.06971
     ],
     [
-      "SKYUSDT",
-      13.0,
-      0.06281
+      "ARBUSDC",
+      12.2,
+      0.08895151
     ],
     [
       "1000XECUSDT",
-      12.1,
+      12.0,
       0.00747775
     ],
     [
       "RKLBUSDT",
-      10.0,
+      11.7,
       69.38
+    ],
+    [
+      "ETHUSDC",
+      10.9,
+      1920.26
+    ],
+    [
+      "GALAUSDT",
+      10.0,
+      0.00204547
     ]
   ],
   "hedge_usage": {

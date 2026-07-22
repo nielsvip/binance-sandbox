@@ -2829,7 +2829,14 @@ class TradierConfig:
     def get_symbol_setting(self, account_key: str, position_key: str, setting_name: str):
         """Hot-path config lookup: regime override → global default. Checks in-process _REGIME_OVERRIDES first, then Redis cache (refreshed every 5s)."""
         pk = position_key if ":" not in position_key else position_key.split(":", 1)[1]
-        if pk.split("_")[0] in {"SNDK", "MU", "PLTR", "INTC", "GOOGL", "NVDA", "AVGO", "TXN", "MA", "CRWV", "AXON", "ASTS"} and setting_name in {"PARTIAL_PROFIT_LOCK_ENABLED", "MI_EXHAUST_EXIT_ENABLED_TRADIER"}: return False
+        # 2026-07-22 REMOVED: a hardcoded symbol set ({SNDK, MU, PLTR, INTC, GOOGL, NVDA, AVGO,
+        # TXN, MA, CRWV, AXON, ASTS}) forced PARTIAL_PROFIT_LOCK_ENABLED and
+        # MI_EXHAUST_EXIT_ENABLED_TRADIER False here. Per-symbol behaviour baked into code is
+        # invisible to the switch matrix and unreachable by the exposure ladder, and it made
+        # THREE layers disagree about whether PPL was on for MU (code said off, the per-sym
+        # overlay said on, the config default said off). PPL is now off by DEFAULT for every
+        # symbol (PARTIAL_PROFIT_LOCK_ENABLED = False) and is turned on only where a config or
+        # overlay explicitly says so — one source of truth.
         full_key = f"{account_key}:{pk}"
         regime = self._REGIME_OVERRIDES.get(full_key)
         if regime and setting_name in regime and not regime.get("_paper", False): return regime[setting_name]

@@ -7117,7 +7117,16 @@ class StockStrategy:
             if _tm_t is not None and not _ppl_fired_t and gain >= _ppl_min_gain_t and qty > _ppl_min_qty_t and _ppl_entry_px_t > 0:
                 _ppl_reduce_qty_t = qty * _ppl_frac_t
                 _ppl_keep_qty_t = qty - _ppl_reduce_qty_t
-                if _ppl_reduce_qty_t >= _ppl_min_qty_t and _ppl_keep_qty_t >= _ppl_min_qty_t:
+                # USER 2026-07-22: a "partial" close that would take the WHOLE position is not a
+                # partial close — skip it in all cases. Stocks are whole shares, so a fractional
+                # reduce rounds at the broker: qty=2 with frac=0.625 asks for 1.25 and can round
+                # to 2, i.e. a full exit dressed up as a profit-lock. Floor the reduce to whole
+                # shares and require that at least one share survives.
+                _ppl_reduce_qty_t = float(int(_ppl_reduce_qty_t))
+                _ppl_keep_qty_t = qty - _ppl_reduce_qty_t
+                if _ppl_reduce_qty_t >= qty or _ppl_keep_qty_t < max(1.0, _ppl_min_qty_t):
+                    logger.info(f"[PPL_SKIP_WOULD_FULL_CLOSE] {_ppl_pk_t}: qty={qty:.4f} reduce={_ppl_reduce_qty_t:.4f} keep={_ppl_keep_qty_t:.4f} — a partial close that closes the position is skipped")
+                elif _ppl_reduce_qty_t >= _ppl_min_qty_t and _ppl_keep_qty_t >= _ppl_min_qty_t:
                     _ppl_be_stop_t = _ppl_entry_px_t * (1.0 + _ppl_be_buffer_t / 100.0) if is_long else _ppl_entry_px_t * (1.0 - _ppl_be_buffer_t / 100.0)
                     _ppl_uid_t = f"PPL_TP_{_ppl_pk_t}_{int(time.time())}"
                     _ppl_reason_t = f"PPL_TP_gain{gain:.2f}_50pct"
