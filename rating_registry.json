@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T03:24:19.707926+00:00",
+  "timestamp": "2026-07-22T03:39:07.517584+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,46 +7,40 @@
   },
   "unified_ranking": [
     {
-      "symbol": "LINKUSDC",
-      "net_score": -15.7,
-      "long_score": 0,
-      "short_score": 15.7
-    },
-    {
       "symbol": "MASKUSDT",
       "net_score": -13.6,
       "long_score": 0,
       "short_score": 13.6
     },
     {
-      "symbol": "ENAUSDC",
-      "net_score": -13.0,
-      "long_score": 0,
-      "short_score": 13.0
-    },
-    {
       "symbol": "BIOUSDC",
-      "net_score": -13.0,
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 13.0
+      "short_score": 12.5
     },
     {
-      "symbol": "ETHUSDC",
-      "net_score": -12.7,
+      "symbol": "LINKUSDC",
+      "net_score": -12.4,
       "long_score": 0,
-      "short_score": 12.7
-    },
-    {
-      "symbol": "GALAUSDT",
-      "net_score": -10.8,
-      "long_score": 0,
-      "short_score": 10.8
+      "short_score": 12.4
     },
     {
       "symbol": "SOLUSDC",
-      "net_score": -10.2,
+      "net_score": -10.7,
       "long_score": 0,
-      "short_score": 10.2
+      "short_score": 10.7
+    },
+    {
+      "symbol": "ENAUSDC",
+      "net_score": -10.5,
+      "long_score": 0,
+      "short_score": 10.5
+    },
+    {
+      "symbol": "ETHUSDC",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "HMSTRUSDT",
@@ -481,6 +475,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GALAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -560,6 +560,12 @@
     },
     {
       "symbol": "SUSHIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -887,51 +893,34 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "BEATUSDT",
-      "net_score": 10.8,
-      "long_score": 10.8,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "BEATUSDT",
-      10.8,
-      2.65331236
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
-      "LINKUSDC",
-      15.7,
-      8.61265569
-    ],
-    [
       "BIOUSDC",
-      13.0,
+      12.5,
       0.02608055
     ],
     [
+      "LINKUSDC",
+      12.4,
+      8.61265569
+    ],
+    [
+      "SOLUSDC",
+      10.7,
+      77.7586811
+    ],
+    [
       "ENAUSDC",
-      13.0,
+      10.5,
       0.08611776
     ],
     [
       "ETHUSDC",
-      12.7,
+      10.3,
       1920.26
-    ],
-    [
-      "GALAUSDT",
-      10.8,
-      0.00204547
-    ],
-    [
-      "SOLUSDC",
-      10.2,
-      77.7586811
     ]
   ],
   "hedge_usage": {

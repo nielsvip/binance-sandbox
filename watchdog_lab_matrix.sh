@@ -130,14 +130,25 @@ launch_vec_focus() {
     echo "$(date -u +%FT%TZ) relaunched vec_screen $tag (focus=${FOCUS}_${SIDE})" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 }
-# MEASURED 2026-07-22 00:35: v8_vec_sweep's SweepConfig implements only 164 of the 921
-# sweepable manifest params (18%) — a hard ceiling of 581 Tier-1 cells per key, of which
-# MU_LONG already has 553. With --all-tiers it just spawns sweeps that answer
-# "unknown SweepConfig knob" and REFUSE, stealing cores from the engine lane for ~28 more
-# cells. The Tier-1 lane cannot fill this grid; only porting the missing 757 knobs into
-# v8_vec_sweep would change that, and that is engineering work, not an overnight run.
-# launch_vec_focus v1
-# launch_vec_focus v2
+# TIER-1 SCREEN — runs CONTINUOUSLY across the whole universe (USER 2026-07-22: "make sure
+# the v8_vec_sweep is set up and continues at once when the Tier1 finishes").
+# vec_params() now filters to the 164 knobs SweepConfig actually declares, so every sweep it
+# starts can produce cells instead of answering "unknown SweepConfig knob" and refusing
+# (581 cells/key ceiling — the other 757 knobs need porting, BACKTEST_BIBLE §13.5).
+# NO --only: it covers PRIORITY_SYMS first then the rest of the universe, so when it exhausts
+# one key it moves straight to the next and never idles. ONE worker at nice 19 — this is a
+# screen, and the Tier-2 engine must keep the box.
+launch_vec_universe() {
+  tag=$1
+  if ! pgrep -f "vec_screen_daemon.py --tag $tag " >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup nice -n 19 "$PY" tools/vec_screen_daemon.py \
+      --tag "$tag" --all-tiers \
+      >> "$LOGDIR/vec_screen_${tag}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched vec_screen $tag (universe screen)" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+}
+launch_vec_universe v1
 # COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
 # USER 2026-07-21 evening: the first four keys are MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG.
