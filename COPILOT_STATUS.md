@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-22 10:22:01 UTC
+# Copilot Status — 2026-07-22 10:37:16 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T10:18:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T10:18:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:18:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:19:29
-- **STALE_INDICATORS** [tradier]  — 2026-07-22T10:20:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T10:20:29
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T10:20:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T10:20:29
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:20:30
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:21:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T10:34:43
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T10:34:43
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T10:34:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:34:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:35:44
+- **STALE_INDICATORS** [tradier]  — 2026-07-22T10:36:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T10:36:45
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T10:36:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T10:36:45
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T10:36:46
 
 ## Missed Trades (trader comparison)
 
@@ -29,18 +29,18 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **LSCC** LONG (tradier) peak +12.7%, now +-2.7%
-- HELD: **ALB** SHORT (tradier) peak +10.3%, now +7.7%
+- HELD: **LSCC** LONG (tradier) peak +12.7%, now +-0.8%
+- HELD: **ALB** SHORT (tradier) peak +10.3%, now +8.0%
 - HELD: **CIBR** LONG (tradier) peak +7.6%, now +1.5%
-- HELD: **NVDA** LONG (tradier) peak +5.8%, now +-0.8%
+- HELD: **NVDA** LONG (tradier) peak +5.8%, now +0.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (36min)
-- [MEDIUM] tradier_positions.py running but log stale (37min)
-- [MEDIUM] tradier_positions.py running but log stale (38min)
-- [MEDIUM] tradier_positions.py running but log stale (39min)
-- [MEDIUM] tradier_positions.py running but log stale (40min)
+- [MEDIUM] tradier_positions.py running but log stale (47min)
+- [MEDIUM] tradier_positions.py running but log stale (48min)
+- [MEDIUM] tradier_positions.py running but log stale (49min)
+- [HIGH] ez_indicators.py is NOT running
+- [LOW] tradier_indicators.py is NOT running
