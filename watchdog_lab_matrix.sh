@@ -149,4 +149,11 @@ launch_vec_focus() {
 # a 60min-stale test killed 5 legitimate runs. The real discriminator: a working combo_search
 # has an engine CHILD; a hung one has none. Require both signals, and a 2h staleness floor.
 # combo_search OFF (USER 2026-07-22: MU_LONG fields only)
-# hourly exports OFF (USER 2026-07-22: MU_LONG fields only) — rerun by hand when the grid is done
+# SWITCH_MATRIX export — every cycle (USER 2026-07-22 "I dont see the switch_matrix grow").
+# The DB fills continuously but the spreadsheet is a GENERATED artifact, and S1 had NO cron
+# regenerating it (verified: crontab has 0 export_switch_matrix entries) — so the sheet only
+# moved when someone ran the exporter by hand while param_cells grew underneath it. It is a
+# read-only query + xlsx write (~15s), cheap enough to run every 10 min. The Mac pulls at :35.
+cd "$SBX" && timeout 300 "$PY" tools/export_switch_matrix_xls.py --account trb \
+  >> "$LOGDIR/switch_matrix_export.log" 2>&1
+# heavier lab/mega exports stay OFF while the fleet is MU-only (see the checklist at the top)
