@@ -286,6 +286,49 @@ def evaluate_tr_trend_v1_exit_live(symbol: str, account_key: str, position_side:
 
 # 2026-05-06 ZECUSDC parabolic protection (mirrors ez_manage / ez_positions_quick patches).
 # Returns (parabolic_up, parabolic_dn, extreme_overbought, extreme_oversold) booleans.
+def band_ladder_mult(pct_b, cfg, tf="D"):
+    """Size multiplier for a green arrow at band position `pct_b` (USER 2026-07-22).
+
+    lrL_pct_b is 0 at the lower regression band and 1 at the upper one — the "grey zones" of
+    +/- N*stdev around the regression slope line drawn in tradier_rankings. The ladder sizes
+    EVERY arrow by depth instead of gating on the extremes:
+
+        below lower band -> BELOW_BOTTOM_MULT (0 = ignore completely)
+        at lower band    -> BOTTOM_MULT  (large)
+        at upper band    -> TOP_MULT     (small)
+        above upper band -> ABOVE_TOP_MULT
+
+    linear         : straight interpolation BOTTOM -> TOP across the channel.
+    center_plateau : BOTTOM_MULT held from CENTER down to the lower band, then cut below it.
+
+    Result is scaled by the TF weight so D carries the most size and 1h the least.
+    Pure function — never raises; an unusable pct_b returns 0.0 (no trade) rather than a guess.
+    """
+    try:
+        pb = float(pct_b)
+    except (TypeError, ValueError):
+        return 0.0
+    if pb != pb:
+        return 0.0
+    g = lambda k, d: float(getattr(cfg, k, d))
+    below, bottom = g("LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0.0), g("LR_BAND_LADDER_BOTTOM_MULT", 3.0)
+    top, above = g("LR_BAND_LADDER_TOP_MULT", 0.3), g("LR_BAND_LADDER_ABOVE_TOP_MULT", 1.0)
+    if pb < 0.0:
+        mult = below
+    elif pb > 1.0:
+        mult = above
+    elif str(getattr(cfg, "LR_BAND_LADDER_MODE", "linear")) == "center_plateau":
+        c = max(1e-6, min(0.999, g("LR_BAND_LADDER_CENTER", 0.5)))
+        mult = bottom if pb <= c else bottom + (top - bottom) * ((pb - c) / (1.0 - c))
+    else:
+        mult = bottom + (top - bottom) * pb
+    try:
+        w = float((getattr(cfg, "LR_BAND_LADDER_TF_WEIGHTS", None) or {}).get(tf, 1.0))
+    except Exception:
+        w = 1.0
+    return max(0.0, mult * w)
+
+
 # Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
 def _parabolic_state(ind: dict, cfg) -> tuple:
     if not bool(getattr(cfg, 'PARABOLIC_PROTECTION_ENABLED', True)):
@@ -3301,9 +3344,24 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _pb_lo = float(getattr(config, 'LR_BAND_ENTRY_LO', 0.3))
                         if bool(getattr(config, 'LR_BAND_REGIME_ENABLED', False)):
                             _pb_lo = max(_pb_lo, float(getattr(config, 'LR_BAND_REGIME_MAX_PB', 0.6)))
-                        if _pb_pb_f <= _pb_lo and _pb_sl_f > 0 and _pb_r2_f >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)):
+                        if bool(_cfg('LR_BAND_LADDER_ENABLED', False, account_key, symbol, position_side)):
+                            # USER 2026-07-22 LADDER: every green arrow enters when flat, sized by
+                            # where price sits between the bands. No pct_b gate and no R2 gate —
+                            # those made it fire only at extremes (0 fires on 3,189 eligible bars),
+                            # which the user identified as structurally wrong. Depth IS the size.
+                            _pb_mult = band_ladder_mult(_pb_pb_f, config, _pb_tf)
+                            if _pb_mult > 0.0 and _pb_sl_f > 0:
+                                _pb_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price > 0 else 1
+                                action_type = "OPEN"
+                                qty = int(max(1, _pb_base * _pb_mult))
+                                conf = 88.0
+                                reason = f"LR_BAND_LADDER_L_pb={_pb_pb_f:.3f}_sl={_pb_sl_f:+.3f}_x{_pb_mult:.2f}_{_pb_tf}"
+                                logger.info(f"[LR_BAND_LADDER] {account_key}:{symbol}: pb={_pb_pb_f:.3f} slope={_pb_sl_f:+.4f} mult={_pb_mult:.2f} tf={_pb_tf} qty={qty}")
+                            elif _pb_mult <= 0.0:
+                                logger.debug(f"[LR_BAND_LADDER_SKIP] {account_key}:{symbol}: pb={_pb_pb_f:.3f} below lower band — ignored by design")
+                        elif _pb_pb_f <= _pb_lo and _pb_sl_f > 0 and _pb_r2_f >= float(getattr(config, 'LR_BAND_ENTRY_R2_MIN', 0.7)):
                             _pb_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
-                            # USER sizing law: deeper in the channel AND steeper slope = bigger trade.
+                            # legacy threshold path (pre-ladder): deeper AND steeper = bigger.
                             _pb_depth = max(0.0, 1.0 - _pb_pb_f)
                             _pb_mult = 1.0 + float(getattr(config, 'LR_BAND_SIZE_DEPTH_GAIN', 1.0)) * _pb_depth \
                                 + float(getattr(config, 'LR_BAND_SIZE_SLOPE_GAIN', 1.0)) * min(abs(_pb_sl_f) / max(1e-9, float(getattr(config, 'LR_BAND_SLOPE_NORM_PCT_DAY', 0.3))), 1.0)

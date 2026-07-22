@@ -640,6 +640,28 @@ class TradierConfig:
     # 2026-07-15 LR_BAND swing-harvest strategy (bt_band_bounce v7: stocks D_L200 lo0.3 r2_0.7
     # h0.7 f0.25 ra0.3 L-only pool_sharpe 0.5949 / +15.75%/sym/yr, matches 0.58 baseline).
     # DEFAULT OFF — Tier-2 A/B required. Harvest/BE/readd knobs declared for the engine.
+    # ═══ BAND LADDER (USER 2026-07-22) — a CONTINUOUS sizing ladder, not a threshold gate ═══
+    # The previous LR_BAND_ENTRY only fired when pct_b <= LR_BAND_ENTRY_LO, i.e. only at the
+    # extremes, which the user identified as structurally wrong. The ladder instead sizes EVERY
+    # green arrow by where price sits between the regression bands (lrL_pct_b: 0 = lower band,
+    # 1 = upper band). Every arrow opens if flat — not only band touches.
+    #   pct_b < 0   (below lower band)  -> BELOW_BOTTOM_MULT (0 = ignore completely)
+    #   pct_b = 0   (at lower band)     -> BOTTOM_MULT  (big: 3x normal)
+    #   pct_b = 1   (at upper band)     -> TOP_MULT     (small: 0.3x normal)
+    #   pct_b > 1   (above upper band)  -> ABOVE_TOP_MULT (1x normal)
+    # MODE "linear"        interpolates BOTTOM->TOP across the channel.
+    # MODE "center_plateau" holds BOTTOM_MULT from the CENTER down to the lower band, then
+    #   cuts to BELOW_BOTTOM_MULT underneath it (the user's fallback if linear underperforms).
+    # Escalation ladder to try in order: 3x/0.3x -> 5x/0.5x -> 10x/1x -> center_plateau.
+    LR_BAND_LADDER_ENABLED: bool = False
+    LR_BAND_LADDER_MODE: str = "linear"           # linear | center_plateau
+    LR_BAND_LADDER_BOTTOM_MULT: float = 3.0       # at the lower band
+    LR_BAND_LADDER_TOP_MULT: float = 0.3          # at the upper band
+    LR_BAND_LADDER_ABOVE_TOP_MULT: float = 1.0    # above the upper band
+    LR_BAND_LADDER_BELOW_BOTTOM_MULT: float = 0.0 # below the lower band = NO trade
+    LR_BAND_LADDER_CENTER: float = 0.5            # plateau edge for center_plateau mode
+    # Same ladder on every TF, smaller as the TF shortens (D carries the most size).
+    LR_BAND_LADDER_TF_WEIGHTS: dict = field(default_factory=lambda: {"D": 1.0, "4h": 0.6, "1h": 0.3})
     LR_BAND_ENTRY_ENABLED: bool = False
     LR_BAND_ENTRY_TF: str = "D"
     LR_BAND_ENTRY_LO: float = 0.3
