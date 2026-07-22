@@ -2748,19 +2748,19 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # Direction-locked: LONG only ABOVE sma_200_15m, SHORT only BELOW → never long a loser /
         # short a winner (DG_DAILY_GAIN/LOSS guards downstream also enforce this).
         _wf_enabled = bool(_cfg('WT_3M_FORCE_OPEN_ENABLED', True, account_key, symbol, position_side))
-        _wf_build = bool(getattr(config, 'WT_3M_FORCE_OPEN_BUILD_TO_TARGET', True))
-        _wf_target = float(getattr(config, 'WT_3M_FORCE_OPEN_TARGET_USD', 15000.0))
+        _wf_build = bool(_cfg('WT_3M_FORCE_OPEN_BUILD_TO_TARGET', True, account_key, symbol, position_side))
+        _wf_target = float(_cfg('WT_3M_FORCE_OPEN_TARGET_USD', 15000.0, account_key, symbol, position_side))
         _wf_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
         _wf_room = (_wf_pos_val < _wf_target) if _wf_build else (not has_position)
         if _wf_room and _wf_enabled:
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
-                    _wf_use_sma = bool(getattr(config, 'WT_3M_FORCE_OPEN_USE_SMA200', True))
+                    _wf_use_sma = bool(_cfg('WT_3M_FORCE_OPEN_USE_SMA200', True, account_key, symbol, position_side))
                     _wf_anchor = safe_fetch_float(i.get('sma_200_15m'), 0.0) if _wf_use_sma else 0.0
                     if _wf_anchor <= 0:
                         _wf_anchor = safe_fetch_float(i.get('ema_200_15m'), 0.0)
-                    _wf_buf = float(getattr(config, 'WT_3M_FORCE_OPEN_DIST_PCT', 0.0)) / 100.0
-                    _wf_tf = str(getattr(config, 'WT_FORCE_OPEN_TRIGGER_TF', '5m'))  # [2026-06-26] configurable trigger TF (5m=current/churn, 15m/1h=less churn); A/B-tested
+                    _wf_buf = float(_cfg('WT_3M_FORCE_OPEN_DIST_PCT', 0.0, account_key, symbol, position_side)) / 100.0
+                    _wf_tf = str(_cfg('WT_FORCE_OPEN_TRIGGER_TF', '5m', account_key, symbol, position_side))  # [2026-06-26] configurable trigger TF (5m=current/churn, 15m/1h=less churn); A/B-tested
                     _wf_wt1_5m = safe_fetch_float(i.get(f'wt1_{_wf_tf}', i.get('wt1_5m', i.get('wt1_3m'))), 0.0)
                     _wf_wt2_5m = safe_fetch_float(i.get(f'wt2_{_wf_tf}', i.get('wt2_5m', i.get('wt2_3m'))), 0.0)  # 2026-06-03 USER: phantom wt1_X_prev → wt2_X
                     _wf_wt1_5m_prev = safe_fetch_float(i.get(f'wt1_{_wf_tf}_prev', i.get('wt1_5m_prev', i.get('wt1_3m_prev', _wf_wt2_5m))), _wf_wt2_5m)
@@ -2787,7 +2787,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 if (is_long and _w1 > _w2) or ((not is_long) and _w1 < _w2):
                                     _nconf += 1
                             _wf_mult = 1.0 + _lm * _nconf
-                        _wf_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 2500.0)) * _wf_mult
+                        _wf_size_usd = float(_cfg('WT_3M_FORCE_OPEN_SIZE_USD', 2500.0, account_key, symbol, position_side)) * _wf_mult
                         if _wf_build and _wf_target > 0:
                             _wf_size_usd = min(_wf_size_usd, max(0.0, _wf_target - _wf_pos_val))
                         if _wf_size_usd >= 1.0:
