@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T02:23:00.476456+00:00",
+  "timestamp": "2026-07-22T02:38:28.073327+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,21 +8,27 @@
   "unified_ranking": [
     {
       "symbol": "BIOUSDC",
-      "net_score": -12.2,
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 12.2
+      "short_score": 12.5
     },
     {
-      "symbol": "ENAUSDC",
+      "symbol": "VIRTUALUSDT",
       "net_score": -11.3,
       "long_score": 0,
       "short_score": 11.3
     },
     {
-      "symbol": "VIRTUALUSDT",
-      "net_score": -10.5,
+      "symbol": "ENAUSDC",
+      "net_score": -10.4,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 10.4
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "net_score": -10.4,
+      "long_score": 0,
+      "short_score": 10.4
     },
     {
       "symbol": "HMSTRUSDT",
@@ -62,12 +68,6 @@
     },
     {
       "symbol": "CHILLGUYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -893,18 +893,23 @@
   "top_shorts": [
     [
       "BIOUSDC",
-      12.2,
+      12.5,
       0.02608055
     ],
     [
-      "ENAUSDC",
+      "VIRTUALUSDT",
       11.3,
-      0.08611776
+      0.65312856
     ],
     [
-      "VIRTUALUSDT",
-      10.5,
-      0.65312856
+      "ASTERUSDT",
+      10.4,
+      0.62534083
+    ],
+    [
+      "ENAUSDC",
+      10.4,
+      0.08611776
     ]
   ],
   "hedge_usage": {
