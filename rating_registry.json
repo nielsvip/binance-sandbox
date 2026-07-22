@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T14:44:22.042457+00:00",
+  "timestamp": "2026-07-22T14:59:32.157749+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,27 +8,33 @@
   "unified_ranking": [
     {
       "symbol": "KAVAUSDT",
-      "net_score": -17.3,
+      "net_score": -17.7,
       "long_score": 0,
-      "short_score": 17.3
-    },
-    {
-      "symbol": "ETHFIUSDC",
-      "net_score": -13.7,
-      "long_score": 0,
-      "short_score": 13.7
-    },
-    {
-      "symbol": "ENAUSDC",
-      "net_score": -13.2,
-      "long_score": 0,
-      "short_score": 13.2
+      "short_score": 17.7
     },
     {
       "symbol": "YFIUSDT",
-      "net_score": -12.2,
+      "net_score": -14.5,
       "long_score": 0,
-      "short_score": 12.2
+      "short_score": 14.5
+    },
+    {
+      "symbol": "ETHFIUSDC",
+      "net_score": -14.5,
+      "long_score": 0,
+      "short_score": 14.5
+    },
+    {
+      "symbol": "ENAUSDC",
+      "net_score": -13.8,
+      "long_score": 0,
+      "short_score": 13.8
+    },
+    {
+      "symbol": "HBARUSDC",
+      "net_score": -10.1,
+      "long_score": 0,
+      "short_score": 10.1
     },
     {
       "symbol": "HMSTRUSDT",
@@ -92,6 +98,12 @@
     },
     {
       "symbol": "IOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "NVDAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -428,12 +440,6 @@
     },
     {
       "symbol": "SNXUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "HBARUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -860,26 +866,26 @@
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 11.0,
-      "long_score": 11.0,
-      "short_score": 0
-    },
-    {
-      "symbol": "NVDAUSDT",
-      "net_score": 11.5,
-      "long_score": 11.5,
+      "net_score": 11.2,
+      "long_score": 11.2,
       "short_score": 0
     },
     {
       "symbol": "XLMUSDT",
-      "net_score": 12.8,
-      "long_score": 12.8,
+      "net_score": 11.4,
+      "long_score": 11.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZECUSDC",
+      "net_score": 11.6,
+      "long_score": 11.6,
       "short_score": 0
     },
     {
       "symbol": "RUNEUSDT",
-      "net_score": 13.2,
-      "long_score": 13.2,
+      "net_score": 11.7,
+      "long_score": 11.7,
       "short_score": 0
     },
     {
@@ -889,86 +895,60 @@
       "short_score": 0
     },
     {
-      "symbol": "ZECUSDC",
-      "net_score": 13.8,
-      "long_score": 13.8,
-      "short_score": 0
-    },
-    {
       "symbol": "1000LUNCUSDT",
-      "net_score": 16.4,
-      "long_score": 16.4,
+      "net_score": 15.5,
+      "long_score": 15.5,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 18.0,
-      "long_score": 18.0,
+      "net_score": 18.7,
+      "long_score": 18.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      18.0,
+      18.7,
       0.07889624
     ],
     [
       "1000LUNCUSDT",
-      16.4,
+      15.5,
       0.05789
     ],
     [
-      "ZECUSDC",
-      13.8,
-      531.60016966
-    ],
-    [
-      "ORDIUSDC",
-      13.6,
-      3.68259137
-    ],
-    [
       "RUNEUSDT",
-      13.2,
+      11.7,
       0.45108167
     ],
     [
+      "ZECUSDC",
+      11.6,
+      531.60016966
+    ],
+    [
       "XLMUSDT",
-      12.8,
+      11.4,
       0.1934
-    ],
-    [
-      "NVDAUSDT",
-      11.5,
-      207.32518167
-    ],
-    [
-      "NEARUSDC",
-      11.0,
-      1.931
     ]
   ],
   "top_shorts": [
     [
-      "KAVAUSDT",
-      17.3,
-      0.04508
-    ],
-    [
       "ETHFIUSDC",
-      13.7,
+      14.5,
       0.4534
     ],
     [
-      "ENAUSDC",
-      13.2,
-      0.08611776
+      "YFIUSDT",
+      14.5,
+      2112.5
     ],
     [
-      "YFIUSDT",
-      12.2,
-      2112.5
+      "ENAUSDC",
+      13.8,
+      0.08611776
     ]
   ],
   "hedge_usage": {
