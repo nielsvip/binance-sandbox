@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T04:25:32.026617+00:00",
+  "timestamp": "2026-07-22T04:41:05.338636+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "LINKUSDC",
-      "net_score": -15.0,
+      "net_score": -14.8,
       "long_score": 0,
-      "short_score": 15.0
+      "short_score": 14.8
     },
     {
       "symbol": "AAVEUSDC",
@@ -19,28 +19,22 @@
       "short_score": 14.4
     },
     {
-      "symbol": "RKLBUSDT",
-      "net_score": -12.6,
+      "symbol": "SOLUSDC",
+      "net_score": -13.0,
       "long_score": 0,
-      "short_score": 12.6
+      "short_score": 13.0
+    },
+    {
+      "symbol": "RKLBUSDT",
+      "net_score": -12.8,
+      "long_score": 0,
+      "short_score": 12.8
     },
     {
       "symbol": "ENAUSDC",
-      "net_score": -10.7,
+      "net_score": -10.9,
       "long_score": 0,
-      "short_score": 10.7
-    },
-    {
-      "symbol": "SOLUSDC",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
-    },
-    {
-      "symbol": "GALAUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
+      "short_score": 10.9
     },
     {
       "symbol": "HMSTRUSDT",
@@ -481,6 +475,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GALAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -883,34 +883,34 @@
       "short_score": 0
     },
     {
-      "symbol": "RIFUSDT",
-      "net_score": 10.3,
-      "long_score": 10.3,
+      "symbol": "TLMUSDT",
+      "net_score": 10.0,
+      "long_score": 10.0,
       "short_score": 0
     },
     {
-      "symbol": "TLMUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
+      "symbol": "RIFUSDT",
+      "net_score": 11.0,
+      "long_score": 11.0,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
-      "TLMUSDT",
-      11.1,
-      0.00180893
+      "RIFUSDT",
+      11.0,
+      0.07889624
     ],
     [
-      "RIFUSDT",
-      10.3,
-      0.07889624
+      "TLMUSDT",
+      10.0,
+      0.00180893
     ]
   ],
   "top_shorts": [
     [
       "LINKUSDC",
-      15.0,
+      14.8,
       8.61265569
     ],
     [
@@ -919,24 +919,19 @@
       95.08
     ],
     [
+      "SOLUSDC",
+      13.0,
+      77.7586811
+    ],
+    [
       "RKLBUSDT",
-      12.6,
+      12.8,
       69.38
     ],
     [
       "ENAUSDC",
-      10.7,
+      10.9,
       0.08611776
-    ],
-    [
-      "SOLUSDC",
-      10.4,
-      77.7586811
-    ],
-    [
-      "GALAUSDT",
-      10.2,
-      0.00204547
     ]
   ],
   "hedge_usage": {
