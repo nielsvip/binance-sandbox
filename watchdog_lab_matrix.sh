@@ -18,10 +18,12 @@ launch() {
 }
 # MEGA SWEEP split (USER 2026-07-21): lab masks = cheap idea screen (2+2 workers),
 # param_matrix_daemon = REAL manifest params via Tier-2 engine (4 workers, the priority).
-launch stocks w1
-launch stocks w2
-launch crypto w1
-launch crypto w2
+# USER 2026-07-22: "All s1 has to do is calculate the fields for mu_long NOTHING ELSE".
+# Lab / vec / combo / hourly-export lanes are OFF — every core belongs to the MU_LONG grid.
+# launch stocks w1
+# launch stocks w2
+# launch crypto w1
+# launch crypto w2
 launch_pmx() {
   tag=$1; first=$2
   if ! pgrep -f "param_matrix_daemon.py --tag $tag" >/dev/null; then
@@ -47,7 +49,7 @@ launch_pmx() {
 # no trades for the knobs to act on. Do NOT burn days filling that grid: rebaseline first, then
 # remove this guard.
 if [ ! -f "$SBX/data/MATRIX_REBASELINE_HOLD" ]; then
-"$PY" "$SBX/tools/matrix_focus.py" advance >> "$LOGDIR/matrix_focus.log" 2>&1
+# advance DISABLED (USER 2026-07-22: MU_LONG only — do not drift to HAO/NVDA/VT)
 FOCUS=$("$PY" "$SBX/tools/matrix_focus.py" symbol 2>/dev/null)
 [ -z "$FOCUS" ] && FOCUS=MU
 for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14; do
@@ -96,24 +98,5 @@ launch_vec() {
 # one probe is a full engine run (9-15min, timeout 3600) — a stale log alone is NOT a hang and
 # a 60min-stale test killed 5 legitimate runs. The real discriminator: a working combo_search
 # has an engine CHILD; a hung one has none. Require both signals, and a 2h staleness floor.
-COMBO_PID=$(pgrep -f "combo_search.py --plan" | head -1)
-if [ -n "$COMBO_PID" ] && [ -f "$LOGDIR/combo_plan.log" ] \
-   && [ -z "$(find "$LOGDIR/combo_plan.log" -mmin -120)" ] \
-   && ! pgrep -P "$COMBO_PID" -f backtest_v8_engine >/dev/null; then
-  kill -9 "$COMBO_PID"
-  echo "$(date -u +%FT%TZ) killed HUNG combo_search (log stale >2h AND no engine child)" >> "$LOGDIR/lab_matrix_watchdog.log"
-fi
-if ! pgrep -f "combo_search.py --plan" >/dev/null; then
-  cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/combo_search.py \
-    --plan "MU:LONG,HAO:SHORT,NVDA:LONG,VT:LONG" --target 10.0 \
-    >> "$LOGDIR/combo_plan.log" 2>&1 < /dev/null &
-  disown
-  echo "$(date -u +%FT%TZ) relaunched combo_search plan" >> "$LOGDIR/lab_matrix_watchdog.log"
-fi
-# hourly export + central-DB mirror (cheap) — only from the first cron slot of the hour
-if [ "$(date +%M)" -lt 10 ]; then
-  cd "$SBX" && timeout 300 "$PY" tools/export_lab_matrix_db.py >> "$LOGDIR/lab_matrix_export.log" 2>&1
-  cd "$SBX" && timeout 600 "$PY" tools/ingest_lab_matrix_to_central.py >> "$LOGDIR/lab_matrix_ingest.log" 2>&1
-  cd "$SBX" && timeout 600 "$PY" tools/export_mega_matrix.py >> "$LOGDIR/mega_matrix_export.log" 2>&1
-  cd "$SBX" && timeout 300 "$PY" tools/param_keep_drop_report.py --min-keys 3 >> "$LOGDIR/param_keep_drop.log" 2>&1
-fi
+# combo_search OFF (USER 2026-07-22: MU_LONG fields only)
+# hourly exports OFF (USER 2026-07-22: MU_LONG fields only) — rerun by hand when the grid is done
