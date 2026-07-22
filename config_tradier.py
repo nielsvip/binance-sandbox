@@ -535,6 +535,11 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
+    # USER 2026-07-22: stocks churn far cheaper than crypto — measured on real in/out fills,
+    # 0.1% was too pessimistic and ~0.06% is realistic. Until now this was UNDECLARED here and
+    # backtest_v8_engine.py:1759 fell back to a hardcoded 0.05, so no config or sweep could
+    # reach it. Declared so it is one number, visible in the matrix and overridable per symbol.
+    ROUND_TRIP_COST_PCT: float = 0.06
     PARTIAL_PROFIT_LOCK_ENABLED: bool = False   # 2026-07-19 OFF — NEAR_ENTRY_OFF flip, 2.63x at n=132 keys (Bible §12.11)
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
     # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.

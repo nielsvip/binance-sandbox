@@ -1756,7 +1756,13 @@ def _round_trip_cost_for_sym(sym):
             return 0.08
     try:
         import config_tradier as _ct
-        return float(getattr(_ct, "ROUND_TRIP_COST_PCT", 0.05))
+        # read the CLASS attr first: config_tradier declares knobs on TradierConfig, not at
+        # module level, so a bare module getattr silently fell through to the hardcoded 0.05
+        # and no config or sweep override could ever change the stocks churn cost.
+        _v = getattr(getattr(_ct, "TradierConfig", None), "ROUND_TRIP_COST_PCT", None)
+        if _v is None:
+            _v = getattr(_ct, "ROUND_TRIP_COST_PCT", 0.06)
+        return float(_v)
     except Exception:
         return 0.05
 

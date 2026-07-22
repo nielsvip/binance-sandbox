@@ -746,3 +746,55 @@ switches by naming convention — read the real config types (`_cfg_bools()` / `
 order, with time-in-market, gain, b&h, vs-b&h, gain/mo, pool_sharpe and trades, and every row
 that improved on the running best highlighted — so the climb from "no exits = b&h" through each
 exit added and adjusted, then each entry, is readable top-to-bottom as it happens.
+
+---
+
+## §14 — REPLICATING THE trb SYSTEM IN THE CRYPTO (ez_) UNIVERSE (USER MANDATE 2026-07-22)
+
+The stocks side now has a working method: a proven exit inventory, a floor at 100% in-market, a
+ladder that earns every exit back, a knob registry, and a red-cell agent that says *why* a knob
+is dead. Crypto has been left bungling. **Prove it on stocks first, then replicate — do not run
+both in parallel and debug two systems at once.**
+
+Order matters: every step below depends on the one above it, and skipping to the sweep is what
+produced 16 hours of numbers measured against a baseline that never traded.
+
+### §14.1 — Preconditions (do not start until ALL are true)
+1. MU_LONG has a complete stage0→stage3 ladder and a promoted baseline (§13.7).
+2. `data/reports/RED_CELLS.md` shows **GLOBAL_ONLY = 0** for the knobs in that baseline — a
+   result from a knob whose per-symbol override is ignored is not reproducible per symbol.
+3. HAO_SHORT stage0 = `closes=0` (done 2026-07-22 — the inventory holds on the short side).
+4. `tools/watchdog_reenable_check.py` passes, or the suspended lanes are consciously left off.
+
+### §14.2 — The steps, in order
+
+| # | step | tool | done when |
+|---|---|---|---|
+| 1 | **Build the crypto knob registry** — same vocabulary, both modes | `knob_registry.py build` (already emits `crypto`) | `data/knob_registry.json` has crypto families/roles/off_values |
+| 2 | **Audit crypto half-wiring** — master per-sym, sub-settings global | `knob_registry.py audit` | the 5 crypto half-wired families are fixed (`getattr` → `_psym_get`) |
+| 3 | **Port the CRYPTO_ONLY / STOCKS_ONLY knobs** | `red_cell_agent.py once` | each knob reads in the system that is supposed to have it |
+| 4 | **Build the crypto exit inventory** | `exposure_ladder.py` with crypto `EXIT_PAT` + `_cfg_bools/_cfg_strs` pointed at `config.Config` | all four switch shapes enumerated (bool, non-`_ENABLED` bool, string TF, numeric threshold) |
+| 5 | **stage0 per key: `closes=0`** — the completeness test | `exposure_ladder.py stage0 --mode crypto` | 100% in-market, return == b&h, for ONE long key and ONE short key |
+| 6 | **stage1/2/3 ladder** on the pilot key | `exposure_ladder.py stage1..3` | a promoted baseline that beats b&h |
+| 7 | **Shortlist** the switches worth sweeping universe-wide | `param_shortlist.py` | PROMOTE set sized (this is the number that decides the rented-box budget, §13.4) |
+
+### §14.3 — What is genuinely different in crypto (do not copy blindly)
+- **Base TF is 3m, not 5m.** The WT trigger knob is `WT_3M_FORCE_OPEN_*` in both, but crypto
+  actually reads `wt1_3m` while stocks read `wt1_5m` (`WT_FORCE_OPEN_TRIGGER_TF`).
+- **Per-sym resolution differs**: stocks use `tradier_manage._cfg()`, crypto uses
+  `ez_manage._psym_get()` / `_psym_sps()`. The red-cell agent already understands both.
+- **Config class differs**: `config.Config` (crypto) vs `config_tradier.TradierConfig` (stocks).
+  Read the CLASS attr, never the module — a bare module `getattr` is what silently pinned the
+  stocks round-trip cost to a hardcoded 0.05 (§13.5).
+- **Round-trip cost is NOT the same**: crypto 0.08%, stocks 0.06% (measured 2026-07-22; stocks
+  churn far cheaper than crypto, so a cost assumption copied across modes is a lie).
+- **Crypto trades 24/7**; there is no market-hours gate, so time-in-market bands differ and the
+  70–80% target from §13.7 must be re-derived, not assumed.
+- **USDC-over-USDT policy** applies to symbol naming everywhere (CLAUDE.md).
+
+### §14.4 — Then, and only then, the rented box
+Once BOTH systems have a proven per-key baseline and a shortlist, rent the box for the mega
+sweep (§13.4). The decisive number is the size of the PROMOTE set, not the number of keys:
+full grid × 129 keys = **89,913 core-hours (78 days on one box — never do this)**; a 150–300-cell
+shortlist = **1–7 days**. Verify the rented machine reproduces a known cell bit-for-bit (same
+NPZ, same 4-file stamp, same trade list) before trusting anything it returns.
