@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T09:51:36.070724+00:00",
+  "timestamp": "2026-07-22T10:07:23.293645+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "BIOUSDC",
-      "net_score": -12.9,
+      "net_score": -11.1,
       "long_score": 0,
-      "short_score": 12.9
+      "short_score": 11.1
     },
     {
       "symbol": "HMSTRUSDT",
@@ -200,12 +200,6 @@
     },
     {
       "symbol": "PTBUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "TLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -877,15 +871,21 @@
       "short_score": 0
     },
     {
+      "symbol": "TLMUSDT",
+      "net_score": 10.3,
+      "long_score": 10.3,
+      "short_score": 0
+    },
+    {
       "symbol": "XLMUSDT",
-      "net_score": 11.0,
-      "long_score": 11.0,
+      "net_score": 13.9,
+      "long_score": 13.9,
       "short_score": 0
     },
     {
       "symbol": "ORDIUSDC",
-      "net_score": 11.5,
-      "long_score": 11.5,
+      "net_score": 13.9,
+      "long_score": 13.9,
       "short_score": 0
     },
     {
@@ -896,15 +896,15 @@
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 18.4,
-      "long_score": 18.4,
+      "net_score": 19.9,
+      "long_score": 19.9,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      18.4,
+      19.9,
       0.07889624
     ],
     [
@@ -914,19 +914,24 @@
     ],
     [
       "ORDIUSDC",
-      11.5,
+      13.9,
       3.68259137
     ],
     [
       "XLMUSDT",
-      11.0,
+      13.9,
       0.1934
+    ],
+    [
+      "TLMUSDT",
+      10.3,
+      0.00180893
     ]
   ],
   "top_shorts": [
     [
       "BIOUSDC",
-      12.9,
+      11.1,
       0.02608055
     ]
   ],
