@@ -553,3 +553,125 @@ LOCKED_FILES.md row for this change, not the whole pair.
 - **Baseline (Bypass Disabled/999.0%)**: pool_sharpe=**`+1.1336`**, acc_gain=**`+4.512%`**, trades=**`12`**.
 - **Enabled (Bypass at 0.2%)**: pool_sharpe=**`+1.5452`** (+36.3% delta), acc_gain=**`+6.885%`** (+52.6% delta), trades=**`18`** (+50.0% delta).
 - **Verdict**: Proven positive gain delta. Re-entering strong continuations immediately when price crosses in-favor solves reentry starvation and significantly boosts profit/Sharpe.
+
+---
+
+## §13 — THE PILOT → CATEGORY → COMBINATION → FLEET-OUT PLAN (USER MANDATE 2026-07-22)
+
+**The plan in one line:** fill EVERY field for ONE key (MU_LONG), group the switches into
+categories, search combinations *within and across* categories, keep only what survives, and
+only then spend money running the surviving shortlist across the other 128 keys.
+
+This ordering is not a preference — §13.4 shows the full grid on every key is **89,913
+core-hours** and is unaffordable on any hardware we would rent. The pilot is what makes the
+rest of the programme possible.
+
+### §13.1 — Phase 1: fill one key completely (RUNNING)
+
+- Focus is held in `data/matrix_focus.json`; `tools/matrix_focus.py {status,advance,symbol,side}`.
+  `advance` moves on ONLY at ≥99.5% of the work-list, so the fleet cannot drift mid-key.
+- Order: **MU_LONG → HAO_SHORT → NVDA_LONG → VT_LONG**. The watchdog reads BOTH symbol and
+  side from focus state — HAO is a SHORT key and a hardcoded `--side LONG` silently sweeps the
+  wrong side.
+- Work-list = `param_matrix_daemon.all_cells(manifest, all_tiers=True, side=<FOCUS SIDE>)`,
+  currently **3,485 units/key** after pruning.
+- **Only ENGINE-tier cells count as filled.** A Tier-1 vec screen does not fill a cell (§13.5).
+
+### §13.2 — Phase 2: categories
+
+The exporter already groups every switch into **Entry / Exit / Sizing / Other**
+(`export_switch_matrix_xls.py:group_of`, regex on the switch name) and writes one sheet per
+group. Those are the starting categories; refine them only with evidence, and add the
+orthogonal axis that matters as much as the category:
+
+- **TIMEFRAME** — most switches carry a TF suffix (`_5m/_15m/_1h/_4h/_D/_W`). A switch that
+  helps on D and hurts on 5m is not one result, it is two. Group by (category × timeframe).
+
+Ranking inside a category uses `tools/param_shortlist.py`, which classifies every switch as
+**PROMOTE / WATCH / DEGENERATE / NO_EFFECT / INCOMPLETE** from the pilot keys and prints the
+exact full-universe cost of the PROMOTE set. PROMOTE requires sign-agreement across pilot keys
+AND a median lift floor — a switch that helps MU and hurts HAO is per-key (WATCH), not global.
+
+### §13.3 — Phase 3: combinations (the hard part)
+
+One-at-a-time (OFAT) results do NOT compose: switches interact, and the sum of individually
+positive knobs is routinely worse than any of them alone. `tools/combo_search.py` does the
+greedy best-first stack with leave-one-out and TF-ablation probes.
+
+**Rules for the combination phase:**
+1. Combine only from the **PROMOTE** set. Stacking WATCH/DEGENERATE switches manufactures
+   overfit noise.
+2. Search **within a category first** (best Entry stack, best Exit stack, best Sizing stack),
+   then across categories. The within-category winners are far fewer, so the cross-category
+   search stays tractable.
+3. Every stack is scored against the SAME baseline as the OFAT cells, and every probe writes a
+   cell with its full `overrides_json` — a stack without its recipe is a lie by omission (§12.5).
+4. **Leave-one-out is mandatory** before promoting a stack: a member that does not degrade the
+   stack when removed is not earning its place and must be dropped.
+5. A stack must clear the **b&h floor** (§12) for its key. Beating the OFAT baseline is not
+   the bar; beating buy-and-hold is.
+
+### §13.4 — Phase 4: fleet-out, and the rent-a-server decision
+
+Measured 2026-07-22: **one Tier-2 unit = ~12 min of one core** (9m11s isolated; ~50 min once
+the baseline actually trades — a richer baseline is ~5× more expensive per cell).
+
+| scope | core-hours | 12 cores (S1) | ~48 cores (1 rented box) | ~240 cores (5 boxes) |
+|---|---|---|---|---|
+| **full grid × 129 keys** (3,485/key) | **89,913** | 312 days | **78 days** | 15.6 days |
+| shortlist 300 cells/key | 7,740 | 26.9 days | **6.7 days** | 1.3 days |
+| shortlist 150 cells/key | 3,870 | 13.4 days | 3.4 days | 0.7 days |
+| shortlist 60 cells/key | 1,548 | 5.4 days | 1.3 days | 0.3 days |
+
+**Decision rule — do NOT rent hardware to run the full grid.** 78 days on a rented box is not
+a plan. Renting is correct ONLY once the pilot has produced a shortlist: at 150–300 promoted
+cells/key the whole universe is 1–7 days on a single machine, which is trivially affordable.
+The size of the PROMOTE set is therefore the number that decides the budget — get it from
+`param_shortlist.py` before provisioning anything. (Hourly pricing changes; verify current
+rates rather than trusting a figure written here.)
+
+**Before renting, confirm the target machine reproduces a known cell bit-for-bit** — same NPZ,
+same 4-file stamp, same trade list. A fleet-out that silently diverges from S1 produces 129
+keys of numbers nobody can compare to anything (§1).
+
+### §13.5 — Hard limits found while building this (do not re-litigate)
+
+- **Tier-1 cannot fill a switch grid.** `v8_vec_sweep.SweepConfig` implements only **164 of the
+  921 sweepable params (18%)** — a ceiling of **581 cells/key**. Run over the full manifest it
+  answers `unknown SweepConfig knob` and REFUSES (writing no cells, correctly). Making Tier-1
+  screening real means porting the missing **757** knobs into the vec engine — that is
+  engineering work and is the single highest-leverage project available, because it converts
+  every future key from a 40-hour grind into hours.
+- **Never difference across tiers.** A Tier-1 result minus a Tier-2 baseline measures the gap
+  between two engines, not the knob (it printed a phantom +1.3917 %/mo on 495 MU_LONG cells).
+  `param_cells.tier` exists for this; the exporter takes `--tier {ENGINE,VEC}` and never mixes.
+- **Symbol batching is rejected** (measured): 4 symbols in one engine invocation = ~29 min vs
+  ~36.7 min for 4 singles (~20%), at 1.4GB RSS vs 632MB, AND one invocation shares capital /
+  position slots / cross-symbol ranking, so per-symbol trades would not match the single-symbol
+  baselines every existing cell was built against.
+- **A baseline that does not trade cannot test anything.** The `overrides={}` campaign baseline
+  gives MU_LONG 19 trades / 0.13% time-in-market, NVDA_LONG 1 trade, VT_LONG **0**. That is why
+  ~80% of cells came back `inert` — with no trades, no knob can bind, and a 0-trade key's grid
+  is inert by construction. Check `key_baseline.trades` before believing any grid.
+- **Prune only on wiring facts**, never on a small delta: `tools/prune_useless_knobs.py`
+  (RECONNECT = every value bit-identical to baseline; DEGENERATE = values differ from baseline
+  but not from each other). It MUST NOT prune a sub-knob of a feature whose master `_ENABLED`
+  is False — the first run flagged all four `WT_3M_FORCE_OPEN_*` knobs as unwired when they
+  were merely gated off, i.e. it would have deleted exactly the knobs that matter once the
+  feature is switched on.
+- **The spreadsheet is a generated artifact.** `param_cells` fills continuously but
+  `SWITCH_MATRIX_TRB.xlsx` only changes when the exporter runs; S1 had NO cron doing that, so
+  the sheet sat still while the DB grew underneath it. It now runs every watchdog cycle.
+- **Operational**: `run_symbol` blocks while free RAM < `--min-avail` (default 8000MB, a figure
+  from old ~10.8GB multi-symbol runs; a single-symbol run is 527–632MB) — at 14 workers the
+  fleet parked itself in its own guard, alive and doing nothing. Orphaned engines survive every
+  worker restart and re-parent to systemd (~600MB each; 29 found in one sweep). **Do not restart
+  the fleet to "check on it"** — each restart orphans in-flight engines and resets a 9–15 min
+  unit clock; verify with `SELECT MAX(ts)` instead.
+
+### §13.6 — Re-enable checklist
+
+The lab / vec / combo / hourly-export lanes are OFF while the fleet is single-key. Turn them
+back on once the matrix is complete for ALL symbols AND per_sym settings exist for every key —
+`tools/watchdog_reenable_check.py` checks both mechanically (exit 0 = re-enable now). The
+restore list is a banner at the top of `watchdog_lab_matrix.sh`; nothing was deleted.
