@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T06:59:44.670451+00:00",
+  "timestamp": "2026-07-22T07:15:48.651961+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,16 +7,10 @@
   },
   "unified_ranking": [
     {
-      "symbol": "GOOGLUSDT",
-      "net_score": -10.5,
+      "symbol": "AAVEUSDC",
+      "net_score": -13.5,
       "long_score": 0,
-      "short_score": 10.5
-    },
-    {
-      "symbol": "RKLBUSDT",
-      "net_score": -10.3,
-      "long_score": 0,
-      "short_score": 10.3
+      "short_score": 13.5
     },
     {
       "symbol": "HMSTRUSDT",
@@ -374,6 +368,12 @@
     },
     {
       "symbol": "ENSUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RKLBUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -745,12 +745,6 @@
       "short_score": 0
     },
     {
-      "symbol": "AAVEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AXSUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -764,6 +758,12 @@
     },
     {
       "symbol": "VIRTUALUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -818,6 +818,12 @@
     },
     {
       "symbol": "FARTCOINUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RIFUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -893,31 +899,14 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "RIFUSDT",
-      "net_score": 13.7,
-      "long_score": 13.7,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "RIFUSDT",
-      13.7,
-      0.07889624
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
-      "GOOGLUSDT",
-      10.5,
-      347.9799015
-    ],
-    [
-      "RKLBUSDT",
-      10.3,
-      69.38
+      "AAVEUSDC",
+      13.5,
+      95.08
     ]
   ],
   "hedge_usage": {
