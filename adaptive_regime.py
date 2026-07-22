@@ -821,10 +821,18 @@ class AdaptiveRegimeDaemon:
                     current_keys.append(new_key)
                     added.append(new_key)
         if added:
-            # Write back
+            # Write back atomically (temp + os.replace) — matches ez_positions_service.py /
+            # ez_outlier_hunter.py convention. 2026-07-22: direct `open(tk_path, "w")` here was
+            # the only non-atomic writer of this shared file and produced torn/concatenated JSON
+            # ("[KEYS] Error reading tradeable_keys.json: Extra data...") when racing the other
+            # writers' atomic os.replace().
             try:
-                with open(tk_path, "w") as f:
+                tmp_path = tk_path.with_suffix(".tmp")
+                with open(tmp_path, "w") as f:
                     json.dump(sorted(set(current_keys)), f, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, tk_path)
                 # Also push to Redis for faster pickup
                 r = get_redis()
                 r.set("tradeable_keys", json.dumps(sorted(set(current_keys))))
