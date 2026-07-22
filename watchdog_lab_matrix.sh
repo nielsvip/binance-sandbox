@@ -1,4 +1,28 @@
 #!/bin/bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⚠️  RE-ENABLE CHECKLIST — USER 2026-07-22 (do not lose this)
+#
+# Lanes below are TEMPORARILY DISABLED so 100% of S1 goes to the MU_LONG grid
+# ("All s1 has to do is calculate the fields for mu_long NOTHING ELSE").
+#
+# TURN THEM ALL BACK ON once BOTH conditions hold:
+#   (1) the switch matrix is COMPLETE for ALL symbols — not just MU_LONG. Check:
+#         python tools/matrix_focus.py status      # every key at 3574/3574
+#   (2) per_sym settings exist for EVERY tradeable key (long AND short):
+#         data/hourly_reconfig/trb/active_config.json  covers every <SYM>_<SIDE>
+#         in symbols_trb_long.json + symbols_trb_short.json
+#
+# WHAT TO RESTORE (all still present, just commented out — nothing was deleted):
+#   a) matrix_focus advance          — the `advance` call below (lets the fleet
+#                                      move on from MU to the next focus key)
+#   b) lab_matrix_daemon             — `launch stocks w1/w2` + `launch crypto w1/w2`
+#   c) vec_screen_daemon             — `launch_vec v1` + `launch_vec v2`
+#   d) combo_search --plan           — the COMBO block (the switch-combination hunt)
+#   e) hourly export / central mirror — export_lab_matrix_db, ingest_lab_matrix_to_central,
+#                                      export_mega_matrix, param_keep_drop_report
+#
+# Until then this script launches ONLY param_matrix_daemon on the focus key.
+# ═══════════════════════════════════════════════════════════════════════════════
 # watchdog_lab_matrix.sh — keep the 24/7/365 lab-matrix fillers alive on S1 (USER 2026-07-21:
 # "should NEVER stop unless it is replaced by a more advanced system"). Cron: */10.
 # Workers: 2x stocks + 2x crypto (vectorized numpy, modest RAM — respects S1 utilization floor
@@ -49,19 +73,25 @@ launch_pmx() {
 # no trades for the knobs to act on. Do NOT burn days filling that grid: rebaseline first, then
 # remove this guard.
 if [ ! -f "$SBX/data/MATRIX_REBASELINE_HOLD" ]; then
-# advance DISABLED (USER 2026-07-22: MU_LONG only — do not drift to HAO/NVDA/VT)
+# USER 2026-07-22: "make sure it keeps going with the other 3 symbols so tomorrow at market
+# open we can start tuning them and get baselines" — advance RE-ENABLED. Order is
+# MU_LONG -> HAO_SHORT -> NVDA_LONG -> VT_LONG (tools/matrix_focus.py FOCUS_ORDER); it only
+# moves on when the current key's grid is >=99.5% complete, so it cannot drift early.
+"$PY" "$SBX/tools/matrix_focus.py" advance >> "$LOGDIR/matrix_focus.log" 2>&1
 FOCUS=$("$PY" "$SBX/tools/matrix_focus.py" symbol 2>/dev/null)
 [ -z "$FOCUS" ] && FOCUS=MU
-for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14; do
+SIDE=$("$PY" "$SBX/tools/matrix_focus.py" side 2>/dev/null)
+[ -z "$SIDE" ] && SIDE=LONG
+for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10; do
   # a worker pinned to a stale ticker is drift, not work — kill it so it relaunches on FOCUS
   if pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null && \
-     ! pgrep -f "param_matrix_daemon.py --tag $t --only $FOCUS " >/dev/null; then
+     ! pgrep -f "param_matrix_daemon.py --tag $t --only $FOCUS --side $SIDE " >/dev/null; then
     pkill -f "param_matrix_daemon.py --tag $t "
     echo "$(date -u +%FT%TZ) $t was off-focus, killed (focus=$FOCUS)" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
   if ! pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null; then
     cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/param_matrix_daemon.py \
-      --tag "$t" --only "$FOCUS" --all-tiers \
+      --tag "$t" --only "$FOCUS" --side "$SIDE" --all-tiers --min-avail 3000 \
       >> "$LOGDIR/param_matrix_${t}.log" 2>&1 < /dev/null &
     disown
     echo "$(date -u +%FT%TZ) relaunched param_matrix $t (focus=$FOCUS)" >> "$LOGDIR/lab_matrix_watchdog.log"
@@ -86,8 +116,22 @@ launch_vec() {
 # lane that produced the tier-lie (Tier-1 deltas differenced against a Tier-2 baseline) and
 # silently no-ops knobs it does not implement. Its cells are diagnostic-only anyway. Re-enable
 # by uncommenting once the four pilot keys are complete.
-# launch_vec v1
-# launch_vec v2
+# USER 2026-07-22 "we need 3000 different numbers for MU by tomorrow morning": the Tier-2
+# engine physically cannot (2,780 units x ~12min / 14 workers = ~40h). The vec lane can
+# (~1-2.6s/cell), so it runs SCOPED TO THE FOCUS KEY ONLY. Its rows are Tier-1 and land in
+# SWITCH_MATRIX_TRB_VEC_DIAGNOSTIC — never mixed with the engine sheet (2026-07-21 tier fix).
+launch_vec_focus() {
+  tag=$1
+  if ! pgrep -f "vec_screen_daemon.py --tag $tag --only $FOCUS .*--all-tiers" >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN=stocks_baseline_v2_s4h nohup "$PY" tools/vec_screen_daemon.py \
+      --tag "$tag" --only "$FOCUS" --side "$SIDE" --all-tiers \
+      >> "$LOGDIR/vec_screen_${tag}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched vec_screen $tag (focus=${FOCUS}_${SIDE})" >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+}
+launch_vec_focus v1
+launch_vec_focus v2
 # COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
 # USER 2026-07-21 evening: the first four keys are MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG.
