@@ -654,14 +654,17 @@ class TradierConfig:
     #   cuts to BELOW_BOTTOM_MULT underneath it (the user's fallback if linear underperforms).
     # Escalation ladder to try in order: 3x/0.3x -> 5x/0.5x -> 10x/1x -> center_plateau.
     LR_BAND_LADDER_ENABLED: bool = False
-    LR_BAND_LADDER_MODE: str = "linear"           # linear | center_plateau
-    LR_BAND_LADDER_BOTTOM_MULT: float = 3.0       # at the lower band
-    LR_BAND_LADDER_TOP_MULT: float = 0.3          # at the upper band
-    LR_BAND_LADDER_ABOVE_TOP_MULT: float = 1.0    # above the upper band
+    LR_BAND_LADDER_MODE: str = "center_plateau"   # linear | center_plateau (10x at centre and below)
+    LR_BAND_LADDER_BOTTOM_MULT: float = 10.0      # at the lower band (scalar fallback)
+    LR_BAND_LADDER_TOP_MULT: float = 3.0          # at the upper band (scalar fallback)
+    LR_BAND_LADDER_ABOVE_TOP_MULT: float = -1.0   # <0 = use TOP_MULT ("3x at or above top")
     LR_BAND_LADDER_BELOW_BOTTOM_MULT: float = 0.0 # below the lower band = NO trade
     LR_BAND_LADDER_CENTER: float = 0.5            # plateau edge for center_plateau mode
-    # Same ladder on every TF, smaller as the TF shortens (D carries the most size).
-    LR_BAND_LADDER_TF_WEIGHTS: dict = field(default_factory=lambda: {"D": 1.0, "4h": 0.6, "1h": 0.3})
+    # Per-TF BOTTOM/TOP pairs (USER 2026-07-22): D 10x->3x, 4h 6x->2x, 1h 4x->1x. These are not
+    # a constant ratio (10/3, 6/2, 4/1), so a single per-TF weight cannot express them — each TF
+    # carries its own pair. A TF absent from the map falls back to the scalar BOTTOM/TOP above.
+    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0})
+    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 3.0, "4h": 2.0, "1h": 1.0})
     LR_BAND_ENTRY_ENABLED: bool = False
     LR_BAND_ENTRY_TF: str = "D"
     LR_BAND_ENTRY_LO: float = 0.3

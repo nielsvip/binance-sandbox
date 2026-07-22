@@ -311,8 +311,22 @@ def band_ladder_mult(pct_b, cfg, tf="D"):
     if pb != pb:
         return 0.0
     g = lambda k, d: float(getattr(cfg, k, d))
-    below, bottom = g("LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0.0), g("LR_BAND_LADDER_BOTTOM_MULT", 3.0)
-    top, above = g("LR_BAND_LADDER_TOP_MULT", 0.3), g("LR_BAND_LADDER_ABOVE_TOP_MULT", 1.0)
+
+    def _tf_val(mapname, scalar_key, dflt):
+        try:
+            m = getattr(cfg, mapname, None) or {}
+            if tf in m:
+                return float(m[tf])
+        except Exception:
+            pass
+        return g(scalar_key, dflt)
+    below = g("LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0.0)
+    # per-TF pairs: D 10->3, 4h 6->2, 1h 4->1 (not a constant ratio, so each TF carries its own)
+    bottom = _tf_val("LR_BAND_LADDER_TF_BOTTOM", "LR_BAND_LADDER_BOTTOM_MULT", 10.0)
+    top = _tf_val("LR_BAND_LADDER_TF_TOP", "LR_BAND_LADDER_TOP_MULT", 3.0)
+    above = g("LR_BAND_LADDER_ABOVE_TOP_MULT", -1.0)
+    if above < 0:
+        above = top   # "3x at or above top" — above the band is simply the top size
     if pb < 0.0:
         mult = below
     elif pb > 1.0:
@@ -322,11 +336,7 @@ def band_ladder_mult(pct_b, cfg, tf="D"):
         mult = bottom if pb <= c else bottom + (top - bottom) * ((pb - c) / (1.0 - c))
     else:
         mult = bottom + (top - bottom) * pb
-    try:
-        w = float((getattr(cfg, "LR_BAND_LADDER_TF_WEIGHTS", None) or {}).get(tf, 1.0))
-    except Exception:
-        w = 1.0
-    return max(0.0, mult * w)
+    return max(0.0, mult)
 
 
 # Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
