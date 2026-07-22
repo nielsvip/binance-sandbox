@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T02:53:27.702166+00:00",
+  "timestamp": "2026-07-22T03:08:31.580888+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,34 +7,34 @@
   },
   "unified_ranking": [
     {
-      "symbol": "LINKUSDC",
-      "net_score": -13.4,
-      "long_score": 0,
-      "short_score": 13.4
-    },
-    {
       "symbol": "MASKUSDT",
-      "net_score": -12.0,
+      "net_score": -13.6,
       "long_score": 0,
-      "short_score": 12.0
+      "short_score": 13.6
     },
     {
-      "symbol": "ENAUSDC",
+      "symbol": "LINKUSDC",
+      "net_score": -13.6,
+      "long_score": 0,
+      "short_score": 13.6
+    },
+    {
+      "symbol": "BIOUSDC",
+      "net_score": -11.4,
+      "long_score": 0,
+      "short_score": 11.4
+    },
+    {
+      "symbol": "GALAUSDT",
       "net_score": -11.2,
       "long_score": 0,
       "short_score": 11.2
     },
     {
-      "symbol": "BIOUSDC",
-      "net_score": -11.0,
+      "symbol": "ENAUSDC",
+      "net_score": -10.5,
       "long_score": 0,
-      "short_score": 11.0
-    },
-    {
-      "symbol": "MRVLUSDT",
-      "net_score": -10.4,
-      "long_score": 0,
-      "short_score": 10.4
+      "short_score": 10.5
     },
     {
       "symbol": "HMSTRUSDT",
@@ -86,12 +86,6 @@
     },
     {
       "symbol": "JASMYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "INXUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -481,12 +475,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GALAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SPCXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -721,6 +709,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MRVLUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "STRKUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -893,34 +887,41 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "INXUSDT",
+      "net_score": 10.7,
+      "long_score": 10.7,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "INXUSDT",
+      10.7,
+      0.007046
+    ]
+  ],
   "top_shorts": [
     [
       "LINKUSDC",
-      13.4,
+      13.6,
       8.61265569
     ],
     [
-      "MASKUSDT",
-      12.0,
-      0.38634108
-    ],
-    [
-      "ENAUSDC",
-      11.2,
-      0.08611776
-    ],
-    [
       "BIOUSDC",
-      11.0,
+      11.4,
       0.02608055
     ],
     [
-      "MRVLUSDT",
-      10.4,
-      208.0561404
+      "GALAUSDT",
+      11.2,
+      0.00204547
+    ],
+    [
+      "ENAUSDC",
+      10.5,
+      0.08611776
     ]
   ],
   "hedge_usage": {
