@@ -1808,9 +1808,9 @@ def run_scanner_if_stale():
     logger.info("Running options scanner...")
     py = "/opt/anaconda3/envs/binance_env/bin/python" if platform.system() == "Darwin" else "/home/niels/.conda/envs/binance_env/bin/python"
     try:
-        subprocess.run([py, str(BASE / "tradier_options_analyzer.py"), "scan", "--top", "30"], cwd=str(BASE), timeout=300, capture_output=True)
+        subprocess.run([py, str(BASE / "tradier_options_analyzer.py"), "scan", "--top", "30"], cwd=str(BASE), timeout=900, capture_output=True)
     except Exception as e:
-        logger.warning(f"Scanner failed: {e}")
+        logger.error(f"Scanner failed — options_analysis_latest.json NOT refreshed, email will report STALE data: {e}")
 
 
 async def gather_options_history():
