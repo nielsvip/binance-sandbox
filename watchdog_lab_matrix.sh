@@ -72,6 +72,15 @@ launch_pmx() {
 # against a non-trading baseline is noise, and 80% of cells came back inert because there were
 # no trades for the knobs to act on. Do NOT burn days filling that grid: rebaseline first, then
 # remove this guard.
+# USER 2026-07-22: "The grid is not relevant if it is not calculating vs 100% in the market so
+# make sure it is not wasting cpu and time once again." The OFAT grid measures against the
+# non-trading baseline and is SUSPENDED; the exposure ladder owns the box. Remove
+# data/GRID_SUSPENDED to bring it back — do NOT just kill the workers, this cron relaunches
+# them every 10 minutes and the orphaned engines they leave behind ate 20GB and OOM-killed the
+# ladder run twice.
+if [ -f "$SBX/data/GRID_SUSPENDED" ]; then
+  exit 0
+fi
 if [ ! -f "$SBX/data/MATRIX_REBASELINE_HOLD" ]; then
 # USER 2026-07-22: "make sure it keeps going with the other 3 symbols so tomorrow at market
 # open we can start tuning them and get baselines" — advance RE-ENABLED. Order is
