@@ -702,8 +702,10 @@ def run_daemon():
             # Periodic logging (~5 min)
             if int(now) % 300 < CHECK_INTERVAL_SECONDS:
                 logger.info(f"Memory: {stats['available_gb']:.1f}GB available ({free_pct:.1f}%), used={stats['used_gb']:.1f}GB ({stats['used_pct']:.0f}%), swap={swap_gb:.1f}GB, pressure={'CRIT' if pressure >= 4 else 'WARN' if pressure >= 2 else 'OK'}")
-            # Swap emergency — if swap is huge, system is dying regardless of %
-            swap_emergency = swap_gb >= SWAP_EMERGENCY_GB
+            # Swap emergency — macOS never releases swap once allocated, so a bare absolute
+            # threshold latches permanently and thrashes TIER2/3 while RAM is healthy.
+            # Require corroboration from real scarcity (free% or pressure) before escalating.
+            swap_emergency = swap_gb >= SWAP_EMERGENCY_GB and (free_pct < TIER1_THRESHOLD_PCT or pressure >= PRESSURE_TIER1)
             if swap_emergency:
                 logger.warning(f"SWAP EMERGENCY: {swap_gb:.1f}GB swap in use! Escalating immediately.")
             # Check thresholds
@@ -728,7 +730,7 @@ def run_daemon():
                     time.sleep(15)
                     continue
                 # TIER 2: Kill local backtests + non-essential apps (browsers SAFE)
-                if (free_pct < TIER2_THRESHOLD_PCT or (swap_gb > SWAP_EMERGENCY_GB / 2)) and consecutive_low >= CONSECUTIVE_CHECKS_TIER2 and (now - last_tier2_time) >= COOLDOWN_TIER2:
+                if (free_pct < TIER2_THRESHOLD_PCT or (swap_gb > SWAP_EMERGENCY_GB / 2 and pressure >= PRESSURE_TIER1)) and consecutive_low >= CONSECUTIVE_CHECKS_TIER2 and (now - last_tier2_time) >= COOLDOWN_TIER2:
                     sessions = get_active_claude_sessions()
                     if sessions:
                         save_session_state(sessions)
