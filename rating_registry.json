@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T04:56:48.561136+00:00",
+  "timestamp": "2026-07-22T05:12:10.695872+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -8,21 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "AAVEUSDC",
-      "net_score": -14.8,
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 14.8
-    },
-    {
-      "symbol": "LINKUSDC",
-      "net_score": -14.0,
-      "long_score": 0,
-      "short_score": 14.0
-    },
-    {
-      "symbol": "RKLBUSDT",
-      "net_score": -12.4,
-      "long_score": 0,
-      "short_score": 12.4
+      "short_score": 11.8
     },
     {
       "symbol": "HMSTRUSDT",
@@ -385,6 +373,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RKLBUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "SANDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -488,6 +482,12 @@
     },
     {
       "symbol": "SPCXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "LINKUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -817,6 +817,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RIFUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "IOTXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -887,36 +893,14 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "RIFUSDT",
-      "net_score": 11.1,
-      "long_score": 11.1,
-      "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "RIFUSDT",
-      11.1,
-      0.07889624
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [
     [
       "AAVEUSDC",
-      14.8,
+      11.8,
       95.08
-    ],
-    [
-      "LINKUSDC",
-      14.0,
-      8.61265569
-    ],
-    [
-      "RKLBUSDT",
-      12.4,
-      69.38
     ]
   ],
   "hedge_usage": {
