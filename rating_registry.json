@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T11:09:27.059202+00:00",
+  "timestamp": "2026-07-22T11:24:58.244874+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,28 @@
   },
   "unified_ranking": [
     {
-      "symbol": "BIOUSDC",
-      "net_score": -10.2,
+      "symbol": "ETHFIUSDC",
+      "net_score": -14.0,
       "long_score": 0,
-      "short_score": 10.2
+      "short_score": 14.0
+    },
+    {
+      "symbol": "ENAUSDC",
+      "net_score": -10.4,
+      "long_score": 0,
+      "short_score": 10.4
+    },
+    {
+      "symbol": "YFIUSDT",
+      "net_score": -10.4,
+      "long_score": 0,
+      "short_score": 10.4
+    },
+    {
+      "symbol": "BIOUSDC",
+      "net_score": -10.3,
+      "long_score": 0,
+      "short_score": 10.3
     },
     {
       "symbol": "HMSTRUSDT",
@@ -50,12 +68,6 @@
     },
     {
       "symbol": "CHILLGUYUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ENAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -146,12 +158,6 @@
     },
     {
       "symbol": "UNIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "YFIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -841,12 +847,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ETHFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -878,55 +878,70 @@
     },
     {
       "symbol": "XLMUSDT",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 12.2,
+      "long_score": 12.2,
       "short_score": 0
     },
     {
       "symbol": "TLMUSDT",
-      "net_score": 13.3,
-      "long_score": 13.3,
+      "net_score": 12.7,
+      "long_score": 12.7,
       "short_score": 0
     },
     {
       "symbol": "ORDIUSDC",
-      "net_score": 13.6,
-      "long_score": 13.6,
+      "net_score": 13.4,
+      "long_score": 13.4,
       "short_score": 0
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 20.0,
-      "long_score": 20.0,
+      "net_score": 19.8,
+      "long_score": 19.8,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      20.0,
+      19.8,
       0.07889624
     ],
     [
       "ORDIUSDC",
-      13.6,
+      13.4,
       3.68259137
     ],
     [
       "TLMUSDT",
-      13.3,
+      12.7,
       0.00180893
     ],
     [
       "XLMUSDT",
-      13.0,
+      12.2,
       0.1934
     ]
   ],
   "top_shorts": [
     [
+      "ETHFIUSDC",
+      14.0,
+      0.4534
+    ],
+    [
+      "ENAUSDC",
+      10.4,
+      0.08611776
+    ],
+    [
+      "YFIUSDT",
+      10.4,
+      2112.5
+    ],
+    [
       "BIOUSDC",
-      10.2,
+      10.3,
       0.02608055
     ]
   ],
