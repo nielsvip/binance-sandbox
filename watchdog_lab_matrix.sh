@@ -82,7 +82,7 @@ FOCUS=$("$PY" "$SBX/tools/matrix_focus.py" symbol 2>/dev/null)
 [ -z "$FOCUS" ] && FOCUS=MU
 SIDE=$("$PY" "$SBX/tools/matrix_focus.py" side 2>/dev/null)
 [ -z "$SIDE" ] && SIDE=LONG
-for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10; do
+for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12; do
   # a worker pinned to a stale ticker is drift, not work — kill it so it relaunches on FOCUS
   if pgrep -f "param_matrix_daemon.py --tag $t " >/dev/null && \
      ! pgrep -f "param_matrix_daemon.py --tag $t --only $FOCUS --side $SIDE " >/dev/null; then
@@ -130,8 +130,14 @@ launch_vec_focus() {
     echo "$(date -u +%FT%TZ) relaunched vec_screen $tag (focus=${FOCUS}_${SIDE})" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 }
-launch_vec_focus v1
-launch_vec_focus v2
+# MEASURED 2026-07-22 00:35: v8_vec_sweep's SweepConfig implements only 164 of the 921
+# sweepable manifest params (18%) — a hard ceiling of 581 Tier-1 cells per key, of which
+# MU_LONG already has 553. With --all-tiers it just spawns sweeps that answer
+# "unknown SweepConfig knob" and REFUSE, stealing cores from the engine lane for ~28 more
+# cells. The Tier-1 lane cannot fill this grid; only porting the missing 757 knobs into
+# v8_vec_sweep would change that, and that is engineering work, not an overnight run.
+# launch_vec_focus v1
+# launch_vec_focus v2
 # COMBO hunt (USER 2026-07-21): greedy best-combination, objective = gain vs b&h;
 # probes every candidate on the stack (interaction data), leave-one-out + TF ablation.
 # USER 2026-07-21 evening: the first four keys are MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG.

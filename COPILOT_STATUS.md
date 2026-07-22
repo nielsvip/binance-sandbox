@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-22 00:33:08 UTC
+# Copilot Status — 2026-07-22 00:48:26 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T00:29:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T00:29:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:29:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:30:36
-- **STALE_INDICATORS** [tradier]  — 2026-07-22T00:31:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T00:31:36
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T00:31:36
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T00:31:36
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:31:37
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:32:38
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:44:52
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T00:45:52
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T00:45:52
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T00:45:52
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:45:53
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:46:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T00:47:55
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T00:47:55
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T00:47:55
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T00:47:55
 
 ## Missed Trades (trader comparison)
 
@@ -39,8 +39,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (45min)
-- [MEDIUM] tradier_positions.py running but log stale (46min)
-- [MEDIUM] tradier_positions.py running but log stale (47min)
-- [MEDIUM] tradier_positions.py running but log stale (48min)
-- [MEDIUM] tradier_positions.py running but log stale (49min)
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
