@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T03:39:07.517584+00:00",
+  "timestamp": "2026-07-22T03:54:45.851784+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,34 +13,34 @@
       "short_score": 13.6
     },
     {
-      "symbol": "BIOUSDC",
-      "net_score": -12.5,
+      "symbol": "LINKUSDC",
+      "net_score": -13.0,
       "long_score": 0,
-      "short_score": 12.5
+      "short_score": 13.0
     },
     {
-      "symbol": "LINKUSDC",
-      "net_score": -12.4,
+      "symbol": "BIOUSDC",
+      "net_score": -11.8,
       "long_score": 0,
-      "short_score": 12.4
+      "short_score": 11.8
     },
     {
       "symbol": "SOLUSDC",
-      "net_score": -10.7,
+      "net_score": -10.6,
       "long_score": 0,
-      "short_score": 10.7
+      "short_score": 10.6
     },
     {
-      "symbol": "ENAUSDC",
-      "net_score": -10.5,
+      "symbol": "GALAUSDT",
+      "net_score": -10.1,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 10.1
     },
     {
       "symbol": "ETHUSDC",
-      "net_score": -10.3,
+      "net_score": -10.0,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 10.0
     },
     {
       "symbol": "HMSTRUSDT",
@@ -80,6 +80,12 @@
     },
     {
       "symbol": "CHILLGUYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ENAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -470,12 +476,6 @@
     },
     {
       "symbol": "ARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GALAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -898,28 +898,28 @@
   "top_longs": [],
   "top_shorts": [
     [
-      "BIOUSDC",
-      12.5,
-      0.02608055
-    ],
-    [
       "LINKUSDC",
-      12.4,
+      13.0,
       8.61265569
     ],
     [
+      "BIOUSDC",
+      11.8,
+      0.02608055
+    ],
+    [
       "SOLUSDC",
-      10.7,
+      10.6,
       77.7586811
     ],
     [
-      "ENAUSDC",
-      10.5,
-      0.08611776
+      "GALAUSDT",
+      10.1,
+      0.00204547
     ],
     [
       "ETHUSDC",
-      10.3,
+      10.0,
       1920.26
     ]
   ],
