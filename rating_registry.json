@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T15:14:46.337699+00:00",
+  "timestamp": "2026-07-22T15:29:49.652054+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -13,28 +13,28 @@
       "short_score": 17.7
     },
     {
-      "symbol": "ETHFIUSDC",
-      "net_score": -14.3,
+      "symbol": "YFIUSDT",
+      "net_score": -16.4,
       "long_score": 0,
-      "short_score": 14.3
+      "short_score": 16.4
     },
     {
       "symbol": "ENAUSDC",
-      "net_score": -14.0,
+      "net_score": -14.6,
       "long_score": 0,
-      "short_score": 14.0
+      "short_score": 14.6
     },
     {
-      "symbol": "YFIUSDT",
-      "net_score": -13.3,
+      "symbol": "ETHFIUSDC",
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 13.3
+      "short_score": 12.5
     },
     {
-      "symbol": "1000FLOKIUSDT",
-      "net_score": -10.5,
+      "symbol": "ENSUSDT",
+      "net_score": -10.2,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 10.2
     },
     {
       "symbol": "HBARUSDC",
@@ -211,6 +211,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000FLOKIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -368,12 +374,6 @@
     },
     {
       "symbol": "ZKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ENSUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -860,44 +860,44 @@
     },
     {
       "symbol": "HYPEUSDT",
-      "net_score": 10.4,
-      "long_score": 10.4,
-      "short_score": 0
-    },
-    {
-      "symbol": "RUNEUSDT",
-      "net_score": 10.9,
-      "long_score": 10.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "NEARUSDC",
-      "net_score": 10.9,
-      "long_score": 10.9,
+      "net_score": 10.7,
+      "long_score": 10.7,
       "short_score": 0
     },
     {
       "symbol": "ZECUSDC",
-      "net_score": 13.0,
-      "long_score": 13.0,
+      "net_score": 10.8,
+      "long_score": 10.8,
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 13.8,
-      "long_score": 13.8,
+      "symbol": "RUNEUSDT",
+      "net_score": 10.8,
+      "long_score": 10.8,
+      "short_score": 0
+    },
+    {
+      "symbol": "NEARUSDC",
+      "net_score": 11.4,
+      "long_score": 11.4,
       "short_score": 0
     },
     {
       "symbol": "XLMUSDT",
-      "net_score": 13.9,
-      "long_score": 13.9,
+      "net_score": 13.1,
+      "long_score": 13.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORDIUSDC",
+      "net_score": 13.4,
+      "long_score": 13.4,
       "short_score": 0
     },
     {
       "symbol": "1000LUNCUSDT",
-      "net_score": 17.5,
-      "long_score": 17.5,
+      "net_score": 16.5,
+      "long_score": 16.5,
       "short_score": 0
     },
     {
@@ -915,60 +915,60 @@
     ],
     [
       "1000LUNCUSDT",
-      17.5,
+      16.5,
       0.05789
     ],
     [
-      "XLMUSDT",
-      13.9,
-      0.1934
-    ],
-    [
       "ORDIUSDC",
-      13.8,
+      13.4,
       3.68259137
     ],
     [
-      "ZECUSDC",
-      13.0,
-      531.60016966
+      "XLMUSDT",
+      13.1,
+      0.1934
     ],
     [
       "NEARUSDC",
-      10.9,
+      11.4,
       1.931
     ],
     [
       "RUNEUSDT",
-      10.9,
+      10.8,
       0.45108167
     ],
     [
+      "ZECUSDC",
+      10.8,
+      531.60016966
+    ],
+    [
       "HYPEUSDT",
-      10.4,
+      10.7,
       60.04155952
     ]
   ],
   "top_shorts": [
     [
-      "ETHFIUSDC",
-      14.3,
-      0.4534
-    ],
-    [
-      "ENAUSDC",
-      14.0,
-      0.08611776
-    ],
-    [
       "YFIUSDT",
-      13.3,
+      16.4,
       2112.5
     ],
     [
-      "1000FLOKIUSDT",
-      10.5,
-      0.0212846
+      "ENAUSDC",
+      14.6,
+      0.08611776
+    ],
+    [
+      "ETHFIUSDC",
+      12.5,
+      0.4534
+    ],
+    [
+      "ENSUSDT",
+      10.2,
+      4.56374459
     ]
   ],
   "hedge_usage": {

@@ -675,3 +675,35 @@ The lab / vec / combo / hourly-export lanes are OFF while the fleet is single-ke
 back on once the matrix is complete for ALL symbols AND per_sym settings exist for every key —
 `tools/watchdog_reenable_check.py` checks both mechanically (exit 0 = re-enable now). The
 restore list is a banner at the top of `watchdog_lab_matrix.sh`; nothing was deleted.
+
+### §13.7 — THE EXPOSURE LADDER: test DOWN from b&h, never UP from zero (USER MANDATE 2026-07-22)
+
+**This supersedes the testing *sequence* in §13.1–13.3 (the pilot→category→combination structure
+stands; the order in which a key's switches are tested does not).**
+
+The OFAT grid measured every knob against a baseline that is out of the market **99.87%** of the
+time (MU_LONG: 19 trades / 2.3yr / 0.13% time-in-market vs b&h +633%). In that regime almost
+nothing binds — which is precisely why ~80% of cells came back `inert`. In the user's words, it
+"works backwards and starts with 0.1% time in the market, which is absolutely useless."
+
+**The wt_5m cross alone sits at ~50% time-in-market** — the right ballpark. It is lagging and
+churning; the remaining ~1,600 switches exist to find the *right* 50–80%, not to claw up from
+zero. So the ladder runs subtractively:
+
+| stage | config | what it establishes |
+|---|---|---|
+| **0** | **ALL exit knobs OFF** (91 `*_ENABLED` flags False) + wt_5m cross entry ON | You never leave a position ⇒ ~100% time-in-market ⇒ **the return IS b&h**. This is THE FLOOR every later config must beat. |
+| **1** | exits back on **ONE AT A TIME**, sweeping each one's params | An exit earns its place only if it holds time-in-market in the target band (default **70–80%**) **AND beats b&h**. An exit that cuts exposure without beating b&h is destroying money you'd have made doing nothing. |
+| **2** | then all **entry** paths OFF (79 flags), on one at a time, sweeping each | Same test, applied to entries. |
+
+`tools/exposure_ladder.py {stage0,stage1,stage2,report} --symbol MU --side LONG`. Rows land under
+campaign `<CAMPAIGN>__ladder`, tier='ENGINE', full `overrides_json` — never mixed with the OFAT grid.
+
+**Stage 0 is also a free diagnostic.** If disabling every exit flag does NOT reproduce ~100%
+time-in-market and ~b&h, then some exit path is **not behind a flag** (or entries are being
+blocked upstream). Find that before tuning anything — the tool prints an explicit warning below
+90% TIM. Nothing in the grid is meaningful until stage 0 lands on the floor.
+
+**Scale**: stage 1 is **135 units** for a key (91 exit knobs × their swept values), stage 2 is
+similar — versus 3,485 blind cells. The ladder is both the more meaningful search AND ~25× smaller,
+which is what makes the fleet-out economics in §13.4 work. **Run this sequence for every ticker.**
