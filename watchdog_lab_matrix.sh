@@ -39,6 +39,14 @@ launch_pmx() {
 # next of MU_LONG -> HAO_SHORT -> NVDA_LONG -> VT_LONG. Measured cost: one single-symbol run =
 # 9m11s / 632MB RSS, so 14 workers ~= one core each on S1's 16 within the 30GB budget. Do not
 # add workers past ~14: oversubscription measured at load 31 cut per-worker throughput ~2.4x.
+# PAUSED 2026-07-21 late: the campaign baseline (overrides={}) has WT_3M_FORCE_OPEN_ENABLED
+# =False (config_tradier:2319), so MU_LONG's baseline is 19 trades / 0.13% time-in-market vs
+# b&h +632.98% — it barely trades. USER's actual baseline is "open every wt_5m crossover, close
+# every wt_5m crossunder" (~7,940 trades, 1.84x b&h in the lab). Every OFAT delta measured
+# against a non-trading baseline is noise, and 80% of cells came back inert because there were
+# no trades for the knobs to act on. Do NOT burn days filling that grid: rebaseline first, then
+# remove this guard.
+if [ ! -f "$SBX/data/MATRIX_REBASELINE_HOLD" ]; then
 "$PY" "$SBX/tools/matrix_focus.py" advance >> "$LOGDIR/matrix_focus.log" 2>&1
 FOCUS=$("$PY" "$SBX/tools/matrix_focus.py" symbol 2>/dev/null)
 [ -z "$FOCUS" ] && FOCUS=MU
@@ -57,6 +65,7 @@ for t in w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14; do
     echo "$(date -u +%FT%TZ) relaunched param_matrix $t (focus=$FOCUS)" >> "$LOGDIR/lab_matrix_watchdog.log"
   fi
 done
+fi
 
 # VEC_SCREEN lane (USER 2026-07-21 "vectorize everything"): 2 workers cover the
 # manifest params the Tier-2 fleet skips (sweep_tier==VEC_SCREEN) via v8_vec_sweep.
