@@ -1,22 +1,28 @@
 {
-  "timestamp": "2026-07-22T02:07:56.041814+00:00",
+  "timestamp": "2026-07-22T02:23:00.476456+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 145
+    "total_ranked": 147
   },
   "unified_ranking": [
     {
       "symbol": "BIOUSDC",
-      "net_score": -13.7,
+      "net_score": -12.2,
       "long_score": 0,
-      "short_score": 13.7
+      "short_score": 12.2
     },
     {
       "symbol": "ENAUSDC",
-      "net_score": -10.3,
+      "net_score": -11.3,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 11.3
+    },
+    {
+      "symbol": "VIRTUALUSDT",
+      "net_score": -10.5,
+      "long_score": 0,
+      "short_score": 10.5
     },
     {
       "symbol": "HMSTRUSDT",
@@ -745,12 +751,6 @@
       "short_score": 0
     },
     {
-      "symbol": "VIRTUALUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "GOOGLUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -758,6 +758,12 @@
     },
     {
       "symbol": "ICPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "KAVAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -841,6 +847,12 @@
       "short_score": 0
     },
     {
+      "symbol": "RLCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -881,13 +893,18 @@
   "top_shorts": [
     [
       "BIOUSDC",
-      13.7,
+      12.2,
       0.02608055
     ],
     [
       "ENAUSDC",
-      10.3,
+      11.3,
       0.08611776
+    ],
+    [
+      "VIRTUALUSDT",
+      10.5,
+      0.65312856
     ]
   ],
   "hedge_usage": {
