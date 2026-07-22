@@ -3320,12 +3320,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _ma_confirmed = current_price >= _ma_st['lo'] * (1.0 + _ma_conf / 100.0)
                     if _ma_confirmed and _ma_score >= _ma_theta:
                         _ma_base = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
-                        _ma_mult = max(0.5, min(float(getattr(config, 'MTF_ARROW_SIZE_MAX', 4.0)),
-                                                1.0 + float(getattr(config, 'MTF_ARROW_SIZE_GAIN', 1.0)) * _ma_score))
-                        action_type = "OPEN"
-                        qty = int(max(1, _ma_base * _ma_mult))
-                        conf = 90.0
-                        reason = f"MTF_ARROW_ENTRY_L_s{_ma_score:.2f}_x{_ma_mult:.2f}_{_ma_detail}"[:110]
+                        if bool(_cfg('LR_BAND_LADDER_ENABLED', False, account_key, symbol, position_side)):
+                            # USER 2026-07-22: the green arrow is the TRIGGER, the band position is
+                            # the QUANTITY. Size this arrow by where price sits between the D bands
+                            # (10x at/below centre -> 3x at/above top), 0 below the lower band = no
+                            # trade. Depth IS the size — not the momentum score.
+                            _ld_tf = str(_cfg('LR_BAND_ENTRY_TF', 'D', account_key, symbol, position_side))
+                            _ld_src = indicators_raw if indicators_raw else i
+                            _ld_pb = _ld_src.get(f"lrL_pct_b_{_ld_tf}")
+                            _ma_mult = band_ladder_mult(_ld_pb, config, _ld_tf) if _ld_pb is not None else 0.0
+                            if _ma_mult <= 0.0:
+                                logger.debug(f"[LR_BAND_LADDER_SKIP] {symbol}: pb={_ld_pb} below lower band or unusable — arrow ignored")
+                            else:
+                                action_type = "OPEN"
+                                qty = int(max(1, _ma_base * _ma_mult))
+                                conf = 90.0
+                                reason = f"LR_BAND_LADDER_ARROW_pb={float(_ld_pb):.3f}_x{_ma_mult:.2f}_{_ld_tf}_s{_ma_score:.2f}"[:110]
+                        else:
+                            _ma_mult = max(0.5, min(float(getattr(config, 'MTF_ARROW_SIZE_MAX', 4.0)),
+                                                    1.0 + float(getattr(config, 'MTF_ARROW_SIZE_GAIN', 1.0)) * _ma_score))
+                            action_type = "OPEN"
+                            qty = int(max(1, _ma_base * _ma_mult))
+                            conf = 90.0
+                            reason = f"MTF_ARROW_ENTRY_L_s{_ma_score:.2f}_x{_ma_mult:.2f}_{_ma_detail}"[:110]
                         # The post-entry VARIANCE_FIX veto gates on _entry_score (default
                         # TRADIER_ENTRY_SCORE_THRESHOLD=30). Paths that open without running
                         # wt_dc_score_entry leave it 0.0 and are silently dropped AFTER having
