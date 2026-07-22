@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-22 07:29:34 UTC
+# Copilot Status — 2026-07-22 07:44:47 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T07:26:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T07:26:00
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:26:00
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:27:01
-- **STALE_INDICATORS** [tradier]  — 2026-07-22T07:28:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T07:28:02
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T07:28:02
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T07:28:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:28:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:29:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:41:13
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T07:42:14
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T07:42:14
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T07:42:14
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:42:14
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:43:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T07:44:16
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T07:44:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T07:44:16
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T07:44:16
 
 ## Missed Trades (trader comparison)
 
@@ -38,8 +38,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_positions.py running but log stale (44min)
-- [MEDIUM] tradier_positions.py running but log stale (45min)
-- [MEDIUM] tradier_positions.py running but log stale (46min)
-- [MEDIUM] tradier_positions.py running but log stale (47min)
-- [MEDIUM] tradier_positions.py running but log stale (48min)
+- [MEDIUM] tradier_positions.py running but log stale (58min)
+- [MEDIUM] tradier_positions.py running but log stale (59min)
+- [MEDIUM] tradier_positions.py running but log stale (60min)
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
