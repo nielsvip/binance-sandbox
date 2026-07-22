@@ -707,3 +707,42 @@ blocked upstream). Find that before tuning anything — the tool prints an expli
 **Scale**: stage 1 is **135 units** for a key (91 exit knobs × their swept values), stage 2 is
 similar — versus 3,485 blind cells. The ladder is both the more meaningful search AND ~25× smaller,
 which is what makes the fleet-out economics in §13.4 work. **Run this sequence for every ticker.**
+
+### §13.8 — THE EXIT INVENTORY MUST BE COMPLETE BEFORE ANY NUMBER MEANS ANYTHING (USER 2026-07-22)
+
+**"If MU_LONG all_exits_off does not produce b&h you need to first move the exit that caused it
+to exit to the exits! You cannot start calculating anything until you have all exits on the
+exits sheet."**
+
+Stage 0 is therefore not just a floor — it is the **completeness test for the exit inventory**,
+and it is run as a convergence loop:
+
+```
+run stage0  ->  did it reach ~100% TIM / ~b&h ?
+   no  -> `exposure_ladder.py verify` lists the exit_reason FAMILIES that still fired
+       -> find each one's controlling switch in the code
+       -> add it to the inventory (it now appears on the Exit sheet and can be switched off)
+       -> re-run
+   yes -> the inventory is COMPLETE. Only now may stage 1 begin.
+```
+
+**Three switch shapes exist and NONE is inferable from the name.** Each was found the hard way
+by a stage-0 run that failed to reach b&h:
+
+| shape | disable with | found via |
+|---|---|---|
+| boolean `X_ENABLED` | `False` | — |
+| boolean **without** `_ENABLED` | `False` | `STRUCTURAL_RANGE_SHIFT_EXIT` produced **100% of 1,310 closes**; only 92 of 144 boolean exit knobs end in `_ENABLED` |
+| **string TF/TYPE** | `"None"` | `LONG_STRUCT_EXIT_TF='D'` → `HYBRID_STRUCT_EXIT_D`, **69 of 149** closes; `MTF_DC_REJECT_EXIT_TF='1h'` is also the exit churning MU flat **live** |
+
+`REQUIRE*` knobs are **conditions** on an exit, not switches — forcing them loosens rather than
+disables. Skip them.
+
+Progression of the off-set as the inventory converged: **92 → 141 → 163** switches, and MU_LONG
+stage 0 moved **26.9% TIM/+222% → 40.0% TIM/+318.93%** against b&h +632.98%. Never enumerate
+switches by naming convention — read the real config types (`_cfg_bools()` / `_cfg_strs()`).
+
+**The Ladder sheet** in `SWITCH_MATRIX_TRB.xlsx` shows this live: one row per config in time
+order, with time-in-market, gain, b&h, vs-b&h, gain/mo, pool_sharpe and trades, and every row
+that improved on the running best highlighted — so the climb from "no exits = b&h" through each
+exit added and adjusted, then each entry, is readable top-to-bottom as it happens.
