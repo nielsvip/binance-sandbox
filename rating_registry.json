@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-22T06:44:05.103376+00:00",
+  "timestamp": "2026-07-22T06:59:44.670451+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -14,15 +14,9 @@
     },
     {
       "symbol": "RKLBUSDT",
-      "net_score": -10.2,
+      "net_score": -10.3,
       "long_score": 0,
-      "short_score": 10.2
-    },
-    {
-      "symbol": "LINKUSDC",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
+      "short_score": 10.3
     },
     {
       "symbol": "HMSTRUSDT",
@@ -499,6 +493,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ADAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -896,15 +896,15 @@
     },
     {
       "symbol": "RIFUSDT",
-      "net_score": 13.3,
-      "long_score": 13.3,
+      "net_score": 13.7,
+      "long_score": 13.7,
       "short_score": 0
     }
   ],
   "top_longs": [
     [
       "RIFUSDT",
-      13.3,
+      13.7,
       0.07889624
     ]
   ],
@@ -916,13 +916,8 @@
     ],
     [
       "RKLBUSDT",
-      10.2,
+      10.3,
       69.38
-    ],
-    [
-      "LINKUSDC",
-      10.1,
-      8.61265569
     ]
   ],
   "hedge_usage": {
