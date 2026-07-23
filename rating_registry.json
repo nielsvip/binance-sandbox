@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-23T21:18:30.901727+00:00",
+  "timestamp": "2026-07-23T21:33:35.196910+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -38,15 +38,9 @@
     },
     {
       "symbol": "BOMEUSDC",
-      "net_score": -13.1,
+      "net_score": -13.3,
       "long_score": 0,
-      "short_score": 13.1
-    },
-    {
-      "symbol": "XMRUSDT",
-      "net_score": -10.7,
-      "long_score": 0,
-      "short_score": 10.7
+      "short_score": 13.3
     },
     {
       "symbol": "IMXUSDT",
@@ -571,6 +565,12 @@
       "short_score": 0
     },
     {
+      "symbol": "XMRUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000FLOKIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -739,12 +739,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1000LUNCUSDT",
-      "net_score": 21.9,
-      "long_score": 21.9,
-      "short_score": 0
-    },
-    {
       "symbol": "NEARUSDC",
       "net_score": 22.3,
       "long_score": 22.3,
@@ -754,6 +748,12 @@
       "symbol": "MSFTUSDT",
       "net_score": 22.7,
       "long_score": 22.7,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "net_score": 24.6,
+      "long_score": 24.6,
       "short_score": 0
     },
     {
@@ -809,6 +809,11 @@
       0.1934
     ],
     [
+      "1000LUNCUSDT",
+      24.6,
+      0.05789
+    ],
+    [
       "TSLAUSDT",
       24.6,
       378.99
@@ -822,11 +827,6 @@
       "NEARUSDC",
       22.3,
       1.931
-    ],
-    [
-      "1000LUNCUSDT",
-      21.9,
-      0.05789
     ],
     [
       "SPCXUSDT",
@@ -897,13 +897,8 @@
     ],
     [
       "BOMEUSDC",
-      13.1,
+      13.3,
       0.0004116
-    ],
-    [
-      "XMRUSDT",
-      10.7,
-      348.95
     ]
   ],
   "hedge_usage": {
