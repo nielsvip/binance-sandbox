@@ -3140,8 +3140,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # capture b&h minus the sub-exit drawdowns -> beat b&h. Enable via V8_SWING=1 env
                 # (guaranteed to reach the process) or config SWING_ENABLED. Runs before WT_DC/GR_HTF
                 # so they cannot claim the slot first.
+                # LIVE SAFETY (USER 2026-07-23, $70k at risk): this experimental re-open can open
+                # a position on the FIRST evaluation (exit seeded 0.0). It must NEVER run in live.
+                # V8_SWEEP_MODE is set ONLY by backtest_v8_engine — live never sets it. Both that
+                # AND the explicit V8_SWING opt-in are required.
                 if (current_price and current_price > 0
-                        and (os.environ.get("V8_SWING") == "1" or bool(getattr(config, 'SWING_ENABLED', False)))):
+                        and os.environ.get("V8_SWEEP_MODE") == "1"
+                        and os.environ.get("V8_SWING") == "1"):
                     if not hasattr(trade_manager, '_swing_exit_px'):
                         trade_manager._swing_exit_px = {}
                     if symbol not in trade_manager._swing_exit_px:
@@ -7006,7 +7011,8 @@ class StockStrategy:
         # confirmed -> CLOSE and REMEMBER the exit price. The re-entry side (in the entry cascade)
         # only re-buys at or below this price, which is what beats b&h. Full close; bypasses
         # noloss (SWING_EXIT reason in the bypass list) — selling the downtrend IS the point.
-        if os.environ.get("V8_SWING") == "1" or bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side)):
+        # LIVE SAFETY: backtest-only (V8_SWEEP_MODE set only by backtest_v8_engine) + explicit opt-in
+        if os.environ.get("V8_SWEEP_MODE") == "1" and os.environ.get("V8_SWING") == "1":
             _sw_ind = indicators if indicators else i
             _sw_tfs = [t.strip() for t in str(os.environ.get("V8_SWING_EXIT_TFS") or _cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
             for _sw_tf in _sw_tfs:
