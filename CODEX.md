@@ -82,3 +82,18 @@ call a partial matrix complete.
 - MU_LONG coverage: 1,591 of 6,291 switch-value rows have a measured ENGINE value. This is
   progress, not completion; the focus key must continue until the documented completion gate.
 - Workbook verification: 8 sheets imported successfully; no formula-error matches were found.
+
+## B&H-first matrix semantics (latest handoff)
+
+- The floor is buy at the first available bar and sell at the last available bar for each
+  `(symbol, side)` key. A cell is judged against its same-key `delta_gain_mo_vs_bh`, never only
+  against the old trading baseline.
+- Green cells beat B&H. Red cells are equal to B&H, zero-trade, or fingerprint-identical across
+  tested values and therefore indicate wiring/equality work for an agent. White cells are below
+  B&H but still positive/viable. Gray cells are non-viable or materially shittier and should be
+  discarded.
+- The exit-first ladder is the valid progression: Stage 0 all exits off must reproduce the B&H
+  floor; Stage 1 adds exits one at a time; only after that should entries and combinations be
+  tested. A failed Stage 0 is an incomplete exit inventory, not a strategy result.
+- The S1 OFAT worker was observed hitting SQLite locks and engine `rc=-9` failures. Those rows are
+  not counted as valid evidence until the run completes and has a real ledger/result.
