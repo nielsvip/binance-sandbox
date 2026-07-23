@@ -76,7 +76,7 @@ if [ "$ET_MINS" -lt 570 ]; then
             continue
         fi
         log "  Launching: $full_cmd"
-        nohup bash "$WATCHDOG" $full_cmd > /dev/null 2>&1 &
+        nohup bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
         sleep 2
     done
     sleep 10
@@ -119,7 +119,7 @@ for entry in "${TRADIER_RESTART_LIST[@]}"; do
         continue
     fi
     log "  Restarting $full_cmd (both python + wrapper dead)"
-    nohup bash "$WATCHDOG" $full_cmd > /dev/null 2>&1 &
+    nohup bash "$WATCHDOG" $full_cmd >> "$LOGDIR/wd_${script_name%.py}.out" 2>&1 &
     sleep 3
 done
 log "RECOVERY COMPLETE"
