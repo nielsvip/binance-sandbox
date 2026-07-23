@@ -2805,15 +2805,6 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         _wf_target = float(_cfg('WT_3M_FORCE_OPEN_TARGET_USD', 15000.0, account_key, symbol, position_side))
         _wf_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
         _wf_room = (_wf_pos_val < _wf_target) if _wf_build else (not has_position)
-        # SWING GUARANTEE (USER 2026-07-23): only re-open AT OR BELOW the last swing-exit price ->
-        # same shares at a lower cost basis than holding -> beats b&h by construction. First open
-        # (no stored exit) is unconstrained. Price ran away above exit + runaway off -> no re-buy.
-        if bool(_cfg('SWING_REENTER_AT_OR_BELOW_EXIT', False, account_key, symbol, position_side)):
-            _sw_xpx = (getattr(trade_manager, '_swing_exit_px', {}) or {}).get(symbol)
-            if _sw_xpx is not None and not has_position:
-                _sw_xtol = float(_cfg('SWING_REENTER_TOLERANCE_PCT', 0.0, account_key, symbol, position_side)) / 100.0
-                if current_price > float(_sw_xpx) * (1.0 + _sw_xtol) and not bool(_cfg('SWING_RUNAWAY_REENTER', True, account_key, symbol, position_side)):
-                    _wf_room = False   # price above exit and runaway re-entry off -> hold cash, wait for a lower re-entry
         if _wf_room and _wf_enabled:
             try:
                 if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
@@ -3366,44 +3357,26 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
                 # With LR_BAND_ENTRY_PRIORITY the band/regime test runs FIRST for LONGs, matching the
                 # arrow-lab finding that band+slope context beats momentum-score ordering.
-                # ═══ SWING RE-ENTRY (USER 2026-07-23): the b&h-beating guarantee ═══
-                # Re-buy on a green arrow OR higher-high+higher-low, but ONLY at or below the last
-                # swing-exit price -> same shares at a lower cost basis than holding -> beats b&h.
-                # If price ran away above the exit, re-enter at just START_POSITION_SIZE (do not
-                # miss a runaway trend) rather than chase the full size higher.
-                if (action_type != "OPEN" and is_long
+                # ═══ SWING RE-OPEN (USER 2026-07-23): BE IN THE MARKET WHENEVER PRICE > EXIT ═══
+                # It is an OPEN rule, NOT an entry filter. You exited on a downtrend at exit_px and
+                # sat out the dip; the MOMENT price recovers above exit_px you MUST be back in to
+                # ride the rise. So: flat AND (no prior exit OR current_price >= exit_px) -> OPEN.
+                # You are out ONLY while price is below your exit (the drawdown you avoided) -> you
+                # capture buy-and-hold MINUS the sub-exit dips -> you beat b&h.
+                if (action_type != "OPEN" and is_long and not has_position
+                        and current_price > 0
                         and bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side))):
-                    _swr_src = indicators_raw if indicators_raw else i
-                    _swr_tf = [t.strip() for t in str(_cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
-                    _swr_tf = _swr_tf[0] if _swr_tf else 'D'
-                    _swr_sig = str(_cfg('SWING_REENTER_SIGNAL', 'green_or_hhll', account_key, symbol, position_side))
-                    _swr_green = safe_fetch_float(_swr_src.get(f'lrL_slope_{_swr_tf}'), 0.0) > 0
-                    _swr_h = safe_fetch_float(_swr_src.get(f'high_{_swr_tf}'), 0.0)
-                    _swr_hp = safe_fetch_float(_swr_src.get(f'high_{_swr_tf}_prev'), 0.0)
-                    _swr_l = safe_fetch_float(_swr_src.get(f'low_{_swr_tf}'), 0.0)
-                    _swr_lp = safe_fetch_float(_swr_src.get(f'low_{_swr_tf}_prev'), 0.0)
-                    _swr_hhll = (_swr_h > _swr_hp > 0) and (_swr_l > _swr_lp > 0)
-                    _swr_fire = (_swr_green if _swr_sig == 'green_arrow'
-                                 else _swr_hhll if _swr_sig == 'hhll'
-                                 else (_swr_green or _swr_hhll))
-                    if _swr_fire and not has_position:
-                        _swr_exit_px = (getattr(trade_manager, '_swing_exit_px', {}) or {}).get(symbol)
-                        _swr_tol = float(_cfg('SWING_REENTER_TOLERANCE_PCT', 0.0, account_key, symbol, position_side)) / 100.0
-                        _swr_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price > 0 else 1
-                        _swr_below = _swr_exit_px is None or current_price <= float(_swr_exit_px) * (1.0 + _swr_tol)
-                        if _swr_below:
-                            _swr_mult = float(_cfg('SWING_REENTER_MULT', 1.0, account_key, symbol, position_side))
-                            action_type = "OPEN"
-                            qty = int(max(1, _swr_base * _swr_mult))
-                            conf = 92.0
-                            reason = f"SWING_REENTER_BELOW_{_swr_tf}_px{current_price:.2f}_le_exit{float(_swr_exit_px) if _swr_exit_px else 0:.2f}_x{_swr_mult:.1f}"[:110]
-                            logger.info(f"[SWING_REENTER] {symbol}: {_swr_tf} signal at {current_price:.2f} <= exit {_swr_exit_px} -> FULL re-buy qty={qty} (beats b&h: same shares cheaper)")
-                        elif bool(_cfg('SWING_RUNAWAY_REENTER', True, account_key, symbol, position_side)):
-                            action_type = "OPEN"
-                            qty = int(max(1, _swr_base))   # runaway: minimal size, do not chase
-                            conf = 85.0
-                            reason = f"SWING_REENTER_RUNAWAY_{_swr_tf}_px{current_price:.2f}_gt_exit{float(_swr_exit_px):.2f}_min"[:110]
-                            logger.info(f"[SWING_REENTER_RUNAWAY] {symbol}: price {current_price:.2f} > exit {_swr_exit_px} -> minimal re-buy qty={qty}")
+                    _swr_exit_px = (getattr(trade_manager, '_swing_exit_px', {}) or {}).get(symbol)
+                    _swr_tol = float(_cfg('SWING_REENTER_TOLERANCE_PCT', 0.0, account_key, symbol, position_side)) / 100.0
+                    _swr_in = _swr_exit_px is None or current_price >= float(_swr_exit_px) * (1.0 - _swr_tol)
+                    if _swr_in:
+                        _swr_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price
+                        _swr_mult = float(_cfg('SWING_REENTER_MULT', 1.0, account_key, symbol, position_side))
+                        action_type = "OPEN"
+                        qty = int(max(1, _swr_base * _swr_mult))
+                        conf = 92.0
+                        reason = f"SWING_REOPEN_px{current_price:.2f}_ge_exit{float(_swr_exit_px) if _swr_exit_px else 0:.2f}"[:110]
+                        logger.info(f"[SWING_REOPEN] {symbol}: price {current_price:.2f} >= exit {_swr_exit_px} -> OPEN qty={qty} (in the market while above exit)")
 
                 # ═══ BAND ARROW ENTRY (USER 2026-07-23): buy EVERY green arrow, sized by band ═══
                 if (action_type != "OPEN" and is_long
