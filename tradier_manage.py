@@ -2788,6 +2788,44 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 logger.debug(f"[MTF_COMPOUND_EXIT] {position_key} err: {_mtfce_err}")
         # ═══ END MTF COMPOUND EXIT ═══
         # ═══════════════════════════════════════════════════════════════════════
+        # ═══ SWING RE-ENTRY (USER 2026-07-23): the b&h-beating guarantee, at the PROVEN open path ═══
+        # Placed as a sibling of WT_3M_FORCE_OPEN (the entry point that actually opens in the
+        # backtest) instead of the check_entry cascade, which is not reached for a never-opened
+        # symbol. Re-buy on a green arrow OR higher-high+higher-low, but ONLY at or below the last
+        # swing-exit price -> same shares at a lower cost basis than holding -> beats b&h. If price
+        # ran away above the exit, re-enter at just START_POSITION_SIZE (do not miss a runaway).
+        if (bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side))
+                and not has_position and current_price > 0):
+            _swi = indicators_raw if 'indicators_raw' in dir() and indicators_raw else i
+            _sw_tf = [t.strip() for t in str(_cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
+            _sw_tf = _sw_tf[0] if _sw_tf else 'D'
+            _sw_sig = str(_cfg('SWING_REENTER_SIGNAL', 'green_or_hhll', account_key, symbol, position_side))
+            _sw_green = safe_fetch_float(_swi.get(f'lrL_slope_{_sw_tf}'), 0.0) > 0
+            _sw_h = safe_fetch_float(_swi.get(f'high_{_sw_tf}'), 0.0)
+            _sw_hp = safe_fetch_float(_swi.get(f'high_{_sw_tf}_prev'), 0.0)
+            _sw_l = safe_fetch_float(_swi.get(f'low_{_sw_tf}'), 0.0)
+            _sw_lp = safe_fetch_float(_swi.get(f'low_{_sw_tf}_prev'), 0.0)
+            _sw_hhll = (_sw_h > _sw_hp > 0) and (_sw_l > _sw_lp > 0)
+            _sw_fire = (_sw_green if _sw_sig == 'green_arrow' else _sw_hhll if _sw_sig == 'hhll' else (_sw_green or _sw_hhll))
+            if _sw_fire and (is_long or not is_long):
+                _sw_exit_px = (getattr(trade_manager, '_swing_exit_px', {}) or {}).get(symbol)
+                _sw_tol = float(_cfg('SWING_REENTER_TOLERANCE_PCT', 0.0, account_key, symbol, position_side)) / 100.0
+                _sw_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price
+                _sw_below = _sw_exit_px is None or current_price <= float(_sw_exit_px) * (1.0 + _sw_tol)
+                if _sw_below:
+                    _sw_mult = float(_cfg('SWING_REENTER_MULT', 1.0, account_key, symbol, position_side))
+                    _sw_qty = max(1.0, _sw_base * _sw_mult)
+                    _sw_reason = f"SWING_REENTER_BELOW_{_sw_tf}_px{current_price:.2f}_le{float(_sw_exit_px) if _sw_exit_px else 0:.2f}_x{_sw_mult:.1f}"
+                    logger.info(f"[SWING_REENTER] {symbol}: {_sw_tf} signal at {current_price:.2f} <= exit {_sw_exit_px} -> FULL re-buy qty={_sw_qty:.0f} (beats b&h)")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _sw_reason, 92.0, override_qty=_sw_qty)
+                    return f"SWING_REENTER_BELOW:{position_side}"
+                elif bool(_cfg('SWING_RUNAWAY_REENTER', True, account_key, symbol, position_side)):
+                    _sw_qty = max(1.0, _sw_base)
+                    _sw_reason = f"SWING_REENTER_RUNAWAY_{_sw_tf}_px{current_price:.2f}_gt{float(_sw_exit_px):.2f}_min"
+                    logger.info(f"[SWING_REENTER_RUNAWAY] {symbol}: {current_price:.2f} > exit {_sw_exit_px} -> minimal re-buy qty={_sw_qty:.0f}")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _sw_reason, 85.0, override_qty=_sw_qty)
+                    return f"SWING_REENTER_RUNAWAY:{position_side}"
+
         # WT_3M_FORCE_OPEN — USER NON-NEGOTIABLE 2026-05-10 (stocks).
         # Every symbol in symbols_trb_long/short must have a position whenever the
         # wt1_3m vs wt2_3m condition holds. Reopen after every close. Reentry /
