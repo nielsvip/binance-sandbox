@@ -82,6 +82,34 @@ Run COMPLETE: `~/logs/mu_unblocked.log`, MU / trb / start 2024-04-01, launched w
   232 trades over 2.3 yr is ~100/yr; the engine wants ≥3/day. **Do not record this as a finished baseline.** It clears "is anything trading at all," not "is this a usable baseline." Raising trade frequency toward that target is the real content of Tasks 4–5 (arrow entries on 1h/4h/D + ladder re-entries).
 - ❌ **Still unmeasured: gain vs b&h.** No `gain_pct` / `acc_gain` line was emitted to the log, so **MU's b&h floor is still unknown** and nothing has yet been shown to beat it. Task 2 is wide open — that is your first real deliverable.
 
+### ⚠️ TASK 1b — THE TRADE LEDGER IS NOT BEING WRITTEN. FIX THIS FIRST.
+Without a ledger you cannot verify the b&h guarantee, and the b&h guarantee is the whole point.
+
+**Root cause of two separate mysteries — same mechanism.** `backtest_v8_engine.py:~100-118`: when
+`V8_SWEEP_MODE=1` the engine **replaces builtin `print` with a whitelist filter** and calls
+`logging.disable(logging.CRITICAL)`. Only whitelisted prefixes survive (`V8_RESULT`, `V8_HEARTBEAT`,
+`V8_TIER2_CHART_TRADES`, `V8_FINAL_PNL`, `FINAL_BROKEN_RATE`, …).
+1. That is why `[SWEEP_ENTRY_UNBLOCK]` never appears in any log — the prefix is not whitelisted. The
+   unblock **does** apply; proven independently by importing `tradier_manage` under `V8_SWEEP_MODE=1`
+   and reading `tm.config` → `score_thr=0, min_ind=0, req_act=False, ladder=True`. Do NOT re-investigate this.
+2. The ledger writer is `_write_chart_trades()` (`:1853`), called at `:5568` and `:8242`, and it reads
+   **`V8_TRADES_OUT_DIR`** (a DIRECTORY) + optional `V8_TRADES_RUN_ID`. **`V8_TRADES_OUT` is NOT a real
+   variable** — it is only a log-prefix token in the whitelist at `:114`. I wasted a run on that mistake.
+   Even with the correct var the run produced **no file and no `V8_TIER2_CHART_TRADES` line and no
+   `V8_FINAL` line**, so the writer is never reached — the run ends after `FINAL_BROKEN_RATE`.
+   **Find which return/exit path precedes `:5568`/`:8242` and skips it.** Likely the low-trade-rate abort.
+   Until that is fixed, every "verification" of the b&h rule is impossible, not merely pending.
+
+### TASK 1c — VERIFY THE B&H GUARANTEE (tool is built, just needs a ledger)
+`tools/verify_bh_guarantee.py` (Mac + S1, compiles clean). Replays position state bar-by-bar against the
+15m closes and reports every bar where MU was flat while price was above the last exit price. Initial
+`exit_px = 0.0`, so **being flat at bar 0 is itself a violation** — the rule as the user stated it.
+```bash
+python3 tools/verify_bh_guarantee.py --trades data/bh_verify/mu_bh__MU.jsonl --symbol MU --start 2024-04-01
+```
+Exit 0 = guarantee holds. Exit 1 = broken, and the output names the first violation bar and the worst
+gap above the exit price. **STATUS: NEVER SUCCESSFULLY RUN — no ledger has ever been produced.**
+
 ### TASK 2 — ✅ MEASURED 2026-07-23. THE B&H FLOOR (15m closes, start 2024-04-01)
 ```
 SYM     first      last     b&h_pct     window
