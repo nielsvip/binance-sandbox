@@ -48,8 +48,13 @@ COOLDOWN_TIER2 = 180   # 3 min between browser kills
 COOLDOWN_TIER3 = 120   # 2 min between emergency kills
 # Swap threshold — if swap is this high, escalate immediately regardless of %
 SWAP_EMERGENCY_GB = 8.0  # 8GB swap = system is dying
-# NEVER KILL these — Terminal has Claude agents, browsers must stay open, Finder/system are essential
-NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari"}
+# NEVER KILL these — Terminal has Claude agents, browsers must stay open, Finder/system are essential.
+# "Python"/"python3" added 2026-07-23: tier3_emergency_cleanup sent `tell application "Python" to quit`
+# at 20:05:00 on 2026-07-22, and both tradier_manage trb/trc watchdogs logged "Watchdog shutting down..."
+# 36s later — the live stock stack stayed down ~15h. Tier 3 fired 8x between 19:45-20:04 UTC that day
+# (15:45-16:04 ET), i.e. it can and does fire DURING market hours. tier1_restart_hog already excludes
+# live trading workers for the same reason; tier3 was bypassing that policy via the GUI app-quit loop.
+NEVER_KILL = {"Terminal", "Finder", "loginwindow", "SystemUIServer", "WindowServer", "Dock", "System Events", "Google Chrome", "Microsoft Edge", "Opera", "Firefox", "Safari", "Python", "python3"}
 ANTIGRAVITY_APPS = {"Antigravity", "Antigravity IDE"}
 # Background language-server / indexer helpers that balloon unbounded while indexing this huge
 # repo (2026-06-03: language_server_macos_arm grew to 5.4GB → jetsam SIGKILLed live ez_manage
