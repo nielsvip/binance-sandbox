@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-22 23:53:53 UTC
+# Copilot Status — 2026-07-23 00:09:08 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T23:51:50
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T23:51:50
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T23:51:50
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T23:51:50
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T23:52:52
-- **STALE_INDICATORS** [tradier]  — 2026-07-22T23:53:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-22T23:53:52
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-22T23:53:52
-- **RATIO_IMBALANCE** [tradier] trc — 2026-07-22T23:53:52
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-22T23:53:52
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-23T00:06:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-23T00:06:04
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-23T00:06:04
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-23T00:07:05
+- **STALE_INDICATORS** [tradier]  — 2026-07-23T00:08:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-23T00:08:06
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-23T00:08:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-23T00:08:06
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-23T00:08:06
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-23T00:09:07
 
 ## Missed Trades (trader comparison)
 
