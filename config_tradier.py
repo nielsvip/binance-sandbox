@@ -696,8 +696,12 @@ class TradierConfig:
     # Per-TF BOTTOM/TOP pairs (USER 2026-07-22): D 10x->3x, 4h 6x->2x, 1h 4x->1x. These are not
     # a constant ratio (10/3, 6/2, 4/1), so a single per-TF weight cannot express them — each TF
     # carries its own pair. A TF absent from the map falls back to the scalar BOTTOM/TOP above.
-    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0})
-    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 3.0, "4h": 2.0, "1h": 1.0})
+    # USER 2026-07-23: "GET THE LADDER BETWEEN THE GRAY BANDS RIGHT — 10x-6x on D, 8x-4x on 4h,
+    # 4x-2x on H". BOTTOM = multiplier at/below the channel centre, TOP = at the upper band.
+    # Continuous interpolation between the two (NOT a threshold gate — that was built wrong once
+    # and the user called it "structurally wRONG"). Below the lower band = 0x, no trade.
+    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 8.0, "1h": 4.0})
+    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 6.0, "4h": 4.0, "1h": 2.0})
     LR_BAND_ENTRY_ENABLED: bool = False
     LR_BAND_ENTRY_TF: str = "D"
     LR_BAND_ENTRY_LO: float = 0.3
@@ -2874,6 +2878,17 @@ class TradierConfig:
         self.LOCAL_EXTREMES_MIN_SCORE = 0.0
         self.SMA200_DIST_ENTRY_ENABLED = False
         self.MFI_ENTRY_ENABLED = False
+        # BASELINE IS B&H, PERIOD (USER 2026-07-23). You can never be OUT of the market while
+        # price is above the exit price — this is an OPEN rule, not a filter on entries.
+        # Exit price seeds at 0.0 so the very first bar opens and the b&h floor exists from bar 0.
+        self.PRICE_CROSS_BACK_REENTRY_ENABLED = True
+        self.TRADIER_REENTRY_ANTI_CHURN_ENABLED = False
+        self.AUGMENTATION_COOLDOWN_MINUTES = 0
+        self.TRADIER_MIN_HOLD_MINUTES = 0
+        # Grey-band ladder: D 10x-6x, 4h 8x-4x, 1h 4x-2x, 0x below the lower band.
+        self.LR_BAND_LADDER_ENABLED = True
+        self.LR_BAND_ENTRY_ENABLED = True
+        self.LR_BAND_REGIME_ENABLED = True
         print("[SWEEP_ENTRY_UNBLOCK] entry gates opened (V8_SWEEP_MODE=1) — b&h floor: in-market whenever price>0")
 
     def _resolve_initial_mode(self) -> str:

@@ -71,11 +71,16 @@ Acceptance, ALL of:
 
 If trades is still 0, **do not proceed and do not paper over it.** Trace *which* gate rejected the open — instrument the entry path in the engine (read-only logging) or bisect by flipping gates one at a time via env. The answer is a specific gate name, not a guess.
 
-**STATE AT HANDOFF (2026-07-23 ~06:00 UTC) — verify, don't assume:**
-A run is IN FLIGHT: `~/logs/mu_unblocked.log`, MU / trb / start 2024-04-01, launched with `V8_SWEEP_MODE=1`.
-- ✅ **It is trading: 99 closes at step 70800/113139 (~62%).** Compare to the old campaign baseline of 19 trades. So the sandbox is no longer silent.
-- ⚠️ **UNRESOLVED:** `[SWEEP_ENTRY_UNBLOCK]` does **not** appear in that log, yet `/proc/<pid>/environ` confirms `V8_SWEEP_MODE=1` is set and `config_tradier.py:2854` on S1 contains the method. So either (a) the banner is being swallowed (the engine re-execs itself for `PYTHONHASHSEED` at `backtest_v8_engine.py:50`, and config may be instantiated in a worker whose stdout isn't captured), or (b) the unblock never ran and those 99 closes are the *gated* baseline.
-  **These two possibilities give completely different numbers. Resolve it before recording a single cell.** Cheapest check: run the same command twice, once with `V8_KEEP_ENTRY_GATES=1`, and diff `trades` + `trades_fingerprint`. Identical fingerprint ⇒ the unblock is not taking effect ⇒ fix that first.
+**STATE AT HANDOFF (2026-07-23 ~06:15 UTC) — verify, don't assume:**
+Run COMPLETE: `~/logs/mu_unblocked.log`, MU / trb / start 2024-04-01, launched with `V8_SWEEP_MODE=1`.
+
+- ✅ **THE SANDBOX TRADES AGAIN: `trades=232`** over `window_days=841.66` (2.3 yr). Old campaign baseline was 19. **Task 1's acceptance bar (trades ≥ 1) is met.**
+- ✅ **The unblock mechanism is verified working.** A fresh import under `V8_SWEEP_MODE=1` on S1 yields `TRADIER_ENTRY_SCORE_THRESHOLD=0, GOLDEN_RULE_MIN_IND=0, REQUIRE_ACTIVATION=False`. `config_tradier` has **no module-level `config` singleton** (`C.config` is None), so each instantiation re-applies it.
+- ⚠️ `[SWEEP_ENTRY_UNBLOCK]` is absent from the run log even though `/proc/<pid>/environ` confirmed the var was set. Most likely a lost stdout buffer: `backtest_v8_engine.py:50` re-execs the process for `PYTHONHASHSEED`, and `os.exec*` replaces the image **without flushing Python's stdio buffer**, so a `print()` issued before it disappears. Cosmetic — but **prove it, don't trust it**: re-run with `V8_KEEP_ENTRY_GATES=1` and diff `trades` + `trades_fingerprint` against 232. Different ⇒ unblock is live. Identical ⇒ it is NOT taking effect in the engine path and must be fixed before any cell is recorded.
+- 🔴 **The engine itself flags this result untrustworthy:**
+  `FINAL_BROKEN_RATE: trades=232 projected=0.28/acct/day target>=3/acct/day — result NOT trustworthy`
+  232 trades over 2.3 yr is ~100/yr; the engine wants ≥3/day. **Do not record this as a finished baseline.** It clears "is anything trading at all," not "is this a usable baseline." Raising trade frequency toward that target is the real content of Tasks 4–5 (arrow entries on 1h/4h/D + ladder re-entries).
+- ❌ **Still unmeasured: gain vs b&h.** No `gain_pct` / `acc_gain` line was emitted to the log, so **MU's b&h floor is still unknown** and nothing has yet been shown to beat it. Task 2 is wide open — that is your first real deliverable.
 
 ### TASK 2 — Establish the MU b&h floor (the number every cell must beat)
 Compute MU_LONG buy-and-hold over the exact same window (2024-04-01 → last 15m bar), same bars the engine used. Record it in the campaign store as the baseline. **Every subsequent cell is judged against this number.**
