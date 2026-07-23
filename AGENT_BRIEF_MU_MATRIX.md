@@ -82,9 +82,32 @@ Run COMPLETE: `~/logs/mu_unblocked.log`, MU / trb / start 2024-04-01, launched w
   232 trades over 2.3 yr is ~100/yr; the engine wants ≥3/day. **Do not record this as a finished baseline.** It clears "is anything trading at all," not "is this a usable baseline." Raising trade frequency toward that target is the real content of Tasks 4–5 (arrow entries on 1h/4h/D + ladder re-entries).
 - ❌ **Still unmeasured: gain vs b&h.** No `gain_pct` / `acc_gain` line was emitted to the log, so **MU's b&h floor is still unknown** and nothing has yet been shown to beat it. Task 2 is wide open — that is your first real deliverable.
 
-### TASK 2 — Establish the MU b&h floor (the number every cell must beat)
-Compute MU_LONG buy-and-hold over the exact same window (2024-04-01 → last 15m bar), same bars the engine used. Record it in the campaign store as the baseline. **Every subsequent cell is judged against this number.**
-Prior measured reference points (Tier-2, faithful): default config **3.07%** vs b&h **426%**; wt_5m cross **0.27× b&h**; band-top harvest **0.50×**; band arrow **1.4%/33 trades**. **Nothing has beaten b&h yet.** That is the whole problem.
+### TASK 2 — ✅ MEASURED 2026-07-23. THE B&H FLOOR (15m closes, start 2024-04-01)
+```
+SYM     first      last     b&h_pct     window
+MU     119.00    983.28   +726.29%    2.31yr  n=37793   <-- THE MU FLOOR. BEAT THIS.
+NVDA    91.38    212.02   +132.02%    2.31yr  n=38120
+HAO    136.96      0.19    -99.86%    0.29yr  n=3351    <-- only 3.5 months, unusable
+VT     156.23    155.99     -0.15%    0.06yr  n=708     <-- 708 bars, unusable
+```
+**MU_LONG b&h = +726.29%.** This is the 1-trade baseline: buy at bar 0, hold to the last bar.
+A cell is only worth recording if it **beats +726.29%**. Anything below is a regression, not a result.
+HAO and VT cannot be baselined at all on current data — say so, do not emit a short-window number as if comparable.
+
+Prior Tier-2 reference points, all FAR below the floor: default config **3.07%**; wt_5m cross **0.27x b&h**;
+band-top harvest **0.50x**; band arrow **1.4%/33 trades**. **Nothing has beaten b&h yet.**
+
+### TASK 2b — Run ordering (USER 2026-07-23)
+**Fill the matrix in THIS ORDER, and record only cells that beat the b&h floor:**
+1. **exits HTF** (D / 4h / 1h exit knobs)
+2. **entries HTF**
+3. **exits LTF** (15m / 5m)
+4. **entries LTF**
+
+Rationale: you cannot be below b&h and cannot be out of a position while price is above the exit price — so exits are what create or destroy the multiple. Get exits right on the high timeframes first; entries only decide re-entry timing once exits are sane.
+
+**Ladder:** being handed to Codex (USER 2026-07-23) — do not sink more time into the multiplier math.
+**Entry fallback if the ladder is unavailable:** enter on **`wt_cross_5m`**, or **`wt_cross_15m`**. Both are CONFIRMED present in `backtest_v8/indicators/MU.npz`, alongside `wt1_/wt2_/wt_bullish_/wt_cross_bear_/wt_cross_bars_ago_` for both 5m and 15m. No missing-data excuse here.
 
 ### TASK 3 — Fill SWITCH_MATRIX_TRB for MU_LONG
 Target: every field populated with a real 2-year Tier-2 number, ~3000 distinct results.
