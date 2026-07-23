@@ -3134,33 +3134,6 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 log_reason = f"Stale ({freshness_reason})"
 
             else:
-                # ═══ SWING RE-OPEN (USER 2026-07-23) — FIRST in the entry cascade so it DOMINATES ═══
-                # BE IN THE MARKET whenever price >= last swing-exit (seeded at 0.0 -> in from bar 1).
-                # It is an OPEN rule, not a filter: out ONLY while price < exit (the dip avoided) ->
-                # capture b&h minus the sub-exit drawdowns -> beat b&h. Enable via V8_SWING=1 env
-                # (guaranteed to reach the process) or config SWING_ENABLED. Runs before WT_DC/GR_HTF
-                # so they cannot claim the slot first.
-                # LIVE SAFETY (USER 2026-07-23, $70k at risk): this experimental re-open can open
-                # a position on the FIRST evaluation (exit seeded 0.0). It must NEVER run in live.
-                # V8_SWEEP_MODE is set ONLY by backtest_v8_engine — live never sets it. Both that
-                # AND the explicit V8_SWING opt-in are required.
-                if (current_price and current_price > 0
-                        and os.environ.get("V8_SWEEP_MODE") == "1"
-                        and os.environ.get("V8_SWING") == "1"):
-                    if not hasattr(trade_manager, '_swing_exit_px'):
-                        trade_manager._swing_exit_px = {}
-                    if symbol not in trade_manager._swing_exit_px:
-                        trade_manager._swing_exit_px[symbol] = 0.0   # seed: re-open from the first bar
-                    _swr_xpx = float(trade_manager._swing_exit_px.get(symbol, 0.0))
-                    _swr_tol = float(os.environ.get("V8_SWING_TOL", 0.0)) / 100.0
-                    if current_price >= _swr_xpx * (1.0 - _swr_tol):
-                        _swr_mult = float(os.environ.get("V8_SWING_MULT", 1.0))
-                        _swr_sps = float(getattr(config, 'START_POSITION_SIZE', 600))
-                        action_type = "OPEN"
-                        qty = int(max(1, (_swr_sps * _swr_mult) / current_price))
-                        conf = 92.0
-                        reason = f"SWING_REOPEN_px{current_price:.2f}_ge_exit{_swr_xpx:.2f}"
-                        logger.warning(f"[SWING_REOPEN] {account_key}:{symbol}: px {current_price:.2f} >= exit {_swr_xpx:.2f} -> OPEN qty={qty}")
                 # --- Reopen cooldown: don't re-enter within 5 min of a full close ---
                 # DC breakout entries (price still below/above channel) get immediate re-entry
                 # Stoch-based entries wait 5 min to avoid noise
@@ -3384,36 +3357,6 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
                 # With LR_BAND_ENTRY_PRIORITY the band/regime test runs FIRST for LONGs, matching the
                 # arrow-lab finding that band+slope context beats momentum-score ordering.
-                # ═══ BAND ARROW ENTRY (USER 2026-07-23): buy EVERY green arrow, sized by band ═══
-                if (action_type != "OPEN" and is_long
-                        and bool(_cfg('BAND_ARROW_ENABLED', False, account_key, symbol, position_side))):
-                    _ba_src = indicators_raw if indicators_raw else i
-                    _ba_tfs = [t.strip() for t in str(_cfg('BAND_ARROW_ENTRY_TFS', 'D,4h,1h', account_key, symbol, position_side)).split(',') if t.strip()]
-                    _ba_dead = float(_cfg('BAND_ARROW_SLOPE_DEADBAND', 0.0, account_key, symbol, position_side))
-                    _ba_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price > 0 else 1
-                    _ba_capmult = float(_cfg('BAND_ARROW_MAX_POS_MULT', 30.0, account_key, symbol, position_side))
-                    _ba_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
-                    _ba_cap_val = _ba_capmult * float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side))
-                    _ba_best = 0.0
-                    _ba_tf_used = None
-                    for _ba_tf in _ba_tfs:
-                        _ba_sl = _ba_src.get(f"lrL_slope_{_ba_tf}")
-                        _ba_pb = _ba_src.get(f"lrL_pct_b_{_ba_tf}")
-                        if _ba_sl is None or _ba_pb is None:
-                            continue
-                        if float(_ba_sl) <= _ba_dead:          # not a GREEN arrow on this TF
-                            continue
-                        _ba_m = band_ladder_mult(_ba_pb, config, _ba_tf)   # depth -> size (0 below band)
-                        if _ba_m > _ba_best:
-                            _ba_best, _ba_tf_used = _ba_m, _ba_tf
-                    _ba_accum = bool(_cfg('BAND_ARROW_ACCUMULATE', True, account_key, symbol, position_side))
-                    if _ba_best > 0.0 and (not has_position or _ba_accum) and _ba_pos_val < _ba_cap_val:
-                        action_type = "OPEN"
-                        qty = int(max(1, _ba_base * _ba_best))
-                        conf = 90.0
-                        _ba_pbv = _ba_src.get(f"lrL_pct_b_{_ba_tf_used}")
-                        reason = f"BAND_ARROW_GREEN_{_ba_tf_used}_pb={float(_ba_pbv):.3f}_x{_ba_best:.2f}"[:110]
-                        logger.info(f"[BAND_ARROW_ENTRY] {account_key}:{symbol}: green {_ba_tf_used} pb={float(_ba_pbv):.3f} mult={_ba_best:.2f} qty={qty} posval={_ba_pos_val:.0f}/{_ba_cap_val:.0f}")
                 if (bool(getattr(config, 'LR_BAND_ENTRY_PRIORITY', False))
                         and bool(getattr(config, 'LR_BAND_ENTRY_ENABLED', False))
                         and action_type != "OPEN" and is_long):
@@ -7006,48 +6949,6 @@ class StockStrategy:
                     return False, f"TRA_HOLD_no_strict_exit(score={_tra_score:.0f}<100,g={gain:.2f}%)", 0
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
-
-        # ═══ SWING EXIT (USER 2026-07-23): lower-low AND lower-high on the exit TF = downtrend
-        # confirmed -> CLOSE and REMEMBER the exit price. The re-entry side (in the entry cascade)
-        # only re-buys at or below this price, which is what beats b&h. Full close; bypasses
-        # noloss (SWING_EXIT reason in the bypass list) — selling the downtrend IS the point.
-        # LIVE SAFETY: backtest-only (V8_SWEEP_MODE set only by backtest_v8_engine) + explicit opt-in
-        if os.environ.get("V8_SWEEP_MODE") == "1" and os.environ.get("V8_SWING") == "1":
-            _sw_ind = indicators if indicators else i
-            _sw_tfs = [t.strip() for t in str(os.environ.get("V8_SWING_EXIT_TFS") or _cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
-            for _sw_tf in _sw_tfs:
-                _sw_h = safe_fetch_float(_sw_ind.get(f'high_{_sw_tf}'), 0.0)
-                _sw_hp = safe_fetch_float(_sw_ind.get(f'high_{_sw_tf}_prev'), 0.0)
-                _sw_l = safe_fetch_float(_sw_ind.get(f'low_{_sw_tf}'), 0.0)
-                _sw_lp = safe_fetch_float(_sw_ind.get(f'low_{_sw_tf}_prev'), 0.0)
-                if _sw_h <= 0 or _sw_hp <= 0 or _sw_l <= 0 or _sw_lp <= 0:
-                    continue
-                _sw_lower_high = _sw_h < _sw_hp
-                _sw_lower_low = _sw_l < _sw_lp
-                _sw_down = (_sw_lower_high and _sw_lower_low) if is_long else ((_sw_h > _sw_hp) and (_sw_l > _sw_lp))
-                if _sw_down:
-                    if not hasattr(trade_manager, '_swing_exit_px'):
-                        trade_manager._swing_exit_px = {}
-                    trade_manager._swing_exit_px[symbol] = current_price   # the ceiling for re-entry
-                    logger.warning(f"[SWING_EXIT] {symbol} {'L' if is_long else 'S'}: {_sw_tf} lower-high+lower-low h={_sw_h:.2f}<{_sw_hp:.2f} l={_sw_l:.2f}<{_sw_lp:.2f} g={gain:.2f}% -> CLOSE, reenter<=${current_price:.2f}")
-                    return True, f"SWING_EXIT_{_sw_tf}_LHLL_px{current_price:.2f}_g{gain:.2f}%", qty
-
-        # ═══ BAND ARROW EXIT (USER 2026-07-23): SELL every RED arrow on the exit TFs (D/4h,
-        # maybe 1h). A red arrow = regression slope turned DOWN — the high-TF trend has flipped,
-        # so close and let the green-arrow entry re-buy on the next up-flip. This is what keeps
-        # ~70% time in market vs a band-top harvest that sells every channel top. Full close.
-        if bool(_cfg('BAND_ARROW_ENABLED', False, account_key, symbol, position_side)):
-            _bax_ind = indicators if indicators else i
-            _bax_tfs = [t.strip() for t in str(_cfg('BAND_ARROW_EXIT_TFS', 'D,4h', account_key, symbol, position_side)).split(',') if t.strip()]
-            _bax_dead = float(_cfg('BAND_ARROW_SLOPE_DEADBAND', 0.0, account_key, symbol, position_side))
-            for _bax_tf in _bax_tfs:
-                _bax_sl = _bax_ind.get(f'lrL_slope_{_bax_tf}')
-                if _bax_sl is None:
-                    continue
-                _bax_red = (float(_bax_sl) < -_bax_dead) if is_long else (float(_bax_sl) > _bax_dead)
-                if _bax_red:
-                    logger.warning(f"[BAND_ARROW_EXIT] {symbol} {'L' if is_long else 'S'}: RED arrow {_bax_tf} slope={float(_bax_sl):+.4f} g={gain:.2f}% -> CLOSE")
-                    return True, f"BAND_ARROW_RED_{_bax_tf}_slope{float(_bax_sl):+.4f}_g{gain:.2f}%", qty
 
         # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit/trim at the UPPER regression
         # band — the sell-at-top half of LR_BAND_ENTRY (knobs existed, consumed nowhere). Profit-only;
