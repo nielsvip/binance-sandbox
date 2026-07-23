@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-23T11:33:04.540383+00:00",
+  "timestamp": "2026-07-23T11:48:07.378044+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -26,15 +26,9 @@
     },
     {
       "symbol": "INXUSDT",
-      "net_score": -19.2,
+      "net_score": -18.8,
       "long_score": 0,
-      "short_score": 19.2
-    },
-    {
-      "symbol": "AAVEUSDC",
-      "net_score": -18.7,
-      "long_score": 0,
-      "short_score": 18.7
+      "short_score": 18.8
     },
     {
       "symbol": "BIOUSDC",
@@ -47,6 +41,12 @@
       "net_score": -17.3,
       "long_score": 0,
       "short_score": 17.3
+    },
+    {
+      "symbol": "AAVEUSDC",
+      "net_score": -17.2,
+      "long_score": 0,
+      "short_score": 17.2
     },
     {
       "symbol": "PTBUSDT",
@@ -68,15 +68,15 @@
     },
     {
       "symbol": "MRVLUSDT",
-      "net_score": -13.7,
+      "net_score": -13.9,
       "long_score": 0,
-      "short_score": 13.7
+      "short_score": 13.9
     },
     {
       "symbol": "ETHFIUSDC",
-      "net_score": -13.5,
+      "net_score": -12.5,
       "long_score": 0,
-      "short_score": 13.5
+      "short_score": 12.5
     },
     {
       "symbol": "BLURUSDT",
@@ -751,12 +751,6 @@
       "short_score": 0
     },
     {
-      "symbol": "SPCXUSDT",
-      "net_score": 22.9,
-      "long_score": 22.9,
-      "short_score": 0
-    },
-    {
       "symbol": "NEARUSDC",
       "net_score": 23.0,
       "long_score": 23.0,
@@ -766,6 +760,12 @@
       "symbol": "GOOGLUSDT",
       "net_score": 23.0,
       "long_score": 23.0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SPCXUSDT",
+      "net_score": 23.1,
+      "long_score": 23.1,
       "short_score": 0
     },
     {
@@ -804,6 +804,11 @@
       132.57
     ],
     [
+      "SPCXUSDT",
+      23.1,
+      123.44
+    ],
+    [
       "GOOGLUSDT",
       23.0,
       347.9799015
@@ -812,11 +817,6 @@
       "NEARUSDC",
       23.0,
       1.931
-    ],
-    [
-      "SPCXUSDT",
-      22.9,
-      123.44
     ],
     [
       "ZECUSDC",
@@ -897,13 +897,8 @@
     ],
     [
       "INXUSDT",
-      19.2,
+      18.8,
       0.007046
-    ],
-    [
-      "AAVEUSDC",
-      18.7,
-      95.08
     ],
     [
       "BIOUSDC",
@@ -914,6 +909,11 @@
       "NVDAUSDT",
       17.3,
       207.32518167
+    ],
+    [
+      "AAVEUSDC",
+      17.2,
+      95.08
     ],
     [
       "PTBUSDT",
@@ -932,12 +932,12 @@
     ],
     [
       "MRVLUSDT",
-      13.7,
+      13.9,
       208.0561404
     ],
     [
       "ETHFIUSDC",
-      13.5,
+      12.5,
       0.4534
     ]
   ],
