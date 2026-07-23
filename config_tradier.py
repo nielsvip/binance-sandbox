@@ -653,6 +653,20 @@ class TradierConfig:
     # MODE "center_plateau" holds BOTTOM_MULT from the CENTER down to the lower band, then
     #   cuts to BELOW_BOTTOM_MULT underneath it (the user's fallback if linear underperforms).
     # Escalation ladder to try in order: 3x/0.3x -> 5x/0.5x -> 10x/1x -> center_plateau.
+    # ═══ BAND ARROW SYSTEM (USER 2026-07-23) — the whole strategy in two rules ═══
+    # BUY every GREEN arrow (regression slope UP) on each entry TF, sized by the band ladder
+    #   (band depth -> quantity: big at the lower band, small at the upper, 0 below it).
+    # SELL when a RED arrow (regression slope DOWN) appears on any exit TF (D/4h, maybe 1h).
+    # Accumulates across TFs and re-enters after every exit -> ~70% time in market, and with the
+    # ladder multipliers the aim is >=5x b&h. Uses lrL_slope_{tf} (sign = arrow colour) and
+    # lrL_pct_b_{tf} (position in the grey zone). NPZ has these for 1h/4h/D; 15m needs the
+    # regression band precomputed before it can be added to ENTRY_TFS.
+    BAND_ARROW_ENABLED: bool = False
+    BAND_ARROW_ENTRY_TFS: str = "D,4h,1h"          # buy a green arrow on any of these
+    BAND_ARROW_EXIT_TFS: str = "D,4h"              # sell a red arrow on any of these (test +1h)
+    BAND_ARROW_ACCUMULATE: bool = True            # every green arrow adds while in-trend
+    BAND_ARROW_MAX_POS_MULT: float = 30.0         # cap total exposure at N x START_POSITION_SIZE
+    BAND_ARROW_SLOPE_DEADBAND: float = 0.0        # |slope| must exceed this to count as an arrow
     LR_BAND_LADDER_ENABLED: bool = False
     LR_BAND_LADDER_MODE: str = "center_plateau"   # linear | center_plateau (10x at centre and below)
     LR_BAND_LADDER_BOTTOM_MULT: float = 10.0      # at the lower band (scalar fallback)
@@ -2720,7 +2734,7 @@ class TradierConfig:
     # treats it as sanctioned). NOLOSS_BB1H_BREAKDOWN deliberately excluded: its generating gate
     # (NOLOSS_BB1H_GATE_ENABLED) was disabled 2026-07-08 for being "outside the sanctioned
     # loss-exit trio" -- respecting that recent decision, not resurrecting it here.
-    UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: tuple = ('R1_', 'R2_', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'HEDGE_FAILED', 'MTF_ATR_TRAIL', 'MTF_DC_REJECT', 'MTF_BB_REJECT', 'MTF_GR_WT_EXIT', 'GR_HTF_DIRECT_EXIT', 'LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'EMERGENCY', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'REENTRY_BREAKOUT', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT')
+    UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: tuple = ('R1_', 'R2_', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'HEDGE_FAILED', 'MTF_ATR_TRAIL', 'MTF_DC_REJECT', 'MTF_BB_REJECT', 'MTF_GR_WT_EXIT', 'GR_HTF_DIRECT_EXIT', 'LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'EMERGENCY', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'REENTRY_BREAKOUT', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'BAND_ARROW_RED')  # BAND_ARROW_RED (USER 2026-07-23): sell every red arrow, incl. at a loss — avoiding the drawdown IS the strategy
     USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

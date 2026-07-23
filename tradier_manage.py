@@ -3357,6 +3357,36 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
                 # With LR_BAND_ENTRY_PRIORITY the band/regime test runs FIRST for LONGs, matching the
                 # arrow-lab finding that band+slope context beats momentum-score ordering.
+                # ═══ BAND ARROW ENTRY (USER 2026-07-23): buy EVERY green arrow, sized by band ═══
+                if (action_type != "OPEN" and is_long
+                        and bool(_cfg('BAND_ARROW_ENABLED', False, account_key, symbol, position_side))):
+                    _ba_src = indicators_raw if indicators_raw else i
+                    _ba_tfs = [t.strip() for t in str(_cfg('BAND_ARROW_ENTRY_TFS', 'D,4h,1h', account_key, symbol, position_side)).split(',') if t.strip()]
+                    _ba_dead = float(_cfg('BAND_ARROW_SLOPE_DEADBAND', 0.0, account_key, symbol, position_side))
+                    _ba_base = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side)) / current_price if current_price > 0 else 1
+                    _ba_capmult = float(_cfg('BAND_ARROW_MAX_POS_MULT', 30.0, account_key, symbol, position_side))
+                    _ba_pos_val = abs(float(getattr(position, 'positionAmt', 0) or 0)) * current_price if position else 0.0
+                    _ba_cap_val = _ba_capmult * float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side))
+                    _ba_best = 0.0
+                    _ba_tf_used = None
+                    for _ba_tf in _ba_tfs:
+                        _ba_sl = _ba_src.get(f"lrL_slope_{_ba_tf}")
+                        _ba_pb = _ba_src.get(f"lrL_pct_b_{_ba_tf}")
+                        if _ba_sl is None or _ba_pb is None:
+                            continue
+                        if float(_ba_sl) <= _ba_dead:          # not a GREEN arrow on this TF
+                            continue
+                        _ba_m = band_ladder_mult(_ba_pb, config, _ba_tf)   # depth -> size (0 below band)
+                        if _ba_m > _ba_best:
+                            _ba_best, _ba_tf_used = _ba_m, _ba_tf
+                    _ba_accum = bool(_cfg('BAND_ARROW_ACCUMULATE', True, account_key, symbol, position_side))
+                    if _ba_best > 0.0 and (not has_position or _ba_accum) and _ba_pos_val < _ba_cap_val:
+                        action_type = "OPEN"
+                        qty = int(max(1, _ba_base * _ba_best))
+                        conf = 90.0
+                        _ba_pbv = _ba_src.get(f"lrL_pct_b_{_ba_tf_used}")
+                        reason = f"BAND_ARROW_GREEN_{_ba_tf_used}_pb={float(_ba_pbv):.3f}_x{_ba_best:.2f}"[:110]
+                        logger.info(f"[BAND_ARROW_ENTRY] {account_key}:{symbol}: green {_ba_tf_used} pb={float(_ba_pbv):.3f} mult={_ba_best:.2f} qty={qty} posval={_ba_pos_val:.0f}/{_ba_cap_val:.0f}")
                 if (bool(getattr(config, 'LR_BAND_ENTRY_PRIORITY', False))
                         and bool(getattr(config, 'LR_BAND_ENTRY_ENABLED', False))
                         and action_type != "OPEN" and is_long):
@@ -6949,6 +6979,23 @@ class StockStrategy:
                     return False, f"TRA_HOLD_no_strict_exit(score={_tra_score:.0f}<100,g={gain:.2f}%)", 0
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
+
+        # ═══ BAND ARROW EXIT (USER 2026-07-23): SELL every RED arrow on the exit TFs (D/4h,
+        # maybe 1h). A red arrow = regression slope turned DOWN — the high-TF trend has flipped,
+        # so close and let the green-arrow entry re-buy on the next up-flip. This is what keeps
+        # ~70% time in market vs a band-top harvest that sells every channel top. Full close.
+        if bool(_cfg('BAND_ARROW_ENABLED', False, account_key, symbol, position_side)):
+            _bax_ind = indicators if indicators else i
+            _bax_tfs = [t.strip() for t in str(_cfg('BAND_ARROW_EXIT_TFS', 'D,4h', account_key, symbol, position_side)).split(',') if t.strip()]
+            _bax_dead = float(_cfg('BAND_ARROW_SLOPE_DEADBAND', 0.0, account_key, symbol, position_side))
+            for _bax_tf in _bax_tfs:
+                _bax_sl = _bax_ind.get(f'lrL_slope_{_bax_tf}')
+                if _bax_sl is None:
+                    continue
+                _bax_red = (float(_bax_sl) < -_bax_dead) if is_long else (float(_bax_sl) > _bax_dead)
+                if _bax_red:
+                    logger.warning(f"[BAND_ARROW_EXIT] {symbol} {'L' if is_long else 'S'}: RED arrow {_bax_tf} slope={float(_bax_sl):+.4f} g={gain:.2f}% -> CLOSE")
+                    return True, f"BAND_ARROW_RED_{_bax_tf}_slope{float(_bax_sl):+.4f}_g{gain:.2f}%", qty
 
         # ═══ LR_BAND_HARVEST (2026-07-19 USER band mandate): exit/trim at the UPPER regression
         # band — the sell-at-top half of LR_BAND_ENTRY (knobs existed, consumed nowhere). Profit-only;
