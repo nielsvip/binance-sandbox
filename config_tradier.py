@@ -661,6 +661,25 @@ class TradierConfig:
     # ladder multipliers the aim is >=5x b&h. Uses lrL_slope_{tf} (sign = arrow colour) and
     # lrL_pct_b_{tf} (position in the grey zone). NPZ has these for 1h/4h/D; 15m needs the
     # regression band precomputed before it can be added to ENTRY_TFS.
+    # ═══ SWING SYSTEM (USER 2026-07-23) — the strategy that BEATS b&h BY CONSTRUCTION ═══
+    # THE GUARANTEE: exit on a downtrend, and only ever RE-ENTER AT OR BELOW the exit price with
+    # >= the shares sold. Then you hold the same position at a LOWER cost basis than buy-and-hold
+    # -> you beat b&h mathematically. Every prior attempt lost because it re-entered at whatever
+    # the signal said, which in an uptrend is usually ABOVE the exit -> re-buying higher = worse
+    # than holding. The <=exit-price rule is what makes it work.
+    #
+    # EXIT: lower-low AND lower-high on the exit TF (downtrend structure confirmed).
+    # RE-ENTER: on a green arrow OR higher-high+higher-low, sized by:
+    #   price <= last exit  -> FULL prior size (or SWING_REENTER_MULT x) : strictly ahead of b&h
+    #   price >  last exit  -> only START_POSITION_SIZE (minimal, so a runaway trend isn't missed,
+    #                          at the cost of a tiny give-up vs the shares sold)
+    SWING_ENABLED: bool = False
+    SWING_EXIT_TFS: str = "D"                      # start with D only; test 4h then 1h after
+    SWING_REENTER_SIGNAL: str = "green_or_hhll"    # green_arrow | hhll | green_or_hhll
+    SWING_REENTER_AT_OR_BELOW_EXIT: bool = True    # THE GUARANTEE — do not disable lightly
+    SWING_REENTER_TOLERANCE_PCT: float = 0.0       # allow re-entry up to this % ABOVE exit (0=strict)
+    SWING_REENTER_MULT: float = 1.0                # size multiplier on the below-exit re-entry
+    SWING_RUNAWAY_REENTER: bool = True             # re-enter at START_POSITION_SIZE if price ran away up
     BAND_ARROW_ENABLED: bool = False
     BAND_ARROW_ENTRY_TFS: str = "D,4h,1h"          # buy a green arrow on any of these
     BAND_ARROW_EXIT_TFS: str = "D,4h"              # sell a red arrow on any of these (test +1h)
@@ -2734,7 +2753,7 @@ class TradierConfig:
     # treats it as sanctioned). NOLOSS_BB1H_BREAKDOWN deliberately excluded: its generating gate
     # (NOLOSS_BB1H_GATE_ENABLED) was disabled 2026-07-08 for being "outside the sanctioned
     # loss-exit trio" -- respecting that recent decision, not resurrecting it here.
-    UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: tuple = ('R1_', 'R2_', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'HEDGE_FAILED', 'MTF_ATR_TRAIL', 'MTF_DC_REJECT', 'MTF_BB_REJECT', 'MTF_GR_WT_EXIT', 'GR_HTF_DIRECT_EXIT', 'LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'EMERGENCY', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'REENTRY_BREAKOUT', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'BAND_ARROW_RED')  # BAND_ARROW_RED (USER 2026-07-23): sell every red arrow, incl. at a loss — avoiding the drawdown IS the strategy
+    UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: tuple = ('R1_', 'R2_', 'R3_HTF_FLIP', 'R4_STDEV_MACRO', 'HEDGE_FAILED', 'MTF_ATR_TRAIL', 'MTF_DC_REJECT', 'MTF_BB_REJECT', 'MTF_GR_WT_EXIT', 'GR_HTF_DIRECT_EXIT', 'LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'EMERGENCY', 'PARABOLIC_EXIT', 'GAIN_EROSION', 'STRUCTURAL_RANGE_SHIFT', 'DD_BOUNCE_STOP', 'REENTRY_BREAKOUT', 'OVERNIGHT_GAP_HEDGE_REMOVE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT', 'BAND_ARROW_RED', 'SWING_EXIT')  # SWING_EXIT (USER 2026-07-23): sell the confirmed downtrend, incl. at a loss  # BAND_ARROW_RED (USER 2026-07-23): sell every red arrow, incl. at a loss — avoiding the drawdown IS the strategy
     USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
