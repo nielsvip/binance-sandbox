@@ -2844,11 +2844,37 @@ class TradierConfig:
             # User directive 2026-04-10: stocks exit ONLY on 1h/4h/D slowdown.
             # LTF (5m/15m) excluded from delta computation so intraday noise can't fire exits.
             self.DELTA_TF_WEIGHTS_STOCK = {"1h": 2.0, "4h": 3.0, "D": 2.0}
+        self._apply_sweep_entry_unblock()
         self._apply_mode(self._resolve_initial_mode())
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.KLINES_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         self.LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.ENABLE_IP_ROTATION = (  sys.platform != "darwin"   and len(self.AVAILABLE_IPS) > 0  and os.getenv("EZ_DISABLE_IP_BINDING") != "1" )
+
+    def _apply_sweep_entry_unblock(self):
+        """USER 2026-07-23: 'YOU HAVE AN ALL ENTRIES BLOCKER IN CONFIG_TRADIER.' The stacked
+        entry gates below compound to near-zero opens, which is why the matrix reported
+        trades=0 / sub-floor counts and why unrelated knobs produced identical results — the
+        knobs had no trades to bite on. The floor is buy-and-hold: at bar 0 the only condition
+        to be in the market is current_price > 0.
+
+        ONLY fires under V8_SWEEP_MODE=1, which is set by backtest tooling and NEVER by live
+        (ez_/tradier_manage do not set it). Live trb/trc behavior is byte-identical.
+        Escape hatch: V8_KEEP_ENTRY_GATES=1 restores the gated defaults inside a sweep."""
+        if os.environ.get("V8_SWEEP_MODE") != "1" or os.environ.get("V8_KEEP_ENTRY_GATES") == "1":
+            return
+        self.TRADIER_ENTRY_SCORE_THRESHOLD = 0
+        self.GOLDEN_RULE_MIN_IND = 0
+        self.GOLDEN_RULE_REQUIRE_ACTIVATION = False
+        self.GOLDEN_RULE_HTF_MIN_TFS = 0
+        self.HTF_ALIGN_REQUIRED_TRADIER = 0
+        self.GR_HTF_DIRECT_ENTRY_ENABLED = True
+        self.GR_HTF_DIRECT_ENTRY_SCORE_MIN = 0.0
+        self.LIVE_ENTRY_ENGINE_MIN_SCORE = 0.0
+        self.LOCAL_EXTREMES_MIN_SCORE = 0.0
+        self.SMA200_DIST_ENTRY_ENABLED = False
+        self.MFI_ENTRY_ENABLED = False
+        print("[SWEEP_ENTRY_UNBLOCK] entry gates opened (V8_SWEEP_MODE=1) — b&h floor: in-market whenever price>0")
 
     def _resolve_initial_mode(self) -> str:
         if self.EXTREME_MODE and not self.LIGHT_MODE: return "EXTREME_MODE"
