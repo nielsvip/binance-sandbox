@@ -3134,6 +3134,28 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 log_reason = f"Stale ({freshness_reason})"
 
             else:
+                # ═══ SWING RE-OPEN (USER 2026-07-23) — FIRST in the entry cascade so it DOMINATES ═══
+                # BE IN THE MARKET whenever price >= last swing-exit (seeded at 0.0 -> in from bar 1).
+                # It is an OPEN rule, not a filter: out ONLY while price < exit (the dip avoided) ->
+                # capture b&h minus the sub-exit drawdowns -> beat b&h. Enable via V8_SWING=1 env
+                # (guaranteed to reach the process) or config SWING_ENABLED. Runs before WT_DC/GR_HTF
+                # so they cannot claim the slot first.
+                if (current_price and current_price > 0
+                        and (os.environ.get("V8_SWING") == "1" or bool(getattr(config, 'SWING_ENABLED', False)))):
+                    if not hasattr(trade_manager, '_swing_exit_px'):
+                        trade_manager._swing_exit_px = {}
+                    if symbol not in trade_manager._swing_exit_px:
+                        trade_manager._swing_exit_px[symbol] = 0.0   # seed: re-open from the first bar
+                    _swr_xpx = float(trade_manager._swing_exit_px.get(symbol, 0.0))
+                    _swr_tol = float(os.environ.get("V8_SWING_TOL", 0.0)) / 100.0
+                    if current_price >= _swr_xpx * (1.0 - _swr_tol):
+                        _swr_mult = float(os.environ.get("V8_SWING_MULT", 1.0))
+                        _swr_sps = float(getattr(config, 'START_POSITION_SIZE', 600))
+                        action_type = "OPEN"
+                        qty = int(max(1, (_swr_sps * _swr_mult) / current_price))
+                        conf = 92.0
+                        reason = f"SWING_REOPEN_px{current_price:.2f}_ge_exit{_swr_xpx:.2f}"
+                        logger.warning(f"[SWING_REOPEN] {account_key}:{symbol}: px {current_price:.2f} >= exit {_swr_xpx:.2f} -> OPEN qty={qty}")
                 # --- Reopen cooldown: don't re-enter within 5 min of a full close ---
                 # DC breakout entries (price still below/above channel) get immediate re-entry
                 # Stoch-based entries wait 5 min to avoid noise
@@ -3666,24 +3688,6 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # Reason: GR_HTF_DIRECT_ENTRY_{score}_{detail}
                 # ROLLBACK: set GR_HTF_DIRECT_ENTRY_ENABLED=False in config_tradier.py.
                 # ═══════════════════════════════════════════════════════════════════════
-                # ═══ SWING RE-OPEN (USER 2026-07-23): BE IN THE MARKET WHENEVER PRICE >= EXIT ═══
-                # It is an OPEN rule, not a filter. Exited on a downtrend at exit_px, sat out the
-                # dip; the moment price recovers to/above exit_px you MUST be back in to ride the
-                # rise. Out ONLY while price < exit (the drawdown avoided) -> capture b&h minus the
-                # sub-exit dips -> beat b&h. Placed at the PROVEN flat-entry point (next to GR_HTF).
-                if (action_type != "OPEN" and current_price > 0
-                        and bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side))):
-                    _swr_xpx = (getattr(trade_manager, '_swing_exit_px', {}) or {}).get(symbol)
-                    _swr_tol = float(_cfg('SWING_REENTER_TOLERANCE_PCT', 0.0, account_key, symbol, position_side)) / 100.0
-                    _swr_in = _swr_xpx is None or current_price >= float(_swr_xpx) * (1.0 - _swr_tol)
-                    if _swr_in:
-                        _swr_mult = float(_cfg('SWING_REENTER_MULT', 1.0, account_key, symbol, position_side))
-                        _swr_sps = float(_cfg('START_POSITION_SIZE', 600, account_key, symbol, position_side))
-                        action_type = "OPEN"
-                        qty = int(max(1, (_swr_sps * _swr_mult) / current_price))
-                        conf = 92.0
-                        reason = f"SWING_REOPEN_px{current_price:.2f}_ge_exit{float(_swr_xpx) if _swr_xpx else 0:.2f}"[:110]
-                        logger.warning(f"[SWING_REOPEN] {account_key}:{symbol}: px {current_price:.2f} >= exit {_swr_xpx} -> OPEN qty={qty} (in market while >= exit)")
                 if action_type != "OPEN" and bool(getattr(config, 'GR_HTF_DIRECT_ENTRY_ENABLED', True)):
                     try:
                         from golden_rule_htf import \
@@ -7002,9 +7006,9 @@ class StockStrategy:
         # confirmed -> CLOSE and REMEMBER the exit price. The re-entry side (in the entry cascade)
         # only re-buys at or below this price, which is what beats b&h. Full close; bypasses
         # noloss (SWING_EXIT reason in the bypass list) — selling the downtrend IS the point.
-        if bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side)):
+        if os.environ.get("V8_SWING") == "1" or bool(_cfg('SWING_ENABLED', False, account_key, symbol, position_side)):
             _sw_ind = indicators if indicators else i
-            _sw_tfs = [t.strip() for t in str(_cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
+            _sw_tfs = [t.strip() for t in str(os.environ.get("V8_SWING_EXIT_TFS") or _cfg('SWING_EXIT_TFS', 'D', account_key, symbol, position_side)).split(',') if t.strip()]
             for _sw_tf in _sw_tfs:
                 _sw_h = safe_fetch_float(_sw_ind.get(f'high_{_sw_tf}'), 0.0)
                 _sw_hp = safe_fetch_float(_sw_ind.get(f'high_{_sw_tf}_prev'), 0.0)
