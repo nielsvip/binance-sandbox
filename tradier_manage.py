@@ -2840,6 +2840,24 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _wf_ba = safe_fetch_float(i.get(f'wt_cross_bars_ago_{_wf_tf}'), 999.0)
                             _wf_rising = i.get(f'wt_cross_rising_{_wf_tf}')
                             _wt_favor = (_wf_ba <= _wf_maxb) and ((is_long and _wf_rising is True) or ((not is_long) and _wf_rising is False))
+                    if os.environ.get("V8_WT_FORCE_DIAG") == "1":
+                        global _V8_WT_FORCE_DIAG_N
+                        _V8_WT_FORCE_DIAG_N = globals().get(
+                            "_V8_WT_FORCE_DIAG_N", 0
+                        )
+                        if _V8_WT_FORCE_DIAG_N < 20:
+                            _wf_diag_msg = (
+                                f"[V8_WT_FORCE_DIAG] {position_key} "
+                                f"enabled={_wf_enabled} room={_wf_room} "
+                                f"px={current_price:.4f} anchor={_wf_anchor:.4f} "
+                                f"above={_above} tf={_wf_tf} "
+                                f"wt1={_wf_wt1_5m:.4f} "
+                                f"prev={_wf_wt1_5m_prev:.4f} "
+                                f"wt2={_wf_wt2_5m:.4f} favor={_wt_favor}"
+                            )
+                            logger.warning(_wf_diag_msg)
+                            print(_wf_diag_msg, flush=True)
+                            _V8_WT_FORCE_DIAG_N += 1
                     if _above and _wt_favor and current_price > 0:
                         _wf_mult = 1.0
                         if bool(getattr(config, 'WT_3M_FORCE_OPEN_TF_LADDER', True)):
@@ -2870,7 +2888,32 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
                                 if _cur_r1_wf <= 0 or (is_long and _wf_stop > _cur_r1_wf) or (not is_long and _wf_stop < _cur_r1_wf):
                                     position.r1_stop_price = _wf_stop
-                            await queue_trade_action(order_queue, trade_manager, position_key, _wf_act, _wf_reason, 80.0, override_qty=_wf_qty)
+                            _wf_queue_result = await queue_trade_action(
+                                order_queue, trade_manager, position_key,
+                                _wf_act, _wf_reason, 80.0,
+                                override_qty=_wf_qty,
+                            )
+                            if _wf_queue_result != "SUCCESS":
+                                logger.warning(
+                                    f"[WT_3M_FORCE_OPEN_QUEUE_REFUSED] "
+                                    f"{position_key}: result={_wf_queue_result}"
+                                )
+                                if os.environ.get("V8_WT_FORCE_DIAG") == "1":
+                                    print(
+                                        f"[WT_3M_FORCE_OPEN_QUEUE_REFUSED] "
+                                        f"{position_key}: result={_wf_queue_result}",
+                                        flush=True,
+                                    )
+                                return (
+                                    f"WT_3M_FORCE_OPEN_QUEUE_REFUSED:"
+                                    f"{position_side}:{_wf_queue_result}"
+                                )
+                            if os.environ.get("V8_WT_FORCE_DIAG") == "1":
+                                print(
+                                    f"[WT_3M_FORCE_OPEN_QUEUED] {position_key} "
+                                    f"action={_wf_act} qty={_wf_qty}",
+                                    flush=True,
+                                )
                             return f"WT_3M_FORCE_OPEN:{position_side}"
             except Exception as _wf_err:
                 # This path is a mandatory entry producer; swallowing failures
@@ -4175,13 +4218,21 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         # ═══════════════════════════════════════════════════════════════════════════
         try:
             _ctb_act = (action or '').upper()
+            _ctb_acct, _ctb_sym, _ctb_side = parse_position_key(position_key)
+            _ctb_wf_bypass = (
+                'WT_3M_FORCE_OPEN' in str(reason or '').upper()
+                and bool(_cfg(
+                    'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
+                    _ctb_acct, _ctb_sym, _ctb_side,
+                ))
+            )
             if (
                 bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
+                and not _ctb_wf_bypass
                 and ('OPEN' in _ctb_act or 'AUGMENT' in _ctb_act or 'ENTRY' in _ctb_act or 'REENTER' in _ctb_act or _ctb_act == 'BUY')
                 and 'CLOSE' not in _ctb_act and 'REDUCE' not in _ctb_act and 'HEDGE' not in _ctb_act
                 and 'HEDGE' not in (reason or '').upper()
             ):
-                _ctb_acct, _ctb_sym, _ctb_side = parse_position_key(position_key)
                 _ctb_ind = trade_manager.get_indicators(_ctb_sym) if _ctb_sym else {}
                 if _ctb_ind:
                     _ctb_is_long = _ctb_side == "LONG"
@@ -4389,7 +4440,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             # 2026-04-09 FIX: count ratio was blind to size (6L tiny vs 2S huge = count 3.0 but value 0.3)
             _wf_bypass_order = bool(_cfg(
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
-                order.get('position_side', ''),
+                position_side,
             ))
             if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
                 _lv2 = 0.0; _sv2 = 0.0
@@ -4575,6 +4626,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         logger.info(f"[queue_trade_action] Queued {symbol} {action}: success={success}, msg={msg}")
         if 'MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''):
             _arrow_dbg(f"QTA_QUEUED {position_key} {action} success={success} msg={msg}")
+        if not success:
+            return f"QUEUE_ADD_REFUSED:{msg}"
         return "SUCCESS"
     except Exception as e:
         logger.error(f"[queue_trade_action] Error: {e}",  exc_info=True )

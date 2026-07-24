@@ -825,3 +825,11 @@ The first corrected MU_LONG Tier-2 floor opened, held to final MTM, and measured
 time-in-market. Its legal first RTH entry differs from the raw NPZ's premarket first bar, so
 reports now show both first-tradable B&H and raw NPZ B&H rather than comparing the engine to an
 unfillable benchmark.
+
+The last real-entry zero-trade defect was repaired on 2026-07-24: the Tradier queue's OPEN
+branch accessed `order["position_side"]` before constructing `order`; the broad queue exception
+handler turned that `UnboundLocalError` into a silent `False`. Use the already-parsed
+`position_side` and propagate `OrderQueue.add_order()` refusal details. A frozen MU_LONG July
+replay then changed from 0 opens / 0% exposure to 7 long opens, 7 real closes, +3.54%, and
+6.1445% exposure. That is a connectivity proof, not an accepted recipe: it remains well below
+the target exposure band and has not been promoted or loaded into a live process.

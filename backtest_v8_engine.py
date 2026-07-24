@@ -6883,6 +6883,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             return True
         _sd = str(side or "").lower()
         if _sd in ("long", "short"):
+            # The static symbol list is only the universe. The accepted
+            # per-symbol recipe may disable one side (for example MU_SHORT).
+            # Ignoring that flag made a LONG-only replay evaluate and sometimes
+            # open the forbidden SHORT side.
+            try:
+                _side_enabled = bool(tm_mod._cfg(
+                    f"{_sd.upper()}_ENABLED", True,
+                    str(acc or account_key), sym.upper(), _sd.upper(),
+                ))
+            except Exception:
+                _side_enabled = bool(getattr(
+                    tm_mod.config, f"{_sd.upper()}_ENABLED", True
+                ))
+            if not _side_enabled:
+                return False
             _allow = getattr(manager, f"symbols_{_sd}_{account_key}", None)
             if _allow:
                 return sym in _allow or sym.upper() in _allow
@@ -7918,11 +7933,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         tm_mod.config, 'WT_3M_FORCE_OPEN_ENABLED', True
                     ))
                     _wf_short_enabled = _wf_long_enabled
-                if pk_l not in open_keys and _is_long_ok and (
+                if pk_l not in open_keys and _is_long_ok and manager.is_symbol_tradeable(
+                    s, account_key, "LONG"
+                ) and (
                     _sat_long_ok or _stdev_long_ok or _wf_long_enabled
                 ):
                     cand_keys.append(pk_l)
-                if pk_s not in open_keys and _is_short_ok and (
+                if pk_s not in open_keys and _is_short_ok and manager.is_symbol_tradeable(
+                    s, account_key, "SHORT"
+                ) and (
                     _sat_short_ok or _stdev_short_ok or _wf_short_enabled
                 ):
                     cand_keys.append(pk_s)
@@ -8191,7 +8210,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             v8_logger.info(
                 f"[V8_CANDIDATE_DIAG] step={step} open={len(open_keys)} "
                 f"cand={len(cand_keys)} keys={all_keys} "
-                f"results={[str(x)[:120] for x in _pp_results_t]}"
+                f"results={[str(x)[:120] for x in _pp_results_t]} "
+                f"queue_size={manager.order_queue._orders.qsize() if hasattr(manager.order_queue, '_orders') else 'NA'}"
             )
             _candidate_diag_t += 1
         for _pp_pk_t, _pp_result_t in zip(all_keys, _pp_results_t):

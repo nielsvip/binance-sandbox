@@ -330,3 +330,33 @@ Before renting compute, create/configure a private GitHub remote and commit only
 
 Do not commit market data, large databases, credentials, logs or generated result workbooks.
 Provisioned machines must reproduce one known S1 cell bit-for-bit before receiving a shard.
+
+## 2026-07-24 zero-trade repair verification
+
+The final zero-trade defect was in `tradier_manage.queue_trade_action()`. The OPEN-only
+L/S-ratio bypass looked up `order["position_side"]` before the `order` dictionary was
+created. The resulting `UnboundLocalError` was caught by the function's broad exception
+handler and returned as bare `False`, so every qualifying real OPEN disappeared as an
+ordinary gate refusal.
+
+Repairs:
+
+- resolve the bypass with the already-parsed `position_side`;
+- return `QUEUE_ADD_REFUSED:<reason>` if `OrderQueue.add_order()` refuses an order instead
+  of reporting unconditional `SUCCESS`;
+- keep the force-open caller's truthful queued/refused diagnostic;
+- log exceptions returned by the engine's concurrent `process_position` calls;
+- honor per-symbol side enablement and the explicit test-only side selector.
+
+Verification used the frozen `MU_LONG_RECOVERY_OVERRIDE_20260724.json`, long-side
+isolation, real `process_position`, and July 2026 RTH data:
+
+- before the final repair: 0 opens, 0 closes, 0% time in market; every qualifying force
+  entry ended as `WT_3M_FORCE_OPEN_QUEUE_REFUSED ... result=False`;
+- after the repair: 7 long opens, 7 real closes, 3 wins / 4 losses, +3.54% engine P&L,
+  6.1445% long time in market, and no process-position exception.
+
+This proves the real entry path is connected again. It does **not** prove that this recipe
+meets the 70–80% exposure target or beats B&H. The high-exposure vector candidates remain
+Tier-1 hypotheses and must be replayed in Tier-2 after their corresponding live predicate
+is shown to fire. No live process was restarted and no setting was promoted.
