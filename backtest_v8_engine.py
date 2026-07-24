@@ -1924,7 +1924,7 @@ def _compute_trade_pnl(executed_trades):
                 del _open[pk]
 
 
-def _v8_result_from_trades(executed_trades, capital):
+def _v8_result_from_trades(executed_trades, capital, extra_fields=None):
     """Compute and print V8_RESULT. CANONICAL_METRICS.md / CLAUDE.md rule 4: pool_sharpe + sym_sharpe ONLY.
     pool_sharpe = mean(per-trade pcts) / std(per-trade pcts)  — frequency-blind, the canonical Sharpe.
     sym_sharpe  = mean(per-symbol pool_sharpes), ±20 capped — diagnostic only.
@@ -1958,7 +1958,21 @@ def _v8_result_from_trades(executed_trades, capital):
     sym_sharpe = sum(sym_sharpes) / len(sym_sharpes) if sym_sharpes else 0.0
     avg_pnl = total_pnl / max(1, n_trades)
     avg_pos_val = sum(t.get("position_value", 0) for t in close_trades) / max(1, n_trades)
-    print(f"V8_RESULT: pool_sharpe={pool_sharpe:.4f} sym_sharpe={sym_sharpe:.4f} sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}")
+    result_line = (
+        f"V8_RESULT: pool_sharpe={pool_sharpe:.4f} sym_sharpe={sym_sharpe:.4f} "
+        f"sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} "
+        f"wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} "
+        f"avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}"
+    )
+    for key, value in (extra_fields or {}).items():
+        result_line += f" {key}={value}"
+    print(result_line, flush=True)
+    result_file = os.environ.get("V8_RESULT_FILE", "")
+    if result_file:
+        try:
+            Path(result_file).write_text(result_line + "\n")
+        except Exception as exc:
+            v8_logger.warning(f"[V8_RESULT_FILE] Failed to write {result_file}: {exc}")
     return pool_sharpe, pnl_pct, n_trades, wins, losses
 
 
@@ -6839,9 +6853,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # is_symbol_tradeable must return True for backtest symbols
     _v8_syms = set(s.upper() for s in stores.keys())
     _side_gate_off = bool(os.environ.get("V8_SIDE_GATE_DISABLED", ""))
+    _ladder_only_side = os.environ.get("V8_LADDER_ONLY_SIDE", "").lower()
     def _always_tradeable(sym, acc=None, side=None):
         if sym.upper() not in _v8_syms:
             return False
+        if _ladder_only_side in ("long", "short"):
+            _requested_side = str(side or "").lower()
+            if _requested_side in ("long", "short") and _requested_side != _ladder_only_side:
+                return False
         if _side_gate_off:
             return True
         _sd = str(side or "").lower()
@@ -7579,6 +7598,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _dc_fstop_tr: dict = {}   # pk → frozen dc_low_{tf} level at first open bar
     _bb_fstop_tr: dict = {}
     _dyn_strail_tr: dict = {}  # pk -> {'lvl','armed'} monotone structure-trail (2026-07-19)   # pk → frozen bb_lower/upper/basis_{tf} level at first open bar
+    _exposure_seconds_t = {"LONG": 0.0, "SHORT": 0.0}
+    _ladder_initial_seeded_t = False
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-07-09 MINERVINI/CLENOW FAITHFUL TIER-2 HOOK — calls the REAL
     # tradier_manage.evaluate_minervini_entry / evaluate_clenow_entry (no
@@ -7597,6 +7618,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         manager._get_extras = lambda symbol: {}
         v8_logger.info(f"[V8_STRATEGY_HOOK] MINERVINI_ENABLED={_v8_minervini_on} CLENOW_ENABLED={_v8_clenow_on} — real evaluate_* wired at live cadence (1800s), _get_extras neutralized (NPZ snapshot is the no-lookahead source)")
     for step, ts in enumerate(all_ts):
+        if step > 0 and manager.position_manager:
+            _dt_t = max(0.0, float(ts) - float(all_ts[step - 1]))
+            _active_sides_t = set()
+            for _epk_t, _epos_t in manager.position_manager.positions.items():
+                try:
+                    _eamt_t = abs(float(getattr(_epos_t, "positionAmt",
+                                                getattr(_epos_t, "quantity", 0)) or 0))
+                except (TypeError, ValueError):
+                    continue
+                if _eamt_t < 0.0001:
+                    continue
+                if str(_epk_t).endswith("_LONG"):
+                    _active_sides_t.add("LONG")
+                elif str(_epk_t).endswith("_SHORT"):
+                    _active_sides_t.add("SHORT")
+            for _eside_t in _active_sides_t:
+                _exposure_seconds_t[_eside_t] += _dt_t
         _sim_ts[0] = float(ts)
         if _SWEEP_MODE:
             _now_real = _real_time_module.time()
@@ -7708,6 +7746,38 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if _pos.gain > getattr(_pos, 'max_gain', 0):
                         _pos.max_gain = _pos.gain
         if not _sim_irth(): continue
+        # Ladder stage 0/1 needs an unambiguous buy-and-hold floor. The old
+        # closes==0 shortcut could not distinguish "held" from "never opened".
+        # This test-only hook seeds one full-capital position on the first RTH bar.
+        _ladder_side_t = os.environ.get("V8_LADDER_FORCE_INITIAL_SIDE", "").upper()
+        if _ladder_side_t in ("LONG", "SHORT") and not _ladder_initial_seeded_t:
+            for _seed_sym_t in stores:
+                _seed_px_t = float(price_cache.get(_seed_sym_t.upper(), 0) or 0)
+                if _seed_px_t <= 0:
+                    continue
+                _seed_pk_t = f"{account_key}:{_seed_sym_t}_{_ladder_side_t}"
+                _seed_qty_t = float(capital) / _seed_px_t
+                await manager.execute_trade_action(
+                    account_key=account_key,
+                    position_key=_seed_pk_t,
+                    symbol=_seed_sym_t,
+                    quantity=_seed_qty_t,
+                    current_price=_seed_px_t,
+                    side="BUY" if _ladder_side_t == "LONG" else "SELL",
+                    position_side=_ladder_side_t,
+                    action="OPEN",
+                    reason="V8_LADDER_INITIAL_BH_SEED",
+                    is_full_close=False,
+                    is_hedge=False,
+                )
+                await drain_pending_v8_tasks()
+                _ladder_initial_seeded_t = True
+                print(
+                    f"V8_LADDER_SEED: symbol={_seed_sym_t} side={_ladder_side_t} "
+                    f"price={_seed_px_t:.6f} qty={_seed_qty_t:.6f}",
+                    flush=True,
+                )
+                break
         # 2026-07-09 MINERVINI/CLENOW hook (see block above the loop): real evaluate_*
         # at live 1800s cadence, then drain the order queue so fires execute at THIS
         # bar's price (the main drain below is skipped when all_keys is empty).
@@ -8237,8 +8307,82 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _bt_t_days = max((all_ts[-1] - all_ts[0]) / 86400.0, 1e-6)
         _bt_t_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
         _bt_rg_t.final_check(_bt_t_closes, test_window_days=_bt_t_days)
+    _real_closes_t = len([
+        t for t in executed_trades
+        if str(t.get("action", "")).upper() in ("CLOSE", "FULL_CLOSE", "REDUCE", "QUICK_CLOSE")
+    ])
+    _opens_by_side_t = {"LONG": 0, "SHORT": 0}
+    for _event_t in executed_trades:
+        if str(_event_t.get("action", "")).upper() not in ("OPEN", "QUICK_OPEN", "REENTRY"):
+            continue
+        _event_side_t = str(
+            _event_t.get("position_side")
+            or ("LONG" if str(_event_t.get("position_key", "")).endswith("_LONG") else "SHORT")
+        ).upper()
+        if _event_side_t in _opens_by_side_t:
+            _opens_by_side_t[_event_side_t] += 1
+
+    # Tradier previously had no final mark-to-market pass, so a genuine hold and
+    # a dead entry path both returned zero. Materialize open positions at the final bar.
+    _mtm_count_t = 0
+    _final_ts_t = int(all_ts[-1]) if all_ts else 0
+    _positions_t = manager.position_manager.positions if manager.position_manager else {}
+    for _mtm_pk_t, _mtm_pos_t in list(_positions_t.items()):
+        try:
+            _mtm_amt_t = abs(float(getattr(_mtm_pos_t, "positionAmt",
+                                           getattr(_mtm_pos_t, "quantity", 0)) or 0))
+            _mtm_entry_t = float(getattr(_mtm_pos_t, "entry_price", 0) or 0)
+            _mtm_mark_t = float(getattr(_mtm_pos_t, "mark_price", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if _mtm_amt_t < 0.0001 or _mtm_entry_t <= 0 or _mtm_mark_t <= 0:
+            continue
+        _mtm_side_t = "LONG" if str(_mtm_pk_t).endswith("_LONG") else "SHORT"
+        _mtm_sym_t = (
+            getattr(_mtm_pos_t, "symbol", "")
+            or str(_mtm_pk_t).split(":", 1)[-1].rsplit("_", 1)[0]
+        )
+        _mtm_gross_pct_t = (
+            (_mtm_mark_t - _mtm_entry_t) / _mtm_entry_t * 100.0
+            if _mtm_side_t == "LONG"
+            else (_mtm_entry_t - _mtm_mark_t) / _mtm_entry_t * 100.0
+        )
+        _mtm_cost_t = _round_trip_cost_for_sym(_mtm_sym_t)
+        _mtm_pct_t = _mtm_gross_pct_t - _mtm_cost_t
+        _mtm_dollars_t = _mtm_pct_t / 100.0 * _mtm_entry_t * _mtm_amt_t
+        executed_trades.append({
+            "timestamp": _final_ts_t,
+            "exit_ts": _final_ts_t,
+            "symbol": _mtm_sym_t,
+            "position_key": _mtm_pk_t,
+            "side": _mtm_side_t,
+            "position_side": _mtm_side_t,
+            "price": _mtm_mark_t,
+            "quantity": _mtm_amt_t,
+            "action": "MTM_FINAL_BAR_NOLIES_RULE2",
+            "reason": "MTM_FINAL_BAR_NOLIES_RULE2",
+            "pnl_pct": _mtm_pct_t,
+            "pnl_pct_gross": _mtm_gross_pct_t,
+            "round_trip_cost_pct": _mtm_cost_t,
+            "pnl_dollars": _mtm_dollars_t,
+            "pnl": _mtm_dollars_t,
+            "entry_price": _mtm_entry_t,
+            "position_value": _mtm_entry_t * _mtm_amt_t,
+            "is_full_close": True,
+        })
+        _mtm_count_t += 1
+
     _compute_trade_pnl(executed_trades)
-    _v8_result_from_trades(executed_trades, capital)
+    _span_seconds_t = max(1.0, float(all_ts[-1] - all_ts[0])) if len(all_ts) >= 2 else 1.0
+    _extra_result_t = {
+        "real_closes": _real_closes_t,
+        "mtm_count": _mtm_count_t,
+        "opens_long": _opens_by_side_t["LONG"],
+        "opens_short": _opens_by_side_t["SHORT"],
+        "time_in_mkt_long_pct": f"{100.0 * _exposure_seconds_t['LONG'] / _span_seconds_t:.4f}",
+        "time_in_mkt_short_pct": f"{100.0 * _exposure_seconds_t['SHORT'] / _span_seconds_t:.4f}",
+    }
+    _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
