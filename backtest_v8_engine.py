@@ -6660,7 +6660,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _reason = reason
             # SWEEPABLE ENTRY GATES (must be in REAL ETA wrapper, not just fallback)
             if not _is_reduce:
-                _sat_on = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
+                try:
+                    _wf_force_bypass_r = (
+                        "WT_3M_FORCE_OPEN" in str(_reason or reason or "").upper()
+                        and bool(tm_mod._cfg(
+                            "WT_3M_FORCE_OPEN_BYPASS_GATES", True,
+                            account_key, symbol, position_side,
+                        ))
+                    )
+                except Exception:
+                    _wf_force_bypass_r = (
+                        "WT_3M_FORCE_OPEN" in str(_reason or reason or "").upper()
+                        and bool(getattr(
+                            tm_mod.config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True
+                        ))
+                    )
+                _sat_on = (
+                    getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
+                    and not _wf_force_bypass_r
+                )
                 if _sat_on:
                     try:
                         from ez_satoshit import satoshit_entry_signal
@@ -6680,7 +6698,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # wt_bull_alignment / wt_bear_alignment from snapshot. Blocks LONG
                 # when alignment < REQUIRE_BULL (and mirror for SHORT). Default False —
                 # sweep-validated before promotion.
-                if account_key.startswith(("trb", "trc", "tra")):
+                if account_key.startswith(("trb", "trc", "tra")) and not _wf_force_bypass_r:
                     if bool(getattr(tm_mod.config, 'GR_HTF_GATE_ENABLED', False)):
                         _gh_ind = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                         _gh_is_long = (str(position_side) == "LONG")
@@ -6695,7 +6713,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # MFI_ENTRY_ENABLED — OVERBOUGHT FILTER (fixed 2026-05-18; prior semantics inverted/dead-gate).
                 # Mirrors live wiring at tradier_manage.py:11156-11162 (inside should_enter_long).
                 # Blocks LONG when mfi_D > MFI_LONG_THRESHOLD_D (default 80 — overbought zone, reversal expected).
-                if account_key.startswith(("trb", "trc", "tra")):
+                if account_key.startswith(("trb", "trc", "tra")) and not _wf_force_bypass_r:
                     if bool(getattr(tm_mod.config, 'MFI_ENTRY_ENABLED', False)):
                         _mfi_ind = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                         _mfi_is_long = (str(position_side) == "LONG")
@@ -6712,7 +6730,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # 2026-07-21: MTF_ARROW/LR_BAND entries are band+slope gated upstream — the
                 # wt_dc momentum score is structurally LOW at the swing bottoms they buy, so
                 # this gate silently starved them (305 blocks in the ARM forensic run).
-                if _wt_dc_thr > 0 and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+                if _wt_dc_thr > 0 and not _wf_force_bypass_r and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
                         _wt_dc_ind = manager.market_snapshot.get(str(symbol).upper(), {})
@@ -6727,7 +6745,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # Mirrors live post-entry veto at tradier_manage.py:2300 (account_key != 'tra').
                 # Reuses _wt_dc_score above as the entry-confidence proxy (conceptually identical
                 # on tradier path). When ENTRY_SCORE_THRESHOLD > 0 and score below, refuse entry.
-                if account_key.startswith(("trb", "trc")) and not account_key.startswith("tra"):
+                if account_key.startswith(("trb", "trc")) and not account_key.startswith("tra") and not _wf_force_bypass_r:
                     _es_thr = float(getattr(tm_mod.config, 'ENTRY_SCORE_THRESHOLD', 0) or 0)
                     if _es_thr <= 0:
                         _es_thr = float(getattr(tm_mod.config, 'TRADIER_ENTRY_SCORE_THRESHOLD', 0) or 0)
@@ -7878,9 +7896,34 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             _stdev_long_ok = True
                         if _bn_pv_f >= _bn_pctb_thr_sf and _bn_rv_f >= _bn_rvol_min_f:
                             _stdev_short_ok = True
-                if pk_l not in open_keys and _is_long_ok and (_sat_long_ok or _stdev_long_ok):
+                # WT force-open is evaluated inside the real
+                # tradier_manage.process_position zero-position branch. The old
+                # prefilter required SATOSHIT to pass before process_position
+                # was called, so WT force-open could never evaluate the flat
+                # keys it was designed to open (all normal backtests reported
+                # zero trades). Route enabled sides to the real function and
+                # let its SMA/WT/fresh-cross/gate checks make the decision.
+                try:
+                    _wf_long_enabled = bool(tm_mod._cfg(
+                        'WT_3M_FORCE_OPEN_ENABLED', True,
+                        account_key, s, 'LONG',
+                    ))
+                    _wf_short_enabled = bool(tm_mod._cfg(
+                        'WT_3M_FORCE_OPEN_ENABLED', True,
+                        account_key, s, 'SHORT',
+                    ))
+                except Exception:
+                    _wf_long_enabled = bool(getattr(
+                        tm_mod.config, 'WT_3M_FORCE_OPEN_ENABLED', True
+                    ))
+                    _wf_short_enabled = _wf_long_enabled
+                if pk_l not in open_keys and _is_long_ok and (
+                    _sat_long_ok or _stdev_long_ok or _wf_long_enabled
+                ):
                     cand_keys.append(pk_l)
-                if pk_s not in open_keys and _is_short_ok and (_sat_short_ok or _stdev_short_ok):
+                if pk_s not in open_keys and _is_short_ok and (
+                    _sat_short_ok or _stdev_short_ok or _wf_short_enabled
+                ):
                     cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
         if not all_keys: continue

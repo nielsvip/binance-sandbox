@@ -4373,7 +4373,11 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     return False
             # L/S ratio enforcement — BY DOLLAR VALUE (not count)
             # 2026-04-09 FIX: count ratio was blind to size (6L tiny vs 2S huge = count 3.0 but value 0.3)
-            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))):
+            _wf_bypass_order = bool(_cfg(
+                'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
+                order.get('position_side', ''),
+            ))
+            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
                     _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
@@ -4526,7 +4530,9 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
         # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
         # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.
-        _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+        _wf_force = ("WT_3M_FORCE_OPEN" in (reason or "").upper()) and bool(_cfg(
+            "WT_3M_FORCE_OPEN_BYPASS_GATES", True, account_key, symbol, position_side,
+        ))
         max_order_value = (float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0)) if _wf_force else config.MAX_ORDER_VALUE)
         order_value = quantity * current_price
         if order_value > max_order_value:
@@ -6631,7 +6637,9 @@ class StockStrategy:
         if "RECOVERY" in reason.upper(): is_exception = True
         # USER 2026-06-03 NO-EXCEPTIONS: the with-trend WT_3M_FORCE_OPEN build is bounded by the
         # DG per-fire notional + the force-open target, NOT the small per-order / per-position caps.
-        _wf_force = ("WT_3M_FORCE_OPEN" in reason.upper()) and bool(getattr(config, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+        _wf_force = ("WT_3M_FORCE_OPEN" in reason.upper()) and bool(_cfg(
+            "WT_3M_FORCE_OPEN_BYPASS_GATES", True, account_key, symbol, position_side,
+        ))
         max_usd = self.limit_exception_order if is_exception else self.limit_normal_order
         if _wf_force:
             max_usd = max(max_usd, float(getattr(config, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 4000.0)))
@@ -11113,7 +11121,10 @@ class TradierTradeManager:
         # USER 2026-06-03 "make trades HAPPEN": the with-trend WT_3M_FORCE_OPEN build (above 200MA +
         # WT-favor) must NOT be killed by the ZONE / 10-of-13 ALIGNMENT / DC4 entry gates — those are
         # what blocked MRVL et al. The force-open's own gate (above-MA + WT not-against) IS the entry test.
-        _is_wf_force = ('WT_3M_FORCE_OPEN' in _reason_upper) and bool(getattr(self.config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+        _is_wf_force = ('WT_3M_FORCE_OPEN' in _reason_upper) and bool(_cfg(
+            'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
+            account_key, symbol, position_side,
+        ))
         if _is_augment_or_entry and not is_hedge and not _is_wf_force:
             _ez = getattr(self.config, 'ENTRY_ZONE_LONG', 22.0); _esz = getattr(self.config, 'ENTRY_ZONE_SHORT', 100.0 - _ez)
             if action in ('OPEN', 'QUICK_OPEN') and not _is_reentry and not _is_rotation and not _is_gap_fill and not _is_rz_entry:
@@ -11202,7 +11213,10 @@ class TradierTradeManager:
         # USER 2026-06-03 "keep getting bigger on every favorable WT bounce, NO EXCEPTIONS": the
         # with-trend WT_3M_FORCE_OPEN build is add-to-STRENGTH (gated above-200MA + WT-favor upstream),
         # NOT martingale — so it is exempt from the MIN_GAIN augment wall like REENTRY/WT_D_BOUNCE_AUG.
-        _is_wf_force_aug = ("WT_3M_FORCE_OPEN" in str(reason).upper()) and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+        _is_wf_force_aug = ("WT_3M_FORCE_OPEN" in str(reason).upper()) and bool(_cfg(
+            'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
+            account_key, symbol, position_side,
+        ))
         if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and not _is_wf_force_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED — losing position (gain={position.gain:.2f}%)")
             return "BLOCKED_NO_GAIN"
@@ -11666,7 +11680,10 @@ class TradierTradeManager:
                 # USER 2026-05-29: guaranteed reentry/augment bypass MTF (augment already passed bounce gain wall upstream).
                 _guar_ra_trd_mtf = bool(getattr(config, 'GUARANTEED_REENTRY_AUGMENT_ENABLED', True)) and ('AUGMENT' in (action or '').upper() or 'REENTRY' in (action or '').upper() or 'REENTRY' in (reason or '').upper())
                 # USER 2026-06-03: with-trend force-open (above 200MA + WT-favor) bypasses MTF FILTER too — its own gate is the entry test.
-                _wf_force_mtf = ('WT_3M_FORCE_OPEN' in (reason or '').upper()) and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+                _wf_force_mtf = ('WT_3M_FORCE_OPEN' in (reason or '').upper()) and bool(_cfg(
+                    'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
+                    account_key, symbol, position_side,
+                ))
                 # USER 2026-07-20 band mandate: LR_BAND entries are band+slope gated upstream — MTF armed-state
                 # structurally fails at swing bottoms (needs post-turn confirmation) and starved every band entry.
                 _lr_band_mtf = 'LR_BAND' in (reason or '').upper() or 'MTF_ARROW' in (reason or '').upper()
@@ -11839,7 +11856,10 @@ class TradierTradeManager:
 
             # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
             # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.
-            _wt3m_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+            _wt3m_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() and bool(_cfg(
+                'WT_3M_FORCE_OPEN_BYPASS_GATES', True,
+                account_key, symbol, position_side,
+            ))
             if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open:
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
                 if lock_acquired and self.redis_manager:
