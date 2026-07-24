@@ -31,6 +31,42 @@ The principal zero-trade failure is not a market result:
 The old ladder campaign is retained as invalid historical evidence. Repaired results use a
 new `__ladder_v2` campaign and must not be differenced against the old rows.
 
+## Recovery checkpoint — 2026-07-24 16:50 UTC
+
+The zero-trade result contract is repaired and smoke-tested without restarting live trading:
+
+- MU_LONG Tier-2 opened one full-capital position, made zero real closes, emitted one final
+  mark-to-market trade and measured 99.97% time-in-market.
+- Its first tradable RTH bar was 120.93, while the raw NPZ B&H benchmark bought premarket at
+  119.00. The engine produced 716.12% net from the legal RTH entry; raw NPZ B&H was 729.42%.
+  Stage 0 now reports both and validates against first-tradable-bar B&H rather than failing a
+  valid hold because of an impossible premarket fill.
+- The dedicated result contract contains real closes, MTM count, side-specific opens and
+  side-specific time-in-market. The ladder reads the same invocation's result file.
+- `SWITCH_MATRIX_TRB.csv.gz` and `.xlsx` were regenerated at 16:48–16:49 UTC with a
+  `description` column. The workbook now has Entry, Exit, Sizing, Other, Ladder, BandLadder,
+  Coverage, Baselines and Inventory sheets. Non-sweepable/dead/live-only settings are kept in
+  Inventory instead of the actionable grid.
+- The first fast screen is stored separately as
+  `data/reports/VEC_EXPOSURE_LADDER_TRB.jsonl`, tier `VEC_CANDIDATE`. It is not promotion
+  evidence and is not yet inserted into the Tier-2 matrix.
+
+The new in-process vector screen loads each NPZ once. Measured full-history runtimes were
+36.4 seconds for 23 MU variants, 11.8 seconds for VT and 5.6 seconds for HAO. The MU no-exit
+floor runs in 1.6 seconds and reconciles to B&H: 729.370% net versus 729.420% gross, one MTM
+trade, zero real closes and 100% exposure.
+
+Initial shortlist signals, pending Tier-2 confirmation:
+
+- MU_LONG `DC_LOW4_STOP`: 85.91% exposure, 1,243.90% vector candidate gain versus 729.42%
+  B&H; `WT_CROSSUNDER_FINAL`: 49.76% exposure, 815.79%.
+- HAO_SHORT `DC_LOW4_STOP`: 82.16% exposure, 276.86% versus 99.87% side-aware B&H.
+- VT_LONG: the allowlisted paths stayed near 100% exposure/B&H; no 70–80% candidate was found.
+
+These figures are screens, not accepted recipes. The vector engine cannot apply several live
+per-symbol MU/HAO controls; every omitted control is recorded in `accepted_refused`. Winners
+must be replayed with Tier-2 and rejected if trade fingerprints/exposure do not agree.
+
 ## What has been built so far
 
 ### 1. Truthful Tier-2 and provenance
@@ -228,6 +264,13 @@ Highest-leverage engineering:
 - cache indicator and path-family state by code/NPZ stamp;
 - keep hedge/options in a separate fidelity lane until their execution and valuation are
   modeled; never silently label discarded fields as tested.
+
+Implemented first: `tools/vec_exposure_ladder.py` calls
+`v8_vec_sweep.simulate_one_symbol(..., _npz_cache=..., seed_position_at_start=True)` for a
+positive allowlist of parity-capable families. It suppresses while-held augmentation for the
+full-capital seed, isolates vec-native experimental exits, records reason fingerprints, and
+never writes a Tier-2 cell. An all-exits-off parity floor is mandatory before its candidates
+are usable.
 
 ## Red-cell repair lane
 

@@ -798,3 +798,30 @@ sweep (§13.4). The decisive number is the size of the PROMOTE set, not the numb
 full grid × 129 keys = **89,913 core-hours (78 days on one box — never do this)**; a 150–300-cell
 shortlist = **1–7 days**. Verify the rented machine reproduces a known cell bit-for-bit (same
 NPZ, same 4-file stamp, same trade list) before trusting anything it returns.
+
+---
+
+## §15 — 2026-07-24 recovery correction
+
+The claims above that MU_LONG/HAO_SHORT stage 0 was complete using `closes=0` are superseded.
+Zero closes can mean either “opened and held” or “never opened.” The repaired contract requires
+an observed open, zero real closes, a final MTM trade, at least 99% exposure, and return
+reconciliation.
+
+The implementation status, invalid-result inventory, runner choice, vector/Tier-2 boundary,
+matrix-description schema, interaction-aware beam/ladder method, rollback steps and later
+crypto port are maintained in
+[`STOCK_BACKTEST_RECOVERY_20260724.md`](STOCK_BACKTEST_RECOVERY_20260724.md).
+
+Current runner rule:
+
+- `backtest_v8_engine.py` is Tier-2 decision evidence;
+- `v8_vec_sweep.py` and `tools/vec_exposure_ladder.py` are Tier-1 shortlist tools;
+- `per_sym_engine_stocks.py`, `per_sym_vec_engine_stocks.py` and historical profiles are not
+  substitutes for Tier-2;
+- vector candidates never become accepted configurations without a matching Tier-2 replay.
+
+The first corrected MU_LONG Tier-2 floor opened, held to final MTM, and measured 99.97%
+time-in-market. Its legal first RTH entry differs from the raw NPZ's premarket first bar, so
+reports now show both first-tradable B&H and raw NPZ B&H rather than comparing the engine to an
+unfillable benchmark.
