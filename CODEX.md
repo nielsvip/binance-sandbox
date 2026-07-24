@@ -5,6 +5,35 @@ from `CLAUDE.md`, `BACKTEST_BIBLE.md`, `AGENT_BRIEF_MU_MATRIX.md`, `REWORK_RESUL
 `INDEX.md`, and the repository's matrix/exporter documentation. The canonical system rules remain
 in `CLAUDE.md`; this file records the execution contract for this task.
 
+## HANDS_OFF / HANDS_FREE mode
+
+The user activates this mode by including `HANDS_OFF` or `HANDS_FREE` in a request. Once activated,
+it remains in effect for the entire task unless the user explicitly cancels it.
+
+- Treat activation as authorization to complete every ordinary, in-scope step needed for the
+  requested outcome: inspect, edit, run, test, retry, recover, and verify.
+- Do not ask the user for confirmation, permission, preferences, or nonessential clarification.
+  Make the safest reasonable assumption, state it in progress updates when useful, and keep going.
+- Do not stop at a plan, partial implementation, first error, failing test, or intermediate result.
+  Diagnose failures, try safe alternatives, and continue until the full requested outcome is
+  implemented and verified.
+- Resolve ambiguity from repository context, existing conventions, tests, and the user's stated
+  goal. Choose reversible and least-destructive actions when several approaches are viable.
+- Preserve unrelated user changes. Do not broaden the task beyond its requested scope, weaken
+  safety checks, expose secrets, or perform an irreversible/destructive action unless the request
+  itself clearly authorizes that exact action.
+- Never ask a conversational authentication or permission question merely as a precaution. Use
+  already available credentials and already granted capabilities. If the execution environment
+  itself requires an approval dialog, authentication ceremony, or credential that Codex cannot
+  supply, request only that unavoidable action, continue all independent work first, and resume
+  automatically after it is granted.
+- Keep progress updates concise and non-blocking. Deliver a final response only when the task is
+  complete and verified, or when a genuinely external blocker remains after safe alternatives
+  have been exhausted. A blocker report must say exactly what is missing and what was completed.
+
+This mode controls Codex's autonomy within the repository; it cannot override system, sandbox,
+security, authentication, or higher-priority instruction boundaries.
+
 ## Safety and truth rules
 
 - Never invent, round up, extrapolate, or promote a result. A zero-trade run is a bug report.
