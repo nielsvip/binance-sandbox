@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-24T08:19:11.297770+00:00",
+  "timestamp": "2026-07-24T08:34:12.675762+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -25,16 +25,16 @@
       "short_score": 18.7
     },
     {
-      "symbol": "AIAUSDT",
-      "net_score": -18.0,
-      "long_score": 0,
-      "short_score": 18.0
-    },
-    {
       "symbol": "API3USDT",
       "net_score": -16.8,
       "long_score": 0,
       "short_score": 16.8
+    },
+    {
+      "symbol": "AIAUSDT",
+      "net_score": -16.7,
+      "long_score": 0,
+      "short_score": 16.7
     },
     {
       "symbol": "ENAUSDC",
@@ -758,8 +758,8 @@
     },
     {
       "symbol": "1000LUNCUSDT",
-      "net_score": 27.1,
-      "long_score": 27.1,
+      "net_score": 27.3,
+      "long_score": 27.3,
       "short_score": 0
     },
     {
@@ -832,7 +832,7 @@
     ],
     [
       "1000LUNCUSDT",
-      27.1,
+      27.3,
       0.05789
     ],
     [
@@ -903,14 +903,14 @@
       348.95
     ],
     [
-      "AIAUSDT",
-      18.0,
-      0.0561495
-    ],
-    [
       "API3USDT",
       16.8,
       0.22124146
+    ],
+    [
+      "AIAUSDT",
+      16.7,
+      0.0561495
     ],
     [
       "ENAUSDC",
