@@ -2670,7 +2670,10 @@ def simulate_one_symbol(
             state.qty = new_qty
             state.entry_price = mark
             state.initial_qty = new_qty
-            state.entry_ladder_mult = float(_ladder_arr[i])
+            # The exposure floor represents one full-capital B&H position.
+            # Applying the optional SMA-distance sizing ladder here scaled MU's
+            # 729% hold to 473% despite identical entry/exit prices.
+            state.entry_ladder_mult = 1.0
             state.opened_at = bar_ts
             state.augmented_count = 0
             state.max_gain = 0.0

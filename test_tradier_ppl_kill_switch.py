@@ -1,5 +1,20 @@
 """Regression tests for the Tradier partial-profit-lock master switch."""
 
+import logging
+import logging.handlers
+
+
+class _NoFileRotatingHandler(logging.NullHandler):
+    """Accept RotatingFileHandler args without writing outside the test sandbox."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+
+# tradier_manage's import graph initializes file loggers. Replace only the file
+# handler class during collection so this unit test remains read-only.
+logging.handlers.RotatingFileHandler = _NoFileRotatingHandler
+
 import tradier_manage as tm
 
 
