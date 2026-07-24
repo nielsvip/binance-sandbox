@@ -833,3 +833,18 @@ handler turned that `UnboundLocalError` into a silent `False`. Use the already-p
 replay then changed from 0 opens / 0% exposure to 7 long opens, 7 real closes, +3.54%, and
 6.1445% exposure. That is a connectivity proof, not an accepted recipe: it remains well below
 the target exposure band and has not been promoted or loaded into a live process.
+
+Stage-0 seeding must also be verified by `entry_reason=V8_LADDER_INITIAL_BH_SEED`, not merely
+by one open/MTM. HAO_SHORT exposed a refused seed followed by a later ordinary strategy open:
+the stale artifact looked like a hold but measured only 86.7275% exposure. The repaired
+test-only seed bypasses strategy entry gates, requires a successful internal fill before
+marking itself seeded, and fresh HAO_SHORT proof is now one open, zero real closes, one MTM,
+100.0000% exposure, +99.87% net versus +99.8745% gross tradable short B&H.
+VT_LONG independently passes the same contract with one open, zero real closes, one MTM,
+99.9855% exposure and +34.33% engine P&L.
+
+The first post-floor HAO_SHORT replay also demonstrates why Tier-1 never promotes directly:
+vector `DC_LOW4_STOP_ENABLED=True` estimated +276.86% at 82.1617% exposure, while faithful
+Tier-2 returned +0.61%, 16 real closes and 7.6855% exposure. The cell is tested and gray
+(discarded), not red: the live path fired, but the vector re-entry/fill approximation lacked
+parity.

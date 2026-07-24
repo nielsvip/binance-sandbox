@@ -360,3 +360,40 @@ This proves the real entry path is connected again. It does **not** prove that t
 meets the 70–80% exposure target or beats B&H. The high-exposure vector candidates remain
 Tier-1 hypotheses and must be replayed in Tier-2 after their corresponding live predicate
 is shown to fire. No live process was restarted and no setting was promoted.
+
+The stage-0 seed itself then exposed a second false-floor case on HAO_SHORT. The test hook
+called the real entry executor, marked itself seeded without checking the return value, and
+allowed ordinary strategy entry to happen later when the seed had been refused. That cached
+artifact showed one MTM trade but only 86.7275% exposure and carried
+`GR_HTF_DIRECT_ENTRY`, not the required seed reason.
+
+The seed is now a deliberately synthetic test fixture: only when
+`V8_LADDER_FORCE_INITIAL_SIDE` is set, it uses the engine's internal fill/state path while
+bypassing strategy entry gates, and marks itself complete only after a returned `SUCCESS`.
+The fresh HAO_SHORT replay then produced:
+
+- `V8_LADDER_INITIAL_BH_SEED` at the first tradable bar;
+- one short open, zero real closes and one final MTM;
+- exactly 100.0000% time in market;
+- +99.87% engine P&L versus +99.8745% gross tradable short B&H before the 0.06% round-trip
+  cost.
+
+VT_LONG also passes the corrected Tier-2 floor: one synthetic long open, zero real closes,
+one final MTM, 99.9855% time in market, and +34.33% engine P&L (+34.2651% trade net after
+the 0.06% cost). MU_LONG, VT_LONG and HAO_SHORT therefore all have valid stage-0 floors;
+this is only the foundation for recalculating exit/entry combinations.
+
+Do not reuse pre-repair `L2__LADDER0__*` caches. Recovery runs carry a new tag until cache
+stamps become a mandatory cache-key component.
+
+The first interaction-aware HAO_SHORT candidate is already a useful rejection. Vector
+Tier-1 estimated `DC_LOW4_STOP_ENABLED=True` at +276.86% and 82.1617% exposure versus
++99.8745% side B&H. Fresh Tier-2 replay produced only +0.61%, 16 real closes and 7.6855%
+exposure. Keep this tested result gray and do not retest/promote it. The discrepancy is
+vector re-entry/fill-path fidelity, not evidence that the live DC_LOW4 path is disconnected:
+Tier-2 fired it and changed the trade list materially.
+
+The regenerated ENGINE matrix now contains 3,522 actionable switch-value rows across 129
+tradeable keys, 1,721 rows with data, 1,801 pending, and a nonblank description on every
+row. Non-actionable settings live in the separate Inventory sheet instead of appearing as
+blank work.

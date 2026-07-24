@@ -508,7 +508,9 @@ def main():
                 ovr = dict(base)
                 ovr[knob] = False if ABLATION.search(knob) else True   # this ONE feature back on...
                 ovr[pname] = val          # ...at this parameter setting
-                tag = f"LADDER1__{knob}__{pname}__{val}".replace("/", "_")[:120]
+                tag = (
+                    f"LADDER1__{knob}__{pname}__{val}{a.tag_suffix}"
+                ).replace("/", "_")[:120]
                 if con.execute("SELECT 1 FROM param_cells WHERE campaign=? AND symbol=? AND side=? "
                                "AND param=? AND value_json=? LIMIT 1",
                                (LADDER_CAMPAIGN, sym, side, pname, str(val))).fetchone():

@@ -6196,11 +6196,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED"
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — VEC SHORT-CIRCUIT (tradier eta path). Same checkpoint as
         # crypto eta. With all flags OFF this is a near-zero-cost noop.
         # ═══════════════════════════════════════════════════════════════════════════
-        if V8_VEC_PARITY_AVAILABLE and (
+        if not _is_ladder_seed and V8_VEC_PARITY_AVAILABLE and (
             V8_USE_VEC_STALE_MARK or V8_USE_VEC_EMERGENCY_BRAKE or V8_USE_VEC_COOLDOWN_LOCKS
             or V8_USE_VEC_OPEN_INTENT_SIZE or V8_USE_VEC_NOLOSS_GATE or V8_USE_VEC_AUGMENT_GATE
             or V8_USE_VEC_PROTECT_BALANCE or V8_USE_VEC_CIRCUIT_SHARPE
@@ -6262,7 +6263,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception:
                 pass
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
-        if (not is_reduce) and (not is_hedge):
+        if (not is_reduce) and (not is_hedge) and not _is_ladder_seed:
             _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
             _v8ns_is_long_t = (position_side == 'LONG')
             # NEW 2026-04-26 sweep switch: MINERVINI_GATE / CLENOW_GATE / PROXIMITY_TOP_GATE
@@ -6309,7 +6310,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _v8ns_sf_fired_t:
                 reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus_t:.0f}"
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
-        if not is_reduce:
+        if not is_reduce and not _is_ladder_seed:
             if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
                 try:
                     from ez_satoshit import satoshit_entry_signal
@@ -6344,7 +6345,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     return f"BLOCKED_LS_RATIO_LONG_{_ratio_pt:.2f}gt{_ls_max_pt}"
                 if position_side == 'SHORT' and _ratio_pt < _ls_min_pt and "WT_3M_FORCE_OPEN" not in (reason or "").upper():
                     return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
-        if not is_reduce and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')):
+        if (
+            not is_reduce
+            and not _is_ladder_seed
+            and not ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))
+        ):
             _gr_min_tfs_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
             if _gr_min_tfs_pt > 0:
                 try:
@@ -7794,7 +7799,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 # internal position amount, but final trade reconstruction caps the MTM
                 # close to this recorded OPEN quantity, preserving a 1x B&H return.
                 _seed_qty_t = float(capital) / _seed_px_t
-                await manager.execute_trade_action(
+                _seed_result_t = await _v8_execute_trade_action(
                     account_key=account_key,
                     position_key=_seed_pk_t,
                     symbol=_seed_sym_t,
@@ -7807,7 +7812,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     is_full_close=False,
                     is_hedge=False,
                 )
-                await drain_pending_v8_tasks()
+                if _seed_result_t != "SUCCESS":
+                    v8_logger.error(
+                        f"[V8_LADDER_SEED_REFUSED] {_seed_pk_t}: "
+                        f"result={_seed_result_t}"
+                    )
+                    continue
                 _ladder_initial_seeded_t = True
                 print(
                     f"V8_LADDER_SEED: symbol={_seed_sym_t} side={_ladder_side_t} "
