@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-24T13:34:18.289867+00:00",
+  "timestamp": "2026-07-24T13:49:14.314888+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -25,16 +25,16 @@
       "short_score": 19.9
     },
     {
+      "symbol": "AIAUSDT",
+      "net_score": -19.8,
+      "long_score": 0,
+      "short_score": 19.8
+    },
+    {
       "symbol": "INXUSDT",
       "net_score": -19.2,
       "long_score": 0,
       "short_score": 19.2
-    },
-    {
-      "symbol": "AIAUSDT",
-      "net_score": -18.4,
-      "long_score": 0,
-      "short_score": 18.4
     },
     {
       "symbol": "ENAUSDC",
@@ -43,16 +43,16 @@
       "short_score": 14.9
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": -14.8,
-      "long_score": 0,
-      "short_score": 14.8
-    },
-    {
       "symbol": "API3USDT",
       "net_score": -14.1,
       "long_score": 0,
       "short_score": 14.1
+    },
+    {
+      "symbol": "1INCHUSDT",
+      "net_score": -12.7,
+      "long_score": 0,
+      "short_score": 12.7
     },
     {
       "symbol": "BLURUSDT",
@@ -686,8 +686,8 @@
     },
     {
       "symbol": "NEARUSDC",
-      "net_score": 12.5,
-      "long_score": 12.5,
+      "net_score": 12.9,
+      "long_score": 12.9,
       "short_score": 0
     },
     {
@@ -870,7 +870,7 @@
     ],
     [
       "NEARUSDC",
-      12.5,
+      12.9,
       1.931
     ],
     [
@@ -896,14 +896,14 @@
       0.16890052
     ],
     [
+      "AIAUSDT",
+      19.8,
+      0.0561495
+    ],
+    [
       "INXUSDT",
       19.2,
       0.007046
-    ],
-    [
-      "AIAUSDT",
-      18.4,
-      0.0561495
     ],
     [
       "ENAUSDC",
@@ -911,14 +911,14 @@
       0.08611776
     ],
     [
-      "1INCHUSDT",
-      14.8,
-      0.08307
-    ],
-    [
       "API3USDT",
       14.1,
       0.22124146
+    ],
+    [
+      "1INCHUSDT",
+      12.7,
+      0.08307
     ]
   ],
   "hedge_usage": {
