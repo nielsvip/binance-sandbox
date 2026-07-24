@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-24T06:49:06.058272+00:00",
+  "timestamp": "2026-07-24T07:04:05.331299+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -32,15 +32,21 @@
     },
     {
       "symbol": "API3USDT",
-      "net_score": -18.4,
+      "net_score": -17.9,
       "long_score": 0,
-      "short_score": 18.4
+      "short_score": 17.9
     },
     {
       "symbol": "ENAUSDC",
       "net_score": -14.5,
       "long_score": 0,
       "short_score": 14.5
+    },
+    {
+      "symbol": "1INCHUSDT",
+      "net_score": -12.4,
+      "long_score": 0,
+      "short_score": 12.4
     },
     {
       "symbol": "BLURUSDT",
@@ -583,12 +589,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1INCHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "TRXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -746,20 +746,14 @@
     },
     {
       "symbol": "1000LUNCUSDT",
-      "net_score": 26.0,
-      "long_score": 26.0,
+      "net_score": 26.7,
+      "long_score": 26.7,
       "short_score": 0
     },
     {
       "symbol": "MSFTUSDT",
       "net_score": 28.7,
       "long_score": 28.7,
-      "short_score": 0
-    },
-    {
-      "symbol": "PLTRUSDT",
-      "net_score": 29.4,
-      "long_score": 29.4,
       "short_score": 0
     },
     {
@@ -785,6 +779,12 @@
       "net_score": 30,
       "long_score": 30,
       "short_score": 0
+    },
+    {
+      "symbol": "PLTRUSDT",
+      "net_score": 30,
+      "long_score": 30,
+      "short_score": 0
     }
   ],
   "top_longs": [
@@ -799,6 +799,11 @@
       347.9799015
     ],
     [
+      "PLTRUSDT",
+      30,
+      132.57
+    ],
+    [
       "RUNEUSDT",
       30,
       0.45108167
@@ -809,18 +814,13 @@
       378.99
     ],
     [
-      "PLTRUSDT",
-      29.4,
-      132.57
-    ],
-    [
       "MSFTUSDT",
       28.7,
       398.08958381
     ],
     [
       "1000LUNCUSDT",
-      26.0,
+      26.7,
       0.05789
     ],
     [
@@ -897,13 +897,18 @@
     ],
     [
       "API3USDT",
-      18.4,
+      17.9,
       0.22124146
     ],
     [
       "ENAUSDC",
       14.5,
       0.08611776
+    ],
+    [
+      "1INCHUSDT",
+      12.4,
+      0.08307
     ]
   ],
   "hedge_usage": {
