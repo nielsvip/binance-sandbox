@@ -2859,14 +2859,28 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_above_sma200_15m_x{_wf_mult:.0f}_posval{_wf_pos_val:.0f}of{_wf_target:.0f}_px{current_price:.4f}"
                             logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: tradeable + {'above' if is_long else 'below'} sma200_15m({_wf_anchor:.2f}) + moving → {_wf_act} qty={_wf_qty:.2f} (${_wf_size_usd:.0f}, ladder x{_wf_mult:.0f}, posval ${_wf_pos_val:.0f}/${_wf_target:.0f})")
                             _wf_stop = safe_fetch_float(i.get(('dc_low4_5m' if is_long else 'dc_high4_5m') if bool(getattr(config, 'R1_USE_DC_4BAR', True)) else ('dc_low_5m' if is_long else 'dc_high_5m')), 0.0)
-                            if _wf_stop > 0:
+                            # A genuinely flat key may not have a Position
+                            # object yet. The old assignment raised
+                            # AttributeError here and the broad debug-only
+                            # except swallowed it before queue_trade_action,
+                            # making WT force-open structurally unable to
+                            # create the first position. Execution creates the
+                            # object; only update a pre-existing object's stop.
+                            if _wf_stop > 0 and position is not None:
                                 _cur_r1_wf = float(getattr(position, 'r1_stop_price', 0.0) or 0.0)
                                 if _cur_r1_wf <= 0 or (is_long and _wf_stop > _cur_r1_wf) or (not is_long and _wf_stop < _cur_r1_wf):
                                     position.r1_stop_price = _wf_stop
                             await queue_trade_action(order_queue, trade_manager, position_key, _wf_act, _wf_reason, 80.0, override_qty=_wf_qty)
                             return f"WT_3M_FORCE_OPEN:{position_side}"
             except Exception as _wf_err:
-                logger.debug(f"[WT_3M_FORCE_OPEN] {position_key}: {_wf_err}")
+                # This path is a mandatory entry producer; swallowing failures
+                # at DEBUG turned a null-position bug into months of zero-trade
+                # backtests. Surface the exception so red-path automation and
+                # operators can assign the broken knob immediately.
+                logger.warning(
+                    f"[WT_3M_FORCE_OPEN_ERROR] {position_key}: "
+                    f"{type(_wf_err).__name__}: {_wf_err}"
+                )
         # ═══════════════════════════════════════════════════════════════════════
         # RULE_A_RETEST — D/W Breakout-then-Retest entry FIRE (USER 2026-05-17, mirror of ez_manage).
         # Source: data/research_20260516/PLAN.md §3.3. Cited +22 abs WR pts (Trading-Rush), +0.47 Sharpe (QuantPedia D1H1).

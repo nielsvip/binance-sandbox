@@ -7618,6 +7618,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _dyn_strail_tr: dict = {}  # pk -> {'lvl','armed'} monotone structure-trail (2026-07-19)   # pk → frozen bb_lower/upper/basis_{tf} level at first open bar
     _exposure_seconds_t = {"LONG": 0.0, "SHORT": 0.0}
     _ladder_initial_seeded_t = False
+    _candidate_diag_t = 0
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-07-09 MINERVINI/CLENOW FAITHFUL TIER-2 HOOK — calls the REAL
     # tradier_manage.evaluate_minervini_entry / evaluate_clenow_entry (no
@@ -8179,7 +8180,29 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             pass
             except Exception:
                 pass
-        await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
+        _pp_results_t = await asyncio.gather(*[
+            tm_mod.process_position(
+                account_key, pk, manager.order_queue, manager,
+                event_type="backtest", force=True,
+            )
+            for pk in all_keys
+        ], return_exceptions=True)
+        if _candidate_diag_t < 5:
+            v8_logger.info(
+                f"[V8_CANDIDATE_DIAG] step={step} open={len(open_keys)} "
+                f"cand={len(cand_keys)} keys={all_keys} "
+                f"results={[str(x)[:120] for x in _pp_results_t]}"
+            )
+            _candidate_diag_t += 1
+        for _pp_pk_t, _pp_result_t in zip(all_keys, _pp_results_t):
+            if isinstance(_pp_result_t, BaseException):
+                # Never silently convert a broken entry/exit path into a
+                # zero-trade market result. The prior gather discarded every
+                # process_position exception, hiding mandatory WT entry bugs.
+                v8_logger.error(
+                    f"[V8_PROCESS_POSITION_ERROR] {_pp_pk_t}: "
+                    f"{type(_pp_result_t).__name__}: {_pp_result_t}"
+                )
         oq = manager.order_queue
         if hasattr(oq, '_orders'):
             while not oq._orders.empty():
