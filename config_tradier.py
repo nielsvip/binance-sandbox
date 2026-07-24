@@ -540,6 +540,8 @@ class TradierConfig:
     # backtest_v8_engine.py:1759 fell back to a hardcoded 0.05, so no config or sweep could
     # reach it. Declared so it is one number, visible in the matrix and overridable per symbol.
     ROUND_TRIP_COST_PCT: float = 0.06
+    # Global master/kill switch. When False, live per-symbol/hourly/Redis overlays
+    # are not allowed to re-enable PPL.
     PARTIAL_PROFIT_LOCK_ENABLED: bool = False   # 2026-07-19 OFF — NEAR_ENTRY_OFF flip, 2.63x at n=132 keys (Bible §12.11)
     # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
     # 2026-05-26 crypto grid favours 1.5% (best risk-adjusted vs PPL OFF baseline); apply to stocks symmetrically — tradier-specific sweep can refine later.
@@ -2938,9 +2940,9 @@ class TradierConfig:
         # MI_EXHAUST_EXIT_ENABLED_TRADIER False here. Per-symbol behaviour baked into code is
         # invisible to the switch matrix and unreachable by the exposure ladder, and it made
         # THREE layers disagree about whether PPL was on for MU (code said off, the per-sym
-        # overlay said on, the config default said off). PPL is now off by DEFAULT for every
-        # symbol (PARTIAL_PROFIT_LOCK_ENABLED = False) and is turned on only where a config or
-        # overlay explicitly says so — one source of truth.
+        # overlay said on, the config default said off). The global
+        # PARTIAL_PROFIT_LOCK_ENABLED value is now the master kill switch; overlays may
+        # disable individual symbols when it is on, but cannot resurrect it when it is off.
         full_key = f"{account_key}:{pk}"
         regime = self._REGIME_OVERRIDES.get(full_key)
         if regime and setting_name in regime and not regime.get("_paper", False): return regime[setting_name]

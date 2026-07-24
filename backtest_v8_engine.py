@@ -7756,10 +7756,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _seed_px_t <= 0:
                     continue
                 _seed_pk_t = f"{account_key}:{_seed_sym_t}_{_ladder_side_t}"
-                # Tradier's patched execute wrapper applies the accepted fill to the
-                # position object and then mirrors it once more for parity bookkeeping.
-                # Half-size here produces one full-capital B&H position after that wrapper.
-                _seed_qty_t = float(capital) / (2.0 * _seed_px_t)
+                # Use one full-capital event quantity. The Tradier wrapper mirrors the
+                # internal position amount, but final trade reconstruction caps the MTM
+                # close to this recorded OPEN quantity, preserving a 1x B&H return.
+                _seed_qty_t = float(capital) / _seed_px_t
                 await manager.execute_trade_action(
                     account_key=account_key,
                     position_key=_seed_pk_t,

@@ -776,6 +776,16 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
 
     2026-05-31 FINAL per_sym BOOK is AUTHORITATIVE for LONG_ENABLED/SHORT_ENABLED/
     BREAKOUT_SIZE_MAX_MULT/MOMENTUM_SMA_WATCHDOG_PCT — checked FIRST when enabled."""
+    # PARTIAL_PROFIT_LOCK_ENABLED is a global emergency/master switch.  Hourly,
+    # per-symbol, and Redis overlays may narrow it to False, but they must never
+    # resurrect PPL after the operator has switched the global setting off.
+    # Without this guard, stale active_config.json entries containing True took
+    # precedence over config_tradier.py=False and emitted live PPL reductions.
+    if (
+        param == "PARTIAL_PROFIT_LOCK_ENABLED"
+        and not bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False))
+    ):
+        return False
     if symbol and side:
         _bv = _tradier_final_book_get(f"{symbol}_{side}", param)
         if _bv is not None:
@@ -7177,13 +7187,27 @@ class StockStrategy:
         # 2026-05-18 per-sym overlay
         _ppl_side_t = 'LONG' if is_long else 'SHORT'
         _ppl_acct_list_t = getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', ['trb', 'trc'])
-        if (_cfg('PARTIAL_PROFIT_LOCK_ENABLED', False, _exit_acct_top, symbol, _ppl_side_t)
-            and _exit_acct_top in _ppl_acct_list_t):
+        _ppl_enabled_t = bool(_cfg(
+            'PARTIAL_PROFIT_LOCK_ENABLED', False,
+            _exit_acct_top, symbol, _ppl_side_t,
+        ))
+        _ppl_pk_t = f"{_exit_acct_top}:{symbol}_{_ppl_side_t}"
+        _ppl_owner_t = getattr(self, 'trade_manager', None)
+        if not _ppl_enabled_t:
+            # Disarm any in-memory remainder stop left by a PPL reduction that
+            # fired before the switch was turned off.  Otherwise re-enabling
+            # PPL later can execute an obsolete stop against the current trade.
+            _ppl_states_t = getattr(_ppl_owner_t, 'partial_profit_lock_state', None)
+            if isinstance(_ppl_states_t, dict) and _ppl_states_t.pop(_ppl_pk_t, None) is not None:
+                logger.warning(
+                    f"[PPL_TRADIER_DISABLED_STATE_CLEARED] {_ppl_pk_t}: "
+                    "global/overlay switch is OFF; discarded stale PPL remainder stop"
+                )
+        if _ppl_enabled_t and _exit_acct_top in _ppl_acct_list_t:
             _ppl_min_gain_t = float(_cfg('PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_arm_gain_t = float(_cfg('PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.75, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_be_buffer_t = float(_cfg('PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER', 0.02, _exit_acct_top, symbol, _ppl_side_t))
             _ppl_frac_t = float(_cfg('PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5, _exit_acct_top, symbol, _ppl_side_t))
-            _ppl_pk_t = f"{_exit_acct_top}:{symbol}_{'LONG' if is_long else 'SHORT'}"
             _tm_t = self.trade_manager if (hasattr(self, 'trade_manager') and self.trade_manager is not None and hasattr(self.trade_manager, 'execute_trade_action')) else None
             if _tm_t is None:
                 logger.error(f"[PPL_TRADIER_TP_SKIP] {_ppl_pk_t}: trade_manager/execute_trade_action not available — skipping PPL block")

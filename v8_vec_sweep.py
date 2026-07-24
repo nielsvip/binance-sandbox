@@ -1497,6 +1497,7 @@ def simulate_one_symbol(
     max_bars: Optional[int] = None,
     _npz_cache: Optional[Tuple] = None,
     _gr_htf_entry_mask: Optional[np.ndarray] = None,
+    seed_position_at_start: bool = False,
 ) -> Tuple[List[TradeEvent], List[float], int]:
     """Run the vec engine on one symbol+side. Returns (events, trade_returns, n_bars).
 
@@ -1506,6 +1507,10 @@ def simulate_one_symbol(
                 GOLDEN_RULE_HTF_MIN_TFS > 0, GR entries (open + augment) are additionally
                 gated by this mask. Pre-computed by run_gr_dcbb_sweep() via
                 evaluate_gr_htf_vec with the threshold combo for this variant.
+    seed_position_at_start: test-only exposure-ladder shortcut. Opens at the
+                first finite bar through the same SymState fields used by a
+                normal OPEN, then lets the real vector exit/reentry pipeline
+                manage the position. Never enabled by normal sweep callers.
     """
     if _SESSION_ABORT_PATH.exists():
         sys.stderr.write(f"SKIP {symbol}/{side}: abort signaled by sibling process\n")
@@ -2645,7 +2650,59 @@ def simulate_one_symbol(
         _fund_veto = funding_block_mask(npz, n, is_long, config)
     except Exception:
         _fund_veto = np.zeros(n, dtype=bool)
+    _seed_i = -1
+    if seed_position_at_start:
+        _seed_candidates = np.flatnonzero(np.isfinite(close) & (close > 0))
+        if len(_seed_candidates):
+            _seed_i = int(_seed_candidates[0])
     for i in range(n):
+        if i == _seed_i and state.qty <= 0.0001:
+            # Exposure-ladder seed: initialise every position field that the
+            # ordinary OPEN block below initialises. The entry trigger alone is
+            # bypassed; all exits, reductions, augments and reentries remain real.
+            bar_ts = float(ts[i])
+            mark = float(close[i])
+            new_qty = float(config.START_POSITION_SIZE) / max(mark, 1e-9)
+            events.append(TradeEvent(
+                ts=bar_ts, type="OPEN", qty=new_qty, price=mark,
+                value=new_qty * mark, reason="VEC_LADDER_INITIAL_BH_SEED",
+            ))
+            state.qty = new_qty
+            state.entry_price = mark
+            state.initial_qty = new_qty
+            state.entry_ladder_mult = float(_ladder_arr[i])
+            state.opened_at = bar_ts
+            state.augmented_count = 0
+            state.max_gain = 0.0
+            state.last_open_attempt_ts = bar_ts
+            state.last_augmentation_price = mark
+            state.breakout_entry = bool(
+                _breakout_long_any[i] if is_long else _breakout_short_any[i]
+            )
+            if getattr(config, "VEC_OVERTRADE_FIX_ENABLED", True):
+                state.last_augment_ts = bar_ts
+            state.last_entry_reason = "VEC_LADDER_INITIAL_BH_SEED"
+            _pos.reset_ppl()
+            if config.DC_LOW4_STOP_ENABLED:
+                _s = float(_dc4_stop_long[i] if is_long else _dc4_stop_short[i])
+                state.r1_stop_price = _s if _s > 0 else 0.0
+            elif config.DC_LOW_STOP_ENABLED:
+                _s = float(_dc1_stop_long[i] if is_long else _dc1_stop_short[i])
+                state.r1_stop_price = _s if _s > 0 else 0.0
+            else:
+                state.r1_stop_price = 0.0
+            if bool(getattr(config, "DC_LOW_FROZEN_STOP_ENABLED", False)):
+                _s = float(_dc_fstop_arr[i])
+                state._dc_fstop_entry = _s if _s > 0 else 0.0
+            else:
+                state._dc_fstop_entry = 0.0
+            if bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False)):
+                _s = float(_bb_fstop_arr[i])
+                state._bb_fstop_entry = _s if _s > 0 else 0.0
+            else:
+                state._bb_fstop_entry = 0.0
+            state._ever_outside_channel = False
+            continue
         _bar_was_open = state.qty > 0.0001
         if _bar_was_open:
             state.last_held_bar = i  # reentry-context tracking: most recent bar a position was held
