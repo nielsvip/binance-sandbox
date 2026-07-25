@@ -11,6 +11,7 @@ import signal
 import sys
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -1998,6 +1999,7 @@ async def plot_dfs_subplots(
 #         plt.close(fig)
 TRADIER_MASTER_MIN_SYMBOLS = 100
 TRADIER_MASTER_BACKUP = Path(config.BASE_PATH) / "symbols_tradier.last_known_good.json"
+TRADIER_DERIVED_FILES_LOCK = Path(config.BASE_PATH) / ".symbols_trb_trc.lock"
 _INSTANCE_LOCK_HANDLE = None
 
 
@@ -2086,6 +2088,17 @@ def _acquire_instance_lock() -> bool:
     handle.flush()
     _INSTANCE_LOCK_HANDLE = handle
     return True
+
+
+@contextmanager
+def _tradier_derived_files_lock():
+    """Serialize ranking publication with news-scanner TRB mutations."""
+    with open(TRADIER_DERIVED_FILES_LOCK, "a+") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 # ===== OVERRIDE initial_fetch_and_ranking for Tradier =====
 async def initial_fetch_and_ranking(symbols, timeframes=None):
     """Tradier-specific ranking - uses Tradier bars instead of Binance klines"""
@@ -2536,18 +2549,36 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         # of trading disjoint symbol sets. See BACKTEST_BIBLE.md §trb/trc parity.
         await _save_json_async(config.BASE_PATH / "symbols_tra_long.json", symbols_tra_long)
         await _save_json_async(config.BASE_PATH / "symbols_tra_short.json", symbols_tra_short)
-        await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)
-        await _save_json_async(config.BASE_PATH / "symbols_trb_short.json", symbols_trb_short)
-        # 2026-07-20 USER: trc MUST match trb exactly — read back the file just written to
-        # disk (not the in-memory list) so trc can never desync from trb's actual saved
-        # content, no matter what caused prior drift (observed: trb/trc diverging even on
-        # freshly-completed cycles, e.g. UUUU present in trc_short but missing from trb_short).
-        with open(config.BASE_PATH / "symbols_trb_long.json") as _trb_l_fh:
-            symbols_trc_long = json.load(_trb_l_fh)
-        with open(config.BASE_PATH / "symbols_trb_short.json") as _trb_s_fh:
-            symbols_trc_short = json.load(_trb_s_fh)
-        await _save_json_async(config.BASE_PATH / "symbols_trc_long.json", symbols_trc_long)
-        await _save_json_async(config.BASE_PATH / "symbols_trc_short.json", symbols_trc_short)
+        with _tradier_derived_files_lock():
+            # Re-read active news injections while holding the same lock used
+            # by ez_news_scanner. This closes the last-update-wins race: an
+            # injection either lands before this publication and is merged
+            # here, or lands atomically after publication.
+            _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
+            _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
+            symbols_trb_long = list(dict.fromkeys(
+                s for s in symbols_trb_long if s in _allowed_symbols
+            ))
+            symbols_trb_short = list(dict.fromkeys(
+                s for s in symbols_trb_short if s in _allowed_symbols
+            ))
+            if len(symbols_trb_long) < 20 or len(symbols_trb_short) < 20:
+                raise RuntimeError(
+                    f"refusing undersized locked symbols_trb overwrite: "
+                    f"{len(symbols_trb_long)} long / {len(symbols_trb_short)} short"
+                )
+            await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)
+            await _save_json_async(config.BASE_PATH / "symbols_trb_short.json", symbols_trb_short)
+            # 2026-07-20 USER: trc MUST match trb exactly — read back the file just written to
+            # disk (not the in-memory list) so trc can never desync from trb's actual saved
+            # content, no matter what caused prior drift (observed: trb/trc diverging even on
+            # freshly-completed cycles, e.g. UUUU present in trc_short but missing from trb_short).
+            with open(config.BASE_PATH / "symbols_trb_long.json") as _trb_l_fh:
+                symbols_trc_long = json.load(_trb_l_fh)
+            with open(config.BASE_PATH / "symbols_trb_short.json") as _trb_s_fh:
+                symbols_trc_short = json.load(_trb_s_fh)
+            await _save_json_async(config.BASE_PATH / "symbols_trc_long.json", symbols_trc_long)
+            await _save_json_async(config.BASE_PATH / "symbols_trc_short.json", symbols_trc_short)
         logger.info(f"[rankings] Saved leaderboards: winners_20={len(to_save_top20)}, winners_30r={len(to_save_top30_r)}, symbols_trc_long={len(symbols_trc_long)}, symbols_trc_short={len(symbols_trc_short)}")
     except Exception as e:
         logger.error(f"[rankings] Error saving leaderboards: {e}", exc_info=True)

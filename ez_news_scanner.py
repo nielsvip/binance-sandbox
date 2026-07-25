@@ -9,6 +9,7 @@ across ez_rankings + tradier_rankings via data/market_mode.json + Redis.
 Modes: --daily | --cleanup | --report | --test | (default: daemon)
 Targets: ang/inf/men (crypto), trb (stocks)."""
 import asyncio
+import fcntl
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ import signal
 import sys
 import time
 import xml.etree.ElementTree as ET
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from html import unescape
 from pathlib import Path
@@ -46,12 +48,11 @@ CRYPTO_INJECT_TARGETS = {
     'men': {'single': BASE_PATH / 'symbols_men.json'},
 }
 STOCK_INJECT_ACCOUNTS = ('trb',)
-TRADIER_RANKINGS_OWNED_FILES = {
+TRADIER_NEWS_WRITABLE_FILES = {
     'symbols_trb_long.json',
     'symbols_trb_short.json',
-    'symbols_trc_long.json',
-    'symbols_trc_short.json',
 }
+TRADIER_DERIVED_FILES_LOCK = BASE_PATH / '.symbols_trb_trc.lock'
 MIN_CONVICTION = 0.40
 MAX_CRYPTO_PICKS = 5
 MAX_STOCK_PICKS = 3
@@ -305,17 +306,79 @@ def _read_symbol_list(path: Path) -> List[str]:
         pass
     return []
 
-def _write_symbol_list(path: Path, symbols: List[str]):
-    if path.name in TRADIER_RANKINGS_OWNED_FILES:
-        logger.error(
-            f"[WRITE] REFUSED {path.name}: tradier_rankings.py is the sole writer"
-        )
-        return
+def _write_symbol_list(path: Path, symbols: List[str]) -> bool:
+    """Atomic writer for crypto lists; TRB uses the locked mutator below."""
+    temp_path = path.with_name(
+        f'.{path.name}.{os.getpid()}.{time.time_ns()}.tmp'
+    )
     try:
-        with open(path, 'w') as f:
-            json.dump(sorted(set(symbols)), f, indent=2)
+        normalized = list(dict.fromkeys(str(s).upper() for s in symbols if s))
+        with open(temp_path, 'w') as f:
+            json.dump(normalized, f, indent=2)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, path)
+        return True
     except Exception as e:
         logger.error(f"[WRITE] Failed to write {path.name}: {e}")
+        return False
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+@contextmanager
+def _tradier_derived_files_lock():
+    """Serialize news mutations with tradier_rankings publication."""
+    with open(TRADIER_DERIVED_FILES_LOCK, 'a+') as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _mutate_tradier_symbol_list(
+    path: Path, *, add: Optional[List[str]] = None, remove: Optional[List[str]] = None
+) -> Optional[Tuple[set, set]]:
+    """Atomically mutate a valid TRB list; never rebuild from an empty read."""
+    if path.name not in TRADIER_NEWS_WRITABLE_FILES:
+        logger.error(f"[INJECT] REFUSED mutation of rankings-owned {path.name}")
+        return None
+    allowed = set(load_stock_symbols())
+    requested_add = list(dict.fromkeys(str(s).upper() for s in (add or []) if s))
+    blocked = [s for s in requested_add if s not in allowed]
+    if blocked:
+        logger.warning(f"[INJECT] Blocked non-master TRB symbols: {blocked}")
+    requested_add = [s for s in requested_add if s in allowed]
+    requested_remove = set(str(s).upper() for s in (remove or []) if s)
+    try:
+        with _tradier_derived_files_lock():
+            if not path.exists():
+                raise ValueError('file is missing')
+            with open(path, 'r') as f:
+                raw = json.load(f)
+            if not isinstance(raw, list):
+                raise ValueError('JSON root is not a list')
+            current = list(dict.fromkeys(str(s).upper() for s in raw if s))
+            if len(current) < 20:
+                raise ValueError(f'unsafe existing size {len(current)} (<20)')
+            before = set(current)
+            updated = [s for s in current if s not in requested_remove]
+            updated.extend(s for s in requested_add if s not in set(updated))
+            if not _write_symbol_list(path, updated):
+                raise OSError('atomic write failed')
+            after = set(updated)
+            return after - before, before - after
+    except Exception as e:
+        logger.error(
+            f"[INJECT] REFUSED unsafe mutation of {path.name}: {e}; "
+            "existing list preserved"
+        )
+        return None
 
 async def get_current_price(session: aiohttp.ClientSession, symbol: str) -> float:
     try:
@@ -821,11 +884,23 @@ def load_injections() -> dict:
     return {'active': [], 'history': []}
 
 def save_injections(data: dict):
+    temp_path = INJECTION_FILE.with_name(
+        f'.{INJECTION_FILE.name}.{os.getpid()}.{time.time_ns()}.tmp'
+    )
     try:
-        with open(INJECTION_FILE, 'w') as f:
+        with open(temp_path, 'w') as f:
             json.dump(data, f, indent=2)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, INJECTION_FILE)
     except Exception as e:
         logger.error(f"[INJECT] Save error: {e}")
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 def _resolve_injection_path(filename: str) -> Path:
     """Resolve a symbol list filename to the current BASE_PATH, regardless of where it was created."""
@@ -836,6 +911,9 @@ def inject_symbols(crypto_long: List[dict], crypto_short: List[dict], stock_long
     injections = load_injections()
     now_iso = datetime.now(timezone.utc).isoformat()
     already_active = {(i['symbol'], i['account'], i['side']) for i in injections['active']}
+    active_by_key = {
+        (i['symbol'], i['account'], i['side']): i for i in injections['active']
+    }
     new_injections = []
     for acct, targets in CRYPTO_INJECT_TARGETS.items():
         if 'single' in targets:
@@ -877,8 +955,9 @@ def inject_symbols(crypto_long: List[dict], crypto_short: List[dict], stock_long
     allowed_stocks = set(load_stock_symbols())
     for acct in STOCK_INJECT_ACCOUNTS:
         for side_key, picks in [('long', stock_long), ('short', stock_short)]:
-            added = []
             direction = 'LONG' if side_key == 'long' else 'SHORT'
+            eligible = []
+            ensure_symbols = []
             for pick in picks:
                 sym = pick['symbol'].upper()
                 if sym not in allowed_stocks:
@@ -886,29 +965,62 @@ def inject_symbols(crypto_long: List[dict], crypto_short: List[dict], stock_long
                         f"[INJECT] Blocked stock {sym}: not in symbols_tradier.json"
                     )
                     continue
+                ensure_symbols.append(sym)
                 key = (sym, acct, direction)
                 if key in already_active:
+                    active_by_key[key]['last_relevant_at'] = now_iso
+                    active_by_key[key]['conviction'] = pick['conviction']
+                    active_by_key[key]['reason'] = pick['reason'][:80]
                     continue
-                added.append(sym)
-                new_injections.append({'symbol': sym, 'account': acct, 'side': direction, 'file': f'symbols_{acct}_{side_key}.json', 'injected_at': now_iso, 'conviction': pick['conviction'], 'reason': pick['reason'][:80], '_is_stock': True, 'was_new': True})
-            if added:
+                eligible.append(pick)
+            if not ensure_symbols:
+                continue
+            path = BASE_PATH / f'symbols_{acct}_{side_key}.json'
+            mutation = _mutate_tradier_symbol_list(
+                path, add=ensure_symbols
+            )
+            if mutation is None:
+                continue
+            actually_added, _ = mutation
+            for sym in ensure_symbols:
+                key = (sym, acct, direction)
+                if key in active_by_key and sym in actually_added:
+                    active_by_key[key]['was_new'] = True
+                    active_by_key[key]['direct_write'] = True
+            for pick in eligible:
+                sym = pick['symbol'].upper()
+                new_injections.append({
+                    'symbol': sym,
+                    'account': acct,
+                    'side': direction,
+                    'file': path.name,
+                    'injected_at': now_iso,
+                    'last_relevant_at': now_iso,
+                    'conviction': pick['conviction'],
+                    'reason': pick['reason'][:80],
+                    '_is_stock': True,
+                    'was_new': sym in actually_added,
+                    'direct_write': True,
+                })
+            if actually_added:
                 logger.info(
-                    f"[INJECT] {acct}_{side_key}: queued {len(added)} allowlisted "
-                    f"stocks for tradier_rankings: {added}"
+                    f"[INJECT] {acct}_{side_key}: atomically added "
+                    f"{len(actually_added)} allowlisted stocks: {sorted(actually_added)}"
                 )
     injections['active'].extend(new_injections)
     save_injections(injections)
     return new_injections
 
 def cleanup_expired() -> List[dict]:
-    """Remove symbols injected > INJECTION_TTL_HOURS ago from account lists."""
+    """Remove symbols after they have been irrelevant for the configured TTL."""
     injections = load_injections()
     now = datetime.now(timezone.utc)
     still_active = []
     removed = []
     for inj in injections['active']:
         try:
-            injected_at = datetime.fromisoformat(inj['injected_at'])
+            relevance_time = inj.get('last_relevant_at', inj['injected_at'])
+            injected_at = datetime.fromisoformat(relevance_time)
         except Exception:
             still_active.append(inj)
             continue
@@ -916,10 +1028,14 @@ def cleanup_expired() -> List[dict]:
         if age_hours > INJECTION_TTL_HOURS:
             path = _resolve_injection_path(inj['file'])
             sym = inj['symbol']
-            # tradier_rankings owns stock-derived files. Expiring a stock
-            # injection removes only its metadata; the next ranking rebuilds
-            # the list without it.
-            if inj.get('was_new', True) and not inj.get('_is_stock'):
+            if inj.get('_is_stock') and inj.get('was_new', True):
+                mutation = _mutate_tradier_symbol_list(path, remove=[sym])
+                if mutation is not None and sym in mutation[1]:
+                    logger.info(
+                        f"[CLEANUP] Removed expired news-added {sym} from "
+                        f"{path.name} (age={age_hours:.1f}h)"
+                    )
+            elif inj.get('was_new', True):
                 current = _read_symbol_list(path)
                 if sym in current:
                     current.remove(sym)
@@ -943,6 +1059,11 @@ def re_inject_active() -> int:
     files_modified = set()
     for inj in injections['active']:
         if inj.get('_is_stock'):
+            path = _resolve_injection_path(inj['file'])
+            mutation = _mutate_tradier_symbol_list(path, add=[inj['symbol']])
+            if mutation is not None and inj['symbol'].upper() in mutation[0]:
+                re_added += 1
+                files_modified.add(path.name)
             continue
         if not inj.get('was_new', True):
             continue

@@ -70,9 +70,8 @@ if SYMBOLS_FILE.exists():
 # ═══════════════════════════════════════════════════════════════════
 # INJECTION INTO LIVE TRADING (same mechanism as ez_news_scanner.py)
 # ═══════════════════════════════════════════════════════════════════
-# Writes only to data/news_injections.json. tradier_rankings.py is the sole
-# owner of symbols_trb_long/short.json and applies the master allowlist before
-# publishing those derived files.
+# Writes only to data/news_injections.json. tradier_rankings.py publishes the
+# baseline lists; ez_news_scanner.py owns the locked, expiring news overlay.
 INJECTION_FILE = config.DATA_DIR / "news_injections.json"
 INJECTION_TTL_HOURS = 48
 MIN_INJECT_CONVICTION = 2  # Minimum conviction_sources to inject (2+ sources agree)
