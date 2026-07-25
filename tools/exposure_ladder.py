@@ -322,6 +322,11 @@ def run_cell(symbol, side, tag, overrides, args):
 
 
 def store(con, symbol, side, param, value, m, overrides, tag, stage):
+    # Invalid/unseeded zero-trade outputs are diagnostics, not matrix evidence.
+    # Skip them so one disconnected path cannot abort a multi-symbol campaign.
+    if int(m.get("trades", 0) or 0) <= 0 and int(m.get("_mtm_count", 0) or 0) <= 0:
+        print(f"[store] skip zero-trade diagnostic {symbol}_{side} {param}={value}", flush=True)
+        return
     prs.insert_cell(con, {
         "mode": psc.MODE, "symbol": symbol, "side": side, "campaign": LADDER_CAMPAIGN,
         "param": param, "value_json": str(value), "value_num": None, **m,
