@@ -6,8 +6,24 @@ Reconstructs wt_cross from wt_cross_bull/bear binary flags when
 the encoded wt_cross array is broken (all zeros).
 """
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
+from zoneinfo import ZoneInfo
+
+
+_TRADIER_ET = ZoneInfo("America/New_York")
+
+
+def is_tradier_rth_ts(ts: float) -> bool:
+    """DST-aware regular-session test used by the Tradier simulator."""
+    try:
+        dt_et = datetime.fromtimestamp(float(ts), tz=timezone.utc).astimezone(_TRADIER_ET)
+    except (TypeError, ValueError, OSError):
+        return False
+    if dt_et.weekday() >= 5:
+        return False
+    minute = dt_et.hour * 60 + dt_et.minute
+    return 9 * 60 + 30 <= minute <= 16 * 60
 
 
 class _IndicatorDict(dict):
@@ -118,7 +134,16 @@ class IndicatorStore:
         self.has_5m = any(k.endswith("_5m") for k in self.arrays)
         self.has_3m = any(k.endswith("_3m") for k in self.arrays)
 
-        # ── Step 1: forward-fill numeric HTF arrays ────────────────────────
+        # ── Step 1: forward-fill genuinely missing numeric HTF values ──────
+        #
+        # IMPORTANT: zero is data, not missing data.  In particular, the NPZ uses
+        # zero for event flags (wt_cross_bull/bear), neutral states, signed scores
+        # and slopes crossing the origin.  Treating zero as missing turned a
+        # one-bar event into a permanent signal.  On MU this inflated both
+        # wt_cross_bull_1h and wt_cross_bear_1h from ~8% active to ~100% active,
+        # and changed wt_bullish_{1h,4h,D} into an almost-always bullish state.
+        # The precompute already broadcasts HTF values to base bars, so the only
+        # values that may safely be filled here are explicit NaNs.
         _ffill_suffixes = ("_1h", "_4h", "_D")
         _skip_prefixes = ("open_", "high_", "low_", "close_", "volume_", "timestamps")
         for key in list(self.arrays.keys()):
@@ -130,7 +155,7 @@ class IndicatorStore:
             if arr.dtype.kind not in ('f', 'i'):
                 continue
             farr = arr.astype(np.float64)
-            mask = (farr == 0) | np.isnan(farr)
+            mask = np.isnan(farr)
             if mask.all() or not mask.any():
                 continue
             last_val = 0.0
@@ -318,8 +343,11 @@ class IndicatorStore:
                 prev[1:] = arr[:-1]
                 self.arrays["stoch_k_1m_prev"] = prev
                 self.arrays["k_1m_prev"] = prev
-        # ── Step 4: forward-fill HTF string fields ────────────────────────
-        # String arrays are skipped in Step 1; do them separately here.
+        # ── Step 4: fill genuinely missing HTF string fields ───────────────
+        # NONE and NEUTRAL are semantic states.  Forward-filling across either
+        # one makes event/state fields such as wt_divergence permanent.  Only an
+        # actual None cell is missing.  Empty string is the encoded neutral value
+        # for fields such as wt_divergence, so it must also remain untouched.
         _str_htf_suffixes = ("_1h", "_4h", "_D")
         for key, arr in list(self.arrays.items()):
             if arr.dtype != object:
@@ -331,9 +359,9 @@ class IndicatorStore:
             last_val = ""
             for i in range(len(arr)):
                 v = arr[i]
-                if v and v != "NONE" and v != "NEUTRAL":
+                if v is not None:
                     last_val = v
-                elif last_val and (not v or v in ("NONE", "NEUTRAL", 0, 0.0)):
+                elif last_val and v is None:
                     arr[i] = last_val
             self.arrays[key] = arr
 

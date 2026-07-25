@@ -1039,7 +1039,7 @@ if _override_file and Path(_override_file).exists():
     v8_logger.info(f"Re-applied {len(_overrides)} overrides to {_post_import_count} Config instances + module bindings post-import")
 
 # Import NPZ loader
-from backtest_v8_harness import IndicatorStore
+from backtest_v8_harness import IndicatorStore, is_tradier_rth_ts
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Simulation time controller
@@ -6000,10 +6000,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if hasattr(_real_dt, _a): setattr(_TDT, _a, getattr(_real_dt, _a))
     tm_mod.__dict__['datetime'] = _TDT
     def _sim_irth():
-        dt = _sim_now_t(timezone.utc)
-        if dt.weekday() >= 5: return False
-        t = dt.hour * 60 + dt.minute
-        return 13*60+30 <= t <= 20*60
+        return is_tradier_rth_ts(_sim_ts[0])
     tm_mod.is_regular_trading_hours = _sim_irth
     if hasattr(tm_mod, 'minutes_since'):
         _oms = tm_mod.minutes_since
