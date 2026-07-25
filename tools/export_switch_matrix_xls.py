@@ -151,8 +151,9 @@ def load_cells(campaign, tier="ENGINE"):
             expected = {
                 f"{sym}_{side}": psc.matrix_contract_fingerprint(sym, side)
                 for sym, side in con.execute(
-                    "SELECT DISTINCT symbol,side FROM param_cells WHERE campaign=?",
-                    (campaign,),
+                    "SELECT symbol,side FROM param_cells WHERE campaign=? "
+                    "UNION SELECT symbol,side FROM key_baseline WHERE campaign=?",
+                    (campaign, campaign),
                 )
             }
         except Exception:
@@ -491,7 +492,8 @@ def main():
         if isinstance(r[1], str) and r[1].startswith("WT_3M_FORCE_OPEN"):
             r[1] = r[1].replace("WT_3M_FORCE_OPEN", "WT1_5M_FORCE_OPEN[cfg:WT_3M]")
     color_map = {(r[0], r[1], str(r[2])): states for r, states in zip(matrix, matrix_states)}
-    tier_note = ("# TIER=ENGINE — faithful Tier-2 (backtest_v8_engine + real live code). Promotable.\n"
+    tier_note = ("# TIER=ENGINE — repaired-contract faithful Tier-2. Historical rows excluded; "
+                 "only green, non-inert, real-close rows are promotion candidates.\n"
                  if a.tier == "ENGINE" else
                  "# [DIAGNOSTIC ONLY] TIER=VEC — Tier-1 vectorized screen (v8_vec_sweep, ~85% live parity).\n"
                  "# Deltas are vs the Tier-1 baseline. NEVER comparable to the ENGINE file, never promotion evidence.\n")

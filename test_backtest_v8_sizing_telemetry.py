@@ -57,6 +57,18 @@ class SizingTelemetryTests(unittest.TestCase):
         self.assertEqual(result["sized_open_events"], 1)
         self.assertEqual(result["size_clamp_count"], 0)
 
+    def test_live_base_and_existing_position_define_incremental_request(self):
+        result = open_sizing_telemetry([{
+            "action": "AUGMENT",
+            "position_side": "LONG",
+            "price": 100.0,
+            "quantity": 88.5,
+            "reason": "WT_FORCE_x4_posval2950of2950_px100_qty88.5",
+        }], 2000.0)
+        # Target=4*$2950; held=$2950; incremental request/fill=$8850.
+        self.assertEqual(result["requested_fill_ratio"], "1.0000")
+        self.assertEqual(result["size_clamp_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

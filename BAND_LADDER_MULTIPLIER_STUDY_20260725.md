@@ -156,11 +156,66 @@ will accept it.
 
 ## Next promotion gate
 
-1. Add an isolated engine entry adapter that emits the exact D/4h/1h completed
-   WT-green and HH+HL-low/rising-Stoch events used here.
-2. Make the adapter explicitly choose `target` or `add` semantics and enforce
-   the $16,000 entry-notional cap with requested/filled/clamp telemetry.
-3. Replay MU's latest frozen curve through `backtest_v8_engine`.
-4. Require event timestamps, next-open fills, costs, TIM, capacity and P&L to
-   match this research schedule.
-5. Keep VT gray/rejected and HAO quarantined until each independently passes.
+The isolated exact-engine gate has now been implemented and passed for MU's
+latest frozen curve. This does **not** promote the curve; independent
+cross-symbol evidence remains required. Keep VT gray/rejected and HAO
+quarantined until each independently passes.
+
+## Exact `backtest_v8_engine` parity — PASS
+
+S1 artifact:
+
+`data/reports/vec_research/v8_exact_ladder_replay_20260725T205451Z_MU_LONG`
+
+Backtest-only implementation:
+
+- `tools/v8_research_ladder_adapter.py`
+- `tools/run_v8_research_ladder_replay.py`
+- `test_v8_research_ladder_adapter.py`
+- explicit engine CLI gate: `--research-ladder-spec`
+
+The replay independently reloads the fingerprinted NPZ, recomputes the frozen
+union signal, and verifies that every WT-green or HH+HL-low/rising-Stoch input
+came from a completed D/4h/1h bar. It then executes the vector schedule through
+the faithful Tradier position ledger. Ordinary entries, exits, filters and
+reentries remain dormant for this isolated run.
+
+| audit | expected | exact engine | result |
+|---|---:|---:|---|
+| scheduled actions | 34 | 34 | PASS |
+| ladder entry/augment fills | 23 | 23 | PASS |
+| technical exits | 10 | 10 | PASS |
+| final MTM closes | 1 | 1 | PASS |
+| capital return | +1,316.021377830871% | +1,316.021377830872% | PASS |
+| P&L dollars | $26,320.4275566 | $26,320.4275566 | PASS |
+| binary RTH TIM | 94.1661382372% | 94.1661382372% | PASS |
+| exposure-weighted RTH TIM | 77.0916576519% | 77.0916576519% | PASS |
+| requested notional | $104,709.874909 | $104,709.874909 | PASS |
+| filled notional | $104,709.874909 | $104,709.874909 | PASS |
+| peak post-fill notional | $16,000.0000000 | $16,000.0000000 | PASS |
+| clamp count / capacity breach | 0 / false | 0 / false | PASS |
+| future HTF sources | 0 | 0 | PASS |
+| signal-to-fill latency | next RTH row | next RTH row | PASS |
+
+Accounting delta was `9.09e-11` basis points. The adapter prices the declared
+5 bp commission on every actual entry/augment and exit notional, rather than
+approximating an augmented lifecycle with one round-trip fee on VWAP entry
+notional. Two-basis-point adverse slippage remains embedded in every scheduled
+fill.
+
+The canonical exposure number for this ladder is the capacity-weighted RTH TIM
+of **77.09%**. The engine's general wall-clock `time_in_mkt_long_pct` field is a
+different binary-span diagnostic and must not replace it.
+
+Fingerprints:
+
+- MU NPZ:
+  `f57ce885f72655026e594ce93fe883f61c20eab647568ee91ee5d7a4e9973fb3`
+- exact schedule:
+  `3a1d081bc6c9faad271a48edea644a124a5873fc35e34a21bf79c9f4d85f0011`
+- engine:
+  `1b23566290e95c74b919a0b40face5dd848bc61eed3738fffaee332e29fbb95a`
+- adapter:
+  `6369bbb67c5a73640df092c16df8d5267392b888fe5a90faf33ad1f01d0aff18`
+
+Safety state remains `matrix_written=false`, `promotion_allowed=false`.

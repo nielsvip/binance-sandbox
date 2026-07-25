@@ -52,7 +52,24 @@ def open_sizing_telemetry(executed_trades, start_position_size):
         reason = str(event.get("reason") or "")
         match = re.search(r"(?:^|_)x([0-9]+(?:\.[0-9]+)?)", reason)
         if match:
-            requested.append(float(match.group(1)) * float(start_position_size))
+            mult = float(match.group(1))
+            # Stocks ladder reasons encode the live sizing base and already-held notional:
+            #   ..._x4_posval2950of2950_...
+            # means "target 4 * $2950, with $2950 already held", so the requested order is
+            # $8,850, not 4 * harness START_POSITION_SIZE and not the full $11,800 target.
+            # Treating xN as the incremental order made 2,254 perfectly filled MU opens look
+            # clamped (fill ratio 0.58) even though max notional stayed below the $16k cap.
+            pos = re.search(
+                r"_posval([0-9]+(?:\.[0-9]+)?)of([0-9]+(?:\.[0-9]+)?)",
+                reason,
+            )
+            if pos:
+                held = float(pos.group(1))
+                live_base = float(pos.group(2))
+                request_notional = max(0.0, mult * live_base - held)
+            else:
+                request_notional = mult * float(start_position_size)
+            requested.append(request_notional)
             requested_fills.append(notional)
         elif reason == "V8_LADDER_INITIAL_BH_SEED":
             # Stage 0 deliberately requests one benchmark unit. It predates

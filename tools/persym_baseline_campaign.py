@@ -58,9 +58,13 @@ RESULTS_DIR = SBX / "data" / "sweep_results"
 STAMP_FILES = ["backtest_v8_engine.py", "tradier_manage.py", "wt_dc_delta.py", "config_tradier.py"]
 MATRIX_CONTRACT_VERSION = "tradier-matrix-c1-20260725"
 MATRIX_CONTRACT_FILES = STAMP_FILES + [
+    "backtest_v8_harness.py",
     "mtf_exit_timing.py",
     "reentry_contract.py",
     "tools/backtest_data_contract.py",
+    "tools/persym_baseline_campaign.py",
+    "tools/param_matrix_daemon.py",
+    "tools/param_results_store.py",
 ]
 
 # Extreme-stop packs (user 2026-07-18): channel/band extremes as the ONLY stop,
@@ -485,6 +489,23 @@ def run_symbol(
     cell_dir.mkdir(parents=True, exist_ok=True)
     jsonl = cell_dir / f"cell__{sym}.jsonl"
     result_file = cell_dir / f"v8result__{sym}.txt"
+    if require_matrix_contract and jsonl.exists():
+        prior = load_matrix_run_audit(cell_tag, sym)
+        expected_fp = matrix_contract_fingerprint(sym, side)
+        if not prior or prior.get("contract_fingerprint") != expected_fp:
+            # Preserve, but never reuse, a cache from another code/NPZ contract.  The old
+            # runner reused identical tags after source repairs and silently relabelled stale
+            # trades as current.  PID+nanosecond suffix keeps concurrent evidence recoverable.
+            suffix = f".contract_mismatch.{os.getpid()}.{time.time_ns()}"
+            for stale in (
+                jsonl,
+                result_file,
+                cell_dir / f"audit__{sym}.json",
+                cell_dir / f"stamp__{sym}.txt",
+                cell_dir / f"override__{sym}.json",
+            ):
+                if stale.exists():
+                    stale.rename(stale.with_name(stale.name + suffix))
     if not jsonl.exists():
         while free_mb() < min_avail:
             time.sleep(30)

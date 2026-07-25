@@ -1,0 +1,2668 @@
+{
+  "accepted_rows": 13698,
+  "by_position_side": {
+    "LONG": {
+      "equal_weight_mean_return_pct": -2.337327,
+      "equal_weight_median_return_pct": -0.039854,
+      "n_source_accounts": 67,
+      "n_symbols": 117,
+      "n_trades": 7659,
+      "raw_pnl_usd_context_only": -813930.5257,
+      "total_notional_usd": 38628608.3,
+      "win_rate_pct": 49.5104
+    },
+    "SHORT": {
+      "equal_weight_mean_return_pct": 1.239292,
+      "equal_weight_median_return_pct": 0.282296,
+      "n_source_accounts": 59,
+      "n_symbols": 140,
+      "n_trades": 6039,
+      "raw_pnl_usd_context_only": 154969.3789,
+      "total_notional_usd": 45560354.31,
+      "win_rate_pct": 57.9401
+    }
+  },
+  "by_symbol_position_side": {
+    "1000BONKUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 21.720983,
+      "equal_weight_median_return_pct": 21.720983,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 21.3713,
+      "total_notional_usd": 98.39,
+      "win_rate_pct": 100.0
+    },
+    "1000SATSUSDT:LONG": {
+      "equal_weight_mean_return_pct": 9.045097,
+      "equal_weight_median_return_pct": 9.045097,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 121.2433,
+      "total_notional_usd": 1340.43,
+      "win_rate_pct": 100.0
+    },
+    "4USDT:LONG": {
+      "equal_weight_mean_return_pct": -13.776371,
+      "equal_weight_median_return_pct": -13.776371,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -6.53,
+      "total_notional_usd": 47.4,
+      "win_rate_pct": 0.0
+    },
+    "4USDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.519146,
+      "equal_weight_median_return_pct": 1.87041,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 18,
+      "raw_pnl_usd_context_only": -26.8353,
+      "total_notional_usd": 571.31,
+      "win_rate_pct": 55.5556
+    },
+    "AAOIUSDT:LONG": {
+      "equal_weight_mean_return_pct": 6.20647,
+      "equal_weight_median_return_pct": 8.020203,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 1.591,
+      "total_notional_usd": 31.5,
+      "win_rate_pct": 60.0
+    },
+    "AAPLUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.566603,
+      "equal_weight_median_return_pct": 1.504961,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 9.5879,
+      "total_notional_usd": 654.51,
+      "win_rate_pct": 100.0
+    },
+    "AAVEUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.326067,
+      "equal_weight_median_return_pct": 0.910552,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 179,
+      "raw_pnl_usd_context_only": 1003.85,
+      "total_notional_usd": 54114.15,
+      "win_rate_pct": 52.514
+    },
+    "AAVEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.042366,
+      "equal_weight_median_return_pct": -2.758328,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -2.189,
+      "total_notional_usd": 79.8,
+      "win_rate_pct": 33.3333
+    },
+    "ACEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 24.216524,
+      "equal_weight_median_return_pct": 24.216524,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 2.4215,
+      "total_notional_usd": 10.0,
+      "win_rate_pct": 100.0
+    },
+    "ADAUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.844657,
+      "equal_weight_median_return_pct": -6.004558,
+      "n_source_accounts": 8,
+      "n_symbols": 1,
+      "n_trades": 128,
+      "raw_pnl_usd_context_only": -9012.6452,
+      "total_notional_usd": 40725.73,
+      "win_rate_pct": 21.0938
+    },
+    "ADAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.997802,
+      "equal_weight_median_return_pct": 1.104261,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 124,
+      "raw_pnl_usd_context_only": 39.2937,
+      "total_notional_usd": 3230.79,
+      "win_rate_pct": 73.3871
+    },
+    "AEROUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -29.056437,
+      "equal_weight_median_return_pct": -29.056437,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -19.4506,
+      "total_notional_usd": 63.7,
+      "win_rate_pct": 0.0
+    },
+    "ALGOUSDT:LONG": {
+      "equal_weight_mean_return_pct": -16.562415,
+      "equal_weight_median_return_pct": -16.562415,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -132.8452,
+      "total_notional_usd": 407.04,
+      "win_rate_pct": 50.0
+    },
+    "ALGOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.483915,
+      "equal_weight_median_return_pct": 2.002818,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 58,
+      "raw_pnl_usd_context_only": 31.1986,
+      "total_notional_usd": 2265.62,
+      "win_rate_pct": 70.6897
+    },
+    "ALICEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.629847,
+      "equal_weight_median_return_pct": 10.970766,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": 3.4524,
+      "total_notional_usd": 39.96,
+      "win_rate_pct": 75.0
+    },
+    "ALLOUSDT:LONG": {
+      "equal_weight_mean_return_pct": -4.337064,
+      "equal_weight_median_return_pct": -4.337064,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -4.2647,
+      "total_notional_usd": 98.33,
+      "win_rate_pct": 0.0
+    },
+    "ALLOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -3.043549,
+      "equal_weight_median_return_pct": -9.93404,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 7,
+      "raw_pnl_usd_context_only": -30.4376,
+      "total_notional_usd": 438.59,
+      "win_rate_pct": 28.5714
+    },
+    "APEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 16.954013,
+      "equal_weight_median_return_pct": 15.295779,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 3060.8997,
+      "total_notional_usd": 20662.71,
+      "win_rate_pct": 100.0
+    },
+    "API3USDT:LONG": {
+      "equal_weight_mean_return_pct": 0.710667,
+      "equal_weight_median_return_pct": 0.550964,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 10.6595,
+      "total_notional_usd": 1499.94,
+      "win_rate_pct": 100.0
+    },
+    "APRUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 14.44611,
+      "equal_weight_median_return_pct": 13.431892,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": 177.2001,
+      "total_notional_usd": 703.87,
+      "win_rate_pct": 100.0
+    },
+    "APTUSDT:LONG": {
+      "equal_weight_mean_return_pct": -18.165717,
+      "equal_weight_median_return_pct": -0.105399,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": -520.6192,
+      "total_notional_usd": 4923.16,
+      "win_rate_pct": 50.0
+    },
+    "ARBUSDT:LONG": {
+      "equal_weight_mean_return_pct": -9.637798,
+      "equal_weight_median_return_pct": -13.219144,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 148,
+      "raw_pnl_usd_context_only": -467.0485,
+      "total_notional_usd": 2246.85,
+      "win_rate_pct": 28.3784
+    },
+    "ARBUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 9.079289,
+      "equal_weight_median_return_pct": 9.220532,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 67,
+      "raw_pnl_usd_context_only": 50.47,
+      "total_notional_usd": 593.69,
+      "win_rate_pct": 95.5224
+    },
+    "ARCUSDT:LONG": {
+      "equal_weight_mean_return_pct": 5.538915,
+      "equal_weight_median_return_pct": 5.538915,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 1.0896,
+      "total_notional_usd": 19.67,
+      "win_rate_pct": 100.0
+    },
+    "ARCUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 15.020302,
+      "equal_weight_median_return_pct": 10.851264,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": 777.5469,
+      "total_notional_usd": 10540.75,
+      "win_rate_pct": 77.7778
+    },
+    "ARKMUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.038306,
+      "equal_weight_median_return_pct": 0.16129,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 25.9826,
+      "total_notional_usd": 1464.83,
+      "win_rate_pct": 66.6667
+    },
+    "ARKMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.487212,
+      "equal_weight_median_return_pct": 8.487212,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 5.2687,
+      "total_notional_usd": 62.08,
+      "win_rate_pct": 100.0
+    },
+    "ARMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.972565,
+      "equal_weight_median_return_pct": 10.37561,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 147.386,
+      "total_notional_usd": 1268.14,
+      "win_rate_pct": 100.0
+    },
+    "ARQQUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.50012,
+      "equal_weight_median_return_pct": 8.50012,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 8.4802,
+      "total_notional_usd": 99.77,
+      "win_rate_pct": 100.0
+    },
+    "ARUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.603774,
+      "equal_weight_median_return_pct": -3.116391,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 170,
+      "raw_pnl_usd_context_only": 117.5667,
+      "total_notional_usd": 21994.52,
+      "win_rate_pct": 24.7059
+    },
+    "ARUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 9.606061,
+      "equal_weight_median_return_pct": 9.606061,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 8.6541,
+      "total_notional_usd": 90.09,
+      "win_rate_pct": 100.0
+    },
+    "ASTERUSDT:LONG": {
+      "equal_weight_mean_return_pct": -2.91315,
+      "equal_weight_median_return_pct": -2.91315,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -2.8462,
+      "total_notional_usd": 97.7,
+      "win_rate_pct": 0.0
+    },
+    "ATOMUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.588804,
+      "equal_weight_median_return_pct": 0.588804,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 0.1678,
+      "total_notional_usd": 21.61,
+      "win_rate_pct": 100.0
+    },
+    "ATUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.558603,
+      "equal_weight_median_return_pct": -1.558603,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.5575,
+      "total_notional_usd": 99.93,
+      "win_rate_pct": 0.0
+    },
+    "AVAXUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.300638,
+      "equal_weight_median_return_pct": 0.058053,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 24,
+      "raw_pnl_usd_context_only": 52.2909,
+      "total_notional_usd": 7674.62,
+      "win_rate_pct": 50.0
+    },
+    "AVAXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.023806,
+      "equal_weight_median_return_pct": -2.056626,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 20,
+      "raw_pnl_usd_context_only": -25.1982,
+      "total_notional_usd": 1450.37,
+      "win_rate_pct": 30.0
+    },
+    "AXSUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.366386,
+      "equal_weight_median_return_pct": -0.487498,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 68,
+      "raw_pnl_usd_context_only": -3.5048,
+      "total_notional_usd": 1199.28,
+      "win_rate_pct": 35.2941
+    },
+    "AXSUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.570051,
+      "equal_weight_median_return_pct": -0.968367,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": -100.3595,
+      "total_notional_usd": 4203.01,
+      "win_rate_pct": 0.0
+    },
+    "BABYUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.011225,
+      "equal_weight_median_return_pct": 2.011225,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.43,
+      "total_notional_usd": 21.38,
+      "win_rate_pct": 100.0
+    },
+    "BANUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 22.388732,
+      "equal_weight_median_return_pct": 22.388732,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 2.273,
+      "total_notional_usd": 10.17,
+      "win_rate_pct": 100.0
+    },
+    "BASEDUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.984032,
+      "equal_weight_median_return_pct": -1.984032,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -41.7613,
+      "total_notional_usd": 2135.8,
+      "win_rate_pct": 0.0
+    },
+    "BASEDUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.264787,
+      "equal_weight_median_return_pct": 0.245603,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 18,
+      "raw_pnl_usd_context_only": -131.4448,
+      "total_notional_usd": 43044.56,
+      "win_rate_pct": 55.5556
+    },
+    "BCHUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.287495,
+      "equal_weight_median_return_pct": -0.283849,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 167.5779,
+      "total_notional_usd": 5693.0,
+      "win_rate_pct": 40.0
+    },
+    "BCHUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.569881,
+      "equal_weight_median_return_pct": 0.286478,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": 2.8134,
+      "total_notional_usd": 300.37,
+      "win_rate_pct": 66.6667
+    },
+    "BEATUSDT:LONG": {
+      "equal_weight_mean_return_pct": 3.973592,
+      "equal_weight_median_return_pct": -4.739725,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 7,
+      "raw_pnl_usd_context_only": -28.4442,
+      "total_notional_usd": 6020.33,
+      "win_rate_pct": 28.5714
+    },
+    "BEATUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.811163,
+      "equal_weight_median_return_pct": 0.017185,
+      "n_source_accounts": 6,
+      "n_symbols": 1,
+      "n_trades": 21,
+      "raw_pnl_usd_context_only": -85.7565,
+      "total_notional_usd": 27890.51,
+      "win_rate_pct": 52.381
+    },
+    "BERAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -44.925543,
+      "equal_weight_median_return_pct": -44.925543,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -198.4902,
+      "total_notional_usd": 438.27,
+      "win_rate_pct": 0.0
+    },
+    "BGBUSDT:LONG": {
+      "equal_weight_mean_return_pct": -5.623395,
+      "equal_weight_median_return_pct": -0.050831,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 11,
+      "raw_pnl_usd_context_only": -850.9557,
+      "total_notional_usd": 9966.87,
+      "win_rate_pct": 36.3636
+    },
+    "BGBUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.59378,
+      "equal_weight_median_return_pct": -0.026601,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": -80.9272,
+      "total_notional_usd": 3335.34,
+      "win_rate_pct": 50.0
+    },
+    "BNBUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.613054,
+      "equal_weight_median_return_pct": -0.403717,
+      "n_source_accounts": 6,
+      "n_symbols": 1,
+      "n_trades": 22,
+      "raw_pnl_usd_context_only": -132940.7941,
+      "total_notional_usd": 535867.13,
+      "win_rate_pct": 45.4545
+    },
+    "BNBUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.37258,
+      "equal_weight_median_return_pct": -0.304277,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 21,
+      "raw_pnl_usd_context_only": -3.3746,
+      "total_notional_usd": 4336.06,
+      "win_rate_pct": 38.0952
+    },
+    "BRETTUSDT:LONG": {
+      "equal_weight_mean_return_pct": -31.023662,
+      "equal_weight_median_return_pct": -32.218095,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -4539.7942,
+      "total_notional_usd": 14414.97,
+      "win_rate_pct": 0.0
+    },
+    "BRUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.702676,
+      "equal_weight_median_return_pct": -0.702676,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -0.2415,
+      "total_notional_usd": 34.37,
+      "win_rate_pct": 0.0
+    },
+    "BRUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -60.463678,
+      "equal_weight_median_return_pct": -21.266452,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": -15.256,
+      "total_notional_usd": 25.15,
+      "win_rate_pct": 0.0
+    },
+    "BTCUSD:LONG": {
+      "equal_weight_mean_return_pct": -0.115842,
+      "equal_weight_median_return_pct": 1.549296,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 23,
+      "raw_pnl_usd_context_only": 30252.8127,
+      "total_notional_usd": 1292288.06,
+      "win_rate_pct": 60.8696
+    },
+    "BTCUSD:SHORT": {
+      "equal_weight_mean_return_pct": 3.369551,
+      "equal_weight_median_return_pct": 2.338771,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 10,
+      "raw_pnl_usd_context_only": 14594.2938,
+      "total_notional_usd": 520083.19,
+      "win_rate_pct": 90.0
+    },
+    "BTCUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.530216,
+      "equal_weight_median_return_pct": 0.134103,
+      "n_source_accounts": 46,
+      "n_symbols": 1,
+      "n_trades": 976,
+      "raw_pnl_usd_context_only": -526371.3288,
+      "total_notional_usd": 19736429.59,
+      "win_rate_pct": 55.8402
+    },
+    "BTCUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.632828,
+      "equal_weight_median_return_pct": 0.267332,
+      "n_source_accounts": 35,
+      "n_symbols": 1,
+      "n_trades": 668,
+      "raw_pnl_usd_context_only": 127468.7344,
+      "total_notional_usd": 27098909.57,
+      "win_rate_pct": 68.8623
+    },
+    "C98USDT:SHORT": {
+      "equal_weight_mean_return_pct": 7.28624,
+      "equal_weight_median_return_pct": 6.533333,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 35.3632,
+      "total_notional_usd": 475.39,
+      "win_rate_pct": 100.0
+    },
+    "CAKEUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.015017,
+      "equal_weight_median_return_pct": -0.798888,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": -214.8449,
+      "total_notional_usd": 23827.95,
+      "win_rate_pct": 0.0
+    },
+    "CAKEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.882544,
+      "equal_weight_median_return_pct": 8.882544,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 5.1902,
+      "total_notional_usd": 58.41,
+      "win_rate_pct": 100.0
+    },
+    "CHILLGUYUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.61761,
+      "equal_weight_median_return_pct": 0.627571,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": 2.8483,
+      "total_notional_usd": 417.59,
+      "win_rate_pct": 100.0
+    },
+    "CHZUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.376759,
+      "equal_weight_median_return_pct": 0.544811,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 16,
+      "raw_pnl_usd_context_only": 2.8715,
+      "total_notional_usd": 843.0,
+      "win_rate_pct": 87.5
+    },
+    "CLOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -5.714405,
+      "equal_weight_median_return_pct": -5.714405,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -130.696,
+      "total_notional_usd": 3246.68,
+      "win_rate_pct": 50.0
+    },
+    "COINUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.197776,
+      "equal_weight_median_return_pct": -1.197776,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -46.8628,
+      "total_notional_usd": 3912.48,
+      "win_rate_pct": 0.0
+    },
+    "COSTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -5.206068,
+      "equal_weight_median_return_pct": -5.206068,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -10.1558,
+      "total_notional_usd": 195.08,
+      "win_rate_pct": 0.0
+    },
+    "CYBERUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.209351,
+      "equal_weight_median_return_pct": 0.209351,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.0105,
+      "total_notional_usd": 5.02,
+      "win_rate_pct": 100.0
+    },
+    "DENTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 4.202545,
+      "equal_weight_median_return_pct": 4.202545,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 20.6812,
+      "total_notional_usd": 492.11,
+      "win_rate_pct": 100.0
+    },
+    "DEXEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.149518,
+      "equal_weight_median_return_pct": 1.896919,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 3.2831,
+      "total_notional_usd": 197.19,
+      "win_rate_pct": 66.6667
+    },
+    "DEXEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.476362,
+      "equal_weight_median_return_pct": 0.105471,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 18.2085,
+      "total_notional_usd": 841.68,
+      "win_rate_pct": 80.0
+    },
+    "DOGEUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.996175,
+      "equal_weight_median_return_pct": 0.0,
+      "n_source_accounts": 10,
+      "n_symbols": 1,
+      "n_trades": 486,
+      "raw_pnl_usd_context_only": -14872.3844,
+      "total_notional_usd": 135254.02,
+      "win_rate_pct": 49.7942
+    },
+    "DOGEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.864051,
+      "equal_weight_median_return_pct": 2.287874,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 165,
+      "raw_pnl_usd_context_only": 58.4903,
+      "total_notional_usd": 6040.46,
+      "win_rate_pct": 70.9091
+    },
+    "DOTUSDT:LONG": {
+      "equal_weight_mean_return_pct": -8.321099,
+      "equal_weight_median_return_pct": -3.076923,
+      "n_source_accounts": 6,
+      "n_symbols": 1,
+      "n_trades": 23,
+      "raw_pnl_usd_context_only": 203.053,
+      "total_notional_usd": 7406.72,
+      "win_rate_pct": 26.087
+    },
+    "DOTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.120719,
+      "equal_weight_median_return_pct": -3.003247,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 13,
+      "raw_pnl_usd_context_only": -19.184,
+      "total_notional_usd": 689.66,
+      "win_rate_pct": 38.4615
+    },
+    "DRAMUSDT:LONG": {
+      "equal_weight_mean_return_pct": 10.737708,
+      "equal_weight_median_return_pct": 9.517029,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 8,
+      "raw_pnl_usd_context_only": 4.565,
+      "total_notional_usd": 43.03,
+      "win_rate_pct": 100.0
+    },
+    "DYDXUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.048107,
+      "equal_weight_median_return_pct": 1.618581,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 257,
+      "raw_pnl_usd_context_only": -1653.9929,
+      "total_notional_usd": 66272.42,
+      "win_rate_pct": 54.0856
+    },
+    "DYDXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.018167,
+      "equal_weight_median_return_pct": 1.018167,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 1.0172,
+      "total_notional_usd": 99.91,
+      "win_rate_pct": 100.0
+    },
+    "EDGEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.282349,
+      "equal_weight_median_return_pct": -1.203481,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": -43.5634,
+      "total_notional_usd": 5490.09,
+      "win_rate_pct": 50.0
+    },
+    "EGLDUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.770631,
+      "equal_weight_median_return_pct": 1.770631,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 54.3428,
+      "total_notional_usd": 3069.12,
+      "win_rate_pct": 100.0
+    },
+    "ENAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 13.72577,
+      "equal_weight_median_return_pct": 13.72577,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 5.6875,
+      "total_notional_usd": 41.44,
+      "win_rate_pct": 100.0
+    },
+    "ENSOUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.418411,
+      "equal_weight_median_return_pct": -2.986745,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -2.3361,
+      "total_notional_usd": 94.45,
+      "win_rate_pct": 33.3333
+    },
+    "ENSOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.003559,
+      "equal_weight_median_return_pct": 2.003559,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 31.4154,
+      "total_notional_usd": 1567.98,
+      "win_rate_pct": 100.0
+    },
+    "ETHUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.699429,
+      "equal_weight_median_return_pct": 0.278129,
+      "n_source_accounts": 28,
+      "n_symbols": 1,
+      "n_trades": 751,
+      "raw_pnl_usd_context_only": -43978.2554,
+      "total_notional_usd": 11626748.69,
+      "win_rate_pct": 59.1212
+    },
+    "ETHUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.410219,
+      "equal_weight_median_return_pct": -0.023191,
+      "n_source_accounts": 23,
+      "n_symbols": 1,
+      "n_trades": 1793,
+      "raw_pnl_usd_context_only": 13611.7232,
+      "total_notional_usd": 15093172.53,
+      "win_rate_pct": 48.7451
+    },
+    "EWYUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.235133,
+      "equal_weight_median_return_pct": 3.235133,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 430.1614,
+      "total_notional_usd": 13296.56,
+      "win_rate_pct": 100.0
+    },
+    "FARTCOINUSDT:LONG": {
+      "equal_weight_mean_return_pct": -13.398187,
+      "equal_weight_median_return_pct": -15.29417,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 160,
+      "raw_pnl_usd_context_only": -266.7696,
+      "total_notional_usd": 2379.07,
+      "win_rate_pct": 24.375
+    },
+    "FARTCOINUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 4.312866,
+      "equal_weight_median_return_pct": 4.902935,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 84,
+      "raw_pnl_usd_context_only": 898.8936,
+      "total_notional_usd": 50249.11,
+      "win_rate_pct": 64.2857
+    },
+    "FETUSDT:LONG": {
+      "equal_weight_mean_return_pct": -85.21733,
+      "equal_weight_median_return_pct": -85.21733,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -753.6048,
+      "total_notional_usd": 884.33,
+      "win_rate_pct": 0.0
+    },
+    "FIDAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.712311,
+      "equal_weight_median_return_pct": -4.712311,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -65.9339,
+      "total_notional_usd": 1399.18,
+      "win_rate_pct": 0.0
+    },
+    "FILUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.557606,
+      "equal_weight_median_return_pct": -1.912358,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 10,
+      "raw_pnl_usd_context_only": 2.6079,
+      "total_notional_usd": 51320.96,
+      "win_rate_pct": 20.0
+    },
+    "FLUIDUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 19.822162,
+      "equal_weight_median_return_pct": 19.822162,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 528.776,
+      "total_notional_usd": 2667.6,
+      "win_rate_pct": 100.0
+    },
+    "GASUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.039825,
+      "equal_weight_median_return_pct": -2.039825,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -2.037,
+      "total_notional_usd": 99.86,
+      "win_rate_pct": 0.0
+    },
+    "GMTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.497006,
+      "equal_weight_median_return_pct": 1.497006,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.2,
+      "total_notional_usd": 13.36,
+      "win_rate_pct": 100.0
+    },
+    "GRAMUSDT:LONG": {
+      "equal_weight_mean_return_pct": 3.520253,
+      "equal_weight_median_return_pct": 3.520253,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 6.2373,
+      "total_notional_usd": 177.18,
+      "win_rate_pct": 100.0
+    },
+    "GRAMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 7.064228,
+      "equal_weight_median_return_pct": 7.064228,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 3.3904,
+      "total_notional_usd": 47.99,
+      "win_rate_pct": 100.0
+    },
+    "GRASSUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.517544,
+      "equal_weight_median_return_pct": -0.992881,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 33,
+      "raw_pnl_usd_context_only": -14.4035,
+      "total_notional_usd": 1525.73,
+      "win_rate_pct": 9.0909
+    },
+    "GRTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.01833,
+      "equal_weight_median_return_pct": 1.01833,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 30.0557,
+      "total_notional_usd": 2951.46,
+      "win_rate_pct": 100.0
+    },
+    "HBARUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.825107,
+      "equal_weight_median_return_pct": -1.079451,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 288,
+      "raw_pnl_usd_context_only": -87.7437,
+      "total_notional_usd": 5125.6,
+      "win_rate_pct": 43.75
+    },
+    "HBARUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.781922,
+      "equal_weight_median_return_pct": 5.183794,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 153,
+      "raw_pnl_usd_context_only": 44.1575,
+      "total_notional_usd": 3448.53,
+      "win_rate_pct": 66.6667
+    },
+    "HIPPOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 5.397146,
+      "equal_weight_median_return_pct": 5.397146,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 57.4369,
+      "total_notional_usd": 1064.21,
+      "win_rate_pct": 100.0
+    },
+    "HYPEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.983057,
+      "equal_weight_median_return_pct": 1.967671,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 98,
+      "raw_pnl_usd_context_only": -102.6111,
+      "total_notional_usd": 15124.33,
+      "win_rate_pct": 63.2653
+    },
+    "HYPEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.603995,
+      "equal_weight_median_return_pct": -0.296571,
+      "n_source_accounts": 7,
+      "n_symbols": 1,
+      "n_trades": 133,
+      "raw_pnl_usd_context_only": 548.9156,
+      "total_notional_usd": 15052.72,
+      "win_rate_pct": 39.0977
+    },
+    "ICPUSDT:LONG": {
+      "equal_weight_mean_return_pct": -2.637014,
+      "equal_weight_median_return_pct": -0.399242,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 354,
+      "raw_pnl_usd_context_only": -13862.5022,
+      "total_notional_usd": 91998.32,
+      "win_rate_pct": 46.0452
+    },
+    "ICPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.821314,
+      "equal_weight_median_return_pct": -1.821314,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -5.2145,
+      "total_notional_usd": 507.28,
+      "win_rate_pct": 0.0
+    },
+    "INJUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -3.80761,
+      "equal_weight_median_return_pct": -1.415616,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 11,
+      "raw_pnl_usd_context_only": -82.5162,
+      "total_notional_usd": 4447.11,
+      "win_rate_pct": 0.0
+    },
+    "INTCUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.113015,
+      "equal_weight_median_return_pct": -0.154189,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": -2.6561,
+      "total_notional_usd": 96.15,
+      "win_rate_pct": 44.4444
+    },
+    "IPUSDT:LONG": {
+      "equal_weight_mean_return_pct": -18.846834,
+      "equal_weight_median_return_pct": -18.846834,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -649.2168,
+      "total_notional_usd": 3444.7,
+      "win_rate_pct": 0.0
+    },
+    "JASMYUSDT:LONG": {
+      "equal_weight_mean_return_pct": -9.785254,
+      "equal_weight_median_return_pct": -6.774194,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 205,
+      "raw_pnl_usd_context_only": -333.2473,
+      "total_notional_usd": 3217.29,
+      "win_rate_pct": 28.2927
+    },
+    "JASMYUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 5.037522,
+      "equal_weight_median_return_pct": 4.422442,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 89,
+      "raw_pnl_usd_context_only": 45.6157,
+      "total_notional_usd": 952.5,
+      "win_rate_pct": 87.6404
+    },
+    "JCTUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.067669,
+      "equal_weight_median_return_pct": 0.067669,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -0.0381,
+      "total_notional_usd": 15.7,
+      "win_rate_pct": 50.0
+    },
+    "JCTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.669807,
+      "equal_weight_median_return_pct": 1.865672,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": -51.3283,
+      "total_notional_usd": 3354.94,
+      "win_rate_pct": 88.8889
+    },
+    "JOEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.158519,
+      "equal_weight_median_return_pct": 1.268116,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 3.097,
+      "total_notional_usd": 203.35,
+      "win_rate_pct": 100.0
+    },
+    "JTOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.683307,
+      "equal_weight_median_return_pct": 2.683307,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.1376,
+      "total_notional_usd": 5.13,
+      "win_rate_pct": 100.0
+    },
+    "JUPUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.1101,
+      "equal_weight_median_return_pct": -0.827878,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 180,
+      "raw_pnl_usd_context_only": -2794.8114,
+      "total_notional_usd": 9526.46,
+      "win_rate_pct": 49.4444
+    },
+    "JUPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.795221,
+      "equal_weight_median_return_pct": 2.570829,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 163,
+      "raw_pnl_usd_context_only": 22.355,
+      "total_notional_usd": 2055.29,
+      "win_rate_pct": 57.0552
+    },
+    "KASUSDT:LONG": {
+      "equal_weight_mean_return_pct": -16.420834,
+      "equal_weight_median_return_pct": 1.304303,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -929.7288,
+      "total_notional_usd": 1863.18,
+      "win_rate_pct": 66.6667
+    },
+    "KASUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.884505,
+      "equal_weight_median_return_pct": 2.884505,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 7.4055,
+      "total_notional_usd": 299.98,
+      "win_rate_pct": 100.0
+    },
+    "KATUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.297199,
+      "equal_weight_median_return_pct": -2.297199,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -20.3779,
+      "total_notional_usd": 887.08,
+      "win_rate_pct": 0.0
+    },
+    "KAVAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.930005,
+      "equal_weight_median_return_pct": -2.930005,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.1457,
+      "total_notional_usd": 39.1,
+      "win_rate_pct": 0.0
+    },
+    "KERNELUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.306182,
+      "equal_weight_median_return_pct": -2.306182,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -0.8721,
+      "total_notional_usd": 33.88,
+      "win_rate_pct": 0.0
+    },
+    "KITEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.616006,
+      "equal_weight_median_return_pct": 8.119617,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 13,
+      "raw_pnl_usd_context_only": 604.8393,
+      "total_notional_usd": 13550.18,
+      "win_rate_pct": 76.9231
+    },
+    "KORUUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.117881,
+      "equal_weight_median_return_pct": -2.068715,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 10,
+      "raw_pnl_usd_context_only": -4834.5096,
+      "total_notional_usd": 99684.02,
+      "win_rate_pct": 40.0
+    },
+    "KSMUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.023361,
+      "equal_weight_median_return_pct": -1.023361,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -0.3776,
+      "total_notional_usd": 33.52,
+      "win_rate_pct": 0.0
+    },
+    "LABUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.342297,
+      "equal_weight_median_return_pct": 0.372625,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": -10.2407,
+      "total_notional_usd": 915.28,
+      "win_rate_pct": 80.0
+    },
+    "LABUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.464575,
+      "equal_weight_median_return_pct": 5.139289,
+      "n_source_accounts": 7,
+      "n_symbols": 1,
+      "n_trades": 17,
+      "raw_pnl_usd_context_only": 17.8852,
+      "total_notional_usd": 10719.16,
+      "win_rate_pct": 70.5882
+    },
+    "LIGHTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.884283,
+      "equal_weight_median_return_pct": -1.884283,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.8785,
+      "total_notional_usd": 99.69,
+      "win_rate_pct": 0.0
+    },
+    "LINKUSDT:LONG": {
+      "equal_weight_mean_return_pct": -3.770906,
+      "equal_weight_median_return_pct": -1.037277,
+      "n_source_accounts": 8,
+      "n_symbols": 1,
+      "n_trades": 191,
+      "raw_pnl_usd_context_only": -7375.148,
+      "total_notional_usd": 24977.11,
+      "win_rate_pct": 44.5026
+    },
+    "LINKUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.912978,
+      "equal_weight_median_return_pct": 1.021168,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 129,
+      "raw_pnl_usd_context_only": 46.017,
+      "total_notional_usd": 3058.75,
+      "win_rate_pct": 75.969
+    },
+    "LITEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.019212,
+      "equal_weight_median_return_pct": -0.214533,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 0.2617,
+      "total_notional_usd": 26.81,
+      "win_rate_pct": 33.3333
+    },
+    "LQTYUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 11.914286,
+      "equal_weight_median_return_pct": 11.914286,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 5.9548,
+      "total_notional_usd": 49.98,
+      "win_rate_pct": 100.0
+    },
+    "LTCUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.370994,
+      "equal_weight_median_return_pct": -0.035657,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": -19.057,
+      "total_notional_usd": 1644.17,
+      "win_rate_pct": 44.4444
+    },
+    "LTCUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.264429,
+      "equal_weight_median_return_pct": -0.633809,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": -1.272,
+      "total_notional_usd": 344.75,
+      "win_rate_pct": 50.0
+    },
+    "LUNAUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.607449,
+      "equal_weight_median_return_pct": -6.607449,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -0.7844,
+      "total_notional_usd": 11.87,
+      "win_rate_pct": 0.0
+    },
+    "LUNCUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.360648,
+      "equal_weight_median_return_pct": 1.945933,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 194,
+      "raw_pnl_usd_context_only": 1335.9083,
+      "total_notional_usd": 61560.06,
+      "win_rate_pct": 75.7732
+    },
+    "LUNCUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.643402,
+      "equal_weight_median_return_pct": 1.070964,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 8,
+      "raw_pnl_usd_context_only": 11.4634,
+      "total_notional_usd": 1129.93,
+      "win_rate_pct": 87.5
+    },
+    "MAGMAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.488428,
+      "equal_weight_median_return_pct": 2.488428,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.4967,
+      "total_notional_usd": 19.96,
+      "win_rate_pct": 100.0
+    },
+    "MAGMAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.065377,
+      "equal_weight_median_return_pct": 2.065377,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.1262,
+      "total_notional_usd": 6.11,
+      "win_rate_pct": 100.0
+    },
+    "MANAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 6.155508,
+      "equal_weight_median_return_pct": 6.155508,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 305.9475,
+      "total_notional_usd": 4970.31,
+      "win_rate_pct": 100.0
+    },
+    "MELANIAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 10.000801,
+      "equal_weight_median_return_pct": 9.174312,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": -96.6672,
+      "total_notional_usd": 2229.34,
+      "win_rate_pct": 88.8889
+    },
+    "MEMEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 15.107265,
+      "equal_weight_median_return_pct": 15.107265,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 520.412,
+      "total_notional_usd": 3444.78,
+      "win_rate_pct": 100.0
+    },
+    "METAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.009593,
+      "equal_weight_median_return_pct": 0.009593,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.0385,
+      "total_notional_usd": 401.33,
+      "win_rate_pct": 100.0
+    },
+    "METAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.359182,
+      "equal_weight_median_return_pct": -0.009595,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": -1.3296,
+      "total_notional_usd": 439.39,
+      "win_rate_pct": 50.0
+    },
+    "MRVLUSDT:LONG": {
+      "equal_weight_mean_return_pct": 7.077185,
+      "equal_weight_median_return_pct": 7.829454,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 1.2737,
+      "total_notional_usd": 26.85,
+      "win_rate_pct": 66.6667
+    },
+    "MSFTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.289337,
+      "equal_weight_median_return_pct": 6.289337,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 15.9932,
+      "total_notional_usd": 253.78,
+      "win_rate_pct": 100.0
+    },
+    "MSTRUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.271424,
+      "equal_weight_median_return_pct": 2.271424,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.317,
+      "total_notional_usd": 13.96,
+      "win_rate_pct": 100.0
+    },
+    "MUBARAKUSDT:LONG": {
+      "equal_weight_mean_return_pct": 3.501104,
+      "equal_weight_median_return_pct": 3.501104,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 102.5238,
+      "total_notional_usd": 2928.33,
+      "win_rate_pct": 100.0
+    },
+    "MUBARAKUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.672481,
+      "equal_weight_median_return_pct": 8.672481,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.537,
+      "total_notional_usd": 6.19,
+      "win_rate_pct": 100.0
+    },
+    "MUUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 8.707526,
+      "equal_weight_median_return_pct": 9.007046,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 30,
+      "raw_pnl_usd_context_only": 2409.6724,
+      "total_notional_usd": 37408.42,
+      "win_rate_pct": 96.6667
+    },
+    "MYXUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.533978,
+      "equal_weight_median_return_pct": -6.533978,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -63.7523,
+      "total_notional_usd": 975.7,
+      "win_rate_pct": 0.0
+    },
+    "MYXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 9.590843,
+      "equal_weight_median_return_pct": 8.537482,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 188.8764,
+      "total_notional_usd": 2441.29,
+      "win_rate_pct": 100.0
+    },
+    "NATGASUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.982791,
+      "equal_weight_median_return_pct": -1.982791,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -136.2948,
+      "total_notional_usd": 6873.89,
+      "win_rate_pct": 0.0
+    },
+    "NATGASUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.984883,
+      "equal_weight_median_return_pct": -0.889568,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -82.0392,
+      "total_notional_usd": 7979.69,
+      "win_rate_pct": 0.0
+    },
+    "NEARUSDT:LONG": {
+      "equal_weight_mean_return_pct": -21.820468,
+      "equal_weight_median_return_pct": -3.113886,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 18,
+      "raw_pnl_usd_context_only": -12147.9906,
+      "total_notional_usd": 21109.71,
+      "win_rate_pct": 27.7778
+    },
+    "NEARUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.791535,
+      "equal_weight_median_return_pct": -3.014227,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 11,
+      "raw_pnl_usd_context_only": -4.2479,
+      "total_notional_usd": 1208.33,
+      "win_rate_pct": 27.2727
+    },
+    "NILUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -12.95998,
+      "equal_weight_median_return_pct": -12.95998,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.318,
+      "total_notional_usd": 10.17,
+      "win_rate_pct": 0.0
+    },
+    "NOMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 10.995526,
+      "equal_weight_median_return_pct": 4.764513,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 171.945,
+      "total_notional_usd": 1143.98,
+      "win_rate_pct": 100.0
+    },
+    "NOTUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.360724,
+      "equal_weight_median_return_pct": -0.664327,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": 1.8601,
+      "total_notional_usd": 436.38,
+      "win_rate_pct": 16.6667
+    },
+    "NVDAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.339591,
+      "equal_weight_median_return_pct": 0.339591,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.0216,
+      "total_notional_usd": 6.36,
+      "win_rate_pct": 100.0
+    },
+    "NVDAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.332133,
+      "equal_weight_median_return_pct": 2.035727,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 11,
+      "raw_pnl_usd_context_only": 28.49,
+      "total_notional_usd": 2121.53,
+      "win_rate_pct": 72.7273
+    },
+    "OGNUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 17.397272,
+      "equal_weight_median_return_pct": 17.476341,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 2.8531,
+      "total_notional_usd": 16.38,
+      "win_rate_pct": 100.0
+    },
+    "ONDOUSDT:LONG": {
+      "equal_weight_mean_return_pct": -2.553815,
+      "equal_weight_median_return_pct": -1.464727,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 210,
+      "raw_pnl_usd_context_only": -482.9732,
+      "total_notional_usd": 5285.5,
+      "win_rate_pct": 46.6667
+    },
+    "ONDOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.295878,
+      "equal_weight_median_return_pct": 4.335579,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 190,
+      "raw_pnl_usd_context_only": 269.6173,
+      "total_notional_usd": 7221.04,
+      "win_rate_pct": 68.9474
+    },
+    "ONTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.68808,
+      "equal_weight_median_return_pct": -4.68808,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -377.3932,
+      "total_notional_usd": 3956.53,
+      "win_rate_pct": 50.0
+    },
+    "OPUSDT:LONG": {
+      "equal_weight_mean_return_pct": -3.089443,
+      "equal_weight_median_return_pct": -3.878745,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 146,
+      "raw_pnl_usd_context_only": -39.5069,
+      "total_notional_usd": 1626.12,
+      "win_rate_pct": 36.3014
+    },
+    "OPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.408275,
+      "equal_weight_median_return_pct": 1.088777,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 89,
+      "raw_pnl_usd_context_only": 21.31,
+      "total_notional_usd": 842.35,
+      "win_rate_pct": 66.2921
+    },
+    "ORCLUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.840251,
+      "equal_weight_median_return_pct": 0.840251,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 0.0948,
+      "total_notional_usd": 11.28,
+      "win_rate_pct": 100.0
+    },
+    "ORCLUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 7.025189,
+      "equal_weight_median_return_pct": 6.637189,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 21.3697,
+      "total_notional_usd": 299.06,
+      "win_rate_pct": 100.0
+    },
+    "PAXGUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.611445,
+      "equal_weight_median_return_pct": 2.079004,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 12,
+      "raw_pnl_usd_context_only": 1965.5897,
+      "total_notional_usd": 52859.1,
+      "win_rate_pct": 75.0
+    },
+    "PAXGUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.286443,
+      "equal_weight_median_return_pct": 2.286443,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 3586.1061,
+      "total_notional_usd": 165949.27,
+      "win_rate_pct": 100.0
+    },
+    "PENDLEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.3479,
+      "equal_weight_median_return_pct": 2.864323,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 46,
+      "raw_pnl_usd_context_only": 575.2126,
+      "total_notional_usd": 23153.68,
+      "win_rate_pct": 95.6522
+    },
+    "PENGUUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.827879,
+      "equal_weight_median_return_pct": -8.774968,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 129,
+      "raw_pnl_usd_context_only": -169.5878,
+      "total_notional_usd": 2898.66,
+      "win_rate_pct": 20.155
+    },
+    "PENGUUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.858983,
+      "equal_weight_median_return_pct": 8.463351,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 86,
+      "raw_pnl_usd_context_only": 95.0216,
+      "total_notional_usd": 1249.56,
+      "win_rate_pct": 81.3953
+    },
+    "PEOPLEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 4.726695,
+      "equal_weight_median_return_pct": 4.726695,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 162.7451,
+      "total_notional_usd": 3443.11,
+      "win_rate_pct": 100.0
+    },
+    "PEPEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.967008,
+      "equal_weight_median_return_pct": 0.774179,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 213,
+      "raw_pnl_usd_context_only": 2223.8002,
+      "total_notional_usd": 57649.88,
+      "win_rate_pct": 83.5681
+    },
+    "PEPEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.433374,
+      "equal_weight_median_return_pct": 0.48525,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 269,
+      "raw_pnl_usd_context_only": 227.5447,
+      "total_notional_usd": 12359.28,
+      "win_rate_pct": 87.7323
+    },
+    "PIEVERSEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 16.584597,
+      "equal_weight_median_return_pct": 12.072,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 27.602,
+      "total_notional_usd": 110.41,
+      "win_rate_pct": 100.0
+    },
+    "PIUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.574192,
+      "equal_weight_median_return_pct": -0.824905,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 10,
+      "raw_pnl_usd_context_only": -516.7483,
+      "total_notional_usd": 34782.39,
+      "win_rate_pct": 30.0
+    },
+    "PORTALUSDT:LONG": {
+      "equal_weight_mean_return_pct": -38.84511,
+      "equal_weight_median_return_pct": -46.923662,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 14,
+      "raw_pnl_usd_context_only": -4442.2653,
+      "total_notional_usd": 9143.13,
+      "win_rate_pct": 0.0
+    },
+    "POWERUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.830465,
+      "equal_weight_median_return_pct": -7.214951,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": -1.4385,
+      "total_notional_usd": 21.08,
+      "win_rate_pct": 25.0
+    },
+    "POWERUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.272876,
+      "equal_weight_median_return_pct": -2.782178,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 23,
+      "raw_pnl_usd_context_only": -1583.0456,
+      "total_notional_usd": 34220.4,
+      "win_rate_pct": 39.1304
+    },
+    "PROSUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.443201,
+      "equal_weight_median_return_pct": -1.560511,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 38,
+      "raw_pnl_usd_context_only": -3007.0671,
+      "total_notional_usd": 135953.14,
+      "win_rate_pct": 42.1053
+    },
+    "PROSUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.434539,
+      "equal_weight_median_return_pct": 1.606,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 24,
+      "raw_pnl_usd_context_only": 540.4492,
+      "total_notional_usd": 133618.58,
+      "win_rate_pct": 62.5
+    },
+    "PUMPUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.969697,
+      "equal_weight_median_return_pct": 2.969697,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 233.8275,
+      "total_notional_usd": 7873.78,
+      "win_rate_pct": 100.0
+    },
+    "PYTHUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.755324,
+      "equal_weight_median_return_pct": 1.901431,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 105.027,
+      "total_notional_usd": 5988.99,
+      "win_rate_pct": 100.0
+    },
+    "QQQUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.03152,
+      "equal_weight_median_return_pct": 1.65341,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": 30.2626,
+      "total_notional_usd": 1509.71,
+      "win_rate_pct": 75.0
+    },
+    "QTUMUSDT:LONG": {
+      "equal_weight_mean_return_pct": -4.365482,
+      "equal_weight_median_return_pct": -4.365482,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -4.2699,
+      "total_notional_usd": 97.81,
+      "win_rate_pct": 0.0
+    },
+    "RAVEUSDT:LONG": {
+      "equal_weight_mean_return_pct": 4.536137,
+      "equal_weight_median_return_pct": 6.577359,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 25,
+      "raw_pnl_usd_context_only": 3500.4401,
+      "total_notional_usd": 42547.43,
+      "win_rate_pct": 80.0
+    },
+    "RAVEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -5.993748,
+      "equal_weight_median_return_pct": -5.598871,
+      "n_source_accounts": 8,
+      "n_symbols": 1,
+      "n_trades": 83,
+      "raw_pnl_usd_context_only": -1083.3464,
+      "total_notional_usd": 23840.28,
+      "win_rate_pct": 19.2771
+    },
+    "RDDTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.069941,
+      "equal_weight_median_return_pct": 1.069941,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 6.627,
+      "total_notional_usd": 619.38,
+      "win_rate_pct": 100.0
+    },
+    "RENDERUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.408292,
+      "equal_weight_median_return_pct": 2.832453,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 355,
+      "raw_pnl_usd_context_only": 1274.7524,
+      "total_notional_usd": 44979.27,
+      "win_rate_pct": 87.0423
+    },
+    "RENDERUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.941872,
+      "equal_weight_median_return_pct": -1.935484,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 283,
+      "raw_pnl_usd_context_only": 692.1036,
+      "total_notional_usd": 10028.48,
+      "win_rate_pct": 36.7491
+    },
+    "RIVERUSDT:LONG": {
+      "equal_weight_mean_return_pct": -5.723691,
+      "equal_weight_median_return_pct": -1.200848,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 242,
+      "raw_pnl_usd_context_only": -55.51,
+      "total_notional_usd": 8705.05,
+      "win_rate_pct": 45.0413
+    },
+    "RIVERUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.521424,
+      "equal_weight_median_return_pct": -0.450355,
+      "n_source_accounts": 8,
+      "n_symbols": 1,
+      "n_trades": 128,
+      "raw_pnl_usd_context_only": -725.566,
+      "total_notional_usd": 50383.08,
+      "win_rate_pct": 46.875
+    },
+    "ROSEUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.715421,
+      "equal_weight_median_return_pct": -0.715421,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.2637,
+      "total_notional_usd": 176.64,
+      "win_rate_pct": 0.0
+    },
+    "ROSEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -8.325074,
+      "equal_weight_median_return_pct": -8.325074,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -2.0807,
+      "total_notional_usd": 24.99,
+      "win_rate_pct": 0.0
+    },
+    "SANDUSDT:LONG": {
+      "equal_weight_mean_return_pct": 6.814314,
+      "equal_weight_median_return_pct": 6.814314,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 336.6778,
+      "total_notional_usd": 4940.74,
+      "win_rate_pct": 100.0
+    },
+    "SENTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.613636,
+      "equal_weight_median_return_pct": -4.613636,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -61.2999,
+      "total_notional_usd": 1328.67,
+      "win_rate_pct": 0.0
+    },
+    "SHELLUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.898404,
+      "equal_weight_median_return_pct": -4.898404,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -119.8168,
+      "total_notional_usd": 2446.04,
+      "win_rate_pct": 0.0
+    },
+    "SHIBUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.622207,
+      "equal_weight_median_return_pct": 1.177474,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 535.6951,
+      "total_notional_usd": 8021.07,
+      "win_rate_pct": 60.0
+    },
+    "SHIBUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.055944,
+      "equal_weight_median_return_pct": 0.055944,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.014,
+      "total_notional_usd": 24.95,
+      "win_rate_pct": 100.0
+    },
+    "SIGNUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.549007,
+      "equal_weight_median_return_pct": -1.969943,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 19,
+      "raw_pnl_usd_context_only": -6.0623,
+      "total_notional_usd": 283.3,
+      "win_rate_pct": 5.2632
+    },
+    "SNXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.278539,
+      "equal_weight_median_return_pct": -1.278539,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -2.557,
+      "total_notional_usd": 199.99,
+      "win_rate_pct": 0.0
+    },
+    "SOLUSDT:LONG": {
+      "equal_weight_mean_return_pct": -2.183932,
+      "equal_weight_median_return_pct": 0.098027,
+      "n_source_accounts": 14,
+      "n_symbols": 1,
+      "n_trades": 196,
+      "raw_pnl_usd_context_only": -24558.3352,
+      "total_notional_usd": 1936215.63,
+      "win_rate_pct": 55.6122
+    },
+    "SOLUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.230391,
+      "equal_weight_median_return_pct": 0.01518,
+      "n_source_accounts": 13,
+      "n_symbols": 1,
+      "n_trades": 159,
+      "raw_pnl_usd_context_only": 1413.7578,
+      "total_notional_usd": 1397907.95,
+      "win_rate_pct": 50.3145
+    },
+    "SOXLUSDT:LONG": {
+      "equal_weight_mean_return_pct": -6.611945,
+      "equal_weight_median_return_pct": -6.611945,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -471.2646,
+      "total_notional_usd": 7127.47,
+      "win_rate_pct": 0.0
+    },
+    "SOXLUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 9.1259,
+      "equal_weight_median_return_pct": 9.1259,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 4242.9201,
+      "total_notional_usd": 46493.17,
+      "win_rate_pct": 100.0
+    },
+    "SPACEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 21.403905,
+      "equal_weight_median_return_pct": 19.326802,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": 3.2175,
+      "total_notional_usd": 15.03,
+      "win_rate_pct": 100.0
+    },
+    "SPCXUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.066615,
+      "equal_weight_median_return_pct": -1.386949,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 37,
+      "raw_pnl_usd_context_only": -2499.1587,
+      "total_notional_usd": 118993.04,
+      "win_rate_pct": 43.2432
+    },
+    "SPCXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.6928,
+      "equal_weight_median_return_pct": -1.6928,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -683.8173,
+      "total_notional_usd": 11499.31,
+      "win_rate_pct": 50.0
+    },
+    "SPYUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.011808,
+      "equal_weight_median_return_pct": -0.011808,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -0.08,
+      "total_notional_usd": 677.48,
+      "win_rate_pct": 0.0
+    },
+    "SPYUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.352759,
+      "equal_weight_median_return_pct": 1.230444,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 16,
+      "raw_pnl_usd_context_only": 33.693,
+      "total_notional_usd": 10391.13,
+      "win_rate_pct": 62.5
+    },
+    "STGUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -1.659805,
+      "equal_weight_median_return_pct": -2.216375,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 26,
+      "raw_pnl_usd_context_only": 193.1554,
+      "total_notional_usd": 4798.17,
+      "win_rate_pct": 3.8462
+    },
+    "STORJUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.108504,
+      "equal_weight_median_return_pct": -0.108504,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -4.0668,
+      "total_notional_usd": 3748.01,
+      "win_rate_pct": 0.0
+    },
+    "STORJUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.002167,
+      "equal_weight_median_return_pct": 3.002167,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 111.537,
+      "total_notional_usd": 3449.86,
+      "win_rate_pct": 100.0
+    },
+    "STOUSDT:LONG": {
+      "equal_weight_mean_return_pct": 5.792147,
+      "equal_weight_median_return_pct": 5.792147,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 11.5656,
+      "total_notional_usd": 200.22,
+      "win_rate_pct": 100.0
+    },
+    "STOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -4.291829,
+      "equal_weight_median_return_pct": -5.598773,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 10,
+      "raw_pnl_usd_context_only": -7081.8567,
+      "total_notional_usd": 45616.01,
+      "win_rate_pct": 20.0
+    },
+    "SUIUSDT:LONG": {
+      "equal_weight_mean_return_pct": -9.236701,
+      "equal_weight_median_return_pct": -6.092206,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 277,
+      "raw_pnl_usd_context_only": -26205.7705,
+      "total_notional_usd": 105840.15,
+      "win_rate_pct": 8.6643
+    },
+    "SUIUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.939316,
+      "equal_weight_median_return_pct": 7.308161,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 85,
+      "raw_pnl_usd_context_only": 64.1104,
+      "total_notional_usd": 1983.15,
+      "win_rate_pct": 90.5882
+    },
+    "SUSHIUSDT:LONG": {
+      "equal_weight_mean_return_pct": -87.093674,
+      "equal_weight_median_return_pct": -87.093674,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -430.1459,
+      "total_notional_usd": 493.89,
+      "win_rate_pct": 0.0
+    },
+    "SUSHIUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.051153,
+      "equal_weight_median_return_pct": 2.018709,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 8,
+      "raw_pnl_usd_context_only": 34.6724,
+      "total_notional_usd": 1229.05,
+      "win_rate_pct": 75.0
+    },
+    "SYRUPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 9.917877,
+      "equal_weight_median_return_pct": 9.917877,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 1.884,
+      "total_notional_usd": 19.0,
+      "win_rate_pct": 100.0
+    },
+    "TAOUSDT:LONG": {
+      "equal_weight_mean_return_pct": 6.672207,
+      "equal_weight_median_return_pct": 5.771679,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 4,
+      "raw_pnl_usd_context_only": 15.6641,
+      "total_notional_usd": 149.15,
+      "win_rate_pct": 100.0
+    },
+    "TAOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.577611,
+      "equal_weight_median_return_pct": 2.837446,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": 1294.7481,
+      "total_notional_usd": 39288.36,
+      "win_rate_pct": 50.0
+    },
+    "TLMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.010107,
+      "equal_weight_median_return_pct": 3.010107,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": 2.5727,
+      "total_notional_usd": 230.61,
+      "win_rate_pct": 100.0
+    },
+    "TONUSDT:LONG": {
+      "equal_weight_mean_return_pct": -3.877316,
+      "equal_weight_median_return_pct": -5.891644,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 118,
+      "raw_pnl_usd_context_only": -42.2777,
+      "total_notional_usd": 1916.87,
+      "win_rate_pct": 35.5932
+    },
+    "TONUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.106941,
+      "equal_weight_median_return_pct": -0.157183,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 101,
+      "raw_pnl_usd_context_only": 9.4269,
+      "total_notional_usd": 1985.33,
+      "win_rate_pct": 48.5149
+    },
+    "TRIAUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.754056,
+      "equal_weight_median_return_pct": 2.100452,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 23,
+      "raw_pnl_usd_context_only": 2338.2272,
+      "total_notional_usd": 113471.69,
+      "win_rate_pct": 100.0
+    },
+    "TRIAUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 12.48408,
+      "equal_weight_median_return_pct": 12.48408,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 122.8673,
+      "total_notional_usd": 984.19,
+      "win_rate_pct": 100.0
+    },
+    "TRUMPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 16.637824,
+      "equal_weight_median_return_pct": 16.637824,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 16.3539,
+      "total_notional_usd": 98.29,
+      "win_rate_pct": 100.0
+    },
+    "TRXUSDT:LONG": {
+      "equal_weight_mean_return_pct": 1.408507,
+      "equal_weight_median_return_pct": 1.596588,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 20,
+      "raw_pnl_usd_context_only": 19.6998,
+      "total_notional_usd": 1204.81,
+      "win_rate_pct": 65.0
+    },
+    "TRXUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.068829,
+      "equal_weight_median_return_pct": -0.085007,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 9,
+      "raw_pnl_usd_context_only": -24.4262,
+      "total_notional_usd": 5666.14,
+      "win_rate_pct": 33.3333
+    },
+    "TSLAUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.180542,
+      "equal_weight_median_return_pct": 0.243837,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 7,
+      "raw_pnl_usd_context_only": 318.6202,
+      "total_notional_usd": 84400.35,
+      "win_rate_pct": 85.7143
+    },
+    "UNIUSDT:LONG": {
+      "equal_weight_mean_return_pct": -7.882776,
+      "equal_weight_median_return_pct": -1.829162,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 6,
+      "raw_pnl_usd_context_only": -487.062,
+      "total_notional_usd": 4027.29,
+      "win_rate_pct": 33.3333
+    },
+    "UNIUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.561382,
+      "equal_weight_median_return_pct": 1.103068,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 6.444,
+      "total_notional_usd": 657.2,
+      "win_rate_pct": 80.0
+    },
+    "VINEUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 4.46808,
+      "equal_weight_median_return_pct": 4.724818,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 12,
+      "raw_pnl_usd_context_only": 2.5908,
+      "total_notional_usd": 63.67,
+      "win_rate_pct": 83.3333
+    },
+    "WETUSDT:LONG": {
+      "equal_weight_mean_return_pct": -4.633235,
+      "equal_weight_median_return_pct": -4.633235,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -0.9095,
+      "total_notional_usd": 19.63,
+      "win_rate_pct": 0.0
+    },
+    "WIFUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 5.904155,
+      "equal_weight_median_return_pct": 5.904155,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 203.3217,
+      "total_notional_usd": 3443.71,
+      "win_rate_pct": 100.0
+    },
+    "WMTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -5.510143,
+      "equal_weight_median_return_pct": -5.510143,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 2,
+      "raw_pnl_usd_context_only": -15.873,
+      "total_notional_usd": 288.35,
+      "win_rate_pct": 0.0
+    },
+    "WOOUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 3.968254,
+      "equal_weight_median_return_pct": 3.968254,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.992,
+      "total_notional_usd": 25.0,
+      "win_rate_pct": 100.0
+    },
+    "XAGUSDT:LONG": {
+      "equal_weight_mean_return_pct": -3.252179,
+      "equal_weight_median_return_pct": 0.050374,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 55,
+      "raw_pnl_usd_context_only": -15307.5356,
+      "total_notional_usd": 1202152.97,
+      "win_rate_pct": 54.5455
+    },
+    "XAGUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 4.738084,
+      "equal_weight_median_return_pct": 6.679976,
+      "n_source_accounts": 2,
+      "n_symbols": 1,
+      "n_trades": 5,
+      "raw_pnl_usd_context_only": 2217.357,
+      "total_notional_usd": 49795.76,
+      "win_rate_pct": 60.0
+    },
+    "XANUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 6.268275,
+      "equal_weight_median_return_pct": 6.268275,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.6263,
+      "total_notional_usd": 9.99,
+      "win_rate_pct": 100.0
+    },
+    "XAUTUSDT:LONG": {
+      "equal_weight_mean_return_pct": 2.748349,
+      "equal_weight_median_return_pct": 2.748349,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 4.296,
+      "total_notional_usd": 156.31,
+      "win_rate_pct": 100.0
+    },
+    "XAUTUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -2.060843,
+      "equal_weight_median_return_pct": -2.060843,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -148.422,
+      "total_notional_usd": 7202.0,
+      "win_rate_pct": 0.0
+    },
+    "XAUUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.339202,
+      "equal_weight_median_return_pct": 0.08487,
+      "n_source_accounts": 6,
+      "n_symbols": 1,
+      "n_trades": 13,
+      "raw_pnl_usd_context_only": 593.148,
+      "total_notional_usd": 492204.27,
+      "win_rate_pct": 92.3077
+    },
+    "XAUUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 0.934551,
+      "equal_weight_median_return_pct": 2.098219,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 8,
+      "raw_pnl_usd_context_only": -5528.8218,
+      "total_notional_usd": 244767.4,
+      "win_rate_pct": 62.5
+    },
+    "XLMUSDT:LONG": {
+      "equal_weight_mean_return_pct": -1.125597,
+      "equal_weight_median_return_pct": -0.034657,
+      "n_source_accounts": 3,
+      "n_symbols": 1,
+      "n_trades": 30,
+      "raw_pnl_usd_context_only": 489.8228,
+      "total_notional_usd": 18594.81,
+      "win_rate_pct": 50.0
+    },
+    "XLMUSDT:SHORT": {
+      "equal_weight_mean_return_pct": -0.688645,
+      "equal_weight_median_return_pct": -0.940195,
+      "n_source_accounts": 5,
+      "n_symbols": 1,
+      "n_trades": 112,
+      "raw_pnl_usd_context_only": 115.1733,
+      "total_notional_usd": 13657.06,
+      "win_rate_pct": 20.5357
+    },
+    "XRPUSDT:LONG": {
+      "equal_weight_mean_return_pct": -2.917493,
+      "equal_weight_median_return_pct": -2.484705,
+      "n_source_accounts": 9,
+      "n_symbols": 1,
+      "n_trades": 202,
+      "raw_pnl_usd_context_only": -12090.5365,
+      "total_notional_usd": 65693.91,
+      "win_rate_pct": 28.2178
+    },
+    "XRPUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 2.785759,
+      "equal_weight_median_return_pct": 1.244324,
+      "n_source_accounts": 7,
+      "n_symbols": 1,
+      "n_trades": 118,
+      "raw_pnl_usd_context_only": 204.1364,
+      "total_notional_usd": 11973.11,
+      "win_rate_pct": 67.7966
+    },
+    "YBUSDT:LONG": {
+      "equal_weight_mean_return_pct": -3.084453,
+      "equal_weight_median_return_pct": -2.981925,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 3,
+      "raw_pnl_usd_context_only": -149.6439,
+      "total_notional_usd": 8610.07,
+      "win_rate_pct": 33.3333
+    },
+    "ZECUSDT:LONG": {
+      "equal_weight_mean_return_pct": -0.338808,
+      "equal_weight_median_return_pct": 0.370017,
+      "n_source_accounts": 4,
+      "n_symbols": 1,
+      "n_trades": 89,
+      "raw_pnl_usd_context_only": 303.7389,
+      "total_notional_usd": 74649.97,
+      "win_rate_pct": 58.427
+    },
+    "ZECUSDT:SHORT": {
+      "equal_weight_mean_return_pct": 1.808307,
+      "equal_weight_median_return_pct": 0.441797,
+      "n_source_accounts": 6,
+      "n_symbols": 1,
+      "n_trades": 68,
+      "raw_pnl_usd_context_only": -581.9636,
+      "total_notional_usd": 73108.42,
+      "win_rate_pct": 63.2353
+    },
+    "ZILUSDT:LONG": {
+      "equal_weight_mean_return_pct": -5.206089,
+      "equal_weight_median_return_pct": -5.206089,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -1.5372,
+      "total_notional_usd": 29.53,
+      "win_rate_pct": 0.0
+    },
+    "ZKUSDT:LONG": {
+      "equal_weight_mean_return_pct": -4.413928,
+      "equal_weight_median_return_pct": -4.413928,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": -0.8685,
+      "total_notional_usd": 19.68,
+      "win_rate_pct": 0.0
+    },
+    "ZROUSDT:LONG": {
+      "equal_weight_mean_return_pct": 0.939638,
+      "equal_weight_median_return_pct": 0.939638,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 0.2208,
+      "total_notional_usd": 23.5,
+      "win_rate_pct": 100.0
+    },
+    "ZRXUSDT:LONG": {
+      "equal_weight_mean_return_pct": 5.568959,
+      "equal_weight_median_return_pct": 5.568959,
+      "n_source_accounts": 1,
+      "n_symbols": 1,
+      "n_trades": 1,
+      "raw_pnl_usd_context_only": 4.9006,
+      "total_notional_usd": 88.0,
+      "win_rate_pct": 100.0
+    }
+  },
+  "formula_contract": {
+    "LONG": "(exit-entry)/entry*100",
+    "SHORT": "(entry-exit)/entry*100",
+    "max_abs_reported_vs_recomputed_error_pct_points": 5e-05,
+    "notional_reconstruction_within_1pct_rate": 0.999269,
+    "pnl_sign_mismatch_rows": 0,
+    "rows_error_over_0_01_pct_points": 0
+  },
+  "generator_defects": [
+    "compare_to_our_system pooled symbols and LONG/SHORT regime dollars",
+    "decision-tree patterns were trained on pooled sides and merely labeled dominant_side",
+    "email findings[:15] omitted the later SIDE provenance line",
+    "TrackerLogIngester coerced missing/unknown sides to SHORT",
+    "Bitget closed-order parser coerced missing/unknown sides to SHORT",
+    "report omitted symbol/account/position-side/order-side trace fields",
+    "regime membership was not persisted per trade, preventing exact retrospective regime reconciliation",
+    "merged CSV contained two malformed concatenated rows; permissive ingestion silently skipped them"
+  ],
+  "live_config_write": false,
+  "matrix_write": false,
+  "position_sides": [
+    "LONG",
+    "SHORT"
+  ],
+  "promotion_eligible": false,
+  "raw_dollar_concentration": {
+    "raw_total_pnl_usd": -658961.1468,
+    "verdict": "Raw dollars pool unrelated source accounts, symbols, notionals and leverage; they are not a strategy return.",
+    "worst_account_fraction_of_net_raw_loss": 0.692837,
+    "worst_source_account": "bdb74c7f89b63c5fa69c",
+    "worst_source_account_raw_pnl_usd": -456552.6835
+  },
+  "rejected_rows": 2,
+  "rejected_source_rows": [
+    4777,
+    11514
+  ],
+  "sign_inversion_test": {
+    "if_position_sides_were_inverted_equal_weight_mean_return_pct": {
+      "LONG": 2.337327,
+      "SHORT": -1.239292
+    },
+    "observed_by_side": {
+      "LONG": {
+        "equal_weight_mean_return_pct": -2.337327,
+        "equal_weight_median_return_pct": -0.039854,
+        "n_source_accounts": 67,
+        "n_symbols": 117,
+        "n_trades": 7659,
+        "raw_pnl_usd_context_only": -813930.5257,
+        "total_notional_usd": 38628608.3,
+        "win_rate_pct": 49.5104
+      },
+      "SHORT": {
+        "equal_weight_mean_return_pct": 1.239292,
+        "equal_weight_median_return_pct": 0.282296,
+        "n_source_accounts": 59,
+        "n_symbols": 140,
+        "n_trades": 6039,
+        "raw_pnl_usd_context_only": 154969.3789,
+        "total_notional_usd": 45560354.31,
+        "win_rate_pct": 57.9401
+      }
+    },
+    "verdict": "NO_SIDE_INVERSION_IN_ACCEPTED_SOURCE: reported pnl_pct and LONG/SHORT price formulas agree. The report defect was pooling and scale-biased presentation, not a sign flip."
+  },
+  "source_accounts": 70,
+  "source_csv": "data/bitget_traders/merged_all_trades_20260725_1511_source.csv",
+  "source_rows": 13700,
+  "status": "FAIL_REPORT_SCHEMA_PASS_SOURCE_SIGN",
+  "symbols": 179
+}

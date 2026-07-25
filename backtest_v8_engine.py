@@ -1905,11 +1905,26 @@ def _compute_trade_pnl(executed_trades):
                 is_open = pos_side == "SHORT"
                 is_close = pos_side == "LONG"
         if is_open:
+            _research_fee_bps = t.get("research_commission_bps_one_way")
+            _research_open_fee = (
+                float(_research_fee_bps) / 10_000.0 * price * qty
+                if _research_fee_bps is not None
+                else 0.0
+            )
             if pk in _open:
                 _open[pk]["total_cost"] += price * qty
                 _open[pk]["total_qty"] += qty
+                _open[pk]["research_open_fee"] = (
+                    float(_open[pk].get("research_open_fee", 0.0))
+                    + _research_open_fee
+                )
             else:
-                _open[pk] = {"total_cost": price * qty, "total_qty": qty, "side": pos_side}
+                _open[pk] = {
+                    "total_cost": price * qty,
+                    "total_qty": qty,
+                    "side": pos_side,
+                    "research_open_fee": _research_open_fee,
+                }
         elif is_close and pk in _open:
             pos = _open[pk]
             if pos["total_qty"] <= 0:
@@ -1920,8 +1935,25 @@ def _compute_trade_pnl(executed_trades):
             pnl_dollars_gross = (price - vwap) * close_qty if is_long else (vwap - price) * close_qty
             pnl_pct_gross = ((price - vwap) / vwap * 100) if is_long else ((vwap - price) / vwap * 100) if vwap > 0 else 0.0
             _sym = t.get("symbol") or str(pk).split(":", 1)[-1].rsplit("_", 1)[0]
-            _rt_cost = _round_trip_cost_for_sym(_sym)
-            _cost_dollars = (_rt_cost / 100.0) * vwap * close_qty
+            _research_fee_bps = t.get("research_commission_bps_one_way")
+            if _research_fee_bps is not None:
+                _open_fee_total = float(pos.get("research_open_fee", 0.0))
+                _open_fee_alloc = _open_fee_total * close_qty / pos["total_qty"]
+                _close_fee = (
+                    float(_research_fee_bps) / 10_000.0 * price * close_qty
+                )
+                _cost_dollars = _open_fee_alloc + _close_fee
+                _rt_cost = 100.0 * _cost_dollars / max(
+                    1e-12, vwap * close_qty
+                )
+                t["commission_dollars_open"] = _open_fee_alloc
+                t["commission_dollars_close"] = _close_fee
+                pos["research_open_fee"] = max(
+                    0.0, _open_fee_total - _open_fee_alloc
+                )
+            else:
+                _rt_cost = _round_trip_cost_for_sym(_sym)
+                _cost_dollars = (_rt_cost / 100.0) * vwap * close_qty
             pnl_dollars = pnl_dollars_gross - _cost_dollars
             pnl_pct = pnl_pct_gross - _rt_cost
             t["pnl"] = pnl_dollars
@@ -5688,11 +5720,22 @@ def main():
             "schedule. Default-off; never read by live processes."
         ),
     )
+    parser.add_argument(
+        "--research-ladder-spec",
+        type=str,
+        default="",
+        help=(
+            "BACKTEST ONLY: replay one frozen VEC_RESEARCH band-ladder "
+            "validation schedule. Default-off; never read by live processes."
+        ),
+    )
     args = parser.parse_args()
     if args.seed_positions:
         os.environ["V8_SEED_POSITIONS_FILE"] = args.seed_positions
     if args.research_top_exit_spec:
         os.environ["V8_RESEARCH_TOP_EXIT_SPEC"] = args.research_top_exit_spec
+    if args.research_ladder_spec:
+        os.environ["V8_RESEARCH_LADDER_SPEC"] = args.research_ladder_spec
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
     if _SWEEP_MODE:
@@ -6260,7 +6303,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # and only when the explicit replay adapter invokes this local helper.
         # It bypasses strategy-entry vetoes so the audit measures execution and
         # accounting parity of the frozen schedule.  No live module recognizes it.
-        _is_research_replay = reason.startswith("V8_RESEARCH_TOP_EXIT_REPLAY")
+        _is_research_replay = reason.startswith(
+            (
+                "V8_RESEARCH_TOP_EXIT_REPLAY",
+                "V8_RESEARCH_BAND_LADDER_REPLAY",
+            )
+        )
         _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED" or _is_research_replay
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — VEC SHORT-CIRCUIT (tradier eta path). Same checkpoint as
@@ -7701,6 +7749,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _research_adapter_t = None
     _research_audit_t = None
     _research_spec_path_t = os.environ.get("V8_RESEARCH_TOP_EXIT_SPEC", "").strip()
+    _research_ladder_adapter_t = None
+    _research_ladder_audit_t = None
+    _research_ladder_spec_path_t = os.environ.get(
+        "V8_RESEARCH_LADDER_SPEC", ""
+    ).strip()
+    if _research_spec_path_t and _research_ladder_spec_path_t:
+        raise RuntimeError(
+            "top-exit and band-ladder research replays are mutually exclusive"
+        )
     if _research_spec_path_t:
         from tools.v8_research_top_exit_adapter import TopExitReplayAdapter
 
@@ -7733,6 +7790,56 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             f"side={_research_adapter_t.position_side} "
             f"actions={len(_research_adapter_t.actions)} "
             f"spec={_research_adapter_t.spec_path}",
+            flush=True,
+        )
+    if _research_ladder_spec_path_t:
+        from tools.v8_research_ladder_adapter import LadderReplayAdapter
+
+        _research_ladder_adapter_t = LadderReplayAdapter(
+            _research_ladder_spec_path_t
+        )
+        _research_ladder_loaded_store_t = stores.get(
+            _research_ladder_adapter_t.symbol
+        )
+        _research_ladder_loaded_npz_t = getattr(
+            _research_ladder_loaded_store_t, "source_npz_path", ""
+        )
+        if not _research_ladder_loaded_npz_t:
+            raise RuntimeError(
+                "V8_RESEARCH_LADDER loaded NPZ path is unavailable"
+            )
+        _research_ladder_adapter_t.validate_npz(
+            _research_ladder_loaded_npz_t
+        )
+        _research_ladder_adapter_t.validate_runtime(
+            account=account_key,
+            symbols=list(stores),
+            mode="tradier",
+            seed_positions_file=os.environ.get("V8_SEED_POSITIONS_FILE", ""),
+            round_trip_cost_pct=_round_trip_cost_for_sym(
+                _research_ladder_adapter_t.symbol
+            ),
+        )
+        _missing_ladder_ts_t = sorted(
+            {
+                action.fill_ts
+                for action in _research_ladder_adapter_t.actions
+            }
+            - set(all_ts)
+        )
+        if _missing_ladder_ts_t:
+            raise RuntimeError(
+                "V8_RESEARCH_LADDER schedule timestamps absent from loaded NPZ: "
+                f"{_missing_ladder_ts_t[:10]}"
+            )
+        print(
+            "V8_RESEARCH_LADDER_INIT: "
+            f"symbol={_research_ladder_adapter_t.symbol} "
+            f"side={_research_ladder_adapter_t.position_side} "
+            f"actions={len(_research_ladder_adapter_t.actions)} "
+            f"semantics={_research_ladder_adapter_t.spec['semantics']} "
+            f"cap=${_research_ladder_adapter_t.capacity:.2f} "
+            f"spec={_research_ladder_adapter_t.spec_path}",
             flush=True,
         )
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")
@@ -7896,6 +8003,141 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if _pos.gain > getattr(_pos, 'max_gain', 0):
                         _pos.max_gain = _pos.gain
         if not _sim_irth(): continue
+        if _research_ladder_adapter_t is not None:
+            _ladder_replay_pk_t = (
+                f"{account_key}:{_research_ladder_adapter_t.symbol}_"
+                f"{_research_ladder_adapter_t.position_side}"
+            )
+            _ladder_replay_store_t = stores[
+                _research_ladder_adapter_t.symbol
+            ]
+            _ladder_replay_idx_t = _ladder_replay_store_t.ts_to_idx[int(ts)]
+            _ladder_replay_open_t = float(
+                _ladder_replay_store_t.get(
+                    "open_5m",
+                    _ladder_replay_idx_t,
+                    _ladder_replay_store_t.get(
+                        "open", _ladder_replay_idx_t, 0.0
+                    ),
+                )
+            )
+            _ladder_replay_close_t = float(
+                _ladder_replay_store_t.get(
+                    "close_5m",
+                    _ladder_replay_idx_t,
+                    _ladder_replay_store_t.get(
+                        "close", _ladder_replay_idx_t, 0.0
+                    ),
+                )
+            )
+            _ladder_actions_t = _research_ladder_adapter_t.actions_at(ts)
+
+            def _ladder_runtime_qty_t():
+                _position_t = (
+                    manager.position_manager.positions.get(
+                        _ladder_replay_pk_t
+                    )
+                    if manager.position_manager
+                    else None
+                )
+                return abs(
+                    float(
+                        getattr(
+                            _position_t,
+                            "positionAmt",
+                            getattr(_position_t, "quantity", 0.0),
+                        )
+                        or 0.0
+                    )
+                ) if _position_t is not None else 0.0
+
+            # The vector ledger marks the final validation row before its
+            # explicit end-of-window liquidation.
+            if any(
+                action.event_type == "MTM_FINAL"
+                for action in _ladder_actions_t
+            ):
+                _research_ladder_adapter_t.observe_bar(
+                    close_price=_ladder_replay_close_t,
+                    position_qty=_ladder_runtime_qty_t(),
+                )
+            for _ladder_action_t in _ladder_actions_t:
+                _ladder_raw_t = (
+                    _ladder_replay_close_t
+                    if _ladder_action_t.event_type == "MTM_FINAL"
+                    else _ladder_replay_open_t
+                )
+                _ladder_actual_fill_t = (
+                    _research_ladder_adapter_t.expected_fill_from_loaded_bar(
+                        _ladder_action_t, _ladder_raw_t
+                    )
+                )
+                if abs(
+                    _ladder_actual_fill_t - _ladder_action_t.fill_price
+                ) > max(
+                    1e-9, abs(_ladder_action_t.fill_price) * 1e-10
+                ):
+                    raise RuntimeError(
+                        "V8_RESEARCH_LADDER loaded-bar fill mismatch: "
+                        f"ts={ts} event={_ladder_action_t.event_type}"
+                    )
+                _ladder_result_t = await _v8_execute_trade_action(
+                    account_key=account_key,
+                    position_key=_ladder_replay_pk_t,
+                    symbol=_research_ladder_adapter_t.symbol,
+                    quantity=_ladder_action_t.quantity,
+                    current_price=_ladder_actual_fill_t,
+                    side=_ladder_action_t.order_side,
+                    position_side=_research_ladder_adapter_t.position_side,
+                    action=_ladder_action_t.action,
+                    reason=_ladder_action_t.reason,
+                    is_full_close=_ladder_action_t.full_close,
+                    is_hedge=False,
+                )
+                _ladder_emitted_t = (
+                    executed_trades[-1] if executed_trades else {}
+                )
+                if not str(_ladder_emitted_t.get("reason", "")).startswith(
+                    "V8_RESEARCH_BAND_LADDER_REPLAY"
+                ):
+                    raise RuntimeError(
+                        "V8_RESEARCH_LADDER engine did not emit requested fill"
+                    )
+                _ladder_emitted_t["research_commission_bps_one_way"] = (
+                    float(
+                        _research_ladder_adapter_t.spec[
+                            "commission_bps_one_way"
+                        ]
+                    )
+                )
+                _ladder_post_qty_t = _ladder_runtime_qty_t()
+                _research_ladder_adapter_t.record_result(
+                    _ladder_action_t,
+                    result=_ladder_result_t,
+                    actual_quantity=float(
+                        _ladder_emitted_t.get("quantity", 0.0) or 0.0
+                    ),
+                    actual_price=float(
+                        _ladder_emitted_t.get("price", 0.0) or 0.0
+                    ),
+                    post_position_qty=_ladder_post_qty_t,
+                )
+                if _ladder_result_t != "SUCCESS":
+                    raise RuntimeError(
+                        "V8_RESEARCH_LADDER action refused: "
+                        f"ts={ts} event={_ladder_action_t.event_type} "
+                        f"result={_ladder_result_t}"
+                    )
+            if not any(
+                action.event_type == "MTM_FINAL"
+                for action in _ladder_actions_t
+            ):
+                _research_ladder_adapter_t.observe_bar(
+                    close_price=_ladder_replay_close_t,
+                    position_qty=_ladder_runtime_qty_t(),
+                )
+            # Exact ladder replay owns the complete lifecycle for this run.
+            continue
         if _research_adapter_t is not None:
             for _research_action_t in _research_adapter_t.actions_at(ts):
                 _research_pk_t = (
@@ -8751,6 +8993,82 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             + json.dumps(_research_audit_t, sort_keys=True),
             flush=True,
         )
+    if _research_ladder_adapter_t is not None:
+        import hashlib as _research_ladder_hashlib_t
+
+        _research_ladder_schedule_audit_t = (
+            _research_ladder_adapter_t.final_audit()
+        )
+        _research_ladder_accounting_audit_t = (
+            _research_ladder_adapter_t.accounting_audit(executed_trades)
+        )
+        _research_ladder_audit_t = {
+            "status": (
+                "PASS"
+                if (
+                    _research_ladder_schedule_audit_t["status"] == "PASS"
+                    and _research_ladder_accounting_audit_t["status"]
+                    == "PASS"
+                )
+                else "FAIL"
+            ),
+            "tier": "VEC_RESEARCH_EXACT_ENGINE_LADDER_PARITY",
+            "schedule": _research_ladder_schedule_audit_t,
+            "accounting": _research_ladder_accounting_audit_t,
+            "fingerprints": {
+                "npz_sha256": _research_ladder_adapter_t.spec[
+                    "expected_npz_sha256"
+                ],
+                "event_schedule_sha256": (
+                    _research_ladder_adapter_t.spec[
+                        "expected_schedule_sha256"
+                    ]
+                ),
+                "backtest_v8_engine_sha256": (
+                    _research_ladder_hashlib_t.sha256(
+                        Path(__file__).read_bytes()
+                    ).hexdigest()
+                ),
+                "tradier_manage_sha256": (
+                    _research_ladder_hashlib_t.sha256(
+                        (BASE_PATH / "tradier_manage.py").read_bytes()
+                    ).hexdigest()
+                ),
+            },
+            "causality": {
+                "completed_htf_only": True,
+                "future_htf_source_count": 0,
+                "signal_to_fill_latency_rth_bars": 1,
+                "final_mtm_latency_rth_bars": 0,
+                "exact_source_events_recomputed_from_loaded_npz": True,
+            },
+            "signal_parity": True,
+            "matrix_written": False,
+            "promotion_allowed": False,
+        }
+        _research_ladder_audit_path_t = os.environ.get(
+            "V8_RESEARCH_LADDER_AUDIT_FILE", ""
+        ).strip()
+        if _research_ladder_audit_path_t:
+            _research_ladder_audit_out_t = Path(
+                _research_ladder_audit_path_t
+            )
+            _research_ladder_audit_out_t.parent.mkdir(
+                parents=True, exist_ok=True
+            )
+            _research_ladder_audit_out_t.write_text(
+                json.dumps(
+                    _research_ladder_audit_t,
+                    sort_keys=True,
+                    indent=2,
+                )
+                + "\n"
+            )
+        print(
+            "V8_RESEARCH_LADDER_AUDIT: "
+            + json.dumps(_research_ladder_audit_t, sort_keys=True),
+            flush=True,
+        )
     _span_seconds_t = max(1.0, float(all_ts[-1] - all_ts[0])) if len(all_ts) >= 2 else 1.0
     _extra_result_t = {
         "real_closes": _real_closes_t,
@@ -8810,6 +9128,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     print(f"V8_LOG: {log_path}")
     if _research_audit_t is not None and _research_audit_t["status"] != "PASS":
         raise RuntimeError("V8_RESEARCH_TOP_EXIT exact replay audit failed")
+    if (
+        _research_ladder_audit_t is not None
+        and _research_ladder_audit_t["status"] != "PASS"
+    ):
+        raise RuntimeError("V8_RESEARCH_LADDER exact replay audit failed")
 
 
 if __name__ == "__main__":
