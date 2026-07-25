@@ -53,7 +53,10 @@ MANIFEST = SBX / "data" / "param_sweep_manifest_tradier.json"
 LADDER_CAMPAIGN = psc.CAMPAIGN + "__ladder_v2"
 EXIT_PAT = re.compile(r"EXIT|STOP|TRAIL|CLOSE|NOLOSS|R1_|R2_|R3_|GIVEBACK|BREAKEVEN|HARVEST"
                       r"|SLOPE_FLIP|PROFIT_LOCK|CROSSUNDER|REDUCE|TP_|TAKE_PROFIT", re.I)
-ENTRY_PAT = re.compile(r"ENTRY|OPEN|REENTRY|FORCE_OPEN|BREAKOUT|K_ZONE|ARROW|SCALP", re.I)
+ENTRY_PAT = re.compile(
+    r"ENTRY|OPEN|REENTRY|FORCE_OPEN|BREAKOUT|K_ZONE|ARROW|SCALP|ACTIVATION",
+    re.I,
+)
 # The entry under test. wt_5m cross alone = ~50% time-in-market (lab, MU_LONG) — the ballpark
 # the whole exercise is about. config knob keeps the legacy WT_3M_ name; code reads wt1_5m.
 ENTRY_ON = {"WT_3M_FORCE_OPEN_ENABLED": True, "WT_3M_FORCE_OPEN_BYPASS_GATES": True}
@@ -346,6 +349,8 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="max knobs this pass (0 = all)")
     ap.add_argument("--only-knob", default="",
                     help="run one exact stage1/stage2 main switch (Tier-1 shortlist replay)")
+    ap.add_argument("--knob-value", default=None,
+                    help="explicit value for --only-knob (true/false, number or string)")
     ap.add_argument("--shard", default="", help="i/N — run only this slice of the knob list so "
                                                 "N workers can share one stage across the box")
     ap.add_argument("--entry", default="accepted", choices=["accepted", "wt5m", "band"],
@@ -482,7 +487,17 @@ def main():
 
     knobs = flags(EXIT_PAT) if a.stage == "stage1" else flags(ENTRY_PAT, anti=EXIT_PAT)
     if a.only_knob:
+        # Explicit shortlist replays may name a condition/filter that is not captured by
+        # the broad path regex (for example GOLDEN_RULE_REQUIRE_ACTIVATION). The registry and
+        # manifest are the authority for an explicit request; do not reject a real knob merely
+        # because its spelling lacks ENTRY/OPEN.
         knobs = [k for k in knobs if k == a.only_knob]
+        if not knobs:
+            # An explicit matrix replay can target a cell that exists only in historical
+            # param_results (or a newly discovered path not yet in the manifest). Let the
+            # engine prove or disprove it; a typo will produce a measured inert result rather
+            # than silently skipping the requested work.
+            knobs = [a.only_knob]
         if not knobs:
             raise SystemExit(f"--only-knob {a.only_knob!r} is not an eligible {a.stage} main switch")
     if a.limit:
@@ -499,12 +514,24 @@ def main():
             # A shortlist replay asks whether the family ON result survives
             # Tier-2. The OFF master is exactly stage 0 and must not consume
             # another full-history run.
-            family_params = [
-                (pname, [v for v in values if not (pname == knob and v is False)])
-                for pname, values in family_params
-            ]
+            if a.knob_value is None:
+                family_params = [
+                    (pname, [v for v in values if not (pname == knob and v is False)])
+                    for pname, values in family_params
+                ]
         for pname, values in family_params:
             for val in values:
+                if a.only_knob and a.knob_value is not None and pname == a.only_knob:
+                    raw = str(a.knob_value)
+                    if raw.lower() in ("true", "false"):
+                        values = [raw.lower() == "true"]
+                    else:
+                        try:
+                            values = [float(raw)]
+                        except ValueError:
+                            values = [raw]
+                    if val != values[0]:
+                        continue
                 ovr = dict(base)
                 ovr[knob] = False if ABLATION.search(knob) else True   # this ONE feature back on...
                 ovr[pname] = val          # ...at this parameter setting
