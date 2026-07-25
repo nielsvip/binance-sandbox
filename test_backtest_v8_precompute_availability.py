@@ -5,6 +5,7 @@ import numpy as np
 from backtest_v8_precompute import (
     _availability_timestamps,
     _broadcast_asof_indices,
+    _broadcast_values,
 )
 
 
@@ -39,6 +40,15 @@ class ClosedBarAvailabilityTests(unittest.TestCase):
         full_idx = _broadcast_asof_indices(full_source, target, "1h", "tradier")
         prefix_idx = _broadcast_asof_indices(prefix_source, target, "1h", "tradier")
         np.testing.assert_array_equal(full_idx, prefix_idx)
+
+    def test_warmup_is_empty_instead_of_future_row_zero(self):
+        source = np.array([0, 3600, 7200], dtype=np.int64)
+        target = np.array([0, 1800, 3599], dtype=np.int64)
+        idx = _broadcast_asof_indices(source, target, "1h", "tradier")
+        np.testing.assert_array_equal(idx, [-1, -1, -1])
+        np.testing.assert_array_equal(_broadcast_values(np.array([10, 20, 30]), idx), [0, 0, 0])
+        available = _availability_timestamps(source, idx, "1h", "tradier")
+        np.testing.assert_array_equal(available, [0, 0, 0])
 
 
 if __name__ == "__main__":

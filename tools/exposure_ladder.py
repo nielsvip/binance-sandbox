@@ -48,6 +48,7 @@ sys.path.insert(0, str(SBX / "tools"))
 os.environ.setdefault("PSC_CAMPAIGN", "stocks_baseline_v2_s4h")
 import persym_baseline_campaign as psc  # noqa: E402
 import param_results_store as prs  # noqa: E402
+from backtest_data_contract import audit_npz  # noqa: E402
 
 MANIFEST = SBX / "data" / "param_sweep_manifest_tradier.json"
 LADDER_CAMPAIGN = psc.CAMPAIGN + "__ladder_v2"
@@ -314,14 +315,30 @@ def run_cell(symbol, side, tag, overrides, args):
     v8 = run_engine_capture(symbol, engine_tag)
     if v8:
         side_l = side.lower()
+        opposite_l = "short" if side_l == "long" else "long"
         m["time_in_mkt_pct"] = float(v8.get(f"time_in_mkt_{side_l}_pct", 0.0))
         m["_entry_events"] = int(v8.get(f"opens_{side_l}", 0))
+        m["_opposite_entry_events"] = int(v8.get(f"opens_{opposite_l}", 0))
         m["_real_closes"] = int(v8.get("real_closes", 0))
         m["_mtm_count"] = int(v8.get("mtm_count", 0))
+        m["_measurement_valid"] = m["_opposite_entry_events"] == 0
+        for name in (
+            "open_notional_sum", "max_open_notional", "max_filled_start_mult",
+            "max_requested_mult", "requested_fill_ratio", "sized_open_events",
+            "size_clamp_count",
+        ):
+            m[f"_{name}"] = float(v8.get(name, 0) or 0)
     return m
 
 
 def store(con, symbol, side, param, value, m, overrides, tag, stage):
+    if not m.get("_measurement_valid", False):
+        print(
+            f"[store] skip invalid side-contaminated diagnostic {symbol}_{side} "
+            f"{param}={value} opposite_opens={m.get('_opposite_entry_events')}",
+            flush=True,
+        )
+        return
     # Invalid/unseeded zero-trade outputs are diagnostics, not matrix evidence.
     # Skip them so one disconnected path cannot abort a multi-symbol campaign.
     if int(m.get("trades", 0) or 0) <= 0 and int(m.get("_mtm_count", 0) or 0) <= 0:
@@ -382,6 +399,17 @@ def main():
                          "allowed in the base config")
     a = ap.parse_args()
     sym, side = a.symbol.upper(), a.side
+    if a.stage not in ("report", "verify"):
+        profile = "floor" if a.stage == "stage0" else ("ladder" if a.entry == "band" else "core")
+        contract = audit_npz(sym, profile=profile, start=psc.START)
+        if not contract.valid:
+            print(
+                f"[DATA QUARANTINE] {sym} profile={profile}: "
+                + "; ".join(contract.errors)
+                + " — no engine run or matrix write",
+                flush=True,
+            )
+            return
     con = prs.connect()
     _y, bh_long = psc.sym_years_and_bh(sym, psc.START)
     bh = bh_long if side == "LONG" else (-bh_long if bh_long is not None else None)

@@ -1039,7 +1039,7 @@ if _override_file and Path(_override_file).exists():
     v8_logger.info(f"Re-applied {len(_overrides)} overrides to {_post_import_count} Config instances + module bindings post-import")
 
 # Import NPZ loader
-from backtest_v8_harness import IndicatorStore, is_tradier_rth_ts
+from backtest_v8_harness import IndicatorStore, is_tradier_rth_ts, open_sizing_telemetry
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Simulation time controller
@@ -8481,6 +8481,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         "time_in_mkt_long_pct": f"{100.0 * _exposure_seconds_t['LONG'] / _span_seconds_t:.4f}",
         "time_in_mkt_short_pct": f"{100.0 * _exposure_seconds_t['SHORT'] / _span_seconds_t:.4f}",
     }
+    _extra_result_t.update(
+        open_sizing_telemetry(
+            executed_trades,
+            float(getattr(tm_mod.config, "START_POSITION_SIZE", 1.0) or 1.0),
+        )
+    )
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

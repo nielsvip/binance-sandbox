@@ -69,8 +69,27 @@ def _broadcast_asof_indices(
     src = np.asarray(source_ts, dtype=np.int64)
     dst = np.asarray(target_ts, dtype=np.int64)
     lag = 2 if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"} else 1
-    idx = np.searchsorted(src, dst, side="right") - lag
-    return np.clip(idx, 0, max(0, len(src) - 1))
+    # Keep -1 for the warm-up interval. Clipping it to row zero would expose a
+    # value before that row was observable (a smaller but real look-ahead leak).
+    return np.minimum(np.searchsorted(src, dst, side="right") - lag, len(src) - 1)
+
+
+def _broadcast_values(values: np.ndarray, indices: np.ndarray) -> np.ndarray:
+    """Index safely while representing not-yet-available warm-up rows as empty."""
+    arr = np.asarray(values)
+    idx = np.asarray(indices, dtype=np.int64)
+    safe = np.maximum(idx, 0)
+    out = arr[safe].copy()
+    missing = idx < 0
+    if not missing.any():
+        return out
+    if out.dtype.kind in "biufc":
+        out[missing] = 0
+    elif out.dtype.kind in "US":
+        out[missing] = ""
+    else:
+        out[missing] = None
+    return out
 
 
 def _availability_timestamps(
@@ -82,9 +101,86 @@ def _availability_timestamps(
     """Return when each selected source row became observable."""
     src = np.asarray(source_ts, dtype=np.int64)
     idx = np.asarray(indices, dtype=np.int64)
+    out = np.zeros(len(idx), dtype=np.int64)
+    valid = idx >= 0
     if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
-        return src[np.minimum(idx + 1, len(src) - 1)]
-    return src[idx]
+        out[valid] = src[np.minimum(idx[valid] + 1, len(src) - 1)]
+    else:
+        out[valid] = src[idx[valid]]
+    return out
+
+
+def _frame_span_seconds(df: Optional[pd.DataFrame]) -> float:
+    """Wall-clock coverage used to reject a short/stale 'authoritative' source."""
+    if df is None or len(df) < 2:
+        return 0.0
+    return max(0.0, float((df.index[-1] - df.index[0]).total_seconds()))
+
+
+def _choose_tradier_resample_source(
+    dfs: Dict[str, pd.DataFrame],
+    minimum_span_ratio: float = 0.80,
+) -> tuple[str, pd.DataFrame]:
+    """Choose the most complete authentic intraday source for Tradier HTFs.
+
+    Fifteen-minute data remains preferred when it covers the history.  It must
+    not, however, erase a much longer real 5m history: that was the mechanism
+    that made VT's 1h/4h/D arrays almost entirely zero.  Prefer 5m whenever the
+    15m wall-clock span is less than 80% of its span.
+    """
+    d15 = dfs.get("15m")
+    d5 = dfs.get("5m")
+    if d15 is None:
+        if d5 is None:
+            raise ValueError("Tradier resampling requires 15m or 5m data")
+        return "5m", d5
+    if d5 is not None and _frame_span_seconds(d15) < minimum_span_ratio * _frame_span_seconds(d5):
+        return "5m", d5
+    return "15m", d15
+
+
+def _fabricate_tradier_5m(base_15m: pd.DataFrame) -> pd.DataFrame:
+    """Legacy interpolation, isolated so real 5m bars can replace its tail."""
+    rows = []
+    for i in range(len(base_15m)):
+        ts = base_15m.index[i]
+        o, h, l, c, v = base_15m.iloc[i][["open", "high", "low", "close", "volume"]]
+        prev_c = base_15m.iloc[i - 1]["close"] if i > 0 else o
+        for j in range(3):
+            frac = (j + 1) / 3.0
+            prev_frac = j / 3.0
+            sub_c = prev_c + (c - prev_c) * frac
+            sub_o = prev_c + (c - prev_c) * prev_frac
+            spread = h - l
+            sub_h = max(sub_o, sub_c) + spread * (0.2 if j == 1 else 0.05)
+            sub_l = min(sub_o, sub_c) - spread * (0.2 if j == 1 else 0.05)
+            sub_ts = ts - pd.Timedelta(minutes=10) + pd.Timedelta(minutes=5 * j)
+            rows.append({
+                "timestamp_dt": sub_ts,
+                "open": sub_o,
+                "high": sub_h,
+                "low": sub_l,
+                "close": sub_c,
+                "volume": v / 3.0,
+                "_synthetic_5m": 1,
+            })
+    return pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
+
+
+def _hybrid_tradier_5m(
+    base_15m: pd.DataFrame,
+    real_5m: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Backfill missing history synthetically while preserving every real 5m bar."""
+    fabricated = _fabricate_tradier_5m(base_15m)
+    if real_5m is None or len(real_5m) == 0:
+        return fabricated
+    real = real_5m.copy()
+    real["_synthetic_5m"] = 0
+    # Real observations win on overlap.  Keeping the provenance bit in the NPZ
+    # lets campaign preflight quarantine synthetic windows mechanically.
+    fabricated = fabricated.loc[~fabricated.index.isin(real.index)]
+    return pd.concat([fabricated, real], axis=0).sort_index()
 
 
 def _ann_factor() -> float:
@@ -1257,25 +1353,19 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     if mode == "crypto" and ("3m" not in dfs or len(dfs.get("3m", [])) < len(base_df) * 3):
         logger.info(f"  {symbol}: fabricating 3m from 15m ({len(base_df)} × 5 = {len(base_df)*5} bars)")
         dfs["3m"] = fabricate_3m(base_df)
-    # Fabricate 5m from 15m for tradier if missing
+    # Backfill 5m from 15m when necessary, but NEVER discard the authentic 5m
+    # tail.  The old all-or-nothing replacement fabricated the entire two-year
+    # MU price path merely because the real 5m file covered only recent months.
     if mode == "tradier" and ("5m" not in dfs or len(dfs.get("5m", [])) < len(base_df) * 2):
-        logger.info(f"  {symbol}: fabricating 5m from 15m ({len(base_df)} × 3 = {len(base_df)*3} bars)")
-        # 3 sub-bars per 15m = 5m
-        rows = []
-        for i in range(len(base_df)):
-            ts = base_df.index[i]
-            o, h, l, c, v = base_df.iloc[i][["open","high","low","close","volume"]]
-            prev_c = base_df.iloc[i-1]["close"] if i > 0 else o
-            for j in range(3):
-                frac = (j+1)/3.0; prev_frac = j/3.0
-                sub_c = prev_c + (c - prev_c) * frac
-                sub_o = prev_c + (c - prev_c) * prev_frac
-                spread = h - l
-                sub_h = max(sub_o, sub_c) + spread * (0.2 if j==1 else 0.05)
-                sub_l = min(sub_o, sub_c) - spread * (0.2 if j==1 else 0.05)
-                sub_ts = ts - pd.Timedelta(minutes=10) + pd.Timedelta(minutes=5*j)
-                rows.append({"timestamp_dt": sub_ts, "open": sub_o, "high": sub_h, "low": sub_l, "close": sub_c, "volume": v/3.0})
-        dfs["5m"] = pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
+        real_5m = dfs.get("5m")
+        logger.info(
+            f"  {symbol}: hybrid 5m backfill from 15m "
+            f"(15m={len(base_df)}, authentic_5m={len(real_5m) if real_5m is not None else 0})"
+        )
+        dfs["5m"] = _hybrid_tradier_5m(base_df, real_5m)
+    elif mode == "tradier" and "5m" in dfs:
+        dfs["5m"] = dfs["5m"].copy()
+        dfs["5m"]["_synthetic_5m"] = 0
     # Use highest resolution as base for NPZ output — every 3m/5m bar gets its own row
     if mode == "crypto" and "3m" in dfs and len(dfs["3m"]) > len(base_df):
         base_df = dfs["3m"]
@@ -1287,7 +1377,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]
     _divisor = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_dt_unit, 10**9)
     ts_epoch = (base_df.index.values.astype("int64") // _divisor).astype(np.int64)
-    # ALWAYS resample HTFs from the authoritative 15m source, NOT from fabricated 3m/5m base_df.
+    # Resample HTFs from the most complete authentic intraday source.
     # BUG FIX 2026-05-12: when base_tf is switched to fabricated 3m/5m (lines above), the old
     # code passed base_df (fabricated) to resample_tf() instead of dfs["15m"].  Resampling
     # fabricated 5m→1h introduces interpolation artifacts (mean |stoch_k_1h delta| = 32 pts,
@@ -1295,8 +1385,15 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # Second part of fix: standalone D/4h/1h files loaded from klines_cache (Mac fallback) are
     # STALE (short, old) vs the 15m-resampled versions.  ALWAYS prefer 15m-resampled for all HTFs
     # regardless of existing file length — 15m is the canonical backtest source.
-    _resample_src_tf = "15m"  # the real klines — never a fabricated sub-tf
-    _resample_src_df = dfs.get(_resample_src_tf, base_df)  # fallback to base_df if 15m missing
+    if mode == "tradier":
+        _resample_src_tf, _resample_src_df = _choose_tradier_resample_source(dfs)
+        logger.info(
+            f"  {symbol}: HTF source={_resample_src_tf} "
+            f"span_days={_frame_span_seconds(_resample_src_df) / 86400.0:.1f}"
+        )
+    else:
+        _resample_src_tf = "15m"
+        _resample_src_df = dfs.get(_resample_src_tf, base_df)
     for tf in tfs:
         if tf == base_tf or tf == _resample_src_tf:
             continue
@@ -1306,6 +1403,12 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             # may be stale (Mac fallback). 15m backtest data is the authoritative source.
             dfs[tf] = resampled
     merged = {"timestamps": ts_epoch, "close": base_df["close"].values.astype(np.float32)}
+    if mode == "tradier":
+        merged["synthetic_5m"] = (
+            base_df.get("_synthetic_5m", pd.Series(0, index=base_df.index))
+            .fillna(1)
+            .values.astype(np.int8)
+        )
     # Compute indicators per TF — ONE call, returns FULL arrays
     for tf in tfs:
         if tf not in dfs:
@@ -1323,7 +1426,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             else:
                 # Forward-fill HTF to base TF timestamps
                 indices = _broadcast_asof_indices(tf_ts, ts_epoch, tf, mode)
-                merged[key] = arr[indices]
+                merged[key] = _broadcast_values(arr, indices)
                 merged.setdefault(
                     f"timestamp_{tf}",
                     _availability_timestamps(tf_ts, indices, tf, mode),
@@ -1498,10 +1601,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
         # Override existing lr_trend_1h (already set above) only if missing
         if f"lr_trend_{t}" not in merged:
-            merged[f"lr_trend_{t}"] = sl_pct[_idx]
+            merged[f"lr_trend_{t}"] = _broadcast_values(sl_pct, _idx)
         # linearity_<TF> only requested for 4h
         if t == "4h":
-            merged["linearity_4h"] = ln[_idx]
+            merged["linearity_4h"] = _broadcast_values(ln, _idx)
     # 5. lr_pct_b_<TF> = positional %B of close vs BB on linreg basis (1h, 4h). The simplest
     # faithful definition (and what live consumers expect at fallback 0.5) is bb_pct_b_<TF>.
     for t in ("1h", "4h"):
@@ -1556,9 +1659,9 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
         _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
         _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
-        merged[f"lrL_pct_b_{t}"] = pb_t[_idx]
-        merged[f"lrL_slope_{t}"] = sl_t[_idx]
-        merged[f"lrL_r2_{t}"] = r2_t[_idx]
+        merged[f"lrL_pct_b_{t}"] = _broadcast_values(pb_t, _idx)
+        merged[f"lrL_slope_{t}"] = _broadcast_values(sl_t, _idx)
+        merged[f"lrL_r2_{t}"] = _broadcast_values(r2_t, _idx)
     # 6. velocity_1h / velocity_4h. Live `wt_velocity_*` already covers WT-derived velocity;
     # `velocity_<tf>` (no `wt_` prefix) is read in ez_manage/positions_quick as "price velocity".
     # Closest faithful match: percent return per bar on the TF close array.
@@ -1588,13 +1691,13 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
         _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
         if t == "1h":
-            merged["bb_high_1h"] = bb_hi[_idx]
-            merged["bb_low_1h"] = bb_lo[_idx]
+            merged["bb_high_1h"] = _broadcast_values(bb_hi, _idx)
+            merged["bb_low_1h"] = _broadcast_values(bb_lo, _idx)
             merged["bb_mult_1h"] = np.full(n, 2.0, dtype=np.float32)
-            merged["bb_touches_1h"] = bb_tch[_idx]
-            merged["bb_width_1h"] = bb_w[_idx]
+            merged["bb_touches_1h"] = _broadcast_values(bb_tch, _idx)
+            merged["bb_width_1h"] = _broadcast_values(bb_w, _idx)
         elif t == "4h":
-            merged["bb_width_4h"] = bb_w[_idx]
+            merged["bb_width_4h"] = _broadcast_values(bb_w, _idx)
     # 8. bb_pct (no TF suffix): default to bb_pct_b_<base_tf>.
     if f"bb_pct_b_{base_tf}" in merged:
         merged["bb_pct"] = merged[f"bb_pct_b_{base_tf}"]
@@ -1828,7 +1931,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _d_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_d_unit, 10**9)
             d_ts = (df_d.index.values.astype("int64") // _d_div).astype(np.int64)
             indices = _broadcast_asof_indices(d_ts, ts_epoch, "D", mode)
-            merged["connors_rsi_D"] = crsi_d[indices].astype(np.float32)
+            merged["connors_rsi_D"] = _broadcast_values(crsi_d, indices).astype(np.float32)
         else:
             merged["connors_rsi_D"] = np.full(n, 50.0, dtype=np.float32)
     # 2d-intraday (2026-06-02): connors_rsi_{3m,5m,15m,1h,4h} — same ConnorsRSI on each
@@ -1868,7 +1971,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _dv = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_u, 10**9)
             _tfts = (_dftf.index.values.astype("int64") // _dv).astype(np.int64)
             _idx = _broadcast_asof_indices(_tfts, ts_epoch, _ctf, mode)
-            merged[_ckey] = _crsi[_idx].astype(np.float32)
+            merged[_ckey] = _broadcast_values(_crsi, _idx).astype(np.float32)
         else:
             merged[_ckey] = np.full(n, 50.0, dtype=np.float32)
     # 3. vwap_D: daily VWAP broadcast to base TF.

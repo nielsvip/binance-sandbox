@@ -6,6 +6,7 @@ Reconstructs wt_cross from wt_cross_bull/bear binary flags when
 the encoded wt_cross array is broken (all zeros).
 """
 import numpy as np
+import re
 from datetime import datetime, timezone
 from typing import Dict, Any
 from zoneinfo import ZoneInfo
@@ -24,6 +25,53 @@ def is_tradier_rth_ts(ts: float) -> bool:
         return False
     minute = dt_et.hour * 60 + dt_et.minute
     return 9 * 60 + 30 <= minute <= 16 * 60
+
+
+def open_sizing_telemetry(executed_trades, start_position_size):
+    """Compare ladder-requested size with the quantity the harness executed."""
+    opens = []
+    requested = []
+    requested_fills = []
+    for event in executed_trades:
+        action = str(event.get("action") or event.get("side") or "").upper()
+        pos_side = str(event.get("position_side") or "").upper()
+        is_open = action in ("OPEN", "REENTRY", "AUGMENT", "QUICK_OPEN", "QUICK_AUGMENT", "HEDGE_OPEN")
+        if not is_open and action == "BUY":
+            is_open = pos_side == "LONG"
+        if not is_open and action in ("SELL", "SELL_SHORT"):
+            is_open = pos_side == "SHORT"
+        if not is_open:
+            continue
+        try:
+            notional = abs(float(event.get("price") or 0.0) * float(event.get("quantity") or 0.0))
+        except (TypeError, ValueError):
+            continue
+        if notional <= 0:
+            continue
+        opens.append(notional)
+        match = re.search(r"(?:^|_)x([0-9]+(?:\.[0-9]+)?)", str(event.get("reason") or ""))
+        if match:
+            requested.append(float(match.group(1)) * float(start_position_size))
+            requested_fills.append(notional)
+    requested_total = sum(requested)
+    filled_for_requested = sum(requested_fills)
+    fill_ratio = filled_for_requested / requested_total if requested_total > 0 else 0.0
+    return {
+        "open_notional_sum": f"{sum(opens):.4f}",
+        "max_open_notional": f"{max(opens) if opens else 0.0:.4f}",
+        "max_filled_start_mult": (
+            f"{max(opens) / max(float(start_position_size), 1e-9) if opens else 0.0:.4f}"
+        ),
+        "max_requested_mult": (
+            f"{max(requested) / max(float(start_position_size), 1e-9) if requested else 0.0:.4f}"
+        ),
+        "requested_fill_ratio": f"{fill_ratio:.4f}",
+        "sized_open_events": len(requested),
+        "size_clamp_count": sum(
+            1 for req, fill in zip(requested, requested_fills)
+            if fill + max(1.0, req * 0.02) < req
+        ),
+    }
 
 
 class _IndicatorDict(dict):
