@@ -49,9 +49,16 @@ def open_sizing_telemetry(executed_trades, start_position_size):
         if notional <= 0:
             continue
         opens.append(notional)
-        match = re.search(r"(?:^|_)x([0-9]+(?:\.[0-9]+)?)", str(event.get("reason") or ""))
+        reason = str(event.get("reason") or "")
+        match = re.search(r"(?:^|_)x([0-9]+(?:\.[0-9]+)?)", reason)
         if match:
             requested.append(float(match.group(1)) * float(start_position_size))
+            requested_fills.append(notional)
+        elif reason == "V8_LADDER_INITIAL_BH_SEED":
+            # Stage 0 deliberately requests one benchmark unit. It predates
+            # ladder reason suffixes, but must still participate in the same
+            # requested-vs-filled contract rather than falsely reporting 0/0.
+            requested.append(float(start_position_size))
             requested_fills.append(notional)
     requested_total = sum(requested)
     filled_for_requested = sum(requested_fills)

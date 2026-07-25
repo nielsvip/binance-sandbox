@@ -726,18 +726,23 @@ class DeltaTracker:
                     prev["_exit_pending_short"] = True
                     sig.tf_lost = f"ZSCORE_OVERSOLD_1h={_zs_1h:.1f}_4h={_zs_4h:.1f}"
 
-            # Clear pending exit state when executed or no longer valid
+            # A signal is only a proposal. Keep an existing obligation latched until
+            # the position manager acknowledges that the position actually closed.
             if sig.exit_long:
-                prev["_exit_pending_long"] = False
-                if not sig.exit_retest_long:
-                    prev["_exit_pending_long_rebound"] = False
+                prev["_exit_pending_long"] = bool(_pending_long_at_start)
+                prev["_exit_pending_long_rebound"] = bool(
+                    _pending_long_at_start
+                    and (sig.exit_retest_long or prev.get("_exit_pending_long_rebound", False))
+                )
             elif not sig.exit_pending_long:
                 prev["_exit_pending_long"] = False
                 prev["_exit_pending_long_rebound"] = False
             if sig.exit_short:
-                prev["_exit_pending_short"] = False
-                if not sig.exit_retest_short:
-                    prev["_exit_pending_short_rebound"] = False
+                prev["_exit_pending_short"] = bool(_pending_short_at_start)
+                prev["_exit_pending_short_rebound"] = bool(
+                    _pending_short_at_start
+                    and (sig.exit_retest_short or prev.get("_exit_pending_short_rebound", False))
+                )
             elif not sig.exit_pending_short:
                 prev["_exit_pending_short"] = False
                 prev["_exit_pending_short_rebound"] = False
@@ -795,12 +800,14 @@ class DeltaTracker:
                 sig.exit_short = False
                 # Retest obligations survive an independent veto. Forgetting the arm
                 # here allows price to run beyond the intended exit with no retry.
-                sig.exit_pending_long = bool(sig.exit_retest_long)
-                sig.exit_pending_short = bool(sig.exit_retest_short)
-                prev["_exit_pending_long"] = bool(sig.exit_retest_long)
-                prev["_exit_pending_short"] = bool(sig.exit_retest_short)
-                prev["_exit_pending_long_rebound"] = bool(sig.exit_retest_long)
-                prev["_exit_pending_short_rebound"] = bool(sig.exit_retest_short)
+                _preserve_long = bool(sig.exit_retest_long or (_pending_long_at_start and _sv_is_long))
+                _preserve_short = bool(sig.exit_retest_short or (_pending_short_at_start and not _sv_is_long))
+                sig.exit_pending_long = _preserve_long
+                sig.exit_pending_short = _preserve_short
+                prev["_exit_pending_long"] = _preserve_long
+                prev["_exit_pending_short"] = _preserve_short
+                prev["_exit_pending_long_rebound"] = _preserve_long
+                prev["_exit_pending_short_rebound"] = _preserve_short
                 if sig.zone_action in ("EXIT_LONG", "EXIT_SHORT"):
                     sig.zone_action = "HOLD"
                 sig.tf_lost = _sv_reason
@@ -1240,7 +1247,17 @@ class DeltaTracker:
                     sig.zone_reason = f"SMART_RZ_EXIT_S_k15={_rz_k_15m:.0f}_mfi={_rz_mfi_15m:.0f}_decel={_rz_decel_short}_highbrk={_rz_high_break}_wt={_rz_wt_slow_s}_dc={_rz_dc_rising}_hl={_rz_higher_low}_hh={_rz_higher_high}_re={sig.reentry_if_momentum}"
 
     def reset_position_state(self, symbol):
+        """Acknowledge the end/start of a position cycle and clear exit obligations."""
         self._max_speed[symbol] = 0.0
+        prev = self._prev.get(symbol)
+        if prev is not None:
+            for key in (
+                "_exit_pending_long",
+                "_exit_pending_short",
+                "_exit_pending_long_rebound",
+                "_exit_pending_short_rebound",
+            ):
+                prev.pop(key, None)
 
 
 def _safe_float(val):

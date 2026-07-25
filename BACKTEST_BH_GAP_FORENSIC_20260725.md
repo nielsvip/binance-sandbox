@@ -342,3 +342,66 @@ opposite-side physics remain hard execution constraints.
 Final engine output now includes `reentry_pending`, `reentry_flat_bars`,
 `reentry_max_overshoot_pct` and `reentry_violations`. A ladder result with pending or violated
 obligations is diagnostic/red and cannot enter SWITCH_MATRIX_TRB.
+
+## Top-exit and VT addendum — 2026-07-25
+
+### VT is regenerated and admitted with a coverage warning
+
+VT now passes the source, closed-bar, prefix-invariance and data-contract tests. The rebuild
+uses the authentic 5m history as the broad source, preserves authentic 15m overlap, and marks
+the small interpolated tail explicitly. Rows increased from 39,557 to 41,824. Future
+availability is zero on 15m/1h/4h/D. One 69.5-day source gap remains and is disclosed; an
+independent daily cache proves it is missing coverage rather than a corporate action. Exact
+coverage, hashes and rollback are in `VT_NPZ_REGEN_20260725.md`.
+
+### The intended delayed top exit was self-cancelling
+
+The prior two-phase Delta/RZ path did not implement “break structure, then exit at the next
+top.” For a LONG it armed on weakness and then emitted an exit as soon as the next micro bar
+was green or made a higher high. The structural-exit veto correctly rejected that still-rising
+exit and then erased the pending flag. SHORT had the mirrored failure. A later close gate,
+cooldown, NOLOSS refusal or broker rejection could also lose the obligation because state was
+cleared when the signal was proposed rather than when the position actually closed.
+
+The repaired causal state is:
+
+1. weakness/structure break arms the exit;
+2. a favorable rebound marks `RETEST_SEEN` but never exits;
+3. LONG executes only after a subsequent LH+LL and close below the preceding low;
+4. SHORT executes only after the mirrored HH+HL and close above the preceding high;
+5. missing bars and vetoed proposals retain the obligation;
+6. the obligation clears only on the backtest's immediate fill, live broker-sync flat
+   acknowledgement, or a confirmed fresh position cycle.
+
+The focused long/short regression suite passes 11 cases locally and on S1.
+
+### Historical MTF exits were mostly unreachable
+
+The compound MTF exit family also contained two time-domain defects:
+
+- the live restart cutoff `MTF_EXIT_MIN_OPEN_TS=2026-05-20` excluded positions opened earlier
+  in historical simulations;
+- BB rejection used wall-clock `time.time()` and assumed every selected timeframe lasted 300
+  seconds, so accelerated backtests had effectively unbounded or incorrect tag memory.
+
+Backtests now inject their simulation-start cutoff and indicator event timestamp while live
+retains its wall-clock restart protection. BB and DC rejection use the selected timeframe
+duration, and `MTF_DC_REJECT_EXIT_LOOKBACK` is connected to bounded outside/re-cross state.
+The combined source/data/exit suite passes 37 cases locally; the focused exit suite passes
+17 cases on S1.
+
+### New research queue
+
+`SYSTEMATIC_EXIT_REENTRY_RESEARCH_20260725.md` defines 13 causal candidates derived from
+published trend/stop research and explicit mechanical educator rules. The first diagnostic
+queue is deliberately small:
+
+1. slow 4h/D Chandelier;
+2. slow 4h/D Donchian opposite-channel exit;
+3. delayed structural break → failed-retest exit;
+4. mandatory reclaim of stored exit/top price;
+5. lower-price pullback re-entry with mandatory reclaim fallback.
+
+These are screened independently with fast exits disabled. Only Pareto-frontier candidates
+advance to bounded combinations and faithful replay. DC_LOW4 remains retained as a rejected
+loss-exit experiment, not the strategy direction.

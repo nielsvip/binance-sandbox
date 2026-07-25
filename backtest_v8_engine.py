@@ -6080,6 +6080,40 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                       "squeeze_fire_aligned": 0}
     # NEW 2026-04-26 sweep switch: rolling tradier-equity-percent for DD_KELLY (mark-to-trade-pnl).
     _v8ns_equity_pct = [0.0]
+    # Historical positions must be eligible for MTF compound exits. The live
+    # absolute restart-protection timestamp is operational state, not a strategy
+    # parameter, so replace it only inside this simulated module/config scope.
+    from mtf_exit_timing import effective_mtf_min_open_ts
+    _mtf_sim_start_ts_t = float(
+        _real_dt.strptime(start_date, "%Y-%m-%d")
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+    _mtf_live_min_open_ts_t = float(
+        getattr(tm_mod.config, "MTF_EXIT_MIN_OPEN_TS", 0.0) or 0.0
+    )
+    _mtf_backtest_min_open_ts_t = effective_mtf_min_open_ts(
+        _mtf_live_min_open_ts_t,
+        simulation_start_ts=_mtf_sim_start_ts_t,
+    )
+    setattr(tm_mod.config, "MTF_EXIT_MIN_OPEN_TS", _mtf_backtest_min_open_ts_t)
+    try:
+        setattr(_ct.TradierConfig, "MTF_EXIT_MIN_OPEN_TS", _mtf_backtest_min_open_ts_t)
+        if (
+            hasattr(_ct.TradierConfig, "__dataclass_fields__")
+            and "MTF_EXIT_MIN_OPEN_TS" in _ct.TradierConfig.__dataclass_fields__
+        ):
+            _ct.TradierConfig.__dataclass_fields__["MTF_EXIT_MIN_OPEN_TS"].default = (
+                _mtf_backtest_min_open_ts_t
+            )
+    except Exception:
+        pass
+    v8_logger.info(
+        "[V8_MTF_SIM_START] MTF_EXIT_MIN_OPEN_TS=%s "
+        "(live configured cutoff %s; backtest-only simulation start)",
+        _mtf_backtest_min_open_ts_t,
+        _mtf_live_min_open_ts_t,
+    )
     # Harness-only capital contract (never written to config_tradier.py/live):
     # $2k benchmark unit and $16k strategy capacity at the canonical $10k capital.
     _capital_contract_t = apply_tradier_backtest_capital_contract(tm_mod.config, capital)

@@ -34,6 +34,11 @@ from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
 from local_extremes_scorer import score_local_extremes as _le_score_entry
+from mtf_exit_timing import (
+    event_within_lookback as _mtf_event_within_lookback,
+    indicator_event_timestamp as _mtf_indicator_event_timestamp,
+    position_open_is_eligible as _mtf_position_open_is_eligible,
+)
 from reentry_contract import (
     get_exit_value as _reentry_exit_value,
     reentry_opposition as _reentry_opposition,
@@ -2700,11 +2705,14 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             _mtfce_pos_open_ts_gate = 0.0
         if (position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0
                 and bool(_cfg('MTF_EXIT_USE_COMPOUND', False, account_key, symbol, position_side))
-                and _mtfce_pos_open_ts_gate >= _mtfce_min_ts_gate):
+                and _mtf_position_open_is_eligible(_mtfce_pos_open_ts_gate, _mtfce_min_ts_gate)):
             try:
                 if not hasattr(trade_manager, 'mtf_compound_exit_state'):
                     trade_manager.mtf_compound_exit_state = {}
-                _mtfce_state = trade_manager.mtf_compound_exit_state.get(position_key, {'trail': 0.0, 'ever_outside_dc': False, 'bb_tag_bars': []})
+                _mtfce_state = trade_manager.mtf_compound_exit_state.get(
+                    position_key,
+                    {'trail': 0.0, 'dc_outside_ts': 0.0, 'bb_tag_bars': []},
+                )
                 _mtfce_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                 _mtfce_fire = False
                 _mtfce_reason = ""
@@ -2713,7 +2721,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 _mtfce_bb_tf = str(_cfg('MTF_BB_REJECT_EXIT_TF', '1h', account_key, symbol, position_side))
                 _mtfce_wt_tf = str(_cfg('MTF_WT_CROSS_EXIT_TF', '1h', account_key, symbol, position_side))
                 _mtfce_atr_mult = float(_cfg('MTF_ATR_TRAIL_MULT', 2.5, account_key, symbol, position_side))
+                _mtfce_dc_lb = max(1, int(_cfg('MTF_DC_REJECT_EXIT_LOOKBACK', 5, account_key, symbol, position_side)))
                 _mtfce_bb_lb = int(_cfg('MTF_BB_REJECT_EXIT_LOOKBACK', 5, account_key, symbol, position_side))
+                # Backtests inject _tick_ts/ts. Live indicators may omit both, in
+                # which case wall clock remains the unchanged fallback.
+                _mtfce_now_s = _mtf_indicator_event_timestamp(i, fallback_now=time.time())
                 # ─── 1. MTF_ATR_TRAIL ─────────────────────────────────────────────
                 if bool(_cfg('MTF_ATR_TRAIL_ENABLED', False, account_key, symbol, position_side)):
                     _mtfce_atr = safe_fetch_float(i.get(f'atr_{_mtfce_atr_tf}'), 0)
@@ -2736,18 +2748,34 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _mtfce_band = safe_fetch_float(i.get(f'dc_high_{_mtfce_dc_tf}'), 0)
                         if _mtfce_band > 0:
                             if current_price > _mtfce_band:
-                                _mtfce_state['ever_outside_dc'] = True
-                            elif _mtfce_state.get('ever_outside_dc', False) and current_price < _mtfce_band:
+                                _mtfce_state['dc_outside_ts'] = _mtfce_now_s
+                            elif (current_price < _mtfce_band
+                                  and _mtf_event_within_lookback(
+                                      _mtfce_now_s,
+                                      _mtfce_state.get('dc_outside_ts', 0),
+                                      _mtfce_dc_lb,
+                                      _mtfce_dc_tf,
+                                  )):
                                 _mtfce_fire = True
                                 _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
+                            elif current_price < _mtfce_band:
+                                _mtfce_state['dc_outside_ts'] = 0.0
                     else:
                         _mtfce_band = safe_fetch_float(i.get(f'dc_low_{_mtfce_dc_tf}'), 0)
                         if _mtfce_band > 0:
                             if current_price < _mtfce_band:
-                                _mtfce_state['ever_outside_dc'] = True
-                            elif _mtfce_state.get('ever_outside_dc', False) and current_price > _mtfce_band:
+                                _mtfce_state['dc_outside_ts'] = _mtfce_now_s
+                            elif (current_price > _mtfce_band
+                                  and _mtf_event_within_lookback(
+                                      _mtfce_now_s,
+                                      _mtfce_state.get('dc_outside_ts', 0),
+                                      _mtfce_dc_lb,
+                                      _mtfce_dc_tf,
+                                  )):
                                 _mtfce_fire = True
                                 _mtfce_reason = f"MTF_DC_REJECT_{_mtfce_dc_tf}_px{current_price:.4f}"
+                            elif current_price > _mtfce_band:
+                                _mtfce_state['dc_outside_ts'] = 0.0
                 # ─── 3. MTF_BB_REJECT ─────────────────────────────────────────────
                 if (not _mtfce_fire) and bool(_cfg('MTF_BB_REJECT_EXIT_ENABLED', False, account_key, symbol, position_side)):
                     _mtfce_bbu = safe_fetch_float(i.get(f'bb_upper_{_mtfce_bb_tf}'), 0)
@@ -2764,12 +2792,14 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _mtfce_tag_now = False
                         _mtfce_fail_now = False
                     _mtfce_tag_bars = list(_mtfce_state.get('bb_tag_bars', []))
-                    _mtfce_now_s = int(time.time())
                     if _mtfce_tag_now:
                         _mtfce_tag_bars.append(_mtfce_now_s)
-                    # Stock 5m base TF → ~300s × lookback bars window
-                    _mtfce_cutoff_s = _mtfce_now_s - _mtfce_bb_lb * 300
-                    _mtfce_tag_bars = [b for b in _mtfce_tag_bars if b >= _mtfce_cutoff_s]
+                    _mtfce_tag_bars = [
+                        b for b in _mtfce_tag_bars
+                        if _mtf_event_within_lookback(
+                            _mtfce_now_s, b, _mtfce_bb_lb, _mtfce_bb_tf
+                        )
+                    ]
                     _mtfce_state['bb_tag_bars'] = _mtfce_tag_bars
                     if _mtfce_fail_now and len(_mtfce_tag_bars) > 0:
                         _mtfce_fire = True
@@ -12624,6 +12654,28 @@ class TradierTradeManager:
                                 if new_qty > 0:
                                     local_pos.entry_price = (old_cost + new_cost) / new_qty
 
+                    # Exit state is acknowledgement-driven. In the backtest, a successful
+                    # API result is an immediate fill; live keeps the obligation latched
+                    # until broker sync confirms flat. A fresh OPEN/REENTRY always starts
+                    # a new cycle and clears any obligation from the prior position.
+                    if self.delta_tracker:
+                        _delta_fresh_cycle = bool(
+                            (not is_reduce)
+                            and is_entry_action
+                            and abs(float(original_position_amt or 0.0)) < 0.0001
+                        )
+                        _delta_close_ack = bool(
+                            is_reduce
+                            and is_full_close
+                            and (getattr(self, "is_backtest", False) or order_id == "GHOST_CLEARED")
+                        )
+                        if _delta_fresh_cycle or _delta_close_ack:
+                            self.delta_tracker.reset_position_state(symbol)
+                            logger.info(
+                                f"[DELTA_EXIT_STATE_ACK] {position_key}: "
+                                f"{'fresh_cycle' if _delta_fresh_cycle else 'confirmed_close'}"
+                            )
+
                     await self._append_to_history(position_key, action, quantity, current_price, reason)
                     if lock_acquired and self.redis_manager:
                         # Ghost-cleared positions get 5-min cooldown to stop repeat loops
@@ -15035,6 +15087,9 @@ class TradierTradeManager:
                             # 2026-04-29: reset cycle_peak_gain only (NOT max_gain — separate decay path)
                             try: pos.cycle_peak_gain = 0.0
                             except Exception: pass
+                            if self.delta_tracker:
+                                self.delta_tracker.reset_position_state(sym)
+                                logger.info(f"[DELTA_EXIT_STATE_ACK] {pk}: broker_sync_flat")
                             self._phantom_killed_keys.add(pk)
                             zeroed_count += 1
                     for pk in list(self._phantom_killed_keys):

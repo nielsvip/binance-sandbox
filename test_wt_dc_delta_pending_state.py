@@ -70,6 +70,30 @@ def _phase_two_bar(side):
     }
 
 
+def _failed_retest_bar(side):
+    if side == "LONG":
+        return {
+            "_tick_ts": 2,
+            "current_price": 97,
+            "open_3m": 101,
+            "close_3m": 97,
+            "high_3m": 101,
+            "low_3m": 96,
+            "high_3m_prev": 106,
+            "low_3m_prev": 99,
+        }
+    return {
+        "_tick_ts": 2,
+        "current_price": 103,
+        "open_3m": 99,
+        "close_3m": 103,
+        "high_3m": 104,
+        "low_3m": 98,
+        "high_3m_prev": 101,
+        "low_3m_prev": 94,
+    }
+
+
 @pytest.mark.parametrize(
     ("side", "pending_key", "signal_attr"),
     [
@@ -87,6 +111,33 @@ def test_structural_veto_preserves_two_phase_pending(side, pending_key, signal_a
 
     assert getattr(signal, signal_attr) is True
     assert tracker._prev["TEST"][pending_key] is True
+
+
+@pytest.mark.parametrize(
+    ("side", "pending_key", "exit_attr"),
+    [
+        ("LONG", "_exit_pending_long", "exit_long"),
+        ("SHORT", "_exit_pending_short", "exit_short"),
+    ],
+)
+def test_confirmed_exit_stays_latched_until_position_ack(side, pending_key, exit_attr):
+    tracker = _NoRedzoneTracker(_CFG)
+    tracker._prev["TEST"][pending_key] = True
+
+    rebound = tracker.update(
+        "TEST", _phase_two_bar(side), {"side": side, "n_entries": 1}
+    )
+    assert getattr(rebound, exit_attr) is False
+    assert tracker._prev["TEST"][pending_key] is True
+
+    confirmed = tracker.update(
+        "TEST", _failed_retest_bar(side), {"side": side, "n_entries": 1}
+    )
+    assert getattr(confirmed, exit_attr) is True
+    assert tracker._prev["TEST"][pending_key] is True
+
+    tracker.reset_position_state("TEST")
+    assert pending_key not in tracker._prev["TEST"]
 
 
 @pytest.mark.parametrize(

@@ -43,6 +43,20 @@ class SizingTelemetryTests(unittest.TestCase):
             fills.append(result["max_open_notional"])
         self.assertEqual(len(set(fills)), 8)
 
+    def test_stage0_bh_seed_reports_one_requested_and_filled_unit(self):
+        result = open_sizing_telemetry([{
+            "action": "OPEN",
+            "position_side": "LONG",
+            "price": 125.0,
+            "quantity": 16.0,
+            "reason": "V8_LADDER_INITIAL_BH_SEED",
+        }], 2000.0)
+        self.assertEqual(result["max_requested_mult"], "1.0000")
+        self.assertEqual(result["max_filled_start_mult"], "1.0000")
+        self.assertEqual(result["requested_fill_ratio"], "1.0000")
+        self.assertEqual(result["sized_open_events"], 1)
+        self.assertEqual(result["size_clamp_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
