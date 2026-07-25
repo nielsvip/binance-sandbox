@@ -939,24 +939,6 @@ def run_all_sources(sources: Optional[List[str]] = None) -> Tuple[List[Dict], Pa
 # INJECTION — write to same news_injections.json that tradier_rankings reads
 # ═══════════════════════════════════════════════════════════════════
 
-def _read_symbol_list(path: Path) -> List[str]:
-    try:
-        if path.exists():
-            with open(path, "r") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return []
-
-
-def _write_symbol_list(path: Path, symbols: List[str]):
-    try:
-        with open(path, "w") as f:
-            json.dump(sorted(set(symbols)), f, indent=2)
-    except Exception as e:
-        logger.error(f"[INJECT] Failed to write {path.name}: {e}")
-
-
 def _load_injections() -> dict:
     try:
         if INJECTION_FILE.exists():

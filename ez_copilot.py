@@ -1659,8 +1659,8 @@ async def run_outperformer_cycle(redis_client: aioredis.Redis):
 # ═══════════════════════════════════════════════════════════════
 # SECTION 5.6 — MARKET-WIDE OUTLIER SCANNER (Tradier equities)
 # ═══════════════════════════════════════════════════════════════
-# Scans the full tradeable equities universe, finds biggest movers
-# (winners AND losers), and injects them into symbols_tradier.json
+# Scans the broad equities universe and submits allowlisted movers as ranking
+# hints. It must never mutate the authoritative symbols_tradier.json file.
 
 # Top ~600 liquid US equities to scan (S&P500 + popular mid-caps)
 # Tradier batch quotes allow up to ~100 symbols per call
