@@ -321,7 +321,7 @@ def band_ladder_mult(pct_b, cfg, tf="D"):
             pass
         return g(scalar_key, dflt)
     below = g("LR_BAND_LADDER_BELOW_BOTTOM_MULT", 0.0)
-    # per-TF pairs: D 10->3, 4h 6->2, 1h 4->1 (not a constant ratio, so each TF carries its own)
+    # per-TF pairs: D 10->6, 4h 6->4, 1h 4->1 (each TF carries its own user-defined pair)
     bottom = _tf_val("LR_BAND_LADDER_TF_BOTTOM", "LR_BAND_LADDER_BOTTOM_MULT", 10.0)
     top = _tf_val("LR_BAND_LADDER_TF_TOP", "LR_BAND_LADDER_TOP_MULT", 3.0)
     above = g("LR_BAND_LADDER_ABOVE_TOP_MULT", -1.0)

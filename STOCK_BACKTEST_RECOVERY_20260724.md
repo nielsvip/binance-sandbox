@@ -7,6 +7,44 @@ specification for the later `ez_` crypto port.
 
 ## Executive status
 
+### 2026-07-25 matrix-building continuation
+
+The actionable TRB matrix now has a `description` column populated for every
+tradeable path row (3,522 actionable rows; 129 tradeable key columns in the
+current ENGINE export). Descriptions explain switch semantics; they are not
+profitability claims.
+
+The first interaction replay after fixing entry ablation attempted
+`MTF_ARMED_ENTRY_ENABLED=true` with WT-DC threshold restored to 45. The runner
+created the override, but the engine returned no JSONL result (`rc=1`). This
+cell is therefore **PENDING/RED wiring**, not a zero-trade performance result,
+and must not be promoted. The runner now records such failures instead of
+silently treating them as zero trades.
+
+Acceptance remains strict: fresh Tier-2 engine result, real closes, changed
+trade fingerprint, and performance above the same-key B&H floor. Vector runs
+are screening shortcuts only until replayed through the engine.
+
+### Ladder-first correction (2026-07-25)
+
+`tradier_manage.band_ladder_mult()` now uses the requested map as a wiring
+baseline: D 10x→6x, 4h 6x→4x, and 1h 4x→1x; below the lower gray band is 0x.
+The stale 4h 8x→4x and 1h 4x→2x values/comments were corrected in
+`config_tradier.py`. These multipliers are **not accepted performance values**;
+they are hypotheses assigned to a dedicated parameter-search lane for empirical
+testing across symbols and timeframes.
+
+The ladder sizes an entry path; it does not discover green arrows itself. The
+current MTF-arrow path uses a 5m swing-reversal confirmation, while the
+separate all-timeframe `BAND_ARROW` path is disabled by default. Ladder-first
+validation must therefore prove that the intended D/4h/1h green-arrow or
+HH/HL-low-StochRSI triggers reach the sizing function before exit results are
+trusted.
+
+The next campaign is exit-first: hold ladder entry fixed, replay individual
+exit paths and small combinations, enforce re-entry at or below the recorded
+exit/top price, and only then add entry filters.
+
 Do not use the current `SWITCH_MATRIX_TRB` values to select a live configuration yet.
 
 The engine is not currently running a campaign. `data/GRID_SUSPENDED` stops the matrix

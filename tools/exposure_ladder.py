@@ -360,6 +360,8 @@ def main():
                     help="run one exact stage1/stage2 main switch (Tier-1 shortlist replay)")
     ap.add_argument("--knob-value", default=None,
                     help="explicit value for --only-knob (true/false, number or string)")
+    ap.add_argument("--combo", default="",
+                    help="comma-separated companion overrides KNOB=VALUE for interaction replay")
     ap.add_argument("--shard", default="", help="i/N — run only this slice of the knob list so "
                                                 "N workers can share one stage across the box")
     ap.add_argument("--entry", default="accepted", choices=["accepted", "wt5m", "band"],
@@ -378,6 +380,25 @@ def main():
     con = prs.connect()
     _y, bh_long = psc.sym_years_and_bh(sym, psc.START)
     bh = bh_long if side == "LONG" else (-bh_long if bh_long is not None else None)
+
+    def parse_combo(raw):
+        out = {}
+        for item in (raw or "").split(","):
+            if not item.strip() or "=" not in item:
+                continue
+            key, value = item.split("=", 1)
+            value = value.strip()
+            if value.lower() in ("true", "false"):
+                parsed = value.lower() == "true"
+            else:
+                try:
+                    parsed = float(value)
+                except ValueError:
+                    parsed = value
+            out[key.strip()] = parsed
+        return out
+
+    combo_overrides = parse_combo(a.combo)
 
     if a.stage == "verify":
         # Read the last stage-0 trade file and list the exit families that STILL fired. Each one
@@ -539,6 +560,7 @@ def main():
                     if val != values[0]:
                         continue
                 ovr = dict(base)
+                ovr.update(combo_overrides)
                 ovr[knob] = False if ABLATION.search(knob) else True   # this ONE feature back on...
                 ovr[pname] = val          # ...at this parameter setting
                 tag = (

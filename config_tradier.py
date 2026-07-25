@@ -695,15 +695,13 @@ class TradierConfig:
     LR_BAND_LADDER_ABOVE_TOP_MULT: float = -1.0   # <0 = use TOP_MULT ("3x at or above top")
     LR_BAND_LADDER_BELOW_BOTTOM_MULT: float = 0.0 # below the lower band = NO trade
     LR_BAND_LADDER_CENTER: float = 0.5            # plateau edge for center_plateau mode
-    # Per-TF BOTTOM/TOP pairs (USER 2026-07-22): D 10x->3x, 4h 6x->2x, 1h 4x->1x. These are not
-    # a constant ratio (10/3, 6/2, 4/1), so a single per-TF weight cannot express them — each TF
-    # carries its own pair. A TF absent from the map falls back to the scalar BOTTOM/TOP above.
-    # USER 2026-07-23: "GET THE LADDER BETWEEN THE GRAY BANDS RIGHT — 10x-6x on D, 8x-4x on 4h,
-    # 4x-2x on H". BOTTOM = multiplier at/below the channel centre, TOP = at the upper band.
+    # Per-TF BOTTOM/TOP pairs (user ladder rule): D 10x->6x, 4h 6x->4x, 1h 4x->1x.
+    # Each timeframe carries its own pair; a scalar cannot express these ratios. BOTTOM is
+    # the multiplier at/below the channel centre, TOP is the multiplier at the upper gray band.
     # Continuous interpolation between the two (NOT a threshold gate — that was built wrong once
     # and the user called it "structurally wRONG"). Below the lower band = 0x, no trade.
-    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 8.0, "1h": 4.0})
-    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 6.0, "4h": 4.0, "1h": 2.0})
+    LR_BAND_LADDER_TF_BOTTOM: dict = field(default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0})
+    LR_BAND_LADDER_TF_TOP: dict = field(default_factory=lambda: {"D": 6.0, "4h": 4.0, "1h": 1.0})
     LR_BAND_ENTRY_ENABLED: bool = False
     LR_BAND_ENTRY_TF: str = "D"
     LR_BAND_ENTRY_LO: float = 0.3
@@ -2887,7 +2885,7 @@ class TradierConfig:
         self.TRADIER_REENTRY_ANTI_CHURN_ENABLED = False
         self.AUGMENTATION_COOLDOWN_MINUTES = 0
         self.TRADIER_MIN_HOLD_MINUTES = 0
-        # Grey-band ladder: D 10x-6x, 4h 8x-4x, 1h 4x-2x, 0x below the lower band.
+        # Grey-band ladder: D 10x-6x, 4h 6x-4x, 1h 4x-1x, 0x below the lower band.
         self.LR_BAND_LADDER_ENABLED = True
         self.LR_BAND_ENTRY_ENABLED = True
         self.LR_BAND_REGIME_ENABLED = True
