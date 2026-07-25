@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-25T19:45:48.002948+00:00",
+  "timestamp": "2026-07-25T20:00:43.061810+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -739,12 +739,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ZECUSDC",
-      "net_score": 29.1,
-      "long_score": 29.1,
-      "short_score": 0
-    },
-    {
       "symbol": "1000LUNCUSDT",
       "net_score": 30,
       "long_score": 30,
@@ -785,6 +779,12 @@
       "net_score": 30.0,
       "long_score": 30.0,
       "short_score": 0
+    },
+    {
+      "symbol": "ZECUSDC",
+      "net_score": 30,
+      "long_score": 30,
+      "short_score": 0
     }
   ],
   "top_longs": [
@@ -815,7 +815,7 @@
     ],
     [
       "ZECUSDC",
-      29.1,
+      30,
       531.60016966
     ],
     [
