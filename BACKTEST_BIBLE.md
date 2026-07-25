@@ -859,3 +859,8 @@ new interaction recipe gives a reproducible B&H-relative improvement.
 numeric or boolean switch cannot be considered tested until its two-value fingerprint moves.
 `BB_PULLBACK_GATE_ENABLED=False` produced that same fingerprint and is likewise red/reconnect
 in the isolated entry lane.
+
+The entry ablation contract also had to disable both numeric WT-DC threshold aliases. Without
+that, every named entry replay still admitted `WT_DC_ENTRY_*` signals and identical fingerprints
+were expected. `tools/exposure_ladder.py` now sets both thresholds out of reach before testing
+an entry path.

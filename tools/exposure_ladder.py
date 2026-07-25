@@ -520,14 +520,11 @@ def main():
     for i, knob in enumerate(knobs, 1):
         family_params = params_of(knob) or [(knob, [True])]
         if a.only_knob:
-            # A shortlist replay asks whether the family ON result survives
-            # Tier-2. The OFF master is exactly stage 0 and must not consume
-            # another full-history run.
+            # An explicit replay is attributable to exactly one field. Do not silently
+            # sweep sibling settings from the registry family under an --only-knob label.
+            family_params = [(knob, [True, False])]
             if a.knob_value is None:
-                family_params = [
-                    (pname, [v for v in values if not (pname == knob and v is False)])
-                    for pname, values in family_params
-                ]
+                family_params = [(knob, [True])]
         for pname, values in family_params:
             for val in values:
                 if a.only_knob and a.knob_value is not None and pname == a.only_knob:
@@ -545,9 +542,9 @@ def main():
                 ovr[knob] = False if ABLATION.search(knob) else True   # this ONE feature back on...
                 ovr[pname] = val          # ...at this parameter setting
                 tag = (
-                    f"LADDER1__{knob}__{pname}__{val}{a.tag_suffix}"
+                    f"LADDER{1 if a.stage == 'stage1' else 2}__{knob}__{pname}__{val}{a.tag_suffix}"
                 ).replace("/", "_")[:120]
-                if con.execute("SELECT 1 FROM param_cells WHERE campaign=? AND symbol=? AND side=? "
+                if (not a.only_knob) and con.execute("SELECT 1 FROM param_cells WHERE campaign=? AND symbol=? and side=? "
                                "AND param=? AND value_json=? LIMIT 1",
                                (LADDER_CAMPAIGN, sym, side, pname, str(val))).fetchone():
                     continue          # already measured — shards and restarts never redo work

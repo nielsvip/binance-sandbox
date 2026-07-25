@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-25T01:35:38.300336+00:00",
+  "timestamp": "2026-07-25T01:51:21.850728+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -679,15 +679,15 @@
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 16.2,
-      "long_score": 16.2,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "ORDIUSDC",
+      "net_score": 16.5,
+      "long_score": 16.5,
       "short_score": 0
     },
     {
@@ -739,15 +739,15 @@
       "short_score": 0
     },
     {
-      "symbol": "XLMUSDT",
+      "symbol": "PUMPUSDT",
       "net_score": 25.3,
       "long_score": 25.3,
       "short_score": 0
     },
     {
-      "symbol": "PUMPUSDT",
-      "net_score": 25.3,
-      "long_score": 25.3,
+      "symbol": "XLMUSDT",
+      "net_score": 26.0,
+      "long_score": 26.0,
       "short_score": 0
     },
     {
@@ -820,7 +820,7 @@
     ],
     [
       "XLMUSDT",
-      25.3,
+      26.0,
       0.1934
     ],
     [
@@ -869,14 +869,14 @@
       0.14912276
     ],
     [
+      "ORDIUSDC",
+      16.5,
+      3.68259137
+    ],
+    [
       "MRVLUSDT",
       16.4,
       208.0561404
-    ],
-    [
-      "ORDIUSDC",
-      16.2,
-      3.68259137
     ],
     [
       "ONDOUSDT",

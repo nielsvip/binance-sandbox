@@ -416,3 +416,10 @@ The first measured MU_LONG entry candidates are now classified against the clean
 
 This is the intended recalculating workflow: positive historical deltas are hypotheses, not
 promotions, and every candidate is rerun from a fixed accepted recipe plus the current path.
+
+The isolated-entry runner itself required one more correction: `all_entries_off()` was disabling
+boolean/string entry switches but leaving numeric `WT_DC_ENTRY_THRESHOLD` and its
+`TRA_WT_DC_ENTRY_THRESHOLD` alias at live values. As a result, MTF, BB and Golden Rule tests
+all inherited WT-DC entries and produced the same 32-trade fingerprint. Entry floors now set
+both thresholds to an unreachable value before replaying a named path; this is required for
+any future entry-cell result to be considered valid.
