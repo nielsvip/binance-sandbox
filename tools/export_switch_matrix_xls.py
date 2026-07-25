@@ -131,6 +131,10 @@ def load_cells(campaign, tier="ENGINE"):
     if campaign:
         q += " AND campaign=?"
         args.append(campaign)
+    # More than one campaign can write the same logical cell.  The unrestricted matrix is
+    # explicitly a "latest evidence" view, so make overwrite order deterministic instead of
+    # relying on SQLite's unspecified scan order.
+    q += " ORDER BY ts"
     for sym, side, param, val, bh_delta, legacy_delta, gpm, trades, inrt, fp in con.execute(q, args).fetchall():
         ck = (param, norm_val(val), f"{sym}_{side}")
         delta = bh_delta if bh_delta is not None else legacy_delta
@@ -140,7 +144,10 @@ def load_cells(campaign, tier="ENGINE"):
                          "fingerprint": fp, "inert": bool(inrt)}
     if tier == "ENGINE":
         try:
-            srows = con.execute("SELECT symbol, side, param, value_json, delta_gain_mo, overrides_json FROM stage_results").fetchall()
+            srows = con.execute(
+                "SELECT symbol, side, param, value_json, delta_gain_mo, overrides_json "
+                "FROM stage_results ORDER BY ts"
+            ).fetchall()
         except sqlite3.OperationalError:
             srows = []
         for sym, side, param, val, delta, ojson in srows:
@@ -163,6 +170,7 @@ def load_cells(campaign, tier="ENGINE"):
     base = {}
     bq = ("SELECT symbol, side, gain_per_mo, bh_per_mo, delta_gain_mo_vs_bh, trades, campaign, "
           "trades_fingerprint FROM key_baseline WHERE mode='tradier'")
+    bq += " ORDER BY ts"
     for sym, side, g, bh, d, tr, camp, fp in con.execute(bq).fetchall():
         base[f"{sym}_{side}"] = {"gain_per_mo": g, "bh_per_mo": bh, "delta_vs_bh": d,
                                   "trades": tr, "campaign": camp, "fingerprint": fp}

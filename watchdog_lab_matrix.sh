@@ -78,7 +78,19 @@ launch_pmx() {
 # data/GRID_SUSPENDED to bring it back — do NOT just kill the workers, this cron relaunches
 # them every 10 minutes and the orphaned engines they leave behind ate 20GB and OOM-killed the
 # ladder run twice.
+refresh_switch_matrix_reports() (
+  # Compute can be suspended while fresh reporting remains mandatory.  Serialize XLSX writes
+  # so a manual export and the ten-minute watchdog cannot corrupt each other's output.
+  exec 9>"$LOGDIR/switch_matrix_export.lock"
+  flock -n 9 || exit 0
+  cd "$SBX" || exit 1
+  timeout 300 "$PY" tools/export_switch_matrix_xls.py --account trb \
+    >> "$LOGDIR/switch_matrix_export.log" 2>&1
+  timeout 120 "$PY" tools/switch_matrix_digest.py \
+    >> "$LOGDIR/switch_matrix_digest.log" 2>&1
+)
 if [ -f "$SBX/data/GRID_SUSPENDED" ]; then
+  refresh_switch_matrix_reports
   exit 0
 fi
 if [ ! -f "$SBX/data/MATRIX_REBASELINE_HOLD" ]; then
@@ -173,7 +185,7 @@ launch_vec_universe v1
 # The DB fills continuously but the spreadsheet is a GENERATED artifact, and S1 had NO cron
 # regenerating it (verified: crontab has 0 export_switch_matrix entries) — so the sheet only
 # moved when someone ran the exporter by hand while param_cells grew underneath it. It is a
-# read-only query + xlsx write (~15s), cheap enough to run every 10 min. The Mac pulls at :35.
-cd "$SBX" && timeout 300 "$PY" tools/export_switch_matrix_xls.py --account trb \
-  >> "$LOGDIR/switch_matrix_export.log" 2>&1
+# read-only query + xlsx write (~15s), cheap enough to run every 10 min. Reporting deliberately
+# runs even while GRID_SUSPENDED is present. The Mac pulls at :35.
+refresh_switch_matrix_reports
 # heavier lab/mega exports stay OFF while the fleet is MU-only (see the checklist at the top)
