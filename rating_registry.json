@@ -1,17 +1,11 @@
 {
-  "timestamp": "2026-07-25T22:16:25.165304+00:00",
+  "timestamp": "2026-07-25T22:31:31.837143+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 130
   },
   "unified_ranking": [
-    {
-      "symbol": "AIAUSDT",
-      "net_score": -17.7,
-      "long_score": 0,
-      "short_score": 17.7
-    },
     {
       "symbol": "PTBUSDT",
       "net_score": -16.6,
@@ -283,6 +277,12 @@
       "short_score": 0
     },
     {
+      "symbol": "AIAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -374,6 +374,12 @@
     },
     {
       "symbol": "SNXUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "HYPEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -500,6 +506,12 @@
     },
     {
       "symbol": "ARPAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "INJUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -667,7 +679,7 @@
       "short_score": 0
     },
     {
-      "symbol": "ZECUSDC",
+      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -691,9 +703,15 @@
       "short_score": 0
     },
     {
+      "symbol": "ORDIUSDC",
+      "net_score": 12.5,
+      "long_score": 12.5,
+      "short_score": 0
+    },
+    {
       "symbol": "1000LUNCUSDT",
-      "net_score": 12.9,
-      "long_score": 12.9,
+      "net_score": 12.6,
+      "long_score": 12.6,
       "short_score": 0
     },
     {
@@ -703,33 +721,15 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
-      "net_score": 13.9,
-      "long_score": 13.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
-      "net_score": 16.1,
-      "long_score": 16.1,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 17.5,
-      "long_score": 17.5,
-      "short_score": 0
-    },
-    {
       "symbol": "GRASSUSDT",
-      "net_score": 19.1,
-      "long_score": 19.1,
+      "net_score": 16.7,
+      "long_score": 16.7,
       "short_score": 0
     },
     {
@@ -739,15 +739,15 @@
       "short_score": 0
     },
     {
-      "symbol": "SPCXUSDT",
-      "net_score": 22.9,
-      "long_score": 22.9,
+      "symbol": "ZECUSDC",
+      "net_score": 21.3,
+      "long_score": 21.3,
       "short_score": 0
     },
     {
-      "symbol": "HYPEUSDT",
-      "net_score": 23.9,
-      "long_score": 23.9,
+      "symbol": "SPCXUSDT",
+      "net_score": 22.9,
+      "long_score": 22.9,
       "short_score": 0
     },
     {
@@ -789,43 +789,27 @@
   ],
   "top_longs": [
     [
-      "HYPEUSDT",
-      23.9,
-      58.09422143
+      "ZECUSDC",
+      21.3,
+      483.06
     ],
     [
       "GRASSUSDT",
-      19.1,
-      0.343455
-    ],
-    [
-      "ORDIUSDC",
-      17.5,
-      3.608
-    ],
-    [
-      "APEUSDT",
-      16.1,
-      0.1429
-    ],
-    [
-      "INJUSDT",
-      13.9,
-      5.06
+      16.7,
+      0.34288667
     ],
     [
       "1000LUNCUSDT",
-      12.9,
-      0.05436232
-    ]
-  ],
-  "top_shorts": [
+      12.6,
+      0.05434
+    ],
     [
-      "AIAUSDT",
-      17.7,
-      0.06829806
+      "ORDIUSDC",
+      12.5,
+      3.61340702
     ]
   ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
