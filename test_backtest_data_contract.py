@@ -14,6 +14,7 @@ def valid_arrays(n=600):
         "timestamps": ts,
         "close": x,
         "synthetic_5m": np.zeros(n, dtype=np.int8),
+        "timestamp_15m": ts - 300,
     }
     for tf, lag in (("1h", 12), ("4h", 48), ("D", 78)):
         arrays[f"timestamp_{tf}"] = ts - lag * 300
@@ -82,6 +83,20 @@ class DataContractTests(unittest.TestCase):
             "requested_fill_ratio": 0.99, "size_clamp_count": 0,
         }, "LONG")
         self.assertTrue(result["valid"])
+
+    def test_contiguous_indicator_warmup_is_accepted(self):
+        arrays = valid_arrays()
+        arrays["stoch_k_D"][:40] = np.nan
+        result = audit_npz("VT", self.write(arrays), "core")
+        self.assertTrue(result.valid, result.errors)
+        self.assertEqual(result.stats["stoch_k_D_warmup_rows"], 40)
+
+    def test_internal_indicator_nan_gap_is_quarantined(self):
+        arrays = valid_arrays()
+        arrays["stoch_k_D"][250:290] = np.nan
+        result = audit_npz("VT", self.write(arrays), "core")
+        self.assertFalse(result.valid)
+        self.assertTrue(any("stoch_k_D unusable" in e for e in result.errors))
 
 
 if __name__ == "__main__":

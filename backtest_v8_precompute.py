@@ -183,6 +183,17 @@ def _hybrid_tradier_5m(
     return pd.concat([fabricated, real], axis=0).sort_index()
 
 
+def _merge_authentic_bars(
+    resampled: pd.DataFrame,
+    authentic: Optional[pd.DataFrame],
+) -> pd.DataFrame:
+    """Keep broad resampled coverage while authentic bars win every overlap."""
+    if authentic is None or len(authentic) == 0:
+        return resampled
+    broad = resampled.loc[~resampled.index.isin(authentic.index)]
+    return pd.concat([broad, authentic], axis=0).sort_index()
+
+
 def _ann_factor() -> float:
     """Annualization factor: 252 trading days for stocks, 365 for crypto (24/7)."""
     return 365.0 if MODE == "crypto" else 252.0
@@ -1201,7 +1212,16 @@ def resample_tf(df_base: pd.DataFrame, target_tf: str) -> Optional[pd.DataFrame]
     if not rule:
         return None
     try:
-        resampled = df_base.resample(rule).agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}).dropna()
+        kwargs = {}
+        # Tradier's raw intraday timestamps are close-labelled. A 15m frame
+        # rebuilt from 5m must also be right-labelled/right-closed. Pandas'
+        # default left label otherwise makes the still-forming 15m aggregate
+        # appear observable at the start of its interval.
+        if MODE == "tradier" and target_tf == "15m":
+            kwargs = {"label": "right", "closed": "right"}
+        resampled = df_base.resample(rule, **kwargs).agg(
+            {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+        ).dropna()
         return resampled
     except Exception:
         return None
@@ -1353,19 +1373,18 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     if mode == "crypto" and ("3m" not in dfs or len(dfs.get("3m", [])) < len(base_df) * 3):
         logger.info(f"  {symbol}: fabricating 3m from 15m ({len(base_df)} × 5 = {len(base_df)*5} bars)")
         dfs["3m"] = fabricate_3m(base_df)
-    # Backfill 5m from 15m when necessary, but NEVER discard the authentic 5m
-    # tail.  The old all-or-nothing replacement fabricated the entire two-year
-    # MU price path merely because the real 5m file covered only recent months.
-    if mode == "tradier" and ("5m" not in dfs or len(dfs.get("5m", [])) < len(base_df) * 2):
+    # Always merge the 15m-derived coverage with authentic 5m. Row-count-only
+    # selection is insufficient: VT had 39k real 5m rows ending Jul-01 and only
+    # 787 15m rows, but those 15m rows continued through Jul-24. The previous
+    # condition kept the longer file and silently threw away the newer tail.
+    # Real observations win every overlap; synthetic provenance remains explicit.
+    if mode == "tradier":
         real_5m = dfs.get("5m")
         logger.info(
-            f"  {symbol}: hybrid 5m backfill from 15m "
+            f"  {symbol}: merge authentic 5m with 15m-derived coverage "
             f"(15m={len(base_df)}, authentic_5m={len(real_5m) if real_5m is not None else 0})"
         )
         dfs["5m"] = _hybrid_tradier_5m(base_df, real_5m)
-    elif mode == "tradier" and "5m" in dfs:
-        dfs["5m"] = dfs["5m"].copy()
-        dfs["5m"]["_synthetic_5m"] = 0
     # Use highest resolution as base for NPZ output — every 3m/5m bar gets its own row
     if mode == "crypto" and "3m" in dfs and len(dfs["3m"]) > len(base_df):
         base_df = dfs["3m"]
@@ -1399,6 +1418,10 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             continue
         resampled = resample_tf(_resample_src_df, tf)
         if resampled is not None and len(resampled) >= 20:
+            if mode == "tradier" and tf == "15m":
+                # Preserve the real recent 15m tail exactly; resampling supplies
+                # only older coverage absent from the authentic file.
+                resampled = _merge_authentic_bars(resampled, dfs.get("15m"))
             # ALWAYS use 15m-resampled version — standalone D/4h/1h files from klines_cache
             # may be stale (Mac fallback). 15m backtest data is the authoritative source.
             dfs[tf] = resampled

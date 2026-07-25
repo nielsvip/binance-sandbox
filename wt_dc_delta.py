@@ -53,6 +53,58 @@ DEFAULT_CFG = {
 }
 
 
+def delayed_retest_exit_step(
+    is_long,
+    was_pending,
+    rebound_seen,
+    bar_open,
+    bar_high,
+    bar_low,
+    bar_close,
+    prev_high,
+    prev_low,
+):
+    """Advance the causal structure-break -> failed-retest exit state.
+
+    A rising bar starts a LONG retest; it is not an exit trigger. After a rebound,
+    LONG exits require a lower-high, lower-low and close below the previous low.
+    SHORT uses the exact mirror. Confirming the turn one completed micro bar after
+    the extreme is causal; selling the unconfirmed extreme would require look-ahead.
+
+    Returns ``(execute, keep_pending, rebound_seen, reason)``.
+    """
+    if not was_pending:
+        return False, False, bool(rebound_seen), "IDLE"
+
+    vals = (bar_open, bar_high, bar_low, bar_close, prev_high, prev_low)
+    if any(v is None for v in vals):
+        return False, True, bool(rebound_seen), "WAIT_MISSING_BAR"
+
+    if is_long:
+        rebound_now = bar_close > bar_open or bar_high > prev_high
+        failed_retest = (
+            bool(rebound_seen)
+            and bar_high < prev_high
+            and bar_low < prev_low
+            and bar_close < prev_low
+        )
+        if failed_retest:
+            return True, False, True, "LONG_FAILED_RETEST_LH_LL"
+    else:
+        rebound_now = bar_close < bar_open or bar_low < prev_low
+        failed_retest = (
+            bool(rebound_seen)
+            and bar_high > prev_high
+            and bar_low > prev_low
+            and bar_close > prev_high
+        )
+        if failed_retest:
+            return True, False, True, "SHORT_FAILED_RETEST_HH_HL"
+
+    seen = bool(rebound_seen or rebound_now)
+    return False, True, seen, "RETEST_SEEN" if seen else "WAIT_RETEST"
+
+
 def structural_exit_permitted(indicators, is_long, cfg=None):
     """USER MANDATE 2026-07-21 (MU_LONG: 20 closes in 88min while price rallied +3.15%).
     NEVER exit while price is going up (long) / down (short). An exit is permitted ONLY when
@@ -105,6 +157,7 @@ class DeltaSignal:
         # Two-phase exit: phase 1 = pending (signal to exit, wait for better price),
         # phase 2 = exit_long/exit_short (execute now — bounce happened)
         'exit_pending_long', 'exit_pending_short',
+        'exit_retest_long', 'exit_retest_short',
         'pyramid_long', 'pyramid_short', 'post_consolidation',
         'tf_bull', 'tf_bear', 'total_fields',
         # Bar-to-bar acceleration flags (exposed for hedge entry/exit gates)
@@ -130,6 +183,8 @@ class DeltaSignal:
         self.exit_short = False
         self.exit_pending_long = False
         self.exit_pending_short = False
+        self.exit_retest_long = False
+        self.exit_retest_short = False
         self.pyramid_long = False
         self.pyramid_short = False
         self.post_consolidation = False
@@ -236,6 +291,8 @@ class DeltaTracker:
         cfg = self.cfg
         sig = DeltaSignal()
         prev = self._prev[symbol]
+        _pending_long_at_start = bool(prev.get("_exit_pending_long", False))
+        _pending_short_at_start = bool(prev.get("_exit_pending_short", False))
         tw = cfg["tf_weights"]
         _tfs = list(tw.keys()) if tw else TFS  # Use TFs from config weights (supports 5m for stocks)
         tf_bull = {tf: 0.0 for tf in _tfs}
@@ -468,19 +525,27 @@ class DeltaTracker:
                 _tp_k_1h = _safe_float(indicators.get("stoch_k_1h")) or 50.0
                 _overbought = _tp_bb_1h > 0.85 or _tp_dc_pos_1h > 0.85 or _tp_k_1h > 80
                 _was_pending = prev.get("_exit_pending_long", False) if _rz_two_phase else False
-                # Phase 2: was pending last bar → check if this bar made a local top (bounce)
+                # Phase 2: a rising bar starts the retest; it is NOT an exit.
+                # Execute only after that rebound subsequently fails with LH+LL.
                 if _was_pending:
-                    _bar_is_green = _cur_3m_close > _cur_3m_open if _cur_3m_close and _cur_3m_open else False
-                    _bar_higher_high = _cur_3m_high > _prev_3m_high if _cur_3m_high and _prev_3m_high else False
-                    if _bar_is_green or _bar_higher_high:
+                    _cur_3m_low = _safe_float(indicators.get(f"low_{_ltf_micro}", indicators.get("low_3m")))
+                    _retest_exec, _retest_pending, _retest_seen, _retest_reason = delayed_retest_exit_step(
+                        True, True, prev.get("_exit_pending_long_rebound", False),
+                        _cur_3m_open, _cur_3m_high, _cur_3m_low, _cur_3m_close,
+                        _prev_3m_high, _prev_3m_low,
+                    )
+                    prev["_exit_pending_long_rebound"] = _retest_seen
+                    if _retest_exec:
                         sig.exit_long = True
-                        sig.tf_lost = f"TWO_PHASE_EXECUTE green={_bar_is_green} hh={_bar_higher_high} bb={_tp_bb_1h:.2f} dc={_tp_dc_pos_1h:.2f} k={_tp_k_1h:.0f}"
-                    else:
-                        sig.exit_pending_long = True  # still pending — no bounce yet
+                        sig.exit_retest_long = True
+                        sig.tf_lost = f"TWO_PHASE_TOP_CONFIRMED {_retest_reason} bb={_tp_bb_1h:.2f} dc={_tp_dc_pos_1h:.2f} k={_tp_k_1h:.0f}"
+                    elif _retest_pending:
+                        sig.exit_pending_long = True
                 # Phase 1: overbought + price broke prev candle low → set pending
                 elif _rz_two_phase and _overbought and _cur_price and _prev_3m_low and _cur_price < _prev_3m_low:
                     sig.exit_pending_long = True
                     prev["_exit_pending_long"] = True
+                    prev["_exit_pending_long_rebound"] = False
                 # Non-overbought: use delta weakness (2-of-N + strong directional)
                 if not sig.exit_long and not sig.exit_pending_long:
                     _weakness_count = sum([
@@ -555,19 +620,27 @@ class DeltaTracker:
                 _oversold = _tp_bb_1h_s < 0.15 or _tp_dc_pos_1h_s < 0.15 or _tp_k_1h_s < 20
                 _rz_two_phase_s = cfg.get("rz_two_phase_exit_enabled", True)
                 _was_pending_s = prev.get("_exit_pending_short", False) if _rz_two_phase_s else False
-                # Phase 2: was pending → check if this bar made a local bottom (bounce down)
+                # Phase 2 mirror: a falling bar starts the retest; exit only after
+                # the rebound subsequently fails with HH+HL structure.
                 if _was_pending_s:
-                    _bar_is_red = _cur_3m_close < _cur_3m_open if _cur_3m_close and _cur_3m_open else False
-                    _bar_lower_low = _cur_3m_low < _prev_3m_low if _cur_3m_low and _prev_3m_low else False
-                    if _bar_is_red or _bar_lower_low:
+                    _cur_3m_high = _safe_float(indicators.get(f"high_{_ltf_micro}", indicators.get("high_3m")))
+                    _retest_exec_s, _retest_pending_s, _retest_seen_s, _retest_reason_s = delayed_retest_exit_step(
+                        False, True, prev.get("_exit_pending_short_rebound", False),
+                        _cur_3m_open, _cur_3m_high, _cur_3m_low, _cur_3m_close,
+                        _prev_3m_high, _prev_3m_low,
+                    )
+                    prev["_exit_pending_short_rebound"] = _retest_seen_s
+                    if _retest_exec_s:
                         sig.exit_short = True
-                        sig.tf_lost = f"TWO_PHASE_EXECUTE red={_bar_is_red} ll={_bar_lower_low} bb={_tp_bb_1h_s:.2f} dc={_tp_dc_pos_1h_s:.2f} k={_tp_k_1h_s:.0f}"
-                    else:
+                        sig.exit_retest_short = True
+                        sig.tf_lost = f"TWO_PHASE_BOTTOM_CONFIRMED {_retest_reason_s} bb={_tp_bb_1h_s:.2f} dc={_tp_dc_pos_1h_s:.2f} k={_tp_k_1h_s:.0f}"
+                    elif _retest_pending_s:
                         sig.exit_pending_short = True
                 # Phase 1: oversold + price broke above prev candle high → set pending
                 elif _rz_two_phase_s and _oversold and _cur_price and _prev_3m_high and _cur_price > _prev_3m_high:
                     sig.exit_pending_short = True
                     prev["_exit_pending_short"] = True
+                    prev["_exit_pending_short_rebound"] = False
                 # Non-oversold: use delta weakness
                 if not sig.exit_short and not sig.exit_pending_short:
                     _weakness_count = sum([
@@ -656,12 +729,18 @@ class DeltaTracker:
             # Clear pending exit state when executed or no longer valid
             if sig.exit_long:
                 prev["_exit_pending_long"] = False
+                if not sig.exit_retest_long:
+                    prev["_exit_pending_long_rebound"] = False
             elif not sig.exit_pending_long:
                 prev["_exit_pending_long"] = False
+                prev["_exit_pending_long_rebound"] = False
             if sig.exit_short:
                 prev["_exit_pending_short"] = False
+                if not sig.exit_retest_short:
+                    prev["_exit_pending_short_rebound"] = False
             elif not sig.exit_pending_short:
                 prev["_exit_pending_short"] = False
+                prev["_exit_pending_short_rebound"] = False
             # Store wt1/dc_position values for next bar's direction comparison
             if _update_prev:
                 if _wt1_3m_now is not None: prev["_wt1_3m_for_exit"] = _wt1_3m_now
@@ -714,13 +793,28 @@ class DeltaTracker:
                 logger.info(f"[STRUCTURAL_EXIT_VETO] {symbol} {'L' if _sv_is_long else 'S'}: {_sv_reason} — HOLDING (was: exit_long={sig.exit_long} exit_short={sig.exit_short} zone_action={sig.zone_action} zone_reason={sig.zone_reason})")
                 sig.exit_long = False
                 sig.exit_short = False
-                sig.exit_pending_long = False
-                sig.exit_pending_short = False
-                prev["_exit_pending_long"] = False
-                prev["_exit_pending_short"] = False
+                # Retest obligations survive an independent veto. Forgetting the arm
+                # here allows price to run beyond the intended exit with no retry.
+                sig.exit_pending_long = bool(sig.exit_retest_long)
+                sig.exit_pending_short = bool(sig.exit_retest_short)
+                prev["_exit_pending_long"] = bool(sig.exit_retest_long)
+                prev["_exit_pending_short"] = bool(sig.exit_retest_short)
+                prev["_exit_pending_long_rebound"] = bool(sig.exit_retest_long)
+                prev["_exit_pending_short_rebound"] = bool(sig.exit_retest_short)
                 if sig.zone_action in ("EXIT_LONG", "EXIT_SHORT"):
                     sig.zone_action = "HOLD"
                 sig.tf_lost = _sv_reason
+
+        # Normalize persistent pending state after every sub-engine has contributed.
+        # New arms start before a rebound; existing obligations retain progress.
+        if sig.exit_pending_long:
+            prev["_exit_pending_long"] = True
+            if not _pending_long_at_start:
+                prev["_exit_pending_long_rebound"] = False
+        if sig.exit_pending_short:
+            prev["_exit_pending_short"] = True
+            if not _pending_short_at_start:
+                prev["_exit_pending_short_rebound"] = False
 
         if not cfg.get("entry_enabled", True):
             sig.entry_long = False

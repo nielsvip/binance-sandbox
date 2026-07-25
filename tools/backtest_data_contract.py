@@ -100,11 +100,24 @@ def _require_continuous(
         if len(arr) != len(mask):
             audit.fail(f"{name} length {len(arr)} != timestamps length {len(mask)}")
             continue
-        finite, nonzero, unique = _finite_nonzero_coverage(arr[mask])
+        selected = arr[mask]
+        finite, nonzero, unique = _finite_nonzero_coverage(selected)
+        finite_mask = np.isfinite(selected) if selected.dtype.kind in "biufc" else np.zeros(len(selected), dtype=bool)
+        missing_idx = np.flatnonzero(~finite_mask)
+        warmup_only = False
+        warmup_rows = 0
+        if len(missing_idx):
+            warmup_rows = int(missing_idx[-1]) + 1
+            warmup_only = (
+                warmup_rows <= max(1, int(len(selected) * 0.10))
+                and bool(finite_mask[warmup_rows:].all())
+            )
         audit.stats[f"{name}_finite_pct"] = round(finite * 100.0, 3)
         audit.stats[f"{name}_nonzero_pct"] = round(nonzero * 100.0, 3)
         audit.stats[f"{name}_unique"] = unique
-        if finite < 0.95 or nonzero < min_nonzero or unique < 8:
+        if warmup_only:
+            audit.stats[f"{name}_warmup_rows"] = warmup_rows
+        if (finite < 0.95 and not warmup_only) or nonzero < min_nonzero or unique < 8:
             audit.fail(
                 f"{name} unusable: finite={finite:.1%}, nonzero={nonzero:.1%}, unique={unique}"
             )
@@ -144,6 +157,16 @@ def audit_npz(
             audit.fail(f"only {int(mask.sum())} rows in requested window")
             return audit
         selected_close = close[mask]
+        selected_ts = ts[mask]
+        gaps_h = np.diff(selected_ts).astype(np.float64) / 3600.0
+        max_gap_h = float(np.max(gaps_h)) if len(gaps_h) else 0.0
+        audit.stats["max_timestamp_gap_hours"] = round(max_gap_h, 3)
+        audit.stats["timestamp_gaps_gt_7d"] = int((gaps_h > 24 * 7).sum())
+        if max_gap_h > 24 * 7:
+            audit.warnings.append(
+                f"source history contains an internal {max_gap_h / 24.0:.1f}-day gap; "
+                "fields are valid on available bars but the replay is not calendar-continuous"
+            )
         finite, nonzero, unique = _finite_nonzero_coverage(selected_close)
         audit.stats.update(close_finite_pct=round(finite * 100, 3), close_unique=unique)
         if finite < 0.999 or nonzero < 0.999 or unique < 50:
@@ -180,7 +203,7 @@ def audit_npz(
 
         if profile in {"core", "ladder"}:
             base_ts = ts[mask]
-            for tf in ("1h", "4h", "D"):
+            for tf in ("15m", "1h", "4h", "D"):
                 name = f"timestamp_{tf}"
                 if name not in z.files or len(z[name]) != len(mask):
                     audit.fail(f"missing closed-bar availability field {name}")
@@ -189,6 +212,7 @@ def audit_npz(
                 equal_rate = float((avail == base_ts).mean())
                 future_rate = float((avail > base_ts).mean())
                 audit.stats[f"{name}_equals_base_pct"] = round(equal_rate * 100.0, 3)
+                audit.stats[f"{name}_future_pct"] = round(future_rate * 100.0, 6)
                 if equal_rate > 0.95:
                     audit.fail(f"{name} is base timestamp alias; NPZ predates closed-bar fix")
                 if future_rate > 0.001:
