@@ -281,15 +281,32 @@ def claim(ctx, unit):
     """Take the work claim for one unit. False = someone else has it (or the DB is busy)."""
     ccon, worker = ctx["ccon"], ctx["worker"]
     try:
-        # stale window 30min (a single-sym run is ~9min); release_dead_claims() additionally
-        # frees anything held by a PID that no longer exists (2026-07-21 restart starvation)
+        # The old SELECT + INSERT OR REPLACE was not atomic. Two workers could both observe
+        # "missing", then each replace the row and run the same full-history engine against
+        # the same cache files. BEGIN IMMEDIATE serializes the decision; never steal a live
+        # worker's unit.
+        ccon.execute("BEGIN IMMEDIATE")
         row = ccon.execute("SELECT worker, ts FROM claims WHERE unit=?", (unit,)).fetchone()
         if row and row[0] != worker and time.time() - row[1] < 1800:
+            ccon.rollback()
             return False
-        ccon.execute("INSERT OR REPLACE INTO claims VALUES (?,?,?)", (unit, worker, time.time()))
+        if row:
+            ccon.execute(
+                "UPDATE claims SET worker=?,ts=? WHERE unit=?",
+                (worker, time.time(), unit),
+            )
+        else:
+            ccon.execute(
+                "INSERT INTO claims(unit,worker,ts) VALUES (?,?,?)",
+                (unit, worker, time.time()),
+            )
         ccon.commit()
         return True
     except sqlite3.OperationalError:
+        try:
+            ccon.rollback()
+        except sqlite3.OperationalError:
+            pass
         time.sleep(2)
         return False
 
