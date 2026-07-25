@@ -309,7 +309,7 @@ def run_cell(symbol, side, tag, overrides, args):
         exit_px = float(trades[-1].get("exit_price") or 0.0)
         if entry_px > 0.0 and exit_px > 0.0:
             gross = (exit_px - entry_px) / entry_px * 100.0
-            m["_tradable_bh_pct"] = gross if side == "LONG" else -gross
+            m["_tradable_bh_pct"] = (gross if side == "LONG" else -gross) * 0.20
     # Overlay the engine's own MtM-inclusive totals: a held position contributes nothing to the
     # closed-trade list, so without this every holding config reports 0.00%.
     v8 = run_engine_capture(symbol, engine_tag)
@@ -321,7 +321,13 @@ def run_cell(symbol, side, tag, overrides, args):
         m["_opposite_entry_events"] = int(v8.get(f"opens_{opposite_l}", 0))
         m["_real_closes"] = int(v8.get("real_closes", 0))
         m["_mtm_count"] = int(v8.get("mtm_count", 0))
-        m["_measurement_valid"] = m["_opposite_entry_events"] == 0
+        m["_reentry_pending"] = int(v8.get("reentry_pending", 0) or 0)
+        m["_reentry_violations"] = int(v8.get("reentry_violations", 0) or 0)
+        m["_measurement_valid"] = (
+            m["_opposite_entry_events"] == 0
+            and m["_reentry_pending"] == 0
+            and m["_reentry_violations"] == 0
+        )
         for name in (
             "open_notional_sum", "max_open_notional", "max_filled_start_mult",
             "max_requested_mult", "requested_fill_ratio", "sized_open_events",
@@ -412,7 +418,8 @@ def main():
             return
     con = prs.connect()
     _y, bh_long = psc.sym_years_and_bh(sym, psc.START)
-    bh = bh_long if side == "LONG" else (-bh_long if bh_long is not None else None)
+    _raw_bh = bh_long if side == "LONG" else (-bh_long if bh_long is not None else None)
+    bh = _raw_bh * 0.20 if _raw_bh is not None else None
 
     def parse_combo(raw):
         out = {}
@@ -505,7 +512,6 @@ def main():
         opens = int(m.get("_entry_events") or 0)
         tim = float(m.get("time_in_mkt_pct") or 0.0)
         gain = float(m.get("acc_gain_pct") or 0.0)
-        store(con, sym, side, "LADDER_STAGE0", "all_exits_off" + (a.tag_suffix or ""), m, base, "stage0", "stage0")
         tradable_bh = m.get("_tradable_bh_pct")
         print(
             f"[stage0] {sym}_{side} ALL EXITS OFF ({len(base)} switches) -> "
@@ -518,11 +524,16 @@ def main():
             and abs(gain - tradable_bh) <= max(1.0, abs(tradable_bh) * 0.01)
         )
         if floor_ok:
+            store(
+                con, sym, side, "LADDER_STAGE0",
+                "all_exits_off" + (a.tag_suffix or ""),
+                m, base, "stage0", "stage0",
+            )
             print("         FLOOR REACHED: opened, held, exposure and return reconcile to b&h. "
                   "Exit inventory is COMPLETE for this key; stage 1 may begin.")
         else:
-            print("         *** FLOOR FAILED. Refusing the old closes==0 shortcut: require an "
-                  "actual open, zero real closes, >=99% TIM, and gain ~= b&h.")
+            print("         *** FLOOR FAILED AND NOT STORED. Refusing the old closes==0 shortcut: "
+                  "require an actual open, zero real closes, >=99% TIM, and gain ~= b&h.")
         return
 
     if a.stage == "stage3":

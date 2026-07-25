@@ -1039,7 +1039,13 @@ if _override_file and Path(_override_file).exists():
     v8_logger.info(f"Re-applied {len(_overrides)} overrides to {_post_import_count} Config instances + module bindings post-import")
 
 # Import NPZ loader
-from backtest_v8_harness import IndicatorStore, is_tradier_rth_ts, open_sizing_telemetry
+from backtest_v8_harness import (
+    IndicatorStore,
+    apply_tradier_backtest_capital_contract,
+    accumulate_partial_close,
+    is_tradier_rth_ts,
+    open_sizing_telemetry,
+)
 
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Simulation time controller
@@ -1821,14 +1827,11 @@ def _reconstruct_chart_trades(executed_trades):
             if rd is None or rd["qty"] <= 0:
                 continue
             close_qty = min(qty, rd["qty"])
-            if side == "LONG":
-                pnl_pct_gross = (px - rd["entry_price"]) / rd["entry_price"] * 100.0
-            else:
-                pnl_pct_gross = (rd["entry_price"] - px) / rd["entry_price"] * 100.0
-            rd["qty"] -= close_qty
-            if rd["qty"] <= 1e-9:
-                _rt_cost = _round_trip_cost_for_sym(sym)
-                pnl_pct_net = pnl_pct_gross - _rt_cost
+            _rt_cost = _round_trip_cost_for_sym(sym)
+            _partial_summary = accumulate_partial_close(
+                rd, close_qty, px, _rt_cost, side == "LONG"
+            )
+            if _partial_summary is not None:
                 closed_by_sym.setdefault(sym, []).append({
                     "symbol": sym, "side": side,
                     "entry_type": "HEDGE" if rd["is_hedge"] else ("AUGMENT" if "AUGMENT" in rd["entry_reason"].upper() else "OPEN"),
@@ -1837,11 +1840,12 @@ def _reconstruct_chart_trades(executed_trades):
                     "entry_bar": 0,
                     "entry_ts": rd["entry_ts"], "entry_price": float(rd["entry_price"]),
                     "exit_bar": 0,
-                    "exit_ts": ts, "exit_price": float(px),
-                    "pnl_pct": float(pnl_pct_net),
-                    "pnl_pct_gross": float(pnl_pct_gross),
+                    "exit_ts": ts, "exit_price": _partial_summary["exit_price"],
+                    "pnl_pct": _partial_summary["pnl_pct"],
+                    "pnl_pct_gross": _partial_summary["pnl_pct_gross"],
                     "round_trip_cost_pct": _rt_cost,
-                    "pnl_usd": float((pnl_pct_net / 100.0) * (rd["entry_price"] * close_qty)),
+                    "pnl_usd": _partial_summary["pnl_dollars"],
+                    "pnl_usd_gross": _partial_summary["pnl_dollars_gross"],
                     "duration_bars": 0,
                     "duration_sec": ts - rd["entry_ts"],
                     "stream": "tier2",
@@ -1910,11 +1914,19 @@ def _compute_trade_pnl(executed_trades):
             vwap = pos["total_cost"] / pos["total_qty"]
             close_qty = min(qty, pos["total_qty"])
             is_long = pos["side"] == "LONG"
-            pnl_dollars = (price - vwap) * close_qty if is_long else (vwap - price) * close_qty
-            pnl_pct = ((price - vwap) / vwap * 100) if is_long else ((vwap - price) / vwap * 100) if vwap > 0 else 0.0
+            pnl_dollars_gross = (price - vwap) * close_qty if is_long else (vwap - price) * close_qty
+            pnl_pct_gross = ((price - vwap) / vwap * 100) if is_long else ((vwap - price) / vwap * 100) if vwap > 0 else 0.0
+            _sym = t.get("symbol") or str(pk).split(":", 1)[-1].rsplit("_", 1)[0]
+            _rt_cost = _round_trip_cost_for_sym(_sym)
+            _cost_dollars = (_rt_cost / 100.0) * vwap * close_qty
+            pnl_dollars = pnl_dollars_gross - _cost_dollars
+            pnl_pct = pnl_pct_gross - _rt_cost
             t["pnl"] = pnl_dollars
             t["pnl_dollars"] = pnl_dollars
+            t["pnl_dollars_gross"] = pnl_dollars_gross
             t["pnl_pct"] = pnl_pct
+            t["pnl_pct_gross"] = pnl_pct_gross
+            t["round_trip_cost_pct"] = _rt_cost
             t["entry_price"] = vwap
             t["close_qty"] = close_qty
             t["position_value"] = vwap * close_qty
@@ -6068,6 +6080,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                       "squeeze_fire_aligned": 0}
     # NEW 2026-04-26 sweep switch: rolling tradier-equity-percent for DD_KELLY (mark-to-trade-pnl).
     _v8ns_equity_pct = [0.0]
+    # Harness-only capital contract (never written to config_tradier.py/live):
+    # $2k benchmark unit and $16k strategy capacity at the canonical $10k capital.
+    _capital_contract_t = apply_tradier_backtest_capital_contract(tm_mod.config, capital)
     manager = tm_mod.TradierTradeManager(account_list=[account_key])
     # BUG FIX 2026-04-11: DeltaTracker.cfg is a FROZEN SNAPSHOT built at __init__.
     # Sweep overrides applied to tm_mod.config are read correctly during construction,
@@ -6455,6 +6470,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             except Exception:
                 pass
         elif not is_reduce:
+            if "MANDATORY_REENTRY" in str(reason or "").upper():
+                _trace_row = manager.__dict__.setdefault(
+                    "_mandatory_reentry_trace", {}
+                ).setdefault(position_key, {})
+                _trace_row["pending"] = False
+                _trace_row["filled_ts"] = float(_sim_now_t(timezone.utc).timestamp())
+                _trace_row["filled_price"] = float(px)
             if pos:
                 old_amt = abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0)))
                 old_entry = getattr(pos, 'entry_price', px) or px
@@ -7786,7 +7808,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if not _sim_irth(): continue
         # Ladder stage 0/1 needs an unambiguous buy-and-hold floor. The old
         # closes==0 shortcut could not distinguish "held" from "never opened".
-        # This test-only hook seeds one full-capital position on the first RTH bar.
+        # This test-only hook seeds one benchmark unit on the first RTH bar.
         _ladder_side_t = os.environ.get("V8_LADDER_FORCE_INITIAL_SIDE", "").upper()
         if _ladder_side_t in ("LONG", "SHORT") and not _ladder_initial_seeded_t:
             for _seed_sym_t in stores:
@@ -7794,10 +7816,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _seed_px_t <= 0:
                     continue
                 _seed_pk_t = f"{account_key}:{_seed_sym_t}_{_ladder_side_t}"
-                # Use one full-capital event quantity. The Tradier wrapper mirrors the
-                # internal position amount, but final trade reconstruction caps the MTM
-                # close to this recorded OPEN quantity, preserving a 1x B&H return.
-                _seed_qty_t = float(capital) / _seed_px_t
+                # Capital contract: B&H deploys $2k at $10k accounting capital.
+                _seed_qty_t = float(
+                    _capital_contract_t["benchmark_deployed_usd"]
+                ) / _seed_px_t
                 _seed_result_t = await _v8_execute_trade_action(
                     account_key=account_key,
                     position_key=_seed_pk_t,
@@ -8487,6 +8509,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             float(getattr(tm_mod.config, "START_POSITION_SIZE", 1.0) or 1.0),
         )
     )
+    _extra_result_t.update({
+        key: f"{value:.4f}" for key, value in _capital_contract_t.items()
+    })
+    _reentry_trace_t = getattr(manager, "_mandatory_reentry_trace", {}) or {}
+    _reentry_rows_t = list(_reentry_trace_t.values())
+    _reentry_material_pct_t = float(
+        getattr(tm_mod.config, "PRICE_CROSS_BACK_BAND_PCT", 0.3) or 0.3
+    )
+    _extra_result_t.update({
+        "reentry_pending": sum(1 for row in _reentry_rows_t if row.get("pending", False)),
+        "reentry_flat_bars": sum(int(row.get("flat_bars", 0) or 0) for row in _reentry_rows_t),
+        "reentry_max_overshoot_pct": f"{max([float(row.get('max_overshoot_pct', 0) or 0) for row in _reentry_rows_t] or [0.0]):.4f}",
+        "reentry_violations": sum(
+            1 for row in _reentry_rows_t
+            if float(row.get("max_overshoot_pct", 0) or 0) > _reentry_material_pct_t
+        ),
+    })
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

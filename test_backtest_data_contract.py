@@ -38,12 +38,12 @@ class DataContractTests(unittest.TestCase):
         result = audit_npz("MU", self.write(valid_arrays()), "ladder")
         self.assertTrue(result.valid, result.errors)
 
-    def test_synthetic_execution_window_is_quarantined(self):
+    def test_synthetic_execution_window_is_disclosed_but_accepted(self):
         arrays = valid_arrays()
         arrays["synthetic_5m"][:] = 1
         result = audit_npz("MU", self.write(arrays), "floor")
-        self.assertFalse(result.valid)
-        self.assertTrue(any("synthetic 5m" in e for e in result.errors))
+        self.assertTrue(result.valid)
+        self.assertTrue(any("interpolated 5m" in e for e in result.warnings))
 
     def test_empty_vt_style_htf_fields_are_quarantined(self):
         arrays = valid_arrays()

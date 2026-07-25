@@ -74,6 +74,61 @@ def open_sizing_telemetry(executed_trades, start_position_size):
     }
 
 
+def apply_tradier_backtest_capital_contract(
+    config,
+    capital,
+    benchmark_fraction=0.20,
+    strategy_capacity_fraction=1.60,
+):
+    """Harness-only sizing: $2k B&H unit and $16k strategy capacity at $10k capital."""
+    benchmark = float(capital) * float(benchmark_fraction)
+    capacity = float(capital) * float(strategy_capacity_fraction)
+    config.START_POSITION_SIZE = benchmark
+    for name in (
+        "MAX_ORDER_VALUE",
+        "MAX_POSITION_SIZE",
+        "SWING_LONG_BUDGET",
+        "SWING_SHORT_BUDGET",
+    ):
+        setattr(config, name, capacity)
+    return {
+        "benchmark_deployed_usd": benchmark,
+        "strategy_capacity_usd": capacity,
+        "max_ladder_mult": capacity / benchmark if benchmark > 0 else 0.0,
+    }
+
+
+def accumulate_partial_close(round_state, close_qty, exit_price, round_trip_cost_pct, is_long):
+    """Accumulate every partial realization; return summary when quantity reaches zero."""
+    qty = min(float(close_qty), float(round_state["qty"]))
+    entry = float(round_state["entry_price"])
+    gross = ((exit_price - entry) if is_long else (entry - exit_price)) * qty
+    entry_value = entry * qty
+    cost = float(round_trip_cost_pct) / 100.0 * entry_value
+    round_state["qty"] -= qty
+    round_state["realized_gross_dollars"] = float(
+        round_state.get("realized_gross_dollars", 0.0)
+    ) + gross
+    round_state["realized_net_dollars"] = float(
+        round_state.get("realized_net_dollars", 0.0)
+    ) + gross - cost
+    round_state["closed_entry_value"] = float(
+        round_state.get("closed_entry_value", 0.0)
+    ) + entry_value
+    round_state["exit_value"] = float(round_state.get("exit_value", 0.0)) + exit_price * qty
+    round_state["exit_qty"] = float(round_state.get("exit_qty", 0.0)) + qty
+    if round_state["qty"] > 1e-9:
+        return None
+    basis = max(float(round_state["closed_entry_value"]), 1e-9)
+    return {
+        "pnl_dollars_gross": float(round_state["realized_gross_dollars"]),
+        "pnl_dollars": float(round_state["realized_net_dollars"]),
+        "pnl_pct_gross": float(round_state["realized_gross_dollars"]) / basis * 100.0,
+        "pnl_pct": float(round_state["realized_net_dollars"]) / basis * 100.0,
+        "exit_price": float(round_state["exit_value"]) / max(float(round_state["exit_qty"]), 1e-9),
+    }
+
+
 class _IndicatorDict(dict):
     """dict that returns 0.0 for missing keys instead of None.
     Prevents 'float > NoneType' TypeErrors when live code accesses new fields

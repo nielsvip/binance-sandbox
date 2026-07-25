@@ -295,3 +295,50 @@ Use this hierarchy:
 
 Only after these checks pass does failure to beat B&H become evidence about the strategy rather
 than evidence about the test system.
+
+## P0 remediation applied after the forensic
+
+The following harness/data corrections are implemented and regression-tested. They are not a
+claim that any strategy beats B&H:
+
+- Tradier 1h/4h/D/W/M aggregates become visible only after the source bar closes. The warm-up
+  interval is empty instead of being clipped to future row zero. Prefix-invariance tests pass.
+- HTF source timestamps and ages are preserved; numeric zero event flags and neutral string
+  states are no longer forward-filled into permanent signals.
+- VT's specific source-selection failure is gated: a short 15m file can no longer overwrite a
+  much longer 5m history when generating all HTFs.
+- Preflight quarantines stale HTF aliases and empty/nonconstant WT/Stoch/DC/LR fields. MU passes
+  after regeneration; the current VT and HAO NPZs remain quarantined. Interpolated 5m bars are
+  accepted per the user's contract and disclosed as a diagnostic, not treated as root cause.
+- LONG/SHORT ladder runs are isolated. Opposite-side fills, missing sizing telemetry, silent
+  clamps, unresolved mandatory re-entry obligations, and re-entry overshoot violations are
+  rejected before matrix insertion.
+- The harness capital contract is explicit: at $10,000 accounting capital, B&H deploys $2,000
+  and the strategy has $16,000 capacity. `START_POSITION_SIZE=$2,000`; MAX_ORDER,
+  MAX_POSITION and both swing budgets are $16,000 in the backtest process only. Ladder 1x..8x
+  produces distinct filled notional in regression tests.
+- B&H comparisons in the ladder runners now use capital return (`price return × 0.20`) rather
+  than comparing a $2,000 seed's capital return against a fictitious $10,000 fully-deployed
+  benchmark.
+- Chart-round P&L accumulates every partial realization, including proportional cost, instead
+  of reporting only the final reduction.
+
+### Mandatory re-entry root cause and contract
+
+Tier-2 recorded an exit under `account:symbol_SIDE`, while `tradier_manage.py` read the cache
+under bare `symbol`. Consequently PRICE_CROSS_BACK_REENTRY missed Tier-2 exits. Live's bare
+symbol writes also allowed LONG and SHORT to overwrite one another.
+
+The state is now side-aware, with read-only fallback for legacy symbol state. A full-close
+obligation does not expire after 240 minutes. Every flat evaluation records age, current/exit
+price, opposing timeframes, flat-bar count and maximum favorable overshoot. Re-entry may be
+postponed only when WT and/or Stoch oppose the requested side on more than one timeframe. Once
+that count falls to one or zero, the mandatory action bypasses entry-score, K-zone, MI,
+composite, DC, UVE, circuit-breaker, local-extremes, balancer, swing-budget, catalyst,
+red-zone, daily-loss, max-position-count, L/S-ratio, overtrade and queue-dedupe soft vetoes.
+Regular-session availability, corrupt price/key, duplicate live position and broker
+opposite-side physics remain hard execution constraints.
+
+Final engine output now includes `reentry_pending`, `reentry_flat_bars`,
+`reentry_max_overshoot_pct` and `reentry_violations`. A ladder result with pending or violated
+obligations is diagnostic/red and cannot enter SWITCH_MATRIX_TRB.

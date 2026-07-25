@@ -34,6 +34,12 @@ from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
 from local_extremes_scorer import score_local_extremes as _le_score_entry
+from reentry_contract import (
+    get_exit_value as _reentry_exit_value,
+    reentry_opposition as _reentry_opposition,
+    set_exit_state as _set_reentry_exit_state,
+    update_reentry_trace as _update_reentry_trace,
+)
 from tradier_indicators import analyze_multi_tf_state_tradier
 from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
@@ -3204,7 +3210,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # --- Reopen cooldown: don't re-enter within 5 min of a full close ---
                 # DC breakout entries (price still below/above channel) get immediate re-entry
                 # Stoch-based entries wait 5 min to avoid noise
-                last_exit_ts = trade_manager.last_exit_times.get(symbol, 0)
+                last_exit_ts = _reentry_exit_value(
+                    trade_manager.last_exit_times, position_key, symbol, 0
+                )
                 secs_since_close = time.time() - last_exit_ts
                 # Check if price is currently outside any DC channel (DC breakout in progress)
                 indicators_raw_check = trade_manager.get_indicators(symbol) or {}
@@ -3258,15 +3266,39 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         print(f"V8_LOG LRBAND_P0 branchB_flat_reach={_lbp0['n']} is_long={is_long} sym={symbol}", flush=True)
                 _entry_score = 0.0  # 2026-05-28 C1 FIX: bind before branches — reentry/GR/delta entry paths set action_type="OPEN" without running wt_dc_score_entry, so the ENTRY_SCORE_THRESHOLD veto (~3023) hit UnboundLocalError when a per-sym ENTRY_SCORE_THRESHOLD>0 override was present (41 crashes/day on IBIT/CIBR/DAR/ROBO).
                 _entry_ind = indicators_raw if indicators_raw else i  # 2026-07-21 C1-class FIX: same bug — MTF_ARROW/LR_BAND priority entries claim OPEN before the fallback that bound _entry_ind, so the UVE veto line crashed UnboundLocalError, the except handler swallowed it, and BOTH the claimed entry and the fallback evaporated (13,091 of 13,119 arrow claims died this way in the 2026-07-21 ARM forensic run).
-                if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)) and trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
-                    _xb_last_t = trade_manager.last_exit_times.get(symbol, 0)
-                    _xb_last_px = trade_manager.last_exit_prices.get(symbol, 0)
+                # Mandatory capital-preservation obligation, not an optional entry path:
+                # matrix "all entries off" must never disable post-exit re-entry.
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
+                    _xb_last_t = _reentry_exit_value(
+                        trade_manager.last_exit_times, position_key, symbol, 0
+                    )
+                    _xb_last_px = _reentry_exit_value(
+                        trade_manager.last_exit_prices, position_key, symbol, 0
+                    )
                     if _xb_last_t > 0 and _xb_last_px > 0 and current_price > 0:
                         _xb_age_min = (time.time() - _xb_last_t) / 60.0
-                        _xb_max_age = float(getattr(config, 'PRICE_CROSS_BACK_MAX_AGE_MIN', 240.0))
                         _xb_band_pct = float(getattr(config, 'PRICE_CROSS_BACK_BAND_PCT', 0.3))
                         _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
-                        if _xb_age_min < _xb_max_age:
+                        _xb_opposed, _xb_opp_detail = _reentry_opposition(
+                            _entry_ind, is_long
+                        )
+                        _xb_trace = _update_reentry_trace(
+                            trade_manager.__dict__.setdefault("_mandatory_reentry_trace", {}),
+                            position_key,
+                            is_long,
+                            float(_xb_last_px),
+                            float(current_price),
+                            float(time.time()),
+                            _xb_opposed,
+                        )
+                        logger.info(
+                            f"[MANDATORY_REENTRY_FLAT_BAR] {position_key} "
+                            f"age={_xb_age_min:.1f}m cur={current_price:.4f} "
+                            f"exit={_xb_last_px:.4f} opposed={','.join(_xb_opposed) or 'none'} "
+                            f"flat_bars={_xb_trace['flat_bars']} "
+                            f"max_overshoot={_xb_trace['max_overshoot_pct']:.3f}%"
+                        )
+                        if True:  # obligation persists until filled; no max-age expiry
                             # 2026-05-21 USER MANDATE — "IF YOU SELL BY ACCIDENT GET RIGHT BACK IN".
                             # Old logic required dist<=band AND favorable direction. SNDK rally
                             # beyond +0.3% band → NO reentry. Now: fire whenever price crossed
@@ -3280,7 +3312,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _xb_dcb_ok = True
                             _xb_dckey = ""
                             _xb_dclvl = 0.0
-                            if bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
+                            # Mandatory obligation may be postponed only by multi-TF WT/Stoch
+                            # opposition. Donchian is retained as telemetry, never a veto here.
+                            if False and bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_ENABLED', False)):
                                 _xb_tf = str(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_TF', '5m'))
                                 _xb_4 = bool(getattr(config, 'REENTRY_LIVE_MONITOR_DC_BREAK_USE_4BAR', True))
                                 if is_long:
@@ -3290,7 +3324,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 _xb_dclvl = safe_fetch_float(i.get(_xb_dckey), 0.0)
                                 if _xb_dclvl > 0:
                                     _xb_dcb_ok = (is_long and current_price >= _xb_dclvl) or ((not is_long) and current_price <= _xb_dclvl)
-                            if (_xb_favorable or _xb_within_band) and not _xb_dcb_ok:
+                            if (_xb_favorable or _xb_within_band) and len(_xb_opposed) > 1:
+                                logger.warning(
+                                    f"[MANDATORY_REENTRY_PENDING_OPPOSITION] {position_key}: "
+                                    f"opposed={','.join(_xb_opposed)} detail={_xb_opp_detail} "
+                                    f"overshoot={_xb_trace['max_overshoot_pct']:.3f}%"
+                                )
+                            elif (_xb_favorable or _xb_within_band) and not _xb_dcb_ok:
                                 logger.info(f"[PRICE_CROSS_BACK_DC_BREAK_HOLD] {account_key}:{symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} not past {_xb_dckey}={_xb_dclvl:.4f} — churn guard, skip reentry")
                             elif _xb_favorable or _xb_within_band:
                                 _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
@@ -3298,7 +3338,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 qty = max(1, int(_xb_qty))
                                 conf = 90.0
                                 _xb_trigger = 'CROSSED_BACK' if _xb_favorable else f'WITHIN_BAND_{_xb_band_pct:.2f}%'
-                                reason = f"PRICE_CROSS_BACK_REENTRY_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
+                                reason = f"MANDATORY_REENTRY_PRICE_CROSS_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m_{_xb_trigger}"
                                 _xb_reentry_fired = True
                                 logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
                 # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
@@ -3738,7 +3778,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # them in V8 sweeps produces real paired-run variance. Defaults are non-restrictive
                 # (preserve current live behaviour); sweeps that flip them tighter will gate trades.
                 _open_claim = reason if (action_type == "OPEN" and ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or ''))) else None
-                if action_type == "OPEN" and account_key != 'tra':
+                if action_type == "OPEN" and account_key != 'tra' and not _xb_reentry_fired:
                     _veto = None
                     _side_vf = "LONG" if is_long else "SHORT"
                     # ENTRY_SCORE_THRESHOLD: gate the wt_dc _entry_score against the canonical knob.
@@ -3804,12 +3844,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _arrow_dbg(f"VETO_VARIANCE {account_key}:{symbol} {_veto} claimed={_open_claim[:70]}")
                         action_type = "NO_ACTION"
                         reason = _veto
-                if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
+                if action_type == "OPEN" and not _xb_reentry_fired and trade_manager.strategy.circuit_breaker.is_blocked(reason):
                     logger.critical(f"🛑 [CIRCUIT_BREAKER] {account_key}:{symbol}_{position_side}: BLOCKED entry '{reason}' — path auto-disabled after repeated collapses")
                     if _open_claim:
                         _arrow_dbg(f"CB_BLOCKED {account_key}:{symbol}_{position_side} claimed={_open_claim[:70]}")
                     return "CIRCUIT_BREAKER_BLOCKED"
-                if action_type == "OPEN" and getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', False):
+                if action_type == "OPEN" and not _xb_reentry_fired and getattr(config, 'TRADIER_LOCAL_EXTREMES_SCORING_ENABLED', False):
                     _le_ind = indicators_raw if indicators_raw else i
                     try:
                         _le_sc, _le_sz, _le_rsn = _le_score_entry(_le_ind, is_long)
@@ -3864,7 +3904,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 blocked_by_balancer = True; block_reason = f"Index Bullish ({breadth:.2f})"
                         # --- BALANCER LOGIC END ---
 
-                        if blocked_by_balancer:
+                        if blocked_by_balancer and not _xb_reentry_fired:
                             log_rec = "BLOCKED"
                             log_reason = block_reason
                             logger.info(f"[{account_key}] BLOCKED {symbol}: {block_reason}")
@@ -3889,7 +3929,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                     reason = f"STDEV_{_sb_t['phase']}_{_sb_t.get('htf', '?')}_pctb={_sb_t.get('pctb', 0):.3f}_{reason}"
                                     logger.warning(f"[STDEV_BREAKOUT] {symbol}: {_sb_t['phase']} {_sb_t['signal']} pctb={_sb_t.get('pctb', 0):.3f} size_mult={_sb_mult:.1f}x")
                                 # buffers are always updated inside detect_stdev_breakout_t
-                            sw_ok, sw_reason = trade_manager.is_swing_entry_allowed(position_side, float(qty) * current_price)
+                            sw_ok, sw_reason = (
+                                (True, "MANDATORY_REENTRY_CAPACITY_BYPASS")
+                                if _xb_reentry_fired
+                                else trade_manager.is_swing_entry_allowed(position_side, float(qty) * current_price)
+                            )
                             if not sw_ok:
                                 log_rec = "BUDGET"; log_reason = sw_reason
                                 logger.info(f"[{account_key}] 💰 SWING BUDGET BLOCKED {symbol}: {sw_reason}")
@@ -3901,7 +3945,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 # Augments are exempt (we are inside the action_type == "OPEN" branch at ~2446).
                                 # Fail-CLOSED on missing data. Reason on block: BLOCKED_CATALYST_VOLUME_NO_BREAKOUT.
                                 _cvg_blocked = False
-                                if bool(getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', False)):
+                                if bool(getattr(config, 'CATALYST_VOLUME_GATE_ENABLED', False)) and not _xb_reentry_fired:
                                     _cvg_ratio_min = float(getattr(config, 'CATALYST_VOLUME_RATIO', 1.5))
                                     _cvg_vol_today = safe_fetch_float(i.get('volume_D', 0), 0.0)
                                     _cvg_vol_50d_avg = safe_fetch_float(i.get('volume_D_50_sma', 0), 0.0)
@@ -4123,6 +4167,7 @@ async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_
 
 async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None):
     try:
+        _mandatory_reentry_qta = "MANDATORY_REENTRY" in (reason or "").upper()
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
         if ('MTF_ARROW' in (reason or '') or 'LR_BAND' in (reason or '')) and 'CLOSE' not in (action or '').upper() and 'REDUCE' not in (action or '').upper():
@@ -4169,7 +4214,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                              'INTERVENTION' in str(reason or '').upper() or
                              'MANUAL' in str(reason or '').upper() or
                              'WT_3M_FORCE_OPEN' in str(reason or '').upper() or
-                             'OBLIGATORY' in str(reason or '').upper())
+                             'OBLIGATORY' in str(reason or '').upper() or
+                             _mandatory_reentry_qta)
                 if _ot_max > 0 and not _ot_emerg:
                     global _OVERTRADE_COUNTER
                     if '_OVERTRADE_COUNTER' not in globals():
@@ -4257,7 +4303,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                                 _ctb_ll_p = safe_fetch_float(_ctb_ind.get("low_1h_prev", 0), 0.0)
                                 _ctb_struct = (_ctb_ll_n > 0 and _ctb_ll_p > 0 and _ctb_ll_n < _ctb_ll_p) or (_ctb_w1 < _ctb_w2)
                                 _ctb_aligned = (_ctb_px < _ctb_sma200) and _ctb_struct
-                    if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
+                    if not _mandatory_reentry_qta and (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
                         logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
                         return False
         except Exception as _ctbe:
@@ -4292,7 +4338,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         _qa_now = time.time()
         _qa_cooldown = float(getattr(config, 'TRADIER_QUEUE_DEDUPE_SEC', 60.0))
         _qa_last = trade_manager._queue_attempt_ts.get(_qa_key, 0.0)
-        if _qa_now - _qa_last < _qa_cooldown:
+        if _qa_now - _qa_last < _qa_cooldown and not _mandatory_reentry_qta:
             logger.warning(f"[QUEUE_DEDUPE] {position_key} {action}: queued {_qa_now - _qa_last:.0f}s ago < {_qa_cooldown:.0f}s — refusing duplicate. Reason='{reason[:80]}'")
             return False
         trade_manager._queue_attempt_ts[_qa_key] = _qa_now
@@ -4326,7 +4372,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             # 2026-04-29 USER RULE: post-close cooldown. After a CLOSE, block re-OPEN of same symbol
             # for TRADIER_POST_CLOSE_COOLDOWN_MIN minutes. Stops the 1-share open→close→reopen flap
             # observed today on NVDA/USO/MSFT/GOOGL (LONG BUY firing every ~30s).
-            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE"):
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and not _mandatory_reentry_qta:
                 _pc_cooldown_min = float(getattr(config, 'TRADIER_POST_CLOSE_COOLDOWN_MIN', 15.0))
                 if _pc_cooldown_min > 0:
                     _pc_last_red = getattr(position, 'last_reduction_time', None)
@@ -4375,7 +4421,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             #   max_put_oi_strike  = options-implied support floor (dealer absorption / max-pain pin)
             # Block LONG when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT below max_call_oi_strike.
             # Block SHORT when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT above max_put_oi_strike.
-            if bool(getattr(config, 'RED_ZONE_TRADIER_GATE_ENABLED', False)):
+            if bool(getattr(config, 'RED_ZONE_TRADIER_GATE_ENABLED', False)) and not _mandatory_reentry_qta:
                 _rzt_apply = True
                 if action == "AUGMENT" and not bool(getattr(config, 'RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED', True)):
                     _rzt_apply = False
@@ -4426,12 +4472,12 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                         logger.debug(f"[RED_ZONE_TRADIER] {position_key}: exception {type(_rzt_exc).__name__} {_rzt_exc} — skipped (no block)")
         if action == "OPEN":
             # BACKTEST_CHANGE_T37: daily loss circuit breaker
-            if _daily_loss_tracker.get("halted", False):
+            if _daily_loss_tracker.get("halted", False) and not _mandatory_reentry_qta:
                 logger.warning(f"[DAILY_LOSS_HALT] Blocking OPEN {position_key}: daily loss limit breached")
                 return False
             # BACKTEST_CHANGE_T35: max concurrent positions
             _max_conc = getattr(config, 'MAX_CONCURRENT_POSITIONS', 999)
-            if _max_conc < 999 and trade_manager.position_manager:
+            if _max_conc < 999 and trade_manager.position_manager and not _mandatory_reentry_qta:
                 _oc = sum(1 for _pk, _p in trade_manager.position_manager.positions.items() if abs(float(getattr(_p, 'positionAmt', 0))) > 0)
                 if _oc >= _max_conc:
                     logger.warning(f"[MAX_POS_BLOCK] Blocking OPEN {position_key}: {_oc} >= {_max_conc} max concurrent")
@@ -4442,7 +4488,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 'WT_3M_FORCE_OPEN_BYPASS_GATES', True, account_key, symbol,
                 position_side,
             ))
-            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
+            if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager and not _mandatory_reentry_qta and not (('WT_3M_FORCE_OPEN' in (reason or '').upper()) and _wf_bypass_order):
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
                     _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
@@ -4480,7 +4526,12 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             if position:
                 exit_time = getattr(position, 'last_reduction_time', None)
             if not exit_time:
-                last_exit_time = getattr(trade_manager, 'last_exit_times', {}).get(symbol, 0)
+                last_exit_time = _reentry_exit_value(
+                    getattr(trade_manager, 'last_exit_times', {}),
+                    position_key,
+                    symbol,
+                    0,
+                )
                 if last_exit_time > 0:
                     exit_time = datetime.fromtimestamp(last_exit_time, tz=timezone.utc)
             if exit_time and isinstance(exit_time, str):
@@ -12542,8 +12593,9 @@ class TradierTradeManager:
                                 # 2026-04-26 — record exit time/price on EVERY reduce (not only full close).
                                 # Was: only on `if new_qty <= 0` (full close), causing reopen-cooldown to read stale data
                                 # on partial reduces. Inconsequential while TRADIER_REOPEN_WAIT_S=0.0 but should be correct.
-                                self.last_exit_times[symbol] = time.time()
-                                self.last_exit_prices[symbol] = float(current_price)
+                                _set_reentry_exit_state(
+                                    self, position_key, time.time(), float(current_price)
+                                )
                                 # Full close: ALSO record reentry candidate snapshot for reopen logic.
                                 if new_qty <= 0:
                                     if order_id != "GHOST_CLEARED":
