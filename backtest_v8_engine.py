@@ -7700,8 +7700,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _sim_iso = _sim_dt.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
             ind['timestamp'] = _sim_iso
             for _tf in ['5m', '15m', '1h', '4h', 'D']:
-                ind[f'timestamp_{_tf}'] = _sim_iso
-                ind[f'age_{_tf}'] = 0.0
+                _tf_ts_key = f'timestamp_{_tf}'
+                if not ind.get(_tf_ts_key):
+                    ind[_tf_ts_key] = _sim_iso
+                    ind[f'age_{_tf}'] = 0.0
             for _ptf in ['15m', '1h', '4h', 'D']:
                 _pk = f'stoch_k_{_ptf}_prev'
                 if _pk not in ind:

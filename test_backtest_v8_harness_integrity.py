@@ -62,6 +62,18 @@ class IndicatorStoreIntegrityTests(unittest.TestCase):
             ["", "BULL", "", "BEAR", ""],
         )
 
+    def test_real_htf_timestamp_and_age_are_preserved(self):
+        store = self._store(
+            timestamps=np.array([7200, 7500], dtype=np.int64),
+            timestamp_1h=np.array([3600, 7200], dtype=np.int64),
+        )
+        first = store.build_indicator_dict(0)
+        second = store.build_indicator_dict(1)
+        self.assertEqual(first["timestamp_1h"], "1970-01-01T01:00:00.000Z")
+        self.assertEqual(first["age_1h"], 3600.0)
+        self.assertEqual(second["timestamp_1h"], "1970-01-01T02:00:00.000Z")
+        self.assertEqual(second["age_1h"], 300.0)
+
 
 class TradierSessionIntegrityTests(unittest.TestCase):
     @staticmethod

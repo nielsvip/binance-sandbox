@@ -51,6 +51,42 @@ except Exception as _e:
 MODE = "tradier"
 
 
+def _broadcast_asof_indices(
+    source_ts: np.ndarray,
+    target_ts: np.ndarray,
+    timeframe: str,
+    mode: str,
+) -> np.ndarray:
+    """Map a source timeframe using the time at which its data was knowable.
+
+    Tradier 1h/4h/D/W/M frames are left-labelled aggregates. Source row j
+    contains the completed interval beginning at source_ts[j], so it becomes
+    available only at the next source label. The old `right - 1` mapping exposed
+    the completed future bar throughout its own interval; `right - 2` selects
+    the previous fully closed row. Raw 15m timestamps are close-labelled and
+    retain the ordinary as-of mapping.
+    """
+    src = np.asarray(source_ts, dtype=np.int64)
+    dst = np.asarray(target_ts, dtype=np.int64)
+    lag = 2 if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"} else 1
+    idx = np.searchsorted(src, dst, side="right") - lag
+    return np.clip(idx, 0, max(0, len(src) - 1))
+
+
+def _availability_timestamps(
+    source_ts: np.ndarray,
+    indices: np.ndarray,
+    timeframe: str,
+    mode: str,
+) -> np.ndarray:
+    """Return when each selected source row became observable."""
+    src = np.asarray(source_ts, dtype=np.int64)
+    idx = np.asarray(indices, dtype=np.int64)
+    if mode == "tradier" and timeframe in {"1h", "4h", "D", "W", "M"}:
+        return src[np.minimum(idx + 1, len(src) - 1)]
+    return src[idx]
+
+
 def _ann_factor() -> float:
     """Annualization factor: 252 trading days for stocks, 365 for crypto (24/7)."""
     return 365.0 if MODE == "crypto" else 252.0
@@ -1286,9 +1322,12 @@ def compute_symbol(symbol: str, mode: str) -> bool:
                 merged[key] = arr
             else:
                 # Forward-fill HTF to base TF timestamps
-                indices = np.searchsorted(tf_ts, ts_epoch, side="right") - 1
-                indices = np.clip(indices, 0, len(tf_ts) - 1)
+                indices = _broadcast_asof_indices(tf_ts, ts_epoch, tf, mode)
                 merged[key] = arr[indices]
+                merged.setdefault(
+                    f"timestamp_{tf}",
+                    _availability_timestamps(tf_ts, indices, tf, mode),
+                )
     # FIX: Fabricated 3m WT can disagree with parent 15m direction due to interpolation artifacts.
     # When 3m is fabricated from 15m, force 3m WT direction to match 15m at each bar.
     # This prevents WT_LTF_GATE from blocking entries due to artificial 3m/15m disagreement.
@@ -1456,8 +1495,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
         _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
         _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
-        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
-        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
         # Override existing lr_trend_1h (already set above) only if missing
         if f"lr_trend_{t}" not in merged:
             merged[f"lr_trend_{t}"] = sl_pct[_idx]
@@ -1517,8 +1555,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
         _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
         _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
-        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
-        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
         merged[f"lrL_pct_b_{t}"] = pb_t[_idx]
         merged[f"lrL_slope_{t}"] = sl_t[_idx]
         merged[f"lrL_r2_{t}"] = r2_t[_idx]
@@ -1549,8 +1586,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
         _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
         _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
-        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
-        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        _idx = _broadcast_asof_indices(_t_ts, ts_epoch, t, mode)
         if t == "1h":
             merged["bb_high_1h"] = bb_hi[_idx]
             merged["bb_low_1h"] = bb_lo[_idx]
@@ -1639,11 +1675,11 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # 17. dc_width (no TF) alias of dc_width_<base_tf>. Some legacy callers omit the TF.
     if f"dc_width_{base_tf}" in merged:
         merged["dc_width"] = merged[f"dc_width_{base_tf}"]
-    # 18. timestamp_<tf> aliases. The NPZ stores per-TF timestamps once via timestamps + base.
-    # Engine code reads timestamp_<tf> in places — alias all to the canonical timestamps array
-    # (everything is broadcast to base TF anyway).
+    # 18. Per-TF information-availability timestamps. Higher timeframes populated
+    # above retain the timestamp at which the selected closed row became knowable.
+    # Base/missing timeframes use the canonical simulated-bar timestamp.
     for t in ("3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
-        merged[f"timestamp_{t}"] = ts_epoch
+        merged.setdefault(f"timestamp_{t}", ts_epoch)
     # 19. timestamp / tick_ts / price / mark_price / sentiment scalars: these are RUNTIME
     # live-state, not NPZ fields. Document here so we don't try to add them later.
     # Inject funding rate + open interest from cache (Improvement Framework A1+A2, 2026-04-25)
@@ -1791,8 +1827,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _d_unit = np.datetime_data(df_d.index.values.dtype)[0]
             _d_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_d_unit, 10**9)
             d_ts = (df_d.index.values.astype("int64") // _d_div).astype(np.int64)
-            indices = np.searchsorted(d_ts, ts_epoch, side="right") - 1
-            indices = np.clip(indices, 0, nD - 1)
+            indices = _broadcast_asof_indices(d_ts, ts_epoch, "D", mode)
             merged["connors_rsi_D"] = crsi_d[indices].astype(np.float32)
         else:
             merged["connors_rsi_D"] = np.full(n, 50.0, dtype=np.float32)
@@ -1832,7 +1867,7 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _u = np.datetime_data(_dftf.index.values.dtype)[0]
             _dv = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_u, 10**9)
             _tfts = (_dftf.index.values.astype("int64") // _dv).astype(np.int64)
-            _idx = np.clip(np.searchsorted(_tfts, ts_epoch, side="right") - 1, 0, _ncc - 1)
+            _idx = _broadcast_asof_indices(_tfts, ts_epoch, _ctf, mode)
             merged[_ckey] = _crsi[_idx].astype(np.float32)
         else:
             merged[_ckey] = np.full(n, 50.0, dtype=np.float32)

@@ -7,6 +7,24 @@ specification for the later `ez_` crypto port.
 
 ## Executive status
 
+### 2026-07-25 cron and Gmail restoration
+
+The S1 jobs paused specifically for the MU-only compute focus were restored:
+crypto autoresearch, the weak-key reoptimizer, and the INF/FLZ/MEN/FIN
+per-symbol agents. Matrix/report exports remain active while
+`data/GRID_SUSPENDED` is present.
+
+The old stock baseline/OFAT, pilot, arrow and sequential test writers remain
+quarantined because the B&H forensic found structural input and accounting
+defects; reactivating them now would add invalid cells. They are to be restored
+after the no-lookahead/data-preflight/side-isolation regression gate passes.
+
+`tools/results_digest_email.py` is scheduled on S1 at 00:00 and 12:00 UTC and
+now embeds `SWITCH_MATRIX_TRB_DIGEST.md`. Rendering is verified. SMTP delivery
+is still externally blocked: S1 has no Gmail credential and the Mac Keychain
+credential is rejected by Gmail with `535 BadCredentials`. No secret was
+copied or guessed; a new Gmail app password or OAuth sender is required.
+
 ### 2026-07-25 matrix-building continuation
 
 The actionable TRB matrix now has a `description` column populated for every

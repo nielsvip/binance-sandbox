@@ -408,8 +408,17 @@ class IndicatorStore:
         ts_str = datetime.utcfromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%S.000Z")
         result["timestamp"] = ts_str
         for tf in _ALL_TFS:
-            result[f"timestamp_{tf}"] = ts_str
-            result[f"age_{tf}"] = 0.0
+            tf_key = f"timestamp_{tf}"
+            raw_tf_ts = result.get(tf_key)
+            if isinstance(raw_tf_ts, (int, float, np.integer, np.floating)) and raw_tf_ts > 0:
+                tf_epoch = float(raw_tf_ts)
+                result[tf_key] = datetime.utcfromtimestamp(tf_epoch).strftime(
+                    "%Y-%m-%dT%H:%M:%S.000Z"
+                )
+                result[f"age_{tf}"] = max(0.0, float(ts) - tf_epoch)
+            else:
+                result[tf_key] = ts_str
+                result[f"age_{tf}"] = 0.0
         # Map 5m↔3m aliases
         stf = "5m" if self.has_5m else "3m"
         otf = "3m" if self.has_5m else "5m"
