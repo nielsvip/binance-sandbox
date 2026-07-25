@@ -1,3 +1,4 @@
+import ctypes
 import sys
 from pathlib import Path
 
@@ -122,3 +123,138 @@ def test_robust_selection_penalizes_single_period_outlier():
     stable_score, _ = wf._selection_score(stable)
     outlier_score, _ = wf._selection_score(outlier)
     assert stable_score > outlier_score
+
+
+def test_scanner_cost_matches_engine_round_trip_entry_value_model():
+    lib = base._compile_scanner()
+    n = 2
+    ts = np.ascontiguousarray([0, 300], dtype=np.int64)
+    px = np.ascontiguousarray([100.0, 100.0], dtype=np.float64)
+    blank = np.ascontiguousarray([np.nan, np.nan], dtype=np.float64)
+    zeros = np.ascontiguousarray([0, 0], dtype=np.uint8)
+    atr = np.ascontiguousarray([1.0, 1.0], dtype=np.float64)
+    metrics = base.ScanMetrics()
+    rc = lib.vec_top_exit_scan(
+        n,
+        1,
+        2,
+        0,
+        ts,
+        px,
+        px,
+        px,
+        px,
+        atr,
+        zeros,
+        blank,
+        blank,
+        zeros,
+        0.0,
+        0.0,
+        0.0005,  # 5bp one-way -> engine 10bp round-trip at close
+        0.0,
+        ctypes.byref(metrics),
+    )
+    assert rc == 0
+    assert abs(metrics.final_equity - 0.999) < 1e-12
+
+
+def test_vt_known_source_gap_is_not_hidden_by_interpolated_timestamps():
+    assert wf.KNOWN_SOURCE_GAPS["VT"] == (
+        (wf.date(2026, 3, 30), wf.date(2026, 6, 8)),
+    )
+
+
+def test_e06_regression_features_are_prior_only():
+    close = np.exp(np.linspace(4.0, 4.5, 40))
+    original = wf._rolling_regression_prior(close, 10)
+    changed = close.copy()
+    changed[20:] *= 5.0
+    perturbed = wf._rolling_regression_prior(changed, 10)
+    for original_feature, perturbed_feature in zip(original, perturbed):
+        assert original_feature[20] == perturbed_feature[20]
+
+
+def test_e08_cannot_exit_before_mfe_activation_then_locks_profit():
+    lib = base._compile_scanner()
+    n = 6
+    ts = np.ascontiguousarray(np.arange(n, dtype=np.int64) * 300)
+    open_px = np.ascontiguousarray(np.full(n, 100.0))
+    high = np.ascontiguousarray([100, 101, 103, 104, 104, 104], dtype=np.float64)
+    low = np.ascontiguousarray([99, 100, 102, 102, 100, 99], dtype=np.float64)
+    close = np.ascontiguousarray([100, 101, 103, 103, 101, 100], dtype=np.float64)
+    atr = np.ascontiguousarray(np.ones(n))
+    completed = np.ascontiguousarray(np.ones(n, dtype=np.uint8))
+    q = np.ascontiguousarray(np.full(n, 2.0))
+    k = np.ascontiguousarray(np.full(n, 1.5))
+    no_reentry = np.ascontiguousarray(np.zeros(n, dtype=np.uint8))
+    metrics = base.ScanMetrics()
+    rc = lib.vec_top_exit_scan(
+        n,
+        1,
+        3,
+        0,
+        ts,
+        open_px,
+        high,
+        low,
+        close,
+        atr,
+        completed,
+        q,
+        k,
+        no_reentry,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        ctypes.byref(metrics),
+    )
+    assert rc == 0
+    assert metrics.technical_exits == 1
+
+    data = base.ExecutionData(
+        symbol="TEST",
+        path="memory",
+        ts=ts,
+        open=open_px,
+        high=high,
+        low=low,
+        close=close,
+        synthetic=np.zeros(n, dtype=np.uint8),
+        full_indices=np.arange(n, dtype=np.int64),
+        z=None,
+        contract={"valid": True},
+    )
+    candidate = base.ExitCandidate(
+        family="E08_MFE_PROFIT_LOCK",
+        label="E08_TEST",
+        params={},
+        exit_mode=3,
+        exit_event=completed,
+        raw_stop=q,
+        struct_ref=k,
+        atr_exec=atr,
+    )
+    bh = base._side_bh(data, 1, 0.0, 0.0)
+    compiled = base._scan(
+        lib,
+        data,
+        candidate,
+        no_reentry,
+        1,
+        ("NONE", 0, 0.0, 0.0),
+        0.0,
+        0.0,
+        bh,
+    )
+    reference, _events = base._reference_replay(
+        data,
+        candidate,
+        no_reentry,
+        1,
+        ("NONE", 0, 0.0, 0.0),
+        0.0,
+        0.0,
+    )
+    assert base._parity_audit(compiled, reference)["status"] == "PASS"

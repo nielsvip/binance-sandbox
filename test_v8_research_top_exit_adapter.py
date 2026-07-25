@@ -1,7 +1,9 @@
 import gzip
 import hashlib
 import json
+from pathlib import Path
 
+import numpy as np
 import pytest
 
 from tools.v8_research_top_exit_adapter import (
@@ -11,9 +13,38 @@ from tools.v8_research_top_exit_adapter import (
 )
 
 
-def _write_fixture(tmp_path, events):
+def _write_fixture(tmp_path, events, *, open_by_ts=None):
     npz = tmp_path / "MU.npz"
-    npz.write_bytes(b"frozen-npz")
+    timestamps = np.array(
+        sorted(
+            {100, 190, 200, 290, 300, 400}
+            | {int(e["fill_ts"]) for e in events}
+            | {int(e["signal_ts"]) for e in events if e.get("signal_ts")}
+        ),
+        dtype=np.int64,
+    )
+    opens = np.full(len(timestamps), 100.0, dtype=np.float64)
+    closes = opens.copy()
+    event_by_fill = {int(e["fill_ts"]): e for e in events}
+    for index, timestamp in enumerate(timestamps):
+        event = event_by_fill.get(int(timestamp))
+        if event:
+            event_type = str(event["type"]).upper()
+            fill = float(event["fill_px"])
+            if event_type in {"ENTRY", "REENTRY"}:
+                opens[index] = fill / 1.0002
+            elif event_type == "EXIT":
+                opens[index] = fill / 0.9998
+            elif event_type == "MTM_FINAL":
+                closes[index] = fill / 0.9998
+        if open_by_ts and int(timestamp) in open_by_ts:
+            opens[index] = float(open_by_ts[int(timestamp)])
+    np.savez(
+        npz,
+        timestamps=timestamps,
+        open_5m=opens,
+        close_5m=closes,
+    )
     schedule = tmp_path / "events.jsonl.gz"
     with gzip.open(schedule, "wt") as fh:
         for event in events:
@@ -29,9 +60,12 @@ def _write_fixture(tmp_path, events):
         "event_schedule": str(schedule),
         "npz_path": str(npz),
         "expected_npz_sha256": hashlib.sha256(npz.read_bytes()).hexdigest(),
+        "expected_schedule_sha256": hashlib.sha256(schedule.read_bytes()).hexdigest(),
         "seed_notional_usd": 2000.0,
         "commission_round_trip_pct": 0.10,
+        "slippage_bps_one_way": 2.0,
         "expected_gain_pct": 9.79,
+        "expected_tim_rth_pct": 50.0,
         "expected_counts": {
             "entries": 1,
             "exits": 1,
@@ -140,3 +174,83 @@ def test_final_audit_detects_missing_and_quantity_mismatch(tmp_path):
     assert audit["status"] == "FAIL"
     assert audit["missing"]
     assert audit["quantity_mismatch"]
+
+
+def test_requires_and_validates_expected_schedule_fingerprint(tmp_path):
+    spec, _ = _write_fixture(tmp_path, _events())
+    payload = json.loads(spec.read_text())
+    payload.pop("expected_schedule_sha256")
+    spec.write_text(json.dumps(payload))
+    with pytest.raises(ResearchReplayError, match="schedule.*sha|sha.*schedule"):
+        TopExitReplayAdapter(spec)
+
+    spec, _ = _write_fixture(tmp_path, _events())
+    payload = json.loads(spec.read_text())
+    schedule = Path(payload["event_schedule"])
+    with gzip.open(schedule, "at") as fh:
+        fh.write(json.dumps({"type": "ENTRY", "fill_ts": 999, "fill_px": 1}) + "\n")
+    with pytest.raises(ResearchReplayError, match="schedule.*mismatch|mismatch.*schedule"):
+        TopExitReplayAdapter(spec)
+
+
+def test_rejects_duplicate_fill_timestamp_and_same_bar_close_reentry(tmp_path):
+    events = _events()
+    events[1]["fill_ts"] = 300
+    events[2]["fill_ts"] = 300
+    spec, _ = _write_fixture(tmp_path, events)
+    with pytest.raises(
+        ResearchReplayError,
+        match="duplicate|strictly increasing|same.bar",
+    ):
+        TopExitReplayAdapter(spec)
+
+
+def test_loaded_npz_enforces_signal_to_immediately_next_execution_row(tmp_path):
+    events = _events()
+    # Metadata still claims one bar, but signal_ts is not the execution row
+    # immediately before fill_ts in the loaded NPZ.
+    events[1]["signal_ts"] = 100
+    spec, npz = _write_fixture(tmp_path, events)
+    adapter = TopExitReplayAdapter(spec)
+    with pytest.raises(
+        ResearchReplayError,
+        match="signal.*next|next.*signal|latency",
+    ):
+        adapter.validate_npz(npz)
+
+
+def test_loaded_npz_enforces_fill_against_actual_bar_open(tmp_path):
+    events = _events()
+    # Keep the NPZ fingerprint valid, but make the actual EXIT bar open
+    # incompatible with the scheduled 2bp-adverse fill.
+    spec, npz = _write_fixture(tmp_path, events, open_by_ts={200: 50.0})
+    adapter = TopExitReplayAdapter(spec)
+    with pytest.raises(
+        ResearchReplayError,
+        match="fill.*open|open.*fill|price",
+    ):
+        adapter.validate_npz(npz)
+
+
+def test_engine_hashes_actual_loaded_npz_not_spec_declared_path():
+    source = Path("backtest_v8_engine.py").read_text()
+    assert 'validate_npz(_research_adapter_t.spec["npz_path"])' not in source
+    assert "validate_npz" in source
+    assert "stores" in source[source.index("validate_npz") - 500 : source.index("validate_npz") + 500]
+
+
+def test_tim_is_audited_and_mismatch_fails(tmp_path):
+    spec, _ = _write_fixture(tmp_path, _events())
+    adapter = TopExitReplayAdapter(spec)
+    audit = adapter.final_audit(actual_tim_rth_pct=51.0)
+    assert audit["tim"]["expected_rth_pct"] == 50.0
+    assert audit["tim"]["actual_rth_pct"] == 51.0
+    assert audit["tim"]["status"] == "FAIL"
+    assert audit["status"] == "FAIL"
+
+
+def test_schedule_replay_explicitly_disclaims_signal_parity(tmp_path):
+    spec, _ = _write_fixture(tmp_path, _events())
+    adapter = TopExitReplayAdapter(spec)
+    audit = adapter.final_audit(actual_tim_rth_pct=50.0)
+    assert audit["signal_parity"] is False
