@@ -397,3 +397,15 @@ The regenerated ENGINE matrix now contains 3,522 actionable switch-value rows ac
 tradeable keys, 1,721 rows with data, 1,801 pending, and a nonblank description on every
 row. Non-actionable settings live in the separate Inventory sheet instead of appearing as
 blank work.
+
+The first measured MU_LONG entry candidates are now classified against the clean floor:
+
+- `MTF_ARMED_ENTRY_ENABLED=True`: Tier-2 produced -0.93%, 32 real closes and 0.3927% TIM.
+  It is wired but gray/rejected; the older positive matrix delta came from a different
+  combination and cannot be treated as a standalone gain.
+- `DC_LOW4_STOP_ENABLED=True`: Tier-2 produced the unchanged 99.9722% floor with zero real
+  closes. It is inert at this floor and gray; the vector +1.70x B&H screen does not have
+  Tier-2 parity.
+
+This is the intended recalculating workflow: positive historical deltas are hypotheses, not
+promotions, and every candidate is rerun from a fixed accepted recipe plus the current path.

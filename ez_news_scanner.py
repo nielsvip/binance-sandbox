@@ -46,6 +46,12 @@ CRYPTO_INJECT_TARGETS = {
     'men': {'single': BASE_PATH / 'symbols_men.json'},
 }
 STOCK_INJECT_ACCOUNTS = ('trb',)
+TRADIER_RANKINGS_OWNED_FILES = {
+    'symbols_trb_long.json',
+    'symbols_trb_short.json',
+    'symbols_trc_long.json',
+    'symbols_trc_short.json',
+}
 MIN_CONVICTION = 0.40
 MAX_CRYPTO_PICKS = 5
 MAX_STOCK_PICKS = 3
@@ -300,6 +306,11 @@ def _read_symbol_list(path: Path) -> List[str]:
     return []
 
 def _write_symbol_list(path: Path, symbols: List[str]):
+    if path.name in TRADIER_RANKINGS_OWNED_FILES:
+        logger.error(
+            f"[WRITE] REFUSED {path.name}: tradier_rankings.py is the sole writer"
+        )
+        return
     try:
         with open(path, 'w') as f:
             json.dump(sorted(set(symbols)), f, indent=2)

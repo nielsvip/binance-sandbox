@@ -848,3 +848,8 @@ vector `DC_LOW4_STOP_ENABLED=True` estimated +276.86% at 82.1617% exposure, whil
 Tier-2 returned +0.61%, 16 real closes and 7.6855% exposure. The cell is tested and gray
 (discarded), not red: the live path fired, but the vector re-entry/fill approximation lacked
 parity.
+
+MU_LONG confirms the same rule for entries: `MTF_ARMED_ENTRY_ENABLED=True` looked positive in
+the older matrix combination, but isolated Tier-2 replay returned -0.93%, 32 closes and 0.3927%
+exposure. `DC_LOW4_STOP_ENABLED=True` was inert on the clean floor. Both remain gray until a
+new interaction recipe gives a reproducible B&H-relative improvement.
