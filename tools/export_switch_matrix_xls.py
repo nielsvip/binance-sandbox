@@ -236,6 +236,19 @@ _VERIFIED_DESCRIPTIONS = {
     "SHORT_STRUCT_EXIT_TF": (
         "EXIT — timeframe for short higher-high/higher-low structural-break closes; off='None'; per-symbol."
     ),
+    "GOLDEN_RULE_REQUIRE_ACTIVATION": (
+        "ENTRY CONDITION — requires the Golden Rule activation state before the qualifying entry; "
+        "False loosens that requirement and may permit more entries; signal-dependent; Tier-2 "
+        "fingerprint currently unchanged between True/False, so reconnect before promotion."
+    ),
+    "MTF_ARMED_ENTRY_ENABLED": (
+        "ENTRY — permits entries only after the multi-timeframe armed state is established; "
+        "generally increases qualifying entries when enabled; off=False; requires MTF arm state."
+    ),
+    "BB_PULLBACK_GATE_ENABLED": (
+        "ENTRY FILTER — requires a Bollinger pullback condition before entry; enabling can reduce "
+        "entries, while disabling admits more signals; off=False; signal-dependent."
+    ),
 }
 
 

@@ -128,6 +128,13 @@ THRESHOLD_OFF = {
     "EXIT_ALGO_SCORE_MIN": 9999.0,
     "WT_DC_EXIT_STALE_MAX_S": 0.0,             # staleness window -> never stale-exits
 }
+ENTRY_THRESHOLD_OFF = {
+    # WT_DC_ENTRY fires when score >= threshold. Both aliases are consumed by the
+    # Tradier engine/live path; disabling only the unprefixed name leaves WT_DC_ENTRY
+    # producing trades during supposedly isolated entry replays.
+    "WT_DC_ENTRY_THRESHOLD": 9999.0,
+    "TRA_WT_DC_ENTRY_THRESHOLD": 9999.0,
+}
 
 ABLATION = re.compile(r"^ABLATION_DISABLE_", re.I)
 CONDITION = re.compile(r"REQUIRE", re.I)
@@ -172,6 +179,8 @@ def off_switches(pat, anti=None):
         out[n] = "None"
     if pat is EXIT_PAT:
         out.update(THRESHOLD_OFF)
+    elif pat is ENTRY_PAT:
+        out.update(ENTRY_THRESHOLD_OFF)
     return out
 
 

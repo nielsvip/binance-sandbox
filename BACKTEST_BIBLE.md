@@ -853,3 +853,9 @@ MU_LONG confirms the same rule for entries: `MTF_ARMED_ENTRY_ENABLED=True` looke
 the older matrix combination, but isolated Tier-2 replay returned -0.93%, 32 closes and 0.3927%
 exposure. `DC_LOW4_STOP_ENABLED=True` was inert on the clean floor. Both remain gray until a
 new interaction recipe gives a reproducible B&H-relative improvement.
+
+`GOLDEN_RULE_REQUIRE_ACTIVATION=True` and `False` produced the exact same Tier-2 fingerprint
+(-0.93%, 32 closes, 0.3927% TIM), so this is red/reconnect rather than gray performance. A
+numeric or boolean switch cannot be considered tested until its two-value fingerprint moves.
+`BB_PULLBACK_GATE_ENABLED=False` produced that same fingerprint and is likewise red/reconnect
+in the isolated entry lane.

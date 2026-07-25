@@ -406,6 +406,13 @@ The first measured MU_LONG entry candidates are now classified against the clean
 - `DC_LOW4_STOP_ENABLED=True`: Tier-2 produced the unchanged 99.9722% floor with zero real
   closes. It is inert at this floor and gray; the vector +1.70x B&H screen does not have
   Tier-2 parity.
+- `GOLDEN_RULE_REQUIRE_ACTIVATION=True/False`: both values produced the identical -0.93%,
+  32-close, 0.3927%-TIM result. This is a red wiring cell: the setting is listed as an entry
+  condition but is not connected to the faithful Tier-2 entry path. It is assigned to the
+  reconnect lane and must not be used in a recipe until a two-value fingerprint changes.
+- `BB_PULLBACK_GATE_ENABLED=False`: reproduced the same -0.93%, 32-close, 0.3927%-TIM
+  fingerprint. This is also red/reconnect in the isolated Tier-2 entry lane; the historical
+  positive delta was not attributable to this knob alone.
 
 This is the intended recalculating workflow: positive historical deltas are hypotheses, not
 promotions, and every candidate is rerun from a fixed accepted recipe plus the current path.
