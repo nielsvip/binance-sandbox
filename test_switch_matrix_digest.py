@@ -75,3 +75,23 @@ def test_load_exact_replays_keys_latest_summary_by_source(tmp_path, monkeypatch)
     rows = digest.load_exact_replays()
 
     assert rows[str(source.resolve())]["status"] == "PASS"
+
+
+def test_load_latest_robust_walk_forward_prefers_newest(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    root = reports / "vec_research"
+    old = root / "walkforward_top_exit_1_MU_LONG"
+    new = root / "walkforward_top_exit_2_MU_LONG"
+    old.mkdir(parents=True)
+    new.mkdir()
+    name = "walkforward_digest_MU_LONG.json"
+    (old / name).write_text(json.dumps({"run_id": "old"}))
+    (new / name).write_text(json.dumps({"run_id": "new"}))
+    (old / name).touch()
+    (new / name).touch()
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = digest.load_latest_robust_walk_forward(("MU_LONG",))
+
+    assert rows["MU_LONG"]["run_id"] == "new"

@@ -266,6 +266,31 @@ def load_exact_replays() -> dict[str, dict]:
     return {source: pair[1] for source, pair in latest.items()}
 
 
+def load_latest_robust_walk_forward(keys: tuple[str, ...]) -> dict[str, dict | None]:
+    """Newest nested walk-forward digest for the newer E03/E06/E08/E09 lane."""
+    root = REPORTS / "vec_research"
+    out: dict[str, dict | None] = {key: None for key in keys}
+    for key in keys:
+        symbol, side = parse_key(key)
+        matches = sorted(
+            root.glob(f"walkforward_top_exit_*_{symbol}_{side}"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        ) if root.exists() else []
+        for directory in matches:
+            path = directory / f"walkforward_digest_{symbol}_{side}.json"
+            if not path.exists():
+                continue
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            payload["_artifact"] = str(directory.relative_to(BASE))
+            out[key] = payload
+            break
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -350,6 +375,7 @@ def main() -> None:
         key: load_top_exit_walk_forward(key) for key in keys
     }
     exact_replays = load_exact_replays()
+    robust_walk_forward = load_latest_robust_walk_forward(keys)
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -460,6 +486,56 @@ def main() -> None:
         "",
         "This table freezes the discovery choice before reading validation. It takes "
         "precedence over each window's separately re-optimized best row.",
+        "",
+        "## New causal-exit nested walk-forward",
+        "",
+        "| key | families | strict frozen result | strict TIM | clean frozen result | stability | verdict |",
+        "|---|---|---:|---:|---:|---:|---|",
+    ]
+    for key in keys:
+        payload = robust_walk_forward.get(key)
+        if not payload:
+            lines.append(f"| {key} | — | — | — | — | — | PENDING |")
+            continue
+        strict = payload.get("strict_policy_frozen_validation")
+        clean = payload.get("data_clean_frozen_validation")
+        stability = payload.get("parameter_stability") or {}
+        families = "/".join(payload.get("families") or [])
+        if strict:
+            strict_result = (
+                f"{fmt(strict.get('strategy_compounded_gain_pct'), 3, '%')} vs "
+                f"{fmt(strict.get('bh_compounded_gain_pct'), 3, '%')} B&H "
+                f"({fmt(strict.get('gain_bh_multiple'), 3)}×)"
+            )
+            strict_tim = fmt(strict.get("weighted_tim_rth_pct"), 2, "%")
+        else:
+            strict_result = "NO STRICT FOLDS"
+            strict_tim = "—"
+        if clean:
+            clean_result = (
+                f"{fmt(clean.get('strategy_compounded_gain_pct'), 3, '%')} vs "
+                f"{fmt(clean.get('bh_compounded_gain_pct'), 3, '%')} B&H "
+                f"({fmt(clean.get('gain_bh_multiple'), 3)}×)"
+            )
+        else:
+            clean_result = "—"
+        repeat = fmt(100.0 * float(stability.get("exact_strategy_repeat_rate") or 0), 1, "%")
+        promoted = bool(
+            strict
+            and strict.get("gain_bh_multiple") is not None
+            and float(strict["gain_bh_multiple"]) > 1.0
+            and bool(strict.get("tim_target_70_80"))
+            and bool(strict.get("all_mandatory_reclaim"))
+        )
+        verdict_text = "SCREEN PASS; REPLAY REQUIRED" if promoted else "REJECT / NO PROMOTION"
+        lines.append(
+            f"| {key} | {families or '—'} | {strict_result} | {strict_tim} | "
+            f"{clean_result} | {repeat} exact repeat | {verdict_text} |"
+        )
+    lines += [
+        "",
+        "This lane uses nested 12-month discovery with frozen three-month validation, "
+        "faithful-engine cost semantics, and excludes VT folds overlapping its known source gap.",
         "",
         "## Isolated vector research — not matrix evidence",
         "",

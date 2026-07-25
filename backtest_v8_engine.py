@@ -1731,6 +1731,9 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
                 v8_logger.warning(f"[NPZ_PRE_FAIL] {sym}: {_pre_e}")
         try:
             store = IndicatorStore(str(npz_path), start_idx=_start_idx)
+            # Preserve the exact file actually opened so research provenance
+            # checks cannot be redirected by a path declared inside a spec.
+            store.source_npz_path = str(npz_path.resolve())
         except Exception as _e:
             v8_logger.warning(f"[NPZ_LOAD_FAIL] {sym}: {type(_e).__name__}: {_e}")
             continue
@@ -7702,7 +7705,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         from tools.v8_research_top_exit_adapter import TopExitReplayAdapter
 
         _research_adapter_t = TopExitReplayAdapter(_research_spec_path_t)
-        _research_adapter_t.validate_npz(_research_adapter_t.spec["npz_path"])
+        _research_loaded_store_t = stores.get(_research_adapter_t.symbol)
+        _research_loaded_npz_t = getattr(
+            _research_loaded_store_t, "source_npz_path", ""
+        )
+        if not _research_loaded_npz_t:
+            raise RuntimeError("V8_RESEARCH_TOP_EXIT loaded NPZ path is unavailable")
+        _research_adapter_t.validate_npz(_research_loaded_npz_t)
         _research_adapter_t.validate_runtime(
             account=account_key,
             symbols=list(stores),
@@ -7893,7 +7902,36 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     f"{account_key}:{_research_adapter_t.symbol}_"
                     f"{_research_adapter_t.position_side}"
                 )
-                _research_qty_t = _research_action_t.quantity
+                _research_store_t = stores[_research_adapter_t.symbol]
+                _research_idx_t = _research_store_t.ts_to_idx[int(ts)]
+                _research_raw_open_t = float(
+                    _research_store_t.get(
+                        "open_5m",
+                        _research_idx_t,
+                        _research_store_t.get("open", _research_idx_t, 0.0),
+                    )
+                )
+                _research_raw_close_t = float(
+                    _research_store_t.get("close", _research_idx_t, 0.0)
+                )
+                _research_actual_fill_t = (
+                    _research_adapter_t.expected_fill_from_loaded_bar(
+                        _research_action_t,
+                        raw_open=_research_raw_open_t,
+                        raw_close=_research_raw_close_t,
+                    )
+                )
+                if abs(
+                    _research_actual_fill_t - _research_action_t.fill_price
+                ) > max(1e-9, abs(_research_action_t.fill_price) * 1e-10):
+                    raise RuntimeError(
+                        "V8_RESEARCH_TOP_EXIT loaded-bar fill mismatch: "
+                        f"ts={ts} event={_research_action_t.event_type} "
+                        f"schedule={_research_action_t.fill_price} "
+                        f"loaded={_research_actual_fill_t} "
+                        f"raw_open={_research_raw_open_t} raw_close={_research_raw_close_t}"
+                    )
+                _research_current_qty_t = 0.0
                 if _research_action_t.full_close:
                     _research_pos_t = (
                         manager.position_manager.positions.get(_research_pk_t)
@@ -7904,7 +7942,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         raise RuntimeError(
                             f"V8_RESEARCH_TOP_EXIT close while missing {_research_pk_t}"
                         )
-                    _research_qty_t = abs(
+                    _research_current_qty_t = abs(
                         float(
                             getattr(
                                 _research_pos_t,
@@ -7914,12 +7952,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             or 0
                         )
                     )
+                _research_qty_t = _research_adapter_t.quantity_for_action(
+                    _research_action_t,
+                    actual_fill_price=_research_actual_fill_t,
+                    current_position_qty=_research_current_qty_t,
+                )
                 _research_result_t = await _v8_execute_trade_action(
                     account_key=account_key,
                     position_key=_research_pk_t,
                     symbol=_research_adapter_t.symbol,
                     quantity=float(_research_qty_t or 0),
-                    current_price=_research_action_t.fill_price,
+                    current_price=_research_actual_fill_t,
                     side=_research_action_t.order_side,
                     position_side=_research_adapter_t.position_side,
                     action=_research_action_t.action,
@@ -7927,11 +7970,27 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     is_full_close=_research_action_t.full_close,
                     is_hedge=False,
                 )
+                _research_emitted_t = executed_trades[-1] if executed_trades else {}
+                _research_emitted_reason_t = str(
+                    _research_emitted_t.get("reason", "")
+                )
+                if not _research_emitted_reason_t.startswith(
+                    "V8_RESEARCH_TOP_EXIT_REPLAY"
+                ):
+                    raise RuntimeError(
+                        "V8_RESEARCH_TOP_EXIT engine did not emit the requested fill"
+                    )
+                _research_emitted_qty_t = float(
+                    _research_emitted_t.get("quantity", 0) or 0
+                )
+                _research_emitted_px_t = float(
+                    _research_emitted_t.get("price", 0) or 0
+                )
                 _research_adapter_t.record_result(
                     _research_action_t,
                     result=_research_result_t,
-                    actual_quantity=float(_research_qty_t or 0),
-                    actual_price=_research_action_t.fill_price,
+                    actual_quantity=_research_emitted_qty_t,
+                    actual_price=_research_emitted_px_t,
                 )
                 if _research_result_t != "SUCCESS":
                     raise RuntimeError(
@@ -8637,16 +8696,19 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _research_accounting_audit_t = _research_adapter_t.accounting_audit(
             executed_trades
         )
+        _research_tim_audit_t = _research_adapter_t.tim_audit()
         _research_audit_t = {
             "status": (
                 "PASS"
                 if _research_schedule_audit_t["status"] == "PASS"
                 and _research_accounting_audit_t["status"] == "PASS"
+                and _research_tim_audit_t["status"] == "PASS"
                 else "FAIL"
             ),
-            "tier": "VEC_RESEARCH_EXACT_ENGINE_REPLAY",
+            "tier": "VEC_RESEARCH_EXACT_ENGINE_ROUTE_SMOKE",
             "schedule": _research_schedule_audit_t,
             "accounting": _research_accounting_audit_t,
+            "time_in_market": _research_tim_audit_t,
             "fingerprints": {
                 "npz_sha256": _research_adapter_t.spec["expected_npz_sha256"],
                 "backtest_v8_engine_sha256": _research_hashlib_t.sha256(
@@ -8660,7 +8722,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 "exit_and_reentry_latency_bars": 1,
                 "end_of_sample_mtm_latency_bars": 0,
                 "all_schedule_events_validated": True,
+                "exact_next_rth_index_validated": True,
             },
+            "signal_parity": False,
+            "signal_parity_reason": (
+                "Frozen schedule replay does not independently recompute E02/E10/E11 signals."
+            ),
             "matrix_written": False,
             "promotion_allowed": False,
         }

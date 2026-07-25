@@ -241,3 +241,54 @@ The next useful campaign is a rolling walk-forward/state-adaptive test:
 
 Until then, the correct status is: **mechanically promising, accounting-verified, policy-compliant on the full sample, but not robust out of sample.**
 
+## 2026-07-25 faithful-cost correction and route audit
+
+The earlier artifacts above charged 5 bps independently at each entry and exit.
+`backtest_v8_engine.py` instead charges one 10 bps round-trip amount against
+entry notional when the position closes. Those methods are close for small
+returns but are not identical under compounding. The first fail-closed route
+replays exposed the difference:
+
+```text
+Discovery N20/G2: engine - vector = +7.116 bp   FAIL
+Full N30/G2:      engine - vector = +137.940 bp FAIL
+```
+
+The tolerance was not widened. The C scanner, independent Python reference,
+and B&H calculation now use the faithful-engine convention. The cost-aligned
+full-period frozen N30/G2/E10 artifact is:
+
+```text
+/home/niels/binance-sandbox/data/reports/vec_research/
+  top_exit_20260725T191201Z_MU_LONG/
+
+strategy gain       +1377.872399%
+B&H net              +666.389299%
+multiple                 2.067669x
+RTH TIM                 75.050635%
+```
+
+The cost-aligned frozen walk-forward verdict remains a failure:
+
+```text
+N20 discovery      +70.163936% vs +2.181112% B&H, TIM 76.0064%
+N20 validation    +243.263911% vs +651.968541% B&H = 0.373122x, TIM 67.7513%
+
+N30 discovery      +91.550098% vs +2.181112% B&H, TIM 66.6680%
+N30 validation    +673.491872% vs +651.968541% B&H = 1.033013x, TIM 84.9515%
+```
+
+Machine-readable truth is stored at:
+
+```text
+data/reports/vec_research/top_exit_walk_forward_summary_MU_LONG.json
+```
+
+The faithful-engine adapter is explicitly an execution-route smoke. It checks
+the actual loaded NPZ hash, immutable schedule hash, actual loaded bar
+open/close, slippage-derived fill, emitted engine fill/quantity, exact
+signal-to-next-RTH index, position lifecycle, fees, P&L, and TIM. It sizes each
+new round from acknowledged realized equity rather than frozen vector equity.
+It deliberately records `signal_parity=false`, because replaying a frozen event
+schedule does not independently recompute E02/E10/E11 signals. Therefore even
+a passing route smoke cannot promote a matrix cell or a live switch.
