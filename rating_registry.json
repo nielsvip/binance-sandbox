@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-25T20:00:43.061810+00:00",
+  "timestamp": "2026-07-25T20:15:53.409554+00:00",
   "market_state": {
     "panic": false,
     "euphoria": true,
@@ -8,9 +8,9 @@
   "unified_ranking": [
     {
       "symbol": "AIAUSDT",
-      "net_score": -26.8,
+      "net_score": -26.5,
       "long_score": 0,
-      "short_score": 26.8
+      "short_score": 26.5
     },
     {
       "symbol": "PTBUSDT",
@@ -661,21 +661,21 @@
       "short_score": 0
     },
     {
+      "symbol": "1000XECUSDT",
+      "net_score": 16.2,
+      "long_score": 16.2,
+      "short_score": 0
+    },
+    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
       "short_score": 0
     },
     {
-      "symbol": "1000XECUSDT",
-      "net_score": 17.7,
-      "long_score": 17.7,
-      "short_score": 0
-    },
-    {
       "symbol": "APEUSDT",
-      "net_score": 18.0,
-      "long_score": 18.0,
+      "net_score": 18.4,
+      "long_score": 18.4,
       "short_score": 0
     },
     {
@@ -840,19 +840,19 @@
     ],
     [
       "APEUSDT",
-      18.0,
+      18.4,
       0.14912276
     ],
     [
       "1000XECUSDT",
-      17.7,
+      16.2,
       0.00747775
     ]
   ],
   "top_shorts": [
     [
       "AIAUSDT",
-      26.8,
+      26.5,
       0.0561495
     ],
     [
