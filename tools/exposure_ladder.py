@@ -48,7 +48,7 @@ sys.path.insert(0, str(SBX / "tools"))
 os.environ.setdefault("PSC_CAMPAIGN", "stocks_baseline_v2_s4h")
 import persym_baseline_campaign as psc  # noqa: E402
 import param_results_store as prs  # noqa: E402
-from backtest_data_contract import audit_npz  # noqa: E402
+from backtest_data_contract import audit_npz, audit_stage0_result  # noqa: E402
 
 MANIFEST = SBX / "data" / "param_sweep_manifest_tradier.json"
 LADDER_CAMPAIGN = psc.CAMPAIGN + "__ladder_v2"
@@ -299,6 +299,25 @@ def run_cell(symbol, side, tag, overrides, args):
     rets = [float(t["pnl_pct"]) for t in trades]
     m = psc.hold_metrics(trades, years, psc.key_metrics(rets, years, bh_long, side))
     m.pop("capture_vs_bh", None)
+    # key_metrics is historically price-unit based. The ladder contract is
+    # capital based: benchmark deploys $2k against $10k, while later strategies
+    # may deploy up to $16k. Compare realized dollars / accounting capital, not
+    # an unscaled trade percentage against a 0.20-scaled B&H benchmark.
+    pnl_dollars = sum(
+        float(t.get("pnl_usd", t.get("pnl_dollars", 0.0)) or 0.0)
+        for t in trades
+    )
+    months = years * 12.0 if years else 0.0
+    m["_unit_acc_gain_pct"] = m.get("acc_gain_pct")
+    m["acc_gain_pct"] = round(pnl_dollars / 10000.0 * 100.0, 4)
+    m["gain_per_mo"] = round(m["acc_gain_pct"] / months, 4) if months else 0.0
+    if m.get("bh_pct") is not None:
+        m["_unit_bh_pct"] = m["bh_pct"]
+        m["bh_pct"] = round(float(m["bh_pct"]) * 0.20, 4)
+        m["bh_per_mo"] = round(m["bh_pct"] / months, 4) if months else 0.0
+        m["delta_gain_mo_vs_bh"] = round(
+            m["gain_per_mo"] - m["bh_per_mo"], 4
+        )
     # Raw NPZ B&H starts at the first premarket bar. Tier-2 may only seed a
     # Tradier position at the first RTH bar, so compare the floor against the
     # independently reconstructed first-tradable-entry -> final-mark return.
@@ -334,6 +353,10 @@ def run_cell(symbol, side, tag, overrides, args):
             "size_clamp_count",
         ):
             m[f"_{name}"] = float(v8.get(name, 0) or 0)
+        if tag.startswith("LADDER0__"):
+            stage0_audit = audit_stage0_result(v8, side)
+            m["_stage0_valid"] = bool(stage0_audit["valid"])
+            m["_stage0_diagnostics"] = stage0_audit
     return m
 
 
@@ -520,6 +543,7 @@ def main():
         )
         floor_ok = (
             opens >= 1 and closes == 0 and tim >= 99.0
+            and bool(m.get("_stage0_valid", False))
             and tradable_bh is not None
             and abs(gain - tradable_bh) <= max(1.0, abs(tradable_bh) * 0.01)
         )
@@ -533,7 +557,11 @@ def main():
                   "Exit inventory is COMPLETE for this key; stage 1 may begin.")
         else:
             print("         *** FLOOR FAILED AND NOT STORED. Refusing the old closes==0 shortcut: "
-                  "require an actual open, zero real closes, >=99% TIM, and gain ~= b&h.")
+                  "require exactly one 1x B&H seed/fill, no other sized entry event or clamp, "
+                  "zero real closes, one MTM, >=99% TIM, and gain ~= b&h.")
+            if m.get("_stage0_diagnostics"):
+                print("         stage0 diagnostics: "
+                      + json.dumps(m["_stage0_diagnostics"], sort_keys=True))
         return
 
     if a.stage == "stage3":

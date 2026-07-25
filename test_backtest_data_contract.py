@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tools.backtest_data_contract import audit_ladder_result, audit_npz
+from tools.backtest_data_contract import audit_ladder_result, audit_npz, audit_stage0_result
 
 
 def valid_arrays(n=600):
@@ -83,6 +83,46 @@ class DataContractTests(unittest.TestCase):
             "requested_fill_ratio": 0.99, "size_clamp_count": 0,
         }, "LONG")
         self.assertTrue(result["valid"])
+
+    def test_clean_one_unit_stage0_is_valid(self):
+        result = audit_stage0_result({
+            "trades": 1, "opens_long": 1, "opens_short": 0,
+            "real_closes": 0, "mtm_count": 1,
+            "time_in_mkt_long_pct": 99.9,
+            "sized_open_events": 1, "max_requested_mult": 1,
+            "max_filled_start_mult": 1, "requested_fill_ratio": 1.0,
+            "size_clamp_count": 0, "open_notional_sum": 2000,
+            "max_open_notional": 2000, "benchmark_deployed_usd": 2000,
+            "reentry_pending": 0, "reentry_violations": 0,
+        }, "LONG")
+        self.assertTrue(result["valid"], result)
+
+    def test_stage0_rejects_non_seed_entry_attempt_without_a_clamp(self):
+        result = audit_stage0_result({
+            "trades": 1, "opens_long": 1, "opens_short": 0,
+            "real_closes": 0, "mtm_count": 1,
+            "time_in_mkt_long_pct": 99.9,
+            "sized_open_events": 2, "max_requested_mult": 3,
+            "max_filled_start_mult": 1, "requested_fill_ratio": 1.0,
+            "size_clamp_count": 0, "open_notional_sum": 3000,
+            "max_open_notional": 2000, "benchmark_deployed_usd": 2000,
+            "reentry_pending": 0, "reentry_violations": 0,
+        }, "LONG")
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["non_seed_sized_open_events"], 1)
+
+    def test_stage0_rejects_clamped_add_after_seed(self):
+        result = audit_stage0_result({
+            "trades": 1, "opens_long": 1, "opens_short": 0,
+            "real_closes": 0, "mtm_count": 1,
+            "time_in_mkt_long_pct": 99.9,
+            "sized_open_events": 2, "max_requested_mult": 3,
+            "max_filled_start_mult": 1, "requested_fill_ratio": 0.3643,
+            "size_clamp_count": 1, "open_notional_sum": 2914.58,
+            "max_open_notional": 2000, "benchmark_deployed_usd": 2000,
+            "reentry_pending": 0, "reentry_violations": 0,
+        }, "LONG")
+        self.assertFalse(result["valid"])
 
     def test_contiguous_indicator_warmup_is_accepted(self):
         arrays = valid_arrays()

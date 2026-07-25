@@ -115,3 +115,41 @@ Final NPZ SHA-256:
 `4c7ff8d9008d8a4ad271b70a1413a7c62197ad64122c6d714fcb35b959579cce`.
 Rollback SHA-256:
 `76695cdf693ecd5d38847c191941440c4d6e204a0f027c1c3430c114bb154a2b`.
+
+## Post-regeneration faithful-engine stage-0 proof
+
+These were direct Tier-2 engine runs with side isolation, all strategy entries
+and exits disabled, one first-RTH `V8_LADDER_INITIAL_BH_SEED`, $10,000
+accounting capital, a $2,000 benchmark unit, and $16,000 strategy capacity. No
+matrix function or result database was called. `data/GRID_SUSPENDED` remained
+present.
+
+| window | net capital return | gross tradable B&H | x B&H | TIM | opens L/S | real closes | MTM | requested/fill |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2026-06-10 12:30 UTC–2026-06-30 22:30 UTC | +0.6321787% | +0.6441787% | 0.9813716x | 99.7959% | 1 / 0 | 0 | 1 | 1x/1x; 1.0000 |
+| 2024-07-11 11:00 UTC–2026-07-24 22:00 UTC | +6.5606440% | +6.5726440% | 0.9981743x | 99.9860% | 1 / 0 | 0 | 1 | 1x/1x; 1.0000 |
+
+The short engine seed was the first legal RTH bar at 2026-06-10 13:30 UTC:
+152.6999969, final mark 157.6183014. The full seed was 2024-07-11 13:30 UTC:
+116.2850037, final mark 154.50. Both have zero size clamps, opposite-side
+fills, pending re-entries, re-entry overshoot violations, and real exits. The
+short run took 11.689 seconds; full history took 235.098 seconds.
+
+Actual bounded-window synthetic shares were 8.9242% of all short-window rows
+and 6.9355% of its RTH rows. Full history was 5.4203% synthetic across all rows
+and 3.7635% during RTH. The full replay retains the disclosed 69.5-day source
+gap and is therefore not calendar-continuous.
+
+One preliminary diagnostic deliberately matters: leaving the accepted entry
+paths active after injecting the B&H seed allowed `WT_3M_FORCE_OPEN` to request
+another 3x augmentation. Its requested/fill ratio fell to 0.3643 with one
+clamp, so the result was quarantined. A valid stage-0 floor must disable
+strategy entries as well as exits and then inject exactly one benchmark unit;
+`real_closes == 0` alone is not sufficient.
+
+S1 artifacts:
+
+- `/tmp/vt_stage0_gapfree_real5m_20260725.json`
+- `/tmp/vt_stage0_postregen_gapfree_real5m_20260725`
+- `/tmp/vt_stage0_full_20260725.json`
+- `/tmp/vt_stage0_postregen_full_20260725`

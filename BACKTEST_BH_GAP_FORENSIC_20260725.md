@@ -354,6 +354,40 @@ availability is zero on 15m/1h/4h/D. One 69.5-day source gap remains and is disc
 independent daily cache proves it is missing coverage rather than a corporate action. Exact
 coverage, hashes and rollback are in `VT_NPZ_REGEN_20260725.md`.
 
+### Fresh VT stage 0 proves the repaired data and exposes a stale validity rule
+
+A faithful VT_LONG replay now passes on both a bounded post-gap window and all
+available history. The full source window is 2024-07-11 11:00 UTC through
+2026-07-24 22:00 UTC (41,824 rows); the first legal RTH seed is 2024-07-11
+13:30 UTC at 116.2850037 and the final mark is 154.50. One $2,000 benchmark unit
+against $10,000 accounting capital produced +6.5606440% net capital return
+versus +6.5726440% gross tradable B&H, or 0.9981743x after the 0.06% round-trip
+cost. TIM is 99.9860%; there is one LONG open, zero SHORT opens, zero real
+closes and one final MTM. Requested and filled size are both exactly 1x/$2,000,
+with fill ratio 1.0000, zero clamps and no pending/violated re-entry obligation.
+
+The bounded 2026-06-10 through 2026-07-01 replay likewise passed: +0.6321787%
+net capital return versus +0.6441787% gross B&H (0.9813716x), 99.7959% TIM,
+and the same one-seed/one-MTM contract. Its 818 source rows avoid the 69.5-day
+gap. Full history remains valid on available bars but not calendar-continuous;
+5.4203% of all rows and 3.7635% of RTH rows are synthetic.
+
+The preliminary run found an important false-stage-0 case. Leaving accepted
+entry paths active after the seed let `WT_3M_FORCE_OPEN` request a second 3x
+addition. It produced two sized entry events, only a 0.3643 requested/fill
+ratio and one clamp. Although there was still only one flat-to-active LONG
+open and zero real closes, this was not B&H and was quarantined.
+
+The canonical stage-0 result contract now requires exactly one sized event,
+1x requested and filled, $2,000 total/max opening notional, one requested-side
+open, zero opposite opens, zero real closes, one MTM, at least 99% TIM, zero
+clamps and no re-entry debt. It explicitly counts `sized_open_events` because
+`opens_LONG/SHORT` counts only flat-to-active transitions and cannot reveal
+augments. Stage 0 disables all ordinary entry paths as well as exits, then
+injects the sole B&H seed. The ladder also compares capital return against
+capital B&H; it no longer compares a raw price-unit strategy percentage with a
+0.20-scaled benchmark.
+
 ### The intended delayed top exit was self-cancelling
 
 The prior two-phase Delta/RZ path did not implement “break structure, then exit at the next

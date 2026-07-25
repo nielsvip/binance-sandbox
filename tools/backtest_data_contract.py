@@ -268,6 +268,47 @@ def audit_ladder_result(result: dict, side: str, require_sizing: bool = True) ->
     return diagnostics
 
 
+def audit_stage0_result(result: dict, side: str) -> dict:
+    """Require an uncontaminated one-unit B&H seed floor.
+
+    A no-exit replay is not stage 0 if ordinary entry paths add inventory after
+    the seed. `opens_<side>` counts flat-to-active transitions and therefore
+    cannot see augments; sizing telemetry is the authoritative attempt count.
+    """
+    diagnostics = audit_ladder_result(result, side, require_sizing=True)
+    wanted = side.lower()
+    benchmark = float(result.get("benchmark_deployed_usd", 0) or 0)
+    diagnostics.update({
+        "real_closes": int(float(result.get("real_closes", 0) or 0)),
+        "mtm_count": int(float(result.get("mtm_count", 0) or 0)),
+        "time_in_mkt_pct": float(result.get(f"time_in_mkt_{wanted}_pct", 0) or 0),
+        "max_filled_start_mult": float(result.get("max_filled_start_mult", 0) or 0),
+        "open_notional_sum": float(result.get("open_notional_sum", 0) or 0),
+        "max_open_notional": float(result.get("max_open_notional", 0) or 0),
+        "benchmark_deployed_usd": benchmark,
+    })
+    diagnostics["non_seed_sized_open_events"] = max(
+        0, diagnostics["sized_open_events"] - 1
+    )
+    notional_tol = max(1.0, benchmark * 0.01)
+    diagnostics["valid"] = bool(
+        diagnostics["valid"]
+        and diagnostics["trades"] == 1
+        and diagnostics["requested_side_opens"] == 1
+        and diagnostics["real_closes"] == 0
+        and diagnostics["mtm_count"] == 1
+        and diagnostics["time_in_mkt_pct"] >= 99.0
+        and diagnostics["sized_open_events"] == 1
+        and diagnostics["non_seed_sized_open_events"] == 0
+        and abs(diagnostics["max_requested_mult"] - 1.0) <= 0.001
+        and abs(diagnostics["max_filled_start_mult"] - 1.0) <= 0.001
+        and benchmark > 0
+        and abs(diagnostics["open_notional_sum"] - benchmark) <= notional_tol
+        and abs(diagnostics["max_open_notional"] - benchmark) <= notional_tol
+    )
+    return diagnostics
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--symbol", required=True)
