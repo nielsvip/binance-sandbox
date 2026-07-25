@@ -70,17 +70,15 @@ if SYMBOLS_FILE.exists():
 # ═══════════════════════════════════════════════════════════════════
 # INJECTION INTO LIVE TRADING (same mechanism as ez_news_scanner.py)
 # ═══════════════════════════════════════════════════════════════════
-# Writes to data/news_injections.json — tradier_rankings.py reads this
-# via _merge_news_injections() and adds symbols to ranking lists.
-# Also appends to symbols_trb_long.json / symbols_trb_short.json directly.
+# Writes only to data/news_injections.json. tradier_rankings.py is the sole
+# owner of symbols_trb_long/short.json and applies the master allowlist before
+# publishing those derived files.
 INJECTION_FILE = config.DATA_DIR / "news_injections.json"
 INJECTION_TTL_HOURS = 48
 MIN_INJECT_CONVICTION = 2  # Minimum conviction_sources to inject (2+ sources agree)
 MIN_INJECT_VALUE = 50000  # OR total_value > $50k from single source
 MAX_INJECT_PICKS = 5  # Max symbols to inject per side per cycle
-STOCK_INJECT_TARGETS = {
-    "trb": {"long": BASE_PATH / "symbols_trb_long.json", "short": BASE_PATH / "symbols_trb_short.json"},
-}
+STOCK_INJECT_ACCOUNTS = ("trb",)
 
 # Proven politicians (55%+ WR at 30d on 5+ trades from backtest) + Trump inner circle.
 # ONLY these get injected into live trading. Everyone else is newsletter-only.
@@ -980,8 +978,8 @@ def _save_injections(data: dict):
 def inject_conviction_symbols(conviction: List[Dict]) -> List[Dict]:
     """Inject high-conviction symbols into tradier ranking symbol lists.
     Uses the SAME news_injections.json format as ez_news_scanner.py so that
-    tradier_rankings.py picks them up via _merge_news_injections() without
-    needing any changes to the locked rankings file."""
+    tradier_rankings.py picks them up via _merge_news_injections(). This
+    scanner must never write the generated symbols_trb_* files directly."""
     if not conviction:
         return []
     injections = _load_injections()
@@ -990,14 +988,17 @@ def inject_conviction_symbols(conviction: List[Dict]) -> List[Dict]:
     new_injections = []
     long_picks = [c for c in conviction if c["side"] == "LONG"][:MAX_INJECT_PICKS]
     short_picks = [c for c in conviction if c["side"] == "SHORT"][:MAX_INJECT_PICKS]
-    for acct, targets in STOCK_INJECT_TARGETS.items():
+    for acct in STOCK_INJECT_ACCOUNTS:
         for side_key, picks in [("long", long_picks), ("short", short_picks)]:
-            path = targets[side_key]
-            current = _read_symbol_list(path)
             added = []
             direction = "LONG" if side_key == "long" else "SHORT"
             for pick in picks:
-                sym = pick["symbol"]
+                sym = pick["symbol"].upper()
+                if sym not in OUR_SYMBOLS:
+                    logger.warning(
+                        f"[INJECT] Blocked {sym}: not present in symbols_tradier.json"
+                    )
+                    continue
                 sources_count = pick.get("conviction_sources", 0)
                 total_val = pick.get("total_value", 0)
                 if sources_count < MIN_INJECT_CONVICTION and total_val < MIN_INJECT_VALUE:
@@ -1005,16 +1006,15 @@ def inject_conviction_symbols(conviction: List[Dict]) -> List[Dict]:
                 key = (sym, acct, direction)
                 if key in already_active:
                     continue
-                was_new = sym not in current
-                if was_new:
-                    current.append(sym)
-                    added.append(sym)
+                added.append(sym)
                 conviction_score = min(1.0, sources_count / 4.0)
                 reason = f"stock_scan: {sources_count} sources ({', '.join(pick.get('sources', [])[:3])}), ${total_val:,.0f}"
-                new_injections.append({"symbol": sym, "account": acct, "side": direction, "file": path.name, "injected_at": now_iso, "conviction": conviction_score, "reason": reason[:80], "_is_stock": True, "was_new": was_new, "_source": "stock_trader_scanner"})
+                new_injections.append({"symbol": sym, "account": acct, "side": direction, "file": f"symbols_{acct}_{side_key}.json", "injected_at": now_iso, "conviction": conviction_score, "reason": reason[:80], "_is_stock": True, "was_new": True, "_source": "stock_trader_scanner"})
             if added:
-                _write_symbol_list(path, current)
-                logger.info(f"[INJECT] {acct}_{side_key}: +{len(added)} stocks → {path.name}: {added}")
+                logger.info(
+                    f"[INJECT] {acct}_{side_key}: queued {len(added)} allowlisted "
+                    f"stocks for tradier_rankings: {added}"
+                )
     if new_injections:
         injections["active"].extend(new_injections)
         _save_injections(injections)

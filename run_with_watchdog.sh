@@ -81,9 +81,6 @@ kill_duplicate_python() {
         done
     fi
 }
-# Run singleton guard at startup (kills duplicate PYTHON children)
-kill_duplicate_python
-
 # Setup logging
 mkdir -p "$LOGDIR"
 SCRIPT_BASE="${SCRIPT%.py}"
@@ -111,6 +108,11 @@ if [ -f "$WATCHDOG_LOCK" ]; then
 fi
 echo "$$" > "$WATCHDOG_LOCK"
 trap 'rm -f "$WATCHDOG_LOCK"; kill -TERM ${CHILD_PID:-0} 2>/dev/null; exit' EXIT INT TERM
+
+# Only the watchdog that owns the lock may clean up a stale Python child.
+# Previously this ran before the lock check, so every duplicate watchdog
+# killed the healthy incumbent child and then exited.
+kill_duplicate_python
 
 APP_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_app.log"  # legacy, no longer written to
 WD_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_watchdog.log"

@@ -1,6 +1,7 @@
 # pylint: disable=W,C,R,I
 
 import asyncio
+import fcntl
 import json
 import logging
 import os
@@ -1995,18 +1996,96 @@ async def plot_dfs_subplots(
 #         logger.error(f"Failed to save plot {fpath}: {e_save}")
 #     finally:
 #         plt.close(fig)
-def load_symbols() -> List[str]:
-    """Load symbols from symbols_tradier.json"""
+TRADIER_MASTER_MIN_SYMBOLS = 100
+TRADIER_MASTER_BACKUP = Path(config.BASE_PATH) / "symbols_tradier.last_known_good.json"
+_INSTANCE_LOCK_HANDLE = None
+
+
+def _validated_symbol_list(path: Path) -> List[str]:
+    with open(path, "r") as f:
+        raw_symbols = json.load(f)
+    if not isinstance(raw_symbols, list):
+        raise ValueError("top-level JSON value is not a list")
+    symbols = list(dict.fromkeys(
+        str(symbol).strip().upper() for symbol in raw_symbols if str(symbol).strip()
+    ))
+    if len(symbols) < TRADIER_MASTER_MIN_SYMBOLS:
+        raise ValueError(
+            f"only {len(symbols)} symbols; expected at least {TRADIER_MASTER_MIN_SYMBOLS}"
+        )
+    return symbols
+
+
+def _atomic_write_symbol_list(path: Path, symbols: List[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
     try:
-        if config.SYMBOLS_FILE.exists():
-            with open(config.SYMBOLS_FILE, "r") as f:
-                symbols = json.load(f)
-                if isinstance(symbols, list):
-                    return [str(s).upper() for s in symbols]
+        with open(temp_path, "w") as f:
+            json.dump(symbols, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def load_symbols() -> List[str]:
+    """Load the authoritative Tradier allowlist, restoring it if it vanished."""
+    master_path = Path(config.SYMBOLS_FILE)
+    try:
+        symbols = _validated_symbol_list(master_path)
+        # Preserve the largest valid list seen. A truncated master must never
+        # overwrite the recovery seed.
+        try:
+            backup_symbols = _validated_symbol_list(TRADIER_MASTER_BACKUP)
+        except Exception:
+            backup_symbols = []
+        if len(symbols) >= len(backup_symbols):
+            _atomic_write_symbol_list(TRADIER_MASTER_BACKUP, symbols)
+        return symbols
+    except Exception as master_error:
+        logger.critical(
+            f"[MASTER_SYMBOLS] {master_path} is missing/invalid ({master_error}); "
+            f"restoring from {TRADIER_MASTER_BACKUP}"
+        )
+    try:
+        symbols = _validated_symbol_list(TRADIER_MASTER_BACKUP)
+        _atomic_write_symbol_list(master_path, symbols)
+        logger.critical(
+            f"[MASTER_SYMBOLS] Restored {len(symbols)} symbols to {master_path}"
+        )
+        return symbols
+    except Exception as backup_error:
+        logger.critical(
+            f"[MASTER_SYMBOLS] Recovery failed; backup is missing/invalid: {backup_error}"
+        )
         return []
-    except Exception as e:
-        logger.error(f"Error loading symbols: {e}")
-        return []
+
+
+def _acquire_instance_lock() -> bool:
+    """Prevent direct launches and multiple watchdogs from ranking concurrently."""
+    global _INSTANCE_LOCK_HANDLE
+    lock_path = Path(config.BASE_PATH) / "data" / ".tradier_rankings.instance.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(lock_path, "a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        logger.critical(
+            "[SINGLETON] Another tradier_rankings.py process already holds the instance lock; exiting"
+        )
+        return False
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"{os.getpid()}\n")
+    handle.flush()
+    _INSTANCE_LOCK_HANDLE = handle
+    return True
 # ===== OVERRIDE initial_fetch_and_ranking for Tradier =====
 async def initial_fetch_and_ranking(symbols, timeframes=None):
     """Tradier-specific ranking - uses Tradier bars instead of Binance klines"""
@@ -2261,6 +2340,20 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             _seen_syms[_s] = _entry
     final_ranking_data_scalars = list(_seen_syms.values())
     final_ranking_data_scalars.sort(key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
+    minimum_safe_coverage = max(50, int(len(symbols) * 0.50))
+    if len(final_ranking_data_scalars) < minimum_safe_coverage:
+        logger.critical(
+            f"[rankings] REFUSING leaderboard overwrite: only "
+            f"{len(final_ranking_data_scalars)}/{len(symbols)} master symbols ranked; "
+            f"minimum safe coverage is {minimum_safe_coverage}. Existing winners/losers "
+            "and symbols_trb_* files are preserved."
+        )
+        return final_ranking_data_scalars, {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "symbol_count": len(final_ranking_data_scalars),
+            "timeframes": timeframes,
+            "source": "tradier_rankings_partial_preserved",
+        }
     # Create leaderboard lists (winners/losers) like ez_rankings
     top_winners_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
     top_losers_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0))
@@ -2311,12 +2404,14 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         _extra_longs = [item["symbol"] for item in top_winners_lt if item["symbol"] not in _raw_longs and not _options_re.search(item["symbol"])]
         _raw_longs += _extra_longs[:len(_raw_shorts) - len(_raw_longs)]
     logger.info(f"[rankings] Symbol parity: {len(_raw_longs)}L / {len(_raw_shorts)}S")
-    symbols_trc_long  = _raw_longs
-    symbols_trc_short = _raw_shorts
-    symbols_tra_long  = _raw_longs
-    symbols_tra_short = _raw_shorts
-    symbols_trb_long  = _raw_longs
-    symbols_trb_short = _raw_shorts
+    # Use independent lists: optional injections into trb/trc must not mutate
+    # tra through shared list aliases.
+    symbols_trc_long  = list(_raw_longs)
+    symbols_trc_short = list(_raw_shorts)
+    symbols_tra_long  = list(_raw_longs)
+    symbols_tra_short = list(_raw_shorts)
+    symbols_trb_long  = list(_raw_longs)
+    symbols_trb_short = list(_raw_shorts)
     # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (mirror crypto FUNDING_OI_INJECT) ===
     # Read data/stocks_oi_cache/{sym}.json populated by tradier_options_oi_fetcher.py (READ-ONLY).
     # Inject extreme-P/C symbols (call-dominant → LONG, put-dominant → SHORT) into the trb/trc lists
@@ -2417,6 +2512,24 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             if _ms not in symbols_trb_short: symbols_trb_short.append(_ms)
         _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
         _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
+        # symbols_tradier.json is the final trading allowlist. Optional OI,
+        # mandatory, and news injections may prioritize a symbol, but may not
+        # add an unapproved symbol to an account's derived trading list.
+        _allowed_symbols = set(symbols)
+        _dropped_long = [s for s in symbols_trb_long if s not in _allowed_symbols]
+        _dropped_short = [s for s in symbols_trb_short if s not in _allowed_symbols]
+        symbols_trb_long = [s for s in symbols_trb_long if s in _allowed_symbols]
+        symbols_trb_short = [s for s in symbols_trb_short if s in _allowed_symbols]
+        if _dropped_long or _dropped_short:
+            logger.warning(
+                f"[MASTER_SYMBOLS] Blocked non-allowlisted injections: "
+                f"long={_dropped_long}, short={_dropped_short}"
+            )
+        if len(symbols_trb_long) < 20 or len(symbols_trb_short) < 20:
+            raise RuntimeError(
+                f"refusing undersized symbols_trb overwrite: "
+                f"{len(symbols_trb_long)} long / {len(symbols_trb_short)} short"
+            )
         # 2026-07-19 USER: trc now mirrors trb's fully-processed symbol universe (same
         # per_sym baseline + daily 7D reconfig methodology, run as its own independent
         # instance) so the two accounts are a live apples-to-apples comparison instead
@@ -2819,6 +2932,8 @@ async def main():
         sys.exit(0)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+    if not _acquire_instance_lock():
+        return
     try:
         logger.info("🚀 Starting Tradier rankings...")
         # Initialize API client and bar manager

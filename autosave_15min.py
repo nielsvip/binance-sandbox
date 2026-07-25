@@ -33,8 +33,28 @@ CRITICAL = [
     "backtest_v8_engine.py", "backtest_v8_harness.py", "backtest_v8_sweep.py",
     "sweep_cockpit.py", "v8_watchdog.py", "cpu_enforcer.py", "log_healer.py",
     "LOCKED_FILES.md", "CLAUDE.md",
+    "symbols_tradier.json", "symbols_tradier.last_known_good.json",
     "start_everything_1.command", "start_everything_2.command", "start_everything_3.command",
 ]
+
+MASTER_SYMBOLS = REPO / "symbols_tradier.json"
+MASTER_SYMBOLS_RECOVERY = REPO / "symbols_tradier.last_known_good.json"
+
+
+def ensure_master_symbols():
+    """Restore the master Tradier allowlist if another process removes it."""
+    try:
+        if MASTER_SYMBOLS.exists():
+            return
+        if not MASTER_SYMBOLS_RECOVERY.exists():
+            log("CRITICAL: symbols_tradier.json missing and recovery seed unavailable")
+            return
+        tmp = MASTER_SYMBOLS.with_name(f".{MASTER_SYMBOLS.name}.{os.getpid()}.tmp")
+        shutil.copy2(MASTER_SYMBOLS_RECOVERY, tmp)
+        os.replace(tmp, MASTER_SYMBOLS)
+        log("CRITICAL: restored missing symbols_tradier.json from last-known-good seed")
+    except Exception as e:
+        log(f"CRITICAL: failed to restore symbols_tradier.json: {e}")
 
 
 def log(msg):
@@ -44,6 +64,7 @@ def log(msg):
 
 def backup_cycle():
     """Copy all critical files to timestamped backup dir, keep last 96 (24h)."""
+    ensure_master_symbols()
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     dest = BACKUP_DIR / ts
     dest.mkdir(exist_ok=True)

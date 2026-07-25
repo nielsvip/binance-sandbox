@@ -1803,106 +1803,13 @@ def _save_copilot_symbols(tracker: Dict[str, dict]):
 
 
 async def inject_outliers_into_symbols(outliers: List[dict]):
-    """Add outlier symbols to symbols_tradier.json. Tracks additions in copilot_added_symbols.json for cleanup."""
-    symbols_path = BASE_PATH / "symbols_tradier.json"
-    if not symbols_path.exists():
-        logger.error("[SCANNER] symbols_tradier.json not found")
-        return
-    try:
-        async with aiofiles.open(symbols_path, "r") as f:
-            current_symbols = json.loads(await f.read())
-    except Exception as e:
-        logger.error(f"[SCANNER] Failed to read symbols_tradier.json: {e}")
-        return
-    tracker = _load_copilot_symbols()
-    now_iso = datetime.now(timezone.utc).isoformat()
-    current_set = set(s.upper() for s in current_symbols)
-    # Refresh last_outlier_at for symbols that are STILL outliers
-    current_outlier_syms = {o["symbol"].upper() for o in outliers}
-    for sym in list(tracker.keys()):
-        if sym in current_outlier_syms:
-            tracker[sym]["last_outlier_at"] = now_iso
-    # Filter: only add symbols not already tracked, with high volume
-    candidates = [o for o in outliers if o["symbol"].upper() not in current_set and o["rel_volume"] >= 1.0 and o["price"] >= 5.0 and o["price"] <= 500.0]
-    if not candidates:
-        _save_copilot_symbols(tracker)
-        return
-    to_add = candidates[:MAX_NEW_SYMBOLS_PER_SCAN]
-    new_symbols = current_symbols.copy()
-    added = []
-    for o in to_add:
-        sym = o["symbol"].upper()
-        new_symbols.append(sym)
-        added.append(f"{sym} ({o['change_pct']:+.1f}%)")
-        tracker[sym] = {"added_at": now_iso, "last_outlier_at": now_iso, "reason": f"{o['change_pct']:+.1f}% move, vol={o['rel_volume']:.1f}x", "initial_change_pct": o["change_pct"]}
-        logger.warning(f"[SCANNER] Adding {sym} to symbols_tradier.json: {o['change_pct']:+.2f}% move, vol={o['rel_volume']:.1f}x")
-    try:
-        async with aiofiles.open(symbols_path, "w") as f:
-            await f.write(json.dumps(new_symbols, indent=2))
-        logger.warning(f"[SCANNER] Updated symbols_tradier.json: added {', '.join(added)} (total: {len(new_symbols)})")
-    except Exception as e:
-        logger.error(f"[SCANNER] Failed to write symbols_tradier.json: {e}")
-    _save_copilot_symbols(tracker)
+    """Outliers are ranking hints only; the master trading allowlist is immutable."""
+    return
 
 
 async def cleanup_stale_copilot_symbols():
-    """Remove copilot-added symbols from symbols_tradier.json when they're no longer outliers."""
-    symbols_path = BASE_PATH / "symbols_tradier.json"
-    if not symbols_path.exists():
-        return
-    tracker = _load_copilot_symbols()
-    if not tracker:
-        return
-    now = datetime.now(timezone.utc)
-    to_remove = []
-    for sym, info in list(tracker.items()):
-        last_outlier_str = info.get("last_outlier_at", info.get("added_at", ""))
-        if not last_outlier_str:
-            continue
-        try:
-            last_outlier = datetime.fromisoformat(last_outlier_str.replace("Z", "+00:00"))
-        except Exception:
-            continue
-        hours_since_outlier = (now - last_outlier).total_seconds() / 3600
-        # Also check: if we hold a position in this symbol, don't remove it
-        has_position = False
-        for acct in TRADIER_ACCOUNTS:
-            for side in ["long", "short"]:
-                positions = await load_positions(acct, side)
-                for pk, pos in positions.items():
-                    pk_sym = pk_symbol(pk) if pk_symbol(pk) else pk.split("_")[0]
-                    if pk_sym.upper() == sym.upper():
-                        amt = abs(safe_fetch_float(pos.get("positionAmt") or pos.get("quantity", 0), 0))
-                        if amt > 0:
-                            has_position = True
-                            break
-                if has_position:
-                    break
-            if has_position:
-                break
-        if has_position:
-            logger.debug(f"[SCANNER] Keeping {sym}: still have an active position")
-            continue
-        if hours_since_outlier >= COPILOT_SYMBOLS_TTL_HOURS:
-            to_remove.append(sym)
-    if not to_remove:
-        return
-    # Remove from symbols_tradier.json
-    try:
-        async with aiofiles.open(symbols_path, "r") as f:
-            current_symbols = json.loads(await f.read())
-        original_count = len(current_symbols)
-        remove_set = set(s.upper() for s in to_remove)
-        current_symbols = [s for s in current_symbols if s.upper() not in remove_set]
-        if len(current_symbols) < original_count:
-            async with aiofiles.open(symbols_path, "w") as f:
-                await f.write(json.dumps(current_symbols, indent=2))
-            for sym in to_remove:
-                tracker.pop(sym, None)
-            _save_copilot_symbols(tracker)
-            logger.warning(f"[SCANNER] Cleaned up {len(to_remove)} stale symbols from symbols_tradier.json: {', '.join(to_remove)} (now: {len(current_symbols)})")
-    except Exception as e:
-        logger.error(f"[SCANNER] Cleanup failed: {e}")
+    """The copilot may not remove symbols from the master trading allowlist."""
+    return
 
 
 async def inject_outliers_into_rankings(redis_client: aioredis.Redis, outliers: List[dict]):

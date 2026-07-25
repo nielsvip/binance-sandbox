@@ -45,9 +45,7 @@ CRYPTO_INJECT_TARGETS = {
     'inf': {'long': BASE_PATH / 'symbols_inf_long.json', 'short': BASE_PATH / 'symbols_inf_short.json'},
     'men': {'single': BASE_PATH / 'symbols_men.json'},
 }
-STOCK_INJECT_TARGETS = {
-    'trb': {'long': BASE_PATH / 'symbols_trb_long.json', 'short': BASE_PATH / 'symbols_trb_short.json'},
-}
+STOCK_INJECT_ACCOUNTS = ('trb',)
 MIN_CONVICTION = 0.40
 MAX_CRYPTO_PICKS = 5
 MAX_STOCK_PICKS = 3
@@ -235,17 +233,17 @@ def load_symbols() -> List[str]:
         return []
 
 def load_stock_symbols() -> List[str]:
-    all_stocks = set()
-    for fname in ('symbols_tradier.json', 'symbols_trb_long.json', 'symbols_trb_short.json', 'symbols_tra_long.json', 'symbols_trc_long.json'):
-        p = BASE_PATH / fname
-        try:
-            if p.exists():
-                with open(p, 'r') as f:
-                    syms = json.load(f)
-                    all_stocks.update(s for s in syms if s.isalpha() and len(s) <= 5)
-        except Exception:
-            pass
-    return list(all_stocks)
+    """Load stocks exclusively from the authoritative Tradier allowlist."""
+    p = BASE_PATH / 'symbols_tradier.json'
+    try:
+        with open(p, 'r') as f:
+            syms = json.load(f)
+        return list(dict.fromkeys(
+            str(s).upper() for s in syms if str(s).isalpha() and len(str(s)) <= 5
+        ))
+    except Exception as e:
+        logger.error(f"Failed to load symbols_tradier.json: {e}")
+        return []
 
 def vader_score(text: str) -> float:
     if vader:
@@ -865,25 +863,28 @@ def inject_symbols(crypto_long: List[dict], crypto_short: List[dict], stock_long
                 if added:
                     _write_symbol_list(path, current)
                     logger.info(f"[INJECT] {acct}_{side_key}: +{len(added)} symbols -> {path.name}: {added}")
-    for acct, targets in STOCK_INJECT_TARGETS.items():
+    allowed_stocks = set(load_stock_symbols())
+    for acct in STOCK_INJECT_ACCOUNTS:
         for side_key, picks in [('long', stock_long), ('short', stock_short)]:
-            path = targets[side_key]
-            current = _read_symbol_list(path)
             added = []
             direction = 'LONG' if side_key == 'long' else 'SHORT'
             for pick in picks:
-                sym = pick['symbol']
+                sym = pick['symbol'].upper()
+                if sym not in allowed_stocks:
+                    logger.warning(
+                        f"[INJECT] Blocked stock {sym}: not in symbols_tradier.json"
+                    )
+                    continue
                 key = (sym, acct, direction)
                 if key in already_active:
                     continue
-                was_new = sym not in current
-                if was_new:
-                    current.append(sym)
-                    added.append(sym)
-                new_injections.append({'symbol': sym, 'account': acct, 'side': direction, 'file': path.name, 'injected_at': now_iso, 'conviction': pick['conviction'], 'reason': pick['reason'][:80], '_is_stock': True, 'was_new': was_new})
+                added.append(sym)
+                new_injections.append({'symbol': sym, 'account': acct, 'side': direction, 'file': f'symbols_{acct}_{side_key}.json', 'injected_at': now_iso, 'conviction': pick['conviction'], 'reason': pick['reason'][:80], '_is_stock': True, 'was_new': True})
             if added:
-                _write_symbol_list(path, current)
-                logger.info(f"[INJECT] {acct}_{side_key}: +{len(added)} stocks -> {path.name}: {added}")
+                logger.info(
+                    f"[INJECT] {acct}_{side_key}: queued {len(added)} allowlisted "
+                    f"stocks for tradier_rankings: {added}"
+                )
     injections['active'].extend(new_injections)
     save_injections(injections)
     return new_injections
@@ -904,7 +905,10 @@ def cleanup_expired() -> List[dict]:
         if age_hours > INJECTION_TTL_HOURS:
             path = _resolve_injection_path(inj['file'])
             sym = inj['symbol']
-            if inj.get('was_new', True):
+            # tradier_rankings owns stock-derived files. Expiring a stock
+            # injection removes only its metadata; the next ranking rebuilds
+            # the list without it.
+            if inj.get('was_new', True) and not inj.get('_is_stock'):
                 current = _read_symbol_list(path)
                 if sym in current:
                     current.remove(sym)
@@ -927,6 +931,8 @@ def re_inject_active() -> int:
     re_added = 0
     files_modified = set()
     for inj in injections['active']:
+        if inj.get('_is_stock'):
+            continue
         if not inj.get('was_new', True):
             continue
         path = _resolve_injection_path(inj['file'])
