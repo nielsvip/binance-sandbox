@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-25T23:01:31.781885+00:00",
+  "timestamp": "2026-07-25T23:16:30.086864+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -577,6 +577,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ORDIUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -739,12 +745,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ORDIUSDC",
-      "net_score": 13.2,
-      "long_score": 13.2,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
@@ -799,13 +799,7 @@
       "short_score": 0
     }
   ],
-  "top_longs": [
-    [
-      "ORDIUSDC",
-      13.2,
-      3.63018863
-    ]
-  ],
+  "top_longs": [],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
