@@ -95,3 +95,19 @@ def test_load_latest_robust_walk_forward_prefers_newest(tmp_path, monkeypatch):
     rows = digest.load_latest_robust_walk_forward(("MU_LONG",))
 
     assert rows["MU_LONG"]["run_id"] == "new"
+
+
+def test_load_latest_partial_regime_walk_forward(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    root = reports / "vec_research"
+    directory = root / "partial_regime_walkforward_1_VT_LONG"
+    directory.mkdir(parents=True)
+    (directory / "digest_VT_LONG.json").write_text(
+        json.dumps({"run_id": "vt-partial"})
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = digest.load_latest_partial_regime_walk_forward(("VT_LONG",))
+
+    assert rows["VT_LONG"]["run_id"] == "vt-partial"

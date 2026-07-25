@@ -291,6 +291,33 @@ def load_latest_robust_walk_forward(keys: tuple[str, ...]) -> dict[str, dict | N
     return out
 
 
+def load_latest_partial_regime_walk_forward(
+    keys: tuple[str, ...],
+) -> dict[str, dict | None]:
+    """Newest E12 partial-runner / E13 regime-switch frozen-OOS digest."""
+    root = REPORTS / "vec_research"
+    out: dict[str, dict | None] = {key: None for key in keys}
+    for key in keys:
+        symbol, side = parse_key(key)
+        matches = sorted(
+            root.glob(f"partial_regime_walkforward_*_{symbol}_{side}"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        ) if root.exists() else []
+        for directory in matches:
+            path = directory / f"digest_{symbol}_{side}.json"
+            if not path.exists():
+                continue
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            payload["_artifact"] = str(directory.relative_to(BASE))
+            out[key] = payload
+            break
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -376,6 +403,7 @@ def main() -> None:
     }
     exact_replays = load_exact_replays()
     robust_walk_forward = load_latest_robust_walk_forward(keys)
+    partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -536,6 +564,52 @@ def main() -> None:
         "",
         "This lane uses nested 12-month discovery with frozen three-month validation, "
         "faithful-engine cost semantics, and excludes VT folds overlapping its known source gap.",
+        "",
+        "## Partial-runner and regime nested walk-forward",
+        "",
+        "| key | family | frozen strategy vs B&H | weighted TIM | partial P&L / exits | stability | verdict |",
+        "|---|---|---:|---:|---:|---:|---|",
+    ]
+    for key in keys:
+        payload = partial_regime_walk_forward.get(key)
+        if not payload:
+            lines.append(f"| {key} | — | — | — | — | — | PENDING |")
+            continue
+        results = payload.get("results") or {}
+        for family in ("E12_PARTIAL_THEN_RUNNER", "E13_REGIME_SWITCHED"):
+            row = results.get(family) or {}
+            aggregate = row.get("aggregate_gap_clean_frozen") or {}
+            stability = row.get("stability") or {}
+            ratio = aggregate.get("strategy_to_bh_equity_ratio")
+            comparison = (
+                f"{fmt(aggregate.get('strategy_compounded_gain_pct'), 3, '%')} vs "
+                f"{fmt(aggregate.get('bh_compounded_gain_pct'), 3, '%')} "
+                f"({fmt(ratio, 3)}× equity)"
+            )
+            partial_pnl = aggregate.get("realized_partial_pnl_net_equity")
+            partial_exits = aggregate.get("partial_exit_count")
+            partial_text = (
+                f"{fmt(partial_pnl, 4)} / {partial_exits}"
+                if partial_pnl is not None and partial_exits is not None
+                else "—"
+            )
+            stable = bool(stability.get("stable"))
+            accepted = (
+                row.get("status") == "ACCEPTED"
+                and ratio is not None
+                and float(ratio) > 1.0
+            )
+            lines.append(
+                f"| {key} | {family.replace('_', ' ')} | {comparison} | "
+                f"{fmt(aggregate.get('weighted_exposure_time_pct'), 2, '%')} | "
+                f"{partial_text} | {'STABLE' if stable else 'UNSTABLE'} | "
+                f"{'SCREEN PASS; REPLAY REQUIRED' if accepted else 'REJECT / NO PROMOTION'} |"
+            )
+    lines += [
+        "",
+        "E12 reports net realized partial P&L separately. Positive partial clips do not "
+        "constitute edge when lost runner exposure and re-add timing leave compounded equity "
+        "below B&H.",
         "",
         "## Isolated vector research — not matrix evidence",
         "",
