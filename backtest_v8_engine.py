@@ -5676,9 +5676,20 @@ def main():
     parser.add_argument("--capital", type=float, default=10000.0)
     parser.add_argument("--npz-dir", type=str, default="", help="Explicit NPZ directory (overrides auto-detect)")
     parser.add_argument("--seed-positions", type=str, default="", help="Path to snapshot JSON from tools/snapshot_live_state.py — seed open positions/hedges/exit_candidates instead of clean-slate")
+    parser.add_argument(
+        "--research-top-exit-spec",
+        type=str,
+        default="",
+        help=(
+            "BACKTEST ONLY: replay a frozen VEC_RESEARCH E02/E10/E11 event "
+            "schedule. Default-off; never read by live processes."
+        ),
+    )
     args = parser.parse_args()
     if args.seed_positions:
         os.environ["V8_SEED_POSITIONS_FILE"] = args.seed_positions
+    if args.research_top_exit_spec:
+        os.environ["V8_RESEARCH_TOP_EXIT_SPEC"] = args.research_top_exit_spec
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
     if _SWEEP_MODE:
@@ -6242,7 +6253,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
-        _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED"
+        # The private research prefix is accepted only by this backtest engine
+        # and only when the explicit replay adapter invokes this local helper.
+        # It bypasses strategy-entry vetoes so the audit measures execution and
+        # accounting parity of the frozen schedule.  No live module recognizes it.
+        _is_research_replay = reason.startswith("V8_RESEARCH_TOP_EXIT_REPLAY")
+        _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED" or _is_research_replay
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-12 — VEC SHORT-CIRCUIT (tradier eta path). Same checkpoint as
         # crypto eta. With all flags OFF this is a near-zero-cost noop.
@@ -6290,7 +6306,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     manager.__dict__.setdefault('_bt_reduce_price', {})[position_key] = px
                 return _vec_reason_t
         # REENTRY price-cross cooldown (mirrors ez_reentry_daemon) — always-on tradier.
-        if (act or '').upper() == 'REENTRY':
+        if (act or '').upper() == 'REENTRY' and not _is_research_replay:
             try:
                 _rx_cfg_t = getattr(tm_mod, 'config', None) or config
                 _rx_reduce_lock_t = (manager.__dict__.get('_bt_reduce_lock') or {}).get(position_key, 0.0)
@@ -6421,7 +6437,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # Negative age = position NOT opened during this sim run → skip the gate.
         # 2026-05-12 — flag-gated; with flag OFF the gate is skipped (matches
         # engine behaviour pre-newborn-wire).
-        if V8_USE_VEC_NEWBORN_PROTECT and is_reduce and not is_hedge:
+        if V8_USE_VEC_NEWBORN_PROTECT and is_reduce and not is_hedge and not _is_research_replay:
             try:
                 _nb_pos = None
                 if manager.position_manager:
@@ -7679,6 +7695,37 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _end_date_str_tr = V8_BACKTEST_END_DATE
     end_ts_filter_tr = int(datetime.strptime(_end_date_str_tr, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if _end_date_str_tr else 0
     all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter and (not end_ts_filter_tr or int(t) <= end_ts_filter_tr)))
+    _research_adapter_t = None
+    _research_audit_t = None
+    _research_spec_path_t = os.environ.get("V8_RESEARCH_TOP_EXIT_SPEC", "").strip()
+    if _research_spec_path_t:
+        from tools.v8_research_top_exit_adapter import TopExitReplayAdapter
+
+        _research_adapter_t = TopExitReplayAdapter(_research_spec_path_t)
+        _research_adapter_t.validate_npz(_research_adapter_t.spec["npz_path"])
+        _research_adapter_t.validate_runtime(
+            account=account_key,
+            symbols=list(stores),
+            mode="tradier",
+            seed_positions_file=os.environ.get("V8_SEED_POSITIONS_FILE", ""),
+            round_trip_cost_pct=_round_trip_cost_for_sym(_research_adapter_t.symbol),
+        )
+        _missing_research_ts_t = sorted(
+            {action.fill_ts for action in _research_adapter_t.actions} - set(all_ts)
+        )
+        if _missing_research_ts_t:
+            raise RuntimeError(
+                "V8_RESEARCH_TOP_EXIT schedule timestamps absent from loaded NPZ: "
+                f"{_missing_research_ts_t[:10]}"
+            )
+        print(
+            "V8_RESEARCH_TOP_EXIT_INIT: "
+            f"symbol={_research_adapter_t.symbol} "
+            f"side={_research_adapter_t.position_side} "
+            f"actions={len(_research_adapter_t.actions)} "
+            f"spec={_research_adapter_t.spec_path}",
+            flush=True,
+        )
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")
     t0 = _real_time_module.time()
     report_every = 200 if _SWEEP_MODE else max(1, len(all_ts) // 20)
@@ -7840,6 +7887,61 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if _pos.gain > getattr(_pos, 'max_gain', 0):
                         _pos.max_gain = _pos.gain
         if not _sim_irth(): continue
+        if _research_adapter_t is not None:
+            for _research_action_t in _research_adapter_t.actions_at(ts):
+                _research_pk_t = (
+                    f"{account_key}:{_research_adapter_t.symbol}_"
+                    f"{_research_adapter_t.position_side}"
+                )
+                _research_qty_t = _research_action_t.quantity
+                if _research_action_t.full_close:
+                    _research_pos_t = (
+                        manager.position_manager.positions.get(_research_pk_t)
+                        if manager.position_manager
+                        else None
+                    )
+                    if _research_pos_t is None:
+                        raise RuntimeError(
+                            f"V8_RESEARCH_TOP_EXIT close while missing {_research_pk_t}"
+                        )
+                    _research_qty_t = abs(
+                        float(
+                            getattr(
+                                _research_pos_t,
+                                "positionAmt",
+                                getattr(_research_pos_t, "quantity", 0),
+                            )
+                            or 0
+                        )
+                    )
+                _research_result_t = await _v8_execute_trade_action(
+                    account_key=account_key,
+                    position_key=_research_pk_t,
+                    symbol=_research_adapter_t.symbol,
+                    quantity=float(_research_qty_t or 0),
+                    current_price=_research_action_t.fill_price,
+                    side=_research_action_t.order_side,
+                    position_side=_research_adapter_t.position_side,
+                    action=_research_action_t.action,
+                    reason=_research_action_t.reason,
+                    is_full_close=_research_action_t.full_close,
+                    is_hedge=False,
+                )
+                _research_adapter_t.record_result(
+                    _research_action_t,
+                    result=_research_result_t,
+                    actual_quantity=float(_research_qty_t or 0),
+                    actual_price=_research_action_t.fill_price,
+                )
+                if _research_result_t != "SUCCESS":
+                    raise RuntimeError(
+                        "V8_RESEARCH_TOP_EXIT action refused: "
+                        f"ts={ts} event={_research_action_t.event_type} "
+                        f"result={_research_result_t}"
+                    )
+            # Exact replay owns the complete position lifecycle.  All ordinary
+            # strategy, exit, and reentry paths remain dormant for this run.
+            continue
         # Ladder stage 0/1 needs an unambiguous buy-and-hold floor. The old
         # closes==0 shortcut could not distinguish "held" from "never opened".
         # This test-only hook seeds one benchmark unit on the first RTH bar.
@@ -8528,6 +8630,60 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _mtm_count_t += 1
 
     _compute_trade_pnl(executed_trades)
+    if _research_adapter_t is not None:
+        import hashlib as _research_hashlib_t
+
+        _research_schedule_audit_t = _research_adapter_t.final_audit()
+        _research_accounting_audit_t = _research_adapter_t.accounting_audit(
+            executed_trades
+        )
+        _research_audit_t = {
+            "status": (
+                "PASS"
+                if _research_schedule_audit_t["status"] == "PASS"
+                and _research_accounting_audit_t["status"] == "PASS"
+                else "FAIL"
+            ),
+            "tier": "VEC_RESEARCH_EXACT_ENGINE_REPLAY",
+            "schedule": _research_schedule_audit_t,
+            "accounting": _research_accounting_audit_t,
+            "fingerprints": {
+                "npz_sha256": _research_adapter_t.spec["expected_npz_sha256"],
+                "backtest_v8_engine_sha256": _research_hashlib_t.sha256(
+                    Path(__file__).read_bytes()
+                ).hexdigest(),
+                "tradier_manage_sha256": _research_hashlib_t.sha256(
+                    (BASE_PATH / "tradier_manage.py").read_bytes()
+                ).hexdigest(),
+            },
+            "causality": {
+                "exit_and_reentry_latency_bars": 1,
+                "end_of_sample_mtm_latency_bars": 0,
+                "all_schedule_events_validated": True,
+            },
+            "matrix_written": False,
+            "promotion_allowed": False,
+        }
+        # Use the module-level helper without exposing it as adapter state.
+        from tools.v8_research_top_exit_adapter import sha256_file as _research_sha256_t
+
+        _research_audit_t["fingerprints"]["event_schedule_sha256"] = (
+            _research_sha256_t(_research_adapter_t.schedule_path)
+        )
+        _research_audit_path_t = os.environ.get(
+            "V8_RESEARCH_TOP_EXIT_AUDIT_FILE", ""
+        ).strip()
+        if _research_audit_path_t:
+            _research_audit_out_t = Path(_research_audit_path_t)
+            _research_audit_out_t.parent.mkdir(parents=True, exist_ok=True)
+            _research_audit_out_t.write_text(
+                json.dumps(_research_audit_t, sort_keys=True, indent=2) + "\n"
+            )
+        print(
+            "V8_RESEARCH_TOP_EXIT_AUDIT: "
+            + json.dumps(_research_audit_t, sort_keys=True),
+            flush=True,
+        )
     _span_seconds_t = max(1.0, float(all_ts[-1] - all_ts[0])) if len(all_ts) >= 2 else 1.0
     _extra_result_t = {
         "real_closes": _real_closes_t,
@@ -8585,6 +8741,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         print(f"V8_DECISION_ONLY_SUMMARY: opens={_doc['opens']} augments={_doc['augments']} reduces={_doc['reduces']} closes={_doc['closes']} hedges={_doc['hedges']} doubleopen_reclass={_doc['doubleopen_reclass']} ung_blocks={_doc['blocks']} out_dir={V8_DECISION_OUT_DIR}", flush=True)
     v8_logger.info(f"\n{'='*60}\n  V8 TRADIER: {len(stores)} syms, {len(all_ts)} bars, {len(executed_trades)} trades, {elapsed:.0f}s\n  Log: {log_path}\n{'='*60}")
     print(f"V8_LOG: {log_path}")
+    if _research_audit_t is not None and _research_audit_t["status"] != "PASS":
+        raise RuntimeError("V8_RESEARCH_TOP_EXIT exact replay audit failed")
 
 
 if __name__ == "__main__":

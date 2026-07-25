@@ -151,6 +151,121 @@ def artifact_line(path: Path, now: datetime) -> str:
     )
 
 
+def load_vec_research(keys: tuple[str, ...]) -> dict[str, list[dict]]:
+    """Load the latest isolated top-exit screen for each distinct test window.
+
+    These artifacts are deliberately *not* SQLite/matrix evidence.  Surfacing them here
+    makes fast-screen progress visible without allowing a VEC_RESEARCH result to paint a
+    Tier-2 cell green.
+    """
+    root = REPORTS / "vec_research"
+    out: dict[str, list[dict]] = {key: [] for key in keys}
+    if not root.exists():
+        return out
+    for key in keys:
+        symbol, side = parse_key(key)
+        newest_by_window: dict[tuple[str, str], tuple[float, dict]] = {}
+        patterns = (
+            f"top_exit_*_{symbol}_{side}",
+            f"top_exit_*_{symbol}_{side}_QUARANTINE",
+        )
+        seen: set[Path] = set()
+        for pattern in patterns:
+            for directory in root.glob(pattern):
+                if directory in seen or not directory.is_dir():
+                    continue
+                seen.add(directory)
+                digest_path = directory / f"digest_{symbol}_{side}.json"
+                if not digest_path.exists():
+                    quarantine_path = directory / "quarantine.json"
+                    if quarantine_path.exists():
+                        try:
+                            payload = json.loads(quarantine_path.read_text())
+                        except (OSError, json.JSONDecodeError):
+                            continue
+                        payload.setdefault("start", "unknown")
+                        payload.setdefault("end_exclusive", None)
+                        payload["contract_valid"] = False
+                        payload["invalid_data_diagnostic"] = True
+                        payload["_artifact"] = str(directory.relative_to(BASE))
+                        payload["_mtime"] = datetime.fromtimestamp(
+                            quarantine_path.stat().st_mtime, timezone.utc
+                        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+                        window = (
+                            str(payload.get("start") or "unknown"),
+                            str(payload.get("end_exclusive") or "present"),
+                        )
+                        stamp = quarantine_path.stat().st_mtime
+                        if window not in newest_by_window or stamp > newest_by_window[window][0]:
+                            newest_by_window[window] = (stamp, payload)
+                    continue
+                try:
+                    payload = json.loads(digest_path.read_text())
+                except (OSError, json.JSONDecodeError):
+                    continue
+                window = (
+                    str(payload.get("start") or "unknown"),
+                    str(payload.get("end_exclusive") or "present"),
+                )
+                stamp = digest_path.stat().st_mtime
+                if window not in newest_by_window or stamp > newest_by_window[window][0]:
+                    payload["_artifact"] = str(directory.relative_to(BASE))
+                    payload["_mtime"] = datetime.fromtimestamp(
+                        stamp, timezone.utc
+                    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    newest_by_window[window] = (stamp, payload)
+        out[key] = [
+            pair[1]
+            for pair in sorted(
+                newest_by_window.values(),
+                key=lambda pair: (
+                    str(pair[1].get("start") or ""),
+                    str(pair[1].get("end_exclusive") or "9999"),
+                ),
+            )
+        ]
+    return out
+
+
+def vec_candidate(payload: dict) -> dict | None:
+    candidates = payload.get("policy_top20") or []
+    if candidates:
+        return candidates[0]
+    candidates = payload.get("overall_top20") or []
+    return candidates[0] if candidates else None
+
+
+def load_top_exit_walk_forward(key: str) -> dict | None:
+    path = REPORTS / "vec_research" / f"top_exit_walk_forward_summary_{key}.json"
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if payload.get("kind") != "VEC_RESEARCH_TOP_EXIT_WALK_FORWARD":
+        return None
+    return payload
+
+
+def load_exact_replays() -> dict[str, dict]:
+    """Return the newest exact-engine execution replay for each vector artifact."""
+    root = REPORTS / "vec_research"
+    latest: dict[str, tuple[float, dict]] = {}
+    if not root.exists():
+        return {}
+    for summary_path in root.glob("v8_exact_replay_*/run_summary.json"):
+        try:
+            payload = json.loads(summary_path.read_text())
+            source = str(Path(payload["source_artifact"]).resolve())
+            stamp = summary_path.stat().st_mtime
+        except (KeyError, OSError, json.JSONDecodeError, TypeError):
+            continue
+        if source not in latest or stamp > latest[source][0]:
+            latest[source] = (stamp, payload)
+    return {source: pair[1] for source, pair in latest.items()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -230,6 +345,11 @@ def main() -> None:
         "ORDER BY latest DESC LIMIT 12"
     ).fetchall()
     desc_total, desc_filled = matrix_description_stats()
+    vec_research = load_vec_research(keys)
+    walk_forward = {
+        key: load_top_exit_walk_forward(key) for key in keys
+    }
+    exact_replays = load_exact_replays()
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -313,6 +433,99 @@ def main() -> None:
                 f"(**{verdict(best)}**)."
             )
         lines.append("")
+
+    lines += [
+        "## Frozen walk-forward verdict",
+        "",
+        "| key | policy | discovery | frozen validation | validation TIM | verdict |",
+        "|---|---|---:|---:|---:|---|",
+    ]
+    for key in keys:
+        payload = walk_forward.get(key)
+        if not payload:
+            lines.append(f"| {key} | — | — | — | — | PENDING |")
+            continue
+        selection = payload["selection_test"]
+        policy = selection["frozen_policy"]
+        discovery = selection["discovery"]
+        validation = selection["validation"]
+        lines.append(
+            f"| {key} | `{policy['strategy']} + {policy['reentry']}` | "
+            f"{fmt(discovery.get('strategy_bh_multiple'), 3)}× B&H | "
+            f"{fmt(validation.get('strategy_bh_multiple'), 3)}× B&H | "
+            f"{fmt(validation.get('tim_rth_pct'), 2, '%')} | "
+            f"{'PASS' if selection.get('pass') else 'FAIL / NO PROMOTION'} |"
+        )
+    lines += [
+        "",
+        "This table freezes the discovery choice before reading validation. It takes "
+        "precedence over each window's separately re-optimized best row.",
+        "",
+        "## Isolated vector research — not matrix evidence",
+        "",
+        "> Fast causal screens only. These rows never fill or color Tier-2 cells. Promotion "
+        "requires an independent audit, a faithful-engine replay, stable out-of-sample behavior, "
+        "real closes, and a changed trade fingerprint.",
+        "",
+        "| key | window | best visible candidate | gain | B&H | multiple | TIM | data/policy status |",
+        "|---|---|---|---:|---:|---:|---:|---|",
+    ]
+    for key in keys:
+        payloads = vec_research.get(key) or []
+        if not payloads:
+            lines.append(f"| {key} | — | — | — | — | — | — | NO VEC_RESEARCH ARTIFACT |")
+            continue
+        for payload in payloads:
+            candidate = vec_candidate(payload)
+            window = (
+                f"{payload.get('start') or 'unknown'} → "
+                f"{payload.get('end_exclusive') or 'present'}"
+            )
+            contract_ok = bool(payload.get("contract_valid"))
+            diagnostic = bool(payload.get("invalid_data_diagnostic"))
+            if not candidate:
+                status = "QUARANTINED / INVALID DATA" if diagnostic or not contract_ok else "NO CANDIDATE"
+                lines.append(
+                    f"| {key} | {window} | — | — | — | — | — | {status} |"
+                )
+                continue
+            gain = candidate.get("gain_pct")
+            bh = candidate.get("bh_net_side_pct")
+            multiple = candidate.get("strategy_bh_multiple")
+            tim = candidate.get("tim_rth_pct")
+            policy = bool(candidate.get("policy_compliant"))
+            artifact_path = str((BASE / payload.get("_artifact", "")).resolve())
+            replay = exact_replays.get(artifact_path)
+            if diagnostic or not contract_ok:
+                status = "QUARANTINED / INVALID DATA"
+            elif replay and replay.get("status") == "FAIL":
+                status = "EXACT ENGINE REPLAY FAIL; REJECT"
+            elif (
+                replay
+                and replay.get("status") == "PASS"
+                and multiple is not None
+                and float(multiple) > 1.0
+            ):
+                status = "EXACT EXECUTION REPLAY PASS; ROBUSTNESS/PROMOTION BLOCKED"
+            elif policy and multiple is not None and float(multiple) > 1.0:
+                status = "EXPOSURE/RECLAIM PASS; FAITHFUL REPLAY PENDING"
+            elif multiple is not None and float(multiple) <= 1.0:
+                status = "BELOW B&H; REJECT"
+            else:
+                status = "RESEARCH ONLY / POLICY FAIL"
+            label = f"{candidate.get('strategy', '—')} + {candidate.get('reentry', '—')}"
+            lines.append(
+                f"| {key} | {window} | `{label}` | {fmt(gain, 3, '%')} | "
+                f"{fmt(bh, 3, '%')} | {fmt(multiple, 3)}× | {fmt(tim, 2, '%')} | {status} |"
+            )
+
+    lines += [
+        "",
+        "The full-period MU multiple is an optimization-screen headline, not a robust claim. "
+        "Read the holdout row beside it: exposure drift or sub-B&H holdout performance blocks "
+        "promotion even when the full-period row is above B&H.",
+        "",
+    ]
 
     lines += [
         "## Campaign activity",

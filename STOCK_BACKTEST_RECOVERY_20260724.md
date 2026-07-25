@@ -20,10 +20,11 @@ defects; reactivating them now would add invalid cells. They are to be restored
 after the no-lookahead/data-preflight/side-isolation regression gate passes.
 
 `tools/results_digest_email.py` is scheduled on S1 at 00:00 and 12:00 UTC and
-now embeds `SWITCH_MATRIX_TRB_DIGEST.md`. Rendering is verified. SMTP delivery
-is still externally blocked: S1 has no Gmail credential and the Mac Keychain
-credential is rejected by Gmail with `535 BadCredentials`. No secret was
-copied or guessed; a new Gmail app password or OAuth sender is required.
+now embeds `SWITCH_MATRIX_TRB_DIGEST.md`. Rendering is verified. Gmail delivery
+was restored on 2026-07-25: the 14:56 UTC forced digest fell back from SSL/465
+to STARTTLS/587, sent successfully to the configured recipient, and advanced
+the digest state. The credential remains file-backed for cron; it must never be
+printed into reports, logs, commits, or test artifacts.
 
 ### 2026-07-25 matrix-building continuation
 
