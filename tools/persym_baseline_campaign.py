@@ -33,6 +33,7 @@ import os
 import subprocess
 import sys
 import time
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,6 +56,12 @@ CAMPAIGN = os.environ.get("PSC_CAMPAIGN", "stocks_baseline_v1")
 TRADES_ROOT = Path(os.environ.get("PSC_TRADES_ROOT", str(SBX / "data" / "sweep_results" / f"persym_campaign_{CAMPAIGN}_trades")))
 RESULTS_DIR = SBX / "data" / "sweep_results"
 STAMP_FILES = ["backtest_v8_engine.py", "tradier_manage.py", "wt_dc_delta.py", "config_tradier.py"]
+MATRIX_CONTRACT_VERSION = "tradier-matrix-c1-20260725"
+MATRIX_CONTRACT_FILES = STAMP_FILES + [
+    "mtf_exit_timing.py",
+    "reentry_contract.py",
+    "tools/backtest_data_contract.py",
+]
 
 # Extreme-stop packs (user 2026-07-18): channel/band extremes as the ONLY stop,
 # near-entry-price stops disabled to cut churn. Engine reads dc_low_{tf}/bb_{field}_{tf}
@@ -254,6 +261,102 @@ def stamp():
     return "|".join(parts)
 
 
+@lru_cache(maxsize=256)
+def matrix_contract_fingerprint(sym, side):
+    """Hash every executable/data input required by the repaired matrix contract.
+
+    ``stamp()`` is retained for backwards-compatible cache labelling.  This stronger digest
+    additionally binds the closed-HTF/re-entry contract, the exact symbol NPZ and the intended
+    side.  SWITCH_MATRIX reports use it to keep every pre-fix row historical.
+    """
+    h = hashlib.sha256()
+    h.update(f"{MATRIX_CONTRACT_VERSION}|{sym.upper()}|{side.upper()}".encode())
+    for rel in MATRIX_CONTRACT_FILES:
+        path = SBX / rel
+        h.update(rel.encode())
+        h.update(path.read_bytes() if path.exists() else b"<ABSENT>")
+    npz = SBX / "backtest_v8" / "indicators" / f"{sym.upper()}.npz"
+    h.update(str(npz.relative_to(SBX)).encode())
+    h.update(npz.read_bytes() if npz.exists() else b"<ABSENT>")
+    return f"{MATRIX_CONTRACT_VERSION}:{h.hexdigest()}"
+
+
+def parse_v8_result(path):
+    """Parse the canonical one-line V8_RESULT into numeric telemetry."""
+    p = Path(path)
+    if not p.exists():
+        return {}
+    line = p.read_text().strip()
+    if "V8_RESULT:" not in line:
+        return {}
+    out = {}
+    for token in line.split("V8_RESULT:", 1)[1].strip().split():
+        if "=" not in token:
+            continue
+        key, raw = token.split("=", 1)
+        try:
+            out[key] = float(raw)
+        except ValueError:
+            out[key] = raw
+    return out
+
+
+def matrix_run_audit(sym, side, trades, result):
+    """Fail closed on every structural condition needed for a truthful matrix row."""
+    from backtest_data_contract import audit_ladder_result, audit_npz
+
+    side = side.upper()
+    data = audit_npz(sym, profile="ladder")
+    sizing = audit_ladder_result(result, side)
+    reasons = list(data.errors)
+    blocking = list(data.errors)
+    if not result:
+        reasons.append("missing canonical V8_RESULT telemetry")
+        blocking.append("missing canonical V8_RESULT telemetry")
+    if not trades:
+        reasons.append("no intended-side trade/MTM record")
+        blocking.append("no intended-side trade/MTM record")
+    elif str(trades[0].get("entry_reason") or "") != "V8_LADDER_INITIAL_BH_SEED":
+        reasons.append("first position is not the mandatory B&H seed")
+        blocking.append("first position is not the mandatory B&H seed")
+    no_real_close = int(float(result.get("real_closes", 0) or 0)) < 1
+    if no_real_close:
+        reasons.append("no real close: exit/re-entry lifecycle was not exercised")
+    if int(float(result.get("reentry_pending", 0) or 0)) != 0:
+        reasons.append("mandatory re-entry remains pending at end of run")
+        blocking.append("mandatory re-entry remains pending at end of run")
+    if int(float(result.get("reentry_violations", 0) or 0)) != 0:
+        reasons.append("mandatory re-entry crossed its permitted overshoot")
+        blocking.append("mandatory re-entry crossed its permitted overshoot")
+    if not sizing.get("valid"):
+        reasons.append("side-isolation or sizing contract failed")
+        blocking.append("side-isolation or sizing contract failed")
+    status = (
+        "FAIL"
+        if not data.valid or not sizing.get("valid") or blocking
+        else ("INCOMPLETE_NO_REAL_CLOSE" if no_real_close else "PASS")
+    )
+    audit = {
+        "status": status,
+        "contract_version": MATRIX_CONTRACT_VERSION,
+        "contract_fingerprint": matrix_contract_fingerprint(sym, side),
+        "symbol": sym.upper(),
+        "side": side,
+        "data_contract": {
+            "valid": data.valid,
+            "errors": list(data.errors),
+            "warnings": list(data.warnings),
+            "stats": data.stats,
+        },
+        "result_contract": sizing,
+        "result": result,
+        "reasons": reasons,
+        "code_stamp": stamp(),
+        "trade_fingerprint": prs.trades_fingerprint(trades),
+    }
+    return audit
+
+
 def collapse_intervals(intervals_list, censor_start=None):
     """Registry reconstruction is a LOWER BOUND (no git history pre-Jul-2026) — using
     its gappy intervals as a hard filter shredded 2024-2026 trades to zero (digest
@@ -360,8 +463,24 @@ def artifact_stamp(cell_tag, sym, fallback):
 # And it is not equivalent: one invocation shares capital, position slots and cross-symbol
 # ranking, so a symbol's trades would differ from the single-symbol runs every existing cell
 # and baseline was built from. A 20% saving is not worth cells that cannot be compared.
-def run_symbol(sym, overrides, cell_tag, timeout=3600, min_avail=8000):
-    """One faithful Tier-2 engine run for one symbol (both sides). Returns trades-by-side."""
+def run_symbol(
+    sym,
+    overrides,
+    cell_tag,
+    timeout=3600,
+    min_avail=8000,
+    side=None,
+    require_matrix_contract=False,
+):
+    """One faithful Tier-2 engine run.
+
+    The repaired matrix lane passes ``side`` and ``require_matrix_contract=True``.  That mode
+    seeds the B&H floor, prohibits the opposite side, validates current NPZ causality and
+    refuses caches/results without a complete real-close/re-entry lifecycle.
+    """
+    side = str(side or "").upper()
+    if side and side not in ("LONG", "SHORT"):
+        raise ValueError(f"invalid side {side!r}")
     cell_dir = TRADES_ROOT / cell_tag
     cell_dir.mkdir(parents=True, exist_ok=True)
     jsonl = cell_dir / f"cell__{sym}.jsonl"
@@ -375,10 +494,17 @@ def run_symbol(sym, overrides, cell_tag, timeout=3600, min_avail=8000):
         env.update({"V8_OVERRIDE_FILE": str(ovr), "V8_TRADES_OUT_DIR": str(cell_dir),
                     "V8_TRADES_RUN_ID": "cell", "V8_SWEEP_MODE": "1",
                     "V8_RATE_GUARD_DISABLED": "1", "V8_BACKTEST_DISK_CACHE": "1",
-                    "V8_RESULT_FILE": str(result_file),
-                    # both sides simulated on purpose: off-universe sides feed the
-                    # curated-vs-random comparison (_offuni rows) at zero extra compute
-                    "V8_SIDE_GATE_DISABLED": "1"})
+                    "V8_RESULT_FILE": str(result_file)})
+        if side:
+            env.update({
+                "V8_LADDER_ONLY_SIDE": side.lower(),
+                "V8_LADDER_FORCE_INITIAL_SIDE": side,
+            })
+            env.pop("V8_SIDE_GATE_DISABLED", None)
+        else:
+            # Legacy universe-comparison callers intentionally collect both sides.  They are
+            # historical only and never satisfy the repaired matrix contract.
+            env["V8_SIDE_GATE_DISABLED"] = "1"
         cmd = ["timeout", str(timeout), "nice", "-n", "18", PY,
                str(SBX / "backtest_v8_engine.py"), "--mode", MODE, "--account", ACCOUNT,
                "--start", START, "--capital", "10000.0", "--symbols", sym]
@@ -403,10 +529,30 @@ def run_symbol(sym, overrides, cell_tag, timeout=3600, min_avail=8000):
                 continue
             if t.get("pnl_pct") is None:
                 continue
-            side = str(t.get("position_side") or t.get("side", "")).upper()
-            if side in by_side:
-                by_side[side].append(t)
+            trade_side = str(t.get("position_side") or t.get("side", "")).upper()
+            if trade_side in by_side:
+                by_side[trade_side].append(t)
+    if require_matrix_contract:
+        intended = by_side.get(side, [])
+        audit = matrix_run_audit(sym, side, intended, parse_v8_result(result_file))
+        audit_path = cell_dir / f"audit__{sym}.json"
+        audit_path.write_text(json.dumps(audit, sort_keys=True, indent=2) + "\n")
+        if audit["status"] == "FAIL":
+            print(
+                f"[matrix-contract-fail] {cell_tag}/{sym}_{side}: "
+                + "; ".join(audit["reasons"]),
+                flush=True,
+            )
+            return None
     return by_side
+
+
+def load_matrix_run_audit(cell_tag, sym):
+    path = TRADES_ROOT / cell_tag / f"audit__{sym}.json"
+    try:
+        return json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 def hold_metrics(trades, years, m):
@@ -430,6 +576,62 @@ def key_metrics(rets, years, bh_long, side):
             "bh_pct": (round(bh, 2) if bh is not None else None),
             "bh_per_mo": (round(bh_mo, 4) if bh_mo is not None else None),
             "delta_gain_mo_vs_bh": (round(gain_mo - bh_mo, 4) if bh_mo is not None else None)}
+
+
+def capital_key_metrics(
+    trades,
+    years,
+    bh_long_price_pct,
+    side,
+    result=None,
+    capital=10000.0,
+    benchmark_deployed=2000.0,
+):
+    """Capital-weighted, side-isolated metrics for repaired campaigns.
+
+    The legacy matrix summed per-trade percentages and compared that with a 100%-notional
+    price B&H return.  That mixed position sizes and ignored partial-close dollars.  Here the
+    engine's realised/MTM ``pnl_usd`` is divided by the same $10k accounting capital, while
+    B&H deploys exactly $2k as required by the capital contract.
+    """
+    months = years * 12.0
+    pnl_usd = sum(float(t.get("pnl_usd", 0) or 0) for t in trades)
+    gain = pnl_usd / capital * 100.0 if capital else 0.0
+    raw_bh = (
+        bh_long_price_pct
+        if side.upper() == "LONG"
+        else (-bh_long_price_pct if bh_long_price_pct is not None else None)
+    )
+    rt_cost_pct = next(
+        (float(t.get("round_trip_cost_pct")) for t in trades if t.get("round_trip_cost_pct") is not None),
+        0.06,
+    )
+    deployed_frac = benchmark_deployed / capital if capital else 0.0
+    bh = (
+        raw_bh * deployed_frac - rt_cost_pct * deployed_frac
+        if raw_bh is not None
+        else None
+    )
+    gain_mo = gain / months if months else 0.0
+    bh_mo = bh / months if bh is not None and months else None
+    pcts = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+    tim_key = f"time_in_mkt_{side.lower()}_pct"
+    tim = result.get(tim_key) if result else None
+    return {
+        "pool_sharpe": (mg.pool_sharpe(pcts) if len(pcts) >= 2 else 0.0),
+        "trades": len(trades),
+        "acc_gain_pct": round(gain, 4),
+        "gain_per_mo": round(gain_mo, 4),
+        "bh_pct": (round(bh, 4) if bh is not None else None),
+        "bh_per_mo": (round(bh_mo, 4) if bh_mo is not None else None),
+        "delta_gain_mo_vs_bh": (
+            round(gain_mo - bh_mo, 4) if bh_mo is not None else None
+        ),
+        "time_in_mkt_pct": (round(float(tim), 4) if tim is not None else None),
+        "capture_vs_bh": (
+            round(gain / bh, 4) if bh is not None and abs(bh) > 1e-12 else None
+        ),
+    }
 
 
 def _max_dd_pct(rets):

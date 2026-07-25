@@ -60,9 +60,15 @@ MIN_KLINE_BARS = 210
 class TradeRecord:
     __slots__ = ["trader_id", "symbol", "side", "entry_price", "exit_price", "entry_time", "exit_time", "pnl", "pnl_pct", "leverage", "position_size_usd", "indicators"]
     def __init__(self, trader_id: str, symbol: str, side: str, entry_price: float, exit_price: float, entry_time: datetime, exit_time: datetime, pnl: float, pnl_pct: float, leverage: float = 1.0, position_size_usd: float = 0.0):
-        self.trader_id = trader_id
-        self.symbol = symbol
-        self.side = side.upper()
+        normalized_symbol = str(symbol or "").strip().upper()
+        normalized_side = str(side or "").strip().upper()
+        if not normalized_symbol:
+            raise ValueError("trade symbol is required")
+        if normalized_side not in ("LONG", "SHORT"):
+            raise ValueError(f"invalid position_side={side!r}; expected LONG or SHORT")
+        self.trader_id = str(trader_id or "unknown")
+        self.symbol = normalized_symbol
+        self.side = normalized_side
         self.entry_price = entry_price
         self.exit_price = exit_price
         self.entry_time = entry_time
@@ -81,8 +87,34 @@ class TradeRecord:
     def is_winner(self) -> bool:
         return self.pnl > 0
 
+    @property
+    def position_side(self) -> str:
+        """Canonical position direction; never infer this from an order side."""
+        return self.side
+
     def to_dict(self) -> dict:
-        return {"trader_id": self.trader_id, "symbol": self.symbol, "side": self.side, "entry_price": self.entry_price, "exit_price": self.exit_price, "entry_time": str(self.entry_time), "exit_time": str(self.exit_time), "pnl": self.pnl, "pnl_pct": self.pnl_pct, "leverage": self.leverage, "position_size_usd": self.position_size_usd, "hold_hours": self.hold_hours()}
+        return {
+            "source_account": self.trader_id,
+            "trader_id": self.trader_id,
+            "symbol": self.symbol,
+            "position_side": self.position_side,
+            "entry_order_side": "BUY" if self.position_side == "LONG" else "SELL",
+            "exit_order_side": "SELL" if self.position_side == "LONG" else "BUY",
+            "entry_price": self.entry_price,
+            "exit_price": self.exit_price,
+            "entry_time": str(self.entry_time),
+            "exit_time": str(self.exit_time),
+            "pnl": self.pnl,
+            "pnl_pct": self.pnl_pct,
+            "pnl_formula": (
+                "(exit-entry)/entry*100"
+                if self.position_side == "LONG"
+                else "(entry-exit)/entry*100"
+            ),
+            "leverage": self.leverage,
+            "position_size_usd": self.position_size_usd,
+            "hold_hours": self.hold_hours(),
+        }
 
 
 class XLSXIngester:
@@ -147,6 +179,11 @@ class XLSXIngester:
             side = "SHORT"
         entry_price = self._parse_num(row.get(col_map.get("entry_price", ""), 0))
         exit_price = self._parse_num(row.get(col_map.get("exit_price", ""), 0))
+        if (
+            ("entry_price" in col_map and entry_price <= 0)
+            or ("exit_price" in col_map and exit_price <= 0)
+        ):
+            return None
         pnl = self._parse_num(row.get(col_map.get("pnl", ""), 0))
         pnl_pct = self._parse_num(row.get(col_map.get("pnl_pct", ""), 0))
         if pnl_pct == 0 and entry_price > 0 and exit_price > 0:
@@ -246,11 +283,18 @@ class TrackerLogIngester:
         symbol = entry.get("symbol", entry.get("pair", ""))
         if not symbol:
             return None
-        side = str(entry.get("side", entry.get("direction", "LONG"))).upper()
+        side = str(entry.get("position_side", entry.get("side", entry.get("direction", "")))).upper()
         if side in ("BUY", "LONG"):
             side = "LONG"
-        else:
+        elif side in ("SELL", "SHORT"):
             side = "SHORT"
+        else:
+            logger.warning(
+                "Tracker entry rejected: missing/unknown position_side=%r symbol=%r",
+                side,
+                symbol,
+            )
+            return None
         entry_price = float(entry.get("entry_price", entry.get("entryPrice", 0)))
         exit_price = float(entry.get("exit_price", entry.get("exitPrice", 0)))
         pnl = float(entry.get("pnl", entry.get("profit", 0)))
@@ -530,11 +574,43 @@ def print_top_indicators(analysis: Dict[str, Any], top_n: int = 15):
 # ═══════════════════════════════════════════════════════════════════
 
 def extract_patterns(trades: List[TradeRecord], min_samples_leaf: int = 20) -> List[Dict[str, Any]]:
-    """Use decision tree to find rule-based patterns with >70% win rate."""
+    """Find rule-based patterns using one independent tree per position side.
+
+    A pooled LONG/SHORT tree is not meaningful because the same indicator
+    threshold can have opposite directional meaning.  Each returned leaf is
+    therefore side-pure by construction; ``dominant_side`` is retained only
+    for compatibility with older report readers.
+    """
+    patterns: List[Dict[str, Any]] = []
+    for position_side in ("LONG", "SHORT"):
+        side_patterns = _extract_patterns_one_side(
+            [t for t in trades if t.position_side == position_side],
+            position_side,
+            min_samples_leaf,
+        )
+        patterns.extend(side_patterns)
+    patterns.sort(key=lambda p: (p["win_rate"], p["n_trades"]), reverse=True)
+    logger.info(
+        "Pattern extraction: %d side-pure high-WR patterns found",
+        len(patterns),
+    )
+    return patterns
+
+
+def _extract_patterns_one_side(
+    trades: List[TradeRecord],
+    position_side: str,
+    min_samples_leaf: int,
+) -> List[Dict[str, Any]]:
+    """Train one decision tree for one canonical LONG or SHORT population."""
     from sklearn.tree import DecisionTreeClassifier
     enriched = [t for t in trades if len(t.indicators) >= 5]
     if len(enriched) < 50:
-        logger.warning(f"Not enough enriched trades for pattern extraction ({len(enriched)})")
+        logger.warning(
+            "Not enough enriched %s trades for pattern extraction (%d)",
+            position_side,
+            len(enriched),
+        )
         return []
     all_keys = set()
     for t in enriched:
@@ -567,8 +643,15 @@ def extract_patterns(trades: List[TradeRecord], min_samples_leaf: int = 20) -> L
     tree.fit(X, y)
     patterns = _extract_tree_rules(tree, valid_cols, X, y, enriched)
     patterns = [p for p in patterns if p["win_rate"] >= 0.70 and p["n_trades"] >= min_samples_leaf]
-    patterns.sort(key=lambda p: (p["win_rate"], p["n_trades"]), reverse=True)
-    logger.info(f"Pattern extraction: {len(patterns)} high-WR patterns found")
+    for pattern in patterns:
+        pattern.update(
+            {
+                "position_side": position_side,
+                "dominant_side": position_side,
+                "side_pure": True,
+                "symbol_scope": "ALL_SYMBOLS",
+            }
+        )
     return patterns
 
 
@@ -589,10 +672,22 @@ def _extract_tree_rules(tree, feature_names: List[str], X: pd.DataFrame, y: np.n
             sides = {}
             for lt in leaf_trades:
                 sides[lt.side] = sides.get(lt.side, 0) + 1
-            dominant_side = max(sides, key=sides.get) if sides else "BOTH"
+            dominant_side = max(sides, key=sides.get) if sides else "UNKNOWN"
             avg_pnl_pct = np.mean([t.pnl_pct for t in leaf_trades]) if leaf_trades else 0
             rule_str = " AND ".join(rules)
-            patterns.append({"rules": rules.copy(), "rule_str": rule_str, "win_rate": round(wr, 4), "n_trades": n_total, "n_winners": n_win, "dominant_side": dominant_side, "avg_pnl_pct": round(avg_pnl_pct, 4), "prediction": "WIN" if wr >= 0.5 else "LOSE"})
+            patterns.append(
+                {
+                    "rules": rules.copy(),
+                    "rule_str": rule_str,
+                    "win_rate": round(wr, 4),
+                    "n_trades": n_total,
+                    "n_winners": n_win,
+                    "dominant_side": dominant_side,
+                    "side_counts": sides,
+                    "avg_pnl_pct": round(avg_pnl_pct, 4),
+                    "prediction": "WIN" if wr >= 0.5 else "LOSE",
+                }
+            )
             return
         feat = feature_names[tree_.feature[node_id]]
         thresh = round(tree_.threshold[node_id], 4)

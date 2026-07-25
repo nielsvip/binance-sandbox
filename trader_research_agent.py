@@ -30,6 +30,8 @@ from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 IS_MAC = platform.system() == "Darwin"
 if IS_MAC:
     BASE_PATH = Path("/Users/niels/Documents/binance")
@@ -55,9 +57,12 @@ if not logger.handlers:
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S"))
     logger.addHandler(console)
-    fh = RotatingFileHandler(LOG_DIR / "trader_research_agent.log", maxBytes=5_000_000, backupCount=3)
-    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(fh)
+    try:
+        fh = RotatingFileHandler(LOG_DIR / "trader_research_agent.log", maxBytes=5_000_000, backupCount=3)
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(fh)
+    except OSError as exc:
+        logger.warning("File logging unavailable: %s", exc)
 SHUTDOWN = False
 
 
@@ -119,7 +124,31 @@ def merge_all_csvs() -> Path:
             with open(csv_file) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    key = f"{row.get('trader_id', '')}_{row.get('symbol', '')}_{row.get('entry_time', '')}_{row.get('side', '')}"
+                    symbol = str(row.get("symbol", "") or "").strip().upper()
+                    position_side = str(
+                        row.get("position_side", row.get("side", "")) or ""
+                    ).strip().upper()
+                    if not symbol or position_side not in ("LONG", "SHORT"):
+                        logger.warning(
+                            "Rejected merged row with invalid identity: file=%s symbol=%r position_side=%r",
+                            csv_file.name,
+                            symbol,
+                            position_side,
+                        )
+                        continue
+                    row["symbol"] = symbol
+                    row["side"] = position_side
+                    row["position_side"] = position_side
+                    row["entry_order_side"] = (
+                        "BUY" if position_side == "LONG" else "SELL"
+                    )
+                    row["exit_order_side"] = (
+                        "SELL" if position_side == "LONG" else "BUY"
+                    )
+                    key = (
+                        f"{row.get('trader_id', '')}_{symbol}_"
+                        f"{row.get('entry_time', '')}_{position_side}"
+                    )
                     if key not in seen_keys:
                         seen_keys.add(key)
                         all_rows.append(row)
@@ -127,7 +156,22 @@ def merge_all_csvs() -> Path:
             logger.warning(f"Failed to read {csv_file}: {e}")
     merged_path = DATA_DIR / "merged_all_trades.csv"
     if all_rows:
-        fieldnames = ["trader_id", "symbol", "side", "entry_price", "exit_price", "entry_time", "exit_time", "pnl", "pnl_pct", "leverage", "position_size_usd"]
+        fieldnames = [
+            "trader_id",
+            "symbol",
+            "side",
+            "position_side",
+            "entry_order_side",
+            "exit_order_side",
+            "entry_price",
+            "exit_price",
+            "entry_time",
+            "exit_time",
+            "pnl",
+            "pnl_pct",
+            "leverage",
+            "position_size_usd",
+        ]
         with open(merged_path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
@@ -316,6 +360,134 @@ def write_weighted_conviction(analysis: Dict[str, Any]) -> Path:
 # PHASE 4 — COMPARE PATTERNS TO OUR SYSTEM
 # ═══════════════════════════════════════════════════════════════════
 
+def _validate_research_trades(trades: List[Any]) -> None:
+    """Fail closed when a report population cannot be side/symbol isolated."""
+    invalid = []
+    for index, trade in enumerate(trades):
+        symbol = str(getattr(trade, "symbol", "") or "").strip().upper()
+        side = str(
+            getattr(trade, "position_side", getattr(trade, "side", "")) or ""
+        ).strip().upper()
+        account = str(getattr(trade, "trader_id", "") or "").strip()
+        if not symbol or side not in ("LONG", "SHORT") or not account:
+            invalid.append(
+                {
+                    "index": index,
+                    "source_account": account,
+                    "symbol": symbol,
+                    "position_side": side,
+                }
+            )
+    if invalid:
+        raise ValueError(
+            "research report identity contract failed; "
+            f"{len(invalid)} invalid trades, sample={invalid[:3]}"
+        )
+
+
+def _pnl_formula_pct(trade: Any) -> Optional[float]:
+    entry = float(getattr(trade, "entry_price", 0.0) or 0.0)
+    exit_ = float(getattr(trade, "exit_price", 0.0) or 0.0)
+    if entry <= 0 or exit_ <= 0:
+        return None
+    direction = 1.0 if trade.position_side == "LONG" else -1.0
+    return direction * (exit_ - entry) / entry * 100.0
+
+
+def _scope_summary(trades: List[Any]) -> Dict[str, Any]:
+    """Return explicit ALL_SYMBOLS and symbol+side normalized summaries."""
+    _validate_research_trades(trades)
+
+    def summarize(rows: List[Any]) -> Dict[str, Any]:
+        returns = [
+            value
+            for value in (_pnl_formula_pct(trade) for trade in rows)
+            if value is not None
+        ]
+        raw_pnl = [float(getattr(trade, "pnl", 0.0) or 0.0) for trade in rows]
+        return {
+            "n_trades": len(rows),
+            "n_source_accounts": len({trade.trader_id for trade in rows}),
+            "raw_pnl_usd_context_only": round(sum(raw_pnl), 4),
+            "equal_weight_mean_return_pct": (
+                round(float(sum(returns) / len(returns)), 6) if returns else None
+            ),
+            "equal_weight_median_return_pct": (
+                round(float(np.median(returns)), 6) if returns else None
+            ),
+            "win_rate_pct": (
+                round(100.0 * sum(value > 0 for value in returns) / len(returns), 4)
+                if returns
+                else None
+            ),
+            "formula_eligible_trades": len(returns),
+        }
+
+    by_side = {
+        side: summarize([t for t in trades if t.position_side == side])
+        for side in ("LONG", "SHORT")
+    }
+    by_symbol_side: Dict[str, Any] = {}
+    for symbol in sorted({trade.symbol for trade in trades}):
+        for side in ("LONG", "SHORT"):
+            rows = [
+                trade
+                for trade in trades
+                if trade.symbol == symbol and trade.position_side == side
+            ]
+            if rows:
+                by_symbol_side[f"{symbol}:{side}"] = summarize(rows)
+    return {
+        "schema_version": 2,
+        "source_account_field": "trader_id",
+        "symbol_scope": "ALL_SYMBOLS",
+        "position_side_scope": ["LONG", "SHORT"],
+        "side_isolation": True,
+        "raw_dollar_pnl_is_strategy_return": False,
+        "all_trades": summarize(trades),
+        "by_position_side": by_side,
+        "by_symbol_position_side": by_symbol_side,
+    }
+
+
+def _regime_side_summary(trades: List[Any]) -> Dict[str, Dict[str, Any]]:
+    """Aggregate normalized per-trade returns by regime and side.
+
+    Raw dollars across unrelated traders, symbols, and sizes are deliberately
+    excluded: they are scale-weighted cash outcomes, not a strategy return.
+    """
+    from trader_deep_analyzer import classify_regime
+
+    buckets: Dict[Tuple[str, str], List[Any]] = {}
+    for trade in trades:
+        if not trade.indicators:
+            continue
+        key = (trade.position_side, classify_regime(trade.indicators))
+        buckets.setdefault(key, []).append(trade)
+    output: Dict[str, Dict[str, Any]] = {}
+    for (side, regime), rows in sorted(buckets.items()):
+        returns = [
+            value
+            for value in (_pnl_formula_pct(trade) for trade in rows)
+            if value is not None
+        ]
+        if len(returns) < 20:
+            continue
+        output[f"ALL_SYMBOLS:{side}:{regime}"] = {
+            "symbol_scope": "ALL_SYMBOLS",
+            "position_side": side,
+            "regime": regime,
+            "n_trades": len(rows),
+            "n_source_accounts": len({trade.trader_id for trade in rows}),
+            "equal_weight_mean_return_pct": round(float(np.mean(returns)), 6),
+            "equal_weight_median_return_pct": round(float(np.median(returns)), 6),
+            "win_rate_pct": round(
+                100.0 * sum(value > 0 for value in returns) / len(returns), 4
+            ),
+        }
+    return output
+
+
 def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
     """Compare extracted patterns and indicator importance against our live system.
     Returns list of actionable findings."""
@@ -327,6 +499,20 @@ def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
     trades = analysis.get("trades", [])
     if not trades:
         return ["No trade data to analyze"]
+    scope = _scope_summary(trades)
+    side_summary = scope["by_position_side"]
+    findings.append(
+        "SCOPE: source_account=trader_id, symbol_scope=ALL_SYMBOLS, "
+        "position_side=LONG|SHORT; all side/regime/pattern results are isolated"
+    )
+    for side in ("LONG", "SHORT"):
+        stats = side_summary[side]
+        findings.append(
+            f"SIDE_SCOPE: ALL_SYMBOLS {side} — n={stats['n_trades']}, "
+            f"WR={stats['win_rate_pct']:.1f}%, "
+            f"equal-weight mean return={stats['equal_weight_mean_return_pct']:+.3f}% "
+            f"(raw PnL ${stats['raw_pnl_usd_context_only']:+,.0f} is context only)"
+        )
     # --- 1. Top discriminative indicators ---
     if indicator_analysis:
         top_5 = list(indicator_analysis.items())[:5]
@@ -337,21 +523,27 @@ def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
     # --- 2. High-WR patterns ---
     for p in patterns[:5]:
         if p["win_rate"] >= 0.72 and p["n_trades"] >= 20:
-            findings.append(f"PATTERN: WR={p['win_rate']*100:.1f}% (n={p['n_trades']}) {p['dominant_side']} — {p['rule_str']}")
+            position_side = p.get("position_side", p.get("dominant_side"))
+            if not p.get("side_pure") or position_side not in ("LONG", "SHORT"):
+                raise ValueError(
+                    f"pooled/ambiguous pattern rejected from report: {p!r}"
+                )
+            findings.append(
+                f"PATTERN: ALL_SYMBOLS {position_side} side-pure "
+                f"WR={p['win_rate']*100:.1f}% (n={p['n_trades']}) — "
+                f"{p['rule_str']}"
+            )
     # --- 3. Regime insights ---
-    regime_data = analysis.get("regime_data", {})
-    regime_agg = {}
-    for trader_id, regimes in regime_data.items():
-        for regime, stats in regimes.items():
-            if regime not in regime_agg:
-                regime_agg[regime] = {"trades": 0, "wins": 0, "pnl": 0.0}
-            regime_agg[regime]["trades"] += stats["n_trades"]
-            regime_agg[regime]["wins"] += int(stats["n_trades"] * stats["win_rate"] / 100)
-            regime_agg[regime]["pnl"] += stats["total_pnl"]
-    for regime, stats in sorted(regime_agg.items(), key=lambda x: x[1]["trades"], reverse=True):
-        if stats["trades"] >= 20:
-            wr = stats["wins"] / stats["trades"] * 100 if stats["trades"] > 0 else 0
-            findings.append(f"REGIME: {regime} — {stats['trades']} trades, WR={wr:.1f}%, PnL=${stats['pnl']:.0f}")
+    regime_scopes = _regime_side_summary(trades)
+    for stats in sorted(
+        regime_scopes.values(), key=lambda value: value["n_trades"], reverse=True
+    ):
+        findings.append(
+            f"REGIME_SCOPE: ALL_SYMBOLS {stats['position_side']} "
+            f"{stats['regime']} — n={stats['n_trades']}, "
+            f"WR={stats['win_rate_pct']:.1f}%, "
+            f"equal-weight mean return={stats['equal_weight_mean_return_pct']:+.3f}%"
+        )
     # --- 3b. Overall Sharpe ---
     import numpy as np
     all_pnls = [t.pnl_pct for t in trades if t.pnl_pct != 0]
@@ -386,13 +578,6 @@ def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
         w_hold = np.median([t.hold_hours() for t in all_winners])
         l_hold = np.median([t.hold_hours() for t in all_losers])
         findings.append(f"HOLD_TIME: winner median={w_hold:.1f}h, loser median={l_hold:.1f}h")
-    # --- 6. Side bias ---
-    longs = [t for t in trades if t.side == "LONG"]
-    shorts = [t for t in trades if t.side == "SHORT"]
-    if longs and shorts:
-        long_wr = sum(1 for t in longs if t.is_winner()) / len(longs) * 100
-        short_wr = sum(1 for t in shorts if t.is_winner()) / len(shorts) * 100
-        findings.append(f"SIDE: LONG WR={long_wr:.1f}% (n={len(longs)}), SHORT WR={short_wr:.1f}% (n={len(shorts)})")
     # --- 7. Leverage sweet spot ---
     import numpy as np
     leveraged_winners = [t for t in trades if t.is_winner() and t.leverage > 0]
@@ -415,6 +600,16 @@ def generate_research_report(analysis: Dict[str, Any], findings: List[str]) -> P
     datestamp = now.strftime("%Y%m%d_%H%M")
     report_path = REPORT_DIR / f"research_{datestamp}.md"
     trades = analysis.get("trades", [])
+    scope_summary = _scope_summary(trades) if trades else {
+        "schema_version": 2,
+        "symbol_scope": "ALL_SYMBOLS",
+        "position_side_scope": ["LONG", "SHORT"],
+        "side_isolation": True,
+        "all_trades": {},
+        "by_position_side": {},
+        "by_symbol_position_side": {},
+    }
+    regime_side_summary = _regime_side_summary(trades) if trades else {}
     patterns = analysis.get("patterns", [])
     health = analysis.get("health", {})
     indicator_analysis = analysis.get("indicator_analysis", {})
@@ -427,10 +622,47 @@ def generate_research_report(analysis: Dict[str, Any], findings: List[str]) -> P
     lines.append("")
     lines.append("## Summary")
     lines.append(f"- **Trades analyzed**: {len(trades)} ({enriched_count} with indicator overlay)")
-    lines.append(f"- **Traders**: {n_traders}")
-    lines.append(f"- **Total PnL**: ${total_pnl:,.2f}")
+    lines.append(f"- **Source accounts (`trader_id`)**: {n_traders}")
+    lines.append("- **Symbol scope**: ALL_SYMBOLS (per-symbol breakdown below)")
+    lines.append("- **Position sides**: LONG and SHORT, computed independently")
+    lines.append(
+        f"- **Raw source PnL (context only)**: ${total_pnl:,.2f} "
+        "(not normalized; not a strategy return)"
+    )
+    if scope_summary["all_trades"]:
+        lines.append(
+            "- **Equal-weight mean price return/trade**: "
+            f"{scope_summary['all_trades']['equal_weight_mean_return_pct']:+.3f}%"
+        )
     lines.append(f"- **Overall Win Rate**: {overall_wr:.1f}%")
     lines.append(f"- **Patterns found**: {len(patterns)} (>70% WR, min 15 trades)")
+    lines.append("")
+    lines.append("## Side-Isolated Population")
+    lines.append("")
+    lines.append(
+        "| Symbol scope | Position side | Trades | Accounts | Win rate | "
+        "Mean return/trade | Median return/trade | Raw PnL (context only) |"
+    )
+    lines.append(
+        "|---|---:|---:|---:|---:|---:|---:|---:|"
+    )
+    for side in ("LONG", "SHORT"):
+        stats = scope_summary["by_position_side"].get(side)
+        if not stats:
+            continue
+        lines.append(
+            f"| ALL_SYMBOLS | {side} | {stats['n_trades']} | "
+            f"{stats['n_source_accounts']} | {stats['win_rate_pct']:.1f}% | "
+            f"{stats['equal_weight_mean_return_pct']:+.3f}% | "
+            f"{stats['equal_weight_median_return_pct']:+.3f}% | "
+            f"${stats['raw_pnl_usd_context_only']:+,.2f} |"
+        )
+    lines.append("")
+    lines.append(
+        "`Raw PnL` is the sum of unrelated source-account cash outcomes across "
+        "different symbols, sizes, and leverage. It is shown only for source "
+        "reconciliation and must not be interpreted as portfolio performance."
+    )
     lines.append("")
     lines.append("## Actionable Findings")
     lines.append("")
@@ -458,11 +690,55 @@ def generate_research_report(analysis: Dict[str, Any], findings: List[str]) -> P
     if patterns:
         for i, p in enumerate(patterns[:10]):
             lines.append(f"### Pattern #{i+1}: WR={p['win_rate']*100:.1f}% (n={p['n_trades']})")
-            lines.append(f"- Side: {p['dominant_side']} | Avg PnL%: {p['avg_pnl_pct']:.2f}%")
+            lines.append(
+                f"- Scope: ALL_SYMBOLS | Position side: "
+                f"{p.get('position_side', p.get('dominant_side'))} | "
+                f"Side-pure: {bool(p.get('side_pure'))} | "
+                f"Avg PnL%: {p['avg_pnl_pct']:.2f}%"
+            )
             lines.append(f"- Rule: `{p['rule_str']}`")
             lines.append("")
     else:
         lines.append("No patterns with >70% WR and sufficient sample size.")
+    lines.append("")
+    lines.append("## Regime Results by Position Side")
+    lines.append("")
+    lines.append(
+        "| Symbol scope | Position side | Regime | Trades | Accounts | "
+        "Win rate | Mean return/trade | Median return/trade |"
+    )
+    lines.append("|---|---:|---|---:|---:|---:|---:|---:|")
+    for stats in sorted(
+        regime_side_summary.values(),
+        key=lambda value: (value["position_side"], -value["n_trades"], value["regime"]),
+    ):
+        lines.append(
+            f"| ALL_SYMBOLS | {stats['position_side']} | {stats['regime']} | "
+            f"{stats['n_trades']} | {stats['n_source_accounts']} | "
+            f"{stats['win_rate_pct']:.1f}% | "
+            f"{stats['equal_weight_mean_return_pct']:+.3f}% | "
+            f"{stats['equal_weight_median_return_pct']:+.3f}% |"
+        )
+    lines.append("")
+    lines.append("## Per-Symbol + Position-Side Results")
+    lines.append("")
+    lines.append(
+        "| Symbol | Position side | Trades | Accounts | Win rate | "
+        "Mean return/trade | Raw PnL (context only) |"
+    )
+    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    symbol_side_rows = sorted(
+        scope_summary["by_symbol_position_side"].items(),
+        key=lambda item: (-item[1]["n_trades"], item[0]),
+    )
+    for key, stats in symbol_side_rows:
+        symbol, side = key.rsplit(":", 1)
+        lines.append(
+            f"| {symbol} | {side} | {stats['n_trades']} | "
+            f"{stats['n_source_accounts']} | {stats['win_rate_pct']:.1f}% | "
+            f"{stats['equal_weight_mean_return_pct']:+.3f}% | "
+            f"${stats['raw_pnl_usd_context_only']:+,.2f} |"
+        )
     lines.append("")
     lines.append("## Trader Health")
     lines.append("")
@@ -488,7 +764,38 @@ def generate_research_report(analysis: Dict[str, Any], findings: List[str]) -> P
     # Also save findings as JSON for programmatic access
     findings_path = REPORT_DIR / f"findings_{datestamp}.json"
     with open(findings_path, "w") as f:
-        json.dump({"timestamp": now.isoformat(), "n_trades": len(trades), "n_enriched": enriched_count, "n_traders": n_traders, "overall_wr": round(overall_wr, 2), "total_pnl": round(total_pnl, 2), "n_patterns": len(patterns), "findings": findings, "top_patterns": [{"rule": p["rule_str"], "wr": p["win_rate"], "n": p["n_trades"], "side": p["dominant_side"], "avg_pnl_pct": p["avg_pnl_pct"]} for p in patterns[:10]]}, f, indent=2)
+        json.dump(
+            {
+                "schema_version": 2,
+                "timestamp": now.isoformat(),
+                "scope": scope_summary,
+                "n_trades": len(trades),
+                "n_enriched": enriched_count,
+                "n_traders": n_traders,
+                "overall_wr": round(overall_wr, 2),
+                "raw_total_pnl_usd_context_only": round(total_pnl, 2),
+                "raw_total_pnl_is_strategy_return": False,
+                "n_patterns": len(patterns),
+                "findings": findings,
+                "regime_by_position_side": regime_side_summary,
+                "top_patterns": [
+                    {
+                        "rule": p["rule_str"],
+                        "wr": p["win_rate"],
+                        "n": p["n_trades"],
+                        "symbol_scope": p.get("symbol_scope", "ALL_SYMBOLS"),
+                        "position_side": p.get(
+                            "position_side", p.get("dominant_side")
+                        ),
+                        "side_pure": bool(p.get("side_pure")),
+                        "avg_pnl_pct": p["avg_pnl_pct"],
+                    }
+                    for p in patterns[:10]
+                ],
+            },
+            f,
+            indent=2,
+        )
     logger.info(f"Findings JSON written: {findings_path}")
     return report_path
 
@@ -502,7 +809,9 @@ def email_digest(report_path: Path, findings: List[str]):
     try:
         from morning_email import send_email
         lines = [f"<h2>Trader Research — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}</h2>", f"<p><b>{len(findings)} findings</b></p>", "<ul>"]
-        for f in findings[:15]:
+        # Scope and side isolation are safety-critical provenance.  Do not
+        # silently truncate them behind a list of pooled findings.
+        for f in findings[:50]:
             lines.append(f"<li>{f}</li>")
         lines.append("</ul>")
         lines.append(f"<p><i>Full report: {report_path.name}</i></p>")

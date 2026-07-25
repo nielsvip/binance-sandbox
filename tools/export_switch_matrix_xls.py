@@ -26,6 +26,8 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 DB = BASE / "data" / "param_results_stocks.db"
+CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c1"
+CURRENT_ENGINE_CUTOFF = "2026-07-25T20:30:00Z"
 
 
 def key_columns(account):
@@ -125,7 +127,8 @@ def load_cells(campaign, tier="ENGINE"):
     # floor. Keep the legacy delta only as a fallback, but make the visible cell and color logic
     # use the stored, same-key delta_gain_mo_vs_bh from the faithful engine.
     q = ("SELECT symbol, side, param, value_json, delta_gain_mo_vs_bh, delta_vs_baseline_gain_mo, "
-         "gain_per_mo, trades, inert, trades_fingerprint "
+         "gain_per_mo, trades, inert, trades_fingerprint, validation_status, "
+         "contract_fingerprint, real_closes, reentry_violations "
          "FROM param_cells WHERE mode='tradier' AND COALESCE(tier,'ENGINE')=?")
     args = [tier]
     if campaign:
@@ -134,15 +137,40 @@ def load_cells(campaign, tier="ENGINE"):
     # More than one campaign can write the same logical cell.  The unrestricted matrix is
     # explicitly a "latest evidence" view, so make overwrite order deterministic instead of
     # relying on SQLite's unspecified scan order.
+    if campaign == CURRENT_ENGINE_CAMPAIGN:
+        q += (
+            " AND ts>=? AND validation_status IN "
+            "('PASS','INCOMPLETE_NO_REAL_CLOSE')"
+        )
+        args.append(CURRENT_ENGINE_CUTOFF)
     q += " ORDER BY ts"
-    for sym, side, param, val, bh_delta, legacy_delta, gpm, trades, inrt, fp in con.execute(q, args).fetchall():
+    expected = {}
+    if campaign == CURRENT_ENGINE_CAMPAIGN:
+        try:
+            from tools import persym_baseline_campaign as psc
+            expected = {
+                f"{sym}_{side}": psc.matrix_contract_fingerprint(sym, side)
+                for sym, side in con.execute(
+                    "SELECT DISTINCT symbol,side FROM param_cells WHERE campaign=?",
+                    (campaign,),
+                )
+            }
+        except Exception:
+            expected = {}
+    for (sym, side, param, val, bh_delta, legacy_delta, gpm, trades, inrt, fp,
+         validation, contract_fp, real_closes, reentry_violations) in con.execute(q, args).fetchall():
+        key = f"{sym}_{side}"
+        if campaign == CURRENT_ENGINE_CAMPAIGN and contract_fp != expected.get(key):
+            continue
         ck = (param, norm_val(val), f"{sym}_{side}")
         delta = bh_delta if bh_delta is not None else legacy_delta
         cells[ck] = delta if delta is not None else gpm
         inert[ck] = bool(inrt)
         cell_meta[ck] = {"bh_delta": bh_delta, "gain_per_mo": gpm, "trades": trades,
-                         "fingerprint": fp, "inert": bool(inrt)}
-    if tier == "ENGINE":
+                         "fingerprint": fp, "inert": bool(inrt),
+                         "validation_status": validation, "real_closes": real_closes,
+                         "reentry_violations": reentry_violations}
+    if tier == "ENGINE" and campaign != CURRENT_ENGINE_CAMPAIGN:
         try:
             srows = con.execute(
                 "SELECT symbol, side, param, value_json, delta_gain_mo, overrides_json "
@@ -169,11 +197,28 @@ def load_cells(campaign, tier="ENGINE"):
                     for oname, oval in overrides.items(): cells.setdefault((oname, norm_val(oval), key), delta)
     base = {}
     bq = ("SELECT symbol, side, gain_per_mo, bh_per_mo, delta_gain_mo_vs_bh, trades, campaign, "
-          "trades_fingerprint FROM key_baseline WHERE mode='tradier'")
+          "trades_fingerprint, validation_status, contract_fingerprint "
+          "FROM key_baseline WHERE mode='tradier'")
+    bargs = []
+    if campaign:
+        bq += " AND campaign=?"
+        bargs.append(campaign)
+    if campaign == CURRENT_ENGINE_CAMPAIGN:
+        bq += (
+            " AND ts>=? AND validation_status IN "
+            "('PASS','INCOMPLETE_NO_REAL_CLOSE')"
+        )
+        bargs.append(CURRENT_ENGINE_CUTOFF)
     bq += " ORDER BY ts"
-    for sym, side, g, bh, d, tr, camp, fp in con.execute(bq).fetchall():
+    for sym, side, g, bh, d, tr, camp, fp, validation, contract_fp in con.execute(
+        bq, bargs
+    ).fetchall():
+        key = f"{sym}_{side}"
+        if campaign == CURRENT_ENGINE_CAMPAIGN and contract_fp != expected.get(key):
+            continue
         base[f"{sym}_{side}"] = {"gain_per_mo": g, "bh_per_mo": bh, "delta_vs_bh": d,
-                                  "trades": tr, "campaign": camp, "fingerprint": fp}
+                                  "trades": tr, "campaign": camp, "fingerprint": fp,
+                                  "validation_status": validation}
     con.close()
     # Equal fingerprints across two values of the same switch are a wiring failure, even when
     # rounding makes the gain deltas look slightly different. Mark all such values red later.
@@ -325,6 +370,11 @@ def main():
                     help="ENGINE = faithful Tier-2 (the only promotable truth); "
                          "VEC = Tier-1 screen, exported to its own [DIAGNOSTIC] file. NEVER mixed.")
     a = ap.parse_args()
+    if a.tier == "ENGINE" and a.campaign is None:
+        # The unrestricted "latest evidence" view silently resurrected pre-fix cells whenever
+        # a repaired cell was still blank.  ENGINE now defaults to the exact repaired campaign;
+        # historical campaigns remain queryable only by naming one explicitly.
+        a.campaign = CURRENT_ENGINE_CAMPAIGN
     suffix = "" if a.tier == "ENGINE" else "_VEC_DIAGNOSTIC"
     OUT_XLSX = BASE / "data" / "reports" / f"SWITCH_MATRIX_{a.account.upper()}{suffix}.xlsx"
     OUT_CSV = BASE / "data" / "reports" / f"SWITCH_MATRIX_{a.account.upper()}{suffix}.csv.gz"
@@ -412,7 +462,13 @@ def main():
             # never a safe result. Fingerprint-identical values are red even if rounded deltas
             # differ. Green = beats the floor. White = below B&H but still positive/viable.
             # Gray = shittier/non-viable and should be discarded.
-            if (trades is not None and trades < 1) or (meta and meta.get("same_value_fingerprint")):
+            if (
+                (trades is not None and trades < 1)
+                or (meta and meta.get("same_value_fingerprint"))
+                or (meta and meta.get("validation_status") != "PASS")
+                or (meta and (meta.get("real_closes") or 0) < 1)
+                or (meta and (meta.get("reentry_violations") or 0) > 0)
+            ):
                 states.append("red")
             elif bh_delta is None:
                 states.append("white")

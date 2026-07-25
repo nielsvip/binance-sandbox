@@ -336,8 +336,19 @@ def _parse_order(o: Dict, trader_id: str) -> Optional[Dict]:
     symbol = _clean_symbol(o.get("symbol", ""))
     if not symbol:
         return None
-    side_raw = str(o.get("posSide", o.get("side", "long"))).lower()
-    side = "LONG" if side_raw in ("long", "buy") else "SHORT"
+    side_raw = str(o.get("posSide", o.get("side", ""))).strip().lower()
+    if side_raw in ("long", "buy"):
+        side = "LONG"
+    elif side_raw in ("short", "sell"):
+        side = "SHORT"
+    else:
+        logger.warning(
+            "Closed position rejected: missing/unknown position side=%r symbol=%r trader=%r",
+            side_raw,
+            symbol,
+            trader_id,
+        )
+        return None
     entry_price = _safe_float(o.get("openPriceAvg", o.get("openPrice", o.get("openAvgPrice", 0))))
     exit_price = _safe_float(o.get("closePriceAvg", o.get("closePrice", o.get("closeAvgPrice", 0))))
     pnl = _safe_float(o.get("netProfit", o.get("achievedProfits", o.get("profit", 0))))
@@ -354,7 +365,22 @@ def _parse_order(o: Dict, trader_id: str) -> Optional[Dict]:
     exit_time = _ts_to_dt(o.get("closeTime", o.get("closeUtcTime", o.get("uTime", ""))))
     if not entry_time:
         return None
-    return {"trader_id": trader_id, "symbol": symbol, "side": side, "entry_price": entry_price, "exit_price": exit_price, "entry_time": entry_time, "exit_time": exit_time, "pnl": round(pnl, 4), "pnl_pct": round(pnl_pct, 4), "leverage": leverage, "position_size_usd": round(position_size, 2)}
+    return {
+        "trader_id": trader_id,
+        "symbol": symbol,
+        "side": side,
+        "position_side": side,
+        "entry_order_side": "BUY" if side == "LONG" else "SELL",
+        "exit_order_side": "SELL" if side == "LONG" else "BUY",
+        "entry_price": entry_price,
+        "exit_price": exit_price,
+        "entry_time": entry_time,
+        "exit_time": exit_time,
+        "pnl": round(pnl, 4),
+        "pnl_pct": round(pnl_pct, 4),
+        "leverage": leverage,
+        "position_size_usd": round(position_size, 2),
+    }
 
 # ═══════════════════════════════════════════════════════════════════
 # SECTION 5 — FOLLOW / UNFOLLOW (V2)
@@ -400,7 +426,22 @@ def get_my_followed_traders(creds: Dict) -> List[Dict]:
 # SECTION 6 — EXPORT TO CSV
 # ═══════════════════════════════════════════════════════════════════
 
-CSV_COLUMNS = ["trader_id", "symbol", "side", "entry_price", "exit_price", "entry_time", "exit_time", "pnl", "pnl_pct", "leverage", "position_size_usd"]
+CSV_COLUMNS = [
+    "trader_id",
+    "symbol",
+    "side",
+    "position_side",
+    "entry_order_side",
+    "exit_order_side",
+    "entry_price",
+    "exit_price",
+    "entry_time",
+    "exit_time",
+    "pnl",
+    "pnl_pct",
+    "leverage",
+    "position_size_usd",
+]
 
 
 def export_trades_csv(trades: List[Dict], output_path: Path = None) -> Path:

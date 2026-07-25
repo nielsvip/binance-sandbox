@@ -89,6 +89,36 @@ refresh_switch_matrix_reports() (
   timeout 120 "$PY" tools/switch_matrix_digest.py \
     >> "$LOGDIR/switch_matrix_digest.log" 2>&1
 )
+
+# REPAIRED CONTRACT LANE (2026-07-25).
+#
+# `GRID_SUSPENDED` continues to block every historical worker below.  The separate
+# MATRIX_REPAIRED_ENABLE marker authorizes only these side-isolated, B&H-seeded workers, under
+# a new campaign namespace.  This prevents removing the old kill switch from accidentally
+# resurrecting mixed-side/pre-HTF-fix daemons.  HAO_SHORT is deliberately absent until its NPZ
+# passes tools/backtest_data_contract.py.
+REPAIRED_CAMPAIGN=stocks_repaired_20260725_c1
+launch_repaired() {
+  symbol=$1; side=$2; tag=$3
+  needle="param_matrix_daemon.py --tag $tag --only $symbol --side $side --all-tiers --safe-contract"
+  if ! pgrep -f "$needle" >/dev/null; then
+    cd "$SBX" && PSC_CAMPAIGN="$REPAIRED_CAMPAIGN" nohup nice -n 18 "$PY" \
+      tools/param_matrix_daemon.py --tag "$tag" --only "$symbol" --side "$side" \
+      --all-tiers --safe-contract --min-avail 5000 \
+      >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null &
+    disown
+    echo "$(date -u +%FT%TZ) relaunched repaired matrix $tag (${symbol}_${side})" \
+      >> "$LOGDIR/lab_matrix_watchdog.log"
+  fi
+}
+if [ -f "$SBX/data/MATRIX_REPAIRED_ENABLE" ]; then
+  # Six nice(18) workers: enough to keep progress continuous while capped below S1's 16 cores
+  # and 30GB RAM. Each worker independently waits for >=5GB available before an engine child.
+  for t in rm1 rm2 rm3; do launch_repaired MU LONG "$t"; done
+  for t in rv1 rv2 rv3; do launch_repaired VT LONG "$t"; done
+  refresh_switch_matrix_reports
+  exit 0
+fi
 if [ -f "$SBX/data/GRID_SUSPENDED" ]; then
   refresh_switch_matrix_reports
   exit 0

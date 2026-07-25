@@ -21,6 +21,21 @@ BASE = Path(__file__).resolve().parent.parent
 DB = BASE / "data" / "param_results_stocks.db"
 REPORTS = BASE / "data" / "reports"
 DEFAULT_KEYS = ("MU_LONG", "VT_LONG", "HAO_SHORT")
+CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c1"
+CURRENT_ENGINE_CUTOFF = "2026-07-25T20:30:00Z"
+
+
+def current_contract_fingerprints(keys: tuple[str, ...]) -> dict[str, str]:
+    """Exact current code+NPZ+side fingerprints; absent/invalid keys simply get no credit."""
+    try:
+        from tools import persym_baseline_campaign as psc
+
+        return {
+            key: psc.matrix_contract_fingerprint(*parse_key(key))
+            for key in keys
+        }
+    except Exception:
+        return {}
 
 
 def norm_val(value) -> str:
@@ -100,6 +115,9 @@ def iso_age(ts: str | None, now: datetime) -> str:
 def strategy_where() -> str:
     return """(
         campaign LIKE '%ladder%' OR campaign LIKE '%combo%' OR
+        param IN ('STOP_PACK','TF_EXCLUDE') OR
+        param LIKE '%ENTRY%' OR param LIKE '%EXIT%' OR param LIKE '%REENTRY%' OR
+        param LIKE '%LADDER%' OR param LIKE 'GR_%' OR param LIKE 'MTF_%' OR
         source_file LIKE 'exposure_ladder/%' OR
         source_file LIKE 'band_ladder_sweep/%' OR
         source_file LIKE 'combo_search/%' OR
@@ -108,6 +126,13 @@ def strategy_where() -> str:
 
 
 def verdict(row: sqlite3.Row) -> str:
+    keys = set(row.keys())
+    if "validation_status" in keys and row["validation_status"] != "PASS":
+        return "INCOMPLETE: NO REAL CLOSE"
+    if "reentry_violations" in keys and (row["reentry_violations"] or 0) > 0:
+        return "INVALID REENTRY"
+    if "inert" in keys and (row["inert"] or 0) == 1:
+        return "INERT / RECONNECT"
     trades = row["trades"]
     gain = row["gain_per_mo"]
     delta = row["delta_gain_mo_vs_bh"]
@@ -341,6 +366,17 @@ def main() -> None:
             "SELECT name FROM sqlite_master WHERE type='table'"
         )
     }
+    cell_columns = {
+        row[1] for row in con.execute("PRAGMA table_info(param_cells)")
+    }
+    contract_columns = {
+        "validation_status",
+        "contract_fingerprint",
+        "real_closes",
+        "reentry_violations",
+        "inert",
+    }.issubset(cell_columns)
+    contract_fps = current_contract_fingerprints(keys)
     latest_parts = [
         f"SELECT MAX(ts) ts FROM {name}"
         for name in ("param_cells", "key_baseline", "stage_results")
@@ -352,49 +388,89 @@ def main() -> None:
     engine_total = con.execute(
         "SELECT COUNT(*) FROM param_cells WHERE COALESCE(tier,'ENGINE')='ENGINE'"
     ).fetchone()[0]
+    current_engine = 0
+    quarantined_engine = engine_total
     vec_total = con.execute(
         "SELECT COUNT(*) FROM param_cells WHERE tier='VEC'"
     ).fetchone()[0]
     cutoff = (now - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    recent_engine = con.execute(
-        "SELECT COUNT(*) FROM param_cells "
-        "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND ts >= ?",
-        (cutoff,),
-    ).fetchone()[0]
+    recent_engine = (
+        con.execute(
+            "SELECT COUNT(*) FROM param_cells "
+            "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts >= ? "
+            "AND validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE')",
+            (CURRENT_ENGINE_CAMPAIGN, max(cutoff, CURRENT_ENGINE_CUTOFF)),
+        ).fetchone()[0]
+        if contract_columns
+        else 0
+    )
 
     actionable = manifest_rows()
     target_predicate = " OR ".join("(symbol=? AND side=?)" for _ in keys)
     target_args = [part for key in keys for part in parse_key(key)]
-    raw_cells = con.execute(
-        "SELECT symbol,side,param,value_json,ts FROM param_cells "
-        "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND (" + target_predicate + ") "
-        "ORDER BY ts",
-        target_args,
-    ).fetchall()
+    raw_cells = (
+        con.execute(
+            "SELECT symbol,side,param,value_json,ts,contract_fingerprint,"
+            "validation_status FROM param_cells "
+            "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts>=? AND ("
+            + target_predicate
+            + ") ORDER BY ts",
+            [CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF, *target_args],
+        ).fetchall()
+        if contract_columns
+        else []
+    )
     filled: dict[str, set[tuple[str, str]]] = {key: set() for key in keys}
     latest_by_key: dict[str, str | None] = {key: None for key in keys}
     for row in raw_cells:
         key = f"{row['symbol']}_{row['side']}"
+        if (
+            row["validation_status"] not in ("PASS", "INCOMPLETE_NO_REAL_CLOSE")
+            or row["contract_fingerprint"] != contract_fps.get(key)
+        ):
+            continue
         logical = (row["param"], norm_val(row["value_json"]))
         if logical in actionable:
             filled[key].add(logical)
         latest_by_key[key] = row["ts"]
+        current_engine += 1
+    current_matrix_latest = max(
+        (ts for ts in latest_by_key.values() if ts),
+        default=None,
+    )
+    recent_engine = sum(
+        1 for row in raw_cells
+        if row["ts"] >= max(cutoff, CURRENT_ENGINE_CUTOFF)
+        and row["validation_status"] in ("PASS", "INCOMPLETE_NO_REAL_CLOSE")
+        and row["contract_fingerprint"]
+        == contract_fps.get(f"{row['symbol']}_{row['side']}")
+    )
+    quarantined_engine = max(0, engine_total - current_engine)
 
     strategy_rows: dict[str, list[sqlite3.Row]] = {}
     for key in keys:
         symbol, side = parse_key(key)
         strategy_rows[key] = con.execute(
             "SELECT symbol,side,campaign,param,value_json,acc_gain_pct,gain_per_mo,"
-            "delta_gain_mo_vs_bh,trades,time_in_mkt_pct,pool_sharpe,source_file,ts "
+            "delta_gain_mo_vs_bh,trades,time_in_mkt_pct,pool_sharpe,source_file,ts,"
+            "validation_status,contract_fingerprint,real_closes,reentry_violations,inert "
             "FROM param_cells WHERE COALESCE(tier,'ENGINE')='ENGINE' "
-            "AND symbol=? AND side=? AND " + strategy_where() + " ORDER BY ts DESC",
-            (symbol, side),
-        ).fetchall()
+            "AND symbol=? AND side=? AND campaign=? AND ts>=? AND "
+            "validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE') AND "
+            + strategy_where()
+            + " ORDER BY ts DESC",
+            (symbol, side, CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF),
+        ).fetchall() if contract_columns else []
+        strategy_rows[key] = [
+            row for row in strategy_rows[key]
+            if row["contract_fingerprint"] == contract_fps.get(key)
+        ]
 
     campaign_rows = con.execute(
         "SELECT COALESCE(tier,'ENGINE') tier,campaign,COUNT(*) n,MAX(ts) latest "
-        "FROM param_cells GROUP BY COALESCE(tier,'ENGINE'),campaign "
-        "ORDER BY latest DESC LIMIT 12"
+        "FROM param_cells WHERE campaign=? AND ts>=? "
+        "GROUP BY COALESCE(tier,'ENGINE'),campaign ORDER BY latest DESC LIMIT 12",
+        (CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF),
     ).fetchall()
     desc_total, desc_filled = matrix_description_stats()
     vec_research = load_vec_research(keys)
@@ -413,9 +489,17 @@ def main() -> None:
         "",
         "## Freshness",
         "",
-        f"- Result DB latest row: `{db_latest or 'none'}` ({iso_age(db_latest, now)} old).",
-        f"- ENGINE rows: **{engine_total:,}**; VEC diagnostic rows: **{vec_total:,}**; "
-        f"new ENGINE rows in 24h: **{recent_engine:,}**.",
+        f"- Current repaired matrix latest row: `{current_matrix_latest or 'none'}` "
+        f"({iso_age(current_matrix_latest, now)} old).",
+        f"- Generic DB activity (includes historical/stage tables): `{db_latest or 'none'}` "
+        f"({iso_age(db_latest, now)} old); it is not matrix freshness.",
+        f"- Current repaired-contract ENGINE rows: **{current_engine:,}**; "
+        f"new current rows in 24h: **{recent_engine:,}**.",
+        f"- Historical/pre-fix ENGINE rows quarantined from current rankings: "
+        f"**{quarantined_engine:,}/{engine_total:,}**. They remain preserved as evidence.",
+        f"- Current contract: campaign `{CURRENT_ENGINE_CAMPAIGN}`, cutoff "
+        f"`{CURRENT_ENGINE_CUTOFF}`, exact code+NPZ+side fingerprint required.",
+        f"- VEC diagnostic rows: **{vec_total:,}** (never matrix proof).",
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.xlsx", now),
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.csv.gz", now),
         f"- Description coverage in current CSV: **{desc_filled:,}/{desc_total:,}** rows.",
@@ -474,6 +558,11 @@ def main() -> None:
             if row["delta_gain_mo_vs_bh"] is not None
             and row["trades"] is not None and row["trades"] >= 2
             and row["gain_per_mo"] is not None
+            and row["validation_status"] == "PASS"
+            and (row["real_closes"] or 0) >= 1
+            and (row["reentry_violations"] or 0) == 0
+            and (row["inert"] or 0) == 0
+            and row["delta_gain_mo_vs_bh"] > 0
         ]
         best = max(candidates, key=lambda row: row["delta_gain_mo_vs_bh"], default=None)
         if best is None:
