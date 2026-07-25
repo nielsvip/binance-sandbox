@@ -162,6 +162,20 @@ at exactly 0.999 equity.
 
 All final figures in this document were regenerated after that correction.
 
+### Later faithful-engine quantity audit
+
+A subsequent audit found that the first, pre-hardening engine smoke produced
+`+1376.653993%`, while the cost-aligned scanner produced `+1377.872399%` on the
+same timestamps and fill prices. This was not a remaining scanner cost error.
+The old adapter froze re-entry quantities from the old vector schedule's cached
+equity values, mixing old vector sizing with faithful-engine close accounting.
+
+The hardened adapter sizes every re-entry from realized acknowledged engine
+equity. Its exact route replay matched the scanner at
+`+1377.8723989410414%` versus `+1377.8723989410419%`, with 30/30 actions, zero
+price or quantity mismatches, and identical `75.05063484112638%` TIM. See
+`VEC_ENGINE_LEDGER_PARITY_20260725.md`.
+
 ## Data handling
 
 - MU contract: valid. Interpolated 5m execution bars are disclosed and accepted

@@ -159,6 +159,68 @@ def test_scanner_cost_matches_engine_round_trip_entry_value_model():
     assert abs(metrics.final_equity - 0.999) < 1e-12
 
 
+def test_scanner_matches_independent_engine_dollar_ledger_across_reentry():
+    """Do not use the Python vector replay as the oracle.
+
+    This reproduces the faithful engine's dollar ledger directly: deploy all
+    acknowledged equity, realize price P&L, then subtract the round-trip fee on
+    entry notional.  The second quantity therefore depends on realized equity,
+    never on a schedule's cached ``equity_after_fill`` field.
+    """
+    lib = base._compile_scanner()
+    n = 7
+    ts = np.ascontiguousarray(np.arange(n, dtype=np.int64) * 300)
+    open_px = np.ascontiguousarray(
+        np.array([100, 102, 98, 101, 103, 99, 100], dtype=np.float64)
+    )
+    high = np.ascontiguousarray(open_px + 1.0)
+    low = np.ascontiguousarray(open_px - 1.0)
+    close = np.ascontiguousarray(open_px.copy())
+    atr = np.ascontiguousarray(np.ones(n, dtype=np.float64))
+    exit_event = np.ascontiguousarray(
+        np.array([0, 1, 0, 0, 0, 0, 0], dtype=np.uint8)
+    )
+    blank = np.ascontiguousarray(np.full(n, np.nan, dtype=np.float64))
+    lower = np.ascontiguousarray(np.zeros(n, dtype=np.uint8))
+    metrics = base.ScanMetrics()
+    rc = lib.vec_top_exit_scan(
+        n,
+        1,
+        2,
+        1,  # zero-buffer E10 reclaim
+        ts,
+        open_px,
+        high,
+        low,
+        close,
+        atr,
+        exit_event,
+        blank,
+        blank,
+        lower,
+        0.0,
+        0.0,
+        0.0005,
+        0.0,
+        ctypes.byref(metrics),
+    )
+    assert rc == 0
+
+    # Engine-dollar oracle, independent of both vector implementations.
+    equity_usd = 2_000.0
+    first_entry = 100.0
+    first_qty = equity_usd / first_entry
+    equity_usd += (98.0 - first_entry) * first_qty
+    equity_usd -= 0.001 * first_entry * first_qty
+    # Reclaim is observed at close 103 and fills at the next bar's open 99.
+    second_entry = 99.0
+    second_qty = equity_usd / second_entry
+    equity_usd += (100.0 - second_entry) * second_qty
+    equity_usd -= 0.001 * second_entry * second_qty
+
+    assert abs(metrics.final_equity * 2_000.0 - equity_usd) < 1e-9
+
+
 def test_vt_known_source_gap_is_not_hidden_by_interpolated_timestamps():
     assert wf.KNOWN_SOURCE_GAPS["VT"] == (
         (wf.date(2026, 3, 30), wf.date(2026, 6, 8)),

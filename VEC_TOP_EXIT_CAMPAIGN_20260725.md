@@ -292,3 +292,30 @@ new round from acknowledged realized equity rather than frozen vector equity.
 It deliberately records `signal_parity=false`, because replaying a frozen event
 schedule does not independently recompute E02/E10/E11 signals. Therefore even
 a passing route smoke cannot promote a matrix cell or a live switch.
+
+The hardened cost-aligned route smoke passed:
+
+```text
+artifact
+/home/niels/binance-sandbox/data/reports/vec_research/
+  v8_exact_replay_20260725T191214Z_MU_LONG/
+
+scheduled/executed actions     30 / 30
+real technical closes         15 / 15
+expected gain             +1377.8723989410%
+engine gain               +1377.8723989410%
+accounting delta       -0.000000000045 bp
+expected/actual RTH TIM     75.0506348411%
+NPZ SHA                      PASS
+schedule SHA                 PASS
+loaded-bar fill check        PASS
+emitted qty/price check      PASS
+exact next-RTH causality     PASS
+signal_parity               false
+promotion_allowed           false
+matrix_written              false
+```
+
+This closes execution-route and accounting parity for the frozen schedule only.
+It does not change the failed walk-forward verdict and does not prove an
+independent engine implementation of the E02/E10/E11 signal rules.
