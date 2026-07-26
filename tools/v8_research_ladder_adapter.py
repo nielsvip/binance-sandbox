@@ -67,6 +67,11 @@ def _event_sources(
     htfs: dict[str, Any],
     signal_index: int,
 ) -> dict[str, int]:
+    if signals.entry_source_ts is not None and signal_index in signals.entry_source_ts:
+        return {
+            str(tf): int(source_ts)
+            for tf, source_ts in signals.entry_source_ts[signal_index].items()
+        }
     out: dict[str, int] = {}
     for slot, tf in enumerate(ladder.TF_ORDER):
         if not bool(signals.event_tf[slot, signal_index]):
@@ -88,9 +93,20 @@ def trace_frozen_curve(
     *,
     commission_rate: float,
     slippage_rate: float,
+    side: str = "LONG",
+    left: int = 0,
+    right: int | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Reference accounting loop with a complete exact-fill event ledger."""
-    left, right = 0, len(data.ts)
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise LadderReplayError(f"unsupported ladder side: {side}")
+    side_sign = 1.0 if side == "LONG" else -1.0
+    is_long = side == "LONG"
+    right = len(data.ts) if right is None else int(right)
+    left = int(left)
+    if right - left < 100:
+        raise LadderReplayError("frozen replay window is too short")
     cash = ladder.ACCOUNT_EQUITY
     qty = 0.0
     last_exit_fill = math.nan
@@ -99,6 +115,7 @@ def trace_frozen_curve(
     gap_seen = False
     pending: dict[str, Any] | None = None
     peak_equity = ladder.ACCOUNT_EQUITY
+    min_equity = ladder.ACCOUNT_EQUITY
     max_dd = 0.0
     requested = filled = 0.0
     clamp_count = fill_count = exit_count = reclaim_count = lower_count = 0
@@ -110,7 +127,7 @@ def trace_frozen_curve(
     events: list[dict[str, Any]] = []
 
     def equity(px: float) -> float:
-        return cash + qty * px
+        return cash + side_sign * qty * px
 
     for i in range(left, right):
         op = float(data.open[i])
@@ -124,22 +141,30 @@ def trace_frozen_curve(
                     f"{kind} signal row {signal_index} did not fill at next RTH row {i}"
                 )
             if kind == "exit" and qty > 0:
-                px = op * (1.0 - slippage_rate)
+                px = op * (1.0 - side_sign * slippage_rate)
                 close_qty = qty
                 notional = close_qty * px
-                cash += notional - commission_rate * notional
+                cash += side_sign * (
+                    notional - side_sign * commission_rate * notional
+                )
                 prior_exit_notional = min(ladder.CAPACITY, notional)
                 last_exit_fill = px
-                reclaim_level = max(px, float(pending["ref"]))
+                reclaim_level = (
+                    max(px, float(pending["ref"]))
+                    if is_long
+                    else min(px, float(pending["ref"]))
+                )
                 qty = 0.0
                 exit_count += 1
                 events.append(
                     {
                         "type": "EXIT",
                         "reason": "E02_DONCHIAN_4h_N30",
-                        "signal_index": signal_index,
+                        "signal_index": signal_index - left,
+                        "source_signal_index": signal_index,
                         "signal_ts": signal_ts,
-                        "fill_index": i,
+                        "fill_index": i - left,
+                        "source_fill_index": i,
                         "fill_ts": int(data.ts[i]),
                         "latency_rth_bars": 1,
                         "fill_px": px,
@@ -154,7 +179,7 @@ def trace_frozen_curve(
                 )
                 gap_seen = False
             elif kind == "entry":
-                px = op * (1.0 + slippage_rate)
+                px = op * (1.0 + side_sign * slippage_rate)
                 current = qty * px
                 requested_notional = float(pending["requested_notional"])
                 absolute_target = bool(pending["absolute_target"])
@@ -172,7 +197,7 @@ def trace_frozen_curve(
                 if actual > 0:
                     add_qty = actual / px
                     prior_qty = qty
-                    cash -= actual + commission_rate * actual
+                    cash -= side_sign * actual + commission_rate * actual
                     qty += add_qty
                     post_fill_notional = qty * px
                     if post_fill_notional > ladder.CAPACITY + 1e-6:
@@ -185,14 +210,18 @@ def trace_frozen_curve(
                     fill_count += 1
                     reason = str(pending["reason"])
                     reclaim_count += int(reason == "reclaim")
-                    lower_count += int(reason == "ladder_lower")
+                    lower_count += int(
+                        reason in {"ladder_lower", "ladder_higher"}
+                    )
                     events.append(
                         {
                             "type": "ENTRY" if prior_qty <= 0 else "AUGMENT",
                             "reason": reason,
-                            "signal_index": signal_index,
+                            "signal_index": signal_index - left,
+                            "source_signal_index": signal_index,
                             "signal_ts": signal_ts,
-                            "fill_index": i,
+                            "fill_index": i - left,
+                            "source_fill_index": i,
                             "fill_ts": int(data.ts[i]),
                             "latency_rth_bars": 1,
                             "fill_px": px,
@@ -219,6 +248,7 @@ def trace_frozen_curve(
             pending = None
 
         mark_equity = equity(close)
+        min_equity = min(min_equity, mark_equity)
         peak_equity = max(peak_equity, mark_equity)
         if peak_equity > 0:
             max_dd = max(
@@ -235,7 +265,7 @@ def trace_frozen_curve(
             if signals.exit_event[i]:
                 ref = float(signals.exit_ref[i])
                 if not math.isfinite(ref):
-                    ref = float(data.high[i])
+                    ref = float(data.high[i] if is_long else data.low[i])
                 h4 = htfs["4h"]
                 match = np.flatnonzero(h4.event_index == i)
                 if len(match) != 1:
@@ -263,8 +293,15 @@ def trace_frozen_curve(
                 }
         else:
             if math.isfinite(last_exit_fill):
-                gap_seen |= float(data.low[i]) < last_exit_fill
-                if close >= reclaim_level:
+                gap_seen |= (
+                    float(data.low[i]) < last_exit_fill
+                    if is_long
+                    else float(data.high[i]) > last_exit_fill
+                )
+                reclaim_crossed = (
+                    close >= reclaim_level if is_long else close <= reclaim_level
+                )
+                if reclaim_crossed:
                     pending = {
                         "kind": "entry",
                         "requested_notional": max(
@@ -282,14 +319,16 @@ def trace_frozen_curve(
                         "kind": "entry",
                         "requested_notional": ladder.BASE_UNIT * mult,
                         "absolute_target": curve.semantics == "target",
-                        "reason": "ladder_lower",
+                        "reason": "ladder_lower" if is_long else "ladder_higher",
                         "signal_index": i,
                         "entry_multiplier": mult,
                         "completed_htf_source_ts": _event_sources(
                             signals, htfs, i
                         ),
                     }
-                elif close > reclaim_level:
+                elif (
+                    close > reclaim_level if is_long else close < reclaim_level
+                ):
                     beyond_reclaim += 1
             elif signals.entry_mult[i] > 0:
                 mult = float(signals.entry_mult[i])
@@ -307,18 +346,22 @@ def trace_frozen_curve(
 
     if qty > 0:
         i = right - 1
-        px = float(data.close[i]) * (1.0 - slippage_rate)
+        px = float(data.close[i]) * (1.0 - side_sign * slippage_rate)
         close_qty = qty
         notional = close_qty * px
-        cash += notional - commission_rate * notional
+        cash += side_sign * (
+            notional - side_sign * commission_rate * notional
+        )
         qty = 0.0
         events.append(
             {
                 "type": "MTM_FINAL",
                 "reason": "END_OF_VALIDATION_MTM",
-                "signal_index": i,
+                "signal_index": i - left,
+                "source_signal_index": i,
                 "signal_ts": int(data.ts[i]),
-                "fill_index": i,
+                "fill_index": i - left,
+                "source_fill_index": i,
                 "fill_ts": int(data.ts[i]),
                 "latency_rth_bars": 0,
                 "fill_px": px,
@@ -330,21 +373,27 @@ def trace_frozen_curve(
             }
         )
 
+    min_equity = min(min_equity, cash)
     strategy_pnl = cash - ladder.ACCOUNT_EQUITY
-    bh_entry = float(data.open[left]) * (1.0 + slippage_rate)
-    bh_exit = float(data.close[right - 1]) * (1.0 - slippage_rate)
+    bh_entry = float(data.open[left]) * (1.0 + side_sign * slippage_rate)
+    bh_exit = float(data.close[right - 1]) * (
+        1.0 - side_sign * slippage_rate
+    )
     bh_pnl = (
-        ladder.BASE_UNIT * (bh_exit / bh_entry - 1.0)
+        ladder.BASE_UNIT * side_sign * (bh_exit - bh_entry) / bh_entry
         - 2.0 * commission_rate * ladder.BASE_UNIT
     )
     bars = right - left
     metrics = {
+        "side": side,
         "capital_return_pct": 100.0 * strategy_pnl / ladder.BASE_UNIT,
         "account_return_pct": 100.0 * strategy_pnl / ladder.ACCOUNT_EQUITY,
         "bh_capital_return_pct": 100.0 * bh_pnl / ladder.BASE_UNIT,
         "alpha_vs_bh_pp": 100.0 * (strategy_pnl - bh_pnl) / ladder.BASE_UNIT,
-        "strategy_bh_multiple": strategy_pnl / bh_pnl,
+        "strategy_bh_multiple": strategy_pnl / bh_pnl if bh_pnl > 1e-12 else None,
         "max_drawdown_account_pct": max_dd,
+        "minimum_account_equity_usd": min_equity,
+        "insolvent": bool(min_equity <= 0.0),
         "binary_tim_pct": 100.0 * held_bars / bars,
         "exposure_weighted_tim_pct": 100.0 * weighted_exposure / bars,
         "peak_mark_to_market_notional_usd": peak_mark_notional,
@@ -360,7 +409,8 @@ def trace_frozen_curve(
         "fill_count": fill_count,
         "exit_count": exit_count,
         "reclaim_reentries": reclaim_count,
-        "lower_reentries": lower_count,
+        "lower_reentries": lower_count if is_long else 0,
+        "higher_reentries": lower_count if not is_long else 0,
         "bars_flat_beyond_reclaim": beyond_reclaim,
         "start_ts": int(data.ts[left]),
         "end_ts": int(data.ts[right - 1]),
@@ -422,8 +472,9 @@ def build_spec_and_schedule(
     manifest = payload["manifest"]
     if manifest.get("promotion_allowed") or manifest.get("matrix_eligible"):
         raise LadderReplayError("source ladder artifact must remain research-only")
-    if str(manifest.get("side")).upper() != "LONG":
-        raise LadderReplayError("current ladder exact adapter supports frozen LONG study only")
+    side = str(manifest.get("side")).upper()
+    if side not in {"LONG", "SHORT"}:
+        raise LadderReplayError(f"unsupported source side: {side!r}")
     folds = payload.get("outer_folds") or []
     if not folds:
         raise LadderReplayError("source artifact contains no frozen outer fold")
@@ -432,22 +483,41 @@ def build_spec_and_schedule(
     # Frozen artifacts retain an absolute S1 path, but the rolling indicator archive at that
     # path is legitimately refreshed. Permit an explicit immutable copy only when its bytes
     # still match the artifact fingerprint; this relocates data without changing evidence.
+    is_overlay = str(manifest.get("family", "")).startswith("ENTRY_")
     npz_path = Path(npz_path_override or manifest["npz"])
+    source_start = str(manifest.get("data_start") or "2024-01-01")
     data = ladder.top._load_execution(
         str(manifest["symbol"]).upper(),
         npz_path.resolve().parent,
-        start,
+        source_start,
         "ladder",
         end,
     )
-    if sha256_file(data.path) != str(manifest["npz_sha256"]):
+    expected_npz_sha = str(
+        manifest.get("control_npz_sha256") or manifest["npz_sha256"]
+    )
+    if sha256_file(data.path) != expected_npz_sha:
         data.z.close()
         raise LadderReplayError("source artifact NPZ fingerprint no longer matches")
-    htfs = {tf: ladder.top._compress_htf(data, tf) for tf in ladder.TF_ORDER}
-    curve = ladder.Curve(**frozen["selected_curve"])
-    signals = ladder._build_signals(
-        data, htfs, curve, int(manifest["exit"]["n"])
+    htf_names = ("15m", "1h", "4h", "D") if is_overlay else ladder.TF_ORDER
+    htfs = {tf: ladder.top._compress_htf(data, tf) for tf in htf_names}
+    curve = ladder.Curve(
+        **(frozen["curve"] if is_overlay else frozen["selected_curve"])
     )
+    if is_overlay:
+        from tools.vec_entry_overlay_walkforward import (
+            build_frozen_overlay_signals,
+        )
+
+        signals = build_frozen_overlay_signals(
+            data, htfs, curve, frozen["selected_candidate"], side
+        )
+        expected_metrics = frozen["validation_metrics"]
+    else:
+        signals = ladder._build_signals(
+            data, htfs, curve, int(manifest["exit"]["n"]), side
+        )
+        expected_metrics = frozen["validation_metrics"]
     metrics, events = trace_frozen_curve(
         data,
         signals,
@@ -455,8 +525,11 @@ def build_spec_and_schedule(
         curve,
         commission_rate=float(manifest["commission_bps_one_way"]) / 10_000.0,
         slippage_rate=float(manifest["slippage_bps_one_way"]) / 10_000.0,
+        side=side,
+        left=ladder._date_index(data, start),
+        right=ladder._date_index(data, end),
     )
-    _assert_metrics_match(metrics, frozen["validation_metrics"])
+    _assert_metrics_match(metrics, expected_metrics)
     data.z.close()
 
     schedule = Path(schedule_path).resolve()
@@ -471,18 +544,34 @@ def build_spec_and_schedule(
         "matrix_written": False,
         "source_artifact": str(artifact),
         "symbol": str(manifest["symbol"]).upper(),
-        "side": "LONG",
+        "side": side,
         "account": account,
         "event_schedule": str(schedule),
         "expected_schedule_sha256": sha256_file(schedule),
         "npz_path": str(npz_path.resolve()),
-        "expected_npz_sha256": str(manifest["npz_sha256"]),
+        "expected_npz_sha256": expected_npz_sha,
         "validation_start": start,
         "validation_end_exclusive": end,
-        "curve": frozen["selected_curve"],
+        "source_start": source_start,
+        "curve": frozen["curve"] if is_overlay else frozen["selected_curve"],
+        "entry_overlay": (
+            frozen["selected_candidate"] if is_overlay else None
+        ),
         "trigger_contract": {
-            "families": ["wt_cross_bull", "HH_HL_low_rising_stoch"],
-            "combination": str(curve.trigger),
+            "families": (
+                [str(manifest["family"])]
+                if is_overlay
+                else (
+                    ["wt_cross_bull", "HH_HL_low_rising_stoch"]
+                    if side == "LONG"
+                    else ["wt_cross_bear", "LH_LL_high_falling_stoch"]
+                )
+            ),
+            "combination": (
+                str(frozen["selected_candidate"]["role"])
+                if is_overlay
+                else str(curve.trigger)
+            ),
             "completed_htf_only": True,
             "timeframes": list(ladder.TF_ORDER),
         },
@@ -562,8 +651,8 @@ class LadderReplayAdapter:
             raise LadderReplayError(f"missing spec fields: {missing}")
         if self.spec.get("promotion_allowed") or self.spec.get("matrix_written"):
             raise LadderReplayError("ladder replay cannot allow promotion/matrix writes")
-        if str(self.spec["side"]).upper() != "LONG":
-            raise LadderReplayError("current ladder replay is LONG-only")
+        if str(self.spec["side"]).upper() not in {"LONG", "SHORT"}:
+            raise LadderReplayError("ladder replay side must be LONG or SHORT")
         if float(self.spec["hard_capacity_usd"]) <= 0:
             raise LadderReplayError("hard_capacity_usd must be positive")
 
@@ -625,8 +714,12 @@ class LadderReplayAdapter:
                     signal_index=signal_index,
                     event_type=kind,
                     action=action,
-                    order_side="SELL" if full_close else "BUY",
-                    position_side="LONG",
+                    order_side=(
+                        ("SELL" if self.position_side == "LONG" else "BUY")
+                        if full_close
+                        else ("BUY" if self.position_side == "LONG" else "SELL")
+                    ),
+                    position_side=self.position_side,
                     fill_price=fill_px,
                     quantity=action_qty,
                     full_close=full_close,
@@ -671,23 +764,48 @@ class LadderReplayAdapter:
         data = ladder.top._load_execution(
             self.symbol,
             Path(npz_path).resolve().parent,
-            str(self.spec["validation_start"]),
+            str(self.spec.get("source_start") or self.spec["validation_start"]),
             "ladder",
             str(self.spec["validation_end_exclusive"]),
         )
-        htfs = {tf: ladder.top._compress_htf(data, tf) for tf in ladder.TF_ORDER}
+        is_overlay = bool(self.spec.get("entry_overlay"))
+        htf_names = ("15m", "1h", "4h", "D") if is_overlay else ladder.TF_ORDER
+        htfs = {tf: ladder.top._compress_htf(data, tf) for tf in htf_names}
         curve = ladder.Curve(**self.spec["curve"])
-        signals = ladder._build_signals(
-            data, htfs, curve, int(self.spec.get("exit_n", 30))
-        )
+        if is_overlay:
+            from tools.vec_entry_overlay_walkforward import (
+                build_frozen_overlay_signals,
+            )
+
+            signals = build_frozen_overlay_signals(
+                data,
+                htfs,
+                curve,
+                self.spec["entry_overlay"],
+                self.position_side,
+            )
+        else:
+            signals = ladder._build_signals(
+                data,
+                htfs,
+                curve,
+                int(self.spec.get("exit_n", 30)),
+                self.position_side,
+            )
         for action in self.actions:
-            if action.fill_index >= len(data.ts):
-                raise LadderReplayError("fill index exceeds loaded validation rows")
-            if int(data.ts[action.fill_index]) != action.fill_ts:
-                raise LadderReplayError("fill timestamp/index mismatch in loaded NPZ")
-            if int(data.ts[action.signal_index]) != action.signal_ts:
-                raise LadderReplayError("signal timestamp/index mismatch in loaded NPZ")
             event = action.source_event
+            source_fill_index = int(
+                event.get("source_fill_index", action.fill_index)
+            )
+            source_signal_index = int(
+                event.get("source_signal_index", action.signal_index)
+            )
+            if source_fill_index >= len(data.ts):
+                raise LadderReplayError("fill index exceeds loaded validation rows")
+            if int(data.ts[source_fill_index]) != action.fill_ts:
+                raise LadderReplayError("fill timestamp/index mismatch in loaded NPZ")
+            if int(data.ts[source_signal_index]) != action.signal_ts:
+                raise LadderReplayError("signal timestamp/index mismatch in loaded NPZ")
             for tf, source_ts in (
                 event.get("completed_htf_source_ts") or {}
             ).items():
@@ -698,13 +816,13 @@ class LadderReplayAdapter:
             if action.event_type in {"ENTRY", "AUGMENT"} and event.get(
                 "reason"
             ) != "reclaim":
-                actual_mult = float(signals.entry_mult[action.signal_index])
+                actual_mult = float(signals.entry_mult[source_signal_index])
                 if not _close_enough(
                     actual_mult, float(event["entry_multiplier"]), rel=1e-9
                 ):
                     raise LadderReplayError("ladder multiplier signal mismatch")
                 actual_sources = _event_sources(
-                    signals, htfs, action.signal_index
+                    signals, htfs, source_signal_index
                 )
                 if actual_sources != {
                     str(k): int(v)
@@ -712,13 +830,13 @@ class LadderReplayAdapter:
                 }:
                     raise LadderReplayError("completed HTF event source mismatch")
             if action.event_type == "EXIT" and not bool(
-                signals.exit_event[action.signal_index]
+                signals.exit_event[source_signal_index]
             ):
                 raise LadderReplayError("scheduled exit is absent from source signal")
             raw = (
-                float(data.close[action.fill_index])
+                float(data.close[source_fill_index])
                 if action.event_type == "MTM_FINAL"
-                else float(data.open[action.fill_index])
+                else float(data.open[source_fill_index])
             )
             expected_fill = self.expected_fill_from_loaded_bar(action, raw)
             if not _close_enough(expected_fill, action.fill_price):
@@ -730,7 +848,12 @@ class LadderReplayAdapter:
         self, action: LadderReplayAction, raw_price: float
     ) -> float:
         slip = float(self.spec["slippage_bps_one_way"]) / 10_000.0
-        return raw_price * (1.0 - slip if action.full_close else 1.0 + slip)
+        side_sign = 1.0 if self.position_side == "LONG" else -1.0
+        return raw_price * (
+            1.0 - side_sign * slip
+            if action.full_close
+            else 1.0 + side_sign * slip
+        )
 
     def actions_at(self, ts: int) -> list[LadderReplayAction]:
         return list(self._by_ts.get(int(ts), ()))

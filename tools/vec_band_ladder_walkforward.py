@@ -3,14 +3,17 @@
 
 Research-only: this script never writes the switch matrix, per-symbol config, or
 live state.  It tests the remembered D 10/6, 4h 6/4, 1h 4/1 ladder as a
-hypothesis, after clipping every order to the declared 8x/$16k capacity.
+hypothesis, after clipping every order to the declared 8x/$16k capacity. LONG
+and SHORT are separate runs and separate ledgers; SHORT is a causal semantic
+mirror, not the negative of a LONG result.
 
 Signals:
 
-* ``green`` is the existing NPZ ``wt_cross_bull_<tf>`` flag observed only when a
-  newly completed HTF bar first becomes available.
-* ``structure`` is HH+HL on that same completed bar while StochRSI K is low and
-  rising.
+* ``green`` is the existing NPZ ``wt_cross_bull_<tf>`` flag for LONG and
+  ``wt_cross_bear_<tf>`` for SHORT, observed only when a newly completed HTF
+  bar first becomes available.
+* ``structure`` is HH+HL with low/rising StochRSI for LONG and LH+LL with
+  high/falling StochRSI for SHORT on that same completed bar.
 * ``union`` accepts either signal.
 
 The slow exit is a completed-4h opposite Donchian close.  It is deliberately
@@ -84,6 +87,10 @@ class SignalData:
     exit_event: np.ndarray
     exit_ref: np.ndarray
     causality: dict[str, Any]
+    # Optional completed-HTF provenance for entry paths that can fire between
+    # the D/4h/1h ladder's own event rows (for example a 5m WT_DC episode).
+    # The exact replay adapter validates every timestamp against signal time.
+    entry_source_ts: dict[int, dict[str, int]] | None = None
 
 
 def _epoch(value: str) -> int:
@@ -174,7 +181,12 @@ def _build_signals(
     htfs: dict[str, top.HTFData],
     curve: Curve,
     exit_n: int,
+    side: str = "LONG",
 ) -> SignalData:
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError(f"unsupported side: {side}")
+    is_long = side == "LONG"
     n = len(data.ts)
     mult_by_tf = np.zeros((3, n), dtype=np.float64)
     event_tf = np.zeros((3, n), dtype=np.uint8)
@@ -187,16 +199,30 @@ def _build_signals(
         source_ts = h.source_ts
         observed_ts = data.ts[h.event_index]
         causal = source_ts <= observed_ts
-        green = np.asarray(z[f"wt_cross_bull_{tf}"], dtype=np.uint8)[full_event] > 0
+        cross_direction = "bull" if is_long else "bear"
+        green = (
+            np.asarray(z[f"wt_cross_{cross_direction}_{tf}"], dtype=np.uint8)[
+                full_event
+            ]
+            > 0
+        )
         stoch = np.asarray(z[f"stoch_k_{tf}"], dtype=np.float64)[full_event]
         stoch_prev = np.concatenate(([np.nan], stoch[:-1]))
         structure = np.zeros(len(h.close), dtype=bool)
-        structure[1:] = (
-            (h.high[1:] > h.high[:-1])
-            & (h.low[1:] > h.low[:-1])
-            & (stoch[1:] <= curve.stoch_low)
-            & (stoch[1:] > stoch_prev[1:])
-        )
+        if is_long:
+            structure[1:] = (
+                (h.high[1:] > h.high[:-1])
+                & (h.low[1:] > h.low[:-1])
+                & (stoch[1:] <= curve.stoch_low)
+                & (stoch[1:] > stoch_prev[1:])
+            )
+        else:
+            structure[1:] = (
+                (h.high[1:] < h.high[:-1])
+                & (h.low[1:] < h.low[:-1])
+                & (stoch[1:] >= 100.0 - curve.stoch_low)
+                & (stoch[1:] < stoch_prev[1:])
+            )
         if curve.trigger == "green":
             event = green
         elif curve.trigger == "structure":
@@ -205,7 +231,11 @@ def _build_signals(
             event = green | structure
         event &= causal
 
-        pb = np.asarray(z[f"lrL_pct_b_{tf}"], dtype=np.float64)[full_event]
+        raw_pb = np.asarray(z[f"lrL_pct_b_{tf}"], dtype=np.float64)[full_event]
+        # A LONG ladder is largest at the lower band (pct_b=0). A SHORT
+        # ladder is largest at the upper band, so reflect the same sizing
+        # curve through the band centre rather than reusing LONG depth.
+        pb = raw_pb if is_long else 1.0 - raw_pb
         bottom, top_ = curve.pair(tf)
         values = np.fromiter(
             (ladder_mult(float(x), bottom, top_, curve.mode) for x in pb),
@@ -216,10 +246,15 @@ def _build_signals(
         mult_by_tf[slot, h.event_index] = values
         event_tf[slot, h.event_index] = event.astype(np.uint8)
         causal_rows[tf] = {
+            "side": side,
             "completed_bars": int(len(h.close)),
             "source_timestamp_future_count": int(np.count_nonzero(~causal)),
-            "green_events": int(np.count_nonzero(green & causal)),
-            "hh_hl_low_rising_stoch_events": int(np.count_nonzero(structure & causal)),
+            "directional_wt_cross_events": int(np.count_nonzero(green & causal)),
+            (
+                "hh_hl_low_rising_stoch_events"
+                if is_long
+                else "lh_ll_high_falling_stoch_events"
+            ): int(np.count_nonzero(structure & causal)),
             "selected_events": int(np.count_nonzero(event)),
             "first_observation_lag_seconds_max": int(np.max(observed_ts - source_ts)),
         }
@@ -235,8 +270,9 @@ def _build_signals(
     h4 = htfs["4h"]
     prior_low = top._rolling_prior(h4.low, exit_n, "min")
     prior_high = top._rolling_prior(h4.high, exit_n, "max")
-    event_h = h4.close < prior_low
-    mapped, refs = top._map_events(n, h4, event_h, prior_high)
+    event_h = h4.close < prior_low if is_long else h4.close > prior_high
+    reclaim_ref = prior_high if is_long else prior_low
+    mapped, refs = top._map_events(n, h4, event_h, reclaim_ref)
     return SignalData(
         entry_mult=np.ascontiguousarray(entry_mult),
         event_tf=event_tf,
@@ -254,8 +290,14 @@ def _simulate(
     right: int,
     commission_rate: float,
     slippage_rate: float,
+    side: str = "LONG",
 ) -> dict[str, Any]:
     """Stateful accounting loop over vector-precomputed events."""
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError(f"unsupported side: {side}")
+    side_sign = 1.0 if side == "LONG" else -1.0
+    is_long = side_sign > 0
     if right - left < 100:
         raise ValueError("simulation window too short")
     cash = ACCOUNT_EQUITY
@@ -267,6 +309,7 @@ def _simulate(
     gap_seen = False
     pending: dict[str, Any] | None = None
     peak_equity = ACCOUNT_EQUITY
+    min_equity = ACCOUNT_EQUITY
     max_dd = 0.0
     requested = filled = 0.0
     clamp_count = fill_count = exit_count = reclaim_count = lower_count = 0
@@ -279,26 +322,34 @@ def _simulate(
     def equity(px: float) -> float:
         return cash + qty * px
 
+    def has_position() -> bool:
+        return side_sign * qty > 1e-12
+
     for i in range(left, right):
         op = float(data.open[i])
         close = float(data.close[i])
         # Every completed-bar signal fills at the next RTH open.
         if pending is not None:
             kind = pending["kind"]
-            if kind == "exit" and qty > 0:
-                px = op * (1.0 - slippage_rate)
-                notional = qty * px
-                cash += notional - commission_rate * notional
+            if kind == "exit" and has_position():
+                px = op * (1.0 - side_sign * slippage_rate)
+                close_qty = abs(qty)
+                notional = close_qty * px
+                cash += side_sign * (notional - side_sign * commission_rate * notional)
                 prior_exit_notional = min(CAPACITY, notional)
                 last_exit_fill = px
-                reclaim_level = max(px, float(pending["ref"]))
+                reclaim_level = (
+                    max(px, float(pending["ref"]))
+                    if is_long
+                    else min(px, float(pending["ref"]))
+                )
                 qty = 0.0
                 entry_notional = 0.0
                 gap_seen = False
                 exit_count += 1
             elif kind == "entry":
-                px = op * (1.0 + slippage_rate)
-                current = qty * px
+                px = op * (1.0 + side_sign * slippage_rate)
+                current = abs(qty) * px
                 requested_notional = float(pending["requested_notional"])
                 if pending.get("absolute_target"):
                     want = max(0.0, requested_notional - current)
@@ -310,31 +361,34 @@ def _simulate(
                 filled += actual
                 clamp_count += int(actual + 1e-9 < want)
                 if actual > 0:
-                    cash -= actual + commission_rate * actual
-                    qty += actual / px
-                    entry_notional = qty * px
+                    cash -= side_sign * actual + commission_rate * actual
+                    qty += side_sign * actual / px
+                    entry_notional = abs(qty) * px
                     peak_post_fill_notional = max(peak_post_fill_notional, entry_notional)
                     fill_count += 1
                     reclaim_count += int(pending.get("reason") == "reclaim")
-                    lower_count += int(pending.get("reason") == "ladder_lower")
+                    lower_count += int(
+                        pending.get("reason") in {"ladder_lower", "ladder_higher"}
+                    )
             pending = None
 
         mark_equity = equity(close)
+        min_equity = min(min_equity, mark_equity)
         peak_equity = max(peak_equity, mark_equity)
         if peak_equity > 0:
             max_dd = max(max_dd, 100.0 * (peak_equity - mark_equity) / peak_equity)
-        notional = qty * close
+        notional = abs(qty) * close
         peak_mark_notional = max(peak_mark_notional, notional)
-        held_bars += int(qty > 0)
+        held_bars += int(has_position())
         weighted_exposure += min(CAPACITY, notional) / CAPACITY
 
         if i + 1 >= right:
             continue
-        if qty > 0:
+        if has_position():
             if signals.exit_event[i]:
                 ref = float(signals.exit_ref[i])
                 if not math.isfinite(ref):
-                    ref = float(data.high[i])
+                    ref = float(data.high[i] if is_long else data.low[i])
                 pending = {"kind": "exit", "ref": ref}
             elif signals.entry_mult[i] > 0:
                 request = BASE_UNIT * float(signals.entry_mult[i])
@@ -346,8 +400,15 @@ def _simulate(
                 }
         else:
             if math.isfinite(last_exit_fill):
-                gap_seen |= float(data.low[i]) < last_exit_fill
-                if close >= reclaim_level:
+                gap_seen |= (
+                    float(data.low[i]) < last_exit_fill
+                    if is_long
+                    else float(data.high[i]) > last_exit_fill
+                )
+                reclaim_crossed = (
+                    close >= reclaim_level if is_long else close <= reclaim_level
+                )
+                if reclaim_crossed:
                     pending = {
                         "kind": "entry",
                         "requested_notional": max(BASE_UNIT, prior_exit_notional),
@@ -359,9 +420,11 @@ def _simulate(
                         "kind": "entry",
                         "requested_notional": BASE_UNIT * float(signals.entry_mult[i]),
                         "absolute_target": curve.semantics == "target",
-                        "reason": "ladder_lower",
+                        "reason": "ladder_lower" if is_long else "ladder_higher",
                     }
-                elif close > reclaim_level:
+                elif (
+                    close > reclaim_level if is_long else close < reclaim_level
+                ):
                     beyond_reclaim += 1
             elif signals.entry_mult[i] > 0:
                 pending = {
@@ -372,24 +435,42 @@ def _simulate(
                 }
 
     # Final liquidation makes every fold independently accountable.
-    if qty > 0:
-        px = float(data.close[right - 1]) * (1.0 - slippage_rate)
-        notional = qty * px
-        cash += notional - commission_rate * notional
+    if has_position():
+        px = float(data.close[right - 1]) * (
+            1.0 - side_sign * slippage_rate
+        )
+        notional = abs(qty) * px
+        cash += side_sign * (
+            notional - side_sign * commission_rate * notional
+        )
         qty = 0.0
+    min_equity = min(min_equity, cash)
     final_equity = cash
     strategy_pnl = final_equity - ACCOUNT_EQUITY
-    bh_entry = float(data.open[left]) * (1.0 + slippage_rate)
-    bh_exit = float(data.close[right - 1]) * (1.0 - slippage_rate)
-    bh_pnl = BASE_UNIT * (bh_exit / bh_entry - 1.0) - 2.0 * commission_rate * BASE_UNIT
+    bh_entry = float(data.open[left]) * (
+        1.0 + side_sign * slippage_rate
+    )
+    bh_exit = float(data.close[right - 1]) * (
+        1.0 - side_sign * slippage_rate
+    )
+    bh_pnl = (
+        BASE_UNIT * side_sign * (bh_exit - bh_entry) / bh_entry
+        - 2.0 * commission_rate * BASE_UNIT
+    )
     bars = right - left
     return {
         "capital_return_pct": 100.0 * strategy_pnl / BASE_UNIT,
+        "side": side,
         "account_return_pct": 100.0 * strategy_pnl / ACCOUNT_EQUITY,
         "bh_capital_return_pct": 100.0 * bh_pnl / BASE_UNIT,
         "alpha_vs_bh_pp": 100.0 * (strategy_pnl - bh_pnl) / BASE_UNIT,
-        "strategy_bh_multiple": strategy_pnl / bh_pnl if abs(bh_pnl) > 1e-12 else None,
+        # A non-positive side-aware B&H is not a denominator. In particular,
+        # negative strategy / negative short-and-hold must never be presented
+        # as a positive "multiple"; alpha and absolute P&L carry the verdict.
+        "strategy_bh_multiple": strategy_pnl / bh_pnl if bh_pnl > 1e-12 else None,
         "max_drawdown_account_pct": max_dd,
+        "minimum_account_equity_usd": min_equity,
+        "insolvent": bool(min_equity <= 0.0),
         "binary_tim_pct": 100.0 * held_bars / bars,
         "exposure_weighted_tim_pct": 100.0 * weighted_exposure / bars,
         "peak_mark_to_market_notional_usd": peak_mark_notional,
@@ -403,7 +484,8 @@ def _simulate(
         "fill_count": fill_count,
         "exit_count": exit_count,
         "reclaim_reentries": reclaim_count,
-        "lower_reentries": lower_count,
+        "lower_reentries": lower_count if is_long else 0,
+        "higher_reentries": lower_count if not is_long else 0,
         "bars_flat_beyond_reclaim": beyond_reclaim,
         "start_ts": int(data.ts[left]),
         "end_ts": int(data.ts[right - 1]),
@@ -448,6 +530,7 @@ def _score(rows: list[dict[str, Any]]) -> float:
 
 def run(args: argparse.Namespace) -> Path:
     symbol = args.symbol.upper()
+    side = args.side.upper()
     data = top._load_execution(symbol, Path(args.npz_dir), args.start, "ladder", args.end)
     if not data.contract["valid"]:
         raise RuntimeError(f"{symbol} NPZ quarantined: {data.contract['errors']}")
@@ -458,7 +541,7 @@ def run(args: argparse.Namespace) -> Path:
     def sig(curve: Curve) -> SignalData:
         key = (curve, args.exit_n)
         if key not in cache:
-            cache[key] = _build_signals(data, htfs, curve, args.exit_n)
+            cache[key] = _build_signals(data, htfs, curve, args.exit_n, side)
         return cache[key]
 
     folds: list[dict[str, Any]] = []
@@ -481,6 +564,7 @@ def run(args: argparse.Namespace) -> Path:
                     r,
                     args.commission_bps / 10_000.0,
                     args.slippage_bps / 10_000.0,
+                    side,
                 )
                 for l, r in _inner_slices(tl, tr)
             ]
@@ -495,6 +579,7 @@ def run(args: argparse.Namespace) -> Path:
             vr,
             args.commission_bps / 10_000.0,
             args.slippage_bps / 10_000.0,
+            side,
         )
         folds.append(
             {
@@ -522,6 +607,7 @@ def run(args: argparse.Namespace) -> Path:
         full_right,
         args.commission_bps / 10_000.0,
         args.slippage_bps / 10_000.0,
+        side,
     )
 
     # Frozen OOS aggregation is additive in dollars because every fold resets to
@@ -547,12 +633,42 @@ def run(args: argparse.Namespace) -> Path:
         "bars_flat_beyond_reclaim": sum(
             r["bars_flat_beyond_reclaim"] for r in validations
         ),
+        "insolvent_folds": sum(bool(r["insolvent"]) for r in validations),
+        "minimum_account_equity_usd": min(
+            (r["minimum_account_equity_usd"] for r in validations),
+            default=ACCOUNT_EQUITY,
+        ),
     }
     aggregate["strategy_bh_multiple"] = (
         aggregate["capital_return_pct_sum"] / aggregate["bh_capital_return_pct_sum"]
-        if abs(aggregate["bh_capital_return_pct_sum"]) > 1e-12
+        if aggregate["bh_capital_return_pct_sum"] > 1e-12
         else None
     )
+    aggregate["control_failure"] = bool(
+        aggregate["capital_return_pct_sum"] <= 0.0
+        or aggregate["alpha_vs_bh_pp_sum"] <= 0.0
+        or aggregate["insolvent_folds"] > 0
+        or aggregate["max_drawdown_account_pct_max"] >= 100.0
+    )
+    aggregate["control_failure_reasons"] = [
+        reason
+        for failed, reason in (
+            (
+                aggregate["capital_return_pct_sum"] <= 0.0,
+                "non_positive_strategy_return",
+            ),
+            (
+                aggregate["alpha_vs_bh_pp_sum"] <= 0.0,
+                "did_not_beat_side_aware_bh",
+            ),
+            (aggregate["insolvent_folds"] > 0, "account_insolvency"),
+            (
+                aggregate["max_drawdown_account_pct_max"] >= 100.0,
+                "account_drawdown_at_least_100pct",
+            ),
+        )
+        if failed
+    ]
 
     # Trigger/causality audit is curve-independent except selected trigger and
     # stoch threshold; retain every frozen winner's evidence.
@@ -569,8 +685,10 @@ def run(args: argparse.Namespace) -> Path:
         "matrix_eligible": False,
         "promotion_allowed": False,
         "symbol": symbol,
-        "side": "LONG",
+        "side": side,
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "data_start": args.start,
+        "data_end_exclusive": args.end,
         "npz": data.path,
         "npz_sha256": hashlib.sha256(Path(data.path).read_bytes()).hexdigest(),
         "contract": data.contract,
@@ -582,7 +700,11 @@ def run(args: argparse.Namespace) -> Path:
         "commission_bps_one_way": args.commission_bps,
         "slippage_bps_one_way": args.slippage_bps,
         "exit": {"family": "E02_DONCHIAN", "tf": "4h", "n": args.exit_n},
-        "reentry": "ladder lower first; mandatory zero-buffer stored exit/top reclaim",
+        "reentry": (
+            "ladder lower first; mandatory zero-buffer stored exit/top reclaim"
+            if side == "LONG"
+            else "ladder higher first; mandatory zero-buffer stored exit/bottom reclaim"
+        ),
         "candidate_count": len(curves),
         "selection": "nested frozen 3-fold inner robust block/Pareto-style search",
     }
@@ -599,7 +721,7 @@ def run(args: argparse.Namespace) -> Path:
         "causality_audit": causality,
     }
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out = Path(args.out_dir) / f"band_ladder_walkforward_{stamp}_{symbol}_LONG"
+    out = Path(args.out_dir) / f"band_ladder_walkforward_{stamp}_{symbol}_{side}"
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
@@ -631,6 +753,7 @@ def _self_test() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="MU")
+    ap.add_argument("--side", default="LONG", choices=("LONG", "SHORT"))
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))
     ap.add_argument("--out-dir", default=str(top.DEFAULT_OUT))
     ap.add_argument("--start", default="2024-01-01")

@@ -13,7 +13,9 @@ from tools.v8_research_ladder_adapter import (
 )
 
 
-def _write_spec(tmp_path: Path, events: list[dict]) -> Path:
+def _write_spec(
+    tmp_path: Path, events: list[dict], *, side: str = "LONG"
+) -> Path:
     schedule = tmp_path / "schedule.jsonl.gz"
     with gzip.open(schedule, "wt") as fh:
         for event in events:
@@ -25,7 +27,7 @@ def _write_spec(tmp_path: Path, events: list[dict]) -> Path:
         "matrix_written": False,
         "source_artifact": str(tmp_path),
         "symbol": "MU",
-        "side": "LONG",
+        "side": side,
         "account": "trb",
         "event_schedule": str(schedule),
         "expected_schedule_sha256": hashlib.sha256(
@@ -130,6 +132,23 @@ def test_target_schedule_is_explicit_and_capacity_is_enforced(tmp_path):
         LadderReplayAdapter(
             _write_spec(tmp_path, _events(post_notional=18_000.0))
         )
+
+
+def test_short_schedule_uses_sell_to_open_and_buy_to_cover(tmp_path):
+    adapter = LadderReplayAdapter(
+        _write_spec(tmp_path, _events(), side="SHORT")
+    )
+    entry, final = adapter.actions
+    assert entry.position_side == "SHORT"
+    assert entry.order_side == "SELL"
+    assert final.position_side == "SHORT"
+    assert final.order_side == "BUY"
+    assert adapter.expected_fill_from_loaded_bar(entry, 100.0) == pytest.approx(
+        99.98
+    )
+    assert adapter.expected_fill_from_loaded_bar(final, 100.0) == pytest.approx(
+        100.02
+    )
 
 
 def test_schedule_and_weighted_tim_audit_use_actual_faithful_quantities(tmp_path):

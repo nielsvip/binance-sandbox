@@ -415,6 +415,57 @@ def load_tradier_5m_coverage() -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
+def load_path_fleet_progress() -> dict:
+    """Current claimable entry/exit fleet state and its latest result rows.
+
+    The fleet database is a separate research ledger.  Surfacing it in the
+    email digest must not let vector controls fill or color exact matrix cells.
+    """
+    root = REPORTS / "path_fleet"
+    db_path = root / "queue.db"
+    universe_path = root / "universe.json"
+    if not db_path.exists():
+        return {}
+    try:
+        fleet = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30)
+        fleet.row_factory = sqlite3.Row
+        states = {
+            row["status"]: row["n"]
+            for row in fleet.execute(
+                "SELECT status,COUNT(*) n FROM jobs GROUP BY status ORDER BY status"
+            )
+        }
+        jobs = fleet.execute(
+            "SELECT COUNT(*) n,MAX(heartbeat_at) latest FROM jobs"
+        ).fetchone()
+        rows = [
+            dict(row)
+            for row in fleet.execute(
+                """SELECT j.path_id,r.symbol,r.side,r.stage,r.status,
+                          r.strategy_return_pct,r.bh_return_pct,
+                          r.same_entry_control_return_pct,r.alpha_vs_bh_pp,
+                          r.alpha_vs_control_pp,r.tim_pct,r.trades,r.created_at
+                   FROM results r JOIN jobs j ON j.id=r.job_id
+                   ORDER BY r.created_at DESC LIMIT 30"""
+            )
+        ]
+        fleet.close()
+    except (OSError, sqlite3.Error):
+        return {}
+    try:
+        universe = json.loads(universe_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        universe = {}
+    return {
+        "root": root,
+        "states": states,
+        "job_count": int(jobs["n"] or 0),
+        "latest_heartbeat": jobs["latest"],
+        "rows": rows,
+        "universe": universe,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -579,6 +630,7 @@ def main() -> None:
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
     coverage_5m = load_tradier_5m_coverage()
+    path_fleet = load_path_fleet_progress()
     coverage_symbols = coverage_5m.get("symbols", {})
     covered_native_symbols = sum(
         int(row.get("native_source", {}).get("rows", 0) or 0) > 0
@@ -1030,6 +1082,77 @@ def main() -> None:
         "promotion even when the full-period row is above B&H.",
         "",
     ]
+
+    lines += [
+        "## Top/bottom-10 entry/exit path fleet",
+        "",
+        "> Claimable vector-first research queue. Control rows establish the frozen benchmark "
+        "that later paths must beat; they are not exact-engine promotion evidence.",
+        "",
+    ]
+    if not path_fleet:
+        lines += [
+            "Path fleet ledger is missing.",
+            "",
+        ]
+    else:
+        universe = path_fleet.get("universe") or {}
+        snapshot = universe.get("tradeable_snapshot") or {}
+        top_long = ", ".join(
+            row.get("symbol", "—") for row in universe.get("top_long") or []
+        )
+        bottom_short = ", ".join(
+            row.get("symbol", "—") for row in universe.get("bottom_short") or []
+        )
+        states = ", ".join(
+            f"{name}={count:,}"
+            for name, count in sorted((path_fleet.get("states") or {}).items())
+        )
+        lines += [
+            f"- Jobs: **{path_fleet.get('job_count', 0):,}**; states: {states or '—'}.",
+            f"- Frozen tradeable hashes: LONG `{snapshot.get('long_sha256') or '—'}`; "
+            f"SHORT `{snapshot.get('short_sha256') or '—'}`.",
+            f"- Top LONG cohort: {top_long or '—'}.",
+            f"- Bottom SHORT cohort: {bottom_short or '—'}.",
+            "",
+            "| path | key | stage | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+        fleet_rows = path_fleet.get("rows") or []
+        if not fleet_rows:
+            lines.append("| — | — | — | — | — | — | — | — | — | — | — |")
+        for row in fleet_rows:
+            strategy = row.get("strategy_return_pct")
+            bh = row.get("bh_return_pct")
+            multiple = (
+                float(strategy) / float(bh)
+                if strategy is not None and bh is not None and float(bh) > 0
+                else None
+            )
+            lines.append(
+                f"| `{row.get('path_id') or '—'}` | "
+                f"{row.get('symbol') or '—'}_{row.get('side') or '—'} | "
+                f"{row.get('stage') or '—'} | {row.get('status') or '—'} | "
+                f"{fmt(strategy, 3, '%')} | {fmt(bh, 3, '%')} | "
+                f"{fmt(multiple, 3)}× | {fmt(row.get('alpha_vs_bh_pp'), 3, 'pp')} | "
+                f"{fmt(row.get('alpha_vs_control_pp'), 3, 'pp')} | "
+                f"{fmt(row.get('tim_pct'), 2, '%')} | {row.get('trades', '—')} |"
+            )
+        short_rows_present = any(row.get("side") == "SHORT" for row in fleet_rows)
+        lines += [
+            "",
+            (
+                "SHORT vector controls are present but remain research-only until exact replay "
+                "and the same completed-HTF, fill, capacity, solvency, exposure, and mandatory-"
+                "reclaim gates pass. No LONG result is inverted or pooled."
+                if short_rows_present
+                else
+                "The SHORT cohort remains blocked until its causal ladder mirror passes the same "
+                "completed-HTF, fill, capacity, solvency, exposure, and mandatory-reclaim "
+                "contract. No LONG result is inverted or pooled to manufacture SHORT evidence."
+            ),
+            "",
+        ]
 
     lines += [
         "## Campaign activity",

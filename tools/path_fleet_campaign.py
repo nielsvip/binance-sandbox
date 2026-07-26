@@ -80,8 +80,8 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "B&H $2k plus frozen accepted ladder curve",
         "E02 4h Donchian N=30 + zero-buffer resting reclaim",
         "tools/vec_band_ladder_walkforward.py",
-        "READY_LONG_ONLY",
-        "SHORT symmetry adapter is still required.",
+        "READY_BOTH_SIDES",
+        "LONG and SHORT run isolated causal ledgers; exact replay remains mandatory before promotion.",
     ),
     PathFamily(
         "ENTRY_STOCH_HHHL",
