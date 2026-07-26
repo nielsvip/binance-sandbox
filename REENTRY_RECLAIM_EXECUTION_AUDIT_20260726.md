@@ -85,7 +85,29 @@ Best in-window diagnostic:
 Parameters: rebound 1.0 ATR, pre-break lookback 4 (lookback 6 tied),
 maximum wait 20 completed 1h bars.
 
-This clears the requested 2x-B&H research threshold in the recent MU window,
-but parameters were ranked on that same window. It is therefore discovery
-evidence, not walk-forward proof. It remains non-promotable and was not written
-to the switch matrix.
+Although this clears 2x B&H, it is **not an improvement** over the exact same
+frozen ladder. The source ladder scored +1316.02%, 6.4117x B&H, 77.09% weighted
+TIM, and 37.62% drawdown over its 2026 validation fold. The structural probe's
++409.93% therefore gives up roughly 906 percentage points of return. Its lower
+52.32% TIM and 23.66% drawdown do not justify that loss. Parameters were also
+ranked on the same window. This is discovery evidence only and the path is
+rejected pending genuinely additive evidence.
+
+## Nested/frozen result
+
+Artifact on s1:
+`data/reports/vec_research/struct_wt_nested_frozen_20260726T073000Z`
+
+Selection used MU 2026-01-01 through 2026-04-01 only. The objective maximized
+candidate return minus the exact same frozen ladder's return. It selected and
+froze: rebound 1.0 ATR, pre-break lookback 4, maximum wait 20 completed 1h bars.
+
+| Frozen score | Structural candidate | Same ladder | B&H | Candidate minus ladder | Weighted TIM candidate / ladder | DD candidate / ladder |
+|---|---:|---:|---:|---:|---:|---:|
+| MU 2026-04-01—2026-07-25 | +359.24% | +1380.56% | +163.96% | -1021.32 pp | 52.42% / 89.40% | 19.17% / 27.33% |
+| VT 2025-09-01—2026-03-29 | -8.90% | -61.85% | +1.57% | +52.95 pp | 49.13% / 66.41% | 11.97% / 16.98% |
+
+MU still beats B&H by 2.191x, but achieves only 0.260x of the ladder return.
+VT improves a losing ladder and drawdown but remains below B&H. The candidate
+is regime-unstable and fails the actual ladder benchmark. Verdict: **REJECT**.
+No matrix or live promotion.

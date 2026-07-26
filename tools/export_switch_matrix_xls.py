@@ -306,8 +306,10 @@ _VERIFIED_DESCRIPTIONS = {
         "alpha -4.70pp, 0/6 valid folds beat B&H), with NO Tier-2 result. Keep it out of matrix "
         "promotion. A frozen profit-gated grid made 9/9 exits winners but beat B&H in only 1/4 "
         "validation folds (median alpha -1.04pp) because delayed E10 reclaim chased price. "
-        "Resting-reclaim execution remains research-only and the reentry obligation must stay "
-        "latched until reopened. off='None'; per-symbol."
+        "Resting-reclaim execution remains research-only and the reentry obligation must remain "
+        "latched until reopened. A MU structural probe made 2.0006x B&H but is rejected because "
+        "the comparable frozen ladder + 4h N30 E02 control made 6.4117x B&H. off='None'; "
+        "per-symbol."
     ),
     "SHORT_STRUCT_EXIT_TF": (
         "CURRENT DIRECT EXIT — selects the timeframe whose higher-high+higher-low break closes a "

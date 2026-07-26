@@ -144,3 +144,46 @@ This reaches the requested 2× threshold but is **discovery only** because the
 exit parameters were selected in the reported window. It cannot fill the matrix
 until parameters are frozen on an earlier slice and pass a later untouched
 slice (plus exact-engine parity).
+
+### Mandatory same-entry baseline comparison
+
+The 2×-B&H label is not a win. The source ladder walk-forward artifact
+`band_ladder_walkforward_20260725T203411Z_MU_LONG` already reports, for its
+frozen 2026 validation fold:
+
+- ladder + `E02_DONCHIAN` (4h, N=30): `+1,316.021%`;
+- B&H: `+205.252%`;
+- multiple: `6.4117×`;
+- weighted exposure: `77.092%`;
+- 10 exits and zero bars flat beyond mandatory reclaim.
+
+The structural/WT1 candidate therefore lost `906.09` percentage points versus
+the stronger comparable ladder result and retained only about `31.1%` of its
+return. It is **REJECTED relative to the current research control**, regardless
+of exceeding 2× B&H. The E02 artifact itself remains VEC research
+(`matrix_eligible=false`, `promotion_allowed=false`) until exact-engine replay,
+but every replacement exit must beat both side-and-hold and the strongest
+same-entry, same-window causal control. The next structural experiment should
+only be retained if it improves that control or demonstrates an explicitly
+accepted drawdown/exposure tradeoff on untouched data.
+
+## Nested/frozen same-ladder validation
+
+**Artifact:** `data/reports/vec_research/struct_wt_nested_frozen_20260726T073000Z`
+
+Exit parameters were selected on MU 2026-01-01 through 2026-04-01 by maximizing
+return relative to the exact same frozen ladder, then frozen without reselection:
+
+- rebound: `1 ATR`;
+- pre-break lookback: `4`;
+- maximum wait: `20` completed 1h bars.
+
+| Frozen score | Structural | Same ladder | B&H | Structural − ladder | Weighted TIM structural / ladder | DD structural / ladder |
+|---|---:|---:|---:|---:|---:|---:|
+| MU Apr–Jul | +359.24% | +1380.56% | +163.96% | -1021.32 pp | 52.42% / 89.40% | 19.17% / 27.33% |
+| VT universal | -8.90% | -61.85% | +1.57% | +52.95 pp | 49.13% / 66.41% | 11.97% / 16.98% |
+
+MU remained 2.191x B&H but retained only 0.260x of the actual ladder return.
+VT improved a losing ladder and drawdown but still lost money and trailed B&H.
+The apparent discovery benefit did not survive the later MU regime. Verdict:
+**REJECT / NO MATRIX / NO LIVE PROMOTION**.

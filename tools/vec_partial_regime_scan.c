@@ -25,14 +25,22 @@ typedef struct {
     double total_cost;
     double turnover;
     double saved_price_sum_pct;
+    double reclaim_overshoot_sum_pct;
+    double reclaim_overshoot_max_pct;
+    double missed_move_sum_pct;
+    double missed_move_max_pct;
     int partial_exit_count;
     int full_exit_count;
     int reentries;
     int reclaim_reentries;
+    int resting_reclaim_reentries;
     int lower_reentries;
     int positive_saved_reentries;
     int bars_flat_beyond_reclaim;
     int technical_exit_count;
+    int winning_exit_count;
+    int losing_exit_count;
+    int rejected_exit_signals;
     int insolvent;
 } PartialMetrics;
 
@@ -50,6 +58,8 @@ typedef struct {
     double reclaim_level;
     double pending_ref;
     double trail_stop;
+    double flat_extreme;
+    double flat_missed_pct;
     int gap_seen;
 } Tranche;
 
@@ -133,6 +143,8 @@ int vec_partial_regime_scan(
     double f1,
     double f2,
     double lower_gap_atr,
+    int resting_reclaim,
+    double min_profit_above_cost,
     double round_trip_cost_rate,
     double slip_rate,
     PartialMetrics *out
@@ -198,9 +210,13 @@ int vec_partial_regime_scan(
                     );
                 }
                 t[j].gap_seen = 0;
+                t[j].flat_extreme = fill;
+                t[j].flat_missed_pct = 0.0;
                 t[j].pending_exit = 0;
                 t[j].pending_ref = NAN;
                 out->technical_exit_count += 1;
+                if (net_dollars > 0.0) out->winning_exit_count += 1;
+                if (net_dollars < 0.0) out->losing_exit_count += 1;
                 out->total_cost += cost;
                 out->turnover += t[j].weight;
                 if (t[j].exit_kind == 1) {
@@ -223,14 +239,86 @@ int vec_partial_regime_scan(
                     : 100.0 * (fill - t[j].exit_px) / t[j].exit_px;
                 out->saved_price_sum_pct += saved;
                 if (saved > 0.0) out->positive_saved_reentries += 1;
+                out->missed_move_sum_pct += t[j].flat_missed_pct;
+                if (t[j].flat_missed_pct > out->missed_move_max_pct) {
+                    out->missed_move_max_pct = t[j].flat_missed_pct;
+                }
                 out->reentries += 1;
-                if (t[j].pending_entry == 1) out->reclaim_reentries += 1;
+                if (t[j].pending_entry == 1) {
+                    out->reclaim_reentries += 1;
+                    double overshoot = side > 0
+                        ? 100.0 * fmax(0.0, fill - t[j].reclaim_level)
+                            / t[j].reclaim_level
+                        : 100.0 * fmax(0.0, t[j].reclaim_level - fill)
+                            / t[j].reclaim_level;
+                    out->reclaim_overshoot_sum_pct += overshoot;
+                    if (overshoot > out->reclaim_overshoot_max_pct) {
+                        out->reclaim_overshoot_max_pct = overshoot;
+                    }
+                }
                 if (t[j].pending_entry == 2) out->lower_reentries += 1;
                 t[j].entry_equity = t[j].capital;
                 t[j].entry_px = fill;
                 t[j].active = 1;
                 t[j].trail_stop = NAN;
                 t[j].pending_entry = 0;
+                out->turnover += t[j].weight;
+            }
+        }
+
+        if (resting_reclaim) {
+            for (int j = 0; j < tranche_count; ++j) {
+                if (t[j].active || t[j].pending_entry || !(t[j].exit_px > 0.0)) {
+                    continue;
+                }
+                if (side > 0) {
+                    t[j].flat_extreme = fmax(t[j].flat_extreme, high_px[i]);
+                    t[j].flat_missed_pct = fmax(
+                        t[j].flat_missed_pct,
+                        100.0 * (t[j].flat_extreme - t[j].exit_px) / t[j].exit_px
+                    );
+                } else {
+                    t[j].flat_extreme = fmin(t[j].flat_extreme, low_px[i]);
+                    t[j].flat_missed_pct = fmax(
+                        t[j].flat_missed_pct,
+                        100.0 * (t[j].exit_px - t[j].flat_extreme) / t[j].exit_px
+                    );
+                }
+                int open_through = side > 0
+                    ? open_px[i] >= t[j].reclaim_level
+                    : open_px[i] <= t[j].reclaim_level;
+                int touched = side > 0
+                    ? high_px[i] >= t[j].reclaim_level
+                    : low_px[i] <= t[j].reclaim_level;
+                if (!open_through && !touched) continue;
+                double fill = open_through
+                    ? entry_fill(open_px[i], side, slip_rate)
+                    : entry_fill(t[j].reclaim_level, side, slip_rate);
+                double saved = side > 0
+                    ? 100.0 * (t[j].exit_px - fill) / t[j].exit_px
+                    : 100.0 * (fill - t[j].exit_px) / t[j].exit_px;
+                double overshoot = side > 0
+                    ? 100.0 * fmax(0.0, fill - t[j].reclaim_level)
+                        / t[j].reclaim_level
+                    : 100.0 * fmax(0.0, t[j].reclaim_level - fill)
+                        / t[j].reclaim_level;
+                out->saved_price_sum_pct += saved;
+                if (saved > 0.0) out->positive_saved_reentries += 1;
+                out->missed_move_sum_pct += t[j].flat_missed_pct;
+                if (t[j].flat_missed_pct > out->missed_move_max_pct) {
+                    out->missed_move_max_pct = t[j].flat_missed_pct;
+                }
+                out->reentries += 1;
+                out->reclaim_reentries += 1;
+                out->resting_reclaim_reentries += 1;
+                out->reclaim_overshoot_sum_pct += overshoot;
+                if (overshoot > out->reclaim_overshoot_max_pct) {
+                    out->reclaim_overshoot_max_pct = overshoot;
+                }
+                t[j].entry_equity = t[j].capital;
+                t[j].entry_px = fill;
+                t[j].active = 1;
+                t[j].trail_stop = NAN;
                 out->turnover += t[j].weight;
             }
         }
@@ -253,6 +341,11 @@ int vec_partial_regime_scan(
         for (int j = 0; j < tranche_count; ++j) {
             if (t[j].active || t[j].pending_entry || !(t[j].exit_px > 0.0)) continue;
             if (side > 0) {
+                t[j].flat_extreme = fmax(t[j].flat_extreme, high_px[i]);
+                t[j].flat_missed_pct = fmax(
+                    t[j].flat_missed_pct,
+                    100.0 * (t[j].flat_extreme - t[j].exit_px) / t[j].exit_px
+                );
                 if (close_px[i] > t[j].reclaim_level) {
                     out->bars_flat_beyond_reclaim += 1;
                 }
@@ -261,6 +354,11 @@ int vec_partial_regime_scan(
                     && low_px[i] <= t[j].exit_px - lower_gap_atr * t[j].exit_atr
                 ) t[j].gap_seen = 1;
             } else {
+                t[j].flat_extreme = fmin(t[j].flat_extreme, low_px[i]);
+                t[j].flat_missed_pct = fmax(
+                    t[j].flat_missed_pct,
+                    100.0 * (t[j].exit_px - t[j].flat_extreme) / t[j].exit_px
+                );
                 if (close_px[i] < t[j].reclaim_level) {
                     out->bars_flat_beyond_reclaim += 1;
                 }
@@ -272,7 +370,7 @@ int vec_partial_regime_scan(
             if (i + 1 < n) {
                 if (t[j].gap_seen && lower_event[i]) {
                     t[j].pending_entry = 2;
-                } else {
+                } else if (!resting_reclaim) {
                     int reclaimed = side > 0
                         ? close_px[i] >= t[j].reclaim_level
                         : close_px[i] <= t[j].reclaim_level;
@@ -302,9 +400,18 @@ int vec_partial_regime_scan(
         if (i + 1 >= n) continue;
         if (family == 12) {
             if (fast_event[i] && t[0].active && !t[0].pending_exit) {
-                t[0].pending_exit = 1;
-                t[0].exit_kind = 1;
-                t[0].pending_ref = fast_ref[i];
+                double raw_leg = (double)side
+                    * (close_px[i] - t[0].entry_px) / t[0].entry_px;
+                if (
+                    min_profit_above_cost < 0.0
+                    || raw_leg >= round_trip_cost_rate + min_profit_above_cost
+                ) {
+                    t[0].pending_exit = 1;
+                    t[0].exit_kind = 1;
+                    t[0].pending_ref = fast_ref[i];
+                } else {
+                    out->rejected_exit_signals += 1;
+                }
             }
             if (struct_event[i] && t[1].active && !t[1].pending_exit) {
                 t[1].pending_exit = 1;
@@ -357,6 +464,14 @@ int vec_partial_regime_scan(
         out->realized_full_gross += gross_dollars;
         out->realized_full_net += net_dollars;
         out->full_exit_count += 1;
+    }
+    for (int j = 0; j < tranche_count; ++j) {
+        if (!t[j].active && t[j].exit_px > 0.0) {
+            out->missed_move_sum_pct += t[j].flat_missed_pct;
+            if (t[j].flat_missed_pct > out->missed_move_max_pct) {
+                out->missed_move_max_pct = t[j].flat_missed_pct;
+            }
+        }
     }
 
     out->final_equity = total_equity(t, tranche_count, close_px[n - 1], side);

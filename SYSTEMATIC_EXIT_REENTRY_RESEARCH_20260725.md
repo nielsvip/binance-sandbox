@@ -28,6 +28,13 @@ All measured `dc_low4_5m` results remain preserved as gray diagnostic evidence
 and must be attributed back to the responsible entry family. They must not be
 repeatedly promoted or retested as profit-taking exits.
 
+Every new exit is compared against two floors: side-and-hold and the strongest
+causal same-entry/same-window control. On the current MU 2026 research window,
+the frozen ladder + 4h N=30 E02 control returned `+1,316.02%` (`6.4117×` B&H)
+at `77.09%` weighted exposure. A structural/WT1 probe returned `+409.93%`
+(`2.0006×` B&H) but is rejected because it destroyed most of the E02 control's
+return. Merely crossing an absolute multiple of B&H is insufficient.
+
 ## Executive conclusion
 
 The literature does **not** support a universal indicator that reliably identifies the exact top. It supports a more defensible sequence:

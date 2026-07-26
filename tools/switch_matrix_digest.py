@@ -684,9 +684,19 @@ def main() -> None:
         "+13.59% versus B&H +2.60%, but VT still trailed; this is evidence for the execution "
         "fix, not a universal promotion.",
         "- MU ladder discovery `struct_wt_resting_reclaim_probe_20260726T070000Z_MU_LONG` "
-        "reached +409.93% versus B&H +204.90% (2.0006×) at 52.3% weighted exposure. Exit "
-        "parameters were selected in-window, so it is discovery-only pending frozen later-slice "
-        "validation and exact-engine parity.",
+        "reached +409.93% versus B&H +204.90% (2.0006×) at 52.3% weighted exposure, but "
+        "is **REJECTED versus the same-entry research control**. The source frozen 2026 "
+        "ladder + 4h N=30 E02 fold returned +1,316.02% versus B&H +205.25% (6.4117×) "
+        "at 77.1% exposure. The structural candidate discarded 906.09pp of return; beating "
+        "B&H alone is not sufficient. Both paths remain VEC-only pending exact replay.",
+        "- Nested/frozen same-ladder validation "
+        "(`struct_wt_nested_frozen_20260726T073000Z`) selected only on MU Jan-Mar, "
+        "then scored MU Apr-Jul without reselection. Structural returned +359.24% "
+        "(2.191× B&H) but the same ladder returned +1,380.56% (8.420× B&H): "
+        "-1,021.32pp and only 0.260× of ladder return. The universal VT score improved "
+        "a losing ladder (-8.90% versus -61.85%) but remained below B&H (+1.57%). "
+        "Verdict **REJECT / NO MATRIX**; every exit candidate must beat both B&H and "
+        "the strongest same-entry/same-window causal control.",
         "- Reentry invariant for structural research: after an exit, the stored exit/top level and "
         "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
         "must never erase it or allow price to outrun the stored level without reopening. "
