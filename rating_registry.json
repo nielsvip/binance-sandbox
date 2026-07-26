@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T06:16:41.354772+00:00",
+  "timestamp": "2026-07-26T06:31:28.723671+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -38,9 +38,9 @@
     },
     {
       "symbol": "BTCUSDC",
-      "net_score": -12.1,
+      "net_score": -11.1,
       "long_score": 0,
-      "short_score": 12.1
+      "short_score": 11.1
     },
     {
       "symbol": "TIAUSDC",
@@ -182,12 +182,6 @@
     },
     {
       "symbol": "ARKMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -727,6 +721,12 @@
       "short_score": 0
     },
     {
+      "symbol": "APEUSDT",
+      "net_score": 11.3,
+      "long_score": 11.3,
+      "short_score": 0
+    },
+    {
       "symbol": "ONDOUSDT",
       "net_score": 13.1,
       "long_score": 13.1,
@@ -787,12 +787,18 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "APEUSDT",
+      11.3,
+      0.1452
+    ]
+  ],
   "top_shorts": [
     [
       "BTCUSDC",
-      12.1,
-      64271.0
+      11.1,
+      64220.4
     ]
   ],
   "hedge_usage": {

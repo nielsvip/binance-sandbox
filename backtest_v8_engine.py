@@ -30,7 +30,7 @@ import signal
 import sys
 import threading
 import time as _real_time_module
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -5729,6 +5729,26 @@ def main():
             "validation schedule. Default-off; never read by live processes."
         ),
     )
+    parser.add_argument(
+        "--research-struct-wt-exit",
+        action="store_true",
+        help=(
+            "BACKTEST ONLY: enable the causal completed-4h structural-break "
+            "then lower-price/lower-WT-top exit candidate."
+        ),
+    )
+    parser.add_argument(
+        "--research-struct-wt-side",
+        choices=["LONG", "SHORT"],
+        default="",
+        help="Required side isolation for --research-struct-wt-exit.",
+    )
+    parser.add_argument(
+        "--research-struct-wt-params",
+        type=str,
+        default="",
+        help="Optional JSON file containing StructuralWtParams overrides.",
+    )
     args = parser.parse_args()
     if args.seed_positions:
         os.environ["V8_SEED_POSITIONS_FILE"] = args.seed_positions
@@ -5736,6 +5756,13 @@ def main():
         os.environ["V8_RESEARCH_TOP_EXIT_SPEC"] = args.research_top_exit_spec
     if args.research_ladder_spec:
         os.environ["V8_RESEARCH_LADDER_SPEC"] = args.research_ladder_spec
+    if args.research_struct_wt_exit:
+        os.environ["V8_RESEARCH_STRUCT_WT_EXIT"] = "1"
+        os.environ["V8_RESEARCH_STRUCT_WT_SIDE"] = args.research_struct_wt_side
+        if args.research_struct_wt_params:
+            os.environ["V8_RESEARCH_STRUCT_WT_PARAMS"] = (
+                args.research_struct_wt_params
+            )
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
     if _SWEEP_MODE:
@@ -6307,6 +6334,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             (
                 "V8_RESEARCH_TOP_EXIT_REPLAY",
                 "V8_RESEARCH_BAND_LADDER_REPLAY",
+                "V8_RESEARCH_STRUCT_WT_RETEST_EXIT",
             )
         )
         _is_ladder_seed = reason == "V8_LADDER_INITIAL_BH_SEED" or _is_research_replay
@@ -7754,9 +7782,70 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _research_ladder_spec_path_t = os.environ.get(
         "V8_RESEARCH_LADDER_SPEC", ""
     ).strip()
-    if _research_spec_path_t and _research_ladder_spec_path_t:
+    _struct_wt_enabled_t = (
+        os.environ.get("V8_RESEARCH_STRUCT_WT_EXIT", "0") == "1"
+    )
+    _struct_wt_book_t = None
+    _struct_wt_side_t = os.environ.get(
+        "V8_RESEARCH_STRUCT_WT_SIDE", ""
+    ).upper()
+    _struct_wt_pending_t = {}
+    _struct_wt_rth_seq_t = -1
+    _struct_wt_stats_t = {
+        "signals": 0,
+        "fills": 0,
+        "canceled_flat": 0,
+        "future_htf_sources": 0,
+    }
+    if sum(
+        bool(value)
+        for value in (
+            _research_spec_path_t,
+            _research_ladder_spec_path_t,
+            _struct_wt_enabled_t,
+        )
+    ) > 1:
         raise RuntimeError(
-            "top-exit and band-ladder research replays are mutually exclusive"
+            "research top-exit, band-ladder, and structural-WT routes are "
+            "mutually exclusive"
+        )
+    if _struct_wt_enabled_t:
+        if _struct_wt_side_t not in {"LONG", "SHORT"}:
+            raise RuntimeError(
+                "V8_RESEARCH_STRUCT_WT_SIDE must be LONG or SHORT"
+            )
+        if len(stores) != 1:
+            raise RuntimeError(
+                "structural-WT research requires exactly one symbol"
+            )
+        from vec_paths.structural_wt_retest_exit import (
+            CompletedBar,
+            StructuralWtParams,
+            StructuralWtRetestExitBook,
+            next_rth_fill_price,
+        )
+
+        _struct_wt_params_payload_t = {}
+        _struct_wt_params_path_t = os.environ.get(
+            "V8_RESEARCH_STRUCT_WT_PARAMS", ""
+        ).strip()
+        if _struct_wt_params_path_t:
+            _struct_wt_params_payload_t = json.loads(
+                Path(_struct_wt_params_path_t).read_text()
+            )
+        _struct_wt_params_t = StructuralWtParams(
+            **_struct_wt_params_payload_t
+        )
+        _struct_wt_book_t = StructuralWtRetestExitBook(
+            _struct_wt_params_t
+        )
+        print(
+            "V8_RESEARCH_STRUCT_WT_INIT: "
+            f"symbol={next(iter(stores))} side={_struct_wt_side_t} "
+            f"arm_tf={_struct_wt_params_t.arm_tf} "
+            f"confirm_tf={_struct_wt_params_t.confirm_tf} "
+            f"params={asdict(_struct_wt_params_t)}",
+            flush=True,
         )
     if _research_spec_path_t:
         from tools.v8_research_top_exit_adapter import TopExitReplayAdapter
@@ -8003,6 +8092,196 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if _pos.gain > getattr(_pos, 'max_gain', 0):
                         _pos.max_gain = _pos.gain
         if not _sim_irth(): continue
+        if _struct_wt_book_t is not None:
+            _struct_wt_rth_seq_t += 1
+            _struct_wt_symbol_t = next(iter(stores))
+            _struct_wt_store_t = stores[_struct_wt_symbol_t]
+            _struct_wt_idx_t = _struct_wt_store_t.ts_to_idx[int(ts)]
+            _struct_wt_pk_t = (
+                f"{account_key}:{_struct_wt_symbol_t}_{_struct_wt_side_t}"
+            )
+            _struct_wt_pos_t = (
+                manager.position_manager.positions.get(_struct_wt_pk_t)
+                if manager.position_manager
+                else None
+            )
+            _struct_wt_qty_t = abs(
+                float(
+                    getattr(
+                        _struct_wt_pos_t,
+                        "positionAmt",
+                        getattr(_struct_wt_pos_t, "quantity", 0.0),
+                    )
+                    or 0.0
+                )
+            ) if _struct_wt_pos_t is not None else 0.0
+            _struct_wt_pending_row_t = _struct_wt_pending_t.get(
+                _struct_wt_pk_t
+            )
+            if _struct_wt_pending_row_t is not None:
+                if _struct_wt_qty_t <= 1e-9:
+                    _struct_wt_stats_t["canceled_flat"] += 1
+                    _struct_wt_pending_t.pop(_struct_wt_pk_t, None)
+                else:
+                    if _struct_wt_rth_seq_t != int(
+                        _struct_wt_pending_row_t["fill_rth_seq"]
+                    ):
+                        raise RuntimeError(
+                            "V8_RESEARCH_STRUCT_WT signal did not fill on "
+                            "the exact next RTH row"
+                        )
+                    _struct_wt_raw_open_t = float(
+                        _struct_wt_store_t.get(
+                            "open_5m",
+                            _struct_wt_idx_t,
+                            _struct_wt_store_t.get(
+                                "open", _struct_wt_idx_t, 0.0
+                            ),
+                        )
+                    )
+                    _struct_wt_fill_t = next_rth_fill_price(
+                        _struct_wt_raw_open_t,
+                        _struct_wt_side_t,
+                        float(
+                            os.environ.get(
+                                "V8_RESEARCH_STRUCT_WT_SLIPPAGE_BPS", "2.0"
+                            )
+                        ),
+                    )
+                    _struct_wt_result_t = await _v8_execute_trade_action(
+                        account_key=account_key,
+                        position_key=_struct_wt_pk_t,
+                        symbol=_struct_wt_symbol_t,
+                        quantity=_struct_wt_qty_t,
+                        current_price=_struct_wt_fill_t,
+                        side=(
+                            "SELL"
+                            if _struct_wt_side_t == "LONG"
+                            else "BUY"
+                        ),
+                        position_side=_struct_wt_side_t,
+                        action="CLOSE",
+                        reason=_struct_wt_pending_row_t["reason"],
+                        is_full_close=True,
+                        is_hedge=False,
+                    )
+                    if _struct_wt_result_t != "SUCCESS":
+                        raise RuntimeError(
+                            "V8_RESEARCH_STRUCT_WT exact next-open close "
+                            f"refused: {_struct_wt_result_t}"
+                        )
+                    _struct_wt_emitted_t = (
+                        executed_trades[-1] if executed_trades else {}
+                    )
+                    if not str(
+                        _struct_wt_emitted_t.get("reason", "")
+                    ).startswith("V8_RESEARCH_STRUCT_WT_RETEST_EXIT"):
+                        raise RuntimeError(
+                            "V8_RESEARCH_STRUCT_WT engine did not emit "
+                            "requested close"
+                        )
+                    _struct_wt_emitted_t.update(
+                        {
+                            "research_signal_ts": int(
+                                _struct_wt_pending_row_t["signal_ts"]
+                            ),
+                            "research_source_ts": int(
+                                _struct_wt_pending_row_t["source_ts"]
+                            ),
+                            "research_fill_rth_latency": 1,
+                            "research_side_isolated": True,
+                        }
+                    )
+                    _struct_wt_stats_t["fills"] += 1
+                    _struct_wt_pending_t.pop(_struct_wt_pk_t, None)
+                    # Do not permit a same-row reopen. Mandatory reentry starts
+                    # evaluating on the following RTH row and remains pending
+                    # under the normal persistent obligation.
+                    continue
+
+            for _struct_wt_tf_t in (
+                _struct_wt_params_t.arm_tf,
+                _struct_wt_params_t.confirm_tf,
+            ):
+                _struct_wt_source_ts_t = int(
+                    _struct_wt_store_t.get(
+                        f"timestamp_{_struct_wt_tf_t}",
+                        _struct_wt_idx_t,
+                        0,
+                    )
+                    or 0
+                )
+                if _struct_wt_source_ts_t <= 0:
+                    continue
+                try:
+                    _struct_wt_bar_t = CompletedBar(
+                        timeframe=_struct_wt_tf_t,
+                        source_ts=_struct_wt_source_ts_t,
+                        observed_ts=int(ts),
+                        high=float(
+                            _struct_wt_store_t.get(
+                                f"high_{_struct_wt_tf_t}",
+                                _struct_wt_idx_t,
+                                0.0,
+                            )
+                        ),
+                        low=float(
+                            _struct_wt_store_t.get(
+                                f"low_{_struct_wt_tf_t}",
+                                _struct_wt_idx_t,
+                                0.0,
+                            )
+                        ),
+                        close=float(
+                            _struct_wt_store_t.get(
+                                f"close_{_struct_wt_tf_t}",
+                                _struct_wt_idx_t,
+                                0.0,
+                            )
+                        ),
+                        wt1=float(
+                            _struct_wt_store_t.get(
+                                f"wt1_{_struct_wt_tf_t}",
+                                _struct_wt_idx_t,
+                                0.0,
+                            )
+                        ),
+                        atr=float(
+                            _struct_wt_store_t.get(
+                                f"atr_{_struct_wt_tf_t}",
+                                _struct_wt_idx_t,
+                                0.0,
+                            )
+                        ),
+                    )
+                    _struct_wt_signal_t = _struct_wt_book_t.update(
+                        symbol=_struct_wt_symbol_t,
+                        position_side=_struct_wt_side_t,
+                        active=_struct_wt_qty_t > 1e-9,
+                        bar=_struct_wt_bar_t,
+                    )
+                except ValueError as _struct_wt_error_t:
+                    if "future" in str(_struct_wt_error_t).lower():
+                        _struct_wt_stats_t["future_htf_sources"] += 1
+                        raise RuntimeError(
+                            "V8_RESEARCH_STRUCT_WT future completed HTF "
+                            f"input: {_struct_wt_error_t}"
+                        ) from _struct_wt_error_t
+                    # ATR/price warmup bars are incomplete research inputs,
+                    # not signals. They remain visible in the NPZ contract.
+                    _struct_wt_signal_t = None
+                if _struct_wt_signal_t is not None:
+                    if _struct_wt_pk_t in _struct_wt_pending_t:
+                        raise RuntimeError(
+                            "V8_RESEARCH_STRUCT_WT duplicate pending exit"
+                        )
+                    _struct_wt_pending_t[_struct_wt_pk_t] = {
+                        "signal_ts": int(ts),
+                        "source_ts": int(_struct_wt_signal_t.source_ts),
+                        "fill_rth_seq": _struct_wt_rth_seq_t + 1,
+                        "reason": _struct_wt_signal_t.reason,
+                    }
+                    _struct_wt_stats_t["signals"] += 1
         if _research_ladder_adapter_t is not None:
             _ladder_replay_pk_t = (
                 f"{account_key}:{_research_ladder_adapter_t.symbol}_"
@@ -9101,6 +9380,75 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if float(row.get("max_overshoot_pct", 0) or 0) > _reentry_material_pct_t
         ),
     })
+    if _struct_wt_book_t is not None:
+        _struct_wt_closes_t = [
+            row
+            for row in executed_trades
+            if str(row.get("reason", "")).startswith(
+                "V8_RESEARCH_STRUCT_WT_RETEST_EXIT"
+            )
+        ]
+        _struct_wt_audit_t = {
+            "status": (
+                "PASS"
+                if (
+                    _struct_wt_stats_t["signals"]
+                    == _struct_wt_stats_t["fills"]
+                    and not _struct_wt_pending_t
+                    and _struct_wt_stats_t["future_htf_sources"] == 0
+                    and all(
+                        row.get("position_side") == _struct_wt_side_t
+                        and int(
+                            row.get("research_fill_rth_latency", -1)
+                        )
+                        == 1
+                        and "MANDATORY_REENTRY"
+                        in str(row.get("reason", ""))
+                        for row in _struct_wt_closes_t
+                    )
+                )
+                else "FAIL"
+            ),
+            "symbol": next(iter(stores)),
+            "position_side": _struct_wt_side_t,
+            "arm_tf": _struct_wt_params_t.arm_tf,
+            "confirm_tf": _struct_wt_params_t.confirm_tf,
+            "params": asdict(_struct_wt_params_t),
+            "signals": _struct_wt_stats_t["signals"],
+            "fills": _struct_wt_stats_t["fills"],
+            "canceled_flat": _struct_wt_stats_t["canceled_flat"],
+            "future_htf_sources": _struct_wt_stats_t[
+                "future_htf_sources"
+            ],
+            "pending_at_end": len(_struct_wt_pending_t),
+            "next_rth_open_fill": True,
+            "side_isolated": True,
+            "mandatory_reentry_tagged": True,
+            "matrix_written": False,
+            "promotion_allowed": False,
+        }
+        _struct_wt_audit_path_t = os.environ.get(
+            "V8_RESEARCH_STRUCT_WT_AUDIT_FILE", ""
+        ).strip()
+        if _struct_wt_audit_path_t:
+            _struct_wt_audit_out_t = Path(_struct_wt_audit_path_t)
+            _struct_wt_audit_out_t.parent.mkdir(parents=True, exist_ok=True)
+            _struct_wt_audit_out_t.write_text(
+                json.dumps(_struct_wt_audit_t, sort_keys=True, indent=2)
+                + "\n"
+            )
+        print(
+            "V8_RESEARCH_STRUCT_WT_AUDIT: "
+            + json.dumps(_struct_wt_audit_t, sort_keys=True),
+            flush=True,
+        )
+        _extra_result_t.update(
+            {
+                "struct_wt_signals": _struct_wt_stats_t["signals"],
+                "struct_wt_fills": _struct_wt_stats_t["fills"],
+                "struct_wt_pending": len(_struct_wt_pending_t),
+            }
+        )
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
@@ -9133,6 +9481,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         and _research_ladder_audit_t["status"] != "PASS"
     ):
         raise RuntimeError("V8_RESEARCH_LADDER exact replay audit failed")
+    if (
+        _struct_wt_book_t is not None
+        and _struct_wt_audit_t["status"] != "PASS"
+    ):
+        raise RuntimeError("V8_RESEARCH_STRUCT_WT exact route audit failed")
 
 
 if __name__ == "__main__":

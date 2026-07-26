@@ -63,7 +63,7 @@ static void update_drawdown(double equity, double *peak, double *max_dd_pct) {
 int vec_top_exit_scan(
     int n,
     int side,
-    int exit_mode,       /* 1 Chandelier; 2 event; 3 MFE-activated lock */
+    int exit_mode,       /* 1 Chandelier; 2 event; 3 MFE lock; 4 entry-frozen stop */
     int reentry_mode,    /* 0 none; 1 E10; 2 E11 then E10; 3 E11 only */
     const int64_t *ts,
     const double *open_px,
@@ -234,6 +234,18 @@ int vec_top_exit_scan(
                         ? close_px[i] < trail_stop
                         : close_px[i] > trail_stop;
                 }
+            } else if (
+                exit_mode == 4
+                && isfinite(raw_stop[i]) && raw_stop[i] > 0.0
+            ) {
+                /*
+                 * Existing DC_LOW4_STOP semantics: freeze the indicator level
+                 * when a position/re-entry becomes active; do not trail it.
+                 */
+                if (!isfinite(trail_stop)) trail_stop = raw_stop[i];
+                should_exit = side > 0
+                    ? close_px[i] <= trail_stop
+                    : close_px[i] >= trail_stop;
             }
             if (should_exit && i + 1 < n) {
                 pending_exit = 1;

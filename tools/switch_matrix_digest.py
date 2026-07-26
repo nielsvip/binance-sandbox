@@ -153,6 +153,13 @@ def verdict(row: sqlite3.Row) -> str:
         return "INCOMPLETE METRICS"
     if trades is None or trades < 1:
         return "ZERO-TRADE / INVALID"
+    if row["param"] in {
+        "DC_LOW4_STOP_ENABLED",
+        "R1_DC_LOW4_3M_EMERGENCY_ENABLED",
+    }:
+        if delta <= 0:
+            return "GRAY: ENTRY-QUALITY FAILURE / LOSING CHURN"
+        return "DIAGNOSTIC ONLY: FAILED-ENTRY FILTER"
     if delta > 0:
         if trades <= 1 or (tim is not None and tim >= 99.5):
             return "B&H FLOOR ONLY"
@@ -649,6 +656,23 @@ def main() -> None:
         "",
         "Coverage counts exact `(switch,value)` cells in the current actionable manifest. "
         "VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.",
+        "",
+        "## Path interpretation guardrails",
+        "",
+        "- `DC_LOW4_STOP_ENABLED` and stock `R1_DC_LOW4_3M_EMERGENCY_ENABLED` "
+        "(legacy name; actual stock level is `dc_low4_5m`/`dc_high4_5m`) are "
+        "**ENTRY-QUALITY FAILURE DIAGNOSTICS / LOSING-CHURN EXIT EVIDENCE**. They close a "
+        "recently failed entry at a tight loss; they are not top/profit-taking exits. "
+        "Below-B&H observations stay gray and preserved so they are not blindly retested.",
+        "- The current `LONG_STRUCT_EXIT_TF` / `SHORT_STRUCT_EXIT_TF` path closes immediately "
+        "on its selected structural break. The proposed replacement is **UNTESTED** and has "
+        "no matrix result: break arms an obligation; a favorable rebound reaches a WT1 "
+        "top for LONG (WT1 bottom for SHORT); only a subsequent lower price for LONG "
+        "(higher price for SHORT) confirms the close.",
+        "- Reentry invariant for that proposal: after an exit, the stored exit/top level and "
+        "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
+        "must never erase it or allow price to outrun the stored level without reopening. "
+        "This is a design requirement, not a measured performance claim.",
         "",
         "## New ladder / entry / exit / interaction strategy results",
         "",

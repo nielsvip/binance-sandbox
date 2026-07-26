@@ -111,3 +111,18 @@ def test_load_latest_partial_regime_walk_forward(tmp_path, monkeypatch):
     rows = digest.load_latest_partial_regime_walk_forward(("VT_LONG",))
 
     assert rows["VT_LONG"]["run_id"] == "vt-partial"
+
+
+def test_dc_low4_below_bh_is_diagnostic_gray_verdict():
+    row = {
+        "validation_status": "PASS",
+        "reentry_violations": 0,
+        "inert": 0,
+        "trades": 31,
+        "gain_per_mo": 0.1,
+        "delta_gain_mo_vs_bh": -26.0,
+        "time_in_mkt_pct": 0.39,
+        "param": "DC_LOW4_STOP_ENABLED",
+    }
+
+    assert digest.verdict(row) == "GRAY: ENTRY-QUALITY FAILURE / LOSING CHURN"

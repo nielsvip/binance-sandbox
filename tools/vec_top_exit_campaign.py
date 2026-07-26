@@ -993,6 +993,20 @@ def _reference_replay(
                                 if side > 0
                                 else data.close[i] > trail
                             )
+            if (
+                candidate.exit_mode == 4
+                and math.isfinite(candidate.raw_stop[i])
+                and candidate.raw_stop[i] > 0
+            ):
+                # Existing DC_LOW4_STOP path freezes the indicator level at
+                # entry/re-entry; it is not a moving Donchian exit.
+                if not math.isfinite(trail):
+                    trail = candidate.raw_stop[i]
+                should_exit = (
+                    data.close[i] <= trail
+                    if side > 0
+                    else data.close[i] >= trail
+                )
             if should_exit and i + 1 < n:
                 ref = (
                     position_extreme

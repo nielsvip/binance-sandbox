@@ -279,6 +279,18 @@ _VERIFIED_DESCRIPTIONS = {
         "RECONNECT — intended Donchian rejection lookback, but no live or engine read site "
         "exists; it cannot affect trades until wired."
     ),
+    "DC_LOW4_STOP_ENABLED": (
+        "ENTRY-QUALITY FAILURE DIAGNOSTIC / LOSING-CHURN EXIT EVIDENCE — closes a LONG below "
+        "dc_low4_5m (SHORT above dc_high4_5m). This is a tight loss/emergency exit used to "
+        "expose entries that fail almost immediately; it is NOT a recommended top or "
+        "profit-taking exit. Below-B&H measurements remain gray discard evidence; off=False."
+    ),
+    "R1_DC_LOW4_3M_EMERGENCY_ENABLED": (
+        "ENTRY-QUALITY FAILURE DIAGNOSTIC / LOSING-CHURN EXIT EVIDENCE — despite the legacy "
+        "'3M' config name, stocks use frozen dc_low4_5m/dc_high4_5m. A breach closes the failed "
+        "entry at a loss; it is NOT a top/profit-taking path. Use its results to diagnose entry "
+        "quality and churn, never to recommend profit capture; off=False; per-symbol."
+    ),
     "PARTIAL_PROFIT_LOCK_ENABLED": (
         "EXIT — reduces part of a winner, installs a breakeven-buffer stop, then may close the "
         "remainder; more order events, but completed-trade/exposure effect is empirical; off=False."
@@ -288,10 +300,16 @@ _VERIFIED_DESCRIPTIONS = {
         "more closes/lower exposure; off=False; currently global-only and engine parity needs review."
     ),
     "LONG_STRUCT_EXIT_TF": (
-        "EXIT — timeframe for long lower-high/lower-low structural-break closes; off='None'; per-symbol."
+        "CURRENT DIRECT EXIT — selects the timeframe whose lower-high+lower-low break closes a "
+        "LONG immediately. Do not confuse this with the PROPOSED/UNTESTED armed-top sequence: "
+        "break arms only, rebound reaches a WT1 top, then a subsequent lower price confirms exit; "
+        "the reentry obligation must remain latched until reopened. off='None'; per-symbol."
     ),
     "SHORT_STRUCT_EXIT_TF": (
-        "EXIT — timeframe for short higher-high/higher-low structural-break closes; off='None'; per-symbol."
+        "CURRENT DIRECT EXIT — selects the timeframe whose higher-high+higher-low break closes a "
+        "SHORT immediately. Proposed/unmeasured mirror: break arms only, rebound reaches a WT1 "
+        "bottom, then a subsequent higher price confirms exit; reentry remains latched until "
+        "reopened. off='None'; per-symbol."
     ),
     "GOLDEN_RULE_REQUIRE_ACTIVATION": (
         "ENTRY CONDITION — requires the Golden Rule activation state before the qualifying entry; "
@@ -306,6 +324,11 @@ _VERIFIED_DESCRIPTIONS = {
         "ENTRY FILTER — requires a Bollinger pullback condition before entry; enabling can reduce "
         "entries, while disabling admits more signals; off=False; signal-dependent."
     ),
+}
+
+_DC_LOW4_DIAGNOSTIC_PARAMS = {
+    "DC_LOW4_STOP_ENABLED",
+    "R1_DC_LOW4_3M_EMERGENCY_ENABLED",
 }
 
 
@@ -335,6 +358,34 @@ def describe_knob(param):
         effect = f"controls {words}; trade-count direction must be measured"
     off_text = f"; off={off!r}" if off is not None else ""
     return f"{group} {role.upper()} — {effect}{off_text}; {scope}."
+
+
+def matrix_cell_state(param, meta):
+    """Color one measured cell without losing diagnostic evidence."""
+    if meta is None:
+        return None
+    bh_delta = meta.get("bh_delta")
+    gain = meta.get("gain_per_mo")
+    trades = meta.get("trades")
+    if (
+        (trades is not None and trades < 1)
+        or meta.get("same_value_fingerprint")
+        or meta.get("validation_status") != "PASS"
+        or (meta.get("real_closes") or 0) < 1
+        or (meta.get("reentry_violations") or 0) > 0
+    ):
+        return "red"
+    if bh_delta is None:
+        return "white"
+    if abs(float(bh_delta)) <= 0.00005:
+        return "red"
+    if float(bh_delta) > 0:
+        return "green"
+    if param in _DC_LOW4_DIAGNOSTIC_PARAMS:
+        return "gray"
+    if gain is not None and float(gain) > 0:
+        return "white"
+    return "gray"
 
 
 def _split_main_sub(row):
@@ -459,31 +510,12 @@ def main():
             if vals[c] is None:
                 states.append(None)
                 continue
-            bh_delta = meta.get("bh_delta") if meta else None
-            gain = meta.get("gain_per_mo") if meta else None
-            trades = meta.get("trades") if meta else None
             # Red = equal to B&H / not wired. Zero-trade rows are also red: they are a bug,
             # never a safe result. Fingerprint-identical values are red even if rounded deltas
             # differ. Green = beats the floor. White = below B&H but still positive/viable.
-            # Gray = shittier/non-viable and should be discarded.
-            if (
-                (trades is not None and trades < 1)
-                or (meta and meta.get("same_value_fingerprint"))
-                or (meta and meta.get("validation_status") != "PASS")
-                or (meta and (meta.get("real_closes") or 0) < 1)
-                or (meta and (meta.get("reentry_violations") or 0) > 0)
-            ):
-                states.append("red")
-            elif bh_delta is None:
-                states.append("white")
-            elif abs(float(bh_delta)) <= 0.00005:
-                states.append("red")
-            elif float(bh_delta) > 0:
-                states.append("green")
-            elif gain is not None and float(gain) > 0:
-                states.append("white")
-            else:
-                states.append("gray")
+            # Gray = shittier/non-viable and should be discarded. dc_low4_5m
+            # below-B&H diagnostics are gray even when nominal gain stays >0.
+            states.append(matrix_cell_state(param, meta))
         matrix_states.append(states)
         coverage.append([param, val, status, len(got), n_inert,
                          sum(1 for v in got.values() if v > 0), sum(1 for v in got.values() if v < 0)])

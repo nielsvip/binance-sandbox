@@ -4,6 +4,30 @@
 **Scope:** Stocks first (`MU_LONG`, `VT_LONG`, `HAO_SHORT`), then the remaining tradeable keys and the `ez_` crypto universe  
 **Purpose:** Turn reputable trend, stop, market-structure, divergence, and channel concepts into causal algorithms that can be swept quickly. This is research input, not evidence that any candidate already works in this system.
 
+## Decision update — 2026-07-26
+
+`dc_low4_5m`/`dc_high4_5m` is no longer a primary exit candidate. An immediate
+close at that breach is treated as **entry-quality failure evidence**: the entry
+was too early or insufficiently filtered. Optimizing the breach as an exit
+creates repeated small realized losses and reentry churn.
+
+The priority structural candidate is now:
+
+1. A completed higher-timeframe lower low / structural break arms a LONG exit
+   obligation; the SHORT path is the exact mirror.
+2. The break itself does not close the position.
+3. Wait for a later rebound whose confirmed price top and WT1 top are both
+   below their pre-break tops.
+4. Exit only after the rebound top is causally confirmed, at the next executable
+   open.
+5. Persist the exit/top price and mandatory reentry obligation. WT/stochastic
+   opposition on more than one timeframe may postpone reentry, but may never
+   erase it.
+
+All measured `dc_low4_5m` results remain preserved as gray diagnostic evidence
+and must be attributed back to the responsible entry family. They must not be
+repeatedly promoted or retested as profit-taking exits.
+
 ## Executive conclusion
 
 The literature does **not** support a universal indicator that reliably identifies the exact top. It supports a more defensible sequence:
@@ -608,4 +632,3 @@ These are falsifiable. If Stage 0 fails, stop parameter optimization and repair 
 - Later work has challenged how much apparent time-series momentum exceeds simple estimators, so the 2012 evidence is not a license to assume trend rules work in every sample. [Time series momentum: Is it there?, *Journal of Financial Economics* (2020)](https://www.sciencedirect.com/science/article/abs/pii/S0304405X19301953)
 - Every extra exit creates another opportunity to leave a winning trend. An exit path should be retained only when its incremental, walk-forward attribution is positive.
 - “Near the top” should be evaluated by giveback and missed-upside distributions, never by a hindsight label that awards the exact future maximum.
-
