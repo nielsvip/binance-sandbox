@@ -1395,3 +1395,59 @@ those final values were not used for selection. Two feasible uniform bands
 only reduce already-high TIM (ASTS/SNDK); they do not solve the raise-low
 problem. Beam evidence is in
 `ENTRY_COMPONENT_TIM_REGIME_BEAM_20260726.{json,md}`.
+
+### §15.17 — expanded causal bottom-exit campaign (2026-07-26)
+
+The first-break/DC-low path remains a diagnostic control, not a profit exit.
+The expanded campaign kept the accepted ladder request schedule frozen and
+screened three separate books over the top-10 LONG and bottom-10 SHORT keys:
+
+- A: 444 completed-bar protective settings per key, adding 15m/1h/4h/D
+  adverse arms, 5m/15m/1h/4h ATR/STDEV/DC trails, and 0/0.25/0.5 ATR break
+  buffers;
+- B: 624 compiled delayed lower-price/WT-top settings per key, adding 15m and
+  D arms, three-bar confirmation, 0.125–1.5 ATR rebound, and 6–72 hour waits;
+- C: exactly eight B bases frozen from discovery evidence only, each crossed
+  with 12 separately counted emergency brakes (96 settings per key).
+
+The C shortlist is protected by a regression that mutates all untouched-final
+metrics and proves the eight selected base hashes and ranks cannot change.
+Promotion now requires 70–80% exposure-weighted TIM in every fold, as well as
+positive alpha versus both side-specific $2,000 B&H and identical-entry E02,
+actual exits, solvency/capacity, causal HTF timestamps, persistent reclaim,
+and compiled/Python parity where applicable.
+
+All 20 keys completed. The campaign evaluated 8,880 A, 12,480 B, and 1,920 C
+candidates. Aggregate screens found 1,851 A, 2,276 B, and 432 C rows above
+both B&H and E02, but zero candidate passed every discovery fold; exact replay
+therefore remains empty. Several selected final rows reached the requested
+2–10x B&H and 70–80% TIM, but none also beat its identical-entry E02 control.
+These rows remain gray rather than being discarded, because they identify
+useful exit geometry for the entry/exit beam without leaking final-fold
+selection.
+
+Emergency brakes were not a general solution. Every brake family had a
+negative mean paired validation delta versus its exact B base. The least
+damaging broad variants were ATR 6x and continued-adverse 8 bars, but even
+those averaged -4.68pp and -4.90pp respectively. Routine STDEV, MAX_WAIT, and
+short continued-adverse brakes were materially worse, so family C remains a
+rare-collapse diagnostic only.
+
+Jobs 175/176/177 received 60 append-only `GRAY_REJECTED` rows after backup
+`queue.db.bak_bottom_extended_20260726T231858Z`; no historical row was
+replaced. The human report is `BOTTOM_EXTENDED_RESULTS_20260726.md`, the
+machine report is
+`data/reports/vec_research/BOTTOM_EXTENDED_RESULTS_20260726.json`, and the
+receipt is
+`data/reports/path_fleet/bottom_extended_ingest_20260726T231858Z.json`.
+
+The explicit starting-key follow-up exposed two data/control blockers. HAO's
+current NPZ is quarantined because of a 137.2% one-bar discontinuity, unusable
+daily Stoch coverage, and missing 4h/D regression-band fields; it must be
+regenerated before any honest HAO_SHORT matrix result. VT's old accepted
+artifact has NPZ hash drift. Regenerating the current VT_LONG control
+completed, but the frozen ladder itself failed its control gate
+(-15.36% fold-sum return versus +13.79% B&H), so any subsequent VT exit screen
+is research evidence over a failed entry baseline and cannot be promoted. The
+1,164-candidate VT follow-up had no survivor: the selected A/B/C final returns
+were -63.62%/-7.04%/-12.42% versus +1.57% B&H, with only 42.70–55.12% TIM.
