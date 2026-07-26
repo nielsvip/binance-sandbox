@@ -279,15 +279,19 @@ class StructuralWtExitBookAdapter:
         self.params = params
         self.side = side.upper()
         self.book = StructuralWtRetestExitBook(params)
-        self.events: dict[int, list[CompletedBar]] = {}
+        self.events: dict[int, list[tuple[CompletedBar, str]]] = {}
         self.wt1_at: dict[tuple[str, int], float] = {}
-        for tf in (params.arm_tf, params.confirm_tf):
+        for tf, role in (
+            (params.arm_tf, "ARM"),
+            (params.confirm_tf, "CONFIRM"),
+        ):
             h = htfs[tf]
             values = _completed_field(data, h, f"wt1_{tf}")
             for slot, row in enumerate(h.event_index):
                 row = int(row)
                 self.events.setdefault(row, []).append(
-                    CompletedBar(
+                    (
+                        CompletedBar(
                         timeframe=tf,
                         source_ts=int(h.source_ts[slot]),
                         observed_ts=int(data.ts[row]),
@@ -296,20 +300,23 @@ class StructuralWtExitBookAdapter:
                         close=float(h.close[slot]),
                         wt1=float(values[slot]),
                         atr=float(h.atr[slot]),
+                        ),
+                        role,
                     )
                 )
         for rows in self.events.values():
-            rows.sort(key=lambda bar: 0 if bar.timeframe == params.arm_tf else 1)
+            rows.sort(key=lambda item: 0 if item[1] == "ARM" else 1)
 
     def update(self, row: int, *, active: bool) -> ExitDecision | None:
         candidate = None
-        for bar in self.events.get(row, ()):
+        for bar, role in self.events.get(row, ()):
             candidate = (
                 self.book.update(
                     symbol=self.data.symbol,
                     position_side=self.side,
                     active=active,
                     bar=bar,
+                    role=role,
                 )
                 or candidate
             )

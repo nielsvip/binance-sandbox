@@ -19,6 +19,17 @@ quarantined because the B&H forensic found structural input and accounting
 defects; reactivating them now would add invalid cells. They are to be restored
 after the no-lookahead/data-preflight/side-isolation regression gate passes.
 
+Operational update, 2026-07-26 18:12 UTC: at the user's explicit request, the
+five S1 crontab lines marked `STOPPED_FOR_TESTING` or
+`LADDER_SUSPENDED_20260722` were re-enabled while the repaired c2 matrix
+continues. A timestamped pre-change backup is
+`/home/niels/logs/crontab_before_reactivate_20260726_1812.txt`. The unrelated
+Tier-2 sweep line marked only `DISABLED for Tier-2 sweep` was not changed.
+`tools/watchdog_reenable_check.py` still reports 0/113 keys at 99.5% matrix
+completion and 21/113 keys without a per-symbol overrides block, so output from
+the restored legacy lanes remains non-authoritative and must not overwrite or
+promote repaired c2 ENGINE evidence.
+
 `tools/results_digest_email.py` is scheduled on S1 at 00:00 and 12:00 UTC and
 now embeds `SWITCH_MATRIX_TRB_DIGEST.md`. Rendering is verified. Gmail delivery
 was restored on 2026-07-25: the 14:56 UTC forced digest fell back from SSL/465

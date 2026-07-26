@@ -223,12 +223,24 @@ def _build_signals(
                 & (stoch[1:] >= 100.0 - curve.stoch_low)
                 & (stoch[1:] < stoch_prev[1:])
             )
+        wt1 = np.asarray(z[f"wt1_{tf}"], dtype=np.float64)[full_event]
+        wt2 = np.asarray(z[f"wt2_{tf}"], dtype=np.float64)[full_event]
+        wt_state = wt1 > wt2 if is_long else wt1 < wt2
         if curve.trigger == "green":
             event = green
         elif curve.trigger == "structure":
             event = structure
-        else:
+        elif curve.trigger == "union":
             event = green | structure
+        elif curve.trigger == "wt_state":
+            # Persistent but still causal: evaluate only when a newly
+            # completed D/4h/1h bar first becomes available. Target semantics
+            # can restore the requested rung without manufacturing 5m events.
+            event = wt_state
+        elif curve.trigger == "union_state":
+            event = green | structure | wt_state
+        else:
+            raise ValueError(f"unsupported ladder trigger: {curve.trigger!r}")
         event &= causal
 
         raw_pb = np.asarray(z[f"lrL_pct_b_{tf}"], dtype=np.float64)[full_event]
@@ -250,6 +262,9 @@ def _build_signals(
             "completed_bars": int(len(h.close)),
             "source_timestamp_future_count": int(np.count_nonzero(~causal)),
             "directional_wt_cross_events": int(np.count_nonzero(green & causal)),
+            "directional_wt_state_events": int(
+                np.count_nonzero(wt_state & causal)
+            ),
             (
                 "hh_hl_low_rising_stoch_events"
                 if is_long

@@ -29,8 +29,6 @@ class StructuralWtParams:
     max_wait_1h: int = 30
 
     def validate(self) -> None:
-        if self.arm_tf == self.confirm_tf:
-            raise ValueError("arm_tf and confirm_tf must be distinct")
         if self.arm_tf not in {"1h", "4h", "D"}:
             raise ValueError("arm_tf must be 1h, 4h, or D")
         if self.confirm_tf not in {"15m", "1h", "4h"}:
@@ -141,12 +139,27 @@ class StructuralWtRetestExitBook:
         position_side: str,
         active: bool,
         bar: CompletedBar,
+        role: str | None = None,
     ) -> ExitSignal | None:
         bar.validate()
         key = self._key(symbol, position_side)
         side = key.rsplit(":", 1)[1]
+        role = str(role or "").upper() or None
+        if role not in {None, "ARM", "CONFIRM"}:
+            raise ValueError("role must be ARM, CONFIRM, or omitted")
+        is_arm = role == "ARM" or (
+            role is None and bar.timeframe == self.params.arm_tf
+        )
+        is_confirm = role == "CONFIRM" or (
+            role is None and bar.timeframe == self.params.confirm_tf
+        )
+        history_key = (
+            f"{bar.timeframe}:{role}"
+            if role is not None
+            else bar.timeframe
+        )
         history = self._history.setdefault(
-            (key, bar.timeframe),
+            (key, history_key),
             deque(maxlen=max(self.params.prebreak_lookback + 2, 4)),
         )
         state = self._state.setdefault(key, _PathState())
@@ -158,14 +171,11 @@ class StructuralWtRetestExitBook:
             state.reset_arm()
             history.append(bar)
             return None
-        if bar.timeframe not in {
-            self.params.arm_tf,
-            self.params.confirm_tf,
-        }:
+        if not is_arm and not is_confirm:
             history.append(bar)
             return None
 
-        if bar.timeframe == self.params.arm_tf:
+        if is_arm:
             previous = history[-1] if history else None
             prior = list(history)[-self.params.prebreak_lookback :]
             if (
