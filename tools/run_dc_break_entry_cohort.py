@@ -101,6 +101,7 @@ def _add_result(
     trades: int,
     artifact: str,
     extra: dict,
+    untouched_oos: bool = False,
 ) -> None:
     payload = {
         "job_id": job_id,
@@ -113,7 +114,7 @@ def _add_result(
         "same_entry_control_return_pct": control,
         "tim_pct": tim,
         "trades": trades,
-        "untouched_oos": stage == "VEC_UNTOUCHED_OOS",
+        "untouched_oos": untouched_oos,
         "exact_replay": False,
         "future_htf_count": 0,
         "artifact": artifact,
@@ -189,6 +190,7 @@ def main() -> int:
                 "entry_fill_count": 0,
                 "wiring_audit": wiring,
             },
+            untouched_oos=False,
         )
         try:
             artifact = _run_one(
@@ -208,13 +210,27 @@ def main() -> int:
                 if agg["vector_survivor"]
                 else "DISCARD_GRAY_RESEARCH_RECONSTRUCTION"
             )
+            common_extra = {
+                "entry_signal_rows": int(agg["entry_signal_rows"]),
+                "entry_request_count": int(agg["entry_request_count"]),
+                "entry_fill_count": int(agg["entry_fill_count"]),
+                "all_folds_beat_bh": bool(agg["all_folds_beat_bh"]),
+                "all_folds_beat_control": bool(agg["all_folds_beat_control"]),
+                "all_folds_exposure_policy_pass": bool(
+                    agg["all_folds_exposure_policy_pass"]
+                ),
+                "all_mandatory_reclaim": bool(agg["all_mandatory_reclaim"]),
+                "all_capacity_safe": bool(agg["all_capacity_safe"]),
+                "research_reconstruction_only": True,
+                "normalization_version": "entry_fleet_metric_scope_v1",
+            }
             _add_result(
                 root,
                 result_dir,
                 job_id=job["id"],
                 symbol=symbol,
                 side=side,
-                stage="VEC_UNTOUCHED_OOS",
+                stage="VEC_NESTED_FOLD_AGGREGATE",
                 status=status,
                 strategy=float(agg["candidate_capital_return_pct_sum"]),
                 bh=float(agg["bh_capital_return_pct_sum"]),
@@ -223,20 +239,48 @@ def main() -> int:
                 trades=exit_count,
                 artifact=str(artifact),
                 extra={
-                    "entry_signal_rows": int(agg["entry_signal_rows"]),
-                    "entry_request_count": int(agg["entry_request_count"]),
-                    "entry_fill_count": int(agg["entry_fill_count"]),
-                    "all_folds_beat_bh": bool(agg["all_folds_beat_bh"]),
-                    "all_folds_beat_control": bool(
-                        agg["all_folds_beat_control"]
-                    ),
-                    "all_folds_exposure_policy_pass": bool(
-                        agg["all_folds_exposure_policy_pass"]
-                    ),
-                    "all_mandatory_reclaim": bool(agg["all_mandatory_reclaim"]),
-                    "all_capacity_safe": bool(agg["all_capacity_safe"]),
-                    "research_reconstruction_only": True,
+                    **common_extra,
+                    "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+                    "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+                    "fold_count": len(payload["outer_folds"]),
                 },
+                untouched_oos=False,
+            )
+            final_fold = max(
+                payload["outer_folds"],
+                key=lambda fold: (
+                    int(fold["validation_metrics"].get("end_ts") or -1),
+                    int(fold.get("fold") or -1),
+                ),
+            )
+            final_metrics = final_fold["validation_metrics"]
+            final_control = final_fold["same_frozen_ladder_e02_control"]
+            _add_result(
+                root,
+                result_dir,
+                job_id=job["id"],
+                symbol=symbol,
+                side=side,
+                stage="VEC_UNTOUCHED_OOS",
+                status=status,
+                strategy=float(final_metrics["capital_return_pct"]),
+                bh=float(final_metrics["bh_capital_return_pct"]),
+                control=float(final_control["capital_return_pct"]),
+                tim=float(final_metrics["exposure_weighted_tim_pct"]),
+                trades=int(final_metrics["exit_count"]),
+                artifact=str(artifact),
+                extra={
+                    **common_extra,
+                    "metric_scope": (
+                        "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD"
+                    ),
+                    "return_unit": "CAPITAL_RETURN_PCT",
+                    "fold_index": final_fold.get("fold"),
+                    "validation_window": final_fold.get("validation"),
+                    "beats_bh": bool(final_fold.get("beats_bh")),
+                    "beats_control": bool(final_fold.get("beats_control")),
+                },
+                untouched_oos=True,
             )
             summary["symbols"].append(
                 {
