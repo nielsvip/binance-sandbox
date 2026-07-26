@@ -511,6 +511,21 @@ def main() -> None:
             filled[key].add(logical)
         latest_by_key[key] = row["ts"]
         current_engine += 1
+    valid_statuses = {
+        "PASS",
+        "PASS_WITH_CAPACITY_CLAMPS",
+        "INCOMPLETE_NO_REAL_CLOSE",
+    }
+    stale_fingerprint_rows = sum(
+        1
+        for row in raw_cells
+        if row["validation_status"] in valid_statuses
+        and row["contract_fingerprint"]
+        != contract_fps.get(f"{row['symbol']}_{row['side']}")
+    )
+    invalid_status_rows = sum(
+        1 for row in raw_cells if row["validation_status"] not in valid_statuses
+    )
     current_matrix_latest = max(
         (ts for ts in latest_by_key.values() if ts),
         default=None,
@@ -588,6 +603,10 @@ def main() -> None:
         f"({iso_age(db_latest, now)} old); it is not matrix freshness.",
         f"- Current repaired-contract ENGINE rows: **{current_engine:,}**; "
         f"new current rows in 24h: **{recent_engine:,}**.",
+        f"- Raw repaired-campaign pilot rows since cutoff: **{len(raw_cells):,}**; "
+        f"**{stale_fingerprint_rows:,}** are preserved but invalidated by the newer "
+        f"code+NPZ+side fingerprint, and **{invalid_status_rows:,}** fail validation status. "
+        "Blank current cells must be regenerated; they are not silently backfilled from old code.",
         f"- Historical/pre-fix ENGINE rows quarantined from current rankings: "
         f"**{quarantined_engine:,}/{engine_total:,}**. They remain preserved as evidence.",
         f"- Current contract: campaign `{CURRENT_ENGINE_CAMPAIGN}`, cutoff "
