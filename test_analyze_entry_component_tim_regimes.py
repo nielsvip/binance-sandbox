@@ -71,3 +71,5 @@ def test_family_selection_excludes_final_fold_and_never_blends(tmp_path):
     assert beam["single_family_only"]
     assert not beam["blended_entry_overlay_authorized"]
     assert beam["regime_instability"]
+    assert beam["raise_low_without_high_breach_feasible"]
+    assert beam["scale_direction"] == "RAISE_LOW"

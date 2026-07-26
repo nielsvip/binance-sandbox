@@ -1375,3 +1375,23 @@ final-OOS and nested-fold metrics. Each row exposes its frozen final selected
 candidate, ladder curve, validation window, artifact and schedule materializer
 for downstream exit research; combination remains explicitly unauthorized
 until each independent reason has exact evidence.
+
+### §15.16 — component TIM-regime beam contract (2026-07-26)
+
+TIM retuning must not select on the final chronological fold or blend entry
+families. `analyze_entry_component_tim_regimes.py` ranks one family per key
+using only pre-final validation and discovery-inner slices, then freezes the
+latest pre-final candidate and ladder curve. The final fold is audit-only.
+Completed artifacts expose `selected_entry_request_count` but only total
+`execution fill_count`; reports must not relabel that total as entry fills.
+
+No frozen component schedule had a uniform multiplier band that could raise
+all low pre-final TIM observations to 70% without pushing another observation
+over 80%. MU's best single-family diagnostic was 4h deep value, spanning
+16.45–82.67% TIM; PBF's was 5m bounce, spanning 24.90–36.17%. Four keys
+(ARM, INTC, MRVL, TTD) showed final-fold 70–80% TIM while at least one
+same-fold discovery slice was below 65%, confirming regime instability, but
+those final values were not used for selection. Two feasible uniform bands
+only reduce already-high TIM (ASTS/SNDK); they do not solve the raise-low
+problem. Beam evidence is in
+`ENTRY_COMPONENT_TIM_REGIME_BEAM_20260726.{json,md}`.

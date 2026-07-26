@@ -152,3 +152,9 @@ def test_forced_entry_baselines_can_expand_bounded_rank_beam(monkeypatch, tmp_pa
         "ENTRY_LADDER_GREEN",
         "ENTRY_DC_TIER_AUG_ENABLED",
     }
+
+
+def test_repo_root_is_importable_for_remote_script_execution():
+    import sys
+
+    assert str(beam.ROOT) in sys.path

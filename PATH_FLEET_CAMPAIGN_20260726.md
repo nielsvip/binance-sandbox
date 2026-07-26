@@ -234,3 +234,15 @@ Jobs463/464 separately screened `ENTRY_1H_TURN_UP` (24 settings) and
 the frozen control in aggregate and neither produced an every-fold TIM pass.
 The combined component report exposes all 80 frozen final entry schedules for
 downstream same-entry exit work, with `combination_authorized=false`.
+
+### Pre-final component TIM beam
+
+The completed component artifacts were audited fold-by-fold for signal rows,
+entry requests, total execution fills and exposure gaps. Family/curve
+selection excludes the final chronological fold and never blends components.
+Zero of 20 keys had a linearized uniform multiplier band that both raises low
+pre-final observations to 70% and keeps every high observation at or below
+80%. MU spans 16.45–82.67% on its least-bad 4h-deep schedule; PBF spans
+24.90–36.17% on 5m bounce. The result is a bounded beam input/negative finding,
+not a parameter promotion. See
+`ENTRY_COMPONENT_TIM_REGIME_BEAM_20260726.{json,md}`.

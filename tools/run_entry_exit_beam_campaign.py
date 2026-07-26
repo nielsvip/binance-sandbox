@@ -28,6 +28,8 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 GENERIC_FAMILIES = (
     "E02_GRID,MTF_ATR_TRAIL,"
     "BOTTOM_A_EXT,BOTTOM_B_EXT,BOTTOM_C_EXT"
@@ -375,42 +377,34 @@ def _screen_entry(
     npz_dir: Path,
     output_root: Path,
     exit_beam_width: int,
+    resume: bool = False,
 ) -> dict[str, Any]:
     key = f"{entry['symbol']}_{entry['side']}"
     digest = hashlib.sha256(entry["artifact"].encode()).hexdigest()[:10]
     base = output_root / key / f"{entry['family']}_{digest}"
-    base.mkdir(parents=True, exist_ok=False)
+    base.mkdir(parents=True, exist_ok=resume)
     artifact = Path(entry["artifact"])
-    payloads = [
+    payloads = []
+    for adapter, extra in (
         (
             "generic",
-            _run_adapter(
-                "generic",
+            ["--families", GENERIC_FAMILIES, "--fold-mode", "nested"],
+        ),
+        ("e05", None),
+        ("peak", None),
+    ):
+        result_path = base / adapter / "result.json"
+        if resume and result_path.exists():
+            payload = _read(result_path)
+        else:
+            payload = _run_adapter(
+                adapter,
                 artifact,
                 npz_dir,
-                base / "generic",
-                ["--families", GENERIC_FAMILIES, "--fold-mode", "nested"],
-            ),
-        ),
-        (
-            "e05",
-            _run_adapter(
-                "e05",
-                artifact,
-                npz_dir,
-                base / "e05",
-            ),
-        ),
-        (
-            "peak",
-            _run_adapter(
-                "peak",
-                artifact,
-                npz_dir,
-                base / "peak",
-            ),
-        ),
-    ]
+                base / adapter,
+                extra,
+            )
+        payloads.append((adapter, payload))
     candidates = []
     for adapter, payload in payloads:
         for candidate in payload["candidates"]:
@@ -541,6 +535,11 @@ def main() -> int:
     ap.add_argument("--entry-beam-width", type=int, default=2)
     ap.add_argument("--exit-beam-width", type=int, default=8)
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument(
+        "--resume",
+        action="store_true",
+        help="reuse completed per-adapter result.json artifacts",
+    )
     args = ap.parse_args()
     keys = {key.upper() for key in args.key}
     entries, entry_audit = load_entry_beam(
@@ -549,7 +548,7 @@ def main() -> int:
         keys,
         args.entry_beam_width,
     )
-    args.output_root.mkdir(parents=True, exist_ok=False)
+    args.output_root.mkdir(parents=True, exist_ok=args.resume)
     results = []
     errors = []
     with concurrent.futures.ThreadPoolExecutor(
@@ -562,6 +561,7 @@ def main() -> int:
                 args.npz_dir.resolve(),
                 args.output_root.resolve(),
                 args.exit_beam_width,
+                args.resume,
             ): entry
             for entry in entries
         }
