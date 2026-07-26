@@ -14,6 +14,7 @@ def valid_arrays(n=600):
         "timestamps": ts,
         "close": x,
         "synthetic_5m": np.zeros(n, dtype=np.int8),
+        "synthetic_5m_parent_close_ts": ts.copy(),
         "timestamp_15m": ts - 300,
     }
     for tf, lag in (("1h", 12), ("4h", 48), ("D", 78)):
@@ -42,9 +43,19 @@ class DataContractTests(unittest.TestCase):
     def test_synthetic_execution_window_is_disclosed_but_accepted(self):
         arrays = valid_arrays()
         arrays["synthetic_5m"][:] = 1
+        arrays["synthetic_5m_parent_close_ts"] = arrays["timestamps"] + 600
         result = audit_npz("MU", self.write(arrays), "floor")
         self.assertTrue(result.valid)
         self.assertTrue(any("interpolated 5m" in e for e in result.warnings))
+        self.assertEqual(result.stats["synthetic_5m_parent_lag_max_s"], 600)
+
+    def test_synthetic_parent_must_be_the_containing_15m_bar(self):
+        arrays = valid_arrays()
+        arrays["synthetic_5m"][:] = 1
+        arrays["synthetic_5m_parent_close_ts"] = arrays["timestamps"] + 900
+        result = audit_npz("MU", self.write(arrays), "floor")
+        self.assertFalse(result.valid)
+        self.assertTrue(any("outside its containing" in e for e in result.errors))
 
     def test_empty_vt_style_htf_fields_are_quarantined(self):
         arrays = valid_arrays()

@@ -195,10 +195,35 @@ def audit_npz(
             source = "legacy-linear-inference"
         audit.stats["synthetic_5m_pct"] = round(synthetic_rate * 100.0, 3)
         audit.stats["synthetic_detection"] = source
+        if (
+            "synthetic_5m_parent_close_ts" in z.files
+            and len(z["synthetic_5m_parent_close_ts"]) == len(mask)
+        ):
+            parent_close = np.asarray(
+                z["synthetic_5m_parent_close_ts"], dtype=np.int64
+            )[execution_mask]
+            execution_ts = ts[execution_mask]
+            synthetic_rows = (
+                np.asarray(z["synthetic_5m"], dtype=np.int8)[execution_mask].astype(bool)
+                if "synthetic_5m" in z.files
+                else np.zeros(len(execution_ts), dtype=bool)
+            )
+            lags = parent_close[synthetic_rows] - execution_ts[synthetic_rows]
+            audit.stats["synthetic_5m_parent_lag_max_s"] = (
+                int(lags.max()) if len(lags) else 0
+            )
+            audit.stats["synthetic_5m_parent_lag_min_s"] = (
+                int(lags.min()) if len(lags) else 0
+            )
+            if len(lags) and (int(lags.min()) < 0 or int(lags.max()) > 600):
+                audit.fail(
+                    "synthetic 5m provenance points outside its containing completed "
+                    f"15m bar: lag range={int(lags.min())}..{int(lags.max())}s"
+                )
         if synthetic_rate > 0.05:
             audit.warnings.append(
                 f"interpolated 5m execution bars={synthetic_rate:.1%} in window; "
-                "accepted by campaign contract and disclosed in results"
+                "accepted bounded containing-15m approximation and disclosed in results"
             )
 
         if profile in {"core", "ladder"}:

@@ -44,6 +44,19 @@ Acceptance remains strict: fresh Tier-2 engine result, real closes, changed
 trade fingerprint, and performance above the same-key B&H floor. Vector runs
 are screening shortcuts only until replayed through the engine.
 
+### Native and interpolated 5m history
+
+Historical stocks 5m coverage is provider-limited. The older execution history is therefore
+interpolated from completed 15m bars and is accepted with disclosure. It is not itself a
+later-HTF leakage defect and must not turn a matrix cell red. The first two synthetic sub-bars
+necessarily approximate the containing 15m bar before its close timestamp; provenance records
+that bounded 0/5/10-minute parent lag explicitly.
+
+The hybrid precompute path preserves native 5m bars on overlap, marks every execution row with
+`synthetic_5m`, and reports `synthetic_5m_pct`. From 2026-07-26 onward, native 5m collection is
+append/merge-only: refreshes and cleanup must never shorten the accumulated native archive.
+Frozen campaigns retain a fixed provenance mix so all candidate comparisons remain like-for-like.
+
 ### Ladder-first correction (2026-07-25)
 
 `tradier_manage.band_ladder_mult()` now uses the requested map as a wiring

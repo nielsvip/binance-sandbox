@@ -163,6 +163,10 @@ def _fabricate_tradier_5m(base_15m: pd.DataFrame) -> pd.DataFrame:
                 "close": sub_c,
                 "volume": v / 3.0,
                 "_synthetic_5m": 1,
+                # The synthetic row is derived from this containing 15m bar.
+                # Preserve that fact explicitly: the first two sub-bars are an
+                # unavoidable within-parent approximation, not native 5m data.
+                "_synthetic_5m_parent_close_ts": ts,
             })
     return pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
 
@@ -177,6 +181,7 @@ def _hybrid_tradier_5m(
         return fabricated
     real = real_5m.copy()
     real["_synthetic_5m"] = 0
+    real["_synthetic_5m_parent_close_ts"] = real.index
     # Real observations win on overlap.  Keeping the provenance bit in the NPZ
     # lets campaign preflight quarantine synthetic windows mechanically.
     fabricated = fabricated.loc[~fabricated.index.isin(real.index)]
@@ -1431,6 +1436,16 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             base_df.get("_synthetic_5m", pd.Series(0, index=base_df.index))
             .fillna(1)
             .values.astype(np.int8)
+        )
+        _parent_close = base_df.get(
+            "_synthetic_5m_parent_close_ts",
+            pd.Series(base_df.index, index=base_df.index),
+        )
+        merged["synthetic_5m_parent_close_ts"] = (
+            pd.to_datetime(_parent_close, utc=True)
+            .astype("int64")
+            .to_numpy(dtype=np.int64)
+            // 10**9
         )
     # Compute indicators per TF — ONE call, returns FULL arrays
     for tf in tfs:

@@ -46,7 +46,19 @@ class TradierSourceIntegrityTests(unittest.TestCase):
         hybrid = _hybrid_tradier_5m(d15, real)
         self.assertEqual(float(hybrid.loc[real.index[0], "close"]), 999.0)
         self.assertEqual(int(hybrid.loc[real.index[0], "_synthetic_5m"]), 0)
+        self.assertEqual(
+            hybrid.loc[real.index[0], "_synthetic_5m_parent_close_ts"],
+            real.index[0],
+        )
         self.assertGreater(int(hybrid["_synthetic_5m"].sum()), 0)
+        first_synthetic = hybrid.loc[hybrid["_synthetic_5m"] == 1].iloc[0]
+        self.assertIn(
+            (
+                first_synthetic["_synthetic_5m_parent_close_ts"]
+                - hybrid.loc[hybrid["_synthetic_5m"] == 1].index[0]
+            ).total_seconds(),
+            (0.0, 300.0, 600.0),
+        )
 
     def test_hybrid_keeps_newer_15m_tail_when_real_5m_has_more_rows(self):
         real = frame("2026-01-01", 100, 5)

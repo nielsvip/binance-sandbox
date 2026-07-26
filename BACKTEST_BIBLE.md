@@ -821,6 +821,30 @@ Current runner rule:
   substitutes for Tier-2;
 - vector candidates never become accepted configurations without a matching Tier-2 replay.
 
+### §15.1 — Stocks 5m history and provenance contract
+
+The stock provider exposes only limited native 5m history. Older 5m execution bars therefore
+have to be interpolated from **completed** 15m bars; there is no honest workaround for the
+missing archive. This is accepted historical input and not an automatic test failure. It is a
+disclosed within-parent approximation, distinct from accidentally exposing later 1h/4h/D bars.
+
+The non-negotiable rules are:
+
+1. Every native 5m bar collected from now on is retained permanently. Cleanup, refresh and
+   backfill jobs may merge or repair bars but may never truncate the accumulated native history.
+2. Native 5m observations replace interpolated bars on exact timestamp overlap.
+3. Every NPZ carries `synthetic_5m` provenance (`0=native`, `1=15m interpolation`), and reports
+   disclose the native/interpolated percentages for the tested window.
+4. Each synthetic trio may use only its containing 15m OHLCV bar, never a later parent.
+   `synthetic_5m_parent_close_ts` records the unavoidable 0/5/10-minute within-parent lag.
+5. Strategy comparisons use the same frozen data snapshot and provenance mix. A result is not
+   invalid merely because its older execution history is interpolated.
+6. For a fixed symbol/history endpoint, the native bar count cannot fall after refresh. A
+   decrease is a retention regression and blocks regeneration/promotion.
+
+`backtest_v8_precompute.py` implements the hybrid merge and
+`tools/backtest_data_contract.py` audits/discloses `synthetic_5m_pct`.
+
 The first corrected MU_LONG Tier-2 floor opened, held to final MTM, and measured 99.97%
 time-in-market. Its legal first RTH entry differs from the raw NPZ's premarket first bar, so
 reports now show both first-tradable B&H and raw NPZ B&H rather than comparing the engine to an

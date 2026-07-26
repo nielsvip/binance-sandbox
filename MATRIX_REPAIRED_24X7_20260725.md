@@ -29,7 +29,8 @@ A current row must have all of:
 3. `V8_LADDER_INITIAL_BH_SEED` as the first position;
 4. only the requested side opened;
 5. valid closed-HTF NPZ contract;
-6. nonzero sizing telemetry, at least 90% requested/fill ratio and zero clamps;
+6. nonzero sizing telemetry; low requested/fill ratio or clamps are stored as
+   `PASS_WITH_CAPACITY_CLAMPS` red evidence and are never promotion-eligible;
 7. zero pending/violating mandatory re-entries;
 8. complete capital-weighted metrics.
 
@@ -40,6 +41,13 @@ candidate. Below-B&H results remain gray/rejected and are never promoted.
 Accounting is now apples-to-apples: realised plus partial plus final-MTM `pnl_usd` divided by
 $10,000 accounting capital. B&H deploys $2,000 and pays the same round-trip cost. Strategy
 capacity remains $16,000 (8x the benchmark unit).
+
+Historical 5m interpolation is accepted by this contract. Native 5m coverage is provider-limited,
+so older execution bars are derived from completed 15m bars. Each frozen NPZ retains the
+`synthetic_5m` provenance array and its audit reports the interpolated percentage. New NPZs also
+record `synthetic_5m_parent_close_ts`, exposing the bounded 0/5/10-minute within-parent
+approximation. Native bars win on overlap and are retained permanently; synthetic coverage is a
+disclosed limitation, not a reason to invalidate otherwise causal results.
 
 ## S1 worker state
 
