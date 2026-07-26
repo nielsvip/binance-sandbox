@@ -1108,3 +1108,69 @@ validation rows beat both controls but failed exposure/reclaim and discovery
 gates; SNDK's 99.63% exposure is hold-like. Job 46 stores all 20 rows gray and
 queues no exact replay. Full range fingerprints, per-key results and rollback
 scope are in `E06_REGRESSION_RETEST_RESULTS_20260726.md`.
+
+### §15.10 — Bottom-exit A/B/C causal campaign (2026-07-26)
+
+The bottom-exit campaign keeps three comparator identities separate:
+
+1. `BOTTOM_A_PROTECTIVE_TRAIL`: an adverse completed 1h/4h break arms an
+   immediate-break diagnostic or a completed 5m/15m/1h ATR, rolling-stdev or
+   Donchian trail. The immediate break is never relabelled a profit exit.
+2. `BOTTOM_B_DELAYED_LOWER_TOP`: the break only arms state. A later rebound
+   must form the configured lower price top and/or WT1 lower top/rollover
+   (SHORT exactly mirrored), with price-only, WT-only, AND/OR, one/two-bar
+   confirmation.
+3. `BOTTOM_C_DELAYED_EMERGENCY`: the identical delayed lower-top state plus
+   one explicit adverse-ATR, adverse-stdev, max-wait or continued-damage brake.
+   Normal and emergency fills and realized P&L are counted separately; brake
+   share above 25% is non-rare and ineligible.
+
+The grids contain 220 A, 864 B and 324 C candidates per key. B/C use the
+compiled exact-contract scanner and frozen-winner Python state-machine parity
+oracle. All 20 top/bottom cohort keys completed without execution errors,
+future HTF observations or hidden `dc_low4_5m` profit exits. No strict
+survivor passed both identical-entry E02 alpha and 70–80% discovery/validation
+exposure, so jobs 175/176/177 are `SCREENED` and exact replay is empty.
+
+Emergency effectiveness must never be inferred by comparing independently
+selected B and C winners. `tools/analyze_bottom_exit_paired.py` pairs every C
+row with the B row having identical arm TF, confirm TF/mode/bars, rebound,
+lookback and wait. Across all matched validation candidates, every brake
+family had negative mean return impact. Wider adverse-ATR and max-wait brakes
+were usually rare but mostly inert; stdev and continued-damage brakes were
+often non-rare. The discovery-selected paired rows showed isolated positive
+validation deltas, but none also passed the full exposure/control contract.
+
+The implementation inventory and rollback boundaries are in
+`BOTTOM_EXIT_CODE_AUDIT_20260726.md`. Complete per-symbol family outcomes,
+immediate-break churn rows, paired delta return/TIM, brake count/share and
+normal/emergency realized P&L are in
+`BOTTOM_EXIT_A_B_C_RESULTS_20260726.md`.
+
+### §15.11 — DC-break entry inventory/wiring correction (2026-07-26)
+
+The matrix path `ENTRY_DC_BREAK_ENTRY_ENABLED` is disconnected. There is no
+`DC_BREAK_ENTRY_ENABLED` declaration in `config_tradier.py` and no active read
+in `tradier_manage.py`. The legacy swing branch is fail-closed through
+`DC_BREAK_ENTRY_DISABLED=True`; the active `StockDaytradeWing` is a separate
+strategy controlled by `DC_DAYTRADE_ENABLED` /
+`TRADIER_DC_DAYTRADE_ENABLED`. Never treat a sweep of the latter semantics as
+proof that the stale switch is connected. Retain the real path as red,
+zero-request/zero-fill evidence until an explicit reconnection decision.
+
+The research reconstruction uses prior completed Donchian channels and
+next-RTH fills. Its 192 settings cover 5m/15m/1h/4h, buffers
+0/0.05/0.10/0.20%, optional 1h expansion, no/exhaustion/directional-Stoch
+confirmation, and direct/union-with-green roles. It keeps frozen ladder sizing,
+$2k side-specific B&H, $16k strategy capacity, E02 4h N30, costs and persistent
+reclaim. Frozen top-10 LONG/bottom-10 SHORT screening produced zero strict
+survivors, so no exact replay or live setting was allowed.
+
+Entry-overlay reporting has two distinct units. `VEC_NESTED_FOLD_AGGREGATE`
+stores the sum of outer-fold capital-return percentages and row-weighted TIM;
+it is not a single untouched result. `VEC_UNTOUCHED_OOS` stores only the final
+chronological outer validation fold. Both must declare `metric_scope`,
+`return_unit`/aggregation, `tim_unit`/aggregation, and
+`trades_unit`/aggregation. Job 50 was normalized append-only under
+`entry_fleet_metric_scope_v1`; its 20 legacy mislabeled rows remain for audit.
+See `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.md`.

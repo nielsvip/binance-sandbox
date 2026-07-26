@@ -242,6 +242,17 @@ def main() -> int:
                     **common_extra,
                     "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
                     "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+                    "return_aggregation": (
+                        "SUM_ACROSS_OUTER_VALIDATION_FOLDS"
+                    ),
+                    "tim_unit": "PCT",
+                    "tim_aggregation": (
+                        "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS"
+                    ),
+                    "trades_unit": "EXIT_FILLS",
+                    "trades_aggregation": (
+                        "SUM_ACROSS_OUTER_VALIDATION_FOLDS"
+                    ),
                     "fold_count": len(payload["outer_folds"]),
                 },
                 untouched_oos=False,
@@ -275,6 +286,11 @@ def main() -> int:
                         "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD"
                     ),
                     "return_unit": "CAPITAL_RETURN_PCT",
+                    "return_aggregation": "NONE_SINGLE_FOLD",
+                    "tim_unit": "PCT",
+                    "tim_aggregation": "NONE_SINGLE_FOLD",
+                    "trades_unit": "EXIT_FILLS",
+                    "trades_aggregation": "NONE_SINGLE_FOLD",
                     "fold_index": final_fold.get("fold"),
                     "validation_window": final_fold.get("validation"),
                     "beats_bh": bool(final_fold.get("beats_bh")),

@@ -154,3 +154,34 @@ replay was not launched. All results are preserved in
 `ENTRY_AUGMENT_TREND_RESUME_TOP_BOTTOM10_20260726.{json,md}`. The active live
 path remains unchanged; reconnecting it requires an explicit implementation
 decision after a viable OOS setting exists.
+
+### Donchian-break stale switch and causal reconstruction
+
+`ENTRY_DC_BREAK_ENTRY_ENABLED` was not a live knob. The inventory named
+`DC_BREAK_ENTRY_ENABLED`, but `config_tradier.py` declares no such setting and
+`tradier_manage.py` never reads it. The old swing branch instead reads
+`DC_BREAK_ENTRY_DISABLED` with fail-closed default `True`. A separately
+launched `StockDaytradeWing` reads `DC_DAYTRADE_ENABLED` /
+`TRADIER_DC_DAYTRADE_ENABLED`; it must not be confused with the stale row.
+Job 50 therefore retains 20 red wiring rows with zero requests/fills.
+
+A research-only causal reconstruction screened 192 combinations over all
+frozen top-10 LONG and bottom-10 SHORT keys: 5m/15m/1h/4h prior-channel breaks,
+0/0.05/0.10/0.20% buffers, optional 1h channel expansion, no/exhaustion/
+directional-Stoch confirmation, and direct/union-with-green roles. All rows
+used the frozen ladder sizing, $16k capacity, E02 N30, costs, next-RTH fills,
+and mandatory reclaim. The screen produced real requests and fills on all 20
+keys with zero future-HTF, capacity, or reclaim violations, but zero strict
+survivors. MU_LONG beat both controls in every fold but missed the exposure
+policy (68.29% aggregate and at least one failed fold); MRVL_LONG met aggregate
+TIM and aggregate controls but failed a control fold. No exact replay or live
+change followed.
+
+The original job-50 ingestion also exposed a reporting-unit bug: sums of three
+outer validation folds were labeled `VEC_UNTOUCHED_OOS`. Those 20 historical
+rows remain untouched. An append-only normalization added 20 explicitly scoped
+`VEC_NESTED_FOLD_AGGREGATE` rows and 20 true final chronological
+`VEC_UNTOUCHED_OOS` rows, each with return/TIM/trade units and aggregation
+metadata. The pre-migration DB backup is
+`queue.db.bak_job50_metric_scope_20260726T2035Z`; the migration is idempotent.
+Full evidence is in `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.{json,md}`.
