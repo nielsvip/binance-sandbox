@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T18:32:05.925601+00:00",
+  "timestamp": "2026-07-26T18:47:12.336880+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,12 +35,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "ACEUSDT",
-      "net_score": -12.7,
-      "long_score": 0,
-      "short_score": 12.7
     },
     {
       "symbol": "ACTUSDT",
@@ -649,6 +643,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ACEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -788,13 +788,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "ACEUSDT",
-      12.7,
-      0.08190476
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

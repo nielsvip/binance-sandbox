@@ -674,6 +674,15 @@ keys of numbers nobody can compare to anything (§1).
 - **The spreadsheet is a generated artifact.** `param_cells` fills continuously but
   `SWITCH_MATRIX_TRB.xlsx` only changes when the exporter runs; S1 had NO cron doing that, so
   the sheet sat still while the DB grew underneath it. It now runs every watchdog cycle.
+- **The durable baseline workbook has two evidence tiers.**
+  `PARAM_BASELINE_STOCKS.xlsx` regenerates `PerSym Results`, `Entry Paths` and
+  `Exit Paths` from contract-matched repaired ENGINE rows only. The separate
+  `Path Fleet Results` sheet reads the claimable top/bottom-cohort queue and
+  shows all logical jobs, descriptions, setting grids, fixed controls and the
+  latest vector/exact stage rows. Amber vector research never overwrites or
+  colors an ENGINE cell. The exporter serializes to a same-directory temporary
+  ZIP, validates its workbook members, and uses atomic replace; a killed hourly
+  refresh therefore leaves the previous workbook readable.
 - **A changed contract fingerprint must replace the logical current cell.** The original
   store used `INSERT OR IGNORE` behind a UNIQUE key that did not include
   `contract_fingerprint`. After an engine/NPZ fix, the old row kept the slot forever: workers
@@ -931,3 +940,20 @@ rebases only the engine-window indices. LAC's latest fold passed 27/27 exact act
 future HTF, next-RTH fills, capacity, TIM, and accounting parity; its three-fold aggregate
 still failed catastrophically, so parity proof does not imply strategy acceptance. Full
 evidence and rollback scope are in `SHORT_LADDER_MIRROR_RESULTS_20260726.md`.
+
+### §15.3 — Same-entry E02 Donchian path screen (2026-07-26)
+
+`tools/vec_same_entry_exit_adapter.py` now freezes the selected ladder entry-request
+timestamps, multipliers, semantics, next-RTH rule and $16,000 capacity before changing an
+exit. The bounded E02 screen is completed-HTF only: 1h/4h/D × N
+10/15/20/30/40/55/80 × open-profit gate 0/0.25/0.5/1%. `dc_low4_5m` and first-break churn
+stops are explicitly absent. LONG and SHORT artifacts run separate cash ledgers.
+
+The nested top-10 LONG/bottom-10 SHORT screen produced no robust survivor and therefore no
+exact replay. SNDK D/N30 (+3,831.22% vs +467.09% B&H) and TTD_SHORT D/N15 (+555.43% vs
++54.33%) are gray because validation exposure was 99.20% and 93.85%. MU D/N55 was in-band
+at 77.79% but lost 82.03pp to identical-entry E02 and had zero technical exits; its headline
+is final MTM, not exit proof. DINO D/N40 likewise had zero validation exits. Five SHORT
+candidate books contained an insolvent fold. All 20 rows remain preserved in path-fleet job
+35 and the SWITCH_MATRIX digest; full settings, fills/clamps and rollback evidence are in
+`E02_SAME_ENTRY_COHORT_RESULTS_20260726.md`.

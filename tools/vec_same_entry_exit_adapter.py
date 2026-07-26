@@ -31,6 +31,7 @@ import math
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
@@ -173,9 +174,11 @@ class WtMtfParams:
     profit_gate_pct: float = 0.0
 
     def validate(self) -> None:
-        allowed = {"15m", "1h", "4h", "D"}
+        allowed = {"15m", "1h", "4h", "D", "W"}
         if not self.timeframes or not set(self.timeframes) <= allowed:
-            raise ValueError("WT timeframes must be a non-empty subset of 15m/1h/4h/D")
+            raise ValueError(
+                "WT timeframes must be a non-empty subset of 15m/1h/4h/D/W"
+            )
         if not 1 <= self.min_against_tfs <= len(self.timeframes):
             raise ValueError("min_against_tfs exceeds selected timeframes")
         if self.extreme < 0 or self.velocity < 0:
@@ -496,6 +499,138 @@ class StructuralWtExitBookAdapter:
                 self.params.confirm_tf: int(candidate.source_ts),
             },
         )
+
+
+def _aligned_structural_tf(
+    data: Any,
+    htf: Any,
+    timeframe: str,
+) -> tuple[np.ndarray, ...]:
+    """Expand completed HTF events to execution rows for the C scanner."""
+    n = len(data.ts)
+    event = np.zeros(n, dtype=np.uint8)
+    source = np.zeros(n, dtype=np.int64)
+    high = np.zeros(n, dtype=np.float64)
+    low = np.zeros(n, dtype=np.float64)
+    close = np.zeros(n, dtype=np.float64)
+    wt = np.zeros(n, dtype=np.float64)
+    atr = np.zeros(n, dtype=np.float64)
+    rows = np.asarray(htf.event_index, dtype=np.int64)
+    event[rows] = 1
+    source[rows] = np.asarray(htf.source_ts, dtype=np.int64)
+    high[rows] = np.asarray(htf.high, dtype=np.float64)
+    low[rows] = np.asarray(htf.low, dtype=np.float64)
+    close[rows] = np.asarray(htf.close, dtype=np.float64)
+    wt[rows] = _completed_field(data, htf, f"wt1_{timeframe}")
+    atr[rows] = np.asarray(htf.atr, dtype=np.float64)
+    return event, source, high, low, close, wt, atr
+
+
+def simulate_structural_compiled(
+    data: Any,
+    entry_signals: ladder.SignalData,
+    curve: ladder.Curve,
+    htfs: dict[str, Any],
+    params: StructuralWtParams,
+    left: int,
+    right: int,
+    commission_rate: float,
+    slippage_rate: float,
+    *,
+    side: str,
+    profit_gate_pct: float,
+    aligned_by_tf: dict[str, tuple[np.ndarray, ...]] | None = None,
+) -> dict[str, Any]:
+    """Exact-contract compiled screen; Python replay remains the parity oracle."""
+    params.validate()
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    aligned_by_tf = aligned_by_tf or {}
+    arm = aligned_by_tf.get(params.arm_tf) or _aligned_structural_tf(
+        data, htfs[params.arm_tf], params.arm_tf
+    )
+    confirm = aligned_by_tf.get(params.confirm_tf) or _aligned_structural_tf(
+        data, htfs[params.confirm_tf], params.confirm_tf
+    )
+    out = _StructuralScanMetrics()
+    rc = _structural_scan_library().vec_same_entry_structural_scan(
+        len(data.ts),
+        left,
+        right,
+        1 if side == "LONG" else -1,
+        0 if curve.semantics == "target" else 1,
+        np.ascontiguousarray(data.ts, dtype=np.int64),
+        np.ascontiguousarray(data.open, dtype=np.float64),
+        np.ascontiguousarray(data.high, dtype=np.float64),
+        np.ascontiguousarray(data.low, dtype=np.float64),
+        np.ascontiguousarray(data.close, dtype=np.float64),
+        np.ascontiguousarray(entry_signals.entry_mult, dtype=np.float64),
+        *arm,
+        *confirm[:-1],
+        params.rebound_atr,
+        params.prebreak_lookback,
+        params.max_wait_1h,
+        profit_gate_pct,
+        commission_rate,
+        slippage_rate,
+        ctypes.byref(out),
+    )
+    if rc:
+        raise RuntimeError(f"compiled structural scan failed with code {rc}")
+    requested = float(out.requested_notional_usd)
+    candidate_return = float(out.capital_return_pct)
+    bh_return = float(out.bh_capital_return_pct)
+    return {
+        "capital_return_pct": candidate_return,
+        "bh_capital_return_pct": bh_return,
+        "strategy_bh_multiple": (
+            candidate_return / bh_return if bh_return > 1e-12 else None
+        ),
+        "alpha_vs_bh_pp": candidate_return - bh_return,
+        "binary_tim_pct": float(out.binary_tim_pct),
+        "exposure_weighted_tim_pct": float(out.exposure_weighted_tim_pct),
+        "max_drawdown_account_pct": float(out.max_drawdown_account_pct),
+        "minimum_account_equity_usd": float(out.minimum_account_equity_usd),
+        "insolvent": bool(out.insolvent),
+        "peak_post_fill_notional_usd": float(
+            out.peak_post_fill_notional_usd
+        ),
+        "entry_capacity_breach": bool(out.entry_capacity_breach),
+        "signals": int(out.signals),
+        "rejected_by_profit_gate": int(out.rejected_profit),
+        "exit_fills": int(out.exit_fills),
+        "partial_exit_fills": 0,
+        "runner_exit_fills": 0,
+        "clip_reclaim_reentries": 0,
+        "clip_obligations_unfilled_at_end": 0,
+        "entry_fills": int(out.entry_fills),
+        "lower_or_higher_reentries": int(out.ladder_reentries),
+        "reclaim_reentries": int(out.reclaim_reentries),
+        "requested_notional_usd": requested,
+        "filled_notional_usd": float(out.filled_notional_usd),
+        "fill_ratio": (
+            float(out.filled_notional_usd) / requested
+            if requested > 0
+            else 1.0
+        ),
+        "clamp_count": int(out.clamp_count),
+        "future_htf_source_count": int(out.future_htf_count),
+        "bars_flat_beyond_reclaim": int(out.bars_flat_beyond_reclaim),
+        "mandatory_reclaim_execution": (
+            "RESTING_TOUCH_LEVEL_OR_ADVERSE_GAP_OPEN"
+        ),
+        "frozen_entry_schedule_sha256": _entry_schedule_hash(
+            data, entry_signals, curve, left, right
+        ),
+        "entry_request_count": int(
+            np.count_nonzero(entry_signals.entry_mult[left:right] > 0)
+        ),
+        "side": side,
+        "rows": int(out.rows),
+        "event_ledger": [],
+        "screen_engine": "COMPILED_C_EXACT_CONTRACT",
+    }
 
 
 def _entry_schedule_hash(
@@ -920,37 +1055,21 @@ def simulate(
 
 
 def wt_grid() -> list[WtMtfParams]:
-    """Compact block grid; settings vary coherently rather than OFAT."""
-    groups = (
-        ("15m", "1h"),
-        ("1h", "4h"),
-        ("15m", "1h", "4h"),
-        ("1h", "4h", "D"),
-        ("15m", "1h", "4h", "D"),
-    )
-    rows: list[WtMtfParams] = []
-    for tfs in groups:
-        for extreme in (35.0, 50.0, 65.0, 75.0):
-            for velocity in (0.0, 0.5, 1.0):
-                rows.append(
-                    WtMtfParams(
-                        timeframes=tfs,
-                        min_against_tfs=max(1, (len(tfs) + 1) // 2),
-                        extreme=extreme,
-                        velocity=velocity,
-                    )
-                )
-                rows.append(
-                    WtMtfParams(
-                        timeframes=tfs,
-                        min_against_tfs=max(1, (len(tfs) + 1) // 2),
-                        extreme=extreme,
-                        velocity=velocity,
-                        require_fast_structure=True,
-                        profit_gate_pct=0.5,
-                    )
-                )
-    return rows
+    """Exact bounded 256-arm completed-HTF WT exhaustion grid."""
+    timeframes = ("15m", "1h", "4h", "D", "W")
+    return [
+        WtMtfParams(
+            timeframes=timeframes,
+            min_against_tfs=min_against,
+            extreme=extreme,
+            velocity=velocity,
+            profit_gate_pct=profit_gate,
+        )
+        for min_against in (1, 2, 3, 4)
+        for extreme in (45.0, 55.0, 65.0, 75.0)
+        for velocity in (0.0, 0.25, 0.5, 1.0)
+        for profit_gate in (0.0, 0.25, 0.5, 1.0)
+    ]
 
 
 def structural_grid() -> list[tuple[StructuralWtParams, float, int]]:
@@ -1058,7 +1177,7 @@ def _fold_contexts(
         )
     htfs = {
         tf: ladder.top._compress_htf(data, tf)
-        for tf in ("15m", "1h", "4h", "D")
+        for tf in ("15m", "1h", "4h", "D", "W")
     }
     folds = list(source["outer_folds"])
     if fold_mode == "latest":
@@ -1190,6 +1309,7 @@ def screen_artifact(
     control_return = float(control["capital_return_pct_sum"])
     bh_return = float(control["bh_capital_return_pct_sum"])
     candidates: list[dict[str, Any]] = []
+    compiled_structural_elapsed_seconds = 0.0
 
     def candidate_row(
         family: str,
@@ -1235,6 +1355,10 @@ def screen_artifact(
                     candidate["bars_flat_beyond_reclaim"]
                 ),
                 "insolvent": bool(candidate["insolvent"]),
+                "entry_capacity_breach": bool(
+                    candidate["entry_capacity_breach"]
+                ),
+                "exit_fills": int(candidate["exit_fills"]),
             }
             for index, candidate in enumerate(fold_rows)
         ]
@@ -1266,6 +1390,13 @@ def screen_artifact(
                     evidence["alpha_vs_bh_pp"] > 0
                     and evidence["alpha_vs_same_entry_e02_pp"] > 0
                     and not evidence["insolvent"]
+                    and not evidence["entry_capacity_breach"]
+                    and evidence["future_htf_source_count"] == 0
+                    and evidence["bars_flat_beyond_reclaim"] == 0
+                    and (
+                        family != "EXIT_WT_MTF"
+                        or evidence["exit_fills"] > 0
+                    )
                     for evidence in row["fold_evidence"][:-1]
                 ),
                 "robust_validation_fold": (
@@ -1275,6 +1406,21 @@ def screen_artifact(
                     ]
                     > 0
                     and not row["fold_evidence"][-1]["insolvent"]
+                    and not row["fold_evidence"][-1][
+                        "entry_capacity_breach"
+                    ]
+                    and row["fold_evidence"][-1][
+                        "future_htf_source_count"
+                    ]
+                    == 0
+                    and row["fold_evidence"][-1][
+                        "bars_flat_beyond_reclaim"
+                    ]
+                    == 0
+                    and (
+                        family != "EXIT_WT_MTF"
+                        or row["fold_evidence"][-1]["exit_fills"] > 0
+                    )
                 ),
             }
         return row
@@ -1312,7 +1458,24 @@ def screen_artifact(
                 candidate_row("EXIT_E02_DONCHIAN", dict(params), fold_rows)
             )
     if "WT_MTF" in families:
-        for params in wt_grid():
+        grid = wt_grid()
+        # Vectorize completed-TF state construction once per signal block.
+        # Profit gates reuse the identical immutable event arrays.
+        signal_blocks = {
+            (params.min_against_tfs, params.extreme, params.velocity): params
+            for params in grid
+        }
+        books = {
+            key:
+            build_wt_mtf_book(
+                data,
+                htfs,
+                dataclasses.replace(params, profit_gate_pct=0.0),
+                side=side,
+            )
+            for key, params in signal_blocks.items()
+        }
+        for params in grid:
             fold_rows = []
             for ctx in contexts:
                 fold_rows.append(
@@ -1320,7 +1483,13 @@ def screen_artifact(
                         data,
                         ctx["signals"],
                         ctx["curve"],
-                        build_wt_mtf_book(data, htfs, params, side=side),
+                        books[
+                            (
+                                params.min_against_tfs,
+                                params.extreme,
+                                params.velocity,
+                            )
+                        ],
                         ctx["left"],
                         ctx["right"],
                         commission,
@@ -1335,23 +1504,28 @@ def screen_artifact(
                 )
             )
     if "STRUCTURAL_WT" in families:
+        aligned_structural = {
+            tf: _aligned_structural_tf(data, htfs[tf], tf)
+            for tf in ("15m", "1h", "4h")
+        }
+        structural_started = time.perf_counter()
         for params, profit_gate, wait_hours in structural_grid():
             fold_rows = []
             for ctx in contexts:
                 fold_rows.append(
-                    simulate(
+                    simulate_structural_compiled(
                         data,
                         ctx["signals"],
                         ctx["curve"],
-                        StructuralWtExitBookAdapter(
-                            data, htfs, params, side=side
-                        ),
+                        htfs,
+                        params,
                         ctx["left"],
                         ctx["right"],
                         commission,
                         slippage,
                         side=side,
                         profit_gate_pct=profit_gate,
+                        aligned_by_tf=aligned_structural,
                     )
                 )
             candidates.append(
@@ -1365,6 +1539,9 @@ def screen_artifact(
                     profit_gate_pct=profit_gate,
                 )
             )
+        compiled_structural_elapsed_seconds = (
+            time.perf_counter() - structural_started
+        )
     if "PARTIAL_WT" in families:
         for params, fraction in partial_wt_grid():
             fold_rows = []
@@ -1418,6 +1595,10 @@ def screen_artifact(
         and row["metrics"]["bars_flat_beyond_reclaim"] == 0
         and row["metrics"]["insolvent_folds"] == 0
         and not row["metrics"]["entry_capacity_breach"]
+        and (
+            row["family"] != "EXIT_WT_MTF"
+            or row["metrics"]["exit_fills"] > 0
+        )
     ]
     survivors = []
     frozen_discovery_winners: list[dict[str, Any]] = []
@@ -1450,6 +1631,95 @@ def screen_artifact(
                 )
             )
             frozen_discovery_winners.append(family_rows[0])
+        for winner in frozen_discovery_winners:
+            if winner["family"] != "EXIT_STRUCTURAL_WT_LOWER_TOP":
+                winner["compiled_python_parity"] = {
+                    "status": "NOT_APPLICABLE"
+                }
+                continue
+            param_values = dict(winner["params"])
+            param_values.pop("max_wait_hours", None)
+            oracle_params = StructuralWtParams(**param_values)
+            oracle_started = time.perf_counter()
+            oracle_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    StructuralWtExitBookAdapter(
+                        data, htfs, oracle_params, side=side
+                    ),
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=float(winner["profit_gate_pct"]),
+                )
+                for ctx in contexts
+            ]
+            oracle_elapsed = time.perf_counter() - oracle_started
+            oracle = _aggregate(oracle_rows)
+            differences: dict[str, dict[str, Any]] = {}
+            float_keys = (
+                "capital_return_pct_sum",
+                "bh_capital_return_pct_sum",
+                "exposure_weighted_tim_pct_row_weighted",
+                "max_drawdown_account_pct_max",
+                "minimum_account_equity_usd",
+                "peak_post_fill_notional_usd_max",
+                "requested_notional_usd",
+                "filled_notional_usd",
+                "fill_ratio",
+            )
+            exact_keys = (
+                "insolvent_folds",
+                "entry_capacity_breach",
+                "clamp_count",
+                "exit_fills",
+                "reclaim_reentries",
+                "bars_flat_beyond_reclaim",
+                "future_htf_source_count",
+                "entry_schedule_sha256_by_fold",
+            )
+            for key in float_keys:
+                compiled_value = float(winner["metrics"][key])
+                oracle_value = float(oracle[key])
+                if not math.isclose(
+                    compiled_value,
+                    oracle_value,
+                    rel_tol=1e-10,
+                    abs_tol=1e-8,
+                ):
+                    differences[key] = {
+                        "compiled": compiled_value,
+                        "python": oracle_value,
+                    }
+            for key in exact_keys:
+                if winner["metrics"][key] != oracle[key]:
+                    differences[key] = {
+                        "compiled": winner["metrics"][key],
+                        "python": oracle[key],
+                    }
+            winner["compiled_python_parity"] = {
+                "status": "PASS" if not differences else "FAIL",
+                "python_oracle_elapsed_seconds": oracle_elapsed,
+                "compiled_grid_elapsed_seconds": (
+                    compiled_structural_elapsed_seconds
+                ),
+                "compiled_candidates": len(structural_grid()),
+                "estimated_python_grid_seconds": (
+                    oracle_elapsed * len(structural_grid())
+                ),
+                "estimated_speedup": (
+                    oracle_elapsed
+                    * len(structural_grid())
+                    / compiled_structural_elapsed_seconds
+                    if compiled_structural_elapsed_seconds > 0
+                    else None
+                ),
+                "differences": differences,
+            }
         survivors = [
             row
             for row in frozen_discovery_winners
@@ -1477,6 +1747,8 @@ def screen_artifact(
             and row["metrics"]["bars_flat_beyond_reclaim"] == 0
             and row["metrics"]["insolvent_folds"] == 0
             and not row["metrics"]["entry_capacity_breach"]
+            and row.get("compiled_python_parity", {}).get("status")
+            in {"PASS", "NOT_APPLICABLE"}
         ]
     payload = {
         "tier": "VEC_RESEARCH_SAME_ENTRY_SCREEN",
@@ -1505,6 +1777,9 @@ def screen_artifact(
         "same_adapter_e02_control": control,
         "source_artifact_control": source["frozen_oos_aggregate"],
         "candidate_count": len(candidates),
+        "compiled_structural_grid_elapsed_seconds": (
+            compiled_structural_elapsed_seconds
+        ),
         "provisional_survivor_count": len(provisional_survivors),
         "frozen_discovery_winners": frozen_discovery_winners,
         "survivor_count": len(survivors),

@@ -39,6 +39,7 @@ import json
 import os
 import sqlite3
 import time
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -634,6 +635,57 @@ def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
     return baselines, cells
 
 
+def _path_fleet_evidence(base=BASE):
+    """Load the isolated vector/exact path-fleet ledger for workbook reporting.
+
+    The fleet is intentionally *not* merged into repaired ENGINE cells.  It is
+    a separate research tier that makes vector-first progress visible while
+    preserving the matrix promotion boundary.
+    """
+    root = Path(base) / "data" / "reports" / "path_fleet"
+    db_path = root / "queue.db"
+    registry_path = root / "PATH_FLEET_REGISTRY.json"
+    if not db_path.exists():
+        return [], []
+    try:
+        registry_raw = json.loads(registry_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        registry_raw = []
+    registry = {
+        str(row.get("path_id")): row
+        for row in registry_raw
+        if isinstance(row, dict) and row.get("path_id")
+    }
+    try:
+        fleet = sqlite3.connect(
+            f"file:{db_path}?mode=ro", uri=True, timeout=30
+        )
+        fleet.row_factory = sqlite3.Row
+        jobs = [dict(row) for row in fleet.execute(
+            """SELECT id,path_id,kind,priority,status,claimed_by,message
+               FROM jobs ORDER BY priority,path_id"""
+        )]
+        results = [dict(row) for row in fleet.execute(
+            """SELECT j.path_id,j.kind,j.priority,j.status job_status,
+                      r.symbol,r.side,r.stage,r.status result_status,
+                      r.strategy_return_pct,r.bh_return_pct,
+                      r.same_entry_control_return_pct,r.alpha_vs_bh_pp,
+                      r.alpha_vs_control_pp,r.tim_pct,r.trades,
+                      r.untouched_oos,r.exact_replay,r.future_htf_count,
+                      r.artifact,r.payload_json,r.created_at
+               FROM results r JOIN jobs j ON j.id=r.job_id
+               ORDER BY r.created_at DESC,r.id DESC"""
+        )]
+        fleet.close()
+    except (OSError, sqlite3.Error):
+        return [], []
+    for job in jobs:
+        job["registry"] = registry.get(job["path_id"], {})
+    for result in results:
+        result["registry"] = registry.get(result["path_id"], {})
+    return jobs, results
+
+
 def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     """Restore the durable per-symbol and ENTRY/EXIT matrix views.
 
@@ -833,11 +885,129 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
 
     entry_count = write_path_matrix("Entry Paths", "ENTRY")
     exit_count = write_path_matrix("Exit Paths", "EXIT")
+    fleet_jobs, fleet_results = _path_fleet_evidence(base)
+    fleet_sheet = wb.create_sheet("Path Fleet Results", 4)
+    fleet_headers = [
+        "path_id", "kind", "priority", "job_status", "description", "settings",
+        "fixed_entry_control", "fixed_exit_control", "symbol", "side", "stage",
+        "result_status", "strategy_return_%", "B&H_return_%",
+        "strategy_x_B&H", "alpha_vs_B&H_pp", "same_entry_control_return_%",
+        "alpha_vs_control_pp", "time_in_market_%", "trades", "untouched_OOS",
+        "exact_replay", "future_HTF_count", "promotion_allowed",
+        "matrix_written", "result_UTC", "artifact",
+    ]
+    fleet_sheet.append(fleet_headers)
+    for cell in fleet_sheet[1]:
+        cell.fill, cell.font = navy, white_bold
+
+    latest_results, seen_results = [], set()
+    for result in fleet_results:
+        identity = (
+            result.get("path_id"), result.get("symbol"), result.get("side"),
+            result.get("stage"),
+        )
+        if identity in seen_results:
+            continue
+        seen_results.add(identity)
+        latest_results.append(result)
+    paths_with_results = {row.get("path_id") for row in latest_results}
+    for job in fleet_jobs:
+        if job.get("path_id") not in paths_with_results:
+            latest_results.append({
+                "path_id": job.get("path_id"), "kind": job.get("kind"),
+                "priority": job.get("priority"), "job_status": job.get("status"),
+                "registry": job.get("registry") or {},
+            })
+
+    for result in latest_results:
+        registry_row = result.get("registry") or {}
+        try:
+            payload = json.loads(result.get("payload_json") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            payload = {}
+        strategy = result.get("strategy_return_pct")
+        bh = result.get("bh_return_pct")
+        multiple = (
+            float(strategy) / float(bh)
+            if strategy is not None and bh is not None and float(bh) > 0
+            else None
+        )
+        promotion_allowed = bool(
+            payload.get("promotion_allowed")
+            or (payload.get("manifest") or {}).get("promotion_allowed")
+        )
+        matrix_written = bool(
+            payload.get("matrix_written")
+            or (payload.get("manifest") or {}).get("matrix_written")
+        )
+        created = result.get("created_at")
+        created_iso = (
+            datetime.fromtimestamp(float(created), timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            if created is not None else None
+        )
+        fleet_sheet.append([
+            result.get("path_id"), result.get("kind"), result.get("priority"),
+            result.get("job_status"),
+            registry_row.get("description"),
+            json.dumps(registry_row.get("settings") or {}, separators=(",", ":")),
+            registry_row.get("fixed_entry_control"),
+            registry_row.get("fixed_exit_control"),
+            result.get("symbol"), result.get("side"), result.get("stage"),
+            result.get("result_status"), strategy, bh, multiple,
+            result.get("alpha_vs_bh_pp"),
+            result.get("same_entry_control_return_pct"),
+            result.get("alpha_vs_control_pp"), result.get("tim_pct"),
+            result.get("trades"), bool(result.get("untouched_oos")),
+            bool(result.get("exact_replay")), result.get("future_htf_count"),
+            promotion_allowed, matrix_written, created_iso,
+            result.get("artifact"),
+        ])
+        row = fleet_sheet.max_row
+        status = str(result.get("result_status") or result.get("job_status") or "")
+        if (
+            result.get("exact_replay") and promotion_allowed and matrix_written
+            and status in {"ACCEPTED", "PROMOTION_ELIGIBLE"}
+        ):
+            fill = green
+        elif status in {"CONTROL_FAILURE", "GRAY_REJECTED", "REJECTED"}:
+            fill = gray
+        elif status in {"QUARANTINED", "ERROR", "FAILED"}:
+            fill = red
+        elif result.get("strategy_return_pct") is not None:
+            fill = amber
+        else:
+            fill = blue if status in {"SCREENED", "DELEGATED"} else gray
+        fleet_sheet.cell(row, 12).fill = fill
+    fleet_sheet.freeze_panes = "I2"
+    fleet_sheet.auto_filter.ref = fleet_sheet.dimensions
+    fleet_sheet.sheet_view.showGridLines = False
+    for column in (5, 6, 7, 8, 27):
+        for cell in fleet_sheet[get_column_letter(column)]:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+    widths = (
+        38, 9, 8, 20, 70, 54, 44, 44, 12, 9, 24, 24, 17, 15, 16, 18,
+        24, 20, 18, 9, 14, 12, 18, 18, 14, 21, 70,
+    )
+    for column, width in enumerate(widths, 1):
+        fleet_sheet.column_dimensions[get_column_letter(column)].width = width
+
     guide.append(("Restored sheet coverage",
-                  f"PerSym keys={len(keys)}; Entry paths={entry_count}; Exit paths={exit_count}."))
+                  f"PerSym keys={len(keys)}; Entry paths={entry_count}; Exit paths={exit_count}; "
+                  f"Path-fleet jobs={len(fleet_jobs)}; latest stage rows={len(latest_results)}."))
+    guide.append((
+        "Path Fleet Results",
+        "Separate vector/exact research ledger for the frozen top/bottom cohorts. "
+        "It includes every logical path job, descriptions, parameter ranges, fixed "
+        "entry/exit controls and latest per-stage rows. Amber is research evidence, "
+        "gray is retained rejection, and only an exact promotion-allowed/matrix-written "
+        "row may be green. These rows never overwrite repaired ENGINE cells.",
+    ))
     return {
         "keys": len(keys), "repaired_baselines": len(baselines),
         "repaired_cells": len(cells), "entry_paths": entry_count, "exit_paths": exit_count,
+        "fleet_jobs": len(fleet_jobs), "fleet_rows": len(latest_results),
     }
 
 
@@ -937,8 +1107,27 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
         if matrix_top_preserved else
         "Not present in the previous workbook; tools/param_matrix.py export will create it.",
     ))
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    wb.save(str(path))
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # A full workbook can take more than a minute to serialize on a loaded S1.
+    # Never expose that partial ZIP to the hourly puller or digest process.
+    tmp_path = path.with_name(
+        f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp.xlsx"
+    )
+    try:
+        wb.save(str(tmp_path))
+        with zipfile.ZipFile(tmp_path, "r") as archive:
+            required = {"[Content_Types].xml", "xl/workbook.xml"}
+            if not required.issubset(archive.namelist()):
+                raise RuntimeError(
+                    f"incomplete workbook archive: {tmp_path}"
+                )
+        os.replace(tmp_path, path)
+    finally:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
     print(
         "[xlsx restored] "
         + " ".join(f"{key}={value}" for key, value in restored.items()),

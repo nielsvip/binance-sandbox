@@ -98,8 +98,9 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "same frozen ladder curve and capacity",
         "E02 N=30 + resting reclaim",
         "tools/vec_band_ladder_walkforward.py",
-        "ADAPTER_REQUIRED",
-        "Freeze the accepted ladder control before comparing trigger families; SHORT mirror is also required.",
+        "READY_BOTH_SIDES",
+        "Causal direct/union-with-green adapter freezes the accepted ladder "
+        "control; LONG and SHORT mirrors are screened independently.",
     ),
     PathFamily(
         "ENTRY_WT_DC",
@@ -116,9 +117,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "same frozen ladder sizing; no other entry signals",
         "E02 N=30 + resting reclaim",
-        None,
-        "DELEGATED_WT_DC",
-        "Owned by the dedicated WT_DC repair lane; require dead-knob sentinel before results.",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES",
+        "Numeric-cross/router/switch repair complete. Causal overlay is screened "
+        "against frozen ladder+E02; exact replay remains mandatory for survivors.",
     ),
     PathFamily(
         "ENTRY_GOLDEN_RULE",
@@ -135,8 +137,8 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "same ladder sizing and capacity",
         "E02 N=30 + resting reclaim",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES",
     ),
     PathFamily(
         "ENTRY_BB_RECOVERY",
@@ -202,9 +204,11 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        "tools/vec_structural_wt_rebound_experiment.py",
-        "ADAPTER_REQUIRED",
-        "Existing standalone scan improved B&H on MU but degraded the accepted 6.41x ladder/E02 control.",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Parity-gated compiled adapter freezes the accepted ladder schedule, "
+        "uses completed HTF bars, and mirrors structural states by side; "
+        "dc_low4_5m is excluded.",
     ),
     PathFamily(
         "EXIT_WT_MTF",
@@ -221,8 +225,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Completed 15m/1h/4h/D/W WT exhaustion is vectorized and frozen "
+        "chronologically; actual exits are mandatory and MTM-only rows remain gray.",
     ),
     PathFamily(
         "EXIT_GR_OPPOSITE",

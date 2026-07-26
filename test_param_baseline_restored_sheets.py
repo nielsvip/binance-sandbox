@@ -98,10 +98,13 @@ def test_restored_param_baseline_sheets_are_contract_tier_isolated(tmp_path, mon
     wb.save(output)
     check = load_workbook(output, data_only=True)
 
-    assert {"Workbook Guide", "PerSym Results", "Entry Paths", "Exit Paths"} <= set(check.sheetnames)
+    assert {
+        "Workbook Guide", "PerSym Results", "Entry Paths", "Exit Paths",
+        "Path Fleet Results",
+    } <= set(check.sheetnames)
     assert coverage == {
         "keys": 2, "repaired_baselines": 1, "repaired_cells": 1,
-        "entry_paths": 1, "exit_paths": 1,
+        "entry_paths": 1, "exit_paths": 1, "fleet_jobs": 0, "fleet_rows": 0,
     }
     per_sym = check["PerSym Results"]
     assert per_sym["A2"].value == "MU_LONG"
@@ -124,6 +127,7 @@ def test_restored_param_baseline_sheets_are_contract_tier_isolated(tmp_path, mon
     assert entry["J4"].value == "PROMOTABLE > B&H"
     assert check["Exit Paths"]["F4"].value is None
     assert check["Exit Paths"]["J4"].value == "PENDING"
+    assert check["Path Fleet Results"]["A1"].value == "path_id"
 
     # The real recurring exporter starts from a fresh Workbook on every refresh.
     # Prove the restored sheets are regenerated (and therefore cannot disappear)
@@ -142,3 +146,69 @@ def test_restored_param_baseline_sheets_are_contract_tier_isolated(tmp_path, mon
         "Workbook Guide", "PerSym Results", "Entry Paths", "Exit Paths",
     ]
     assert refreshed["Matrix_Top"]["B2"].value == "preserve-me"
+
+
+def test_path_fleet_is_visible_but_not_merged_into_engine_cells(tmp_path):
+    (tmp_path / "data" / "reports" / "path_fleet").mkdir(parents=True)
+    (tmp_path / "symbols_trb_long.json").write_text('["MU"]')
+    (tmp_path / "symbols_trb_short.json").write_text("[]")
+    (tmp_path / "data" / "knob_registry.json").write_text('{"tradier":{}}')
+    (tmp_path / "data" / "param_sweep_manifest_tradier.json").write_text(
+        '{"params":{}}'
+    )
+    registry = [{
+        "path_id": "EXIT_E02_DONCHIAN", "kind": "EXIT", "priority": 1,
+        "description": "Completed-4h Donchian structural exit.",
+        "settings": {"lookback": [10, 20, 30]},
+        "fixed_entry_control": "frozen ladder schedule",
+        "fixed_exit_control": "E02 N30",
+    }]
+    root = tmp_path / "data" / "reports" / "path_fleet"
+    (root / "PATH_FLEET_REGISTRY.json").write_text(json.dumps(registry))
+    fleet = sqlite3.connect(root / "queue.db")
+    fleet.executescript(
+        """
+        CREATE TABLE jobs (
+          id INTEGER PRIMARY KEY, path_id TEXT, kind TEXT, priority INTEGER,
+          status TEXT, claimed_by TEXT, message TEXT
+        );
+        CREATE TABLE results (
+          id INTEGER PRIMARY KEY, job_id INTEGER, symbol TEXT, side TEXT,
+          stage TEXT, status TEXT, strategy_return_pct REAL,
+          bh_return_pct REAL, same_entry_control_return_pct REAL,
+          alpha_vs_bh_pp REAL, alpha_vs_control_pp REAL, tim_pct REAL,
+          trades INTEGER, untouched_oos INTEGER, exact_replay INTEGER,
+          future_htf_count INTEGER, artifact TEXT, payload_json TEXT,
+          created_at REAL
+        );
+        """
+    )
+    fleet.execute(
+        "INSERT INTO jobs VALUES (1,'EXIT_E02_DONCHIAN','EXIT',1,'SCREENED',NULL,NULL)"
+    )
+    fleet.execute(
+        """INSERT INTO results VALUES
+           (1,1,'MU','LONG','VEC_UNTOUCHED_OOS','GRAY_REJECTED',
+            150,100,175,50,-25,75,4,1,0,0,'artifact',
+            '{"promotion_allowed":false,"matrix_written":false}',1785090000)"""
+    )
+    fleet.commit()
+    fleet.close()
+
+    con = _memory_store()
+    wb = Workbook()
+    wb.active.title = "Baselines"
+    coverage = prs._write_restored_workbook_sheets(
+        wb, con, "tradier", tmp_path
+    )
+
+    sheet = wb["Path Fleet Results"]
+    assert coverage["fleet_jobs"] == 1
+    assert coverage["fleet_rows"] == 1
+    assert sheet["A2"].value == "EXIT_E02_DONCHIAN"
+    assert sheet["E2"].value == "Completed-4h Donchian structural exit."
+    assert sheet["M2"].value == 150
+    assert sheet["O2"].value == 1.5
+    assert sheet["X2"].value is False
+    # Separate tier: a vector result must not invent a repaired ENGINE baseline.
+    assert wb["PerSym Results"]["F2"].value is None
