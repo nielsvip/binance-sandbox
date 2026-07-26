@@ -64,6 +64,46 @@ def _safe_int(d: dict, key: str, default=0):
     return int(v)
 
 
+def _cross_label(value) -> str:
+    """Normalize live string and NPZ numeric WT-cross encodings.
+
+    Live Tradier indicator dictionaries use ``"BULL"``/``"BEAR"`` while
+    backtest NPZ rows use ``+1``/``-1``.  Treating the numeric value as a
+    string (``"1"``/``"-1"``) silently removed the 30-point 1h trigger from
+    exact-engine backtests, so a threshold sweep was not exercising the same
+    WT_DC path as live.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        text = value.strip().upper()
+        if text in {"BULL", "BEAR"}:
+            return text
+        try:
+            value = float(text)
+        except (TypeError, ValueError):
+            return ""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if not np.isfinite(numeric) or numeric == 0:
+        return ""
+    return "BULL" if numeric > 0 else "BEAR"
+
+
+def _cross_from_indicators(d: dict, tf: str) -> str:
+    """Read the canonical cross first, then direction-specific aliases."""
+    label = _cross_label(d.get(f"wt_cross_{tf}"))
+    if label:
+        return label
+    if bool(d.get(f"wt_cross_bull_{tf}", 0)):
+        return "BULL"
+    if bool(d.get(f"wt_cross_bear_{tf}", 0)):
+        return "BEAR"
+    return ""
+
+
 def score_entry_multitf(indicators: dict, is_long: bool, current_price: float = 0.0) -> Tuple[float, str]:
     """
     MULTI-TF SYSTEM (validated 121 stocks 2.9yr, Sharpe 27.4, 95% positive symbols).
@@ -76,11 +116,7 @@ def score_entry_multitf(indicators: dict, is_long: bool, current_price: float = 
     d = indicators
     wt1_D = _safe(d, "wt1_D"); wt2_D = _safe(d, "wt2_D")
     wt1_4h = _safe(d, "wt1_4h"); wt2_4h = _safe(d, "wt2_4h")
-    _cross_1h_str = d.get("wt_cross_1h", "")
-    if not _cross_1h_str:
-        if d.get("wt_cross_bull_1h", 0): _cross_1h_str = "BULL"
-        elif d.get("wt_cross_bear_1h", 0): _cross_1h_str = "BEAR"
-    wt_cross_1h = str(_cross_1h_str)
+    wt_cross_1h = _cross_from_indicators(d, "1h")
     dc_1h = _safe(d, "dc_position_1h", 0.5)
     k_5m = _safe(d, "stoch_k_5m", 50)
     if any(np.isnan([wt1_D, wt2_D, wt1_4h, wt2_4h, dc_1h, k_5m])):
@@ -109,11 +145,7 @@ def score_exit_multitf(indicators: dict, is_long: bool, max_gain: float, current
     OR trailing (keep 60% of gains over 2%), OR -2% hard stop.
     """
     d = indicators
-    _cross_1h_exit = d.get("wt_cross_1h", "")
-    if not _cross_1h_exit:
-        if d.get("wt_cross_bull_1h", 0): _cross_1h_exit = "BULL"
-        elif d.get("wt_cross_bear_1h", 0): _cross_1h_exit = "BEAR"
-    wt_cross_1h = str(_cross_1h_exit)
+    wt_cross_1h = _cross_from_indicators(d, "1h")
     wt1_4h = _safe(d, "wt1_4h"); wt2_4h = _safe(d, "wt2_4h")
     if any(np.isnan([wt1_4h, wt2_4h])):
         return False, "NO_DATA"

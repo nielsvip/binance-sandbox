@@ -1340,6 +1340,10 @@ class TradierConfig:
     #     applying new BASELINE for forward-test alignment between vec and live.
     # ═══════════════════════════════════════════════════════════════════════════
     WT_DC_ENTRY_THRESHOLD: float = 45  # 2026-06-24 ROLLED BACK: bt_wtdc_threshold (291 stocks) — LONG ps 0.092→0.123 (+33%), SHORT ps 0.082→0.113 (+38%) at 45 vs 20. Gain/mo essentially unchanged (+3.82%/+3.20% vs +3.89%/+3.14%). Prior test (2026-06-03) optimized gain/mo not pool_sharpe — lower pool_sharpe = lower live quality.
+    # Path-scoped side switches. Per-symbol profiles already emitted these names,
+    # but the live/exact WT_DC branch did not consume them.
+    WT_DC_LONG_ENABLED: bool = True
+    WT_DC_SHORT_ENABLED: bool = True
     # 🚩 NEW BASELINE 2026-05-12 — 3 additional gates for tradier WT_DC_ENTRY path.
     # Wired in tradier_manage.py:2027-2068. Source: vec_sweep dc45_h1_s40_grOFF.
     # ROLLBACK each to disabled value (commented inline).

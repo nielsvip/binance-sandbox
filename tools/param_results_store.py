@@ -39,12 +39,15 @@ import json
 import os
 import sqlite3
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 DB_PATH = BASE / "data" / "param_results_stocks.db"
 CENTRAL_DB = BASE / "data" / "test_results_central.db"
 INERT_EPS = 0.05  # gain/mo pp below which a delta is noise
+REPAIRED_CAMPAIGN = "stocks_repaired_20260725_c2"
+REPAIRED_CUTOFF = "2026-07-26T04:15:00Z"
 
 
 def trades_fingerprint(trades):
@@ -424,6 +427,453 @@ def relevance_ranking(con, mode="tradier", campaign=None):
     return sorted(by_param.values(), key=lambda d: -d["max_spread"])
 
 
+def _table_columns(con, table):
+    return {row[1] for row in con.execute(f"PRAGMA table_info({table})")}
+
+
+def _tradeable_stock_keys(base=BASE):
+    """Return the current TRB symbol-side universe without inventing opposite sides."""
+    out, seen = [], set()
+    for filename, side in (("symbols_trb_long.json", "LONG"), ("symbols_trb_short.json", "SHORT")):
+        path = Path(base) / filename
+        if not path.exists():
+            continue
+        raw = json.loads(path.read_text())
+        symbols = raw if isinstance(raw, list) else list(raw)
+        for symbol in symbols:
+            key = f"{str(symbol).upper()}_{side}"
+            if key not in seen:
+                seen.add(key)
+                out.append(key)
+    return out
+
+
+def _load_path_inventory(base=BASE):
+    """Map Tradier config knobs to the current live reason-path catalog.
+
+    The inventory is the human-audited source for reason prefixes, functions and
+    descriptions.  The knob registry remains the exhaustive source for settings,
+    because one live reason can depend on several knobs and not every knob has
+    fired in live history yet.
+    """
+    candidates = (
+        Path(base) / "reports" / "path_inventory.xlsx",
+        Path(base) / "data" / "reports" / "path_inventory.xlsx",
+    )
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        return {}
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
+    except Exception:
+        return {}
+    by_knob = {}
+    for sheet in ("Tradier — Entries", "Tradier — Exits"):
+        if sheet not in wb.sheetnames:
+            continue
+        ws = wb[sheet]
+        headers = [str(c.value or "").strip() for c in ws[1]]
+        idx = {name: i for i, name in enumerate(headers)}
+        for values in ws.iter_rows(min_row=2, values_only=True):
+            raw_keys = values[idx.get("Config Key", -1)] if "Config Key" in idx else None
+            if not raw_keys or str(raw_keys).strip() in ("—", "-", "N/A"):
+                continue
+            record = {
+                "reason": values[idx.get("Reason Prefix", -1)] if "Reason Prefix" in idx else "",
+                "description": values[idx.get("Description", -1)] if "Description" in idx else "",
+                "source": values[idx.get("Source File", -1)] if "Source File" in idx else "",
+                "function": values[idx.get("Function", -1)] if "Function" in idx else "",
+                "default": values[idx.get("Default", -1)] if "Default" in idx else "",
+                "status": values[idx.get("Status", -1)] if "Status" in idx else "",
+            }
+            # Inventory keys use "A / B"; reject prose/em-dash tokens.
+            for knob in (x.strip() for x in str(raw_keys).split("/")):
+                if knob and knob.replace("_", "").isalnum():
+                    by_knob.setdefault(knob, []).append(record)
+    try:
+        wb.close()
+    except Exception:
+        pass
+    return by_knob
+
+
+def _describe_setting(param, info, inventory):
+    records = inventory.get(param, [])
+    live = []
+    for record in records[:3]:
+        reason = str(record.get("reason") or "")
+        desc = str(record.get("description") or "")
+        if reason or desc:
+            live.append(f"{reason}: {desc}".strip(": "))
+    group = str(info.get("group") or "OTHER").upper()
+    role = str(info.get("role") or "SETTING").replace("_", " ")
+    scope = "per-symbol" if info.get("per_sym") else "global"
+    fallback = f"{group} {role}; {scope}; config knob {param}."
+    return " | ".join(live) if live else fallback
+
+
+def _path_definitions(base=BASE):
+    """Exhaustive ENTRY/EXIT path families with descriptions and setting grids."""
+    reg_path = Path(base) / "data" / "knob_registry.json"
+    manifest_path = Path(base) / "data" / "param_sweep_manifest_tradier.json"
+    if not reg_path.exists() or not manifest_path.exists():
+        return {"ENTRY": [], "EXIT": []}
+    registry = json.loads(reg_path.read_text()).get("tradier", {})
+    manifest = json.loads(manifest_path.read_text()).get("params", {})
+    inventory = _load_path_inventory(base)
+    grouped = {"ENTRY": {}, "EXIT": {}}
+    for param, info in registry.items():
+        group = str(info.get("group") or "").upper()
+        if group not in grouped:
+            continue
+        family = str(info.get("family") or param)
+        grouped[group].setdefault(family, []).append((param, info))
+    result = {"ENTRY": [], "EXIT": []}
+    for group, families in grouped.items():
+        for family, settings in sorted(families.items()):
+            settings.sort(key=lambda item: (
+                item[1].get("role") != "MAIN_SWITCH", item[0]
+            ))
+            detail, descriptions, reasons = [], [], []
+            for param, info in settings:
+                spec = manifest.get(param, {}) if isinstance(manifest.get(param, {}), dict) else {}
+                values = spec.get("test_values") or spec.get("values") or []
+                default = spec.get("default", info.get("default"))
+                sweepable = bool(spec.get("sweepable"))
+                value_text = ",".join(json.dumps(v, separators=(",", ":")) for v in values)
+                detail.append(
+                    f"{param} [default={json.dumps(default, separators=(',', ':'))}; "
+                    f"grid={value_text or 'none'}; sweepable={'yes' if sweepable else 'no'}]"
+                )
+                descriptions.append(_describe_setting(param, info, inventory))
+                reasons.extend(str(r.get("reason") or "") for r in inventory.get(param, []))
+            result[group].append({
+                "path": family,
+                "params": [p for p, _ in settings],
+                "settings": " | ".join(detail),
+                "description": " | ".join(dict.fromkeys(x for x in descriptions if x)),
+                "live_reasons": " | ".join(dict.fromkeys(x for x in reasons if x)),
+            })
+    return result
+
+
+def _repaired_evidence(con, mode="tradier", campaign=REPAIRED_CAMPAIGN):
+    """Load only contract-matched repaired ENGINE evidence.
+
+    Historical and VEC rows deliberately never enter these structures. A current
+    cell is retained for diagnosis when it fails promotion gates, but it must
+    match that key's repaired baseline contract.
+    """
+    bcols, ccols = _table_columns(con, "key_baseline"), _table_columns(con, "param_cells")
+    required_base = {
+        "validation_status", "contract_fingerprint", "real_closes",
+        "reentry_violations", "requested_fill_ratio", "size_clamp_count",
+        "tier", "time_in_mkt_pct", "capture_vs_bh",
+    }
+    required_cells = {
+        "validation_status", "contract_fingerprint", "real_closes",
+        "reentry_violations", "requested_fill_ratio", "size_clamp_count",
+        "tier", "time_in_mkt_pct", "inert",
+    }
+    if not required_base.issubset(bcols) or not required_cells.issubset(ccols):
+        return {}, {}
+    baselines = {}
+    bq = (
+        "SELECT symbol,side,gain_per_mo,bh_per_mo,delta_gain_mo_vs_bh,trades,"
+        "pool_sharpe,time_in_mkt_pct,capture_vs_bh,validation_status,"
+        "contract_fingerprint,real_closes,reentry_violations,requested_fill_ratio,"
+        "size_clamp_count,ts,overrides_json "
+        "FROM key_baseline WHERE mode=? AND campaign=? AND COALESCE(tier,'ENGINE')='ENGINE' "
+        "AND ts>=? AND validation_status IN ('PASS','PASS_WITH_CAPACITY_CLAMPS') ORDER BY ts"
+    )
+    for row in con.execute(bq, (mode, campaign, REPAIRED_CUTOFF)):
+        (sym, side, gain, bh, delta, trades, sharpe, tim, capture, validation,
+         contract, real_closes, reentry_violations, fill_ratio, clamps, ts, overrides) = row
+        baselines[f"{sym}_{side}"] = {
+            "gain_per_mo": gain, "bh_per_mo": bh, "delta_vs_bh": delta,
+            "trades": trades, "pool_sharpe": sharpe, "time_in_mkt_pct": tim,
+            "capture_vs_bh": capture, "validation": validation, "contract": contract,
+            "real_closes": real_closes, "reentry_violations": reentry_violations,
+            "requested_fill_ratio": fill_ratio, "size_clamp_count": clamps,
+            "ts": ts, "overrides_json": overrides,
+        }
+    cells = {}
+    cq = (
+        "SELECT symbol,side,param,value_json,gain_per_mo,delta_gain_mo_vs_bh,trades,"
+        "pool_sharpe,time_in_mkt_pct,validation_status,contract_fingerprint,real_closes,"
+        "reentry_violations,requested_fill_ratio,size_clamp_count,ts,overrides_json,inert "
+        "FROM param_cells WHERE mode=? AND campaign=? AND COALESCE(tier,'ENGINE')='ENGINE' "
+        "AND ts>=? AND validation_status IN ('PASS','PASS_WITH_CAPACITY_CLAMPS') ORDER BY ts"
+    )
+    for row in con.execute(cq, (mode, campaign, REPAIRED_CUTOFF)):
+        (sym, side, param, value, gain, delta, trades, sharpe, tim, validation,
+         contract, real_closes, reentry_violations, fill_ratio, clamps, ts,
+         overrides, inert) = row
+        key = f"{sym}_{side}"
+        base = baselines.get(key)
+        if not base or contract != base.get("contract"):
+            continue
+        promotable = (
+            validation == "PASS"
+            and (real_closes or 0) >= 1
+            and (reentry_violations or 0) == 0
+            and not bool(inert)
+            and delta is not None
+            and float(delta) > 0
+        )
+        cells[(key, param, str(value))] = {
+            "gain_per_mo": gain, "delta_vs_bh": delta, "trades": trades,
+            "pool_sharpe": sharpe, "time_in_mkt_pct": tim,
+            "validation": validation, "contract": contract,
+            "real_closes": real_closes, "reentry_violations": reentry_violations,
+            "requested_fill_ratio": fill_ratio, "size_clamp_count": clamps,
+            "ts": ts, "overrides_json": overrides, "inert": bool(inert),
+            "promotable": promotable,
+        }
+    return baselines, cells
+
+
+def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
+    """Restore the durable per-symbol and ENTRY/EXIT matrix views.
+
+    These sheets are generated every time PARAM_BASELINE_STOCKS is refreshed,
+    so a recurring report run can no longer delete them.
+    """
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    keys = _tradeable_stock_keys(base)
+    paths = _path_definitions(base)
+    baselines, cells = _repaired_evidence(con, mode)
+    # Include repaired evidence keys even if the live list changed after the run.
+    for key in sorted(baselines):
+        if key not in keys:
+            keys.append(key)
+
+    navy = PatternFill("solid", fgColor="1F4E78")
+    blue = PatternFill("solid", fgColor="D9EAF7")
+    green = PatternFill("solid", fgColor="E2F0D9")
+    red = PatternFill("solid", fgColor="F4CCCC")
+    gray = PatternFill("solid", fgColor="E7E6E6")
+    amber = PatternFill("solid", fgColor="FFF2CC")
+    white_bold = Font(color="FFFFFF", bold=True)
+
+    guide = wb.create_sheet("Workbook Guide", 0)
+    guide.column_dimensions["A"].width = 34
+    guide.column_dimensions["B"].width = 115
+    guide_rows = [
+        ("PARAM_BASELINE_STOCKS", "Durable stock parameter workbook; restored layout."),
+        ("Generated UTC", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")),
+        ("PerSym Results", "One row per current TRB tradeable symbol-side. Only repaired ENGINE "
+         f"campaign {REPAIRED_CAMPAIGN} with contract-matched rows is allowed in result cells."),
+        ("Entry Paths / Exit Paths", "Every registry path is a column group. Row 2 contains the "
+         "human description and live reason paths; row 3 contains per-key subcolumns for tested "
+         "settings, best setting, best delta vs B&H, best gain/mo, and result status."),
+        ("Green", "Contract-valid PASS cell with real close(s), no reentry violation, non-inert, and >B&H."),
+        ("Amber", "Repaired evidence exists but is not promotable (capacity clamp/incomplete gate)."),
+        ("Gray", "Below B&H or pending. Retained to prevent blind retesting; never promoted."),
+        ("Red", "Invalid/wiring/reentry failure evidence. Diagnose; never promote."),
+        ("Legacy sheets", "Baselines, ParamRanges, Suggestions, AllCells, Relevance and Matrix_Top "
+         "are preserved for historical research. They may contain pre-repair or VEC evidence and "
+         "MUST NOT be copied into repaired/promotable cells."),
+        ("Coverage", f"{len(baselines)}/{len(keys)} current keys have repaired baselines; "
+         f"{len(cells)} contract-matched repaired cells loaded."),
+    ]
+    for row in guide_rows:
+        guide.append(row)
+    for cell in guide[1]:
+        cell.fill, cell.font = navy, white_bold
+    for row in guide.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    ws = wb.create_sheet("PerSym Results", 1)
+    headers = [
+        "key", "symbol", "side", "evidence_tier", "campaign", "baseline_gain/mo",
+        "B&H_gain/mo", "baseline_delta_vs_B&H", "baseline_capture_xB&H", "trades",
+        "time_in_market_%", "pool_sharpe", "validation", "real_closes",
+        "reentry_violations", "requested_fill_ratio", "size_clamps", "contract",
+        "latest_result_UTC", "paths_tested", "promotable_>B&H_paths", "best_path",
+        "best_setting", "best_gain/mo", "best_delta_vs_B&H", "best_status",
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill, cell.font = navy, white_bold
+    by_key = {}
+    for (key, param, value), meta in cells.items():
+        by_key.setdefault(key, []).append((param, value, meta))
+    param_to_path = {}
+    for group in ("ENTRY", "EXIT"):
+        for path in paths[group]:
+            for param in path["params"]:
+                param_to_path[param] = f"{group}:{path['path']}"
+    for key in keys:
+        symbol, side = key.rsplit("_", 1)
+        base_row = baselines.get(key, {})
+        candidates = by_key.get(key, [])
+        best = max(candidates, key=lambda item: (
+            item[2].get("delta_vs_bh") if item[2].get("delta_vs_bh") is not None else -1e99
+        ), default=None)
+        best_meta = best[2] if best else {}
+        best_status = (
+            "PROMOTABLE > B&H" if best_meta.get("promotable")
+            else ("REPAIRED / NOT PROMOTABLE" if best else "PENDING REPAIRED TEST")
+        )
+        ws.append([
+            key, symbol, side, "REPAIRED ENGINE ONLY", REPAIRED_CAMPAIGN,
+            base_row.get("gain_per_mo"), base_row.get("bh_per_mo"),
+            base_row.get("delta_vs_bh"), base_row.get("capture_vs_bh"),
+            base_row.get("trades"), base_row.get("time_in_mkt_pct"),
+            base_row.get("pool_sharpe"), base_row.get("validation"),
+            base_row.get("real_closes"), base_row.get("reentry_violations"),
+            base_row.get("requested_fill_ratio"), base_row.get("size_clamp_count"),
+            base_row.get("contract"), base_row.get("ts"),
+            len({param_to_path.get(p, p) for p, _v, _m in candidates}),
+            sum(1 for _p, _v, meta in candidates if meta.get("promotable")),
+            param_to_path.get(best[0], best[0]) if best else None,
+            f"{best[0]}={best[1]}" if best else None,
+            best_meta.get("gain_per_mo"), best_meta.get("delta_vs_bh"), best_status,
+        ])
+        fill = (
+            green if best_meta.get("promotable")
+            else amber if best
+            else gray
+        )
+        ws.cell(ws.max_row, 26).fill = fill
+    ws.freeze_panes = "F2"
+    ws.auto_filter.ref = ws.dimensions
+    for i, width in enumerate((20, 12, 9, 23, 31, 16, 14, 20, 20, 10, 17, 13,
+                               25, 12, 19, 19, 12, 26, 21, 12, 22, 34, 44, 14, 20, 26), 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+
+    def write_path_matrix(sheet_name, group):
+        ws_path = wb.create_sheet(sheet_name, 2 if group == "ENTRY" else 3)
+        fixed = ["key", "symbol", "side", "repaired baseline status", "repaired B&H gain/mo"]
+        for i, value in enumerate(fixed, 1):
+            ws_path.cell(1, i, value)
+            ws_path.cell(1, i).fill, ws_path.cell(1, i).font = navy, white_bold
+            ws_path.merge_cells(start_row=1, start_column=i, end_row=3, end_column=i)
+            ws_path.cell(1, i).alignment = Alignment(vertical="center", wrap_text=True)
+        subheaders = ["tested settings", "best setting", "best Δgain/mo vs B&H",
+                      "best gain/mo", "status"]
+        path_columns = {}
+        col = len(fixed) + 1
+        for path in paths[group]:
+            start, end = col, col + len(subheaders) - 1
+            ws_path.merge_cells(start_row=1, start_column=start, end_row=1, end_column=end)
+            head = ws_path.cell(1, start, path["path"])
+            head.fill, head.font = navy, white_bold
+            head.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            ws_path.merge_cells(start_row=2, start_column=start, end_row=2, end_column=end)
+            desc = path["description"]
+            if path["live_reasons"]:
+                desc += f" | LIVE REASONS: {path['live_reasons']}"
+            desc += f" | SETTINGS: {path['settings']}"
+            dcell = ws_path.cell(2, start, desc)
+            dcell.fill = blue
+            dcell.alignment = Alignment(vertical="top", wrap_text=True)
+            for offset, sub in enumerate(subheaders):
+                cell = ws_path.cell(3, start + offset, sub)
+                cell.fill, cell.font = blue, Font(bold=True)
+                cell.alignment = Alignment(wrap_text=True)
+            path_columns[path["path"]] = (start, path)
+            col = end + 1
+        for key in keys:
+            symbol, side = key.rsplit("_", 1)
+            base_row = baselines.get(key, {})
+            ws_path.append([
+                key, symbol, side, base_row.get("validation") or "PENDING",
+                base_row.get("bh_per_mo"),
+            ])
+            row_index = ws_path.max_row
+            for path_name, (start, path) in path_columns.items():
+                path_cells = [
+                    (param, value, meta)
+                    for (cell_key, param, value), meta in cells.items()
+                    if cell_key == key and param in path["params"]
+                ]
+                tested = " | ".join(
+                    f"{param}={value}" for param, value, _meta in sorted(path_cells)
+                )
+                best = max(path_cells, key=lambda item: (
+                    item[2].get("delta_vs_bh")
+                    if item[2].get("delta_vs_bh") is not None else -1e99
+                ), default=None)
+                if best:
+                    param, value, meta = best
+                    if meta.get("promotable"):
+                        status, fill = "PROMOTABLE > B&H", green
+                    elif meta.get("validation") != "PASS":
+                        status, fill = f"NOT PROMOTABLE: {meta.get('validation')}", amber
+                    elif (meta.get("reentry_violations") or 0) > 0 or (meta.get("real_closes") or 0) < 1:
+                        status, fill = "INVALID: close/reentry contract", red
+                    elif meta.get("inert"):
+                        status, fill = "INVALID: INERT / wiring", red
+                    else:
+                        status, fill = "BELOW B&H — DISCARD EVIDENCE", gray
+                    values = [
+                        tested, f"{param}={value}", meta.get("delta_vs_bh"),
+                        meta.get("gain_per_mo"), status,
+                    ]
+                else:
+                    values, fill = ["", "", None, None, "PENDING"], gray
+                for offset, value in enumerate(values):
+                    ws_path.cell(row_index, start + offset, value)
+                ws_path.cell(row_index, start + 4).fill = fill
+        ws_path.freeze_panes = "F4"
+        ws_path.sheet_view.showGridLines = False
+        ws_path.row_dimensions[2].height = 75
+        for i, width in enumerate((20, 12, 9, 24, 17), 1):
+            ws_path.column_dimensions[get_column_letter(i)].width = width
+        for start, _path in path_columns.values():
+            for offset, width in enumerate((38, 34, 18, 14, 30)):
+                ws_path.column_dimensions[get_column_letter(start + offset)].width = width
+        return len(path_columns)
+
+    entry_count = write_path_matrix("Entry Paths", "ENTRY")
+    exit_count = write_path_matrix("Exit Paths", "EXIT")
+    guide.append(("Restored sheet coverage",
+                  f"PerSym keys={len(keys)}; Entry paths={entry_count}; Exit paths={exit_count}."))
+    return {
+        "keys": len(keys), "repaired_baselines": len(baselines),
+        "repaired_cells": len(cells), "entry_paths": entry_count, "exit_paths": exit_count,
+    }
+
+
+def _preserve_matrix_top(wb, path):
+    """Carry the hourly param_matrix.py Matrix_Top sheet across baseline refreshes.
+
+    param_results_store and param_matrix are independent recurring exporters. The
+    former used to recreate the workbook from scratch and silently delete the
+    latter's useful 603-column per-symbol matrix until the next hourly run.
+    Preserve its values deterministically; param_matrix.py remains responsible
+    for refreshing the sheet's content.
+    """
+    path = Path(path)
+    if not path.exists():
+        return False
+    from openpyxl import load_workbook
+    try:
+        old = load_workbook(path, read_only=True, data_only=False)
+    except Exception:
+        return False
+    try:
+        if "Matrix_Top" not in old.sheetnames:
+            return False
+        source = old["Matrix_Top"]
+        if "Matrix_Top" in wb.sheetnames:
+            del wb["Matrix_Top"]
+        target = wb.create_sheet("Matrix_Top")
+        for row in source.iter_rows(values_only=True):
+            target.append(list(row))
+        target.freeze_panes = getattr(source, "freeze_panes", None) or "D2"
+        target.auto_filter.ref = target.dimensions
+        return True
+    finally:
+        old.close()
+
+
 def export_xlsx(con, path, mode="tradier", campaign=None):
     from openpyxl import Workbook
     wb = Workbook()
@@ -471,8 +921,30 @@ def export_xlsx(con, path, mode="tradier", campaign=None):
         verdict = "INERT_CHECK_WIRING" if (d["n_keys"] >= 3 and d["max_spread"] < INERT_EPS) else (
             "RELEVANT" if d["n_keys_moved"] else "LOW")
         ws4.append([d["param"], round(d["max_spread"], 4), d["n_keys"], d["n_keys_moved"], verdict])
+    # Durable restoration: these sheets used to live in separate one-off workbooks and
+    # disappeared whenever this recurring exporter rebuilt PARAM_BASELINE_STOCKS. Generate
+    # them here, on every refresh, while keeping all legacy sheets above untouched.
+    restored = _write_restored_workbook_sheets(wb, con, mode, BASE)
+    matrix_top_preserved = _preserve_matrix_top(wb, path)
+    wb["Workbook Guide"].append((
+        "Legacy evidence counts",
+        f"Baselines={ws.max_row - 1}; AllCells={ws5.max_row - 1}; "
+        "kept in their original sheets, not blended into repaired result cells.",
+    ))
+    wb["Workbook Guide"].append((
+        "Matrix_Top",
+        "Preserved from the most recent tools/param_matrix.py export."
+        if matrix_top_preserved else
+        "Not present in the previous workbook; tools/param_matrix.py export will create it.",
+    ))
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(path))
+    print(
+        "[xlsx restored] "
+        + " ".join(f"{key}={value}" for key, value in restored.items()),
+        f"matrix_top_preserved={matrix_top_preserved}",
+        flush=True,
+    )
     return path
 
 

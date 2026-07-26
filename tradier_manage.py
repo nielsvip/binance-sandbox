@@ -3535,7 +3535,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             conf = 88.0
                             reason = f"LR_BAND_ENTRY_L_prio_pb={_pb_pb_f:.3f}_sl={_pb_sl_f:+.3f}_x{_pb_mult:.2f}"
                             logger.info(f"[LR_BAND_ENTRY_PRIO] {account_key}:{symbol}: pb={_pb_pb_f:.3f} slope={_pb_sl_f:+.4f} mult={_pb_mult:.2f} tf={_pb_tf}")
-                if action_type != "OPEN":
+                # Path-scoped switch: disabling WT_DC must not disable GR, ladder,
+                # delta, or mandatory reentry for the same symbol/side.
+                _wtdc_side_switch = (
+                    "WT_DC_LONG_ENABLED" if is_long else "WT_DC_SHORT_ENABLED"
+                )
+                _wtdc_path_enabled = bool(
+                    _cfg(
+                        _wtdc_side_switch,
+                        True,
+                        account_key,
+                        symbol,
+                        "LONG" if is_long else "SHORT",
+                    )
+                )
+                if action_type != "OPEN" and _wtdc_path_enabled:
                     _entry_ind = indicators_raw if indicators_raw else i
                     _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price)
                     if os.environ.get("V8_LRBAND_DEBUG"):
@@ -3693,6 +3707,11 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         logger.info(f"[WT_DC_ENTRY_K5M_BLOCK] {symbol} {'L' if is_long else 'S'}: k5m={_k5m_now:.1f} score={_entry_score:.0f}")
                     elif _htf_block and _entry_score >= _entry_threshold:
                         logger.info(f"[WT_DC_HTF_BLOCK] {symbol} {'L' if is_long else 'S'}: HTF against (gate={_wtdc_htf_gate}) score={_entry_score:.0f}")
+                elif action_type != "OPEN":
+                    logger.debug(
+                        f"[WT_DC_PATH_DISABLED] {account_key}:{symbol}_"
+                        f"{'LONG' if is_long else 'SHORT'} via {_wtdc_side_switch}=False"
+                    )
                 # RZ_BREAKOUT: third entry path — fires when bb_pct_b_1h just exited extreme zone.
                 # Band approach: LONG fires when bb_pctb is in [rz_bot, rz_bot+band] (just broke up from oversold).
                 # SHORT fires when bb_pctb is in [rz_top-band, rz_top] (just broke down from overbought).

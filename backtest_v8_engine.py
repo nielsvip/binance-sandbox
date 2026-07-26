@@ -215,6 +215,7 @@ import ez_positions_service
 # 2026-04-28 — Centralized reentry facade. All v8 reentry calls now route through
 # ez_reentry so live + backtest + daemon share one import surface.
 import ez_reentry
+from tradier_entry_contract import flat_key_needs_evaluation
 from utils import parse_position_key, construct_position_key, load_environment_from_gpg, get_simple_redis_manager
 
 # ═══════════════════════════════════════════════════════════════
@@ -8680,16 +8681,40 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         tm_mod.config, 'WT_3M_FORCE_OPEN_ENABLED', True
                     ))
                     _wf_short_enabled = _wf_long_enabled
+                # WT_DC is a downstream fallback inside process_position. The old
+                # exact-harness prefilter routed flat keys only for SATOSHIT, STDEV,
+                # or WT_FORCE_OPEN, making an isolated WT_DC replay return zero
+                # trades unless an unrelated path happened to admit the key.
+                try:
+                    _wtdc_long_enabled = bool(tm_mod._cfg(
+                        'WT_DC_LONG_ENABLED', True, account_key, s, 'LONG'
+                    ))
+                    _wtdc_short_enabled = bool(tm_mod._cfg(
+                        'WT_DC_SHORT_ENABLED', True, account_key, s, 'SHORT'
+                    ))
+                except Exception:
+                    _wtdc_long_enabled = bool(getattr(
+                        tm_mod.config, 'WT_DC_LONG_ENABLED', True
+                    ))
+                    _wtdc_short_enabled = bool(getattr(
+                        tm_mod.config, 'WT_DC_SHORT_ENABLED', True
+                    ))
                 if pk_l not in open_keys and _is_long_ok and manager.is_symbol_tradeable(
                     s, account_key, "LONG"
-                ) and (
-                    _sat_long_ok or _stdev_long_ok or _wf_long_enabled
+                ) and flat_key_needs_evaluation(
+                    satoshit_ok=_sat_long_ok,
+                    stdev_ok=_stdev_long_ok,
+                    wt_force_open_enabled=_wf_long_enabled,
+                    wt_dc_path_enabled=_wtdc_long_enabled,
                 ):
                     cand_keys.append(pk_l)
                 if pk_s not in open_keys and _is_short_ok and manager.is_symbol_tradeable(
                     s, account_key, "SHORT"
-                ) and (
-                    _sat_short_ok or _stdev_short_ok or _wf_short_enabled
+                ) and flat_key_needs_evaluation(
+                    satoshit_ok=_sat_short_ok,
+                    stdev_ok=_stdev_short_ok,
+                    wt_force_open_enabled=_wf_short_enabled,
+                    wt_dc_path_enabled=_wtdc_short_enabled,
                 ):
                     cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
