@@ -1,0 +1,920 @@
+#!/usr/bin/env python3
+"""Backtest-only exact replay adapter for a frozen band-ladder validation fold.
+
+The vector campaign performs candidate selection.  This module has a narrower
+job: materialize one already-frozen validation curve as an auditable fill
+schedule, bind every fill and completed-HTF source timestamp to the source NPZ,
+and replay the schedule through ``backtest_v8_engine``.
+
+Nothing in this module is imported by live processes.  Specs are fail-closed,
+explicitly forbid promotion, and support one symbol/position side only.
+"""
+from __future__ import annotations
+
+import gzip
+import hashlib
+import json
+import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from tools import vec_band_ladder_walkforward as ladder
+
+
+SPEC_KIND = "V8_RESEARCH_BAND_LADDER_REPLAY"
+SPEC_VERSION = 1
+REASON_PREFIX = "V8_RESEARCH_BAND_LADDER_REPLAY"
+
+
+class LadderReplayError(RuntimeError):
+    pass
+
+
+def sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as fh:
+        for chunk in iter(lambda: fh.read(4 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+@dataclass(frozen=True)
+class LadderReplayAction:
+    fill_ts: int
+    fill_index: int
+    signal_ts: int
+    signal_index: int
+    event_type: str
+    action: str
+    order_side: str
+    position_side: str
+    fill_price: float
+    quantity: float
+    full_close: bool
+    reason: str
+    source_event: dict[str, Any]
+
+
+def _close_enough(left: float, right: float, *, rel: float = 1e-10) -> bool:
+    return abs(left - right) <= max(1e-9, abs(right) * rel)
+
+
+def _event_sources(
+    signals: ladder.SignalData,
+    htfs: dict[str, Any],
+    signal_index: int,
+) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for slot, tf in enumerate(ladder.TF_ORDER):
+        if not bool(signals.event_tf[slot, signal_index]):
+            continue
+        matches = np.flatnonzero(htfs[tf].event_index == signal_index)
+        if len(matches) != 1:
+            raise LadderReplayError(
+                f"{tf} ladder event at row {signal_index} has no unique completed HTF source"
+            )
+        out[tf] = int(htfs[tf].source_ts[int(matches[0])])
+    return out
+
+
+def trace_frozen_curve(
+    data: Any,
+    signals: ladder.SignalData,
+    htfs: dict[str, Any],
+    curve: ladder.Curve,
+    *,
+    commission_rate: float,
+    slippage_rate: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Reference accounting loop with a complete exact-fill event ledger."""
+    left, right = 0, len(data.ts)
+    cash = ladder.ACCOUNT_EQUITY
+    qty = 0.0
+    last_exit_fill = math.nan
+    reclaim_level = math.nan
+    prior_exit_notional = 0.0
+    gap_seen = False
+    pending: dict[str, Any] | None = None
+    peak_equity = ladder.ACCOUNT_EQUITY
+    max_dd = 0.0
+    requested = filled = 0.0
+    clamp_count = fill_count = exit_count = reclaim_count = lower_count = 0
+    held_bars = 0
+    weighted_exposure = 0.0
+    peak_mark_notional = 0.0
+    peak_post_fill_notional = 0.0
+    beyond_reclaim = 0
+    events: list[dict[str, Any]] = []
+
+    def equity(px: float) -> float:
+        return cash + qty * px
+
+    for i in range(left, right):
+        op = float(data.open[i])
+        close = float(data.close[i])
+        if pending is not None:
+            kind = str(pending["kind"])
+            signal_index = int(pending["signal_index"])
+            signal_ts = int(data.ts[signal_index])
+            if i != signal_index + 1:
+                raise LadderReplayError(
+                    f"{kind} signal row {signal_index} did not fill at next RTH row {i}"
+                )
+            if kind == "exit" and qty > 0:
+                px = op * (1.0 - slippage_rate)
+                close_qty = qty
+                notional = close_qty * px
+                cash += notional - commission_rate * notional
+                prior_exit_notional = min(ladder.CAPACITY, notional)
+                last_exit_fill = px
+                reclaim_level = max(px, float(pending["ref"]))
+                qty = 0.0
+                exit_count += 1
+                events.append(
+                    {
+                        "type": "EXIT",
+                        "reason": "E02_DONCHIAN_4h_N30",
+                        "signal_index": signal_index,
+                        "signal_ts": signal_ts,
+                        "fill_index": i,
+                        "fill_ts": int(data.ts[i]),
+                        "latency_rth_bars": 1,
+                        "fill_px": px,
+                        "quantity": close_qty,
+                        "filled_notional_usd": notional,
+                        "position_qty_after_fill": 0.0,
+                        "entry_capacity_usd": ladder.CAPACITY,
+                        "completed_htf_source_ts": {
+                            "4h": int(pending["source_ts"])
+                        },
+                    }
+                )
+                gap_seen = False
+            elif kind == "entry":
+                px = op * (1.0 + slippage_rate)
+                current = qty * px
+                requested_notional = float(pending["requested_notional"])
+                absolute_target = bool(pending["absolute_target"])
+                want = (
+                    max(0.0, requested_notional - current)
+                    if absolute_target
+                    else requested_notional
+                )
+                capacity_left = max(0.0, ladder.CAPACITY - current)
+                actual = min(want, capacity_left)
+                requested += max(0.0, want)
+                filled += actual
+                clamped = actual + 1e-9 < want
+                clamp_count += int(clamped)
+                if actual > 0:
+                    add_qty = actual / px
+                    prior_qty = qty
+                    cash -= actual + commission_rate * actual
+                    qty += add_qty
+                    post_fill_notional = qty * px
+                    if post_fill_notional > ladder.CAPACITY + 1e-6:
+                        raise LadderReplayError(
+                            f"entry capacity breach: {post_fill_notional}"
+                        )
+                    peak_post_fill_notional = max(
+                        peak_post_fill_notional, post_fill_notional
+                    )
+                    fill_count += 1
+                    reason = str(pending["reason"])
+                    reclaim_count += int(reason == "reclaim")
+                    lower_count += int(reason == "ladder_lower")
+                    events.append(
+                        {
+                            "type": "ENTRY" if prior_qty <= 0 else "AUGMENT",
+                            "reason": reason,
+                            "signal_index": signal_index,
+                            "signal_ts": signal_ts,
+                            "fill_index": i,
+                            "fill_ts": int(data.ts[i]),
+                            "latency_rth_bars": 1,
+                            "fill_px": px,
+                            "quantity": add_qty,
+                            "requested_notional_usd": want,
+                            "requested_target_notional_usd": (
+                                requested_notional if absolute_target else None
+                            ),
+                            "filled_notional_usd": actual,
+                            "position_qty_before_fill": prior_qty,
+                            "position_qty_after_fill": qty,
+                            "post_fill_notional_usd": post_fill_notional,
+                            "entry_capacity_usd": ladder.CAPACITY,
+                            "clamped": clamped,
+                            "semantics": "target" if absolute_target else "add",
+                            "entry_multiplier": float(
+                                pending.get("entry_multiplier", 0.0)
+                            ),
+                            "completed_htf_source_ts": dict(
+                                pending.get("completed_htf_source_ts") or {}
+                            ),
+                        }
+                    )
+            pending = None
+
+        mark_equity = equity(close)
+        peak_equity = max(peak_equity, mark_equity)
+        if peak_equity > 0:
+            max_dd = max(
+                max_dd, 100.0 * (peak_equity - mark_equity) / peak_equity
+            )
+        notional = qty * close
+        peak_mark_notional = max(peak_mark_notional, notional)
+        held_bars += int(qty > 0)
+        weighted_exposure += min(ladder.CAPACITY, notional) / ladder.CAPACITY
+
+        if i + 1 >= right:
+            continue
+        if qty > 0:
+            if signals.exit_event[i]:
+                ref = float(signals.exit_ref[i])
+                if not math.isfinite(ref):
+                    ref = float(data.high[i])
+                h4 = htfs["4h"]
+                match = np.flatnonzero(h4.event_index == i)
+                if len(match) != 1:
+                    raise LadderReplayError(
+                        f"exit at row {i} has no unique completed 4h source"
+                    )
+                pending = {
+                    "kind": "exit",
+                    "ref": ref,
+                    "signal_index": i,
+                    "source_ts": int(h4.source_ts[int(match[0])]),
+                }
+            elif signals.entry_mult[i] > 0:
+                mult = float(signals.entry_mult[i])
+                pending = {
+                    "kind": "entry",
+                    "requested_notional": ladder.BASE_UNIT * mult,
+                    "absolute_target": curve.semantics == "target",
+                    "reason": "ladder_add",
+                    "signal_index": i,
+                    "entry_multiplier": mult,
+                    "completed_htf_source_ts": _event_sources(
+                        signals, htfs, i
+                    ),
+                }
+        else:
+            if math.isfinite(last_exit_fill):
+                gap_seen |= float(data.low[i]) < last_exit_fill
+                if close >= reclaim_level:
+                    pending = {
+                        "kind": "entry",
+                        "requested_notional": max(
+                            ladder.BASE_UNIT, prior_exit_notional
+                        ),
+                        "absolute_target": True,
+                        "reason": "reclaim",
+                        "signal_index": i,
+                        "entry_multiplier": 0.0,
+                        "completed_htf_source_ts": {},
+                    }
+                elif signals.entry_mult[i] > 0 and gap_seen:
+                    mult = float(signals.entry_mult[i])
+                    pending = {
+                        "kind": "entry",
+                        "requested_notional": ladder.BASE_UNIT * mult,
+                        "absolute_target": curve.semantics == "target",
+                        "reason": "ladder_lower",
+                        "signal_index": i,
+                        "entry_multiplier": mult,
+                        "completed_htf_source_ts": _event_sources(
+                            signals, htfs, i
+                        ),
+                    }
+                elif close > reclaim_level:
+                    beyond_reclaim += 1
+            elif signals.entry_mult[i] > 0:
+                mult = float(signals.entry_mult[i])
+                pending = {
+                    "kind": "entry",
+                    "requested_notional": ladder.BASE_UNIT * mult,
+                    "absolute_target": curve.semantics == "target",
+                    "reason": "initial_ladder",
+                    "signal_index": i,
+                    "entry_multiplier": mult,
+                    "completed_htf_source_ts": _event_sources(
+                        signals, htfs, i
+                    ),
+                }
+
+    if qty > 0:
+        i = right - 1
+        px = float(data.close[i]) * (1.0 - slippage_rate)
+        close_qty = qty
+        notional = close_qty * px
+        cash += notional - commission_rate * notional
+        qty = 0.0
+        events.append(
+            {
+                "type": "MTM_FINAL",
+                "reason": "END_OF_VALIDATION_MTM",
+                "signal_index": i,
+                "signal_ts": int(data.ts[i]),
+                "fill_index": i,
+                "fill_ts": int(data.ts[i]),
+                "latency_rth_bars": 0,
+                "fill_px": px,
+                "quantity": close_qty,
+                "filled_notional_usd": notional,
+                "position_qty_after_fill": 0.0,
+                "entry_capacity_usd": ladder.CAPACITY,
+                "completed_htf_source_ts": {},
+            }
+        )
+
+    strategy_pnl = cash - ladder.ACCOUNT_EQUITY
+    bh_entry = float(data.open[left]) * (1.0 + slippage_rate)
+    bh_exit = float(data.close[right - 1]) * (1.0 - slippage_rate)
+    bh_pnl = (
+        ladder.BASE_UNIT * (bh_exit / bh_entry - 1.0)
+        - 2.0 * commission_rate * ladder.BASE_UNIT
+    )
+    bars = right - left
+    metrics = {
+        "capital_return_pct": 100.0 * strategy_pnl / ladder.BASE_UNIT,
+        "account_return_pct": 100.0 * strategy_pnl / ladder.ACCOUNT_EQUITY,
+        "bh_capital_return_pct": 100.0 * bh_pnl / ladder.BASE_UNIT,
+        "alpha_vs_bh_pp": 100.0 * (strategy_pnl - bh_pnl) / ladder.BASE_UNIT,
+        "strategy_bh_multiple": strategy_pnl / bh_pnl,
+        "max_drawdown_account_pct": max_dd,
+        "binary_tim_pct": 100.0 * held_bars / bars,
+        "exposure_weighted_tim_pct": 100.0 * weighted_exposure / bars,
+        "peak_mark_to_market_notional_usd": peak_mark_notional,
+        "peak_mark_to_market_capacity_pct": (
+            100.0 * peak_mark_notional / ladder.CAPACITY
+        ),
+        "peak_post_fill_notional_usd": peak_post_fill_notional,
+        "entry_capacity_breach": peak_post_fill_notional > ladder.CAPACITY + 1e-6,
+        "requested_notional_usd": requested,
+        "filled_notional_usd": filled,
+        "fill_ratio": filled / requested if requested else 1.0,
+        "clamp_count": clamp_count,
+        "fill_count": fill_count,
+        "exit_count": exit_count,
+        "reclaim_reentries": reclaim_count,
+        "lower_reentries": lower_count,
+        "bars_flat_beyond_reclaim": beyond_reclaim,
+        "start_ts": int(data.ts[left]),
+        "end_ts": int(data.ts[right - 1]),
+        "rows": bars,
+    }
+    return metrics, events
+
+
+def _assert_metrics_match(
+    actual: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    keys = (
+        "capital_return_pct",
+        "account_return_pct",
+        "bh_capital_return_pct",
+        "alpha_vs_bh_pp",
+        "max_drawdown_account_pct",
+        "binary_tim_pct",
+        "exposure_weighted_tim_pct",
+        "peak_post_fill_notional_usd",
+        "requested_notional_usd",
+        "filled_notional_usd",
+        "fill_count",
+        "exit_count",
+        "clamp_count",
+        "reclaim_reentries",
+        "lower_reentries",
+        "bars_flat_beyond_reclaim",
+        "rows",
+        "start_ts",
+        "end_ts",
+    )
+    mismatches = []
+    for key in keys:
+        if key not in expected:
+            mismatches.append(f"{key}: missing expected")
+            continue
+        left, right = actual[key], expected[key]
+        if isinstance(left, float):
+            if not _close_enough(float(left), float(right), rel=1e-9):
+                mismatches.append(f"{key}: actual={left} expected={right}")
+        elif left != right:
+            mismatches.append(f"{key}: actual={left} expected={right}")
+    if mismatches:
+        raise LadderReplayError(
+            "frozen validation metric mismatch: " + "; ".join(mismatches)
+        )
+
+
+def build_spec_and_schedule(
+    artifact_dir: str | Path,
+    *,
+    schedule_path: str | Path,
+    account: str = "trb",
+) -> dict[str, Any]:
+    artifact = Path(artifact_dir).resolve()
+    payload = json.loads((artifact / "result.json").read_text())
+    manifest = payload["manifest"]
+    if manifest.get("promotion_allowed") or manifest.get("matrix_eligible"):
+        raise LadderReplayError("source ladder artifact must remain research-only")
+    if str(manifest.get("side")).upper() != "LONG":
+        raise LadderReplayError("current ladder exact adapter supports frozen LONG study only")
+    folds = payload.get("outer_folds") or []
+    if not folds:
+        raise LadderReplayError("source artifact contains no frozen outer fold")
+    frozen = folds[-1]
+    start, end = frozen["validation"]
+    npz_path = Path(manifest["npz"])
+    data = ladder.top._load_execution(
+        str(manifest["symbol"]).upper(),
+        npz_path.resolve().parent,
+        start,
+        "ladder",
+        end,
+    )
+    if sha256_file(data.path) != str(manifest["npz_sha256"]):
+        data.z.close()
+        raise LadderReplayError("source artifact NPZ fingerprint no longer matches")
+    htfs = {tf: ladder.top._compress_htf(data, tf) for tf in ladder.TF_ORDER}
+    curve = ladder.Curve(**frozen["selected_curve"])
+    signals = ladder._build_signals(
+        data, htfs, curve, int(manifest["exit"]["n"])
+    )
+    metrics, events = trace_frozen_curve(
+        data,
+        signals,
+        htfs,
+        curve,
+        commission_rate=float(manifest["commission_bps_one_way"]) / 10_000.0,
+        slippage_rate=float(manifest["slippage_bps_one_way"]) / 10_000.0,
+    )
+    _assert_metrics_match(metrics, frozen["validation_metrics"])
+    data.z.close()
+
+    schedule = Path(schedule_path).resolve()
+    schedule.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(schedule, "wt") as fh:
+        for event in events:
+            fh.write(json.dumps(event, sort_keys=True, allow_nan=False) + "\n")
+    return {
+        "kind": SPEC_KIND,
+        "version": SPEC_VERSION,
+        "promotion_allowed": False,
+        "matrix_written": False,
+        "source_artifact": str(artifact),
+        "symbol": str(manifest["symbol"]).upper(),
+        "side": "LONG",
+        "account": account,
+        "event_schedule": str(schedule),
+        "expected_schedule_sha256": sha256_file(schedule),
+        "npz_path": str(npz_path.resolve()),
+        "expected_npz_sha256": str(manifest["npz_sha256"]),
+        "validation_start": start,
+        "validation_end_exclusive": end,
+        "curve": frozen["selected_curve"],
+        "trigger_contract": {
+            "families": ["wt_cross_bull", "HH_HL_low_rising_stoch"],
+            "combination": str(curve.trigger),
+            "completed_htf_only": True,
+            "timeframes": list(ladder.TF_ORDER),
+        },
+        "semantics": str(curve.semantics),
+        "base_unit_usd": float(manifest["base_unit_usd"]),
+        "account_equity_usd": float(manifest["account_equity_usd"]),
+        "hard_capacity_usd": float(manifest["hard_capacity_usd"]),
+        "commission_bps_one_way": float(manifest["commission_bps_one_way"]),
+        "slippage_bps_one_way": float(manifest["slippage_bps_one_way"]),
+        "expected_metrics": metrics,
+        "expected_counts": {
+            "entry_fills": sum(
+                event["type"] in {"ENTRY", "AUGMENT"} for event in events
+            ),
+            "technical_exits": sum(event["type"] == "EXIT" for event in events),
+            "mtm_final": sum(event["type"] == "MTM_FINAL" for event in events),
+            "actions": len(events),
+        },
+        "accounting_tolerance_bp": 1e-4,
+    }
+
+
+class LadderReplayAdapter:
+    """Validated action schedule and faithful-engine audit accumulator."""
+
+    def __init__(self, spec_path: str | Path):
+        self.spec_path = Path(spec_path).resolve()
+        self.spec = json.loads(self.spec_path.read_text())
+        self._validate_spec()
+        self.symbol = str(self.spec["symbol"]).upper()
+        self.position_side = str(self.spec["side"]).upper()
+        self.account = str(self.spec["account"])
+        self.capacity = float(self.spec["hard_capacity_usd"])
+        schedule = Path(self.spec["event_schedule"])
+        if not schedule.is_absolute():
+            schedule = (self.spec_path.parent / schedule).resolve()
+        self.schedule_path = schedule
+        if sha256_file(schedule) != str(self.spec["expected_schedule_sha256"]):
+            raise LadderReplayError("event schedule hash mismatch")
+        with gzip.open(schedule, "rt") as fh:
+            self.events = [json.loads(line) for line in fh if line.strip()]
+        self.actions = self._build_actions()
+        self._by_ts: dict[int, list[LadderReplayAction]] = {}
+        for action in self.actions:
+            self._by_ts.setdefault(action.fill_ts, []).append(action)
+        self.executed: list[dict[str, Any]] = []
+        self.refused: list[dict[str, Any]] = []
+        self._observed_rows = 0
+        self._held_rows = 0
+        self._weighted_exposure = 0.0
+        self._peak_post_fill_notional = 0.0
+        self._requested = 0.0
+        self._filled = 0.0
+        self._clamps = 0
+
+    def _validate_spec(self) -> None:
+        if self.spec.get("kind") != SPEC_KIND:
+            raise LadderReplayError(f"wrong spec kind: {self.spec.get('kind')!r}")
+        if int(self.spec.get("version", 0)) != SPEC_VERSION:
+            raise LadderReplayError("unsupported ladder replay spec version")
+        required = {
+            "symbol",
+            "side",
+            "account",
+            "event_schedule",
+            "expected_schedule_sha256",
+            "npz_path",
+            "expected_npz_sha256",
+            "hard_capacity_usd",
+            "commission_bps_one_way",
+            "slippage_bps_one_way",
+            "expected_metrics",
+            "expected_counts",
+        }
+        missing = sorted(required - set(self.spec))
+        if missing:
+            raise LadderReplayError(f"missing spec fields: {missing}")
+        if self.spec.get("promotion_allowed") or self.spec.get("matrix_written"):
+            raise LadderReplayError("ladder replay cannot allow promotion/matrix writes")
+        if str(self.spec["side"]).upper() != "LONG":
+            raise LadderReplayError("current ladder replay is LONG-only")
+        if float(self.spec["hard_capacity_usd"]) <= 0:
+            raise LadderReplayError("hard_capacity_usd must be positive")
+
+    def _build_actions(self) -> list[LadderReplayAction]:
+        out: list[LadderReplayAction] = []
+        qty = 0.0
+        last_fill_index = -1
+        for event in self.events:
+            kind = str(event.get("type", "")).upper()
+            if kind not in {"ENTRY", "AUGMENT", "EXIT", "MTM_FINAL"}:
+                raise LadderReplayError(f"unsupported ladder event: {kind}")
+            fill_index = int(event["fill_index"])
+            signal_index = int(event["signal_index"])
+            latency = int(event["latency_rth_bars"])
+            if fill_index <= last_fill_index:
+                raise LadderReplayError("fill indices must be strictly increasing")
+            last_fill_index = fill_index
+            if kind == "MTM_FINAL":
+                if latency != 0 or signal_index != fill_index:
+                    raise LadderReplayError("MTM_FINAL must occur on its mark row")
+            elif latency != 1 or fill_index != signal_index + 1:
+                raise LadderReplayError("ladder signal must fill at next RTH row")
+            fill_px = float(event["fill_px"])
+            action_qty = float(event["quantity"])
+            if fill_px <= 0 or action_qty <= 0:
+                raise LadderReplayError("non-positive fill price/quantity")
+            if kind in {"ENTRY", "AUGMENT"}:
+                if kind == "ENTRY" and qty > 1e-9:
+                    raise LadderReplayError("ENTRY while replay ledger is open")
+                if kind == "AUGMENT" and qty <= 1e-9:
+                    raise LadderReplayError("AUGMENT while replay ledger is flat")
+                qty += action_qty
+                post = qty * fill_px
+                if not _close_enough(
+                    post, float(event["post_fill_notional_usd"]), rel=1e-9
+                ):
+                    raise LadderReplayError("post-fill notional mismatch")
+                if post > self.capacity + 1e-6:
+                    raise LadderReplayError("scheduled entry breaches hard capacity")
+                action = "OPEN" if kind == "ENTRY" else "AUGMENT"
+                full_close = False
+                leaf = str(event["reason"]).upper()
+            else:
+                if qty <= 1e-9 or not _close_enough(qty, action_qty, rel=1e-9):
+                    raise LadderReplayError("full-close quantity does not match open ledger")
+                qty = 0.0
+                action = "CLOSE"
+                full_close = True
+                leaf = (
+                    "E02_DONCHIAN_4H_N30"
+                    if kind == "EXIT"
+                    else "END_OF_VALIDATION_MTM"
+                )
+            out.append(
+                LadderReplayAction(
+                    fill_ts=int(event["fill_ts"]),
+                    fill_index=fill_index,
+                    signal_ts=int(event["signal_ts"]),
+                    signal_index=signal_index,
+                    event_type=kind,
+                    action=action,
+                    order_side="SELL" if full_close else "BUY",
+                    position_side="LONG",
+                    fill_price=fill_px,
+                    quantity=action_qty,
+                    full_close=full_close,
+                    reason=f"{REASON_PREFIX}__{leaf}",
+                    source_event=event,
+                )
+            )
+        if qty > 1e-9:
+            raise LadderReplayError("ladder schedule ends with open quantity")
+        expected_actions = int(self.spec["expected_counts"]["actions"])
+        if len(out) != expected_actions:
+            raise LadderReplayError(
+                f"action count mismatch: {len(out)} != {expected_actions}"
+            )
+        return out
+
+    def validate_runtime(
+        self,
+        *,
+        account: str,
+        symbols: list[str],
+        mode: str,
+        seed_positions_file: str,
+        round_trip_cost_pct: float,
+    ) -> None:
+        if mode != "tradier":
+            raise LadderReplayError("ladder replay is tradier-backtest only")
+        if account != self.account or [s.upper() for s in symbols] != [self.symbol]:
+            raise LadderReplayError("ladder replay runtime account/symbol mismatch")
+        if seed_positions_file:
+            raise LadderReplayError("seeded live positions are forbidden")
+        expected = 2.0 * float(self.spec["commission_bps_one_way"]) / 100.0
+        if abs(float(round_trip_cost_pct) - expected) > 1e-12:
+            raise LadderReplayError(
+                f"cost mismatch: runtime={round_trip_cost_pct} expected={expected}"
+            )
+
+    def validate_npz(self, npz_path: str | Path) -> str:
+        actual_sha = sha256_file(npz_path)
+        if actual_sha != str(self.spec["expected_npz_sha256"]):
+            raise LadderReplayError("NPZ fingerprint mismatch")
+        data = ladder.top._load_execution(
+            self.symbol,
+            Path(npz_path).resolve().parent,
+            str(self.spec["validation_start"]),
+            "ladder",
+            str(self.spec["validation_end_exclusive"]),
+        )
+        htfs = {tf: ladder.top._compress_htf(data, tf) for tf in ladder.TF_ORDER}
+        curve = ladder.Curve(**self.spec["curve"])
+        signals = ladder._build_signals(
+            data, htfs, curve, int(self.spec.get("exit_n", 30))
+        )
+        for action in self.actions:
+            if action.fill_index >= len(data.ts):
+                raise LadderReplayError("fill index exceeds loaded validation rows")
+            if int(data.ts[action.fill_index]) != action.fill_ts:
+                raise LadderReplayError("fill timestamp/index mismatch in loaded NPZ")
+            if int(data.ts[action.signal_index]) != action.signal_ts:
+                raise LadderReplayError("signal timestamp/index mismatch in loaded NPZ")
+            event = action.source_event
+            for tf, source_ts in (
+                event.get("completed_htf_source_ts") or {}
+            ).items():
+                if int(source_ts) > action.signal_ts:
+                    raise LadderReplayError(
+                        f"future {tf} HTF source at ladder signal {action.signal_ts}"
+                    )
+            if action.event_type in {"ENTRY", "AUGMENT"} and event.get(
+                "reason"
+            ) != "reclaim":
+                actual_mult = float(signals.entry_mult[action.signal_index])
+                if not _close_enough(
+                    actual_mult, float(event["entry_multiplier"]), rel=1e-9
+                ):
+                    raise LadderReplayError("ladder multiplier signal mismatch")
+                actual_sources = _event_sources(
+                    signals, htfs, action.signal_index
+                )
+                if actual_sources != {
+                    str(k): int(v)
+                    for k, v in event["completed_htf_source_ts"].items()
+                }:
+                    raise LadderReplayError("completed HTF event source mismatch")
+            if action.event_type == "EXIT" and not bool(
+                signals.exit_event[action.signal_index]
+            ):
+                raise LadderReplayError("scheduled exit is absent from source signal")
+            raw = (
+                float(data.close[action.fill_index])
+                if action.event_type == "MTM_FINAL"
+                else float(data.open[action.fill_index])
+            )
+            expected_fill = self.expected_fill_from_loaded_bar(action, raw)
+            if not _close_enough(expected_fill, action.fill_price):
+                raise LadderReplayError("fill price does not match loaded NPZ bar")
+        data.z.close()
+        return actual_sha
+
+    def expected_fill_from_loaded_bar(
+        self, action: LadderReplayAction, raw_price: float
+    ) -> float:
+        slip = float(self.spec["slippage_bps_one_way"]) / 10_000.0
+        return raw_price * (1.0 - slip if action.full_close else 1.0 + slip)
+
+    def actions_at(self, ts: int) -> list[LadderReplayAction]:
+        return list(self._by_ts.get(int(ts), ()))
+
+    def record_result(
+        self,
+        action: LadderReplayAction,
+        *,
+        result: str,
+        actual_quantity: float,
+        actual_price: float,
+        post_position_qty: float,
+    ) -> None:
+        row = {
+            "fill_ts": action.fill_ts,
+            "event_type": action.event_type,
+            "result": result,
+            "expected_quantity": action.quantity,
+            "actual_quantity": actual_quantity,
+            "expected_price": action.fill_price,
+            "actual_price": actual_price,
+            "expected_post_position_qty": float(
+                action.source_event["position_qty_after_fill"]
+            ),
+            "actual_post_position_qty": post_position_qty,
+        }
+        if result != "SUCCESS":
+            self.refused.append(row)
+            return
+        self.executed.append(row)
+        if action.event_type in {"ENTRY", "AUGMENT"}:
+            event = action.source_event
+            self._requested += float(event["requested_notional_usd"])
+            self._filled += float(event["filled_notional_usd"])
+            self._clamps += int(bool(event["clamped"]))
+            post = post_position_qty * actual_price
+            self._peak_post_fill_notional = max(
+                self._peak_post_fill_notional, post
+            )
+            if post > self.capacity + 1e-6:
+                raise LadderReplayError(
+                    f"faithful engine entry capacity breach: {post}"
+                )
+
+    def observe_bar(self, *, close_price: float, position_qty: float) -> None:
+        if close_price <= 0 or position_qty < 0:
+            raise LadderReplayError("invalid bar observation")
+        self._observed_rows += 1
+        self._held_rows += int(position_qty > 1e-9)
+        self._weighted_exposure += (
+            min(self.capacity, position_qty * close_price) / self.capacity
+        )
+
+    def final_audit(self) -> dict[str, Any]:
+        expected = self.spec["expected_metrics"]
+        binary = 100.0 * self._held_rows / max(1, self._observed_rows)
+        weighted = (
+            100.0 * self._weighted_exposure / max(1, self._observed_rows)
+        )
+        tim = {
+            "rows": self._observed_rows,
+            "held_rows": self._held_rows,
+            "expected_binary_pct": float(expected["binary_tim_pct"]),
+            "actual_binary_pct": binary,
+            "binary_delta_pp": binary - float(expected["binary_tim_pct"]),
+            "expected_weighted_pct": float(expected["exposure_weighted_tim_pct"]),
+            "actual_weighted_pct": weighted,
+            "weighted_delta_pp": weighted
+            - float(expected["exposure_weighted_tim_pct"]),
+        }
+        tim["status"] = (
+            "PASS"
+            if (
+                self._observed_rows == int(expected["rows"])
+                and abs(tim["binary_delta_pp"]) <= 1e-8
+                and abs(tim["weighted_delta_pp"]) <= 1e-8
+            )
+            else "FAIL"
+        )
+        mismatches = [
+            row
+            for row in self.executed
+            if (
+                not _close_enough(
+                    float(row["actual_quantity"]),
+                    float(row["expected_quantity"]),
+                    rel=1e-9,
+                )
+                or not _close_enough(
+                    float(row["actual_price"]),
+                    float(row["expected_price"]),
+                )
+                or not _close_enough(
+                    float(row["actual_post_position_qty"]),
+                    float(row["expected_post_position_qty"]),
+                    rel=1e-9,
+                )
+            )
+        ]
+        capacity = {
+            "expected_capacity_usd": self.capacity,
+            "expected_peak_post_fill_notional_usd": float(
+                expected["peak_post_fill_notional_usd"]
+            ),
+            "actual_peak_post_fill_notional_usd": self._peak_post_fill_notional,
+            "requested_notional_usd": self._requested,
+            "filled_notional_usd": self._filled,
+            "clamp_count": self._clamps,
+            "entry_capacity_breach": (
+                self._peak_post_fill_notional > self.capacity + 1e-6
+            ),
+        }
+        capacity["status"] = (
+            "PASS"
+            if (
+                not capacity["entry_capacity_breach"]
+                and _close_enough(
+                    self._requested,
+                    float(expected["requested_notional_usd"]),
+                    rel=1e-9,
+                )
+                and _close_enough(
+                    self._filled,
+                    float(expected["filled_notional_usd"]),
+                    rel=1e-9,
+                )
+                and self._clamps == int(expected["clamp_count"])
+            )
+            else "FAIL"
+        )
+        schedule_status = (
+            "PASS"
+            if (
+                len(self.executed) == len(self.actions)
+                and not self.refused
+                and not mismatches
+            )
+            else "FAIL"
+        )
+        return {
+            "status": (
+                "PASS"
+                if schedule_status == tim["status"] == capacity["status"] == "PASS"
+                else "FAIL"
+            ),
+            "schedule_status": schedule_status,
+            "scheduled": len(self.actions),
+            "executed": len(self.executed),
+            "refused": self.refused,
+            "mismatches": mismatches,
+            "time_in_market": tim,
+            "capacity": capacity,
+            "completed_htf_only": True,
+            "next_rth_open_fills": True,
+            "semantics": self.spec["semantics"],
+            "signal_parity": True,
+            "promotion_allowed": False,
+            "matrix_written": False,
+        }
+
+    def accounting_audit(
+        self, executed_trades: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        closes = [
+            row
+            for row in executed_trades
+            if str(row.get("reason", "")).startswith(REASON_PREFIX)
+            and row.get("pnl_dollars") is not None
+        ]
+        pnl = sum(float(row["pnl_dollars"]) for row in closes)
+        actual = 100.0 * pnl / float(self.spec["base_unit_usd"])
+        expected = float(self.spec["expected_metrics"]["capital_return_pct"])
+        delta_bp = 100.0 * (actual - expected)
+        status = (
+            "PASS"
+            if abs(delta_bp) <= float(self.spec["accounting_tolerance_bp"])
+            else "FAIL"
+        )
+        return {
+            "status": status,
+            "expected_capital_return_pct": expected,
+            "actual_capital_return_pct": actual,
+            "delta_bp": delta_bp,
+            "total_pnl_dollars": pnl,
+            "closed_lifecycles": len(closes),
+            "commission_bps_one_way": float(
+                self.spec["commission_bps_one_way"]
+            ),
+            "slippage_bps_one_way": float(self.spec["slippage_bps_one_way"]),
+            "promotion_allowed": False,
+        }

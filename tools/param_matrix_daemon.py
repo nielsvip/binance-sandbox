@@ -184,7 +184,8 @@ def ensure_safe_baseline(ctx, sym, side):
     row = con.execute(
         "SELECT gain_per_mo,trades_fingerprint FROM key_baseline "
         "WHERE mode=? AND campaign=? AND symbol=? AND side=? "
-        "AND validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE') "
+        "AND validation_status IN "
+        "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE') "
         "AND contract_fingerprint=?",
         (psc.MODE, psc.CAMPAIGN, sym, side, fp),
     ).fetchone()
@@ -496,7 +497,8 @@ def main():
                             "SELECT 1 FROM param_cells WHERE mode=? AND campaign=? "
                             "AND symbol=? AND side=? AND param=? AND value_json IN (?,?) "
                             "AND contract_fingerprint=? "
-                            "AND validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE') "
+                            "AND validation_status IN "
+                            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE') "
                             f"{tier_clause} LIMIT 1",
                             (
                                 psc.MODE,

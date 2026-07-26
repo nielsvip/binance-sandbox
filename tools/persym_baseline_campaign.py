@@ -56,7 +56,14 @@ CAMPAIGN = os.environ.get("PSC_CAMPAIGN", "stocks_baseline_v1")
 TRADES_ROOT = Path(os.environ.get("PSC_TRADES_ROOT", str(SBX / "data" / "sweep_results" / f"persym_campaign_{CAMPAIGN}_trades")))
 RESULTS_DIR = SBX / "data" / "sweep_results"
 STAMP_FILES = ["backtest_v8_engine.py", "tradier_manage.py", "wt_dc_delta.py", "config_tradier.py"]
-MATRIX_CONTRACT_VERSION = "tradier-matrix-c1-20260725"
+MATRIX_CONTRACT_VERSION = "tradier-matrix-c2-20260725"
+MATRIX_NPZ_DIR = Path(
+    os.environ.get(
+        "PSC_MATRIX_NPZ_DIR",
+        str(SBX / "data" / "matrix_npz" / "stocks_repaired_20260725_c2"),
+    )
+)
+MATRIX_END_DATE = os.environ.get("PSC_MATRIX_END_DATE", "2026-07-25")
 MATRIX_CONTRACT_FILES = STAMP_FILES + [
     "backtest_v8_harness.py",
     "mtf_exit_timing.py",
@@ -274,13 +281,16 @@ def matrix_contract_fingerprint(sym, side):
     side.  SWITCH_MATRIX reports use it to keep every pre-fix row historical.
     """
     h = hashlib.sha256()
-    h.update(f"{MATRIX_CONTRACT_VERSION}|{sym.upper()}|{side.upper()}".encode())
+    h.update(
+        f"{MATRIX_CONTRACT_VERSION}|{sym.upper()}|{side.upper()}|"
+        f"end_exclusive={MATRIX_END_DATE}".encode()
+    )
     for rel in MATRIX_CONTRACT_FILES:
         path = SBX / rel
         h.update(rel.encode())
         h.update(path.read_bytes() if path.exists() else b"<ABSENT>")
-    npz = SBX / "backtest_v8" / "indicators" / f"{sym.upper()}.npz"
-    h.update(str(npz.relative_to(SBX)).encode())
+    npz = MATRIX_NPZ_DIR / f"{sym.upper()}.npz"
+    h.update(str(npz).encode())
     h.update(npz.read_bytes() if npz.exists() else b"<ABSENT>")
     return f"{MATRIX_CONTRACT_VERSION}:{h.hexdigest()}"
 
@@ -310,8 +320,14 @@ def matrix_run_audit(sym, side, trades, result):
     from backtest_data_contract import audit_ladder_result, audit_npz
 
     side = side.upper()
-    data = audit_npz(sym, profile="ladder")
+    data = audit_npz(
+        sym,
+        str(MATRIX_NPZ_DIR / f"{sym.upper()}.npz"),
+        profile="ladder",
+        start=START,
+    )
     sizing = audit_ladder_result(result, side)
+    structural = audit_ladder_result(result, side, require_sizing=False)
     reasons = list(data.errors)
     blocking = list(data.errors)
     if not result:
@@ -332,17 +348,46 @@ def matrix_run_audit(sym, side, trades, result):
     if int(float(result.get("reentry_violations", 0) or 0)) != 0:
         reasons.append("mandatory re-entry crossed its permitted overshoot")
         blocking.append("mandatory re-entry crossed its permitted overshoot")
-    if not sizing.get("valid"):
-        reasons.append("side-isolation or sizing contract failed")
-        blocking.append("side-isolation or sizing contract failed")
+    sizing_present = (
+        int(float(result.get("sized_open_events", 0) or 0)) > 0
+        and float(result.get("max_requested_mult", 0) or 0) > 0
+    )
+    capacity = float(result.get("strategy_capacity_usd", 0) or 0)
+    max_notional = float(result.get("max_open_notional", 0) or 0)
+    capacity_respected = capacity > 0 and max_notional <= capacity * 1.01
+    has_capacity_clamps = (
+        int(float(result.get("size_clamp_count", 0) or 0)) > 0
+        or float(result.get("requested_fill_ratio", 0) or 0) < 0.90
+    )
+    if not structural.get("valid"):
+        reasons.append("side-isolation/trade/re-entry structural contract failed")
+        blocking.append("side-isolation/trade/re-entry structural contract failed")
+    if not sizing_present:
+        reasons.append("sizing telemetry missing")
+        blocking.append("sizing telemetry missing")
+    if not capacity_respected:
+        reasons.append(
+            f"strategy capacity exceeded or absent: max={max_notional} capacity={capacity}"
+        )
+        blocking.append("strategy capacity exceeded or absent")
+    if has_capacity_clamps:
+        # A clamp is a red result characteristic and often the very bug a knob must repair.
+        # Preserve the row for matrix search, but never call it clean/promotable.
+        reasons.append("capacity clamps or sub-90% requested/fill ratio observed")
     status = (
         "FAIL"
-        if not data.valid or not sizing.get("valid") or blocking
-        else ("INCOMPLETE_NO_REAL_CLOSE" if no_real_close else "PASS")
+        if not data.valid or not structural.get("valid") or blocking
+        else (
+            "PASS_WITH_CAPACITY_CLAMPS"
+            if has_capacity_clamps
+            else ("INCOMPLETE_NO_REAL_CLOSE" if no_real_close else "PASS")
+        )
     )
     audit = {
         "status": status,
         "contract_version": MATRIX_CONTRACT_VERSION,
+        "fixed_end_exclusive": MATRIX_END_DATE,
+        "frozen_npz": str(MATRIX_NPZ_DIR / f"{sym.upper()}.npz"),
         "contract_fingerprint": matrix_contract_fingerprint(sym, side),
         "symbol": sym.upper(),
         "side": side,
@@ -353,6 +398,9 @@ def matrix_run_audit(sym, side, trades, result):
             "stats": data.stats,
         },
         "result_contract": sizing,
+        "structural_result_contract": structural,
+        "capacity_respected": capacity_respected,
+        "has_capacity_clamps": has_capacity_clamps,
         "result": result,
         "reasons": reasons,
         "code_stamp": stamp(),
@@ -516,6 +564,8 @@ def run_symbol(
                     "V8_TRADES_RUN_ID": "cell", "V8_SWEEP_MODE": "1",
                     "V8_RATE_GUARD_DISABLED": "1", "V8_BACKTEST_DISK_CACHE": "1",
                     "V8_RESULT_FILE": str(result_file)})
+        if require_matrix_contract:
+            env["V8_BACKTEST_END_DATE"] = MATRIX_END_DATE
         if side:
             env.update({
                 "V8_LADDER_ONLY_SIDE": side.lower(),
@@ -529,6 +579,8 @@ def run_symbol(
         cmd = ["timeout", str(timeout), "nice", "-n", "18", PY,
                str(SBX / "backtest_v8_engine.py"), "--mode", MODE, "--account", ACCOUNT,
                "--start", START, "--capital", "10000.0", "--symbols", sym]
+        if require_matrix_contract:
+            cmd += ["--npz-dir", str(MATRIX_NPZ_DIR)]
         rc = subprocess.run(cmd, cwd=str(SBX), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
         if jsonl.exists() or rc == 0:
             (cell_dir / f"stamp__{sym}.txt").write_text(stamp())

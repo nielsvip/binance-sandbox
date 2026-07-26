@@ -127,6 +127,11 @@ def strategy_where() -> str:
 
 def verdict(row: sqlite3.Row) -> str:
     keys = set(row.keys())
+    if (
+        "validation_status" in keys
+        and row["validation_status"] == "PASS_WITH_CAPACITY_CLAMPS"
+    ):
+        return "RED: CAPACITY CLAMPS"
     if "validation_status" in keys and row["validation_status"] != "PASS":
         return "INCOMPLETE: NO REAL CLOSE"
     if "reentry_violations" in keys and (row["reentry_violations"] or 0) > 0:
@@ -398,7 +403,8 @@ def main() -> None:
         con.execute(
             "SELECT COUNT(*) FROM param_cells "
             "WHERE COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts >= ? "
-            "AND validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE')",
+            "AND validation_status IN "
+            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE')",
             (CURRENT_ENGINE_CAMPAIGN, max(cutoff, CURRENT_ENGINE_CUTOFF)),
         ).fetchone()[0]
         if contract_columns
@@ -425,7 +431,11 @@ def main() -> None:
     for row in raw_cells:
         key = f"{row['symbol']}_{row['side']}"
         if (
-            row["validation_status"] not in ("PASS", "INCOMPLETE_NO_REAL_CLOSE")
+            row["validation_status"] not in (
+                "PASS",
+                "PASS_WITH_CAPACITY_CLAMPS",
+                "INCOMPLETE_NO_REAL_CLOSE",
+            )
             or row["contract_fingerprint"] != contract_fps.get(key)
         ):
             continue
@@ -441,7 +451,11 @@ def main() -> None:
     recent_engine = sum(
         1 for row in raw_cells
         if row["ts"] >= max(cutoff, CURRENT_ENGINE_CUTOFF)
-        and row["validation_status"] in ("PASS", "INCOMPLETE_NO_REAL_CLOSE")
+        and row["validation_status"] in (
+            "PASS",
+            "PASS_WITH_CAPACITY_CLAMPS",
+            "INCOMPLETE_NO_REAL_CLOSE",
+        )
         and row["contract_fingerprint"]
         == contract_fps.get(f"{row['symbol']}_{row['side']}")
     )
@@ -456,7 +470,8 @@ def main() -> None:
             "validation_status,contract_fingerprint,real_closes,reentry_violations,inert "
             "FROM param_cells WHERE COALESCE(tier,'ENGINE')='ENGINE' "
             "AND symbol=? AND side=? AND campaign=? AND ts>=? AND "
-            "validation_status IN ('PASS','INCOMPLETE_NO_REAL_CLOSE') AND "
+            "validation_status IN "
+            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE') AND "
             + strategy_where()
             + " ORDER BY ts DESC",
             (symbol, side, CURRENT_ENGINE_CAMPAIGN, CURRENT_ENGINE_CUTOFF),

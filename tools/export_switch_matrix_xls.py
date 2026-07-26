@@ -140,7 +140,7 @@ def load_cells(campaign, tier="ENGINE"):
     if campaign == CURRENT_ENGINE_CAMPAIGN:
         q += (
             " AND ts>=? AND validation_status IN "
-            "('PASS','INCOMPLETE_NO_REAL_CLOSE')"
+            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE')"
         )
         args.append(CURRENT_ENGINE_CUTOFF)
     q += " ORDER BY ts"
@@ -207,7 +207,7 @@ def load_cells(campaign, tier="ENGINE"):
     if campaign == CURRENT_ENGINE_CAMPAIGN:
         bq += (
             " AND ts>=? AND validation_status IN "
-            "('PASS','INCOMPLETE_NO_REAL_CLOSE')"
+            "('PASS','PASS_WITH_CAPACITY_CLAMPS','INCOMPLETE_NO_REAL_CLOSE')"
         )
         bargs.append(CURRENT_ENGINE_CUTOFF)
     bq += " ORDER BY ts"
