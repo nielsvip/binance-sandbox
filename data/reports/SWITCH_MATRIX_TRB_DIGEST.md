@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-26 22:26:33Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-26 22:30:39Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
 - Current repaired matrix latest row: `none` (unknown old).
-- Generic DB activity (includes historical/stage tables): `2026-07-26T22:24:19Z` (2m old); it is not matrix freshness.
+- Generic DB activity (includes historical/stage tables): `2026-07-26T22:29:25Z` (1m old); it is not matrix freshness.
 - Current repaired-contract ENGINE rows: **0**; new current rows in 24h: **0**.
-- Raw repaired-campaign pilot rows since cutoff: **887**; **887** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,509/7,509**. They remain preserved as evidence.
+- Raw repaired-campaign pilot rows since cutoff: **889**; **889** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,511/7,511**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-26 22:25:03Z (1m old, 546,239 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-26 22:24:27Z (2m old, 57,962 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-26 22:30:39Z (0m old, 310,771 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-26 22:30:24Z (0m old, 57,962 bytes)
 - Description coverage in current CSV: **3,522/3,522** rows.
 
 ## Stocks 5m execution provenance
@@ -207,7 +207,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 887 | 2026-07-26T22:24:19Z | 2m |
+| ENGINE | stocks_repaired_20260725_c2 | 889 | 2026-07-26T22:29:25Z | 1m |
 
 ## Reading the matrix
 
