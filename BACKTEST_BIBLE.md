@@ -1223,6 +1223,26 @@ so job 44 is `SCREENED` and exact replay is empty. Full per-key results,
 registry reconciliation and rollback are in
 `EXIT_E05_DIVERGENCE_RETEST_RESULTS_20260726.md`.
 
+### §15.13 — Peak-giveback partial/full reconciliation (2026-07-26)
+
+`EXIT_PEAK_GIVEBACK` is not setting-equivalent to the live Tradier protector.
+Live uses `PEAK_GIVEBACK_PROTECTION_ENABLED`, an absolute percentage-point
+drop, a 72-hour hold, a default current-gain floor of -0.5%, and a full close.
+The registry's `PEAK_GIVEBACK_ENABLED` name is disconnected.
+
+The same-entry research adapter instead tests arm gain 0.5/1/2/4/8%,
+fractional MFE giveback 20/33/50/67%, and one bounded 25%/50% partial or a
+full close while still above round-trip costs. It tracks causal side-aware
+peak price/current average entry, peak account equity, next-bar fills, actual
+partial/full realized P&L and an independent peak-level reclaim obligation for
+every clip.
+
+All 1,200 top/bottom cohort candidates were connected. Every 25%/50% candidate
+had positive realized partial net P&L, but no setting passed all-fold
+B&H/E02/70–80% TIM/reclaim/capacity gates. Job 48 retains 20 final-fold rows
+gray and queues no exact replay. The profitable partial clips are beam-search
+components, not standalone settings. See `PEAK_GIVEBACK_RESULTS_20260726.md`.
+
 ### §15.13 — Completed-HTF MTF ATR trail job47 (2026-07-26)
 
 The historical `MTF_ATR_TRAIL` name hides two different contracts. The

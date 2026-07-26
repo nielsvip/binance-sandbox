@@ -35,8 +35,8 @@ class StructuralWtParams:
     emergency_continued_bars: int = 0
 
     def validate(self) -> None:
-        if self.arm_tf not in {"1h", "4h", "D"}:
-            raise ValueError("arm_tf must be 1h, 4h, or D")
+        if self.arm_tf not in {"15m", "1h", "4h", "D"}:
+            raise ValueError("arm_tf must be 15m, 1h, 4h, or D")
         if self.confirm_tf not in {"5m", "15m", "1h", "4h"}:
             raise ValueError("confirm_tf must be 5m, 15m, 1h, or 4h")
         if self.prebreak_lookback < 2:
@@ -47,8 +47,8 @@ class StructuralWtParams:
             raise ValueError("rebound_atr must be non-negative")
         if self.confirmation_mode not in {"AND", "PRICE_ONLY", "WT_ONLY", "OR"}:
             raise ValueError("unsupported confirmation_mode")
-        if self.confirmation_bars not in {1, 2}:
-            raise ValueError("confirmation_bars must be 1 or 2")
+        if self.confirmation_bars not in {1, 2, 3}:
+            raise ValueError("confirmation_bars must be 1, 2, or 3")
         allowed_emergency = {
             "ADVERSE_ATR",
             "ADVERSE_STDEV",

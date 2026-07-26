@@ -10,7 +10,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-FAMILIES = ("ENTRY_BOUNCE_15M_LOW", "ENTRY_BOUNCE_5M_LOW")
+FAMILIES = (
+    "ENTRY_BOUNCE_15M_LOW",
+    "ENTRY_BOUNCE_5M_LOW",
+    "ENTRY_4H_DEEP_VALUE",
+    "ENTRY_1H_TURN_UP",
+)
 
 
 def controls_from_summaries(paths: list[Path]) -> dict[tuple[str, str], Path]:

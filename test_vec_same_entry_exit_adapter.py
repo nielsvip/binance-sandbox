@@ -6,6 +6,7 @@ import numpy as np
 
 from tools.vec_same_entry_exit_adapter import (
     AlgoStructureParams,
+    AlgoStoch4hParams,
     ChandelierParams,
     GrOppositeParams,
     MtfAtrTrailExitBook,
@@ -16,17 +17,22 @@ from tools.vec_same_entry_exit_adapter import (
     _entry_schedule_hash,
     _golden_rule_completed_votes,
     algo_structure_grid,
+    algo_stoch_4h_grid,
     build_donchian_book,
+    build_algo_stoch_4h_book,
     build_chandelier_book,
     build_gr_opposite_book,
     build_wt_mtf_book,
     e02_grid,
     chandelier_grid,
     bottom_delayed_grid,
+    bottom_delayed_grid_extended,
     bottom_emergency_grid,
+    bottom_emergency_variants,
     gr_opposite_grid,
     mtf_atr_trail_grid,
     protective_trail_grid,
+    protective_trail_grid_extended,
     simulate,
     simulate_structural_compiled,
     structural_grid,
@@ -341,6 +347,56 @@ def test_algo_structure_grid_keeps_historical_events_separate():
         AlgoStructureParams("1h", 20, -10, 0.0).validate()
 
 
+def test_algo_stoch_4h_grid_is_mirrored_and_completed_causal():
+    rows = algo_stoch_4h_grid()
+    assert len(rows) == 12
+    assert {
+        (row.long_k_min, row.short_k_max) for row in rows
+    } == {(60.0, 40.0), (70.0, 30.0), (80.0, 20.0)}
+    assert {row.event_mode for row in rows} == {"STATE", "CROSS"}
+    n = 6
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    htf = SimpleNamespace(
+        event_index=np.arange(n, dtype=np.int64),
+        source_ts=ts - 1,
+        high=np.full(n, 11.0),
+        low=np.full(n, 9.0),
+    )
+    long_data = SimpleNamespace(
+        symbol="STOCHL",
+        ts=ts,
+        full_indices=np.arange(n, dtype=np.int64),
+        z=FakeZ(
+            {
+                "k_4h": np.array([50, 65, 70, 65, 50, 40], float),
+                "d_4h": np.array([55, 60, 60, 70, 60, 50], float),
+            }
+        ),
+    )
+    short_data = SimpleNamespace(
+        symbol="STOCHS",
+        ts=ts,
+        full_indices=np.arange(n, dtype=np.int64),
+        z=FakeZ(
+            {
+                "k_4h": np.array([50, 35, 30, 35, 50, 60], float),
+                "d_4h": np.array([45, 40, 40, 30, 40, 50], float),
+            }
+        ),
+    )
+    params = AlgoStoch4hParams(60.0, 40.0, "CROSS", -5, 0.0)
+    long_book = build_algo_stoch_4h_book(
+        long_data, {"4h": htf}, params, side="LONG"
+    )
+    short_book = build_algo_stoch_4h_book(
+        short_data, {"4h": htf}, params, side="SHORT"
+    )
+    assert np.flatnonzero(long_book.events).tolist() == [3]
+    assert np.flatnonzero(short_book.events).tolist() == [3]
+    assert long_book.update(3, active=True).source_timestamps["4h"] < ts[3]
+    assert short_book.update(3, active=True).source_timestamps["4h"] < ts[3]
+
+
 def test_chandelier_grid_is_exact_standard_registered_contract():
     rows = chandelier_grid()
     assert len(rows) == 2 * 4 * 5 * 4
@@ -505,6 +561,30 @@ def test_bottom_exit_grids_cover_smaller_tfs_modes_and_rare_brakes():
     labels = {label for _, _, label in path_c}
     assert {"ADVERSE_ATR_4", "ADVERSE_STDEV_5", "MAX_WAIT", "CONTINUED_5"} <= labels
     assert all(params.emergency_modes for params, _, _ in path_c)
+
+
+def test_extended_bottom_grids_are_bounded_and_add_missing_dimensions():
+    path_a = protective_trail_grid_extended()
+    path_b = bottom_delayed_grid_extended()
+    brakes = bottom_emergency_variants()
+    assert len(path_a) == 444
+    assert {row.arm_timeframe for row in path_a} == {
+        "15m", "1h", "4h", "D"
+    }
+    assert {row.trail_timeframe for row in path_a} == {
+        "5m", "15m", "1h", "4h"
+    }
+    assert {row.break_buffer_atr for row in path_a} == {0.0, 0.25, 0.5}
+    assert len(path_b) == 624
+    assert {params.arm_tf for params, _ in path_b} == {
+        "15m", "1h", "4h", "D"
+    }
+    assert 3 in {params.confirmation_bars for params, _ in path_b}
+    assert {6, 72} <= {wait for _, wait in path_b}
+    assert len(brakes) == 12
+    assert {"ADVERSE_ATR_6", "ADVERSE_STDEV_7", "CONTINUED_8"} <= {
+        label for label, _ in brakes
+    }
 
 
 def _mtf_atr_fixture(*, side="LONG"):

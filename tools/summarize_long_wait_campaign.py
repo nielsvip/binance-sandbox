@@ -14,7 +14,12 @@ if str(ROOT) not in sys.path:
 from tools.normalize_entry_fleet_metrics import normalized_payloads
 
 
-FAMILIES = ("ENTRY_BOUNCE_15M_LOW", "ENTRY_BOUNCE_5M_LOW")
+FAMILIES = (
+    "ENTRY_BOUNCE_15M_LOW",
+    "ENTRY_BOUNCE_5M_LOW",
+    "ENTRY_4H_DEEP_VALUE",
+    "ENTRY_1H_TURN_UP",
+)
 
 
 def summarize(root: Path) -> dict:
@@ -41,6 +46,10 @@ def summarize(root: Path) -> dict:
             "artifact": str(artifact),
         }
         aggregate_metrics, final_metrics = normalized_payloads(source, result)
+        final_fold = max(
+            result["outer_folds"],
+            key=lambda fold: int(fold["validation_metrics"]["end_ts"]),
+        )
         wired = agg["entry_request_count"] > 0 and agg["entry_fill_count"] > 0
         strict = bool(agg["vector_survivor"])
         rows.append(
@@ -116,6 +125,17 @@ def summarize(root: Path) -> dict:
                     fold["selected_candidate"]
                     for fold in result["outer_folds"]
                 ],
+                "frozen_final_entry_schedule": {
+                    "selected_candidate": final_fold["selected_candidate"],
+                    "ladder_curve": final_fold["curve"],
+                    "validation_window": final_fold["validation"],
+                    "artifact": str(artifact),
+                    "materializer": (
+                        "tools.vec_entry_overlay_walkforward."
+                        "build_frozen_overlay_signals"
+                    ),
+                    "combination_authorized": False,
+                },
                 "artifact": str(artifact),
             }
         )
@@ -180,7 +200,12 @@ def summarize(root: Path) -> dict:
             "historical_reasons": "SEPARATE_SOURCE_REASONS_PROVEN_AT_f83bc7b9",
             "reconstruction_only": True,
             "short_side": "EXPLICIT_RESEARCH_MIRROR",
-            "grid_candidates_per_path": 64,
+            "grid_candidates_by_path": {
+                "ENTRY_BOUNCE_15M_LOW": 64,
+                "ENTRY_BOUNCE_5M_LOW": 64,
+                "ENTRY_4H_DEEP_VALUE": 8,
+                "ENTRY_1H_TURN_UP": 24,
+            },
             "bounce_timeframe": ["5m", "15m"],
             "bounce_distance": [0.004, 0.008, 0.015, 0.025],
             "recovery_only": [False, True],
@@ -205,14 +230,15 @@ def summarize(root: Path) -> dict:
 
 def markdown(payload: dict) -> str:
     lines = [
-        "# Separated Donchian-low bounce reasons — 2026-07-26",
+        "# Separated historical LONG_WAIT reasons — 2026-07-26",
         "",
         "## Wiring verdict",
         "",
         "`LONG_WAIT_ENABLED` is quarantined as a removed compound label. Commit "
         "`f83bc7b9` separately proves `Bounce_15m_Low` (1.5%) and "
         "`Bounce_5m_Low` (0.8%). Each reason is screened independently using "
-        "completed prior channels; SHORT is an explicit research mirror.",
+        "completed prior channels. `4h_Deep_Value` and `1h_Turn_Up` are also "
+        "independent completed-bar paths. SHORT is an explicit research mirror.",
         "",
         "## Cohorts",
         "",

@@ -435,6 +435,64 @@ def _bounce_candidates(family: str, timeframe: str) -> list[Candidate]:
     ]
 
 
+def _deep_value_candidates() -> list[Candidate]:
+    return [
+        _candidate(
+            "ENTRY_4H_DEEP_VALUE",
+            role,
+            stoch_k_threshold=threshold,
+        )
+        for role, threshold in itertools.product(
+            ("filter", "direct"), (20.0, 35.0, 50.0, 65.0)
+        )
+    ]
+
+
+def _turn_1h_candidates() -> list[Candidate]:
+    return [
+        _candidate(
+            "ENTRY_1H_TURN_UP",
+            role,
+            stoch_k_threshold=threshold,
+            turn_definition=turn_definition,
+        )
+        for role, threshold, turn_definition in itertools.product(
+            ("filter", "direct"),
+            (20.0, 40.0, 60.0, 80.0),
+            ("rising-vs-prior", "cross-d", "either"),
+        )
+    ]
+
+
+def _score_reason_masks(
+    view: dict[str, np.ndarray], side: str
+) -> dict[tuple[str, float, str], np.ndarray]:
+    """Completed-bar states for removed 4h deep-value and 1h-turn reasons."""
+    n = len(view["close"])
+    k4 = np.asarray(view.get("stoch_k_4h", np.full(n, 50.0)))
+    k1 = np.asarray(view.get("stoch_k_1h", np.full(n, 50.0)))
+    d1 = np.asarray(view.get("stoch_d_1h", np.full(n, 50.0)))
+    previous_k1 = np.r_[k1[0], k1[:-1]]
+    out = {}
+    for threshold in (20.0, 35.0, 50.0, 65.0):
+        out[("4h-deep", threshold, "source")] = (
+            k4 < threshold if side == "LONG" else k4 > 100.0 - threshold
+        )
+    for threshold in (20.0, 40.0, 60.0, 80.0):
+        if side == "LONG":
+            zone = k1 < threshold
+            prior_turn = k1 > previous_k1
+            d_turn = k1 > d1
+        else:
+            zone = k1 > 100.0 - threshold
+            prior_turn = k1 < previous_k1
+            d_turn = k1 < d1
+        out[("1h-turn", threshold, "rising-vs-prior")] = zone & prior_turn
+        out[("1h-turn", threshold, "cross-d")] = zone & d_turn
+        out[("1h-turn", threshold, "either")] = zone & (prior_turn | d_turn)
+    return out
+
+
 def _bounce_masks(
     view: dict[str, np.ndarray], side: str
 ) -> dict[tuple[str, float, bool, str], np.ndarray]:
@@ -879,6 +937,7 @@ def _mask(
         tuple[str, float, float, float, str], np.ndarray
     ] | None = None,
     bounce_masks: dict[tuple[str, float, bool, str], np.ndarray] | None = None,
+    score_reason_masks: dict[tuple[str, float, str], np.ndarray] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -953,6 +1012,22 @@ def _mask(
                 float(p["distance"]),
                 bool(p["recovery_only"]),
                 str(p["confirmation"]),
+            )
+        ]
+    if candidate.family == "ENTRY_4H_DEEP_VALUE":
+        if score_reason_masks is None:
+            raise ValueError("score reason masks are required")
+        return score_reason_masks[
+            ("4h-deep", float(p["stoch_k_threshold"]), "source")
+        ]
+    if candidate.family == "ENTRY_1H_TURN_UP":
+        if score_reason_masks is None:
+            raise ValueError("score reason masks are required")
+        return score_reason_masks[
+            (
+                "1h-turn",
+                float(p["stoch_k_threshold"]),
+                str(p["turn_definition"]),
             )
         ]
     passed = np.vstack(
@@ -1043,6 +1118,15 @@ def _forward_rank(
                 and p["confirmation"] == "none"
             ):
                 sentinels.append(candidate)
+        if candidate.family == "ENTRY_4H_DEEP_VALUE" and (
+            p["stoch_k_threshold"] == 50.0
+        ):
+            sentinels.append(candidate)
+        if candidate.family == "ENTRY_1H_TURN_UP" and (
+            p["stoch_k_threshold"] == 40.0
+            and p["turn_definition"] == "rising-vs-prior"
+        ):
+            sentinels.append(candidate)
     out: dict[str, Candidate] = {
         row[3].label: row[3] for row in scored[:shortlist]
     }
@@ -1103,6 +1187,7 @@ def build_frozen_overlay_signals(
     dc_break_masks = _dc_break_masks(view, side)
     long_wait_masks = _long_wait_masks(view, side)
     bounce_masks = _bounce_masks(view, side)
+    score_reason_masks = _score_reason_masks(view, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
@@ -1117,6 +1202,7 @@ def build_frozen_overlay_signals(
         dc_break_masks,
         long_wait_masks,
         bounce_masks,
+        score_reason_masks,
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -1164,6 +1250,7 @@ def run(args: argparse.Namespace) -> Path:
     dc_break_masks = _dc_break_masks(view, side)
     long_wait_masks = _long_wait_masks(view, side)
     bounce_masks = _bounce_masks(view, side)
+    score_reason_masks = _score_reason_masks(view, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
@@ -1178,6 +1265,8 @@ def run(args: argparse.Namespace) -> Path:
         "ENTRY_BOUNCE_5M_LOW": lambda: _bounce_candidates(
             "ENTRY_BOUNCE_5M_LOW", "5m"
         ),
+        "ENTRY_4H_DEEP_VALUE": _deep_value_candidates,
+        "ENTRY_1H_TURN_UP": _turn_1h_candidates,
     }[args.family]()
     masks = {
         c: _mask(
@@ -1191,6 +1280,7 @@ def run(args: argparse.Namespace) -> Path:
             dc_break_masks,
             long_wait_masks,
             bounce_masks,
+            score_reason_masks,
         )
         for c in family_candidates
     }
@@ -1546,6 +1636,8 @@ def main() -> None:
             "ENTRY_LONG_WAIT_ENABLED",
             "ENTRY_BOUNCE_15M_LOW",
             "ENTRY_BOUNCE_5M_LOW",
+            "ENTRY_4H_DEEP_VALUE",
+            "ENTRY_1H_TURN_UP",
         ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))

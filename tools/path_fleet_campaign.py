@@ -299,8 +299,8 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         {"stoch_k_threshold": [20, 35, 50, 65], "role": ["filter", "direct"]},
         "same frozen ladder sizing and $16k capacity",
         "E02 N=30 + resting reclaim",
-        None,
-        "ADAPTER_REQUIRED_SEPARATE_REASON",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES_SOURCE_PROVEN_RECONSTRUCTION",
         "Source threshold was k_4h < 50 and awarded score points; it was not a "
         "standalone order path.",
         source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
@@ -311,11 +311,15 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         20,
         "Removed LONG score reason for completed 1h Stoch K below threshold "
         "and rising versus the prior completed 1h value.",
-        {"stoch_k_threshold": [20, 40, 60, 80], "role": ["filter", "direct"]},
+        {
+            "stoch_k_threshold": [20, 40, 60, 80],
+            "turn_definition": ["rising-vs-prior", "cross-d", "either"],
+            "role": ["filter", "direct"],
+        },
         "same frozen ladder sizing and $16k capacity",
         "E02 N=30 + resting reclaim",
-        None,
-        "ADAPTER_REQUIRED_SEPARATE_REASON",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES_SOURCE_PROVEN_RECONSTRUCTION",
         "Source threshold was k_1h < 40 and k_1h > previous k_1h; SHORT mirror "
         "must remain explicitly research-only.",
         source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
@@ -675,17 +679,23 @@ CORE_PATHS: tuple[PathFamily, ...] = (
             "Research decomposition of the removed 4h Stoch peak/bottom roll."
         ),
         settings={
-            "timeframe_seed": ["4h"],
-            "historical_long_k_min_seed": [60],
-            "historical_short_k_max_seed": [20],
+            "timeframe": ["4h"],
+            "mirrored_long_short_k_thresholds": ["60/40", "70/30", "80/20"],
+            "event_mode": ["STATE", "CROSS"],
             "historical_score_delta_seed": [-5],
-            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+            "profit_gate_pct_research": [0.0, 3.0],
+            "historical_asymmetric_seeds": ["LONG>60", "SHORT<20"],
+            "broader_range_status": ["BOUNDED_SIDE_MIRROR_INSTALLED"],
         },
         fixed_entry_control="exact frozen accepted ladder schedule",
         fixed_exit_control="same-entry E02 N=30 control",
-        runner=None,
-        adapter_status="ADAPTER_REQUIRED",
-        notes="Must remain separate from DC structure and profit-turn events.",
+        runner="tools/vec_same_entry_exit_adapter.py",
+        adapter_status="READY_BOTH_SIDES_RESEARCH_DECOMPOSITION",
+        notes=(
+            "Must remain separate from DC structure and profit-turn events. "
+            "The removed asymmetric LONG>60/SHORT<20 constants are not "
+            "silently combined; mirrored 60/40..80/20 profiles expose both."
+        ),
     ),
     PathFamily(
         path_id="EXIT_ALGO_PROFIT_TAKE_15M",

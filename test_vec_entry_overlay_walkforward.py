@@ -260,3 +260,28 @@ def test_bounce_masks_use_prior_channel_and_mirror_side():
     assert overlay._bounce_masks(view, "LONG")[recovered].tolist() == [True, False]
     assert overlay._bounce_masks(view, "SHORT")[source].tolist() == [True, True]
     assert overlay._bounce_masks(view, "SHORT")[recovered].tolist() == [False, True]
+
+
+def test_removed_deep_value_and_turn_reasons_are_separate_mirrored_grids():
+    assert len(overlay._deep_value_candidates()) == 8
+    assert len(overlay._turn_1h_candidates()) == 24
+    view = {
+        "close": np.ones(4),
+        "stoch_k_4h": np.array([30.0, 70.0, 55.0, 45.0]),
+        "stoch_k_1h": np.array([30.0, 35.0, 70.0, 65.0]),
+        "stoch_d_1h": np.array([40.0, 30.0, 60.0, 70.0]),
+    }
+    long_masks = overlay._score_reason_masks(view, "LONG")
+    short_masks = overlay._score_reason_masks(view, "SHORT")
+    assert long_masks[("4h-deep", 50.0, "source")].tolist() == [
+        True, False, False, True
+    ]
+    assert short_masks[("4h-deep", 50.0, "source")].tolist() == [
+        False, True, True, False
+    ]
+    assert long_masks[("1h-turn", 40.0, "rising-vs-prior")].tolist() == [
+        False, True, False, False
+    ]
+    assert short_masks[("1h-turn", 40.0, "rising-vs-prior")].tolist() == [
+        False, False, False, True
+    ]

@@ -68,8 +68,23 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "BOTTOM_A_PROTECTIVE_TRAIL",
     "BOTTOM_B_DELAYED_LOWER_TOP",
     "BOTTOM_C_DELAYED_EMERGENCY",
+    "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+    "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+    "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
     "EXIT_MTF_ATR_TRAIL",
     "EXIT_ALGO_STRUCTURE_1H_15M",
+    "EXIT_ALGO_STOCH_4H_ROLL",
+}
+EMERGENCY_EXIT_FAMILIES = {
+    "BOTTOM_C_DELAYED_EMERGENCY",
+    "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
+}
+COMPILED_STRUCTURAL_FAMILIES = {
+    "EXIT_STRUCTURAL_WT_LOWER_TOP",
+    "BOTTOM_B_DELAYED_LOWER_TOP",
+    "BOTTOM_C_DELAYED_EMERGENCY",
+    "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+    "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
 }
 
 
@@ -271,13 +286,17 @@ class ProtectiveTrailParams:
     lookback: int = 20
 
     def validate(self) -> None:
-        if self.arm_timeframe not in {"1h", "4h"}:
-            raise ValueError("protective arm timeframe must be 1h or 4h")
-        if self.trail_timeframe not in {"5m", "15m", "1h"}:
-            raise ValueError("protective trail timeframe must be 5m, 15m, or 1h")
+        if self.arm_timeframe not in {"15m", "1h", "4h", "D"}:
+            raise ValueError(
+                "protective arm timeframe must be 15m, 1h, 4h, or D"
+            )
+        if self.trail_timeframe not in {"5m", "15m", "1h", "4h"}:
+            raise ValueError(
+                "protective trail timeframe must be 5m, 15m, 1h, or 4h"
+            )
         if self.mode not in {"IMMEDIATE", "ATR", "STDEV", "DC"}:
             raise ValueError("unsupported protective trail mode")
-        if self.break_buffer_atr not in {0.0, 0.25}:
+        if self.break_buffer_atr not in {0.0, 0.25, 0.5}:
             raise ValueError("unsupported break buffer")
         if self.distance_mult <= 0 or self.lookback < 4:
             raise ValueError("invalid protective trail distance/lookback")
@@ -318,6 +337,27 @@ class AlgoStructureParams:
             raise ValueError("historical score-delta provenance mismatch")
         if self.profit_gate_pct not in {0.0, 3.0}:
             raise ValueError("unsupported ALGO structure research profit gate")
+
+
+@dataclasses.dataclass(frozen=True)
+class AlgoStoch4hParams:
+    long_k_min: float
+    short_k_max: float
+    event_mode: str
+    historical_score_delta: int
+    profit_gate_pct: float
+
+    def validate(self) -> None:
+        if self.long_k_min + self.short_k_max != 100.0:
+            raise ValueError("4h Stoch thresholds must be exact side mirrors")
+        if self.long_k_min not in {60.0, 70.0, 80.0}:
+            raise ValueError("unsupported 4h Stoch threshold")
+        if self.event_mode not in {"STATE", "CROSS"}:
+            raise ValueError("4h Stoch event mode must be STATE or CROSS")
+        if self.historical_score_delta != -5:
+            raise ValueError("historical 4h Stoch score delta must remain -5")
+        if self.profit_gate_pct not in {0.0, 3.0}:
+            raise ValueError("unsupported 4h Stoch profit gate")
 
 
 class StaticExitBook:
@@ -479,6 +519,83 @@ def algo_structure_grid() -> list[AlgoStructureParams]:
         row.validate()
     assert len(rows) == 4
     return rows
+
+
+def algo_stoch_4h_grid() -> list[AlgoStoch4hParams]:
+    rows = [
+        AlgoStoch4hParams(
+            long_k_min=long_k_min,
+            short_k_max=100.0 - long_k_min,
+            event_mode=event_mode,
+            historical_score_delta=-5,
+            profit_gate_pct=profit_gate_pct,
+        )
+        for long_k_min in (60.0, 70.0, 80.0)
+        for event_mode in ("STATE", "CROSS")
+        for profit_gate_pct in (0.0, 3.0)
+    ]
+    for row in rows:
+        row.validate()
+    assert len(rows) == 12
+    return rows
+
+
+def build_algo_stoch_4h_book(
+    data: Any,
+    htfs: dict[str, Any],
+    params: AlgoStoch4hParams,
+    *,
+    side: str,
+) -> StaticExitBook:
+    params.validate()
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    h = htfs["4h"]
+    k = _completed_field(data, h, "k_4h")
+    d = _completed_field(data, h, "d_4h")
+    if side == "LONG":
+        state = (k < d) & (k > params.long_k_min)
+        crossed = np.concatenate(
+            ([False], (k[:-1] >= d[:-1]) & (k[1:] < d[1:]))
+        )
+        references = np.asarray(h.high, dtype=np.float64)
+    else:
+        state = (k > d) & (k < params.short_k_max)
+        crossed = np.concatenate(
+            ([False], (k[:-1] <= d[:-1]) & (k[1:] > d[1:]))
+        )
+        references = np.asarray(h.low, dtype=np.float64)
+    completed_event = state & crossed if params.event_mode == "CROSS" else state
+    events, reclaim = ladder.top._map_events(
+        len(data.ts), h, completed_event, references
+    )
+    sources = _source_map(h)
+    source_by_row = {
+        int(row): {"4h": int(sources[row])}
+        for row in np.flatnonzero(events)
+        if int(row) in sources
+    }
+    for row, by_tf in source_by_row.items():
+        if by_tf["4h"] > int(data.ts[row]):
+            raise RuntimeError(f"future 4h Stoch source at row {row}")
+    return StaticExitBook(
+        (
+            f"EXIT_ALGO_STOCH_4H_ROLL_{params.event_mode}_"
+            f"L{params.long_k_min:g}_S{params.short_k_max:g}"
+        ),
+        np.asarray(events, dtype=np.uint8),
+        np.asarray(reclaim, dtype=np.float64),
+        source_by_row,
+        audit={
+            "side_mirror": True,
+            "completed_4h_only": True,
+            "historical_asymmetry_not_combined": (
+                "removed LONG seed >60 and SHORT seed <20 are represented "
+                "at opposite ends of the mirrored threshold range"
+            ),
+        },
+    )
 
 
 def build_wt_mtf_book(
@@ -1256,6 +1373,60 @@ def protective_trail_grid() -> list[ProtectiveTrailParams]:
                         )
                     )
     assert len(rows) == 220
+    return rows
+
+
+def protective_trail_grid_extended() -> list[ProtectiveTrailParams]:
+    """Bounded breadth outside the original A grid.
+
+    This adds faster/slower structural arms, a wider adverse-break buffer, a
+    completed 4h trail, and deliberately sparse outer distance ranges.  It is
+    separate from :func:`protective_trail_grid` so historical evidence remains
+    reproducible and the immediate-break rows stay diagnostic controls.
+    """
+    rows: list[ProtectiveTrailParams] = []
+    for arm_tf in ("15m", "1h", "4h", "D"):
+        for break_buffer in (0.0, 0.25, 0.5):
+            rows.append(
+                ProtectiveTrailParams(
+                    arm_tf, "5m", "IMMEDIATE", break_buffer
+                )
+            )
+            for trail_tf in ("5m", "15m", "1h", "4h"):
+                for mult in (1.25, 2.5, 5.0):
+                    rows.append(
+                        ProtectiveTrailParams(
+                            arm_tf,
+                            trail_tf,
+                            "ATR",
+                            break_buffer,
+                            mult,
+                            20,
+                        )
+                    )
+                for lookback, mult in ((6, 1.0), (20, 4.0), (60, 5.0)):
+                    rows.append(
+                        ProtectiveTrailParams(
+                            arm_tf,
+                            trail_tf,
+                            "STDEV",
+                            break_buffer,
+                            mult,
+                            lookback,
+                        )
+                    )
+                for lookback in (10, 40, 80):
+                    rows.append(
+                        ProtectiveTrailParams(
+                            arm_tf,
+                            trail_tf,
+                            "DC",
+                            break_buffer,
+                            1.0,
+                            lookback,
+                        )
+                    )
+    assert len(rows) == 444
     return rows
 
 
@@ -2278,6 +2449,178 @@ def bottom_delayed_grid() -> list[tuple[StructuralWtParams, int]]:
     return rows
 
 
+def bottom_delayed_grid_extended() -> list[tuple[StructuralWtParams, int]]:
+    """Sparse breadth for the lower-low then lower-price/WT-top sequence.
+
+    The additions target dimensions absent from the seed grid: a 15m or daily
+    structural arm, three-bar confirmation, six/seventy-two-hour waits, and
+    shallow/deep rebound thresholds.  The set is bounded and compiled rather
+    than a field-by-field Cartesian explosion.
+    """
+    rows: list[tuple[StructuralWtParams, int]] = []
+
+    def add(
+        *,
+        arm_tfs: tuple[str, ...],
+        confirm_tfs: tuple[str, ...],
+        modes: tuple[str, ...],
+        confirm_bars_values: tuple[int, ...],
+        rebounds: tuple[float, ...],
+        lookbacks: tuple[int, ...],
+        waits: tuple[int, ...],
+    ) -> None:
+        for arm_tf in arm_tfs:
+            for confirm_tf in confirm_tfs:
+                bars_per_hour = {
+                    "5m": 12,
+                    "15m": 4,
+                    "1h": 1,
+                    "4h": 0.25,
+                }[confirm_tf]
+                for mode in modes:
+                    for confirm_bars in confirm_bars_values:
+                        for rebound in rebounds:
+                            for lookback in lookbacks:
+                                for wait_hours in waits:
+                                    rows.append(
+                                        (
+                                            StructuralWtParams(
+                                                arm_tf=arm_tf,
+                                                confirm_tf=confirm_tf,
+                                                rebound_atr=rebound,
+                                                prebreak_lookback=lookback,
+                                                max_wait_1h=max(
+                                                    3,
+                                                    int(
+                                                        wait_hours
+                                                        * bars_per_hour
+                                                    ),
+                                                ),
+                                                confirmation_mode=mode,
+                                                confirmation_bars=(
+                                                    confirm_bars
+                                                ),
+                                            ),
+                                            wait_hours,
+                                        )
+                                    )
+
+    add(
+        arm_tfs=("15m",),
+        confirm_tfs=("5m", "15m"),
+        modes=("PRICE_ONLY", "WT_ONLY", "AND", "OR"),
+        confirm_bars_values=(1, 3),
+        rebounds=(0.125, 0.5, 1.5),
+        lookbacks=(3, 8),
+        waits=(6, 24, 72),
+    )
+    add(
+        arm_tfs=("D",),
+        confirm_tfs=("15m", "1h"),
+        modes=("AND", "OR"),
+        confirm_bars_values=(1, 3),
+        rebounds=(0.125, 0.5, 1.5),
+        lookbacks=(3, 8),
+        waits=(6, 24, 72),
+    )
+    add(
+        arm_tfs=("1h", "4h"),
+        confirm_tfs=("5m", "15m", "1h"),
+        modes=("PRICE_ONLY", "WT_ONLY", "AND", "OR"),
+        confirm_bars_values=(3,),
+        rebounds=(0.125, 1.5),
+        lookbacks=(3, 8),
+        waits=(6, 72),
+    )
+    assert len(rows) == 624
+    assert len({dataclasses.astuple(params) for params, _ in rows}) == len(rows)
+    return rows
+
+
+def bottom_emergency_variants() -> list[tuple[str, dict[str, Any]]]:
+    """Rare-brake overlays applied only to discovery-pruned family-B rows."""
+    return [
+        (
+            "ADVERSE_ATR_2",
+            {
+                "emergency_modes": ("ADVERSE_ATR",),
+                "emergency_adverse_atr": 2.0,
+            },
+        ),
+        (
+            "ADVERSE_ATR_3",
+            {
+                "emergency_modes": ("ADVERSE_ATR",),
+                "emergency_adverse_atr": 3.0,
+            },
+        ),
+        (
+            "ADVERSE_ATR_4",
+            {
+                "emergency_modes": ("ADVERSE_ATR",),
+                "emergency_adverse_atr": 4.0,
+            },
+        ),
+        (
+            "ADVERSE_ATR_6",
+            {
+                "emergency_modes": ("ADVERSE_ATR",),
+                "emergency_adverse_atr": 6.0,
+            },
+        ),
+        (
+            "ADVERSE_STDEV_2.5",
+            {
+                "emergency_modes": ("ADVERSE_STDEV",),
+                "emergency_adverse_stdev": 2.5,
+            },
+        ),
+        (
+            "ADVERSE_STDEV_3.5",
+            {
+                "emergency_modes": ("ADVERSE_STDEV",),
+                "emergency_adverse_stdev": 3.5,
+            },
+        ),
+        (
+            "ADVERSE_STDEV_5",
+            {
+                "emergency_modes": ("ADVERSE_STDEV",),
+                "emergency_adverse_stdev": 5.0,
+            },
+        ),
+        (
+            "ADVERSE_STDEV_7",
+            {
+                "emergency_modes": ("ADVERSE_STDEV",),
+                "emergency_adverse_stdev": 7.0,
+            },
+        ),
+        ("MAX_WAIT", {"emergency_modes": ("MAX_WAIT",)}),
+        (
+            "CONTINUED_3",
+            {
+                "emergency_modes": ("CONTINUED",),
+                "emergency_continued_bars": 3,
+            },
+        ),
+        (
+            "CONTINUED_5",
+            {
+                "emergency_modes": ("CONTINUED",),
+                "emergency_continued_bars": 5,
+            },
+        ),
+        (
+            "CONTINUED_8",
+            {
+                "emergency_modes": ("CONTINUED",),
+                "emergency_continued_bars": 8,
+            },
+        ),
+    ]
+
+
 def bottom_emergency_grid() -> list[tuple[StructuralWtParams, int, str]]:
     """Family C: family-B wait plus one separately counted rare brake."""
     variants = [
@@ -2319,6 +2662,21 @@ def bottom_emergency_grid() -> list[tuple[StructuralWtParams, int, str]]:
                         )
     assert len(rows) == 324
     return rows
+
+
+def compiled_structural_candidate_count(family: str) -> int:
+    """Return the number represented by the compiled family screen."""
+    if family == "EXIT_STRUCTURAL_WT_LOWER_TOP":
+        return len(structural_grid())
+    if family == "BOTTOM_B_DELAYED_LOWER_TOP":
+        return len(bottom_delayed_grid())
+    if family == "BOTTOM_C_DELAYED_EMERGENCY":
+        return len(bottom_emergency_grid())
+    if family == "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED":
+        return len(bottom_delayed_grid_extended())
+    if family == "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED":
+        return 8 * len(bottom_emergency_variants())
+    raise ValueError(f"not a compiled structural family: {family}")
 
 
 def partial_wt_grid() -> list[tuple[WtMtfParams, float]]:
@@ -2637,6 +2995,9 @@ def screen_artifact(
                 "robust_discovery_all_folds": all(
                     evidence["alpha_vs_bh_pp"] > 0
                     and evidence["alpha_vs_same_entry_e02_pp"] > 0
+                    and exposure_min_pct
+                    <= evidence["weighted_tim_pct"]
+                    <= exposure_max_pct
                     and not evidence["insolvent"]
                     and not evidence["entry_capacity_breach"]
                     and evidence["future_htf_source_count"] == 0
@@ -2646,7 +3007,7 @@ def screen_artifact(
                         or evidence["exit_fills"] > 0
                     )
                     and (
-                        family != "BOTTOM_C_DELAYED_EMERGENCY"
+                        family not in EMERGENCY_EXIT_FAMILIES
                         or evidence["emergency_exit_share"] <= 0.25
                     )
                     for evidence in row["fold_evidence"][:-1]
@@ -2657,6 +3018,9 @@ def screen_artifact(
                         "alpha_vs_same_entry_e02_pp"
                     ]
                     > 0
+                    and exposure_min_pct
+                    <= row["fold_evidence"][-1]["weighted_tim_pct"]
+                    <= exposure_max_pct
                     and not row["fold_evidence"][-1]["insolvent"]
                     and not row["fold_evidence"][-1][
                         "entry_capacity_breach"
@@ -2674,7 +3038,7 @@ def screen_artifact(
                         or row["fold_evidence"][-1]["exit_fills"] > 0
                     )
                     and (
-                        family != "BOTTOM_C_DELAYED_EMERGENCY"
+                        family not in EMERGENCY_EXIT_FAMILIES
                         or row["fold_evidence"][-1][
                             "emergency_exit_share"
                         ]
@@ -2753,6 +3117,36 @@ def screen_artifact(
                     "EXIT_ALGO_STRUCTURE_1H_15M",
                     dataclasses.asdict(params),
                     fold_rows,
+                    research_decomposition_only=True,
+                    removed_compound_score_not_reconstructed=True,
+                )
+            )
+    if "ALGO_STOCH_4H" in families:
+        for params in algo_stoch_4h_grid():
+            book = build_algo_stoch_4h_book(
+                data, htfs, params, side=side
+            )
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    book,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=params.profit_gate_pct,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "EXIT_ALGO_STOCH_4H_ROLL",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    path_audit=book.audit,
                     research_decomposition_only=True,
                     removed_compound_score_not_reconstructed=True,
                 )
@@ -2942,6 +3336,43 @@ def screen_artifact(
                     ),
                 )
             )
+    if "BOTTOM_A_EXT" in families:
+        grid = protective_trail_grid_extended()
+        templates = [
+            ProtectiveTrailExitBook(data, htfs, params, side=side)
+            for params in grid
+        ]
+        for params, template in zip(grid, templates):
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    template,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=-999.0,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    path_audit=template.audit,
+                    extended_parameter_range=True,
+                    immediate_break_churn_comparator=(
+                        params.mode == "IMMEDIATE"
+                    ),
+                    first_break_is_diagnostic_only=(
+                        params.mode == "IMMEDIATE"
+                    ),
+                )
+            )
     if "MTF_ATR_TRAIL" in families:
         for params in mtf_atr_trail_grid():
             template = MtfAtrTrailExitBook(data, htfs, params, side=side)
@@ -2971,10 +3402,15 @@ def screen_artifact(
                     overlap_control="BOTTOM_A_PROTECTIVE_TRAIL",
                 )
             )
-    if "BOTTOM_B" in families or "BOTTOM_C" in families:
+    if (
+        "BOTTOM_B" in families
+        or "BOTTOM_C" in families
+        or "BOTTOM_B_EXT" in families
+        or "BOTTOM_C_EXT" in families
+    ):
         aligned_bottom = {
             tf: _aligned_structural_tf(data, htfs[tf], tf)
-            for tf in ("5m", "15m", "1h", "4h")
+            for tf in ("5m", "15m", "1h", "4h", "D")
         }
         structural_started = time.perf_counter()
         if "BOTTOM_B" in families:
@@ -3008,6 +3444,40 @@ def screen_artifact(
                         dc_low4_profit_exit_used=False,
                     )
                 )
+        bottom_b_extended_candidates: list[dict[str, Any]] = []
+        if "BOTTOM_B_EXT" in families or "BOTTOM_C_EXT" in families:
+            for params, wait_hours in bottom_delayed_grid_extended():
+                fold_rows = [
+                    simulate_structural_compiled(
+                        data,
+                        ctx["signals"],
+                        ctx["curve"],
+                        htfs,
+                        params,
+                        ctx["left"],
+                        ctx["right"],
+                        commission,
+                        slippage,
+                        side=side,
+                        profit_gate_pct=-999.0,
+                        aligned_by_tf=aligned_bottom,
+                    )
+                    for ctx in contexts
+                ]
+                row = candidate_row(
+                    "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+                    {
+                        **dataclasses.asdict(params),
+                        "max_wait_hours": wait_hours,
+                    },
+                    fold_rows,
+                    break_bar_can_exit=False,
+                    dc_low4_profit_exit_used=False,
+                    extended_parameter_range=True,
+                )
+                bottom_b_extended_candidates.append(row)
+                if "BOTTOM_B_EXT" in families:
+                    candidates.append(row)
         if "BOTTOM_C" in families:
             for params, wait_hours, emergency_label in bottom_emergency_grid():
                 fold_rows = [
@@ -3041,6 +3511,81 @@ def screen_artifact(
                         dc_low4_profit_exit_used=False,
                     )
                 )
+        if "BOTTOM_C_EXT" in families:
+            def b_ext_rank(row: dict[str, Any]) -> tuple[Any, ...]:
+                nested = row["nested"]
+                discovery = nested["discovery"]
+                return (
+                    not bool(nested["robust_discovery_all_folds"]),
+                    int(discovery["exit_fills"]) <= 0,
+                    abs(
+                        float(
+                            discovery[
+                                "exposure_weighted_tim_pct_row_weighted"
+                            ]
+                        )
+                        - (exposure_min_pct + exposure_max_pct) / 2.0
+                    ),
+                    -float(
+                        nested["discovery_alpha_vs_same_entry_e02_pp"]
+                    ),
+                    -float(nested["discovery_alpha_vs_bh_pp"]),
+                    float(discovery["max_drawdown_account_pct_max"]),
+                )
+
+            pruned_bases = sorted(
+                bottom_b_extended_candidates, key=b_ext_rank
+            )[:8]
+            for base_rank, base_row in enumerate(pruned_bases, start=1):
+                base_values = dict(base_row["params"])
+                wait_hours = int(base_values.pop("max_wait_hours"))
+                if isinstance(base_values.get("emergency_modes"), list):
+                    base_values["emergency_modes"] = tuple(
+                        base_values["emergency_modes"]
+                    )
+                base_params = StructuralWtParams(**base_values)
+                base_hash = hashlib.sha256(
+                    json.dumps(
+                        base_row["params"], sort_keys=True
+                    ).encode("utf-8")
+                ).hexdigest()
+                for emergency_label, overlay in bottom_emergency_variants():
+                    params = dataclasses.replace(base_params, **overlay)
+                    fold_rows = [
+                        simulate_structural_compiled(
+                            data,
+                            ctx["signals"],
+                            ctx["curve"],
+                            htfs,
+                            params,
+                            ctx["left"],
+                            ctx["right"],
+                            commission,
+                            slippage,
+                            side=side,
+                            profit_gate_pct=-999.0,
+                            aligned_by_tf=aligned_bottom,
+                        )
+                        for ctx in contexts
+                    ]
+                    candidates.append(
+                        candidate_row(
+                            "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
+                            {
+                                **dataclasses.asdict(params),
+                                "max_wait_hours": wait_hours,
+                                "emergency_label": emergency_label,
+                            },
+                            fold_rows,
+                            emergency_must_be_rare_share_max=0.25,
+                            break_bar_can_exit=False,
+                            dc_low4_profit_exit_used=False,
+                            paired_b_discovery_rank=base_rank,
+                            paired_b_params_sha256=base_hash,
+                            paired_b_metrics=base_row["metrics"],
+                            extended_parameter_range=True,
+                        )
+                    )
         compiled_structural_elapsed_seconds += (
             time.perf_counter() - structural_started
         )
@@ -3141,7 +3686,7 @@ def screen_artifact(
             or row["metrics"]["exit_fills"] > 0
         )
         and (
-            row["family"] != "BOTTOM_C_DELAYED_EMERGENCY"
+            row["family"] not in EMERGENCY_EXIT_FAMILIES
             or row["metrics"]["emergency_exit_share"] <= 0.25
         )
     ]
@@ -3191,11 +3736,7 @@ def screen_artifact(
             )
             frozen_discovery_winners.append(family_rows[0])
         for winner in frozen_discovery_winners:
-            if winner["family"] not in {
-                "EXIT_STRUCTURAL_WT_LOWER_TOP",
-                "BOTTOM_B_DELAYED_LOWER_TOP",
-                "BOTTOM_C_DELAYED_EMERGENCY",
-            }:
+            if winner["family"] not in COMPILED_STRUCTURAL_FAMILIES:
                 winner["compiled_python_parity"] = {
                     "status": "NOT_APPLICABLE"
                 }
@@ -3281,36 +3822,16 @@ def screen_artifact(
                 "compiled_grid_elapsed_seconds": (
                     compiled_structural_elapsed_seconds
                 ),
-                "compiled_candidates": (
-                    len(structural_grid())
-                    if winner["family"] == "EXIT_STRUCTURAL_WT_LOWER_TOP"
-                    else len(bottom_delayed_grid())
-                    if winner["family"] == "BOTTOM_B_DELAYED_LOWER_TOP"
-                    else len(bottom_emergency_grid())
+                "compiled_candidates": compiled_structural_candidate_count(
+                    winner["family"]
                 ),
                 "estimated_python_grid_seconds": (
                     oracle_elapsed
-                    * (
-                        len(structural_grid())
-                        if winner["family"]
-                        == "EXIT_STRUCTURAL_WT_LOWER_TOP"
-                        else len(bottom_delayed_grid())
-                        if winner["family"]
-                        == "BOTTOM_B_DELAYED_LOWER_TOP"
-                        else len(bottom_emergency_grid())
-                    )
+                    * compiled_structural_candidate_count(winner["family"])
                 ),
                 "estimated_speedup": (
                     oracle_elapsed
-                    * (
-                        len(structural_grid())
-                        if winner["family"]
-                        == "EXIT_STRUCTURAL_WT_LOWER_TOP"
-                        else len(bottom_delayed_grid())
-                        if winner["family"]
-                        == "BOTTOM_B_DELAYED_LOWER_TOP"
-                        else len(bottom_emergency_grid())
-                    )
+                    * compiled_structural_candidate_count(winner["family"])
                     / compiled_structural_elapsed_seconds
                     if compiled_structural_elapsed_seconds > 0
                     else None
@@ -3421,11 +3942,21 @@ def screen_artifact(
                 "future_htf_source_count"
             ],
         }
-    if any(name in families for name in ("BOTTOM_A", "BOTTOM_B", "BOTTOM_C")):
+    if any(
+        name in families
+        for name in (
+            "BOTTOM_A",
+            "BOTTOM_B",
+            "BOTTOM_C",
+            "BOTTOM_A_EXT",
+            "BOTTOM_B_EXT",
+            "BOTTOM_C_EXT",
+        )
+    ):
         payload["bottom_exit_contract"] = {
             "code_audit": "BOTTOM_EXIT_CODE_AUDIT_20260726.md",
             "same_entry": True,
-            "completed_timeframes_only": ["5m", "15m", "1h", "4h"],
+            "completed_timeframes_only": ["5m", "15m", "1h", "4h", "D"],
             "five_minute_native_or_interpolated_provenance_preserved": True,
             "break_bar_profit_exit_used": False,
             "immediate_break_retained_as_diagnostic_only": True,
@@ -3469,6 +4000,22 @@ def screen_artifact(
             "side_specific_bh_usd": ladder.BASE_UNIT,
             "strategy_capacity_usd": ladder.CAPACITY,
         }
+    if "ALGO_STOCH_4H" in families:
+        payload["algo_stoch_4h_contract"] = {
+            "source_inventory_job": "EXIT_ALGO_EXIT_ENABLED",
+            "research_decomposition_only": True,
+            "live_switch_connected": False,
+            "removed_compound_score_reconstructed": False,
+            "candidate_count": 12,
+            "completed_timeframes_only": ["4h"],
+            "historical_score_delta_provenance": -5,
+            "mirrored_threshold_profiles": ["60/40", "70/30", "80/20"],
+            "event_modes": ["STATE", "CROSS"],
+            "profit_gate_pct_research": [0.0, 3.0],
+            "side_mirror": True,
+            "side_specific_bh_usd": ladder.BASE_UNIT,
+            "strategy_capacity_usd": ladder.CAPACITY,
+        }
     data.z.close()
     return payload
 
@@ -3483,8 +4030,9 @@ def main() -> int:
         default="WT_MTF,STRUCTURAL_WT",
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
-            "E01_CHANDELIER, MTF_ATR_TRAIL, ALGO_STRUCTURE, "
+            "E01_CHANDELIER, MTF_ATR_TRAIL, ALGO_STRUCTURE, ALGO_STOCH_4H, "
             "BOTTOM_A, BOTTOM_B, BOTTOM_C, "
+            "BOTTOM_A_EXT, BOTTOM_B_EXT, BOTTOM_C_EXT, "
             "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
@@ -3504,9 +4052,13 @@ def main() -> int:
         "E01_CHANDELIER",
         "MTF_ATR_TRAIL",
         "ALGO_STRUCTURE",
+        "ALGO_STOCH_4H",
         "BOTTOM_A",
         "BOTTOM_B",
         "BOTTOM_C",
+        "BOTTOM_A_EXT",
+        "BOTTOM_B_EXT",
+        "BOTTOM_C_EXT",
         "STRUCTURAL_WT",
         "PARTIAL_WT",
     }

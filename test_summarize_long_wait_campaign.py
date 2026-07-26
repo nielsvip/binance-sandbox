@@ -32,6 +32,7 @@ def test_short_report_separates_nested_sum_from_final_side_specific_oos(tmp_path
             {
                 "fold": 1,
                 "validation": ["2026-01-01", "2026-02-01"],
+                "curve": {"label": "frozen"},
                 "beats_bh": True,
                 "beats_control": True,
                 "validation_metrics": {
