@@ -4,6 +4,32 @@ This document tracks active diagnostic issues, recent backtest sweeps, and roadm
 
 ---
 
+## 2026-07-26 — Structural/WT1 exit and mandatory reclaim root cause
+
+- `dc_low4_5m`/`dc_high4_5m` is classified as an entry-quality failure
+  diagnostic, not a profit-taking exit. In the contract-valid vector
+  comparison its 25/25 exits were losing and it never beat side-and-hold.
+- A causal 4h structural-break → completed 1h lower price/WT1 rebound-top
+  baseline reached the intended exposure range but scored below B&H on all six
+  valid LONG folds.
+- A nested profit-gated grid fixed the exit defect itself: its frozen selection
+  produced 9/9 winning exits. It still beat B&H in only 1/4 validation folds.
+- The remaining alpha loss is localized to mandatory E10 reclaim execution.
+  Vector E10 waits for a close beyond the stored level and fills at the next RTH
+  open; live Tradier Branch B observes a sampled price and then sends a market
+  open. Neither is the intended persistent resting reclaim order. Recent MU
+  chased 10.01% above its exit and VT chased 1.46%.
+- `reentry_contract.resting_reclaim_fill` now defines the research contract:
+  touch fills at the stored level plus adverse slippage; a gap through fills at
+  the adverse open. It is not live-wired. Existing E10 results fail closed for
+  promotion until vector and exact replay use this contract.
+- Evidence:
+  `STRUCTURAL_WT_REBOUND_RESULTS_20260726.md`,
+  `REENTRY_RECLAIM_EXECUTION_AUDIT_20260726.md`,
+  `data/reports/vec_research/structural_wt_profit_grid_20260726T063646Z`.
+
+---
+
 ## 🔍 Session Diagnosis — 2026-05-23
 
 We conducted an extensive review of the historical data, previous configurations, and locked files to resolve the **>$80k loss** and identify the path forward.
@@ -102,4 +128,3 @@ We completed the implementation of the B&H inversion diagnostic fixes and the gu
 3. **Parity and Sync Verified**:
    - Added `REENTRY_BYPASS_CONFIRMATION_THRESHOLD_PCT` to `config.py` and `config_tradier.py`.
    - Confirmed all 28 critical trading and backtest files are bit-identical between MacBook and S1 sandbox, and synced the changes. Verified `reopt_loop.py` runs correctly on S1.
-

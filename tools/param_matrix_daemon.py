@@ -126,7 +126,13 @@ def useless_knobs():
         return set()
 
 
-def all_cells(manifest_path, all_tiers=False, side=None):
+DIAGNOSTIC_ONLY_PARAMS = {
+    "DC_LOW4_STOP_ENABLED",
+    "R1_DC_LOW4_3M_EMERGENCY_ENABLED",
+}
+
+
+def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=False):
     cells = [("STOP_PACK", name, cfg) for name, cfg in psc.STOP_PACKS.items()]
     cells += [("TF_EXCLUDE", name.replace("TF_EXCLUDE_", ""), cfg) for name, cfg in psc.TF_EXCLUDE_PACKS.items()]
     # USER 2026-07-21 vectorize-everything: VEC_SCREEN-tier params are screened by the
@@ -145,6 +151,8 @@ def all_cells(manifest_path, all_tiers=False, side=None):
         pass
     dead = useless_knobs()
     for pname, values in psc.load_params(manifest_path, 0):
+        if pname in DIAGNOSTIC_ONLY_PARAMS and not include_diagnostics:
+            continue  # preserved in reports; explicit opt-in only, never blind matrix fill
         if not all_tiers and tiers.get(pname) == "VEC_SCREEN":
             continue
         if "OPTION" in pname:
@@ -398,6 +406,14 @@ def main():
     ap.add_argument("--all-tiers", action="store_true",
                     help="also measure VEC_SCREEN-tier params with the real engine (a key that "
                          "must be COMPLETE cannot rely on a screen that silently no-ops knobs)")
+    ap.add_argument(
+        "--include-diagnostics",
+        action="store_true",
+        help=(
+            "explicitly retest diagnostic-only dc_low4 emergency paths; excluded by default "
+            "because their preserved evidence is losing churn, not profit-taking research"
+        ),
+    )
     ap.add_argument("--side", default="", choices=["", "LONG", "SHORT"],
                     help="focus side: drops opposite-side knobs from the work-list")
     ap.add_argument("--only", default="",
@@ -481,7 +497,7 @@ def main():
         censor = psc.registry_censor_start(intervals)
         years = psc.years_since(psc.START)
         st = psc.stamp()
-        cells = all_cells(manifest, a.all_tiers, a.side)
+        cells = all_cells(manifest, a.all_tiers, a.side, a.include_diagnostics)
         dropped = drop_verdicts()
         cells.sort(key=lambda c: c[0] in dropped)  # DROP_* params -> background of the queue
         did_any = False

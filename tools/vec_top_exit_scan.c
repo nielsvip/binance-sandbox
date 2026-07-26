@@ -19,15 +19,21 @@ typedef struct {
     double saved_price_max_pct;
     double missed_move_sum_pct;
     double missed_move_max_pct;
+    double reclaim_overshoot_sum_pct;
+    double reclaim_overshoot_max_pct;
     double turnover;
     int round_trips;
     int technical_exits;
     int reentries;
     int reclaim_reentries;
+    int resting_reclaim_reentries;
     int lower_reentries;
     int positive_saved_reentries;
     int flat_episodes;
     int bars_flat_beyond_reclaim;
+    int rejected_exit_signals;
+    int winning_exits;
+    int losing_exits;
     int insolvent;
 } ScanMetrics;
 
@@ -64,7 +70,7 @@ int vec_top_exit_scan(
     int n,
     int side,
     int exit_mode,       /* 1 Chandelier; 2 event; 3 MFE lock; 4 entry-frozen stop */
-    int reentry_mode,    /* 0 none; 1 E10; 2 E11 then E10; 3 E11 only */
+    int reentry_mode,    /* 0 none; 1 E10; 2 E11+delayed E10; 3 E11; 4 E11+resting E10 */
     const int64_t *ts,
     const double *open_px,
     const double *high_px,
@@ -77,6 +83,8 @@ int vec_top_exit_scan(
     const uint8_t *lower_event,
     double reclaim_buffer_atr,
     double lower_gap_atr,
+    double min_profit_gate,
+    double min_mfe_atr_gate,
     double cost_rate,
     double slip_rate,
     ScanMetrics *out
@@ -122,6 +130,8 @@ int vec_top_exit_scan(
             double fill = exit_fill(open_px[i], side, slip_rate);
             double gross = position_equity(entry_equity, entry_px, fill, side);
             equity = gross - entry_equity * (2.0 * cost_rate);
+            if (equity > entry_equity) out->winning_exits += 1;
+            if (equity < entry_equity) out->losing_exits += 1;
             out->turnover += 1.0;
             out->technical_exits += 1;
             out->round_trips += 1;
@@ -159,7 +169,16 @@ int vec_top_exit_scan(
             }
             out->flat_episodes += 1;
             out->reentries += 1;
-            if (pending_entry == 1) out->reclaim_reentries += 1;
+            if (pending_entry == 1) {
+                out->reclaim_reentries += 1;
+                double overshoot = side > 0
+                    ? 100.0 * fmax(0.0, fill - reclaim_level) / reclaim_level
+                    : 100.0 * fmax(0.0, reclaim_level - fill) / reclaim_level;
+                out->reclaim_overshoot_sum_pct += overshoot;
+                if (overshoot > out->reclaim_overshoot_max_pct) {
+                    out->reclaim_overshoot_max_pct = overshoot;
+                }
+            }
             if (pending_entry == 2) out->lower_reentries += 1;
 
             entry_px = fill;
@@ -204,7 +223,23 @@ int vec_top_exit_scan(
                     ? close_px[i] < trail_stop
                     : close_px[i] > trail_stop;
             } else if (exit_mode == 2 && exit_event[i]) {
-                should_exit = 1;
+                int gate_active = min_profit_gate >= 0.0 || min_mfe_atr_gate >= 0.0;
+                int gate_pass = !gate_active;
+                if (min_profit_gate >= 0.0) {
+                    double raw_leg = (double)side * (close_px[i] - entry_px) / entry_px;
+                    gate_pass = gate_pass || raw_leg >= 2.0 * cost_rate + min_profit_gate;
+                }
+                if (
+                    min_mfe_atr_gate >= 0.0
+                    && isfinite(atr[i]) && atr[i] > 0.0
+                ) {
+                    double mfe = side > 0
+                        ? position_extreme - entry_px
+                        : entry_px - position_extreme;
+                    gate_pass = gate_pass || mfe >= min_mfe_atr_gate * atr[i];
+                }
+                should_exit = gate_pass;
+                if (!gate_pass) out->rejected_exit_signals += 1;
             } else if (
                 exit_mode == 3
                 && exit_event[i]
@@ -280,8 +315,68 @@ int vec_top_exit_scan(
                 }
             }
 
+            /*
+             * Persistent stop-market reclaim.  The order has rested since the
+             * exit: an adverse opening gap fills at the open; otherwise an
+             * intrabar touch fills at the stored level plus adverse slippage.
+             * A lower E11 order signalled on the prior close has already filled
+             * in the pending-entry block above, so it retains causal priority.
+             */
+            if (reentry_mode == 4 && i + 1 < n) {
+                int open_through = side > 0
+                    ? open_px[i] >= reclaim_level
+                    : open_px[i] <= reclaim_level;
+                int touched = side > 0
+                    ? high_px[i] >= reclaim_level
+                    : low_px[i] <= reclaim_level;
+                if (open_through || touched) {
+                    double fill = open_through
+                        ? entry_fill(open_px[i], side, slip_rate)
+                        : entry_fill(reclaim_level, side, slip_rate);
+                    double saved = side > 0
+                        ? 100.0 * (last_exit_px - fill) / last_exit_px
+                        : 100.0 * (fill - last_exit_px) / last_exit_px;
+                    double overshoot = side > 0
+                        ? 100.0 * fmax(0.0, fill - reclaim_level) / reclaim_level
+                        : 100.0 * fmax(0.0, reclaim_level - fill) / reclaim_level;
+                    out->saved_price_sum_pct += saved;
+                    if (saved > out->saved_price_max_pct) {
+                        out->saved_price_max_pct = saved;
+                    }
+                    if (saved > 0.0) out->positive_saved_reentries += 1;
+                    out->missed_move_sum_pct += flat_missed_pct;
+                    if (flat_missed_pct > out->missed_move_max_pct) {
+                        out->missed_move_max_pct = flat_missed_pct;
+                    }
+                    out->flat_episodes += 1;
+                    out->reentries += 1;
+                    out->reclaim_reentries += 1;
+                    out->resting_reclaim_reentries += 1;
+                    out->reclaim_overshoot_sum_pct += overshoot;
+                    if (overshoot > out->reclaim_overshoot_max_pct) {
+                        out->reclaim_overshoot_max_pct = overshoot;
+                    }
+                    entry_px = fill;
+                    entry_equity = equity;
+                    out->turnover += 1.0;
+                    hold_start_ts = ts[i];
+                    in_position = 1;
+                    trail_stop = NAN;
+                    position_extreme = side > 0 ? high_px[i] : low_px[i];
+                    mfe_lock_active = 0;
+                    out->held_bars += 1.0;
+                    double mark = position_equity(
+                        entry_equity, entry_px, close_px[i], side
+                    );
+                    update_drawdown(mark, &peak_equity, &max_dd_pct);
+                    continue;
+                }
+            }
+
             if (i + 1 < n) {
-                int lower_allowed = (reentry_mode == 2 || reentry_mode == 3);
+                int lower_allowed = (
+                    reentry_mode == 2 || reentry_mode == 3 || reentry_mode == 4
+                );
                 int reclaim_allowed = (reentry_mode == 1 || reentry_mode == 2);
                 if (lower_allowed && gap_seen && lower_event[i]) {
                     pending_entry = 2;

@@ -64,15 +64,21 @@ class ScanMetrics(ctypes.Structure):
         ("saved_price_max_pct", ctypes.c_double),
         ("missed_move_sum_pct", ctypes.c_double),
         ("missed_move_max_pct", ctypes.c_double),
+        ("reclaim_overshoot_sum_pct", ctypes.c_double),
+        ("reclaim_overshoot_max_pct", ctypes.c_double),
         ("turnover", ctypes.c_double),
         ("round_trips", ctypes.c_int),
         ("technical_exits", ctypes.c_int),
         ("reentries", ctypes.c_int),
         ("reclaim_reentries", ctypes.c_int),
+        ("resting_reclaim_reentries", ctypes.c_int),
         ("lower_reentries", ctypes.c_int),
         ("positive_saved_reentries", ctypes.c_int),
         ("flat_episodes", ctypes.c_int),
         ("bars_flat_beyond_reclaim", ctypes.c_int),
+        ("rejected_exit_signals", ctypes.c_int),
+        ("winning_exits", ctypes.c_int),
+        ("losing_exits", ctypes.c_int),
         ("insolvent", ctypes.c_int),
     ]
 
@@ -112,6 +118,8 @@ def _compile_scanner() -> ctypes.CDLL:
         f64,
         f64,
         u8,
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
@@ -229,6 +237,8 @@ class ExitCandidate:
     raw_stop: np.ndarray
     struct_ref: np.ndarray
     atr_exec: np.ndarray
+    min_profit_gate: float = -1.0
+    min_mfe_atr_gate: float = -1.0
 
 
 def _load_execution(
@@ -732,6 +742,8 @@ def _scan(
         lower_event,
         reclaim_buffer,
         lower_gap,
+        candidate.min_profit_gate,
+        candidate.min_mfe_atr_gate,
         cost_rate,
         slip_rate,
         ctypes.byref(out),
@@ -774,7 +786,17 @@ def _scan(
         "max_saved_price_pct": out.saved_price_max_pct,
         "mean_missed_move_pct": out.missed_move_sum_pct / episodes if episodes else 0.0,
         "max_missed_move_pct": out.missed_move_max_pct,
+        "mean_reclaim_overshoot_pct": (
+            out.reclaim_overshoot_sum_pct / out.reclaim_reentries
+            if out.reclaim_reentries
+            else 0.0
+        ),
+        "max_reclaim_overshoot_pct": out.reclaim_overshoot_max_pct,
+        "resting_reclaim_reentries": int(out.resting_reclaim_reentries),
         "bars_flat_beyond_reclaim": int(out.bars_flat_beyond_reclaim),
+        "rejected_exit_signals": int(out.rejected_exit_signals),
+        "winning_exits": int(out.winning_exits),
+        "losing_exits": int(out.losing_exits),
         "max_drawdown_pct": out.max_drawdown_pct,
         "turnover_one_way": out.turnover,
         "insolvent": bool(out.insolvent),
@@ -785,7 +807,7 @@ def _scan(
     # flat once the stored exit/top is reclaimed.  With next-open execution one
     # flat signal bar per reclaim is unavoidable and explicitly allowed.
     row["mandatory_reclaim_policy"] = bool(
-        reentry_mode == 2
+        reentry_mode in (2, 4)
         and reclaim_buffer == 0.0
         and out.bars_flat_beyond_reclaim <= out.reclaim_reentries
     )
@@ -836,7 +858,10 @@ def _reference_replay(
     tech_exits = 0
     reentries = 0
     reclaim_reentries = 0
+    resting_reclaim_reentries = 0
     lower_reentries = 0
+    rejected_exit_signals = 0
+    reclaim_overshoots: list[float] = []
     round_trips = 0
     events: list[dict[str, Any]] = [
         {
@@ -908,6 +933,16 @@ def _reference_replay(
             reentries += 1
             reclaim_reentries += int(reason == "E10_RECLAIM")
             lower_reentries += int(reason == "E11_LOWER_PRICE")
+            if reason == "E10_RECLAIM":
+                reclaim_overshoots.append(
+                    (
+                        100.0 * max(0.0, fill - reclaim_level) / reclaim_level
+                        if side > 0
+                        else 100.0
+                        * max(0.0, reclaim_level - fill)
+                        / reclaim_level
+                    )
+                )
             entry_px = fill
             entry_equity = equity
             equity = entry_equity
@@ -957,7 +992,35 @@ def _reference_replay(
                     should_exit = data.close[i] < trail if side > 0 else data.close[i] > trail
             elif candidate.exit_event[i]:
                 if candidate.exit_mode == 2:
-                    should_exit = True
+                    gate_active = (
+                        candidate.min_profit_gate >= 0.0
+                        or candidate.min_mfe_atr_gate >= 0.0
+                    )
+                    gate_pass = not gate_active
+                    if candidate.min_profit_gate >= 0.0:
+                        raw_leg = side * (data.close[i] - entry_px) / entry_px
+                        gate_pass |= (
+                            raw_leg
+                            >= 2.0 * cost_rate + candidate.min_profit_gate
+                        )
+                    if (
+                        candidate.min_mfe_atr_gate >= 0.0
+                        and math.isfinite(candidate.atr_exec[i])
+                        and candidate.atr_exec[i] > 0
+                    ):
+                        mfe = (
+                            position_extreme - entry_px
+                            if side > 0
+                            else entry_px - position_extreme
+                        )
+                        gate_pass |= (
+                            mfe
+                            >= candidate.min_mfe_atr_gate
+                            * candidate.atr_exec[i]
+                        )
+                    should_exit = gate_pass
+                    if not gate_pass:
+                        rejected_exit_signals += 1
                 elif candidate.exit_mode == 3:
                     atr = candidate.atr_exec[i]
                     q = candidate.raw_stop[i]
@@ -1026,7 +1089,81 @@ def _reference_replay(
             elif side < 0 and not gap_seen:
                 gap_seen = data.high[i] >= last_exit + lower_gap * exit_atr
             if i + 1 < n:
-                lower_allowed = reentry_mode in (2, 3)
+                if reentry_mode == 4:
+                    open_through = (
+                        data.open[i] >= reclaim_level
+                        if side > 0
+                        else data.open[i] <= reclaim_level
+                    )
+                    touched = (
+                        data.high[i] >= reclaim_level
+                        if side > 0
+                        else data.low[i] <= reclaim_level
+                    )
+                    if open_through or touched:
+                        fill = (
+                            data.open[i]
+                            if open_through
+                            else reclaim_level
+                        ) * (
+                            1.0 + slip_rate
+                            if side > 0
+                            else 1.0 - slip_rate
+                        )
+                        saved = (
+                            100.0 * (last_exit - fill) / last_exit
+                            if side > 0
+                            else 100.0 * (fill - last_exit) / last_exit
+                        )
+                        overshoot = (
+                            100.0
+                            * max(0.0, fill - reclaim_level)
+                            / reclaim_level
+                            if side > 0
+                            else 100.0
+                            * max(0.0, reclaim_level - fill)
+                            / reclaim_level
+                        )
+                        reentries += 1
+                        reclaim_reentries += 1
+                        resting_reclaim_reentries += 1
+                        reclaim_overshoots.append(overshoot)
+                        entry_px = fill
+                        entry_equity = equity
+                        entry_index = i
+                        hold_start = int(data.ts[i])
+                        in_position = True
+                        trail = math.nan
+                        position_extreme = (
+                            float(data.high[i])
+                            if side > 0
+                            else float(data.low[i])
+                        )
+                        mfe_lock_active = False
+                        held_bars += 1
+                        events.append(
+                            {
+                                "type": "REENTRY",
+                                "reason": "E10_RESTING_RECLAIM",
+                                "signal_index": None,
+                                "signal_ts": None,
+                                "fill_index": i,
+                                "fill_ts": int(data.ts[i]),
+                                "fill_px": fill,
+                                "prior_exit_px": last_exit,
+                                "stored_reclaim_level": reclaim_level,
+                                "saved_price_pct": saved,
+                                "reclaim_overshoot_pct": overshoot,
+                                "open_gap_fill": bool(open_through),
+                                "equity_after_fill": equity,
+                                "latency_bars": 0,
+                            }
+                        )
+                        drawdown(
+                            marked(float(data.close[i]))
+                        )
+                        continue
+                lower_allowed = reentry_mode in (2, 3, 4)
                 reclaim_allowed = reentry_mode in (1, 2)
                 if lower_allowed and gap_seen and lower_event[i]:
                     pending_entry = {
@@ -1078,7 +1215,15 @@ def _reference_replay(
         "round_trips": round_trips,
         "reentries": reentries,
         "reclaim_reentries": reclaim_reentries,
+        "resting_reclaim_reentries": resting_reclaim_reentries,
         "lower_reentries": lower_reentries,
+        "rejected_exit_signals": rejected_exit_signals,
+        "mean_reclaim_overshoot_pct": (
+            float(np.mean(reclaim_overshoots)) if reclaim_overshoots else 0.0
+        ),
+        "max_reclaim_overshoot_pct": (
+            max(reclaim_overshoots) if reclaim_overshoots else 0.0
+        ),
         "held_bars": held_bars,
         "held_seconds": held_seconds,
         "tim_rth_pct": 100.0 * held_bars / n,
@@ -1292,6 +1437,8 @@ def _self_test() -> None:
         lower,
         0.0,
         0.5,
+        -1.0,
+        -1.0,
         0.0,
         0.0,
         ctypes.byref(out),
@@ -1319,6 +1466,8 @@ def _self_test() -> None:
         lower,
         0.0,
         0.5,
+        -1.0,
+        -1.0,
         0.0,
         0.0,
         ctypes.byref(out_short),

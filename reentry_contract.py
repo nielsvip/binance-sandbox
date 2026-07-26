@@ -56,3 +56,43 @@ def update_reentry_trace(trace, position_key, is_long, exit_price, current_price
         )
         row["max_overshoot_pct"] = max(float(row["max_overshoot_pct"]), max(0.0, raw))
     return row
+
+
+def resting_reclaim_fill(
+    *,
+    is_long,
+    reclaim_level,
+    bar_open,
+    bar_high,
+    bar_low,
+    slippage_bps=0.0,
+):
+    """Research model for the mandatory resting reclaim invariant.
+
+    LONG is a buy-stop at ``reclaim_level``; SHORT is its sell-stop mirror.
+    A gap through the stop fills at the adverse open.  Otherwise an intrabar
+    touch fills at the stored level.  ``None`` means the level was not touched.
+    This helper is deliberately not wired to live execution yet.
+    """
+    level = float(reclaim_level)
+    op = float(bar_open)
+    high = float(bar_high)
+    low = float(bar_low)
+    if level <= 0 or op <= 0 or high < low:
+        raise ValueError("valid positive reclaim level and OHLC are required")
+    slip = float(slippage_bps) / 10_000.0
+    if is_long:
+        if op >= level:
+            raw_fill = op
+        elif high >= level:
+            raw_fill = level
+        else:
+            return None
+        return raw_fill * (1.0 + slip)
+    if op <= level:
+        raw_fill = op
+    elif low <= level:
+        raw_fill = level
+    else:
+        return None
+    return raw_fill * (1.0 - slip)

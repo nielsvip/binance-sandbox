@@ -665,14 +665,45 @@ def main() -> None:
         "recently failed entry at a tight loss; they are not top/profit-taking exits. "
         "Below-B&H observations stay gray and preserved so they are not blindly retested.",
         "- The current `LONG_STRUCT_EXIT_TF` / `SHORT_STRUCT_EXIT_TF` path closes immediately "
-        "on its selected structural break. The proposed replacement is **UNTESTED** and has "
-        "no matrix result: break arms an obligation; a favorable rebound reaches a WT1 "
-        "top for LONG (WT1 bottom for SHORT); only a subsequent lower price for LONG "
-        "(higher price for SHORT) confirms the close.",
-        "- Reentry invariant for that proposal: after an exit, the stored exit/top level and "
+        "on its selected structural break. The first armed-break → lower price/WT1 rebound-top "
+        "baseline is **VEC-REJECTED / NO Tier-2 result**: "
+        "`data/reports/vec_research/structural_wt_rebound_20260726T062654Z` scored 0/6 "
+        "contract-valid LONG folds above side-and-hold, median alpha -4.70pp, mean TIM "
+        "77.9%, and 50 exits / 30 losing. HAO_SHORT's +20.18pp is "
+        "quarantined because its NPZ contract is invalid. Profit/MFE-gated variants remain "
+        "research candidates and do not fill matrix cells.",
+        "- The nested profit-gated grid "
+        "`structural_wt_profit_grid_20260726T063646Z` selected one universal setting on "
+        "MU+VT 2025Q4, then froze it. Validation had 9/9 winning exits but only 1/4 folds "
+        "above B&H (median alpha -1.04pp). The remaining loss is reentry execution: delayed "
+        "E10 reclaim filled 10.01% worse on recent MU and 1.46% worse on recent VT. A "
+        "persistent resting-reclaim model is now the priority; this grid remains VEC-only.",
+        "- Frozen exit settings with causal resting reclaim "
+        "(`resting_reclaim_compare_20260726T064428Z`) improved median validation alpha to "
+        "+1.94pp and cut mean reclaim overshoot from 0.80% to 0.02%. Recent MU returned "
+        "+13.59% versus B&H +2.60%, but VT still trailed; this is evidence for the execution "
+        "fix, not a universal promotion.",
+        "- MU ladder discovery `struct_wt_resting_reclaim_probe_20260726T070000Z_MU_LONG` "
+        "reached +409.93% versus B&H +204.90% (2.0006×) at 52.3% weighted exposure. Exit "
+        "parameters were selected in-window, so it is discovery-only pending frozen later-slice "
+        "validation and exact-engine parity.",
+        "- Reentry invariant for structural research: after an exit, the stored exit/top level and "
         "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
         "must never erase it or allow price to outrun the stored level without reopening. "
         "This is a design requirement, not a measured performance claim.",
+        "",
+        "### Preserved dc_low4 diagnostic evidence (pre-repair; gray/quarantined)",
+        "",
+        "| key | switch | gain/mo | TIM | trades | status |",
+        "|---|---|---:|---:|---:|---|",
+        "| MU_LONG | False | 0.0275 | 0.13% | 17 | PRE-REPAIR / validation NULL |",
+        "| MU_LONG | True | -0.1045 | 0.21% | 103 | LOSING-CHURN SIGNATURE; validation NULL |",
+        "| MU_SHORT | False | -0.4670 | 6.89% | 48 | PRE-REPAIR / validation NULL |",
+        "| MU_SHORT | True | -0.1061 | 0.15% | 155 | NEGATIVE + HIGH-CHURN; validation NULL |",
+        "",
+        "These historical rows are retained for diagnosis and excluded from the automatic "
+        "matrix-fill queues. They are not valid proof because the repaired contract fields "
+        "were absent.",
         "",
         "## New ladder / entry / exit / interaction strategy results",
         "",

@@ -301,14 +301,20 @@ _VERIFIED_DESCRIPTIONS = {
     ),
     "LONG_STRUCT_EXIT_TF": (
         "CURRENT DIRECT EXIT — selects the timeframe whose lower-high+lower-low break closes a "
-        "LONG immediately. Do not confuse this with the PROPOSED/UNTESTED armed-top sequence: "
-        "break arms only, rebound reaches a WT1 top, then a subsequent lower price confirms exit; "
-        "the reentry obligation must remain latched until reopened. off='None'; per-symbol."
+        "LONG immediately. The armed structural-break → WT1 rebound-top → subsequent lower-price "
+        "sequence is a VEC-REJECTED BASELINE (structural_wt_rebound_20260726T062654Z; median "
+        "alpha -4.70pp, 0/6 valid folds beat B&H), with NO Tier-2 result. Keep it out of matrix "
+        "promotion. A frozen profit-gated grid made 9/9 exits winners but beat B&H in only 1/4 "
+        "validation folds (median alpha -1.04pp) because delayed E10 reclaim chased price. "
+        "Resting-reclaim execution remains research-only and the reentry obligation must stay "
+        "latched until reopened. off='None'; per-symbol."
     ),
     "SHORT_STRUCT_EXIT_TF": (
         "CURRENT DIRECT EXIT — selects the timeframe whose higher-high+higher-low break closes a "
-        "SHORT immediately. Proposed/unmeasured mirror: break arms only, rebound reaches a WT1 "
-        "bottom, then a subsequent higher price confirms exit; reentry remains latched until "
+        "SHORT immediately. The mirrored armed-break → WT1 bottom → subsequent higher-price "
+        "sequence has NO Tier-2 result; the tested LONG baseline was VEC-REJECTED "
+        "(structural_wt_rebound_20260726T062654Z). Do not infer SHORT performance from LONG; "
+        "profit/MFE-gated variants remain research-only and reentry must stay latched until "
         "reopened. off='None'; per-symbol."
     ),
     "GOLDEN_RULE_REQUIRE_ACTIVATION": (
@@ -708,6 +714,55 @@ def main():
                     c.fill = best_fill
         wsb.freeze_panes = "B2"
         wsb.column_dimensions["C"].width = 40
+        # Preserve pre-repair dc_low4 measurements as gray, quarantined evidence instead of
+        # silently resurrecting them into the repaired-contract matrix or deleting them. These
+        # rows explain why the switch is diagnostic-only and prevent repeated blind tuning.
+        wsd = wb.create_sheet("DC4 Diagnostics")
+        wsd.append([
+            "campaign", "key", "value", "gain/mo", "time_in_market_%",
+            "trades", "delta_gain/mo_vs_B&H", "validation", "classification", "source",
+        ])
+        try:
+            dcon = sqlite3.connect(str(DB))
+            dcon.execute("PRAGMA busy_timeout=60000")
+            drows = dcon.execute(
+                "SELECT campaign,symbol,side,value_json,gain_per_mo,time_in_mkt_pct,trades,"
+                "delta_gain_mo_vs_bh,validation_status,source_file "
+                "FROM param_cells WHERE mode='tradier' "
+                "AND campaign='stocks_baseline_v2_s4h' "
+                "AND param='DC_LOW4_STOP_ENABLED' "
+                "ORDER BY symbol,side,value_json"
+            ).fetchall()
+            dcon.close()
+        except sqlite3.OperationalError as _dexc:
+            print(f"[DC4 Diagnostics] query failed: {_dexc}")
+            drows = []
+        for campaign, sym, side, val, gain, tim, trades, delta, validation, source in drows:
+            wsd.append([
+                campaign,
+                f"{sym}_{side}",
+                val,
+                gain,
+                tim,
+                trades,
+                delta,
+                validation or "NULL / PRE-REPAIR",
+                "QUARANTINED ENTRY-QUALITY / LOSING-CHURN EVIDENCE; DO NOT PROMOTE",
+                source,
+            ])
+            for cell in wsd[wsd.max_row]:
+                cell.fill = grey_fill
+                cell.font = grey_font
+        wsd.freeze_panes = "B2"
+        wsd.auto_filter.ref = wsd.dimensions
+        for col, width in {
+            "A": 28, "B": 18, "C": 12, "D": 14, "E": 20, "F": 10,
+            "G": 23, "H": 22, "I": 72, "J": 85,
+        }.items():
+            wsd.column_dimensions[col].width = width
+        for row in wsd.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
         ws2 = wb.create_sheet("Coverage")
         ws2.append(["switch", "value", "status", "keys_tested", "keys_inert", "keys_helped", "keys_hurt"])
         for r in coverage: ws2.append(r)

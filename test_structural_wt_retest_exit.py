@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from pathlib import Path
 
 from vec_paths.structural_wt_retest_exit import (
@@ -33,7 +34,11 @@ def _bar(
 
 def test_long_damage_arms_but_only_distinct_lower_price_and_wt_top_exits():
     book = StructuralWtRetestExitBook(
-        StructuralWtParams(damage_atr=0.5, rebound_atr=0.5)
+        StructuralWtParams(
+            rebound_atr=0.5,
+            prebreak_lookback=3,
+            max_wait_1h=12,
+        )
     )
     confirm_warmup = [
         _bar(1, 110, 100, 108, 60),
@@ -76,7 +81,11 @@ def test_long_damage_arms_but_only_distinct_lower_price_and_wt_top_exits():
 
 def test_short_is_exact_mirror_and_state_is_side_isolated():
     book = StructuralWtRetestExitBook(
-        StructuralWtParams(damage_atr=0.5, rebound_atr=0.5)
+        StructuralWtParams(
+            rebound_atr=0.5,
+            prebreak_lookback=3,
+            max_wait_1h=12,
+        )
     )
     confirm_warmup = [
         _bar(1, 110, 100, 102, -60),
@@ -89,7 +98,7 @@ def test_short_is_exact_mirror_and_state_is_side_isolated():
         _bar(4, 110, 100, 102, -60, timeframe="4h"),
         _bar(8, 112, 98, 100, -65, timeframe="4h"),
         _bar(12, 114, 96, 98, -70, timeframe="4h"),
-        _bar(16, 115, 99, 112, -35, timeframe="4h"),
+        _bar(16, 116, 99, 115, -35, timeframe="4h"),
     ]
     for bar in arm_bars:
         book.update(symbol="MU", position_side="SHORT", active=True, bar=bar)
@@ -111,7 +120,9 @@ def test_short_is_exact_mirror_and_state_is_side_isolated():
 
 
 def test_flat_state_cancels_old_arm_but_keeps_completed_history():
-    book = StructuralWtRetestExitBook()
+    book = StructuralWtRetestExitBook(
+        StructuralWtParams(prebreak_lookback=3)
+    )
     for bar in (
         _bar(1, 110, 100, 108, 60),
         _bar(2, 112, 102, 110, 65),
@@ -125,7 +136,7 @@ def test_flat_state_cancels_old_arm_but_keeps_completed_history():
         _bar(16, 111, 99, 100, 35, timeframe="4h"),
     ):
         book.update(symbol="MU", position_side="LONG", active=True, bar=bar)
-    assert book.state_snapshot("MU", "LONG")["phase"] == "ARMED"
+    assert book.state_snapshot("MU", "LONG")["phase"] == "WAIT_REBOUND"
     book.update(
         symbol="MU",
         position_side="LONG",
@@ -168,3 +179,111 @@ def test_exact_engine_route_uses_same_parameterized_4h_arm_1h_confirm_core():
     assert "_struct_wt_params_t.confirm_tf" in source
     assert "research_fill_rth_latency" in source
     assert "V8_RESEARCH_STRUCT_WT_RETEST_EXIT" in source
+
+
+def test_exact_state_machine_matches_authoritative_vector_event_timestamp():
+    from tools.vec_structural_wt_rebound_experiment import (
+        structural_wt_rebound_signal,
+    )
+    from tools.vec_top_exit_campaign import HTFData
+
+    arm_source = np.array([400, 800, 1200, 1600], dtype=np.int64)
+    arm_high = np.array([110, 112, 114, 111], dtype=float)
+    arm_low = np.array([100, 102, 104, 99], dtype=float)
+    arm_close = np.array([108, 110, 112, 100], dtype=float)
+    arm_wt = np.array([60, 65, 70, 35], dtype=float)
+    arm_atr = np.full(4, 2.0)
+    arm_h = HTFData(
+        tf="4h",
+        event_index=np.arange(4),
+        source_ts=arm_source,
+        open=arm_close,
+        high=arm_high,
+        low=arm_low,
+        close=arm_close,
+        rsi=np.full(4, 50.0),
+        atr=arm_atr,
+    )
+
+    trigger_source = np.arange(100, 2000, 100, dtype=np.int64)
+    trigger_high = np.full(19, 104.0)
+    trigger_low = np.full(19, 101.0)
+    trigger_close = np.full(19, 103.0)
+    trigger_wt = np.full(19, 40.0)
+    # Same-source 1h bar initializes damage; the next bar rebounds; only the
+    # distinct later adverse price/WT bar may emit the exit.
+    trigger_high[15:18] = [105, 109, 107]
+    trigger_low[15:18] = [98, 100, 99]
+    trigger_close[15:18] = [103, 108, 104]
+    trigger_wt[15:18] = [40, 55, 50]
+    trigger_h = HTFData(
+        tf="1h",
+        event_index=np.arange(19),
+        source_ts=trigger_source,
+        open=trigger_close,
+        high=trigger_high,
+        low=trigger_low,
+        close=trigger_close,
+        rsi=np.full(19, 50.0),
+        atr=np.full(19, 2.0),
+    )
+    vec_event, _, _ = structural_wt_rebound_signal(
+        arm_h,
+        trigger_h,
+        arm_wt,
+        trigger_wt,
+        1,
+        rebound_atr=0.5,
+        prebreak_lookback=3,
+        max_wait_1h=12,
+    )
+    assert np.flatnonzero(vec_event).tolist() == [17]
+
+    exact = StructuralWtRetestExitBook(
+        StructuralWtParams(
+            rebound_atr=0.5,
+            prebreak_lookback=3,
+            max_wait_1h=12,
+        )
+    )
+    arm_cursor = 0
+    exact_signal_ts = []
+    for j, source_ts in enumerate(trigger_source):
+        while (
+            arm_cursor < len(arm_source)
+            and arm_source[arm_cursor] <= source_ts
+        ):
+            exact.update(
+                symbol="MU",
+                position_side="LONG",
+                active=True,
+                bar=CompletedBar(
+                    "4h",
+                    int(arm_source[arm_cursor]),
+                    int(source_ts),
+                    float(arm_high[arm_cursor]),
+                    float(arm_low[arm_cursor]),
+                    float(arm_close[arm_cursor]),
+                    float(arm_wt[arm_cursor]),
+                    float(arm_atr[arm_cursor]),
+                ),
+            )
+            arm_cursor += 1
+        signal = exact.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=CompletedBar(
+                "1h",
+                int(source_ts),
+                int(source_ts),
+                float(trigger_high[j]),
+                float(trigger_low[j]),
+                float(trigger_close[j]),
+                float(trigger_wt[j]),
+                2.0,
+            ),
+        )
+        if signal is not None:
+            exact_signal_ts.append(signal.source_ts)
+    assert exact_signal_ts == trigger_source[np.flatnonzero(vec_event)].tolist()

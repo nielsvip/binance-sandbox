@@ -149,9 +149,11 @@ def test_scanner_cost_matches_engine_round_trip_entry_value_model():
         blank,
         blank,
         zeros,
-        0.0,
-        0.0,
-        0.0005,  # 5bp one-way -> engine 10bp round-trip at close
+            0.0,
+            0.0,
+            -1.0,  # no profit gate
+            -1.0,  # no MFE gate
+            0.0005,  # 5bp one-way -> engine 10bp round-trip at close
         0.0,
         ctypes.byref(metrics),
     )
@@ -198,9 +200,11 @@ def test_scanner_matches_independent_engine_dollar_ledger_across_reentry():
         blank,
         blank,
         lower,
-        0.0,
-        0.0,
-        0.0005,
+            0.0,
+            0.0,
+            -1.0,  # no profit gate
+            -1.0,  # no MFE gate
+            0.0005,
         0.0,
         ctypes.byref(metrics),
     )
@@ -266,9 +270,11 @@ def test_e08_cannot_exit_before_mfe_activation_then_locks_profit():
         q,
         k,
         no_reentry,
-        0.0,
-        0.0,
-        0.0,
+            0.0,
+            0.0,
+            -1.0,  # no profit gate
+            -1.0,  # no MFE gate
+            0.0,
         0.0,
         ctypes.byref(metrics),
     )

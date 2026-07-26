@@ -35,8 +35,10 @@ def test_dc_low4_below_bh_stays_gray_even_if_nominal_gain_is_positive():
     ) == "white"
 
 
-def test_structural_description_separates_current_path_from_unmeasured_proposal():
+def test_structural_description_separates_current_path_from_rejected_vec_baseline():
     description = matrix.describe_knob("LONG_STRUCT_EXIT_TF")
     assert "CURRENT DIRECT EXIT" in description
-    assert "PROPOSED/UNTESTED" in description
+    assert "VEC-REJECTED BASELINE" in description
+    assert "0/6 valid folds beat B&H" in description
+    assert "NO Tier-2 result" in description
     assert "reentry obligation must remain latched" in description

@@ -52,3 +52,95 @@ it closes losing post-reentry legs. The next experiment must separate:
 The next small vector grid covers rebound size, pre-break lookback, wait length,
 profit threshold, and MFE activation. Selection must be frozen before scoring a
 subsequent fold.
+
+## Profit/MFE grid result
+
+**Artifact:** `data/reports/vec_research/structural_wt_profit_grid_20260726T063646Z`
+
+The grid evaluated 189 fixed candidates. One universal specification was chosen
+using only MU+VT 2025Q4, then frozen before later folds:
+
+- rebound: `1 ATR`
+- pre-break lookback: `10`
+- maximum wait: `30` completed 1h bars
+- gate: current leg must exceed round-trip costs by `0.25%`
+
+The gate repaired the losing-exit defect: discovery and validation produced
+`9/9` winning executed exits and `0` losing exits. It still did not solve alpha:
+only `1/4` valid LONG validation folds beat side-and-hold and median validation
+alpha was `-1.04 pp`.
+
+| Validation fold | Strategy | Side-and-hold | Alpha |
+|---|---:|---:|---:|
+| MU Jan–Feb | +40.32% | +36.29% | +4.03 pp |
+| MU recent | -6.85% | +2.60% | -9.44 pp |
+| VT Jan–Feb | +3.24% | +3.78% | -0.54 pp |
+| VT recent | -0.72% | +0.83% | -1.55 pp |
+
+Seventeen losing lower-top signals were rejected and preserved as entry-failure
+diagnostics. The remaining defect is now localized to E10 reclaim execution:
+the recent MU reclaim filled `10.01%` worse than its exit and VT filled `1.46%`
+worse. The current vector model waits for a close beyond the stored reclaim
+level and then buys/sells at the next RTH open. That violates the practical
+intent of “do not let price outrun the exit/top without reopening.”
+
+The next comparison keeps the selected exit fixed and models E10 as a persistent
+resting stop order:
+
+- LONG: buy stop at `max(exit fill, stored rebound top)`;
+- SHORT: mirrored sell stop;
+- if a bar gaps beyond the stop, fill at the adverse open plus slippage;
+- otherwise, if the executable intrabar range touches the stop, fill at the
+  stop plus slippage;
+- E11 may still reopen lower before the reclaim stop fires.
+
+This is research execution semantics only. No live order behavior changes until
+the vector result and exact-engine parity audit both pass.
+
+## Resting reclaim comparison
+
+**Artifact:** `data/reports/vec_research/resting_reclaim_compare_20260726T064428Z`
+
+The exit specification remained frozen from the prior discovery grid. Only E10
+reclaim execution changed from close-cross/next-open to persistent touch/gap
+semantics.
+
+| Key/fold | B&H | Delayed E10 | Resting E10 | Improvement |
+|---|---:|---:|---:|---:|
+| MU Jan–Feb | +36.29% | +40.32% | +40.69% | +0.37 pp |
+| MU recent | +2.60% | -6.85% | +13.59% | +20.43 pp |
+| VT Jan–Feb | +3.78% | +3.24% | +3.25% | +0.01 pp |
+| VT recent | +0.83% | -0.72% | -1.35% | -0.63 pp |
+
+Across the four valid frozen LONG folds:
+
+- median alpha improved from `-1.04 pp` to `+1.94 pp`;
+- positive-alpha fold rate became `2/4`;
+- mean reclaim overshoot fell from `0.80%` to `0.02%`;
+- mean missed move fell from `3.68%` to `2.52%`;
+- independent Python/C parity passed for every comparison.
+
+This validates the reclaim execution defect, not a universal strategy. MU recent
+improved dramatically; VT did not. Symbol-specific exit/reentry parameters and
+untouched validation remain necessary.
+
+## MU ladder discovery probe
+
+**Artifact:** `data/reports/vec_research/struct_wt_resting_reclaim_probe_20260726T070000Z_MU_LONG`
+
+A research grid combined the accepted MU ladder curve with structural/WT1 exits
+and resting reclaim. Its in-window best candidate used `rebound=1 ATR`,
+`lookback=4` (6 tied), and `max_wait=20h`:
+
+- strategy return: `+409.929%`;
+- B&H capital return: `+204.905%`;
+- multiple: `2.00058×`;
+- weighted exposure: `52.323%`;
+- max account drawdown: `23.664%`;
+- 18 signals/fills, 15 lower reentries, 2 reclaim reentries;
+- future HTF inputs: `0`.
+
+This reaches the requested 2× threshold but is **discovery only** because the
+exit parameters were selected in the reported window. It cannot fill the matrix
+until parameters are frozen on an earlier slice and pass a later untouched
+slice (plus exact-engine parity).
