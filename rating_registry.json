@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T12:16:53.544898+00:00",
+  "timestamp": "2026-07-26T12:31:54.315598+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -20,9 +20,9 @@
     },
     {
       "symbol": "1000XECUSDT",
-      "net_score": -15.4,
+      "net_score": -15.5,
       "long_score": 0,
-      "short_score": 15.4
+      "short_score": 15.5
     },
     {
       "symbol": "XMRUSDT",
@@ -41,12 +41,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "AIAUSDT",
-      "net_score": -12.2,
-      "long_score": 0,
-      "short_score": 12.2
     },
     {
       "symbol": "ACTUSDT",
@@ -296,6 +290,12 @@
     },
     {
       "symbol": "LINKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -791,13 +791,8 @@
   "top_shorts": [
     [
       "1000XECUSDT",
-      15.4,
-      0.00668238
-    ],
-    [
-      "AIAUSDT",
-      12.2,
-      0.06652
+      15.5,
+      0.0066695
     ]
   ],
   "hedge_usage": {
