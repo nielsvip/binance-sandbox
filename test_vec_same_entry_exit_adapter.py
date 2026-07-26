@@ -1,4 +1,5 @@
 import dataclasses
+import copy
 import math
 from types import SimpleNamespace
 
@@ -7,6 +8,7 @@ import numpy as np
 from tools.vec_same_entry_exit_adapter import (
     AlgoStructureParams,
     AlgoStoch4hParams,
+    AlgoProfitTake15mParams,
     ChandelierParams,
     GrOppositeParams,
     MtfAtrTrailExitBook,
@@ -18,8 +20,10 @@ from tools.vec_same_entry_exit_adapter import (
     _golden_rule_completed_votes,
     algo_structure_grid,
     algo_stoch_4h_grid,
+    algo_profit_take_15m_grid,
     build_donchian_book,
     build_algo_stoch_4h_book,
+    build_algo_profit_take_15m_book,
     build_chandelier_book,
     build_gr_opposite_book,
     build_wt_mtf_book,
@@ -33,6 +37,7 @@ from tools.vec_same_entry_exit_adapter import (
     mtf_atr_trail_grid,
     protective_trail_grid,
     protective_trail_grid_extended,
+    prune_bottom_b_extended_bases,
     simulate,
     simulate_structural_compiled,
     structural_grid,
@@ -397,6 +402,40 @@ def test_algo_stoch_4h_grid_is_mirrored_and_completed_causal():
     assert short_book.update(3, active=True).source_timestamps["4h"] < ts[3]
 
 
+def test_algo_profit_take_15m_grid_is_separate_mirrored_and_causal():
+    rows = algo_profit_take_15m_grid()
+    assert len(rows) == 8
+    assert {row.event_mode for row in rows} == {"STATE", "CROSS"}
+    assert {row.min_profit_pct for row in rows} == {3.0, 5.0, 7.0, 10.0}
+    n = 5
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    htf = SimpleNamespace(
+        event_index=np.arange(n, dtype=np.int64),
+        source_ts=ts - 1,
+        high=np.full(n, 11.0),
+        low=np.full(n, 9.0),
+    )
+    data = SimpleNamespace(
+        symbol="PT15",
+        ts=ts,
+        full_indices=np.arange(n, dtype=np.int64),
+        z=FakeZ(
+            {
+                "k_15m": np.array([50, 60, 55, 40, 30], float),
+                "d_15m": np.array([55, 55, 60, 50, 40], float),
+            }
+        ),
+    )
+    book = build_algo_profit_take_15m_book(
+        data,
+        {"15m": htf},
+        AlgoProfitTake15mParams("CROSS", 5.0),
+        side="LONG",
+    )
+    assert np.flatnonzero(book.events).tolist() == [2]
+    assert book.update(2, active=True).source_timestamps["15m"] < ts[2]
+
+
 def test_chandelier_grid_is_exact_standard_registered_contract():
     rows = chandelier_grid()
     assert len(rows) == 2 * 4 * 5 * 4
@@ -585,6 +624,59 @@ def test_extended_bottom_grids_are_bounded_and_add_missing_dimensions():
     assert {"ADVERSE_ATR_6", "ADVERSE_STDEV_7", "CONTINUED_8"} <= {
         label for label, _ in brakes
     }
+
+
+def test_c_ext_prunes_exactly_eight_b_bases_without_final_fold_leakage():
+    candidates = []
+    for index in range(10):
+        candidates.append(
+            {
+                "params": {"candidate": index},
+                "nested": {
+                    "discovery": {
+                        "exit_fills": 4 + index,
+                        "exposure_weighted_tim_pct_row_weighted": (
+                            70.0 + index
+                        ),
+                        "max_drawdown_account_pct_max": 20.0 - index,
+                    },
+                    "discovery_alpha_vs_same_entry_e02_pp": (
+                        100.0 - index
+                    ),
+                    "discovery_alpha_vs_bh_pp": 200.0 - index,
+                    "robust_discovery_all_folds": index % 3 != 0,
+                    "validation": {
+                        "capital_return_pct_sum": index,
+                        "exposure_weighted_tim_pct_row_weighted": index,
+                    },
+                    "validation_alpha_vs_same_entry_e02_pp": index,
+                    "validation_alpha_vs_bh_pp": index,
+                    "robust_validation_fold": index % 2 == 0,
+                },
+            }
+        )
+    selected = prune_bottom_b_extended_bases(
+        candidates, exposure_min_pct=70.0, exposure_max_pct=80.0
+    )
+    mutated = copy.deepcopy(candidates)
+    for index, row in enumerate(mutated):
+        row["nested"]["validation"] = {
+            "capital_return_pct_sum": 1e9 - index,
+            "exposure_weighted_tim_pct_row_weighted": 100.0 - index,
+        }
+        row["nested"]["validation_alpha_vs_same_entry_e02_pp"] = -1e9 + index
+        row["nested"]["validation_alpha_vs_bh_pp"] = -1e9 + index
+        row["nested"]["robust_validation_fold"] = not row["nested"][
+            "robust_validation_fold"
+        ]
+    selected_after_mutation = prune_bottom_b_extended_bases(
+        mutated, exposure_min_pct=70.0, exposure_max_pct=80.0
+    )
+    assert len(selected) == 8
+    assert [row["params"] for row in selected] == [
+        row["params"] for row in selected_after_mutation
+    ]
+    assert len(selected) * len(bottom_emergency_variants()) == 96
 
 
 def _mtf_atr_fixture(*, side="LONG"):

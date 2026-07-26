@@ -227,3 +227,10 @@ sums were 546.46% and 1,119.85%, versus 308.81% B&H and 858.30% control.
 Nested-fold sums remain separate and explicitly unit-labeled. No path/key
 passed the complete every-fold B&H/control/70–80% TIM contract; 80 normalized
 aggregate/final rows were retained gray and exact replay remained empty.
+
+Jobs463/464 separately screened `ENTRY_1H_TURN_UP` (24 settings) and
+`ENTRY_4H_DEEP_VALUE` (8 settings). Final LONG sums were 6,665.40% and
+6,612.59%, and final SHORT sums were 835.20% and 825.27%. Both remained below
+the frozen control in aggregate and neither produced an every-fold TIM pass.
+The combined component report exposes all 80 frozen final entry schedules for
+downstream same-entry exit work, with `combination_authorized=false`.

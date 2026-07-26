@@ -74,6 +74,7 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "EXIT_MTF_ATR_TRAIL",
     "EXIT_ALGO_STRUCTURE_1H_15M",
     "EXIT_ALGO_STOCH_4H_ROLL",
+    "EXIT_ALGO_PROFIT_TAKE_15M",
 }
 EMERGENCY_EXIT_FAMILIES = {
     "BOTTOM_C_DELAYED_EMERGENCY",
@@ -360,6 +361,21 @@ class AlgoStoch4hParams:
             raise ValueError("unsupported 4h Stoch profit gate")
 
 
+@dataclasses.dataclass(frozen=True)
+class AlgoProfitTake15mParams:
+    event_mode: str
+    min_profit_pct: float
+    historical_score_delta: int = -5
+
+    def validate(self) -> None:
+        if self.event_mode not in {"STATE", "CROSS"}:
+            raise ValueError("15m profit-turn mode must be STATE or CROSS")
+        if self.min_profit_pct not in {3.0, 5.0, 7.0, 10.0}:
+            raise ValueError("unsupported 15m profit threshold")
+        if self.historical_score_delta != -5:
+            raise ValueError("historical profit-turn score delta must remain -5")
+
+
 class StaticExitBook:
     def __init__(
         self,
@@ -594,6 +610,70 @@ def build_algo_stoch_4h_book(
                 "removed LONG seed >60 and SHORT seed <20 are represented "
                 "at opposite ends of the mirrored threshold range"
             ),
+        },
+    )
+
+
+def algo_profit_take_15m_grid() -> list[AlgoProfitTake15mParams]:
+    rows = [
+        AlgoProfitTake15mParams(event_mode, min_profit_pct)
+        for event_mode in ("STATE", "CROSS")
+        for min_profit_pct in (3.0, 5.0, 7.0, 10.0)
+    ]
+    for row in rows:
+        row.validate()
+    assert len(rows) == 8
+    return rows
+
+
+def build_algo_profit_take_15m_book(
+    data: Any,
+    htfs: dict[str, Any],
+    params: AlgoProfitTake15mParams,
+    *,
+    side: str,
+) -> StaticExitBook:
+    params.validate()
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    h = htfs["15m"]
+    k = _completed_field(data, h, "k_15m")
+    d = _completed_field(data, h, "d_15m")
+    if side == "LONG":
+        state = k < d
+        crossed = np.concatenate(
+            ([False], (k[:-1] >= d[:-1]) & (k[1:] < d[1:]))
+        )
+        references = np.asarray(h.high, dtype=np.float64)
+    else:
+        state = k > d
+        crossed = np.concatenate(
+            ([False], (k[:-1] <= d[:-1]) & (k[1:] > d[1:]))
+        )
+        references = np.asarray(h.low, dtype=np.float64)
+    completed_event = state & crossed if params.event_mode == "CROSS" else state
+    events, reclaim = ladder.top._map_events(
+        len(data.ts), h, completed_event, references
+    )
+    sources = _source_map(h)
+    source_by_row = {
+        int(row): {"15m": int(sources[row])}
+        for row in np.flatnonzero(events)
+        if int(row) in sources
+    }
+    for row, by_tf in source_by_row.items():
+        if by_tf["15m"] > int(data.ts[row]):
+            raise RuntimeError(f"future 15m profit-turn source at row {row}")
+    return StaticExitBook(
+        f"EXIT_ALGO_PROFIT_TAKE_15M_{params.event_mode}",
+        np.asarray(events, dtype=np.uint8),
+        np.asarray(reclaim, dtype=np.float64),
+        source_by_row,
+        audit={
+            "side_mirror": True,
+            "completed_15m_only": True,
+            "historical_gain_seed": ">5%",
         },
     )
 
@@ -2621,6 +2701,47 @@ def bottom_emergency_variants() -> list[tuple[str, dict[str, Any]]]:
     ]
 
 
+def prune_bottom_b_extended_bases(
+    rows: list[dict[str, Any]],
+    *,
+    exposure_min_pct: float,
+    exposure_max_pct: float,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    """Freeze family-C bases from discovery evidence only.
+
+    Untouched validation fields are intentionally never read here.  Family C
+    may therefore compare brakes over a bounded B shortlist without leaking
+    the final fold into base selection.
+    """
+    if limit != 8:
+        raise ValueError("C_EXT contract requires exactly eight B bases")
+
+    def rank(row: dict[str, Any]) -> tuple[Any, ...]:
+        nested = row["nested"]
+        discovery = nested["discovery"]
+        return (
+            not bool(nested["robust_discovery_all_folds"]),
+            int(discovery["exit_fills"]) <= 0,
+            abs(
+                float(
+                    discovery["exposure_weighted_tim_pct_row_weighted"]
+                )
+                - (exposure_min_pct + exposure_max_pct) / 2.0
+            ),
+            -float(nested["discovery_alpha_vs_same_entry_e02_pp"]),
+            -float(nested["discovery_alpha_vs_bh_pp"]),
+            float(discovery["max_drawdown_account_pct_max"]),
+            hashlib.sha256(
+                json.dumps(row["params"], sort_keys=True).encode("utf-8")
+            ).hexdigest(),
+        )
+
+    if len(rows) < limit:
+        raise ValueError("C_EXT requires at least eight B candidates")
+    return sorted(rows, key=rank)[:limit]
+
+
 def bottom_emergency_grid() -> list[tuple[StructuralWtParams, int, str]]:
     """Family C: family-B wait plus one separately counted rare brake."""
     variants = [
@@ -3151,6 +3272,36 @@ def screen_artifact(
                     removed_compound_score_not_reconstructed=True,
                 )
             )
+    if "ALGO_PROFIT_TAKE_15M" in families:
+        for params in algo_profit_take_15m_grid():
+            book = build_algo_profit_take_15m_book(
+                data, htfs, params, side=side
+            )
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    book,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=params.min_profit_pct,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "EXIT_ALGO_PROFIT_TAKE_15M",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    path_audit=book.audit,
+                    research_decomposition_only=True,
+                    removed_compound_score_not_reconstructed=True,
+                )
+            )
     if "WT_MTF" in families:
         grid = wt_grid()
         # Vectorize completed-TF state construction once per signal block.
@@ -3512,30 +3663,11 @@ def screen_artifact(
                     )
                 )
         if "BOTTOM_C_EXT" in families:
-            def b_ext_rank(row: dict[str, Any]) -> tuple[Any, ...]:
-                nested = row["nested"]
-                discovery = nested["discovery"]
-                return (
-                    not bool(nested["robust_discovery_all_folds"]),
-                    int(discovery["exit_fills"]) <= 0,
-                    abs(
-                        float(
-                            discovery[
-                                "exposure_weighted_tim_pct_row_weighted"
-                            ]
-                        )
-                        - (exposure_min_pct + exposure_max_pct) / 2.0
-                    ),
-                    -float(
-                        nested["discovery_alpha_vs_same_entry_e02_pp"]
-                    ),
-                    -float(nested["discovery_alpha_vs_bh_pp"]),
-                    float(discovery["max_drawdown_account_pct_max"]),
-                )
-
-            pruned_bases = sorted(
-                bottom_b_extended_candidates, key=b_ext_rank
-            )[:8]
+            pruned_bases = prune_bottom_b_extended_bases(
+                bottom_b_extended_candidates,
+                exposure_min_pct=exposure_min_pct,
+                exposure_max_pct=exposure_max_pct,
+            )
             for base_rank, base_row in enumerate(pruned_bases, start=1):
                 base_values = dict(base_row["params"])
                 wait_hours = int(base_values.pop("max_wait_hours"))
@@ -4016,6 +4148,22 @@ def screen_artifact(
             "side_specific_bh_usd": ladder.BASE_UNIT,
             "strategy_capacity_usd": ladder.CAPACITY,
         }
+    if "ALGO_PROFIT_TAKE_15M" in families:
+        payload["algo_profit_take_15m_contract"] = {
+            "source_inventory_job": "EXIT_ALGO_EXIT_ENABLED",
+            "research_decomposition_only": True,
+            "live_switch_connected": False,
+            "removed_compound_score_reconstructed": False,
+            "candidate_count": 8,
+            "completed_timeframes_only": ["15m"],
+            "historical_score_delta_provenance": -5,
+            "historical_gain_seed": ">5%",
+            "profit_threshold_pct": [3.0, 5.0, 7.0, 10.0],
+            "event_modes": ["STATE", "CROSS"],
+            "side_mirror": True,
+            "side_specific_bh_usd": ladder.BASE_UNIT,
+            "strategy_capacity_usd": ladder.CAPACITY,
+        }
     data.z.close()
     return payload
 
@@ -4031,6 +4179,7 @@ def main() -> int:
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
             "E01_CHANDELIER, MTF_ATR_TRAIL, ALGO_STRUCTURE, ALGO_STOCH_4H, "
+            "ALGO_PROFIT_TAKE_15M, "
             "BOTTOM_A, BOTTOM_B, BOTTOM_C, "
             "BOTTOM_A_EXT, BOTTOM_B_EXT, BOTTOM_C_EXT, "
             "STRUCTURAL_WT, and/or PARTIAL_WT"
@@ -4053,6 +4202,7 @@ def main() -> int:
         "MTF_ATR_TRAIL",
         "ALGO_STRUCTURE",
         "ALGO_STOCH_4H",
+        "ALGO_PROFIT_TAKE_15M",
         "BOTTOM_A",
         "BOTTOM_B",
         "BOTTOM_C",

@@ -706,16 +706,21 @@ CORE_PATHS: tuple[PathFamily, ...] = (
             "Stoch turn profit-taking event."
         ),
         settings={
-            "timeframe_seed": ["15m"],
+            "timeframe": ["15m"],
+            "event_mode": ["STATE", "CROSS"],
+            "min_profit_pct": [3.0, 5.0, 7.0, 10.0],
             "historical_gain_pct_strictly_above_seed": [5.0],
             "historical_score_delta_seed": [-5],
-            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+            "broader_range_status": ["BOUNDED_AROUND_HISTORICAL_SEED"],
         },
         fixed_entry_control="exact frozen accepted ladder schedule",
         fixed_exit_control="same-entry E02 N=30 control",
-        runner=None,
-        adapter_status="ADAPTER_REQUIRED",
-        notes="Must remain separate from DC structure and 4h Stoch-roll events.",
+        runner="tools/vec_same_entry_exit_adapter.py",
+        adapter_status="READY_BOTH_SIDES_RESEARCH_DECOMPOSITION",
+        notes=(
+            "Must remain separate from DC structure and 4h Stoch-roll events. "
+            "Completed 15m K/D state and true-cross arms remain distinct."
+        ),
     ),
     PathFamily(
         path_id="EXIT_ALGO_BEAR_MODE_BIAS",

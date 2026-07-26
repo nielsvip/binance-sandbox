@@ -58,7 +58,7 @@ int vec_same_entry_structural_scan(
     if (!out || n <= 0 || left < 0 || right > n || right-left < 100 ||
         (side != 1 && side != -1) || lookback < 2 || lookback > 10 ||
         max_wait < 3 || confirmation_mode < 0 || confirmation_mode > 3 ||
-        confirmation_bars < 1 || confirmation_bars > 2) return 1;
+        confirmation_bars < 1 || confirmation_bars > 3) return 1;
     memset(out, 0, sizeof(*out));
 
     double cash = ACCOUNT_EQUITY, qty = 0.0, avg_entry = NAN;

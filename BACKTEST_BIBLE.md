@@ -1302,6 +1302,39 @@ audit and rollback evidence are in
 `EXIT_ALGO_EXIT_ENABLED_AUDIT_20260726.md` and
 `tools/audit_algo_exit_wiring.py`.
 
+### §15.15 — Decomposed ALGO structure and 4h Stoch studies (2026-07-26)
+
+The disconnected job66 compound has four separate research children:
+`EXIT_ALGO_STRUCTURE_1H_15M`, `EXIT_ALGO_STOCH_4H_ROLL`,
+`EXIT_ALGO_PROFIT_TAKE_15M`, and `EXIT_ALGO_BEAR_MODE_BIAS`. The last is a
+regime/filter job and may not emit a direct exit. Historical score constants
+are provenance seeds only; the removed opaque base-score arithmetic is never
+reconstructed or relabelled live parity.
+
+Job450 screened completed prior-channel N20 breaks independently on 1h (-15
+historical score provenance) and 15m (-10), with research profit gates 0%/3%.
+All 80 arms made exits and beat side-specific B&H; 27 beat same-entry E02, but
+none passed every-fold alpha/safety and the full exposure selection contract.
+All 20 selected rows remain gray and exact replay is empty. See
+`EXIT_ALGO_STRUCTURE_1H_15M_RESULTS_20260726.md`.
+
+Job451 screened only completed 4h Stoch rolls. Because the removed constants
+were asymmetric (LONG K>60, SHORT K<20), they were not combined into one
+biased arm. The bounded side-mirror profiles are LONG/SHORT 60/40, 70/30 and
+80/20, each tested as persistent state versus true K/D cross and with 0%/3%
+profit gates. All 240 arms made exits and beat B&H; 89 beat same-entry E02 and
+five passed every-fold alpha/safety before exposure selection. None passed the
+complete promotion contract, so all selected rows remain gray and exact replay
+is empty. See `EXIT_ALGO_STOCH_4H_ROLL_RESULTS_20260726.md`.
+
+Job452 screened the profit-turn component alone: completed 15m adverse K/D
+state versus true cross, each at 3%/5%/7%/10% current-position gain. The
+removed >5% threshold is the historical seed and -5 is score provenance only.
+All 160 arms made exits and beat B&H; 64 beat same-entry E02, but none passed
+every-fold alpha/safety and the complete exposure selection contract. All
+selected rows remain gray, exact replay is empty, and bear-mode job453 remains
+FILTER-only. See `EXIT_ALGO_PROFIT_TAKE_15M_RESULTS_20260726.md`.
+
 ### §15.15 — LONG_WAIT removed-label decomposition (2026-07-26)
 
 `LONG_WAIT_ENABLED` is absent and unread. It was not one entry function:
@@ -1330,3 +1363,15 @@ single final-OOS result. No key passed 70–80% weighted TIM in every validation
 fold, and no strict survivor exists. All 40 path/key screens therefore remain
 gray, exact replay is empty, and no live setting changed. The result digest is
 `ENTRY_BOUNCE_REASONS_TOP_BOTTOM10_20260726.md`.
+
+Jobs463/464 then independently screened the remaining score reasons. Final
+OOS top-10 LONG sums were 6,665.40% for 1h turn and 6,612.59% for 4h deep
+value, versus 1,581.21% B&H and 9,332.21% control. Final SHORT sums were
+835.20% and 825.27%, versus 308.81% B&H and 858.30% control. Neither path had
+an every-fold TIM pass or a strict survivor.
+`ENTRY_LONG_WAIT_COMPONENTS_TOP_BOTTOM10_20260726.json` retains all 80
+component/key rows with distinct
+final-OOS and nested-fold metrics. Each row exposes its frozen final selected
+candidate, ladder curve, validation window, artifact and schedule materializer
+for downstream exit research; combination remains explicitly unauthorized
+until each independent reason has exact evidence.

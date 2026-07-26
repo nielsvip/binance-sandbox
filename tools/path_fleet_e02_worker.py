@@ -94,6 +94,8 @@ def _ingest_symbol(
     cohort_row: dict[str, Any],
     *,
     path_id: str = PATH_ID,
+    winner_family: str | None = None,
+    result_suffix: str = "",
 ) -> dict[str, Any]:
     if cohort_row["status"] != "OK":
         return {
@@ -104,10 +106,16 @@ def _ingest_symbol(
         }
     artifact = Path(cohort_row["artifact"])
     result = json.loads((artifact / "result.json").read_text())
-    frozen = result["frozen_discovery_winners"]
-    if len(frozen) != 1 or frozen[0]["family"] != path_id:
+    expected_family = winner_family or path_id
+    frozen = [
+        row
+        for row in result["frozen_discovery_winners"]
+        if row["family"] == expected_family
+    ]
+    if len(frozen) != 1:
         raise RuntimeError(
-            f"{cohort_row['symbol']}: expected one frozen {path_id} winner"
+            f"{cohort_row['symbol']}: expected one frozen "
+            f"{expected_family} winner"
         )
     winner = frozen[0]
     survivors = result["survivors"]
@@ -120,9 +128,13 @@ def _ingest_symbol(
         "EXIT_MTF_ATR_TRAIL",
         "EXIT_ALGO_STRUCTURE_1H_15M",
         "EXIT_ALGO_STOCH_4H_ROLL",
+        "EXIT_ALGO_PROFIT_TAKE_15M",
         "BOTTOM_A_PROTECTIVE_TRAIL",
         "BOTTOM_B_DELAYED_LOWER_TOP",
         "BOTTOM_C_DELAYED_EMERGENCY",
+        "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
+        "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
+        "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
     } and zero_exit_mtm
     payload = {
         "job_id": job_id,
@@ -207,7 +219,10 @@ def _ingest_symbol(
     result_path = (
         root
         / f"job_{job_id}_{path_id}"
-        / f"{result['symbol']}_{result['side']}.result.json"
+        / (
+            f"{result['symbol']}_{result['side']}{result_suffix}"
+            ".result.json"
+        )
     )
     fleet.atomic_json(result_path, payload)
     fleet.add_result(root, result_path)
