@@ -508,6 +508,7 @@ def load_path_fleet_progress() -> dict:
                           r.strategy_return_pct,r.bh_return_pct,
                           r.same_entry_control_return_pct,r.alpha_vs_bh_pp,
                           r.alpha_vs_control_pp,r.tim_pct,r.trades,r.created_at
+                          ,r.payload_json
                    FROM results r JOIN jobs j ON j.id=r.job_id
                    ORDER BY r.created_at DESC LIMIT 30"""
             )
@@ -515,6 +516,20 @@ def load_path_fleet_progress() -> dict:
         fleet.close()
     except (OSError, sqlite3.Error):
         return {}
+    for row in rows:
+        try:
+            payload = json.loads(row.pop("payload_json") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            payload = {}
+        row["metric_scope"] = payload.get("metric_scope") or "LEGACY_UNSCOPED"
+        row["return_unit"] = payload.get("return_unit") or "LEGACY_UNSCOPED"
+        row["return_aggregation"] = (
+            payload.get("return_aggregation") or "LEGACY_UNSCOPED"
+        )
+        row["tim_unit"] = payload.get("tim_unit") or "LEGACY_UNSCOPED"
+        row["tim_aggregation"] = (
+            payload.get("tim_aggregation") or "LEGACY_UNSCOPED"
+        )
     try:
         universe = json.loads(universe_path.read_text())
     except (OSError, json.JSONDecodeError):
@@ -1268,12 +1283,12 @@ def main() -> None:
             f"- Top LONG cohort: {top_long or '—'}.",
             f"- Bottom SHORT cohort: {bottom_short or '—'}.",
             "",
-            "| path | key | stage | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| path | key | stage | metric scope / units | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
         fleet_rows = path_fleet.get("rows") or []
         if not fleet_rows:
-            lines.append("| — | — | — | — | — | — | — | — | — | — | — |")
+            lines.append("| — | — | — | — | — | — | — | — | — | — | — | — |")
         for row in fleet_rows:
             strategy = row.get("strategy_return_pct")
             bh = row.get("bh_return_pct")
@@ -1285,7 +1300,13 @@ def main() -> None:
             lines.append(
                 f"| `{row.get('path_id') or '—'}` | "
                 f"{row.get('symbol') or '—'}_{row.get('side') or '—'} | "
-                f"{row.get('stage') or '—'} | {row.get('status') or '—'} | "
+                f"{row.get('stage') or '—'} | "
+                f"{row.get('metric_scope') or 'LEGACY_UNSCOPED'}; "
+                f"return={row.get('return_unit') or 'LEGACY_UNSCOPED'} "
+                f"({row.get('return_aggregation') or 'LEGACY_UNSCOPED'}); "
+                f"TIM={row.get('tim_unit') or 'LEGACY_UNSCOPED'} "
+                f"({row.get('tim_aggregation') or 'LEGACY_UNSCOPED'}) | "
+                f"{row.get('status') or '—'} | "
                 f"{fmt(strategy, 3, '%')} | {fmt(bh, 3, '%')} | "
                 f"{fmt(multiple, 3)}× | {fmt(row.get('alpha_vs_bh_pp'), 3, 'pp')} | "
                 f"{fmt(row.get('alpha_vs_control_pp'), 3, 'pp')} | "
@@ -1293,6 +1314,12 @@ def main() -> None:
             )
         short_rows_present = any(row.get("side") == "SHORT" for row in fleet_rows)
         lines += [
+            "",
+            "Metric guardrail: `VEC_NESTED_FOLD_AGGREGATE` returns are sums of "
+            "outer-validation-fold capital-return percentages and are not a "
+            "single holdout return. Only `FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD` "
+            "rows use single-fold capital-return percentages; `LEGACY_UNSCOPED` "
+            "rows are historical evidence and must not drive promotion.",
             "",
             (
                 "SHORT vector controls are present but remain research-only until exact replay "

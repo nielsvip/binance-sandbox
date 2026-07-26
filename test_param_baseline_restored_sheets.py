@@ -210,5 +210,7 @@ def test_path_fleet_is_visible_but_not_merged_into_engine_cells(tmp_path):
     assert sheet["M2"].value == 150
     assert sheet["O2"].value == 1.5
     assert sheet["X2"].value is False
+    assert sheet["AB2"].value == "LEGACY_UNSCOPED"
+    assert sheet["AC2"].value == "LEGACY_UNSCOPED"
     # Separate tier: a vector result must not invent a repaired ENGINE baseline.
     assert wb["PerSym Results"]["F2"].value is None

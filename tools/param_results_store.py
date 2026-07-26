@@ -894,7 +894,9 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
         "strategy_x_B&H", "alpha_vs_B&H_pp", "same_entry_control_return_%",
         "alpha_vs_control_pp", "time_in_market_%", "trades", "untouched_OOS",
         "exact_replay", "future_HTF_count", "promotion_allowed",
-        "matrix_written", "result_UTC", "artifact",
+        "matrix_written", "result_UTC", "artifact", "metric_scope",
+        "return_unit", "return_aggregation", "TIM_unit", "TIM_aggregation",
+        "trades_unit", "trades_aggregation",
     ]
     fleet_sheet.append(fleet_headers)
     for cell in fleet_sheet[1]:
@@ -963,6 +965,13 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
             bool(result.get("exact_replay")), result.get("future_htf_count"),
             promotion_allowed, matrix_written, created_iso,
             result.get("artifact"),
+            payload.get("metric_scope") or "LEGACY_UNSCOPED",
+            payload.get("return_unit") or "LEGACY_UNSCOPED",
+            payload.get("return_aggregation") or "LEGACY_UNSCOPED",
+            payload.get("tim_unit") or "LEGACY_UNSCOPED",
+            payload.get("tim_aggregation") or "LEGACY_UNSCOPED",
+            payload.get("trades_unit") or "LEGACY_UNSCOPED",
+            payload.get("trades_aggregation") or "LEGACY_UNSCOPED",
         ])
         row = fleet_sheet.max_row
         status = str(result.get("result_status") or result.get("job_status") or "")

@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 from tools import switch_matrix_digest as digest
 
@@ -165,3 +166,51 @@ def test_dc_low4_below_bh_is_diagnostic_gray_verdict():
     }
 
     assert digest.verdict(row) == "GRAY: ENTRY-QUALITY FAILURE / LOSING CHURN"
+
+
+def test_path_fleet_loader_exposes_metric_scope_and_units(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    root = reports / "path_fleet"
+    root.mkdir(parents=True)
+    (root / "universe.json").write_text("{}")
+    con = sqlite3.connect(root / "queue.db")
+    con.executescript(
+        """
+        CREATE TABLE jobs (
+          id INTEGER PRIMARY KEY,path_id TEXT,status TEXT,heartbeat_at REAL
+        );
+        CREATE TABLE results (
+          id INTEGER PRIMARY KEY,job_id INTEGER,symbol TEXT,side TEXT,
+          stage TEXT,status TEXT,strategy_return_pct REAL,bh_return_pct REAL,
+          same_entry_control_return_pct REAL,alpha_vs_bh_pp REAL,
+          alpha_vs_control_pp REAL,tim_pct REAL,trades INTEGER,created_at REAL,
+          payload_json TEXT
+        );
+        INSERT INTO jobs VALUES(1,'ENTRY_WT_DC','SCREENED',1);
+        """
+    )
+    payload = {
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_unit": "PCT",
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+    }
+    con.execute(
+        """INSERT INTO results VALUES
+           (1,1,'MU','LONG','VEC_NESTED_FOLD_AGGREGATE','DISCARD_GRAY',
+            100,30,88,70,12,60,6,1,?)""",
+        (json.dumps(payload),),
+    )
+    con.commit()
+    con.close()
+    monkeypatch.setattr(digest, "REPORTS", reports)
+
+    progress = digest.load_path_fleet_progress()
+
+    assert progress["rows"][0]["metric_scope"] == payload["metric_scope"]
+    assert progress["rows"][0]["return_unit"] == payload["return_unit"]
+    assert (
+        progress["rows"][0]["tim_aggregation"]
+        == payload["tim_aggregation"]
+    )

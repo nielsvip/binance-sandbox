@@ -13,6 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools import path_fleet_campaign as fleet  # noqa: E402
+from tools.normalize_entry_fleet_metrics import (  # noqa: E402
+    NORMALIZATION_VERSION,
+    normalized_payloads,
+)
 
 
 def main() -> int:
@@ -41,43 +45,47 @@ def main() -> int:
         if not artifact.is_absolute():
             artifact = ROOT / artifact
         result = json.loads((artifact / "result.json").read_text())
-        trades = sum(
-            int(fold["validation_metrics"]["exit_count"])
-            for fold in result["outer_folds"]
-        )
         existing = con.execute(
-            "SELECT 1 FROM results WHERE job_id=? AND artifact=?",
-            (job_id, str(row["artifact"])),
+            """SELECT 1 FROM results
+               WHERE job_id=? AND artifact=?
+                 AND payload_json LIKE ?
+               LIMIT 1""",
+            (
+                job_id,
+                str(row["artifact"]),
+                f'%"normalization_version": "{NORMALIZATION_VERSION}"%',
+            ),
         ).fetchone()
         if existing:
             continue
-        payload = {
+        source = {
             "job_id": job_id,
+            "id": None,
             "symbol": row["symbol"],
             "side": row["side"],
             "stage": "VEC_UNTOUCHED_OOS",
             "status": row["status"],
-            "strategy_return_pct": row["candidate_return_pct"],
-            "bh_return_pct": row["bh_return_pct"],
-            "same_entry_control_return_pct": row["control_return_pct"],
-            "tim_pct": row["weighted_tim_pct"],
-            "trades": trades,
-            "untouched_oos": True,
-            "exact_replay": False,
-            "future_htf_count": row["future_htf_count"],
             "artifact": str(row["artifact"]),
-            "exposure_policy_pass": row["exposure_policy_pass"],
-            "all_folds_beat_bh": row["all_folds_beat_bh"],
-            "all_folds_beat_control": row["all_folds_beat_control"],
         }
-        tmp = root / f".ingest_{row['family']}_{row['symbol']}.json"
-        fleet.atomic_json(tmp, payload)
-        con.commit()
-        con.close()
-        fleet.add_result(root, tmp)
-        tmp.unlink(missing_ok=True)
-        inserted += 1
-        con = sqlite3.connect(root / "queue.db")
+        aggregate_payload, final_payload = normalized_payloads(source, result)
+        for payload in (aggregate_payload, final_payload):
+            payload.update(
+                {
+                    "exposure_policy_pass": row["exposure_policy_pass"],
+                    "all_folds_beat_bh": row["all_folds_beat_bh"],
+                    "all_folds_beat_control": row["all_folds_beat_control"],
+                }
+            )
+            tmp = root / (
+                f".ingest_{row['family']}_{row['symbol']}_{payload['stage']}.json"
+            )
+            fleet.atomic_json(tmp, payload)
+            con.commit()
+            con.close()
+            fleet.add_result(root, tmp)
+            tmp.unlink(missing_ok=True)
+            inserted += 1
+            con = sqlite3.connect(root / "queue.db")
     by_family = {
         family: [row for row in summary["rows"] if row["family"] == family]
         for family in families
