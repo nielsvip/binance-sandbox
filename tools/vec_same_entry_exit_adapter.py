@@ -13,6 +13,8 @@ Implemented exit books:
 * ``E02_GRID``: completed 1h/4h/D opposite Donchian close with a bounded
   lookback/profit-gate sweep; it never uses a 5m/DC-low churn stop;
 * ``WT_MTF``: completed-TF WaveTrend exhaustion/rollover vote;
+* ``GR_OPPOSITE``: explicit completed 15m/1h/4h/D opposite Golden Rule
+  indicator votes. Per-TF raw votes and weights remain separately auditable;
 * ``STRUCTURAL_WT``: completed 4h lower-low arm followed by a later 1h lower
   price/WT1 top and rollover.  It never treats ``dc_low4`` as a profit exit.
 
@@ -53,6 +55,7 @@ from vec_paths.structural_wt_retest_exit import (  # noqa: E402
 
 STRUCTURAL_SCAN_SOURCE = ROOT / "tools" / "vec_same_entry_structural_scan.c"
 _STRUCTURAL_SCAN_LIBRARY: ctypes.CDLL | None = None
+ACTUAL_EXIT_REQUIRED_FAMILIES = {"EXIT_WT_MTF", "EXIT_GR_OPPOSITE"}
 
 
 class _StructuralScanMetrics(ctypes.Structure):
@@ -189,6 +192,32 @@ class WtMtfParams:
             raise ValueError("profit gate must be non-negative")
 
 
+@dataclasses.dataclass(frozen=True)
+class GrOppositeParams:
+    timeframes: tuple[str, ...]
+    min_tfs: int
+    min_indicators: int
+    min_weighted_score: float
+    weights: tuple[float, ...]
+    profit_gate_pct: float = 0.0
+
+    def validate(self) -> None:
+        if self.timeframes != ("15m", "1h", "4h", "D"):
+            raise ValueError("GR opposite contract requires 15m/1h/4h/D")
+        if len(self.weights) != len(self.timeframes):
+            raise ValueError("GR weights must map one-to-one to timeframes")
+        if not 1 <= self.min_tfs <= 3:
+            raise ValueError("GR min_tfs must be 1, 2, or 3")
+        if self.min_indicators not in {1, 2}:
+            raise ValueError("GR min_indicators must be 1 or 2")
+        if self.min_weighted_score <= 0:
+            raise ValueError("GR weighted score must be positive")
+        if any(weight < 0 for weight in self.weights):
+            raise ValueError("GR weights must be non-negative")
+        if self.profit_gate_pct < 0:
+            raise ValueError("profit gate must be non-negative")
+
+
 class StaticExitBook:
     def __init__(
         self,
@@ -196,6 +225,8 @@ class StaticExitBook:
         events: np.ndarray,
         references: np.ndarray,
         source_by_row: dict[int, dict[str, int]],
+        *,
+        audit: dict[str, Any] | None = None,
     ):
         if events.dtype != np.uint8 or len(events) != len(references):
             raise ValueError("static exit arrays have incompatible shape/type")
@@ -203,6 +234,7 @@ class StaticExitBook:
         self.events = events
         self.references = references
         self.source_by_row = source_by_row
+        self.audit = audit or {}
 
     def update(self, row: int, *, active: bool) -> ExitDecision | None:
         if not active or not bool(self.events[row]):
@@ -430,6 +462,262 @@ def build_wt_mtf_book(
         events,
         references,
         source_by_row,
+    )
+
+
+def _completed_optional_field(
+    data: Any,
+    htf: Any,
+    key: str,
+) -> np.ndarray:
+    """Return a completed numeric field or NaNs when the indicator is absent."""
+    if key not in data.z.files:
+        return np.full(len(htf.event_index), np.nan, dtype=np.float64)
+    try:
+        return _completed_field(data, htf, key)
+    except (TypeError, ValueError):
+        return np.full(len(htf.event_index), np.nan, dtype=np.float64)
+
+
+def _golden_rule_completed_votes(
+    data: Any,
+    htf: Any,
+    timeframe: str,
+    *,
+    vote_long: bool,
+) -> np.ndarray:
+    """Vectorize the raw per-TF Golden Rule indicator votes.
+
+    This intentionally mirrors ``golden_rule_htf._ind_score`` in its default
+    room-to-run mode, but returns the raw vote count instead of collapsing it
+    into ``n_confirmed_tfs * min_indicators``. ``vote_long`` is the signal
+    direction, which is always opposite the held side for this exit path.
+    """
+    field = lambda name: _completed_optional_field(  # noqa: E731
+        data, htf, f"{name}_{timeframe}"
+    )
+    votes = np.zeros(len(htf.event_index), dtype=np.int16)
+
+    wt1, wt2 = field("wt1"), field("wt2")
+    available = np.isfinite(wt1) & np.isfinite(wt2) & (
+        (wt1 != 0.0) | (wt2 != 0.0)
+    )
+    votes += (
+        available & ((wt1 > wt2) if vote_long else (wt1 < wt2))
+    ).astype(np.int16)
+
+    rsi = field("rsi")
+    votes += (
+        np.isfinite(rsi)
+        & (rsi >= 0.0)
+        & ((rsi > 50.0) if vote_long else (rsi < 50.0))
+    ).astype(np.int16)
+
+    mfi = field("mfi")
+    votes += (
+        np.isfinite(mfi)
+        & (mfi >= 0.0)
+        & ((mfi > 50.0) if vote_long else (mfi < 50.0))
+    ).astype(np.int16)
+
+    close = field("close")
+    dc_pos = field("dc_position")
+    dc_high, dc_low = field("dc_high"), field("dc_low")
+    derive_dc = (
+        np.isfinite(close)
+        & np.isfinite(dc_high)
+        & np.isfinite(dc_low)
+        & (dc_high > dc_low)
+        & ((~np.isfinite(dc_pos)) | (dc_pos < 0.0))
+    )
+    derived_dc = np.divide(
+        close - dc_low,
+        dc_high - dc_low,
+        out=np.full_like(close, np.nan),
+        where=dc_high > dc_low,
+    )
+    dc_pos = np.where(derive_dc, derived_dc, dc_pos)
+    votes += (
+        np.isfinite(dc_pos)
+        & (dc_pos >= 0.0)
+        & ((dc_pos < 0.65) if vote_long else (dc_pos > 0.35))
+    ).astype(np.int16)
+
+    bb_pct = field("bb_pct_b")
+    bb_upper, bb_lower = field("bb_upper"), field("bb_lower")
+    derive_bb = (
+        np.isfinite(close)
+        & np.isfinite(bb_upper)
+        & np.isfinite(bb_lower)
+        & (bb_upper > bb_lower)
+        & ((~np.isfinite(bb_pct)) | (bb_pct < 0.0))
+    )
+    derived_bb = np.divide(
+        close - bb_lower,
+        bb_upper - bb_lower,
+        out=np.full_like(close, np.nan),
+        where=bb_upper > bb_lower,
+    )
+    bb_pct = np.where(derive_bb, derived_bb, bb_pct)
+    votes += (
+        np.isfinite(bb_pct)
+        & (bb_pct >= 0.0)
+        & ((bb_pct < 0.75) if vote_long else (bb_pct > 0.25))
+    ).astype(np.int16)
+
+    relative_volume = field("relative_volume")
+    votes += (
+        np.isfinite(relative_volume)
+        & (relative_volume >= 0.0)
+        & (relative_volume > 1.0)
+    ).astype(np.int16)
+
+    stoch_k = field("stoch_k")
+    votes += (
+        np.isfinite(stoch_k)
+        & (stoch_k >= 0.0)
+        & ((stoch_k < 80.0) if vote_long else (stoch_k > 20.0))
+    ).astype(np.int16)
+
+    adx = field("adx")
+    votes += (
+        np.isfinite(adx) & (adx > 0.0) & (adx > 20.0)
+    ).astype(np.int16)
+
+    macd_hist = field("macd_hist")
+    votes += (
+        np.isfinite(macd_hist)
+        & (macd_hist != 0.0)
+        & ((macd_hist > 0.0) if vote_long else (macd_hist < 0.0))
+    ).astype(np.int16)
+
+    ha_color = field("ha_color")
+    votes += (
+        np.isfinite(ha_color)
+        & (ha_color != 0.0)
+        & ((ha_color > 0.0) if vote_long else (ha_color < 0.0))
+    ).astype(np.int16)
+
+    stoch_d = field("stoch_d")
+    votes += (
+        np.isfinite(stoch_k)
+        & np.isfinite(stoch_d)
+        & (stoch_k >= 0.0)
+        & (stoch_d >= 0.0)
+        & ((stoch_k > stoch_d) if vote_long else (stoch_k < stoch_d))
+    ).astype(np.int16)
+    return votes
+
+
+def build_gr_opposite_book(
+    data: Any,
+    htfs: dict[str, Any],
+    params: GrOppositeParams,
+    *,
+    side: str,
+) -> StaticExitBook:
+    """Build an explicit, side-mirrored completed-HTF GR exit book."""
+    params.validate()
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    vote_long = side == "SHORT"
+    n = len(data.ts)
+    updates = np.zeros(n, dtype=bool)
+    expanded_votes: dict[str, np.ndarray] = {}
+    completed_votes: dict[str, np.ndarray] = {}
+
+    for tf in params.timeframes:
+        htf = htfs[tf]
+        raw = _golden_rule_completed_votes(
+            data, htf, tf, vote_long=vote_long
+        )
+        completed_votes[tf] = raw
+        event_rows = np.asarray(htf.event_index, dtype=np.int64)
+        slots = np.searchsorted(event_rows, np.arange(n), side="right") - 1
+        valid = slots >= 0
+        expanded = np.zeros(n, dtype=np.int16)
+        expanded[valid] = raw[slots[valid]]
+        expanded_votes[tf] = expanded
+        updates[event_rows] = True
+
+    qualifying_tf_count = np.zeros(n, dtype=np.int16)
+    weighted_score = np.zeros(n, dtype=np.float64)
+    for tf, weight in zip(params.timeframes, params.weights):
+        raw = expanded_votes[tf]
+        qualifying_tf_count += (raw >= params.min_indicators).astype(np.int16)
+        weighted_score += raw * float(weight)
+    qualified = (
+        (qualifying_tf_count >= params.min_tfs)
+        & (weighted_score >= params.min_weighted_score)
+    )
+    prior = np.concatenate(([False], qualified[:-1]))
+    events = (updates & qualified & ~prior).astype(np.uint8)
+    references = np.full(n, np.nan, dtype=np.float64)
+    references[events > 0] = (
+        data.high[events > 0] if side == "LONG" else data.low[events > 0]
+    )
+
+    source_by_row: dict[int, dict[str, int]] = {}
+    for row in np.flatnonzero(events):
+        sources: dict[str, int] = {}
+        for tf in params.timeframes:
+            htf = htfs[tf]
+            slot = int(
+                np.searchsorted(htf.event_index, row, side="right") - 1
+            )
+            if slot < 0:
+                continue
+            source = int(htf.source_ts[slot])
+            if source > int(data.ts[row]):
+                raise RuntimeError(f"future {tf} GR source at row {row}")
+            sources[tf] = source
+        source_by_row[int(row)] = sources
+
+    event_rows = np.flatnonzero(events)
+    per_tf: dict[str, Any] = {}
+    for tf, weight in zip(params.timeframes, params.weights):
+        raw = completed_votes[tf]
+        digest = hashlib.sha256()
+        digest.update(np.asarray(htfs[tf].source_ts, dtype=np.int64).tobytes())
+        digest.update(np.asarray(raw, dtype=np.int16).tobytes())
+        event_raw = expanded_votes[tf][event_rows]
+        per_tf[tf] = {
+            "weight": float(weight),
+            "completed_vote_sha256": digest.hexdigest(),
+            "completed_bars": int(len(raw)),
+            "raw_vote_histogram": {
+                str(vote): int(np.count_nonzero(raw == vote))
+                for vote in range(12)
+                if np.any(raw == vote)
+            },
+            "exit_event_vote_histogram": {
+                str(vote): int(np.count_nonzero(event_raw == vote))
+                for vote in range(12)
+                if np.any(event_raw == vote)
+            },
+        }
+    exit_scores = weighted_score[event_rows]
+    audit = {
+        "signal_direction": "LONG" if vote_long else "SHORT",
+        "held_side": side,
+        "score_formula": (
+            "sum(raw_opposite_indicator_votes_by_tf * explicit_tf_weight)"
+        ),
+        "per_timeframe": per_tf,
+        "exit_event_count": int(len(event_rows)),
+        "weighted_score_at_event": {
+            "min": float(np.min(exit_scores)) if len(exit_scores) else None,
+            "max": float(np.max(exit_scores)) if len(exit_scores) else None,
+            "mean": float(np.mean(exit_scores)) if len(exit_scores) else None,
+        },
+    }
+    return StaticExitBook(
+        "EXIT_GR_OPPOSITE",
+        events,
+        references,
+        source_by_row,
+        audit=audit,
     )
 
 
@@ -1072,6 +1360,33 @@ def wt_grid() -> list[WtMtfParams]:
     ]
 
 
+def gr_opposite_grid() -> list[GrOppositeParams]:
+    """Exact 432-arm explicit per-TF Golden Rule opposite-vote grid."""
+    timeframes = ("15m", "1h", "4h", "D")
+    weight_profiles = (
+        (1.0, 1.0, 1.0, 1.0),
+        (0.5, 1.0, 2.0, 3.0),
+        (0.0, 1.0, 2.0, 4.0),
+    )
+    rows = [
+        GrOppositeParams(
+            timeframes=timeframes,
+            min_tfs=min_tfs,
+            min_indicators=min_indicators,
+            min_weighted_score=score,
+            weights=weights,
+            profit_gate_pct=profit_gate,
+        )
+        for min_tfs in (1, 2, 3)
+        for min_indicators in (1, 2)
+        for score in (4.0, 6.0, 8.0, 10.0, 12.0, 15.5)
+        for weights in weight_profiles
+        for profit_gate in (0.0, 0.25, 0.5, 1.0)
+    ]
+    assert len(rows) == 432
+    return rows
+
+
 def structural_grid() -> list[tuple[StructuralWtParams, float, int]]:
     """Exact registry grid: 768 coherent structural/profit blocks.
 
@@ -1394,7 +1709,7 @@ def screen_artifact(
                     and evidence["future_htf_source_count"] == 0
                     and evidence["bars_flat_beyond_reclaim"] == 0
                     and (
-                        family != "EXIT_WT_MTF"
+                        family not in ACTUAL_EXIT_REQUIRED_FAMILIES
                         or evidence["exit_fills"] > 0
                     )
                     for evidence in row["fold_evidence"][:-1]
@@ -1418,7 +1733,7 @@ def screen_artifact(
                     ]
                     == 0
                     and (
-                        family != "EXIT_WT_MTF"
+                        family not in ACTUAL_EXIT_REQUIRED_FAMILIES
                         or row["fold_evidence"][-1]["exit_fills"] > 0
                     )
                 ),
@@ -1501,6 +1816,62 @@ def screen_artifact(
             candidates.append(
                 candidate_row(
                     "EXIT_WT_MTF", dataclasses.asdict(params), fold_rows
+                )
+            )
+    if "GR_OPPOSITE" in families:
+        grid = gr_opposite_grid()
+        signal_blocks = {
+            (
+                params.min_tfs,
+                params.min_indicators,
+                params.min_weighted_score,
+                params.weights,
+            ): params
+            for params in grid
+        }
+        books = {
+            key: build_gr_opposite_book(
+                data,
+                htfs,
+                dataclasses.replace(params, profit_gate_pct=0.0),
+                side=side,
+            )
+            for key, params in signal_blocks.items()
+        }
+        for params in grid:
+            key = (
+                params.min_tfs,
+                params.min_indicators,
+                params.min_weighted_score,
+                params.weights,
+            )
+            book = books[key]
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    book,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=params.profit_gate_pct,
+                )
+                for ctx in contexts
+            ]
+            param_values = dataclasses.asdict(params)
+            param_values["weights_by_tf"] = {
+                tf: float(weight)
+                for tf, weight in zip(params.timeframes, params.weights)
+            }
+            candidates.append(
+                candidate_row(
+                    "EXIT_GR_OPPOSITE",
+                    param_values,
+                    fold_rows,
+                    vote_audit=book.audit,
                 )
             )
     if "STRUCTURAL_WT" in families:
@@ -1596,7 +1967,7 @@ def screen_artifact(
         and row["metrics"]["insolvent_folds"] == 0
         and not row["metrics"]["entry_capacity_breach"]
         and (
-            row["family"] != "EXIT_WT_MTF"
+            row["family"] not in ACTUAL_EXIT_REQUIRED_FAMILIES
             or row["metrics"]["exit_fills"] > 0
         )
     ]
@@ -1799,8 +2170,8 @@ def main() -> int:
         "--families",
         default="WT_MTF,STRUCTURAL_WT",
         help=(
-            "comma-separated E02_GRID, WT_MTF, STRUCTURAL_WT, "
-            "and/or PARTIAL_WT"
+            "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
+            "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
     ap.add_argument(
@@ -1815,6 +2186,7 @@ def main() -> int:
     invalid = set(families) - {
         "E02_GRID",
         "WT_MTF",
+        "GR_OPPOSITE",
         "STRUCTURAL_WT",
         "PARTIAL_WT",
     }

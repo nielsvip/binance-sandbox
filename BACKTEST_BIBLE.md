@@ -957,3 +957,51 @@ is final MTM, not exit proof. DINO D/N40 likewise had zero validation exits. Fiv
 candidate books contained an insolvent fold. All 20 rows remain preserved in path-fleet job
 35 and the SWITCH_MATRIX digest; full settings, fills/clamps and rollback evidence are in
 `E02_SAME_ENTRY_COHORT_RESULTS_20260726.md`.
+
+### §15.4 — Structural-WT lower-top / higher-bottom registry screen (2026-07-26)
+
+`EXIT_STRUCTURAL_WT_LOWER_TOP` is now a causal, side-mirrored same-entry path.
+A completed 1h/4h structural break arms it; a later completed 15m/1h lower
+price and WT1 rebound top triggers LONG only after adverse price structure and
+WT rollover. SHORT uses the exact higher-bottom mirror. The break itself and
+`dc_low4_5m` never exit. Maximum waits are normalized to wall-clock hours, and
+the frozen ladder plus persistent resting reclaim obligation remain intact.
+
+The full registered 768-setting grid ran for all frozen top-10 LONG and
+bottom-10 SHORT keys. The compiled scanner completed a key in 1.187–2.136
+seconds (1.582-second median) and replays each frozen discovery winner through
+the Python state functions. All 20 parity gates passed with zero differences.
+
+There were zero strict survivors: no setting met positive alpha versus both
+side-specific B&H and same-entry E02 in every discovery/validation fold while
+also holding 70–80% weighted exposure in both partitions. MU's selected recipe
+validated +1,127.00pp above B&H but -44.324pp below E02 at 65.21% exposure.
+SNDK's large validation return used 98.70% exposure and is a leveraged hold,
+not an exit algorithm. VLO validated above both controls at 75.83% but its
+discovery exposure was only 46.43%. These and all other rows are preserved gray
+in path-fleet job 37; exact replay is correctly empty. Full per-key evidence
+and rollback scope are in `STRUCTURAL_WT_LOWER_TOP_RESULTS_20260726.md`.
+
+### §15.5 — Same-entry completed multi-timeframe WT screen (2026-07-26)
+
+`EXIT_WT_MTF` evaluates completed 15m/1h/4h/D/W WT information over an exact
+256-setting grid: minimum against-TFs 1/2/3/4 × exhaustion 45/55/65/75 ×
+adverse velocity 0/0.25/0.5/1 × profit gate 0/0.25/0.5/1%. The 64 signal
+books are vectorized once and reused across profit gates. The frozen ladder
+request/fill/multiplier schedule, side-separated ledgers, next-RTH fills,
+capacity and mandatory resting reclaim are unchanged.
+
+The top-10 LONG/bottom-10 SHORT nested screen completed 5,120 candidates with
+zero errors and no strict survivor, so exact replay is empty. Nineteen selected
+arms made actual exits; MU's selected arm made zero and is explicitly retained
+as rejected final-MTM evidence. No selected SHORT setting had validation
+exposure in the 70–80% band.
+
+VLO_LONG is the important near-boundary, not a missed promotion. Its final
+fold returned +407.16% versus +84.91% B&H and +387.31% identical-entry
+control, at 70.63% exposure with 44 exits and clean safety/reclaim ledgers.
+It remains gray because discovery exposure was 49.88% (individual discovery
+folds 21.56% and 77.16%), outside the preregistered band. Full settings,
+per-key rejection reasons and reproduction are in
+`WT_MTF_SAME_ENTRY_COHORT_RESULTS_20260726.md`; the result ledger is path-fleet
+job 40.

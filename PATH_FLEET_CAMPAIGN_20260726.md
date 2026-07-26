@@ -82,3 +82,24 @@ A discovery row labelled `PASS` is automatically downgraded to
 `RESEARCH_ONLY`. Promotion requires untouched OOS, exact replay, zero future HTF
 observations, positive alpha versus B&H, and positive alpha versus the
 same-entry control.
+
+## 2026-07-26 entry overlay screens
+
+The causal entry-overlay adapter has now screened Golden Rule, repaired WT_DC,
+and structural Stoch HH/HL against frozen ladder+E02 controls. Golden Rule and
+WT_DC contributed 10 LONG untouched-OOS rows each. Structural Stoch contributed
+10 top-cohort LONG plus 10 bottom-cohort SHORT rows using:
+
+- LONG: completed HH+HL with low and rising Stoch;
+- SHORT: completed LH+LL with high and falling Stoch;
+- K thresholds 15/20/25/30/35/40 on 1h/4h/D;
+- one or two confirming TFs; direct and union-with-green roles.
+
+All three path jobs are `SCREENED` in `data/reports/path_fleet/queue.db`.
+Structural Stoch produced zero candidates that passed B&H, the identical
+ladder+E02 control, every validation fold, and 70–80% weighted TIM together.
+Exact replay was therefore not launched. The 20 Stoch rows remain gray evidence
+in `ENTRY_STOCH_HHHL_TOP_BOTTOM10_20260726.{json,md}`. PBF_LONG beat both return
+comparisons in every fold but reached only 46.88% weighted TIM; low-exposure
+PBF/MPC/VLO now route to ladder multiplier/trigger tuning rather than another
+Stoch threshold sweep.

@@ -4,12 +4,16 @@ from types import SimpleNamespace
 import numpy as np
 
 from tools.vec_same_entry_exit_adapter import (
+    GrOppositeParams,
     StaticExitBook,
     WtMtfParams,
     _entry_schedule_hash,
+    _golden_rule_completed_votes,
     build_donchian_book,
+    build_gr_opposite_book,
     build_wt_mtf_book,
     e02_grid,
+    gr_opposite_grid,
     simulate,
     simulate_structural_compiled,
     structural_grid,
@@ -116,6 +120,92 @@ def test_weekly_wt_event_uses_completed_source_only():
     decision = book.update(4, active=True)
     assert decision is not None
     assert decision.source_timestamps["W"] < data.ts[4]
+
+
+def _fake_gr_data(n=8):
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    rows = {}
+    for tf in ("15m", "1h", "4h", "D"):
+        rows[f"close_{tf}"] = np.full(n, 10.0)
+        rows[f"wt1_{tf}"] = np.array([2, 2, 2, -2, -2, -2, -2, -2], float)
+        rows[f"wt2_{tf}"] = np.zeros(n)
+        rows[f"rsi_{tf}"] = np.array([60, 60, 60, 40, 40, 40, 40, 40], float)
+    return SimpleNamespace(
+        symbol="GRTEST",
+        ts=ts,
+        high=np.full(n, 10.5),
+        low=np.full(n, 9.5),
+        full_indices=np.arange(n, dtype=np.int64),
+        z=FakeZ(rows),
+    )
+
+
+def test_gr_grid_is_exact_explicit_weight_contract():
+    rows = gr_opposite_grid()
+    assert len(rows) == 3 * 2 * 6 * 3 * 4
+    assert {row.timeframes for row in rows} == {
+        ("15m", "1h", "4h", "D")
+    }
+    assert {row.min_tfs for row in rows} == {1, 2, 3}
+    assert {row.min_indicators for row in rows} == {1, 2}
+    assert {row.min_weighted_score for row in rows} == {
+        4.0, 6.0, 8.0, 10.0, 12.0, 15.5
+    }
+    assert {row.weights for row in rows} == {
+        (1.0, 1.0, 1.0, 1.0),
+        (0.5, 1.0, 2.0, 3.0),
+        (0.0, 1.0, 2.0, 4.0),
+    }
+    assert {row.profit_gate_pct for row in rows} == {0.0, 0.25, 0.5, 1.0}
+
+
+def test_gr_opposite_is_completed_causal_side_mirror_with_per_tf_audit():
+    data = _fake_gr_data()
+    htfs = {
+        tf: SimpleNamespace(
+            event_index=np.arange(8, dtype=np.int64),
+            source_ts=data.ts - 1,
+        )
+        for tf in ("15m", "1h", "4h", "D")
+    }
+    params = GrOppositeParams(
+        timeframes=("15m", "1h", "4h", "D"),
+        min_tfs=3,
+        min_indicators=2,
+        min_weighted_score=8.0,
+        weights=(1.0, 1.0, 1.0, 1.0),
+    )
+    long_book = build_gr_opposite_book(data, htfs, params, side="LONG")
+    short_book = build_gr_opposite_book(data, htfs, params, side="SHORT")
+    assert np.flatnonzero(long_book.events).tolist() == [3]
+    assert np.flatnonzero(short_book.events).tolist() == [0]
+    decision = long_book.update(3, active=True)
+    assert decision is not None
+    assert all(source < data.ts[3] for source in decision.source_timestamps.values())
+    assert long_book.audit["signal_direction"] == "SHORT"
+    assert long_book.audit["per_timeframe"]["15m"]["weight"] == 1.0
+    assert long_book.audit["per_timeframe"]["15m"][
+        "exit_event_vote_histogram"
+    ] == {"2": 1}
+
+
+def test_vector_gr_votes_match_canonical_raw_scorer():
+    from golden_rule_htf import _ind_score
+
+    data = _fake_gr_data()
+    htf = SimpleNamespace(event_index=np.arange(8, dtype=np.int64))
+    raw = _golden_rule_completed_votes(
+        data, htf, "1h", vote_long=False
+    )
+    indicators = {
+        key: values[3]
+        for key, values in data.z.rows.items()
+        if key.endswith("_1h")
+    }
+    canonical, _ = _ind_score(
+        indicators, "1h", False, float(indicators["close_1h"])
+    )
+    assert raw[3] == canonical == 2
 
 
 def test_static_book_never_crosses_side_or_fires_flat():

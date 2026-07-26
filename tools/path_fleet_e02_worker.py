@@ -134,6 +134,7 @@ def _ingest_symbol(
         "future_htf_count": int(winner["metrics"]["future_htf_source_count"]),
         "artifact": str(artifact),
         "params": winner["params"],
+        "vote_audit": winner.get("vote_audit"),
         "discovery": winner["nested"]["discovery"],
         "validation": validation,
         "discovery_alpha_vs_bh_pp": winner["nested"][

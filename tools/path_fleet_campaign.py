@@ -244,8 +244,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Completed 15m/1h/4h/D opposite votes are retained per timeframe "
+        "with explicit weights and a raw-vote score; actual exits are mandatory.",
     ),
     PathFamily(
         "EXIT_PARTIAL_RUNNER",

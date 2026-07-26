@@ -832,6 +832,14 @@ def main() -> None:
         "a losing ladder (-8.90% versus -61.85%) but remained below B&H (+1.57%). "
         "Verdict **REJECT / NO MATRIX**; every exit candidate must beat both B&H and "
         "the strongest same-entry/same-window causal control.",
+        "- The complete registered `EXIT_STRUCTURAL_WT_LOWER_TOP` screen now supersedes "
+        "the exploratory structural grids: 20 frozen top/bottom symbol-sides × 768 "
+        "settings, with completed HTF bars, side isolation, resting reclaim and a "
+        "compiled-to-Python parity gate. All 20 selected winners reproduced exactly, "
+        "but **0/20 passed** both B&H + same-entry E02 and the 70–80% discovery/validation "
+        "TIM gates. MU validated +1,127.00pp over B&H but -44.324pp versus E02 at "
+        "65.21% TIM; SNDK's headline used 98.70% TIM. Path-fleet job 37 preserves all "
+        "rows gray and correctly queues no exact replay.",
         "- Reentry invariant for structural research: after an exit, the stored exit/top level and "
         "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
         "must never erase it or allow price to outrun the stored level without reopening. "

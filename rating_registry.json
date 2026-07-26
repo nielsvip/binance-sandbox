@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T18:47:12.336880+00:00",
+  "timestamp": "2026-07-26T19:02:14.009083+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,6 +35,12 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
+    },
+    {
+      "symbol": "DOTUSDT",
+      "net_score": -10.5,
+      "long_score": 0,
+      "short_score": 10.5
     },
     {
       "symbol": "ACTUSDT",
@@ -553,12 +559,6 @@
       "short_score": 0
     },
     {
-      "symbol": "DOTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SOLUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -788,7 +788,13 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "DOTUSDT",
+      10.5,
+      0.818
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
