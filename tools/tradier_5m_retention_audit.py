@@ -135,7 +135,7 @@ def _retention_errors(
     allow_missing_native: bool = False,
 ) -> list[str]:
     if current.get("rows", 0) <= 0:
-        if allow_missing_native and not previous:
+        if allow_missing_native and (not previous or int(previous.get("rows", 0)) <= 0):
             return []
         return [f"{symbol}: native 5m source missing or empty"]
     errors = []
@@ -170,6 +170,11 @@ def main() -> int:
     parser.add_argument("--report", default="")
     parser.add_argument("--update-ledger", action="store_true")
     parser.add_argument(
+        "--source-only",
+        action="store_true",
+        help="Audit durable source retention without requiring derived NPZ provenance",
+    )
+    parser.add_argument(
         "--allow-missing-native",
         action="store_true",
         help="Bootstrap only: permit a symbol with no prior ledger entry before the first fetch",
@@ -180,11 +185,16 @@ def main() -> int:
     prior_symbols = prior.get("symbols", {}) if isinstance(prior, dict) else {}
     rows = {}
     errors = []
+    warnings = []
     for symbol in _symbols(args):
         source = _source_stats(Path(args.source_root) / f"{symbol}_5m.json")
-        npz = _npz_stats(
-            Path(args.npz_root) / f"{symbol}.npz",
-            Path(args.source_root) / f"{symbol}_15m.json",
+        npz = (
+            {"skipped": True, "reason": "source-only preflight"}
+            if args.source_only
+            else _npz_stats(
+                Path(args.npz_root) / f"{symbol}.npz",
+                Path(args.source_root) / f"{symbol}_15m.json",
+            )
         )
         symbol_errors = _retention_errors(
             symbol,
@@ -192,11 +202,19 @@ def main() -> int:
             prior_symbols.get(symbol),
             allow_missing_native=args.allow_missing_native,
         )
-        if npz.get("exists") and not npz.get("provenance_present", False):
+        if source.get("rows", 0) <= 0 and args.allow_missing_native:
+            warnings.append(
+                f"{symbol}: native 5m source not available yet; derived history remains interpolated"
+            )
+        if not args.source_only and npz.get("exists") and not npz.get(
+            "provenance_present", False
+        ):
             symbol_errors.append(f"{symbol}: NPZ is missing synthetic_5m provenance")
-        if npz.get("provenance_present") and not npz.get("provenance_length_valid", False):
+        if not args.source_only and npz.get("provenance_present") and not npz.get(
+            "provenance_length_valid", False
+        ):
             symbol_errors.append(f"{symbol}: NPZ provenance length does not match timestamps")
-        if npz.get("parent_provenance_present") and not npz.get(
+        if not args.source_only and npz.get("parent_provenance_present") and not npz.get(
             "parent_lag_valid", False
         ):
             symbol_errors.append(
@@ -216,6 +234,7 @@ def main() -> int:
         ),
         "symbol_count": len(rows),
         "errors": errors,
+        "warnings": warnings,
         "symbols": rows,
     }
     if args.report:

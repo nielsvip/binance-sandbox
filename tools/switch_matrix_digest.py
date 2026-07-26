@@ -557,6 +557,15 @@ def main() -> None:
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
     coverage_5m = load_tradier_5m_coverage()
+    coverage_symbols = coverage_5m.get("symbols", {})
+    covered_native_symbols = sum(
+        int(row.get("native_source", {}).get("rows", 0) or 0) > 0
+        for row in coverage_symbols.values()
+    )
+    covered_native_rows = sum(
+        int(row.get("native_source", {}).get("rows", 0) or 0)
+        for row in coverage_symbols.values()
+    )
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -585,11 +594,14 @@ def main() -> None:
         "",
         "Historical native 5m availability is provider-limited. Older rows use the disclosed "
         "containing-15m interpolation; native bars replace it permanently as they are collected.",
+        f"Retention report scope: **{len(coverage_symbols):,} symbols**, "
+        f"**{covered_native_symbols:,} native archives**, **{covered_native_rows:,} native rows**, "
+        f"**{len(coverage_5m.get('warnings') or []):,} availability warnings**, "
+        f"**{len(coverage_5m.get('errors') or []):,} hard errors**.",
         "",
         "| key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |",
         "|---|---:|---:|---|---:|---:|---|",
     ]
-    coverage_symbols = coverage_5m.get("symbols", {})
     for key in keys:
         symbol, _side = parse_key(key)
         row = coverage_symbols.get(symbol, {})

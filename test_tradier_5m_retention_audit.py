@@ -46,6 +46,22 @@ class Tradier5mRetentionAuditTests(unittest.TestCase):
         self.assertTrue(any("start advanced" in error for error in errors))
         self.assertTrue(any("end regressed" in error for error in errors))
 
+    def test_bootstrap_missing_native_remains_allowed_until_first_bar(self):
+        missing = {"rows": 0}
+        self.assertEqual(
+            _retention_errors("NEW", missing, None, allow_missing_native=True),
+            [],
+        )
+        self.assertEqual(
+            _retention_errors(
+                "NEW",
+                missing,
+                {"rows": 0, "start": None, "end": None},
+                allow_missing_native=True,
+            ),
+            [],
+        )
+
     def test_source_rejects_duplicate_or_unsorted_timestamps(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "MU_5m.json"

@@ -51,6 +51,7 @@ $PY tools/tradier_5m_retention_audit.py \
   --symbols-file symbols_tradier.json \
   --ledger "$RETENTION_LEDGER" \
   --report "$COVERAGE_REPORT" \
+  --source-only \
   --allow-missing-native
 
 echo "[$(date -u +%T)] Step 3a: Tradier 15m append (3 days back)"
@@ -77,6 +78,8 @@ $PY tools/tradier_5m_retention_audit.py \
   --symbols-file symbols_tradier.json \
   --ledger "$RETENTION_LEDGER" \
   --report "$COVERAGE_REPORT" \
+  --source-only \
+  --allow-missing-native \
   --update-ledger
 
 if [ "$APPEND_ERRORS" -ne 0 ]; then
@@ -96,6 +99,7 @@ echo "[$(date -u +%T)] Step 6: publish final native/interpolated NPZ coverage"
 $PY tools/tradier_5m_retention_audit.py \
   --symbols-file symbols_tradier.json \
   --ledger "$RETENTION_LEDGER" \
-  --report "$COVERAGE_REPORT"
+  --report "$COVERAGE_REPORT" \
+  --allow-missing-native
 
 echo "=== [$(date -u +%FT%TZ)] refresh_indicators_daily END ==="

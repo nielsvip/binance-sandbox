@@ -841,6 +841,9 @@ The non-negotiable rules are:
    invalid merely because its older execution history is interpolated.
 6. For a fixed symbol/history endpoint, the native bar count cannot fall after refresh. A
    decrease is a retention regression and blocks regeneration/promotion.
+7. Daily refresh uses a source-only retention preflight before rebuilding stale NPZs, followed
+   by a full provenance audit after regeneration. This avoids the circular failure where an old
+   NPZ lacking provenance prevents the rebuild that adds provenance.
 
 `backtest_v8_precompute.py` implements the hybrid merge and
 `tools/backtest_data_contract.py` audits/discloses `synthetic_5m_pct`.

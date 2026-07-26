@@ -30,6 +30,19 @@ the `synthetic_5m` provenance array. Successful post-ingestion state updates:
 The coverage report includes native source rows/range and NPZ native versus
 interpolated rows/ranges per symbol.
 
+The daily job uses two distinct gates:
+
+1. A source-only preflight protects the append-only native archive even when an
+   older derived NPZ predates provenance metadata.
+2. After download and regeneration, the full audit requires NPZ provenance and
+   validates the containing-15m parent lag. A stale derived file therefore cannot
+   prevent its own repair, but it cannot pass the final gate.
+
+On 2026-07-26 the full source preflight covered 224 Tradier symbols: 209 already
+had native archives totaling 6,229,299 rows, and 15 not-yet-available native
+archives were explicitly reported as warnings. Once a symbol has collected its
+first native bar, disappearance or shrinkage becomes a hard failure.
+
 `append_klines_tail.py`, `tradier_klines_append.py`, and
 `download_stock_klines_5m.py` preserve existing rows and use atomic writes.
 `ez_disk_cleanup.py` explicitly disables all kline deletion.
