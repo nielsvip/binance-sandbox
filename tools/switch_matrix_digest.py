@@ -405,6 +405,69 @@ def load_latest_ladder_walk_forward(
     return out
 
 
+def load_latest_ladder_retunes() -> list[dict]:
+    """Latest frozen exposure-retune artifact for every discovered symbol/side.
+
+    These are vector-first research rows.  They are deliberately kept outside
+    the authoritative matrix tables, but exposing them here prevents a useful
+    top/bottom-cohort campaign from disappearing from the progress digest.
+    """
+    root = REPORTS / "vec_research"
+    if not root.exists():
+        return []
+    newest: dict[str, dict] = {}
+    directories = sorted(
+        root.glob("ladder_exposure_retune_*_*_*"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for directory in directories:
+        path = directory / "result.json"
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        manifest = payload.get("manifest") or {}
+        symbol = str(manifest.get("symbol") or "").upper()
+        side = str(manifest.get("side") or "").upper()
+        if not symbol or side not in {"LONG", "SHORT"}:
+            continue
+        key = f"{symbol}_{side}"
+        if key in newest:
+            continue
+        payload["_artifact"] = str(directory.relative_to(BASE))
+        payload["_key"] = key
+        newest[key] = payload
+
+    exact_by_key: dict[str, dict] = {}
+    exact_dirs = sorted(
+        root.glob("v8_exact_ladder_replay_*_*_*"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for directory in exact_dirs:
+        parts = directory.name.rsplit("_", 2)
+        if len(parts) != 3:
+            continue
+        key = f"{parts[-2].upper()}_{parts[-1].upper()}"
+        if key in exact_by_key:
+            continue
+        try:
+            exact_by_key[key] = json.loads(
+                (directory / "run_summary.json").read_text()
+            )
+        except (OSError, json.JSONDecodeError):
+            continue
+    for key, payload in newest.items():
+        exact = exact_by_key.get(key)
+        source_name = Path(str((exact or {}).get("source_artifact") or "")).name
+        artifact_name = Path(str(payload.get("_artifact") or "")).name
+        payload["_exact"] = (
+            exact if exact and source_name and source_name == artifact_name else None
+        )
+    return [newest[key] for key in sorted(newest)]
+
+
 def load_tradier_5m_coverage() -> dict:
     """Native/interpolated execution provenance produced by the retention audit."""
     path = REPORTS / "tradier_5m_coverage_latest.json"
@@ -629,6 +692,7 @@ def main() -> None:
     robust_walk_forward = load_latest_robust_walk_forward(keys)
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
+    ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
     coverage_symbols = coverage_5m.get("symbols", {})
@@ -1016,6 +1080,72 @@ def main() -> None:
         "and exact signal/fill/accounting parity. It remains research-only because the "
         "campaign explicitly sets `promotion_allowed=false`. VT fails frozen OOS; HAO "
         "remains data-quarantined.",
+        "",
+        "## Top-10 ladder exposure retune",
+        "",
+        "> Frozen nested-OOS research. Aggregate exposure can hide unstable folds; a row "
+        "is not promotable unless every fold also passes the fixed-control, causality, "
+        "capacity, reclaim, and exposure gates.",
+        "",
+        "| key | strategy | B&H | multiple | identical control | alpha control | TIM | "
+        "fold TIM | fills | clamps | exact | verdict |",
+        "|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|---|",
+    ]
+    if not ladder_retunes:
+        lines.append("| — | — | — | — | — | — | — | — | — | — | — | NO ARTIFACTS |")
+    for payload in ladder_retunes:
+        aggregate = payload.get("frozen_oos_aggregate") or {}
+        folds = payload.get("outer_folds") or []
+        fold_tim = " / ".join(
+            fmt(
+                (row.get("validation_metrics") or row).get(
+                    "exposure_weighted_tim_pct_row_weighted",
+                    (row.get("validation_metrics") or row).get(
+                        "exposure_weighted_tim_pct",
+                        (row.get("validation_metrics") or row).get("weighted_tim_pct"),
+                    ),
+                ),
+                2,
+                "%",
+            )
+            for row in folds
+        ) or "—"
+        exact = payload.get("_exact")
+        exact_ok = bool(
+            exact
+            and exact.get("status") == "PASS"
+            and exact.get("signal_parity") is True
+            and (exact.get("audit") or {}).get("status") == "PASS"
+        )
+        strict = bool(aggregate.get("vector_survivor"))
+        relaxed = bool(aggregate.get("relaxed_bh_survivor"))
+        if strict and exact_ok:
+            verdict = "EXACT PASS; PROMOTION POLICY CHECK"
+        elif strict:
+            verdict = "VECTOR SURVIVOR; EXACT REQUIRED"
+        elif relaxed and exact_ok:
+            verdict = "RESEARCH EDGE; FOLD/CONTROL BLOCKED"
+        elif relaxed:
+            verdict = "RESEARCH EDGE; EXACT/FOLD BLOCKED"
+        else:
+            verdict = "REJECT / NO PROMOTION"
+        lines.append(
+            f"| {payload.get('_key', '—')} | "
+            f"{fmt(aggregate.get('capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(aggregate.get('bh_capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(aggregate.get('strategy_bh_multiple'), 3)}× | "
+            f"{fmt(aggregate.get('same_control_capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(aggregate.get('delta_vs_same_control_pp_sum'), 3, 'pp')} | "
+            f"{fmt(aggregate.get('exposure_weighted_tim_pct_row_weighted'), 2, '%')} | "
+            f"{fold_tim} | {fmt((aggregate.get('fill_ratio') or 0) * 100, 1, '%')} | "
+            f"{aggregate.get('clamp_count', '—')} | "
+            f"{'PASS' if exact_ok else ('FAIL' if exact else '—')} | {verdict} |"
+        )
+    lines += [
+        "",
+        "The retune keeps exits fixed at completed-4h E02 N=30. It changes only the "
+        "bounded ladder curve/trigger semantics, so alpha against the identical control "
+        "does not come from a different exit or a different B&H budget.",
         "",
         "## Isolated vector research — not matrix evidence",
         "",

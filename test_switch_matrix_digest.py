@@ -113,6 +113,45 @@ def test_load_latest_partial_regime_walk_forward(tmp_path, monkeypatch):
     assert rows["VT_LONG"]["run_id"] == "vt-partial"
 
 
+def test_ladder_retune_exact_must_reference_same_source_artifact(
+    tmp_path, monkeypatch
+):
+    reports = tmp_path / "reports"
+    root = reports / "vec_research"
+    mu = root / "ladder_exposure_retune_1_MU_LONG"
+    dino = root / "ladder_exposure_retune_2_DINO_LONG"
+    mu.mkdir(parents=True)
+    dino.mkdir()
+    (mu / "result.json").write_text(
+        json.dumps({"manifest": {"symbol": "MU", "side": "LONG"}})
+    )
+    (dino / "result.json").write_text(
+        json.dumps({"manifest": {"symbol": "DINO", "side": "LONG"}})
+    )
+    stale_mu_exact = root / "v8_exact_ladder_replay_3_MU_LONG"
+    dino_exact = root / "v8_exact_ladder_replay_4_DINO_LONG"
+    stale_mu_exact.mkdir()
+    dino_exact.mkdir()
+    (stale_mu_exact / "run_summary.json").write_text(
+        json.dumps(
+            {
+                "source_artifact": str(root / "band_ladder_walkforward_old_MU_LONG"),
+                "status": "PASS",
+            }
+        )
+    )
+    (dino_exact / "run_summary.json").write_text(
+        json.dumps({"source_artifact": str(dino), "status": "PASS"})
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    rows = {row["_key"]: row for row in digest.load_latest_ladder_retunes()}
+
+    assert rows["MU_LONG"]["_exact"] is None
+    assert rows["DINO_LONG"]["_exact"]["status"] == "PASS"
+
+
 def test_dc_low4_below_bh_is_diagnostic_gray_verdict():
     row = {
         "validation_status": "PASS",

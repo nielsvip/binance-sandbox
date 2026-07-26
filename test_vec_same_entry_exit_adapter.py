@@ -7,8 +7,11 @@ from tools.vec_same_entry_exit_adapter import (
     StaticExitBook,
     WtMtfParams,
     _entry_schedule_hash,
+    build_donchian_book,
     build_wt_mtf_book,
+    e02_grid,
     simulate,
+    structural_grid,
 )
 
 
@@ -75,6 +78,50 @@ def test_static_book_never_crosses_side_or_fires_flat():
     assert book.update(1, active=True).reason == "TEST_EXIT"
 
 
+def test_e02_grid_is_exact_bounded_contract():
+    rows = e02_grid()
+    assert len(rows) == 3 * 7 * 4
+    assert {row["timeframe"] for row in rows} == {"1h", "4h", "D"}
+    assert {row["lookback"] for row in rows} == {10, 15, 20, 30, 40, 55, 80}
+    assert {row["profit_gate_pct"] for row in rows} == {0.0, 0.25, 0.5, 1.0}
+    assert all("5m" not in str(row) for row in rows)
+
+
+def test_completed_donchian_book_is_causal_and_side_mirrored():
+    n = 120
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    low = np.full(n, 10.0)
+    high = np.full(n, 20.0)
+    close = np.full(n, 15.0)
+    close[10] = 9.0
+    close[11] = 21.0
+    data = SimpleNamespace(
+        ts=ts,
+        high=high,
+        low=low,
+        close=close,
+    )
+    htf = SimpleNamespace(
+        event_index=np.arange(n, dtype=np.int64),
+        source_ts=ts - 1,
+        high=high,
+        low=low,
+        close=close,
+    )
+    long_book = build_donchian_book(
+        data, {"1h": htf}, timeframe="1h", lookback=10, side="LONG"
+    )
+    short_book = build_donchian_book(
+        data, {"1h": htf}, timeframe="1h", lookback=10, side="SHORT"
+    )
+    assert np.flatnonzero(long_book.events).tolist() == [10]
+    assert np.flatnonzero(short_book.events).tolist() == [11]
+    assert long_book.update(10, active=True).reclaim_reference == 20.0
+    assert short_book.update(11, active=True).reclaim_reference == 10.0
+    assert long_book.update(10, active=True).source_timestamps["1h"] < ts[10]
+    assert short_book.update(11, active=True).source_timestamps["1h"] < ts[11]
+
+
 def test_entry_schedule_hash_changes_only_when_entry_schedule_changes():
     data = SimpleNamespace(ts=np.array([1, 2, 3], dtype=np.int64))
     curve = SimpleNamespace()
@@ -102,6 +149,25 @@ def test_entry_schedule_hash_changes_only_when_entry_schedule_changes():
     assert _entry_schedule_hash(data, first, curve, 0, 3) != _entry_schedule_hash(
         data, second, curve, 0, 3
     )
+
+
+def test_structural_registry_grid_is_complete_and_hour_normalized():
+    rows = structural_grid()
+    assert len(rows) == 768
+    observed = {
+        (
+            params.arm_tf,
+            params.confirm_tf,
+            params.rebound_atr,
+            params.prebreak_lookback,
+            wait_hours,
+            profit_gate,
+            params.max_wait_1h,
+        )
+        for params, profit_gate, wait_hours in rows
+    }
+    assert ("1h", "15m", 0.5, 3, 12, 0.25, 48) in observed
+    assert ("4h", "1h", 4.0, 10, 48, 1.0, 48) in observed
 
 
 def test_partial_clip_keeps_runner_and_reclaims_clip():
@@ -151,3 +217,6 @@ def test_partial_clip_keeps_runner_and_reclaims_clip():
     assert result["clip_reclaim_reentries"] == 1
     assert result["runner_exit_fills"] == 0
     assert result["clip_obligations_unfilled_at_end"] == 0
+    assert result["insolvent"] is False
+    assert result["entry_capacity_breach"] is False
+    assert result["peak_post_fill_notional_usd"] <= 16_000.0

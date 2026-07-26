@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Parallel cohort wrapper for ``vec_same_entry_exit_adapter``.
 
-The input is the completed ENTRY_LADDER_GREEN path-fleet summary, which is the
-authoritative mapping from frozen top-LONG cohort symbols to their artifacts.
+Inputs are completed ENTRY_LADDER_GREEN path-fleet summaries. LONG and SHORT
+artifacts are read from their own manifests and written to side-keyed outputs;
+returns and controls are never pooled.
 """
 from __future__ import annotations
 
@@ -31,7 +32,11 @@ def _run_one(
 ) -> dict[str, Any]:
     symbol = str(row["symbol"]).upper()
     artifact = Path(row["artifact"])
-    out = output_root / f"{symbol}_LONG"
+    source = json.loads((artifact / "result.json").read_text())
+    side = str(source["manifest"]["side"]).upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError(f"{symbol}: invalid artifact side {side!r}")
+    out = output_root / f"{symbol}_{side}"
     cmd = [
         sys.executable,
         str(ROOT / "tools" / "vec_same_entry_exit_adapter.py"),
@@ -54,6 +59,7 @@ def _run_one(
     if proc.returncode:
         return {
             "symbol": symbol,
+            "side": side,
             "status": "ERROR",
             "returncode": proc.returncode,
             "stderr": proc.stderr[-4000:],
@@ -62,6 +68,7 @@ def _run_one(
     best = payload["candidates"][0] if payload["candidates"] else None
     return {
         "symbol": symbol,
+        "side": side,
         "status": "OK",
         "artifact": str(out),
         "candidate_count": payload["candidate_count"],
@@ -78,7 +85,13 @@ def _run_one(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--control-summary", type=Path, required=True)
+    ap.add_argument(
+        "--control-summary",
+        type=Path,
+        required=True,
+        action="append",
+        help="repeat for separate LONG and SHORT frozen-control summaries",
+    )
     ap.add_argument("--npz-dir", type=Path, required=True)
     ap.add_argument("--output-root", type=Path, required=True)
     ap.add_argument("--families", default="WT_MTF,STRUCTURAL_WT")
@@ -89,10 +102,15 @@ def main() -> int:
     ap.add_argument("--exposure-max-pct", type=float, default=80.0)
     ap.add_argument("--workers", type=int, default=3)
     args = ap.parse_args()
-    source = json.loads(args.control_summary.read_text())
-    rows = [
-        row for row in source["symbols"] if row.get("status") == "CONTROL_ROW"
-    ]
+    rows = []
+    for summary in args.control_summary:
+        source = json.loads(summary.read_text())
+        rows.extend(
+            row
+            for row in source["symbols"]
+            if row.get("status") in {"CONTROL_ROW", "CONTROL_FAILURE"}
+            and row.get("artifact")
+        )
     args.output_root.mkdir(parents=True, exist_ok=False)
     results: list[dict[str, Any]] = []
     with concurrent.futures.ThreadPoolExecutor(
@@ -117,7 +135,7 @@ def main() -> int:
             print(json.dumps(result, sort_keys=True), flush=True)
     results.sort(key=lambda row: row["symbol"])
     survivor_symbols = [
-        row["symbol"]
+        f"{row['symbol']}_{row['side']}"
         for row in results
         if row["status"] == "OK" and int(row["survivor_count"]) > 0
     ]
@@ -126,7 +144,9 @@ def main() -> int:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "matrix_written": False,
         "promotion_allowed": False,
-        "source_control_summary": str(args.control_summary.resolve()),
+        "source_control_summaries": [
+            str(path.resolve()) for path in args.control_summary
+        ],
         "families": args.families.split(","),
         "fold_mode": args.fold_mode,
         "exposure_survivor_gate_pct": [

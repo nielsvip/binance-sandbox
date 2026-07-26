@@ -10,22 +10,26 @@ $16k hard capacity, costs, and persistent reclaim obligation.
 Implemented exit books:
 
 * ``E02``: completed 4h opposite Donchian close (same-adapter control);
+* ``E02_GRID``: completed 1h/4h/D opposite Donchian close with a bounded
+  lookback/profit-gate sweep; it never uses a 5m/DC-low churn stop;
 * ``WT_MTF``: completed-TF WaveTrend exhaustion/rollover vote;
 * ``STRUCTURAL_WT``: completed 4h lower-low arm followed by a later 1h lower
   price/WT1 top and rollover.  It never treats ``dc_low4`` as a profit exit.
 
-LONG and SHORT accounting are isolated.  The first campaign intentionally runs
-LONG only because the path-fleet's accepted ladder cohort is currently
-LONG-only.  Output is VEC research evidence and cannot write the switch matrix
-or live configuration.
+LONG and SHORT accounting are isolated and consume separate frozen artifacts.
+Output is VEC research evidence and cannot write the switch matrix or live
+configuration.
 """
 from __future__ import annotations
 
 import argparse
+import ctypes
 import dataclasses
 import hashlib
 import json
 import math
+import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +49,104 @@ from vec_paths.structural_wt_retest_exit import (  # noqa: E402
     StructuralWtParams,
     StructuralWtRetestExitBook,
 )
+
+STRUCTURAL_SCAN_SOURCE = ROOT / "tools" / "vec_same_entry_structural_scan.c"
+_STRUCTURAL_SCAN_LIBRARY: ctypes.CDLL | None = None
+
+
+class _StructuralScanMetrics(ctypes.Structure):
+    _fields_ = [
+        ("capital_return_pct", ctypes.c_double),
+        ("bh_capital_return_pct", ctypes.c_double),
+        ("exposure_weighted_tim_pct", ctypes.c_double),
+        ("binary_tim_pct", ctypes.c_double),
+        ("max_drawdown_account_pct", ctypes.c_double),
+        ("minimum_account_equity_usd", ctypes.c_double),
+        ("peak_post_fill_notional_usd", ctypes.c_double),
+        ("requested_notional_usd", ctypes.c_double),
+        ("filled_notional_usd", ctypes.c_double),
+        ("insolvent", ctypes.c_int),
+        ("entry_capacity_breach", ctypes.c_int),
+        ("signals", ctypes.c_int),
+        ("rejected_profit", ctypes.c_int),
+        ("exit_fills", ctypes.c_int),
+        ("entry_fills", ctypes.c_int),
+        ("ladder_reentries", ctypes.c_int),
+        ("reclaim_reentries", ctypes.c_int),
+        ("clamp_count", ctypes.c_int),
+        ("future_htf_count", ctypes.c_int),
+        ("bars_flat_beyond_reclaim", ctypes.c_int),
+        ("rows", ctypes.c_int),
+    ]
+
+
+def _structural_scan_library() -> ctypes.CDLL:
+    """Build/load the small compiled scanner keyed by exact C source."""
+    global _STRUCTURAL_SCAN_LIBRARY
+    if _STRUCTURAL_SCAN_LIBRARY is not None:
+        return _STRUCTURAL_SCAN_LIBRARY
+    digest = hashlib.sha256(STRUCTURAL_SCAN_SOURCE.read_bytes()).hexdigest()[:16]
+    library_path = Path("/tmp") / f"vec_same_entry_structural_{digest}.so"
+    if not library_path.exists():
+        temporary = library_path.with_name(
+            f"{library_path.name}.{os.getpid()}.tmp"
+        )
+        subprocess.run(
+            [
+                os.environ.get("CC", "cc"),
+                "-O3",
+                "-std=c11",
+                "-fPIC",
+                "-shared",
+                str(STRUCTURAL_SCAN_SOURCE),
+                "-o",
+                str(temporary),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        os.replace(temporary, library_path)
+    library = ctypes.CDLL(str(library_path))
+    i64 = np.ctypeslib.ndpointer(dtype=np.int64, ndim=1, flags="C_CONTIGUOUS")
+    f64 = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
+    u8 = np.ctypeslib.ndpointer(dtype=np.uint8, ndim=1, flags="C_CONTIGUOUS")
+    library.vec_same_entry_structural_scan.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        i64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        u8,
+        i64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        u8,
+        i64,
+        f64,
+        f64,
+        f64,
+        f64,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(_StructuralScanMetrics),
+    ]
+    library.vec_same_entry_structural_scan.restype = ctypes.c_int
+    _STRUCTURAL_SCAN_LIBRARY = library
+    return library
 
 
 @dataclasses.dataclass(frozen=True)
@@ -159,6 +261,70 @@ def build_e02_book(
         np.asarray(signals.exit_ref, dtype=np.float64),
         source_by_row,
     )
+
+
+def build_donchian_book(
+    data: Any,
+    htfs: dict[str, Any],
+    *,
+    timeframe: str,
+    lookback: int,
+    side: str,
+) -> StaticExitBook:
+    """Vectorize one causal completed-HTF Donchian exit book.
+
+    LONG exits only after a completed close below the *prior* channel low;
+    SHORT is the exact mirror above the prior channel high. The opposite prior
+    channel edge is retained as the resting reclaim/top reference. No 5m
+    series, interpolation shortcut, or first ``dc_low4`` break path is used.
+    """
+    if timeframe not in {"1h", "4h", "D"}:
+        raise ValueError("Donchian timeframe must be 1h, 4h, or D")
+    if lookback not in {10, 15, 20, 30, 40, 55, 80}:
+        raise ValueError("unsupported bounded Donchian lookback")
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError("side must be LONG or SHORT")
+    h = htfs[timeframe]
+    prior_low = ladder.top._rolling_prior(h.low, lookback, "min")
+    prior_high = ladder.top._rolling_prior(h.high, lookback, "max")
+    completed_event = (
+        h.close < prior_low if side == "LONG" else h.close > prior_high
+    )
+    reclaim_reference = prior_high if side == "LONG" else prior_low
+    events, references = ladder.top._map_events(
+        len(data.ts), h, completed_event, reclaim_reference
+    )
+    sources = _source_map(h)
+    source_by_row = {
+        int(row): {timeframe: int(sources[row])}
+        for row in np.flatnonzero(events)
+        if int(row) in sources
+    }
+    for row, by_tf in source_by_row.items():
+        if by_tf[timeframe] > int(data.ts[row]):
+            raise RuntimeError(
+                f"future {timeframe} Donchian source at row {row}"
+            )
+    return StaticExitBook(
+        f"E02_DONCHIAN_{timeframe}_N{lookback}",
+        np.asarray(events, dtype=np.uint8),
+        np.asarray(references, dtype=np.float64),
+        source_by_row,
+    )
+
+
+def e02_grid() -> list[dict[str, Any]]:
+    return [
+        {
+            "timeframe": timeframe,
+            "lookback": lookback,
+            "profit_gate_pct": profit_gate,
+        }
+        for timeframe in ("1h", "4h", "D")
+        for lookback in (10, 15, 20, 30, 40, 55, 80)
+        for profit_gate in (0.0, 0.25, 0.5, 1.0)
+    ]
 
 
 def build_wt_mtf_book(
@@ -390,6 +556,8 @@ def simulate(
     exit_fill_row = -1
     pending: dict[str, Any] | None = None
     peak_equity = ladder.ACCOUNT_EQUITY
+    minimum_equity = ladder.ACCOUNT_EQUITY
+    peak_post_fill_notional = 0.0
     max_dd = requested = filled = weighted = 0.0
     held = clamps = entry_fills = exit_fills = reclaim = lower = 0
     signals_seen = rejected_profit = future_sources = beyond = 0
@@ -495,6 +663,10 @@ def simulate(
                     )
                     cash -= side_sign * actual + commission_rate * actual
                     qty += side_sign * add_qty
+                    post_fill_notional = abs(qty) * px
+                    peak_post_fill_notional = max(
+                        peak_post_fill_notional, post_fill_notional
+                    )
                     entry_fills += 1
                     lower += int(
                         pending["reason"] in {"ladder_lower", "ladder_higher"}
@@ -528,6 +700,9 @@ def simulate(
                 clamps += int(actual + 1e-9 < target)
                 cash -= side_sign * actual + commission_rate * actual
                 qty = side_sign * actual / reclaim_px
+                peak_post_fill_notional = max(
+                    peak_post_fill_notional, abs(qty) * reclaim_px
+                )
                 average_entry = reclaim_px
                 entry_fills += 1
                 reclaim += 1
@@ -571,6 +746,9 @@ def simulate(
                 )
                 cash -= side_sign * actual + commission_rate * actual
                 qty += side_sign * add_qty
+                peak_post_fill_notional = max(
+                    peak_post_fill_notional, abs(qty) * reclaim_px
+                )
                 entry_fills += 1
                 reclaim += 1
                 clip_reclaims += 1
@@ -580,6 +758,7 @@ def simulate(
         clip_obligations = remaining_clip_obligations
 
         equity = mark_equity(close)
+        minimum_equity = min(minimum_equity, equity)
         peak_equity = max(peak_equity, equity)
         if peak_equity > 0:
             max_dd = max(max_dd, 100.0 * (peak_equity - equity) / peak_equity)
@@ -684,6 +863,7 @@ def simulate(
         cash += side_sign * (
             notional - side_sign * commission_rate * notional
         )
+    minimum_equity = min(minimum_equity, cash)
     pnl = cash - ladder.ACCOUNT_EQUITY
     bh_entry = float(data.open[left]) * (
         1.0 + side_sign * slippage_rate
@@ -699,11 +879,17 @@ def simulate(
     return {
         "capital_return_pct": 100.0 * pnl / ladder.BASE_UNIT,
         "bh_capital_return_pct": 100.0 * bh_pnl / ladder.BASE_UNIT,
-        "strategy_bh_multiple": pnl / bh_pnl if abs(bh_pnl) > 1e-12 else None,
+        "strategy_bh_multiple": pnl / bh_pnl if bh_pnl > 1e-12 else None,
         "alpha_vs_bh_pp": 100.0 * (pnl - bh_pnl) / ladder.BASE_UNIT,
         "binary_tim_pct": 100.0 * held / rows,
         "exposure_weighted_tim_pct": 100.0 * weighted / rows,
         "max_drawdown_account_pct": max_dd,
+        "minimum_account_equity_usd": minimum_equity,
+        "insolvent": bool(minimum_equity <= 0.0),
+        "peak_post_fill_notional_usd": peak_post_fill_notional,
+        "entry_capacity_breach": bool(
+            peak_post_fill_notional > ladder.CAPACITY + 1e-6
+        ),
         "signals": signals_seen,
         "rejected_by_profit_gate": rejected_profit,
         "exit_fills": exit_fills,
@@ -716,6 +902,7 @@ def simulate(
         "reclaim_reentries": reclaim,
         "requested_notional_usd": requested,
         "filled_notional_usd": filled,
+        "fill_ratio": filled / requested if requested > 0 else 1.0,
         "clamp_count": clamps,
         "future_htf_source_count": future_sources,
         "bars_flat_beyond_reclaim": beyond,
@@ -766,17 +953,37 @@ def wt_grid() -> list[WtMtfParams]:
     return rows
 
 
-def structural_grid() -> list[StructuralWtParams]:
-    return [
-        StructuralWtParams(
-            rebound_atr=rebound,
-            prebreak_lookback=lookback,
-            max_wait_1h=wait,
-        )
-        for rebound in (0.25, 0.5, 1.0)
-        for lookback in (4, 6, 10)
-        for wait in (12, 20, 30)
-    ]
+def structural_grid() -> list[tuple[StructuralWtParams, float, int]]:
+    """Exact registry grid: 768 coherent structural/profit blocks.
+
+    ``StructuralWtParams.max_wait_1h`` is historically named but counts
+    completed confirmation bars. Convert declared wall-clock hours to the
+    selected retest timeframe so 12h means 48 completed 15m bars or 12
+    completed 1h bars.
+    """
+    rows: list[tuple[StructuralWtParams, float, int]] = []
+    for arm_tf in ("1h", "4h"):
+        for confirm_tf in ("15m", "1h"):
+            bars_per_hour = 4 if confirm_tf == "15m" else 1
+            for rebound in (0.5, 1.0, 2.0, 4.0):
+                for lookback in (3, 4, 6, 10):
+                    for wait_hours in (12, 20, 30, 48):
+                        for profit_gate in (0.25, 0.5, 1.0):
+                            rows.append(
+                                (
+                                    StructuralWtParams(
+                                        arm_tf=arm_tf,
+                                        confirm_tf=confirm_tf,
+                                        rebound_atr=rebound,
+                                        prebreak_lookback=lookback,
+                                        max_wait_1h=wait_hours * bars_per_hour,
+                                    ),
+                                    profit_gate,
+                                    wait_hours,
+                                )
+                            )
+    assert len(rows) == 768
+    return rows
 
 
 def partial_wt_grid() -> list[tuple[WtMtfParams, float]]:
@@ -831,8 +1038,8 @@ def _fold_contexts(
     manifest = source["manifest"]
     symbol = str(manifest["symbol"]).upper()
     side = str(manifest["side"]).upper()
-    if side != "LONG":
-        raise ValueError("current accepted path-fleet cohort is LONG-only")
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError(f"unsupported frozen control side: {side!r}")
     data = ladder.top._load_execution(
         symbol,
         npz_dir,
@@ -883,7 +1090,7 @@ def _fold_contexts(
 
 def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     total_rows = sum(int(row["rows"]) for row in rows)
-    return {
+    result = {
         "folds": len(rows),
         "capital_return_pct_sum": sum(float(r["capital_return_pct"]) for r in rows),
         "bh_capital_return_pct_sum": sum(
@@ -896,6 +1103,25 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "max_drawdown_account_pct_max": max(
             (float(r["max_drawdown_account_pct"]) for r in rows), default=0.0
         ),
+        "minimum_account_equity_usd": min(
+            (float(r["minimum_account_equity_usd"]) for r in rows),
+            default=ladder.ACCOUNT_EQUITY,
+        ),
+        "insolvent_folds": sum(bool(r["insolvent"]) for r in rows),
+        "entry_capacity_breach": any(
+            bool(r["entry_capacity_breach"]) for r in rows
+        ),
+        "peak_post_fill_notional_usd_max": max(
+            (float(r["peak_post_fill_notional_usd"]) for r in rows),
+            default=0.0,
+        ),
+        "requested_notional_usd": sum(
+            float(r["requested_notional_usd"]) for r in rows
+        ),
+        "filled_notional_usd": sum(
+            float(r["filled_notional_usd"]) for r in rows
+        ),
+        "clamp_count": sum(int(r["clamp_count"]) for r in rows),
         "exit_fills": sum(int(r["exit_fills"]) for r in rows),
         "partial_exit_fills": sum(
             int(r.get("partial_exit_fills", 0)) for r in rows
@@ -920,6 +1146,12 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
             r["frozen_entry_schedule_sha256"] for r in rows
         ],
     }
+    result["fill_ratio"] = (
+        result["filled_notional_usd"] / result["requested_notional_usd"]
+        if result["requested_notional_usd"] > 0
+        else 1.0
+    )
+    return result
 
 
 def screen_artifact(
@@ -978,6 +1210,34 @@ def screen_artifact(
             ),
             **extra,
         }
+        row["fold_evidence"] = [
+            {
+                "fold": int(contexts[index]["fold"]),
+                "validation": list(contexts[index]["validation"]),
+                "strategy_return_pct": float(candidate["capital_return_pct"]),
+                "bh_return_pct": float(candidate["bh_capital_return_pct"]),
+                "same_entry_e02_return_pct": float(
+                    control_folds[index]["capital_return_pct"]
+                ),
+                "alpha_vs_bh_pp": float(candidate["capital_return_pct"])
+                - float(candidate["bh_capital_return_pct"]),
+                "alpha_vs_same_entry_e02_pp": float(
+                    candidate["capital_return_pct"]
+                )
+                - float(control_folds[index]["capital_return_pct"]),
+                "weighted_tim_pct": float(
+                    candidate["exposure_weighted_tim_pct"]
+                ),
+                "future_htf_source_count": int(
+                    candidate["future_htf_source_count"]
+                ),
+                "bars_flat_beyond_reclaim": int(
+                    candidate["bars_flat_beyond_reclaim"]
+                ),
+                "insolvent": bool(candidate["insolvent"]),
+            }
+            for index, candidate in enumerate(fold_rows)
+        ]
         if fold_mode == "nested":
             discovery = _aggregate(fold_rows[:-1])
             validation = _aggregate(fold_rows[-1:])
@@ -1002,9 +1262,55 @@ def screen_artifact(
                     float(validation["capital_return_pct_sum"])
                     - float(control_validation["capital_return_pct_sum"])
                 ),
+                "robust_discovery_all_folds": all(
+                    evidence["alpha_vs_bh_pp"] > 0
+                    and evidence["alpha_vs_same_entry_e02_pp"] > 0
+                    and not evidence["insolvent"]
+                    for evidence in row["fold_evidence"][:-1]
+                ),
+                "robust_validation_fold": (
+                    row["fold_evidence"][-1]["alpha_vs_bh_pp"] > 0
+                    and row["fold_evidence"][-1][
+                        "alpha_vs_same_entry_e02_pp"
+                    ]
+                    > 0
+                    and not row["fold_evidence"][-1]["insolvent"]
+                ),
             }
         return row
 
+    if "E02_GRID" in families:
+        # Vectorize the expensive rolling-channel discovery once per TF/N.
+        # Profit gates reuse the same immutable event arrays.
+        books = {
+            (params["timeframe"], params["lookback"]): build_donchian_book(
+                data,
+                htfs,
+                timeframe=str(params["timeframe"]),
+                lookback=int(params["lookback"]),
+                side=side,
+            )
+            for params in e02_grid()
+        }
+        for params in e02_grid():
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    books[(params["timeframe"], params["lookback"])],
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=float(params["profit_gate_pct"]),
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row("EXIT_E02_DONCHIAN", dict(params), fold_rows)
+            )
     if "WT_MTF" in families:
         for params in wt_grid():
             fold_rows = []
@@ -1029,7 +1335,7 @@ def screen_artifact(
                 )
             )
     if "STRUCTURAL_WT" in families:
-        for params in structural_grid():
+        for params, profit_gate, wait_hours in structural_grid():
             fold_rows = []
             for ctx in contexts:
                 fold_rows.append(
@@ -1045,15 +1351,18 @@ def screen_artifact(
                         commission,
                         slippage,
                         side=side,
-                        profit_gate_pct=0.5,
+                        profit_gate_pct=profit_gate,
                     )
                 )
             candidates.append(
                 candidate_row(
                     "EXIT_STRUCTURAL_WT_LOWER_TOP",
-                    dataclasses.asdict(params),
+                    {
+                        **dataclasses.asdict(params),
+                        "max_wait_hours": wait_hours,
+                    },
                     fold_rows,
-                    profit_gate_pct=0.5,
+                    profit_gate_pct=profit_gate,
                 )
             )
     if "PARTIAL_WT" in families:
@@ -1107,6 +1416,8 @@ def screen_artifact(
         and row["alpha_vs_same_entry_e02_pp"] > 0
         and row["metrics"]["future_htf_source_count"] == 0
         and row["metrics"]["bars_flat_beyond_reclaim"] == 0
+        and row["metrics"]["insolvent_folds"] == 0
+        and not row["metrics"]["entry_capacity_breach"]
     ]
     survivors = []
     frozen_discovery_winners: list[dict[str, Any]] = []
@@ -1115,6 +1426,9 @@ def screen_artifact(
             family_rows = [row for row in candidates if row["family"] == family]
             family_rows.sort(
                 key=lambda row: (
+                    not bool(
+                        row["nested"]["robust_discovery_all_folds"]
+                    ),
                     not (
                         exposure_min_pct
                         <= float(
@@ -1143,6 +1457,15 @@ def screen_artifact(
             and row["nested"]["discovery_alpha_vs_same_entry_e02_pp"] > 0
             and row["nested"]["validation_alpha_vs_bh_pp"] > 0
             and row["nested"]["validation_alpha_vs_same_entry_e02_pp"] > 0
+            and row["nested"]["robust_discovery_all_folds"]
+            and row["nested"]["robust_validation_fold"]
+            and exposure_min_pct
+            <= float(
+                row["nested"]["discovery"][
+                    "exposure_weighted_tim_pct_row_weighted"
+                ]
+            )
+            <= exposure_max_pct
             and exposure_min_pct
             <= float(
                 row["nested"]["validation"][
@@ -1152,6 +1475,8 @@ def screen_artifact(
             <= exposure_max_pct
             and row["metrics"]["future_htf_source_count"] == 0
             and row["metrics"]["bars_flat_beyond_reclaim"] == 0
+            and row["metrics"]["insolvent_folds"] == 0
+            and not row["metrics"]["entry_capacity_breach"]
         ]
     payload = {
         "tier": "VEC_RESEARCH_SAME_ENTRY_SCREEN",
@@ -1198,7 +1523,10 @@ def main() -> int:
     ap.add_argument(
         "--families",
         default="WT_MTF,STRUCTURAL_WT",
-        help="comma-separated WT_MTF, STRUCTURAL_WT, and/or PARTIAL_WT",
+        help=(
+            "comma-separated E02_GRID, WT_MTF, STRUCTURAL_WT, "
+            "and/or PARTIAL_WT"
+        ),
     )
     ap.add_argument(
         "--fold-mode", choices=("latest", "all", "nested"), default="latest"
@@ -1209,7 +1537,12 @@ def main() -> int:
     families = tuple(
         item.strip().upper() for item in args.families.split(",") if item.strip()
     )
-    invalid = set(families) - {"WT_MTF", "STRUCTURAL_WT", "PARTIAL_WT"}
+    invalid = set(families) - {
+        "E02_GRID",
+        "WT_MTF",
+        "STRUCTURAL_WT",
+        "PARTIAL_WT",
+    }
     if invalid:
         raise ValueError(f"unsupported families: {sorted(invalid)}")
     payload = screen_artifact(

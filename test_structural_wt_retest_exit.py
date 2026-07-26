@@ -119,6 +119,81 @@ def test_short_is_exact_mirror_and_state_is_side_isolated():
     assert book.state_snapshot("MU", "LONG")["phase"] == "TREND"
 
 
+def test_same_timeframe_arm_and_confirm_use_distinct_roles():
+    book = StructuralWtRetestExitBook(
+        StructuralWtParams(
+            arm_tf="1h",
+            confirm_tf="1h",
+            rebound_atr=0.5,
+            prebreak_lookback=3,
+            max_wait_1h=12,
+        )
+    )
+    history = [
+        _bar(1, 110, 100, 108, 60),
+        _bar(2, 112, 102, 110, 65),
+        _bar(3, 114, 104, 112, 70),
+    ]
+    for bar in history:
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=bar,
+            role="ARM",
+        )
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=bar,
+            role="CONFIRM",
+        )
+    arm = _bar(4, 111, 99, 100, 35)
+    assert (
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=arm,
+            role="ARM",
+        )
+        is None
+    )
+    assert (
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=arm,
+            role="CONFIRM",
+        )
+        is None
+    )
+    rebound = _bar(5, 109, 100, 108, 55)
+    adverse = _bar(6, 107, 99, 104, 50)
+    assert (
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=rebound,
+            role="CONFIRM",
+        )
+        is None
+    )
+    signal = book.update(
+        symbol="MU",
+        position_side="LONG",
+        active=True,
+        bar=adverse,
+        role="CONFIRM",
+    )
+    assert signal is not None
+    assert signal.retest_price == 109
+    assert signal.retest_wt1 == 55
+
+
 def test_flat_state_cancels_old_arm_but_keeps_completed_history():
     book = StructuralWtRetestExitBook(
         StructuralWtParams(prebreak_lookback=3)

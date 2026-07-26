@@ -1,7 +1,7 @@
 from tools.run_same_entry_exit_cohort import _run_one
 
 
-def test_runner_symbol_is_explicitly_long_only():
-    # The wrapper consumes only accepted LONG-control rows; it does not infer
-    # or fabricate a SHORT result from a LONG artifact.
-    assert "LONG" in _run_one.__doc__ if _run_one.__doc__ else True
+def test_runner_reads_side_from_frozen_artifact():
+    # Side is not an argument and therefore cannot be silently inverted by the
+    # cohort wrapper; _run_one reads it from the fingerprinted artifact.
+    assert "side" not in _run_one.__annotations__

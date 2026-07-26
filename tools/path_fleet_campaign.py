@@ -181,9 +181,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "frozen accepted ladder event/fill schedule",
         "E02 4h N=30",
-        "tools/vec_band_ladder_walkforward.py",
-        "ADAPTER_REQUIRED",
-        "Current runner re-selects its ladder when N changes; freeze identical entry fills first.",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Same-entry adapter freezes the selected ladder request hashes before "
+        "sweeping completed 1h/4h/D exits; dc_low4_5m is excluded.",
     ),
     PathFamily(
         "EXIT_STRUCTURAL_WT_LOWER_TOP",
