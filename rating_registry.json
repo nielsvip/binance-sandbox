@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T21:17:40.930057+00:00",
+  "timestamp": "2026-07-26T21:32:40.626710+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,12 +35,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "SANDUSDT",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
     },
     {
       "symbol": "SPXUSDT",
@@ -661,6 +655,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SANDUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BNBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -800,13 +800,7 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [
-    [
-      "SANDUSDT",
-      10.5,
-      0.04511437
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
