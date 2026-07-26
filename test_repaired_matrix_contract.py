@@ -58,6 +58,12 @@ class RepairedMatrixContractTests(unittest.TestCase):
             "real_closes": 0,
             "reentry_pending": 0,
             "reentry_violations": 0,
+            "sized_open_events": 1,
+            "max_requested_mult": 1,
+            "requested_fill_ratio": 1,
+            "size_clamp_count": 0,
+            "strategy_capacity_usd": 16000,
+            "max_open_notional": 2000,
         }
         trades = [{"entry_reason": "V8_LADDER_INITIAL_BH_SEED"}]
         with patch("backtest_data_contract.audit_npz", return_value=fake_data), patch(
@@ -65,6 +71,34 @@ class RepairedMatrixContractTests(unittest.TestCase):
         ), patch.object(psc, "matrix_contract_fingerprint", return_value="fp"):
             audit = psc.matrix_run_audit("MU", "LONG", trades, result)
         self.assertEqual(audit["status"], "INCOMPLETE_NO_REAL_CLOSE")
+
+    def test_capacity_clamps_are_stored_red_not_structurally_rejected(self):
+        fake_data = type(
+            "Contract",
+            (),
+            {"valid": True, "errors": (), "warnings": (), "stats": {}},
+        )()
+        structural = {"valid": True}
+        full_sizing = {"valid": False}
+        result = {
+            "real_closes": 10,
+            "reentry_pending": 0,
+            "reentry_violations": 0,
+            "sized_open_events": 10,
+            "max_requested_mult": 8,
+            "requested_fill_ratio": 0.5,
+            "size_clamp_count": 5,
+            "strategy_capacity_usd": 16000,
+            "max_open_notional": 15000,
+        }
+        trades = [{"entry_reason": "V8_LADDER_INITIAL_BH_SEED"}]
+        with patch("backtest_data_contract.audit_npz", return_value=fake_data), patch(
+            "backtest_data_contract.audit_ladder_result",
+            side_effect=[full_sizing, structural],
+        ), patch.object(psc, "matrix_contract_fingerprint", return_value="fp"):
+            audit = psc.matrix_run_audit("MU", "LONG", trades, result)
+        self.assertEqual(audit["status"], "PASS_WITH_CAPACITY_CLAMPS")
+        self.assertTrue(audit["capacity_respected"])
 
 
 if __name__ == "__main__":

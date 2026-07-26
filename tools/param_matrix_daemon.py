@@ -422,7 +422,12 @@ def main():
                 "--safe-contract refuses historical campaign; set "
                 "PSC_CAMPAIGN=stocks_repaired_20260725_<version>"
             )
-        contract = audit_npz(only[0], profile="ladder")
+        contract = audit_npz(
+            only[0],
+            str(psc.MATRIX_NPZ_DIR / f"{only[0]}.npz"),
+            profile="ladder",
+            start=psc.START,
+        )
         if not contract.valid:
             quarantine = SBX / "data" / "reports" / f"MATRIX_QUARANTINE_{only[0]}_{a.side}.json"
             quarantine.parent.mkdir(parents=True, exist_ok=True)

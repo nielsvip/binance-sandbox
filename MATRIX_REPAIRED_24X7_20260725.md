@@ -16,12 +16,15 @@ Those rows remain in SQLite as evidence, but the digest cannot count or rank the
 
 ## Current row contract
 
-Campaign: `stocks_repaired_20260725_c1`.
+Campaign: `stocks_repaired_20260725_c2`. The c1 rows are preserved as
+mutable-input diagnostics: the idle NPZ regeneration job changed their byte fingerprint while
+the campaign was running, so c1 can never count as current.
 
 A current row must have all of:
 
-1. timestamp on or after `2026-07-25T20:30:00Z`;
-2. exact SHA-256 contract fingerprint over symbol, side, NPZ, engine, Tradier manager,
+1. timestamp on or after `2026-07-26T04:15:00Z`;
+2. exact SHA-256 contract fingerprint over symbol, side, an immutable campaign NPZ snapshot,
+   fixed end-exclusive date (`2026-07-25`), engine, Tradier manager,
    WT/delta, MTF timing, re-entry and data-contract sources;
 3. `V8_LADDER_INITIAL_BH_SEED` as the first position;
 4. only the requested side opened;
@@ -39,6 +42,11 @@ $10,000 accounting capital. B&H deploys $2,000 and pays the same round-trip cost
 capacity remains $16,000 (8x the benchmark unit).
 
 ## S1 worker state
+
+Frozen inputs live under
+`data/matrix_npz/stocks_repaired_20260725_c2/{MU,VT}.npz`. Workers pass that directory
+explicitly to the engine; background regeneration of `backtest_v8/indicators` therefore cannot
+invalidate or alter a c2 row.
 
 The original `data/GRID_SUSPENDED` marker remains in place. It still prevents every legacy
 param/lab/vector/combo lane from launching.

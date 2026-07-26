@@ -26,8 +26,8 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 DB = BASE / "data" / "param_results_stocks.db"
-CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c1"
-CURRENT_ENGINE_CUTOFF = "2026-07-25T20:30:00Z"
+CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c2"
+CURRENT_ENGINE_CUTOFF = "2026-07-26T04:15:00Z"
 
 
 def key_columns(account):

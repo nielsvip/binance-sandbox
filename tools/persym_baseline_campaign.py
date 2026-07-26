@@ -470,13 +470,22 @@ def sym_years_and_bh(sym, start):
     formats) and years_since(START) lies for symbols whose data starts later (e.g.
     A.npz starts 2026-04) — gain/mo must be normalized by the ACTUAL span."""
     import numpy as np
-    p = SBX / "backtest_v8" / "indicators" / f"{sym}.npz"
+    p = (
+        MATRIX_NPZ_DIR / f"{sym}.npz"
+        if CAMPAIGN.startswith("stocks_repaired_20260725_c2")
+        else SBX / "backtest_v8" / "indicators" / f"{sym}.npz"
+    )
     try:
         z = np.load(p, allow_pickle=True)
         ts = z["timestamps"]
         close = z["close_5m"] if "close_5m" in z.files else z["close"]
         t0 = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
         mask = (ts >= t0) & (close > 0)
+        if CAMPAIGN.startswith("stocks_repaired_20260725_c2"):
+            end_ts = datetime.strptime(MATRIX_END_DATE, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            ).timestamp()
+            mask &= ts < end_ts
         if mask.sum() < 2:
             return None, None
         c = close[mask]
