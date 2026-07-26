@@ -147,7 +147,10 @@ def load_cells(campaign, tier="ENGINE"):
     expected = {}
     if campaign == CURRENT_ENGINE_CAMPAIGN:
         try:
-            from tools import persym_baseline_campaign as psc
+            try:
+                from tools import persym_baseline_campaign as psc
+            except ModuleNotFoundError:
+                import persym_baseline_campaign as psc
             expected = {
                 f"{sym}_{side}": psc.matrix_contract_fingerprint(sym, side)
                 for sym, side in con.execute(

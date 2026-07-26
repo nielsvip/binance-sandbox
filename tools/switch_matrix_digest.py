@@ -28,14 +28,21 @@ CURRENT_ENGINE_CUTOFF = "2026-07-26T04:15:00Z"
 def current_contract_fingerprints(keys: tuple[str, ...]) -> dict[str, str]:
     """Exact current code+NPZ+side fingerprints; absent/invalid keys simply get no credit."""
     try:
-        from tools import persym_baseline_campaign as psc
+        try:
+            from tools import persym_baseline_campaign as psc
+        except ModuleNotFoundError:
+            # Direct ``python tools/switch_matrix_digest.py`` puts tools/, not its parent,
+            # on sys.path.
+            import persym_baseline_campaign as psc
 
         return {
             key: psc.matrix_contract_fingerprint(*parse_key(key))
             for key in keys
         }
-    except Exception:
-        return {}
+    except Exception as exc:
+        raise RuntimeError(
+            f"cannot compute repaired matrix contract fingerprints: {exc}"
+        ) from exc
 
 
 def norm_val(value) -> str:
