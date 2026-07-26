@@ -54,14 +54,23 @@ $PY tools/tradier_5m_retention_audit.py \
   --allow-missing-native
 
 echo "[$(date -u +%T)] Step 3a: Tradier 15m append (3 days back)"
-$PY -u tradier_klines_append.py --symbols-file symbols_tradier.json --days-back 3 --interval 15min \
-  >> "$LOGS/tradier_klines_append_15m_daily_${TS}.log" 2>&1 \
-  && echo "Tradier 15m append done" || echo "Tradier 15m append ERROR (check log)"
+APPEND_ERRORS=0
+if $PY -u tradier_klines_append.py --symbols-file symbols_tradier.json --days-back 3 --interval 15min \
+  >> "$LOGS/tradier_klines_append_15m_daily_${TS}.log" 2>&1; then
+  echo "Tradier 15m append done"
+else
+  echo "Tradier 15m append ERROR (check log)"
+  APPEND_ERRORS=1
+fi
 
 echo "[$(date -u +%T)] Step 3b: Tradier native 5m append (durable, append-only)"
-$PY -u tradier_klines_append.py --symbols-file symbols_tradier.json --days-back 3 --interval 5min \
-  >> "$LOGS/tradier_klines_append_5m_daily_${TS}.log" 2>&1 \
-  && echo "Tradier native 5m append done" || echo "Tradier native 5m append ERROR (check log)"
+if $PY -u tradier_klines_append.py --symbols-file symbols_tradier.json --days-back 3 --interval 5min \
+  >> "$LOGS/tradier_klines_append_5m_daily_${TS}.log" 2>&1; then
+  echo "Tradier native 5m append done"
+else
+  echo "Tradier native 5m append ERROR (check log)"
+  APPEND_ERRORS=1
+fi
 
 echo "[$(date -u +%T)] Step 3c: commit native 5m retention ledger"
 $PY tools/tradier_5m_retention_audit.py \
@@ -69,6 +78,11 @@ $PY tools/tradier_5m_retention_audit.py \
   --ledger "$RETENTION_LEDGER" \
   --report "$COVERAGE_REPORT" \
   --update-ledger
+
+if [ "$APPEND_ERRORS" -ne 0 ]; then
+  echo "One or more Tradier append jobs failed; retained data was audited but NPZ rebuild is blocked"
+  exit 1
+fi
 
 echo "[$(date -u +%T)] Step 4: crypto precompute"
 $PY -u "$SANDBOX/backtest_v8_precompute.py" --all --mode crypto --workers 3 \

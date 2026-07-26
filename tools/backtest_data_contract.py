@@ -217,7 +217,7 @@ def audit_npz(
             )
             if len(lags) and (int(lags.min()) < 0 or int(lags.max()) > 600):
                 audit.fail(
-                    "synthetic 5m provenance points outside its containing completed "
+                    "synthetic 5m provenance points outside its containing "
                     f"15m bar: lag range={int(lags.min())}..{int(lags.max())}s"
                 )
         if synthetic_rate > 0.05:

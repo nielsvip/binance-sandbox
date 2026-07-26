@@ -824,7 +824,7 @@ Current runner rule:
 ### §15.1 — Stocks 5m history and provenance contract
 
 The stock provider exposes only limited native 5m history. Older 5m execution bars therefore
-have to be interpolated from **completed** 15m bars; there is no honest workaround for the
+have to be interpolated from their **containing** 15m bars; there is no honest workaround for the
 missing archive. This is accepted historical input and not an automatic test failure. It is a
 disclosed within-parent approximation, distinct from accidentally exposing later 1h/4h/D bars.
 
