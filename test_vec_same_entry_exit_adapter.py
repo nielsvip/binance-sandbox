@@ -177,8 +177,8 @@ def test_gr_opposite_is_completed_causal_side_mirror_with_per_tf_audit():
     )
     long_book = build_gr_opposite_book(data, htfs, params, side="LONG")
     short_book = build_gr_opposite_book(data, htfs, params, side="SHORT")
-    assert np.flatnonzero(long_book.events).tolist() == [3]
-    assert np.flatnonzero(short_book.events).tolist() == [0]
+    assert np.flatnonzero(long_book.events).tolist() == [3, 4, 5, 6, 7]
+    assert np.flatnonzero(short_book.events).tolist() == [0, 1, 2]
     decision = long_book.update(3, active=True)
     assert decision is not None
     assert all(source < data.ts[3] for source in decision.source_timestamps.values())
@@ -186,7 +186,38 @@ def test_gr_opposite_is_completed_causal_side_mirror_with_per_tf_audit():
     assert long_book.audit["per_timeframe"]["15m"]["weight"] == 1.0
     assert long_book.audit["per_timeframe"]["15m"][
         "exit_event_vote_histogram"
-    ] == {"2": 1}
+    ] == {"2": 5}
+
+
+def test_gr_weakest_arm_has_eligible_completed_events():
+    data = _fake_gr_data()
+    htfs = {
+        tf: SimpleNamespace(
+            event_index=np.arange(8, dtype=np.int64),
+            source_ts=data.ts - 1,
+        )
+        for tf in ("15m", "1h", "4h", "D")
+    }
+    book = build_gr_opposite_book(
+        data,
+        htfs,
+        GrOppositeParams(
+            timeframes=("15m", "1h", "4h", "D"),
+            min_tfs=1,
+            min_indicators=1,
+            min_weighted_score=4.0,
+            weights=(1.0, 1.0, 1.0, 1.0),
+        ),
+        side="LONG",
+    )
+    assert np.count_nonzero(book.events) == 5
+    assert book.audit["eligible_completed_update_count"] == 5
+    assert book.audit["source_data_contract_valid"]
+    availability = book.audit["per_timeframe"]["1h"][
+        "indicator_input_availability"
+    ]
+    assert availability["WT"] and availability["RSI"]
+    assert not availability["MFI"]
 
 
 def test_vector_gr_votes_match_canonical_raw_scorer():

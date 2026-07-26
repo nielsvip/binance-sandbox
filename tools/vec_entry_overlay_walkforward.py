@@ -203,7 +203,7 @@ def _candidate_entry_mult(
     curve: ladder.Curve,
     green: ladder.SignalData | None = None,
 ) -> np.ndarray:
-    if candidate.family != "ENTRY_STOCH_HHHL":
+    if candidate.family not in {"ENTRY_STOCH_HHHL", "ENTRY_BB_RECOVERY"}:
         return _entry_mult(
             candidate_mask, control, direct_mult, candidate.role
         )
@@ -303,6 +303,26 @@ def _stoch_candidates() -> list[Candidate]:
     return rows
 
 
+def _bb_recovery_candidates() -> list[Candidate]:
+    rows = []
+    for role, tf, recovery_bars, excursion_atr in itertools.product(
+        ("direct", "union-with-green"),
+        ("15m", "1h", "4h"),
+        (1, 2, 4, 8),
+        (0.0, 0.25, 0.5, 1.0),
+    ):
+        rows.append(
+            _candidate(
+                "ENTRY_BB_RECOVERY",
+                role,
+                timeframe=tf,
+                recovery_bars=recovery_bars,
+                min_excursion_atr=excursion_atr,
+            )
+        )
+    return rows
+
+
 def _structure_states(
     data: top.ExecutionData,
     htfs: dict[str, top.HTFData],
@@ -344,12 +364,99 @@ def _structure_states(
     return out
 
 
+def _bb_recovery_masks(
+    data: top.ExecutionData,
+    htfs: dict[str, top.HTFData],
+    side: str,
+) -> dict[tuple[str, int, float], np.ndarray]:
+    """Completed-TF failed BB break followed by recovery within N TF bars."""
+    out: dict[tuple[str, int, float], np.ndarray] = {}
+    is_long = side == "LONG"
+    for tf in ("15m", "1h", "4h"):
+        h = htfs[tf]
+        full_event = data.full_indices[h.event_index]
+        upper_key, lower_key = f"bb_upper_{tf}", f"bb_lower_{tf}"
+        if upper_key not in data.z.files or lower_key not in data.z.files:
+            raise ValueError(f"{data.symbol}: missing BB fields for {tf}")
+        upper = np.asarray(data.z[upper_key], dtype=np.float64)[full_event]
+        lower = np.asarray(data.z[lower_key], dtype=np.float64)[full_event]
+        valid = (
+            np.isfinite(h.close)
+            & np.isfinite(upper)
+            & np.isfinite(lower)
+            & np.isfinite(h.atr)
+            & (upper > lower)
+            & (h.atr > 0)
+        )
+        for max_bars, excursion in itertools.product(
+            (1, 2, 4, 8), (0.0, 0.25, 0.5, 1.0)
+        ):
+            event = _failed_bb_recovery_events(
+                h.close,
+                upper,
+                lower,
+                h.atr,
+                valid,
+                side,
+                max_bars,
+                excursion,
+            )
+            mapped, _ = top._map_events(len(data.ts), h, event)
+            out[(tf, max_bars, excursion)] = mapped.astype(bool)
+    return out
+
+
+def _failed_bb_recovery_events(
+    close: np.ndarray,
+    upper: np.ndarray,
+    lower: np.ndarray,
+    atr: np.ndarray,
+    valid: np.ndarray,
+    side: str,
+    max_bars: int,
+    excursion: float,
+) -> np.ndarray:
+    """Pure completed-bar arming/recovery state machine."""
+    is_long = side == "LONG"
+    armed_age: int | None = None
+    event = np.zeros(len(close), dtype=bool)
+    for idx in range(len(close)):
+        if not valid[idx]:
+            armed_age = None
+            continue
+        outside = (
+            close[idx] <= lower[idx] - excursion * atr[idx]
+            if is_long
+            else close[idx] >= upper[idx] + excursion * atr[idx]
+        )
+        recovered = (
+            close[idx] >= lower[idx]
+            if is_long
+            else close[idx] <= upper[idx]
+        )
+        # An outside close arms the failed-break test. Recovery may occur
+        # only on a later completed bar.
+        if outside:
+            armed_age = 0
+            continue
+        if armed_age is None:
+            continue
+        armed_age += 1
+        if recovered:
+            event[idx] = True
+            armed_age = None
+        elif armed_age >= max_bars:
+            armed_age = None
+    return event
+
+
 def _mask(
     candidate: Candidate,
     view: dict[str, np.ndarray],
     side: str,
     gr_scores: dict[str, np.ndarray],
     structure_states: dict[tuple[str, float], np.ndarray] | None = None,
+    bb_recovery_masks: dict[tuple[str, int, float], np.ndarray] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -372,6 +479,16 @@ def _mask(
         for tf in p["enabled_tfs"]:
             count += structure_states[(tf, threshold)].astype(np.int8)
         return count >= int(p["min_confirming_tfs"])
+    if candidate.family == "ENTRY_BB_RECOVERY":
+        if bb_recovery_masks is None:
+            raise ValueError("BB recovery masks are required")
+        return bb_recovery_masks[
+            (
+                str(p["timeframe"]),
+                int(p["recovery_bars"]),
+                float(p["min_excursion_atr"]),
+            )
+        ]
     passed = np.vstack(
         [gr_scores[tf] >= int(p["min_ind"]) for tf in ("15m", "1h", "4h", "D")]
     )
@@ -431,6 +548,12 @@ def _forward_rank(
             and p["enabled_tfs"] == ["1h", "4h", "D"]
         ):
             sentinels.append(candidate)
+        if candidate.family == "ENTRY_BB_RECOVERY" and (
+            p["timeframe"] == "1h"
+            and p["recovery_bars"] in {1, 4}
+            and p["min_excursion_atr"] in {0.0, 0.5}
+        ):
+            sentinels.append(candidate)
     out: dict[str, Candidate] = {
         row[3].label: row[3] for row in scored[:shortlist]
     }
@@ -486,11 +609,12 @@ def build_frozen_overlay_signals(
         for tf in ("15m", "1h", "4h", "D")
     }
     structure_states = _structure_states(data, htfs, side)
+    bb_masks = _bb_recovery_masks(data, htfs, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
     mask = _mask(
-        candidate, view, side, gr_scores, structure_states
+        candidate, view, side, gr_scores, structure_states, bb_masks
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -533,13 +657,17 @@ def run(args: argparse.Namespace) -> Path:
         for tf in ("15m", "1h", "4h", "D")
     }
     structure_states = _structure_states(data, htfs, side)
+    bb_masks = _bb_recovery_masks(data, htfs, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
         "ENTRY_STOCH_HHHL": _stoch_candidates,
+        "ENTRY_BB_RECOVERY": _bb_recovery_candidates,
     }[args.family]()
     masks = {
-        c: _mask(c, view, side, gr_scores, structure_states)
+        c: _mask(
+            c, view, side, gr_scores, structure_states, bb_masks
+        )
         for c in family_candidates
     }
     folds = []
@@ -761,6 +889,11 @@ def run(args: argparse.Namespace) -> Path:
                 "completed-bar LH+LL and high+falling Stoch for SHORT; "
                 "direct or union with frozen green-arrow schedule"
             ),
+            "bb_recovery_semantics": (
+                "completed 15m/1h/4h close beyond BB by declared ATR "
+                "excursion arms; completed close back inside within 1/2/4/8 "
+                "TF bars fires direct or union-with-green"
+            ),
             "causality": causality,
         },
         "outer_folds": folds,
@@ -789,7 +922,12 @@ def main() -> None:
     ap.add_argument(
         "--family",
         required=True,
-        choices=("ENTRY_GOLDEN_RULE", "ENTRY_WT_DC", "ENTRY_STOCH_HHHL"),
+        choices=(
+            "ENTRY_GOLDEN_RULE",
+            "ENTRY_WT_DC",
+            "ENTRY_STOCH_HHHL",
+            "ENTRY_BB_RECOVERY",
+        ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))
     ap.add_argument("--out-dir", default=str(top.DEFAULT_OUT))

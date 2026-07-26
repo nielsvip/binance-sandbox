@@ -651,8 +651,11 @@ def build_gr_opposite_book(
         (qualifying_tf_count >= params.min_tfs)
         & (weighted_score >= params.min_weighted_score)
     )
-    prior = np.concatenate(([False], qualified[:-1]))
-    events = (updates & qualified & ~prior).astype(np.uint8)
+    # GR direct exit is level-triggered on each newly completed HTF update.
+    # An edge across the entire history is wrong: if the position opens while
+    # the opposite vote is already active (or a fold begins after the edge),
+    # the live path must still close it at the next completed update.
+    events = (updates & qualified).astype(np.uint8)
     references = np.full(n, np.nan, dtype=np.float64)
     references[events > 0] = (
         data.high[events > 0] if side == "LONG" else data.low[events > 0]
@@ -675,6 +678,7 @@ def build_gr_opposite_book(
         source_by_row[int(row)] = sources
 
     event_rows = np.flatnonzero(events)
+    update_rows = np.flatnonzero(updates)
     per_tf: dict[str, Any] = {}
     for tf, weight in zip(params.timeframes, params.weights):
         raw = completed_votes[tf]
@@ -682,10 +686,30 @@ def build_gr_opposite_book(
         digest.update(np.asarray(htfs[tf].source_ts, dtype=np.int64).tobytes())
         digest.update(np.asarray(raw, dtype=np.int16).tobytes())
         event_raw = expanded_votes[tf][event_rows]
+        input_groups = {
+            "WT": (f"wt1_{tf}", f"wt2_{tf}"),
+            "RSI": (f"rsi_{tf}",),
+            "MFI": (f"mfi_{tf}",),
+            "DC": (f"dc_position_{tf}",),
+            "BB": (f"bb_pct_b_{tf}",),
+            "RVOL": (f"relative_volume_{tf}",),
+            "K": (f"stoch_k_{tf}",),
+            "ADX": (f"adx_{tf}",),
+            "MACD_H": (f"macd_hist_{tf}",),
+            "HA": (f"ha_color_{tf}",),
+            "K_D": (f"stoch_k_{tf}", f"stoch_d_{tf}"),
+        }
         per_tf[tf] = {
             "weight": float(weight),
             "completed_vote_sha256": digest.hexdigest(),
             "completed_bars": int(len(raw)),
+            "min_indicators_eligible_completed_bars": int(
+                np.count_nonzero(raw >= params.min_indicators)
+            ),
+            "indicator_input_availability": {
+                name: all(key in data.z.files for key in keys)
+                for name, keys in input_groups.items()
+            },
             "raw_vote_histogram": {
                 str(vote): int(np.count_nonzero(raw == vote))
                 for vote in range(12)
@@ -698,6 +722,9 @@ def build_gr_opposite_book(
             },
         }
     exit_scores = weighted_score[event_rows]
+    update_scores = weighted_score[update_rows]
+    update_tf_counts = qualifying_tf_count[update_rows]
+    data_contract = getattr(data, "contract", {"valid": True, "errors": []})
     audit = {
         "signal_direction": "LONG" if vote_long else "SHORT",
         "held_side": side,
@@ -705,6 +732,18 @@ def build_gr_opposite_book(
             "sum(raw_opposite_indicator_votes_by_tf * explicit_tf_weight)"
         ),
         "per_timeframe": per_tf,
+        "source_data_contract_valid": bool(data_contract["valid"]),
+        "source_data_contract_errors": list(data_contract["errors"]),
+        "completed_update_count": int(len(update_rows)),
+        "eligible_completed_update_count": int(len(event_rows)),
+        "weighted_score_histogram_at_completed_updates": {
+            f"{score:g}": int(np.count_nonzero(update_scores == score))
+            for score in np.unique(update_scores)
+        },
+        "qualifying_tf_count_histogram_at_completed_updates": {
+            str(count): int(np.count_nonzero(update_tf_counts == count))
+            for count in np.unique(update_tf_counts)
+        },
         "exit_event_count": int(len(event_rows)),
         "weighted_score_at_event": {
             "min": float(np.min(exit_scores)) if len(exit_scores) else None,
@@ -1982,6 +2021,20 @@ def screen_artifact(
                         row["nested"]["robust_discovery_all_folds"]
                     ),
                     not (
+                        row["family"]
+                        not in ACTUAL_EXIT_REQUIRED_FAMILIES
+                        or (
+                            int(
+                                row["nested"]["discovery"]["exit_fills"]
+                            )
+                            > 0
+                            and int(
+                                row["nested"]["validation"]["exit_fills"]
+                            )
+                            > 0
+                        )
+                    ),
+                    not (
                         exposure_min_pct
                         <= float(
                             row["nested"]["discovery"][
@@ -2157,6 +2210,33 @@ def screen_artifact(
         "survivors": survivors,
         "candidates": candidates,
     }
+    if "GR_OPPOSITE" in families:
+        weakest = next(
+            (
+                row
+                for row in candidates
+                if row["family"] == "EXIT_GR_OPPOSITE"
+                and row["params"]["min_tfs"] == 1
+                and row["params"]["min_indicators"] == 1
+                and row["params"]["min_weighted_score"] == 4.0
+                and tuple(row["params"]["weights"])
+                == (1.0, 1.0, 1.0, 1.0)
+                and row["params"]["profit_gate_pct"] == 0.0
+            ),
+            None,
+        )
+        if weakest is None:
+            data.z.close()
+            raise RuntimeError("missing preregistered GR weakest-arm probe")
+        payload["gr_opposite_weakest_arm_probe"] = {
+            "params": weakest["params"],
+            "vote_audit": weakest["vote_audit"],
+            "fold_evidence": weakest["fold_evidence"],
+            "exit_fills": weakest["metrics"]["exit_fills"],
+            "future_htf_source_count": weakest["metrics"][
+                "future_htf_source_count"
+            ],
+        }
     data.z.close()
     return payload
 

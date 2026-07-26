@@ -84,3 +84,36 @@ def test_stoch_union_honors_target_and_add_semantics_with_capacity():
     assert overlay._candidate_entry_mult(
         candidate, mask, control, direct, add, green
     ).tolist() == [5.0, 1.0, 0.0]
+
+
+def test_bb_recovery_grid_covers_requested_ranges():
+    rows = overlay._bb_recovery_candidates()
+    assert len(rows) == 96
+    assert {row.role for row in rows} == {"direct", "union-with-green"}
+    assert {row.params["timeframe"] for row in rows} == {"15m", "1h", "4h"}
+    assert {row.params["recovery_bars"] for row in rows} == {1, 2, 4, 8}
+    assert {row.params["min_excursion_atr"] for row in rows} == {
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+    }
+
+
+def test_failed_bb_recovery_is_side_mirrored_and_respects_excursion_deadline():
+    upper = np.full(5, 110.0)
+    lower = np.full(5, 90.0)
+    atr = np.full(5, 2.0)
+    valid = np.ones(5, dtype=bool)
+    long_close = np.array([100.0, 88.0, 89.0, 91.0, 100.0])
+    # 88 is one ATR below 90; recovery on the second later bar.
+    assert overlay._failed_bb_recovery_events(
+        long_close, upper, lower, atr, valid, "LONG", 2, 1.0
+    ).tolist() == [False, False, False, True, False]
+    assert not overlay._failed_bb_recovery_events(
+        long_close, upper, lower, atr, valid, "LONG", 1, 1.0
+    ).any()
+    short_close = np.array([100.0, 112.0, 111.0, 109.0, 100.0])
+    assert overlay._failed_bb_recovery_events(
+        short_close, upper, lower, atr, valid, "SHORT", 2, 1.0
+    ).tolist() == [False, False, False, True, False]

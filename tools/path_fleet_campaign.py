@@ -152,8 +152,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "same ladder sizing and capacity",
         "E02 N=30 + resting reclaim",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES",
+        "Sweep-only path remains default-off in live code. The causal adapter "
+        "tests completed 15m/1h/4h failed breaks without changing live config.",
     ),
     PathFamily(
         "ENTRY_DELTA_MTF",

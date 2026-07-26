@@ -113,13 +113,21 @@ def _ingest_symbol(
     survivors = result["survivors"]
     robust = any(row["params"] == winner["params"] for row in survivors)
     validation = winner["nested"]["validation"]
+    zero_exit_mtm = int(validation["exit_fills"]) == 0
+    diagnostic_inert = path_id == "EXIT_GR_OPPOSITE" and zero_exit_mtm
     payload = {
         "job_id": job_id,
         "symbol": result["symbol"],
         "side": result["side"],
         "stage": "VEC_UNTOUCHED_OOS",
         "status": (
-            "VECTOR_SURVIVOR_EXACT_PENDING" if robust else "GRAY_REJECTED"
+            "VECTOR_SURVIVOR_EXACT_PENDING"
+            if robust
+            else (
+                "RED_DIAGNOSTIC_INERT"
+                if diagnostic_inert
+                else "GRAY_REJECTED"
+            )
         ),
         "strategy_return_pct": float(validation["capital_return_pct_sum"]),
         "bh_return_pct": _bh_validation(winner),
@@ -128,13 +136,20 @@ def _ingest_symbol(
             validation["exposure_weighted_tim_pct_row_weighted"]
         ),
         "trades": int(validation["exit_fills"]),
-        "zero_exit_mtm": int(validation["exit_fills"]) == 0,
+        "zero_exit_mtm": zero_exit_mtm,
+        "inert": diagnostic_inert,
+        "inert_reason": (
+            "no EXIT_GR_OPPOSITE fill in untouched validation"
+            if diagnostic_inert
+            else None
+        ),
         "untouched_oos": True,
         "exact_replay": False,
         "future_htf_count": int(winner["metrics"]["future_htf_source_count"]),
         "artifact": str(artifact),
         "params": winner["params"],
         "vote_audit": winner.get("vote_audit"),
+        "weakest_arm_probe": result.get("gr_opposite_weakest_arm_probe"),
         "discovery": winner["nested"]["discovery"],
         "validation": validation,
         "discovery_alpha_vs_bh_pp": winner["nested"][
@@ -186,6 +201,21 @@ def _ingest_symbol(
         "tim_pct": payload["tim_pct"],
         "trades": payload["trades"],
         "zero_exit_mtm": payload["zero_exit_mtm"],
+        "inert": payload["inert"],
+        "weakest_arm_eligible_updates": (
+            (
+                payload["weakest_arm_probe"]
+                .get("vote_audit", {})
+                .get("eligible_completed_update_count")
+            )
+            if payload["weakest_arm_probe"]
+            else None
+        ),
+        "weakest_arm_exit_fills": (
+            payload["weakest_arm_probe"].get("exit_fills")
+            if payload["weakest_arm_probe"]
+            else None
+        ),
         "clamp_count": payload["clamp_count"],
         "fill_ratio": payload["fill_ratio"],
         "insolvent_folds": payload["insolvent_folds"],

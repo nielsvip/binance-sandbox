@@ -973,7 +973,13 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
             fill = green
         elif status in {"CONTROL_FAILURE", "GRAY_REJECTED", "REJECTED"}:
             fill = gray
-        elif status in {"QUARANTINED", "ERROR", "FAILED"}:
+        elif (
+            status.startswith("RED_")
+            or status in {
+                "QUARANTINED", "ERROR", "FAILED", "INERT",
+                "WIRING_FAILURE",
+            }
+        ):
             fill = red
         elif result.get("strategy_return_pct") is not None:
             fill = amber
