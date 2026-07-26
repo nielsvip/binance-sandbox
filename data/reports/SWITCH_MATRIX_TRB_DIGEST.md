@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-26 19:39:51Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-26 19:53:40Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
 - Current repaired matrix latest row: `none` (unknown old).
-- Generic DB activity (includes historical/stage tables): `2026-07-26T19:39:47Z` (0m old); it is not matrix freshness.
+- Generic DB activity (includes historical/stage tables): `2026-07-26T19:52:58Z` (0m old); it is not matrix freshness.
 - Current repaired-contract ENGINE rows: **0**; new current rows in 24h: **0**.
-- Raw repaired-campaign pilot rows since cutoff: **762**; **762** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,384/7,384**. They remain preserved as evidence.
+- Raw repaired-campaign pilot rows since cutoff: **775**; **775** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,397/7,397**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-26 19:37:02Z (2m old, 545,805 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-26 19:39:24Z (0m old, 57,889 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-26 19:52:22Z (1m old, 545,806 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-26 19:51:46Z (1m old, 57,889 bytes)
 - Description coverage in current CSV: **3,522/3,522** rows.
 
 ## Stocks 5m execution provenance
@@ -47,6 +47,7 @@ Coverage counts exact `(switch,value)` cells in the current actionable manifest.
 - MU ladder discovery `struct_wt_resting_reclaim_probe_20260726T070000Z_MU_LONG` reached +409.93% versus B&H +204.90% (2.0006×) at 52.3% weighted exposure, but is **REJECTED versus the same-entry research control**. The source frozen 2026 ladder + 4h N=30 E02 fold returned +1,316.02% versus B&H +205.25% (6.4117×) at 77.1% exposure. The structural candidate discarded 906.09pp of return; beating B&H alone is not sufficient. Both paths remain VEC-only pending exact replay.
 - Nested/frozen same-ladder validation (`struct_wt_nested_frozen_20260726T073000Z`) selected only on MU Jan-Mar, then scored MU Apr-Jul without reselection. Structural returned +359.24% (2.191× B&H) but the same ladder returned +1,380.56% (8.420× B&H): -1,021.32pp and only 0.260× of ladder return. The universal VT score improved a losing ladder (-8.90% versus -61.85%) but remained below B&H (+1.57%). Verdict **REJECT / NO MATRIX**; every exit candidate must beat both B&H and the strongest same-entry/same-window causal control.
 - The complete registered `EXIT_STRUCTURAL_WT_LOWER_TOP` screen now supersedes the exploratory structural grids: 20 frozen top/bottom symbol-sides × 768 settings, with completed HTF bars, side isolation, resting reclaim and a compiled-to-Python parity gate. All 20 selected winners reproduced exactly, but **0/20 passed** both B&H + same-entry E02 and the 70–80% discovery/validation TIM gates. MU validated +1,127.00pp over B&H but -44.324pp versus E02 at 65.21% TIM; SNDK's headline used 98.70% TIM. Path-fleet job 37 preserves all rows gray and correctly queues no exact replay.
+- `EXIT_PARTIAL_RUNNER` completed the corrected 192-setting registry grid on 20 frozen keys (the listed 4×4×3×2×2 fields cannot equal 128; all clip sums are valid). It produced **0 strict survivors**. Five selected validation winners had zero fast partial fills; E05/E06 filled in only 25%/40% of their validation settings versus WT 100%. The winners created 919 per-exit reclaim obligations, filled 633 and left 286 open. MU made one partial (-$107.98 net) versus ten slow full exits and lost 122.07pp to E02. Job 39 preserves all 20 rows gray and queues no exact replay.
 - Reentry invariant for structural research: after an exit, the stored exit/top level and reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but must never erase it or allow price to outrun the stored level without reopening. This is a design requirement, not a measured performance claim.
 
 ### Preserved dc_low4 diagnostic evidence (pre-repair; gray/quarantined)
@@ -159,43 +160,43 @@ The full-period MU multiple is an optimization-screen headline, not a robust cla
 
 > Claimable vector-first research queue. Control rows establish the frozen benchmark that later paths must beat; they are not exact-engine promotion evidence.
 
-- Jobs: **69**; states: ADAPTER_REQUIRED=49, OBSERVABILITY_ONLY=2, QUARANTINED=7, SCREENED=11.
+- Jobs: **69**; states: ADAPTER_REQUIRED=47, OBSERVABILITY_ONLY=2, QUARANTINED=7, SCREENED=13.
 - Frozen tradeable hashes: LONG `e0acfe4c1139dd01f6138445c53071eb307fa4ad0600fcd8dddcd7e794a78955`; SHORT `00c085e4069a105826f040cf9ff95373afaa4684f9ebc02f1a72edff4a0aa361`.
 - Top LONG cohort: SNDK, MRVL, ARM, MU, INTC, AMD, PBF, MPC, DINO, VLO.
 - Bottom SHORT cohort: LAC, UUUU, UEC, ASTS, ACN, TTD, HL, EGO, ALB, LDOS.
 
 | path | key | stage | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| `ENTRY_DELTA_MTF` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -250.879% | -133.049% | —× | -117.830pp | -31.099pp | 41.94% | 25 |
-| `ENTRY_DELTA_MTF` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -6.375% | -48.382% | —× | 42.007pp | 156.396pp | 40.36% | 26 |
-| `ENTRY_DELTA_MTF` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 730.520% | 141.541% | 5.161× | 588.979pp | -17.218pp | 58.91% | 15 |
-| `ENTRY_DELTA_MTF` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -106.847% | 13.860% | -7.709× | -120.707pp | -76.498pp | 29.14% | 26 |
-| `ENTRY_DELTA_MTF` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -124.817% | -11.541% | —× | -113.275pp | 180.111pp | 60.79% | 19 |
-| `ENTRY_DELTA_MTF` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -1547.664% | -219.355% | —× | -1328.309pp | -812.965pp | 57.19% | 37 |
-| `ENTRY_DELTA_MTF` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -189.656% | -85.439% | —× | -104.217pp | 34.031pp | 25.05% | 34 |
-| `ENTRY_DELTA_MTF` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -679.584% | -153.308% | —× | -526.277pp | -90.527pp | 54.88% | 28 |
-| `ENTRY_DELTA_MTF` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -588.520% | -82.314% | —× | -506.207pp | 229.853pp | 51.06% | 28 |
-| `ENTRY_DELTA_MTF` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 417.740% | 69.837% | 5.982× | 347.903pp | 10.595pp | 66.77% | 17 |
-| `ENTRY_DELTA_MTF` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 617.044% | 113.267% | 5.448× | 503.777pp | 205.871pp | 74.34% | 17 |
-| `ENTRY_DELTA_MTF` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 4393.120% | 888.467% | 4.945× | 3504.653pp | -1020.919pp | 87.43% | 7 |
-| `ENTRY_DELTA_MTF` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 914.462% | 127.673% | 7.163× | 786.789pp | 272.335pp | 45.40% | 22 |
-| `ENTRY_DELTA_MTF` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 2345.153% | 381.950% | 6.140× | 1963.203pp | -157.929pp | 62.76% | 14 |
-| `ENTRY_DELTA_MTF` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1500.274% | 104.106% | 14.411× | 1396.168pp | 217.185pp | 74.31% | 18 |
-| `ENTRY_DELTA_MTF` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 230.452% | 103.592% | 2.225× | 126.860pp | 67.267pp | 52.23% | 20 |
-| `ENTRY_DELTA_MTF` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 919.326% | 214.032% | 4.295× | 705.294pp | -546.972pp | 75.61% | 21 |
-| `ENTRY_DELTA_MTF` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 624.763% | 118.221% | 5.285× | 506.542pp | 93.450pp | 60.44% | 16 |
-| `ENTRY_DELTA_MTF` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1427.265% | 123.020% | 11.602× | 1304.245pp | 276.441pp | 76.01% | 17 |
-| `ENTRY_DELTA_MTF` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1654.057% | 204.780% | 8.077× | 1449.277pp | -29.743pp | 72.00% | 14 |
-| `EXIT_E01_CHANDELIER` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 339.743% | 84.905% | 4.001× | 254.838pp | -47.564pp | 68.64% | 10 |
-| `EXIT_E01_CHANDELIER` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 70.932% | 26.197% | 2.708× | 44.735pp | 2.696pp | 18.68% | 2 |
-| `EXIT_E01_CHANDELIER` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 39.386% | 22.648% | 1.739× | 16.738pp | -25.663pp | 16.16% | 7 |
-| `EXIT_E01_CHANDELIER` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 487.368% | 54.325% | 8.971× | 433.043pp | 5.473pp | 79.54% | 8 |
-| `EXIT_E01_CHANDELIER` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1999.514% | 467.087% | 4.281× | 1532.427pp | -326.123pp | 97.45% | 4 |
-| `EXIT_E01_CHANDELIER` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 515.223% | 121.263% | 4.249× | 393.959pp | -192.049pp | 90.29% | 7 |
-| `EXIT_E01_CHANDELIER` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1370.913% | 204.905% | 6.690× | 1166.008pp | -5.315pp | 63.24% | 5 |
-| `EXIT_E01_CHANDELIER` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 292.057% | 123.583% | 2.363× | 168.474pp | -1380.669pp | 58.80% | 9 |
-| `EXIT_E01_CHANDELIER` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 104.599% | 88.480% | 1.182× | 16.119pp | -12.861pp | 20.98% | 23 |
-| `EXIT_E01_CHANDELIER` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 36.618% | 37.502% | 0.976× | -0.884pp | -31.139pp | 11.67% | 13 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -322.039% | -133.049% | —× | -188.990pp | -102.259pp | 77.90% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -440.191% | -48.382% | —× | -391.809pp | -277.420pp | 73.11% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1201.086% | 141.541% | 8.486× | 1059.545pp | 453.348pp | 89.79% | 21 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 259.637% | 13.860% | 18.732× | 245.776pp | 289.986pp | 81.03% | 40 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -4.690% | -11.541% | —× | 6.851pp | 300.237pp | 79.36% | 21 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -1000.543% | -219.355% | —× | -781.188pp | -265.844pp | 65.94% | 35 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -947.112% | -85.439% | —× | -861.673pp | -723.425pp | 75.65% | 44 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -1142.623% | -153.308% | —× | -989.315pp | -553.566pp | 76.11% | 31 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -641.318% | -82.314% | —× | -559.004pp | 177.055pp | 81.96% | 39 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 544.080% | 69.837% | 7.791× | 474.243pp | 136.934pp | 74.40% | 22 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 477.427% | 113.267% | 4.215× | 364.161pp | 66.254pp | 85.00% | 15 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 5424.711% | 888.467% | 6.106× | 4536.243pp | 10.671pp | 97.05% | 8 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 733.621% | 127.673% | 5.746× | 605.948pp | 91.494pp | 79.45% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 2808.881% | 381.950% | 7.354× | 2426.931pp | 305.800pp | 87.65% | 23 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1289.886% | 104.106% | 12.390× | 1185.780pp | 6.797pp | 83.04% | 31 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 440.908% | 103.592% | 4.256× | 337.316pp | 277.723pp | 84.48% | 22 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1450.487% | 214.032% | 6.777× | 1236.456pp | -15.811pp | 85.50% | 25 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 732.264% | 118.221% | 6.194× | 614.043pp | 200.951pp | 82.56% | 17 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1149.218% | 123.020% | 9.342× | 1026.198pp | -1.606pp | 79.43% | 29 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1865.440% | 204.780% | 9.109× | 1660.660pp | 181.641pp | 92.49% | 16 |
+| `EXIT_PARTIAL_RUNNER` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 192.969% | 37.502% | 5.146× | 155.467pp | 125.212pp | 43.79% | 40 |
+| `EXIT_PARTIAL_RUNNER` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -34.795% | 19.412% | -1.792× | -54.207pp | -120.510pp | 43.76% | 62 |
+| `EXIT_PARTIAL_RUNNER` | EGO_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 2.822% | 23.025% | 0.123× | -20.203pp | -45.195pp | 20.65% | 55 |
+| `EXIT_PARTIAL_RUNNER` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -391.488% | 21.954% | -17.832× | -413.442pp | -441.741pp | 34.78% | 87 |
+| `EXIT_PARTIAL_RUNNER` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1.375% | 54.325% | 0.025× | -52.950pp | -480.520pp | 57.71% | 54 |
+| `EXIT_PARTIAL_RUNNER` | ACN_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 327.615% | 44.497% | 7.363× | 283.119pp | -73.362pp | 55.26% | 153 |
+| `EXIT_PARTIAL_RUNNER` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 101.024% | 22.648% | 4.461× | 78.376pp | 35.975pp | 40.39% | 14 |
+| `EXIT_PARTIAL_RUNNER` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -156.559% | 22.270% | -7.030× | -178.830pp | -223.137pp | 41.30% | 103 |
+| `EXIT_PARTIAL_RUNNER` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -20.763% | 26.197% | -0.793× | -46.960pp | -89.000pp | 26.96% | 45 |
+| `EXIT_PARTIAL_RUNNER` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 347.552% | 36.977% | 9.399× | 310.575pp | 238.220pp | 29.72% | 28 |
 
 SHORT vector controls are present but remain research-only until exact replay and the same completed-HTF, fill, capacity, solvency, exposure, and mandatory-reclaim gates pass. No LONG result is inverted or pooled.
 
@@ -203,7 +204,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 762 | 2026-07-26T19:39:47Z | 0m |
+| ENGINE | stocks_repaired_20260725_c2 | 775 | 2026-07-26T19:52:58Z | 0m |
 
 ## Reading the matrix
 

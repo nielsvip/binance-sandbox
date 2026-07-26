@@ -117,6 +117,9 @@ def _ingest_symbol(
     diagnostic_inert = path_id in {
         "EXIT_GR_OPPOSITE",
         "EXIT_E01_CHANDELIER",
+        "BOTTOM_A_PROTECTIVE_TRAIL",
+        "BOTTOM_B_DELAYED_LOWER_TOP",
+        "BOTTOM_C_DELAYED_EMERGENCY",
     } and zero_exit_mtm
     payload = {
         "job_id": job_id,
@@ -139,6 +142,21 @@ def _ingest_symbol(
             validation["exposure_weighted_tim_pct_row_weighted"]
         ),
         "trades": int(validation["exit_fills"]),
+        "normal_exit_fills": int(
+            validation.get("normal_exit_fills", validation["exit_fills"])
+        ),
+        "emergency_exit_fills": int(
+            validation.get("emergency_exit_fills", 0)
+        ),
+        "emergency_exit_share": float(
+            validation.get("emergency_exit_share", 0.0)
+        ),
+        "normal_exit_pnl_usd": float(
+            validation.get("normal_exit_pnl_usd", 0.0)
+        ),
+        "emergency_exit_pnl_usd": float(
+            validation.get("emergency_exit_pnl_usd", 0.0)
+        ),
         "zero_exit_mtm": zero_exit_mtm,
         "inert": diagnostic_inert,
         "inert_reason": (
@@ -203,6 +221,11 @@ def _ingest_symbol(
         ],
         "tim_pct": payload["tim_pct"],
         "trades": payload["trades"],
+        "normal_exit_fills": payload["normal_exit_fills"],
+        "emergency_exit_fills": payload["emergency_exit_fills"],
+        "emergency_exit_share": payload["emergency_exit_share"],
+        "normal_exit_pnl_usd": payload["normal_exit_pnl_usd"],
+        "emergency_exit_pnl_usd": payload["emergency_exit_pnl_usd"],
         "zero_exit_mtm": payload["zero_exit_mtm"],
         "inert": payload["inert"],
         "weakest_arm_eligible_updates": (

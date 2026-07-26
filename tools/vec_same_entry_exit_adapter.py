@@ -80,6 +80,8 @@ class _StructuralScanMetrics(ctypes.Structure):
         ("peak_post_fill_notional_usd", ctypes.c_double),
         ("requested_notional_usd", ctypes.c_double),
         ("filled_notional_usd", ctypes.c_double),
+        ("normal_exit_pnl_usd", ctypes.c_double),
+        ("emergency_exit_pnl_usd", ctypes.c_double),
         ("insolvent", ctypes.c_int),
         ("entry_capacity_breach", ctypes.c_int),
         ("signals", ctypes.c_int),
@@ -1195,7 +1197,7 @@ def protective_trail_grid() -> list[ProtectiveTrailParams]:
                             lookback,
                         )
                     )
-    assert len(rows) == 340
+    assert len(rows) == 220
     return rows
 
 
@@ -1258,7 +1260,7 @@ class StructuralWtExitBookAdapter:
         if candidate is None:
             return None
         return ExitDecision(
-            reason=self.label,
+            reason=candidate.reason,
             reclaim_reference=float(candidate.retest_price),
             source_timestamps={
                 self.params.arm_tf: int(candidate.arm_source_ts),
@@ -1389,6 +1391,8 @@ def simulate_structural_compiled(
         "exit_fills": int(out.exit_fills),
         "normal_exit_fills": int(out.normal_exit_fills),
         "emergency_exit_fills": int(out.emergency_exit_fills),
+        "normal_exit_pnl_usd": float(out.normal_exit_pnl_usd),
+        "emergency_exit_pnl_usd": float(out.emergency_exit_pnl_usd),
         "emergency_exit_share": (
             float(out.emergency_exit_fills) / float(out.exit_fills)
             if out.exit_fills
@@ -1493,6 +1497,8 @@ def simulate(
     peak_post_fill_notional = 0.0
     max_dd = requested = filled = weighted = 0.0
     held = clamps = entry_fills = exit_fills = reclaim = lower = 0
+    normal_exit_fills = emergency_exit_fills = 0
+    normal_exit_pnl_usd = emergency_exit_pnl_usd = 0.0
     signals_seen = rejected_profit = future_sources = beyond = 0
     partial_exit_fills = runner_exit_fills = clip_reclaims = 0
     clip_obligations: list[dict[str, float]] = []
@@ -1514,6 +1520,11 @@ def simulate(
                 px = op * (1.0 - side_sign * slippage_rate)
                 close_qty = abs(qty)
                 notional = close_qty * px
+                realized_exit_pnl = (
+                    side_sign * close_qty * (px - average_entry)
+                    - commission_rate
+                    * (close_qty * average_entry + notional)
+                )
                 cash += side_sign * (
                     notional - side_sign * commission_rate * notional
                 )
@@ -1526,6 +1537,12 @@ def simulate(
                 gap_seen = False
                 exit_fill_row = i
                 exit_fills += 1
+                if "EMERGENCY" in str(pending["reason"]):
+                    emergency_exit_fills += 1
+                    emergency_exit_pnl_usd += realized_exit_pnl
+                else:
+                    normal_exit_fills += 1
+                    normal_exit_pnl_usd += realized_exit_pnl
                 runner_exit_fills += int(
                     pending["reason"].startswith("E02_DONCHIAN")
                 )
@@ -1537,6 +1554,7 @@ def simulate(
                         "signal_ts": int(data.ts[pending["signal_index"]]),
                         "fill_ts": int(data.ts[i]),
                         "fill_price": px,
+                        "realized_exit_pnl_usd": realized_exit_pnl,
                         "source_timestamps": pending["sources"],
                     }
                 )
@@ -1826,6 +1844,13 @@ def simulate(
         "signals": signals_seen,
         "rejected_by_profit_gate": rejected_profit,
         "exit_fills": exit_fills,
+        "normal_exit_fills": normal_exit_fills,
+        "emergency_exit_fills": emergency_exit_fills,
+        "normal_exit_pnl_usd": normal_exit_pnl_usd,
+        "emergency_exit_pnl_usd": emergency_exit_pnl_usd,
+        "emergency_exit_share": (
+            emergency_exit_fills / exit_fills if exit_fills else 0.0
+        ),
         "partial_exit_fills": partial_exit_fills,
         "runner_exit_fills": runner_exit_fills,
         "clip_reclaim_reentries": clip_reclaims,
@@ -1948,6 +1973,80 @@ def structural_grid() -> list[tuple[StructuralWtParams, float, int]]:
     return rows
 
 
+def bottom_delayed_grid() -> list[tuple[StructuralWtParams, int]]:
+    """Family B: adverse break arms, a later lower top exits."""
+    rows: list[tuple[StructuralWtParams, int]] = []
+    for arm_tf in ("1h", "4h"):
+        for confirm_tf in ("5m", "15m", "1h"):
+            bars_per_hour = {"5m": 12, "15m": 4, "1h": 1}[confirm_tf]
+            for mode in ("PRICE_ONLY", "WT_ONLY", "AND", "OR"):
+                for confirm_bars in (1, 2):
+                    for rebound in (0.25, 0.5, 1.0):
+                        for lookback in (4, 6):
+                            for wait_hours in (12, 24, 48):
+                                rows.append(
+                                    (
+                                        StructuralWtParams(
+                                            arm_tf=arm_tf,
+                                            confirm_tf=confirm_tf,
+                                            rebound_atr=rebound,
+                                            prebreak_lookback=lookback,
+                                            max_wait_1h=(
+                                                wait_hours * bars_per_hour
+                                            ),
+                                            confirmation_mode=mode,
+                                            confirmation_bars=confirm_bars,
+                                        ),
+                                        wait_hours,
+                                    )
+                                )
+    assert len(rows) == 864
+    return rows
+
+
+def bottom_emergency_grid() -> list[tuple[StructuralWtParams, int, str]]:
+    """Family C: family-B wait plus one separately counted rare brake."""
+    variants = [
+        ("ADVERSE_ATR_2", ("ADVERSE_ATR",), 2.0, 0.0, 0),
+        ("ADVERSE_ATR_3", ("ADVERSE_ATR",), 3.0, 0.0, 0),
+        ("ADVERSE_ATR_4", ("ADVERSE_ATR",), 4.0, 0.0, 0),
+        ("ADVERSE_STDEV_2.5", ("ADVERSE_STDEV",), 0.0, 2.5, 0),
+        ("ADVERSE_STDEV_3.5", ("ADVERSE_STDEV",), 0.0, 3.5, 0),
+        ("ADVERSE_STDEV_5", ("ADVERSE_STDEV",), 0.0, 5.0, 0),
+        ("MAX_WAIT", ("MAX_WAIT",), 0.0, 0.0, 0),
+        ("CONTINUED_3", ("CONTINUED",), 0.0, 0.0, 3),
+        ("CONTINUED_5", ("CONTINUED",), 0.0, 0.0, 5),
+    ]
+    rows: list[tuple[StructuralWtParams, int, str]] = []
+    for arm_tf in ("1h", "4h"):
+        for confirm_tf in ("5m", "15m", "1h"):
+            bars_per_hour = {"5m": 12, "15m": 4, "1h": 1}[confirm_tf]
+            for mode in ("AND", "OR"):
+                for wait_hours in (12, 24, 48):
+                    for label, emergency, adverse_atr, adverse_sd, continued in variants:
+                        rows.append(
+                            (
+                                StructuralWtParams(
+                                    arm_tf=arm_tf,
+                                    confirm_tf=confirm_tf,
+                                    rebound_atr=0.5,
+                                    prebreak_lookback=6,
+                                    max_wait_1h=wait_hours * bars_per_hour,
+                                    confirmation_mode=mode,
+                                    confirmation_bars=1,
+                                    emergency_modes=emergency,
+                                    emergency_adverse_atr=adverse_atr,
+                                    emergency_adverse_stdev=adverse_sd,
+                                    emergency_continued_bars=continued,
+                                ),
+                                wait_hours,
+                                label,
+                            )
+                        )
+    assert len(rows) == 324
+    return rows
+
+
 def partial_wt_grid() -> list[tuple[WtMtfParams, float]]:
     """Slower/stricter WT blocks paired with bounded E02-runner clips."""
     settings: list[WtMtfParams] = []
@@ -2020,7 +2119,7 @@ def _fold_contexts(
         )
     htfs = {
         tf: ladder.top._compress_htf(data, tf)
-        for tf in ("15m", "1h", "4h", "D", "W")
+        for tf in ("5m", "15m", "1h", "4h", "D", "W")
     }
     folds = list(source["outer_folds"])
     if fold_mode == "latest":
@@ -2085,6 +2184,18 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "clamp_count": sum(int(r["clamp_count"]) for r in rows),
         "exit_fills": sum(int(r["exit_fills"]) for r in rows),
+        "normal_exit_fills": sum(
+            int(r.get("normal_exit_fills", r["exit_fills"])) for r in rows
+        ),
+        "emergency_exit_fills": sum(
+            int(r.get("emergency_exit_fills", 0)) for r in rows
+        ),
+        "normal_exit_pnl_usd": sum(
+            float(r.get("normal_exit_pnl_usd", 0.0)) for r in rows
+        ),
+        "emergency_exit_pnl_usd": sum(
+            float(r.get("emergency_exit_pnl_usd", 0.0)) for r in rows
+        ),
         "partial_exit_fills": sum(
             int(r.get("partial_exit_fills", 0)) for r in rows
         ),
@@ -2112,6 +2223,11 @@ def _aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         result["filled_notional_usd"] / result["requested_notional_usd"]
         if result["requested_notional_usd"] > 0
         else 1.0
+    )
+    result["emergency_exit_share"] = (
+        result["emergency_exit_fills"] / result["exit_fills"]
+        if result["exit_fills"]
+        else 0.0
     )
     return result
 
@@ -2202,6 +2318,21 @@ def screen_artifact(
                     candidate["entry_capacity_breach"]
                 ),
                 "exit_fills": int(candidate["exit_fills"]),
+                "normal_exit_fills": int(
+                    candidate.get("normal_exit_fills", candidate["exit_fills"])
+                ),
+                "emergency_exit_fills": int(
+                    candidate.get("emergency_exit_fills", 0)
+                ),
+                "emergency_exit_share": float(
+                    candidate.get("emergency_exit_share", 0.0)
+                ),
+                "normal_exit_pnl_usd": float(
+                    candidate.get("normal_exit_pnl_usd", 0.0)
+                ),
+                "emergency_exit_pnl_usd": float(
+                    candidate.get("emergency_exit_pnl_usd", 0.0)
+                ),
             }
             for index, candidate in enumerate(fold_rows)
         ]
@@ -2240,6 +2371,10 @@ def screen_artifact(
                         family not in ACTUAL_EXIT_REQUIRED_FAMILIES
                         or evidence["exit_fills"] > 0
                     )
+                    and (
+                        family != "BOTTOM_C_DELAYED_EMERGENCY"
+                        or evidence["emergency_exit_share"] <= 0.25
+                    )
                     for evidence in row["fold_evidence"][:-1]
                 ),
                 "robust_validation_fold": (
@@ -2263,6 +2398,13 @@ def screen_artifact(
                     and (
                         family not in ACTUAL_EXIT_REQUIRED_FAMILIES
                         or row["fold_evidence"][-1]["exit_fills"] > 0
+                    )
+                    and (
+                        family != "BOTTOM_C_DELAYED_EMERGENCY"
+                        or row["fold_evidence"][-1][
+                            "emergency_exit_share"
+                        ]
+                        <= 0.25
                     )
                 ),
             }
@@ -2445,6 +2587,119 @@ def screen_artifact(
                     structural_arm_used=False,
                 )
             )
+    if "BOTTOM_A" in families:
+        grid = protective_trail_grid()
+        templates = [
+            ProtectiveTrailExitBook(data, htfs, params, side=side)
+            for params in grid
+        ]
+        for params, template in zip(grid, templates):
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    template,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    # Protective exits must remain visible when they realize a
+                    # loss; a zero profit gate would silently disable them.
+                    profit_gate_pct=-999.0,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "BOTTOM_A_PROTECTIVE_TRAIL",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    path_audit=template.audit,
+                    research_range=(
+                        params.mode == "STDEV"
+                        or params.trail_timeframe != "5m"
+                        or params.break_buffer_atr != 0.0
+                    ),
+                    immediate_break_churn_comparator=(
+                        params.mode == "IMMEDIATE"
+                    ),
+                )
+            )
+    if "BOTTOM_B" in families or "BOTTOM_C" in families:
+        aligned_bottom = {
+            tf: _aligned_structural_tf(data, htfs[tf], tf)
+            for tf in ("5m", "15m", "1h", "4h")
+        }
+        structural_started = time.perf_counter()
+        if "BOTTOM_B" in families:
+            for params, wait_hours in bottom_delayed_grid():
+                fold_rows = [
+                    simulate_structural_compiled(
+                        data,
+                        ctx["signals"],
+                        ctx["curve"],
+                        htfs,
+                        params,
+                        ctx["left"],
+                        ctx["right"],
+                        commission,
+                        slippage,
+                        side=side,
+                        profit_gate_pct=-999.0,
+                        aligned_by_tf=aligned_bottom,
+                    )
+                    for ctx in contexts
+                ]
+                candidates.append(
+                    candidate_row(
+                        "BOTTOM_B_DELAYED_LOWER_TOP",
+                        {
+                            **dataclasses.asdict(params),
+                            "max_wait_hours": wait_hours,
+                        },
+                        fold_rows,
+                        break_bar_can_exit=False,
+                        dc_low4_profit_exit_used=False,
+                    )
+                )
+        if "BOTTOM_C" in families:
+            for params, wait_hours, emergency_label in bottom_emergency_grid():
+                fold_rows = [
+                    simulate_structural_compiled(
+                        data,
+                        ctx["signals"],
+                        ctx["curve"],
+                        htfs,
+                        params,
+                        ctx["left"],
+                        ctx["right"],
+                        commission,
+                        slippage,
+                        side=side,
+                        profit_gate_pct=-999.0,
+                        aligned_by_tf=aligned_bottom,
+                    )
+                    for ctx in contexts
+                ]
+                candidates.append(
+                    candidate_row(
+                        "BOTTOM_C_DELAYED_EMERGENCY",
+                        {
+                            **dataclasses.asdict(params),
+                            "max_wait_hours": wait_hours,
+                            "emergency_label": emergency_label,
+                        },
+                        fold_rows,
+                        emergency_must_be_rare_share_max=0.25,
+                        break_bar_can_exit=False,
+                        dc_low4_profit_exit_used=False,
+                    )
+                )
+        compiled_structural_elapsed_seconds += (
+            time.perf_counter() - structural_started
+        )
     if "STRUCTURAL_WT" in families:
         aligned_structural = {
             tf: _aligned_structural_tf(data, htfs[tf], tf)
@@ -2481,7 +2736,7 @@ def screen_artifact(
                     profit_gate_pct=profit_gate,
                 )
             )
-        compiled_structural_elapsed_seconds = (
+        compiled_structural_elapsed_seconds += (
             time.perf_counter() - structural_started
         )
     if "PARTIAL_WT" in families:
@@ -2541,6 +2796,10 @@ def screen_artifact(
             row["family"] not in ACTUAL_EXIT_REQUIRED_FAMILIES
             or row["metrics"]["exit_fills"] > 0
         )
+        and (
+            row["family"] != "BOTTOM_C_DELAYED_EMERGENCY"
+            or row["metrics"]["emergency_exit_share"] <= 0.25
+        )
     ]
     survivors = []
     frozen_discovery_winners: list[dict[str, Any]] = []
@@ -2588,13 +2847,22 @@ def screen_artifact(
             )
             frozen_discovery_winners.append(family_rows[0])
         for winner in frozen_discovery_winners:
-            if winner["family"] != "EXIT_STRUCTURAL_WT_LOWER_TOP":
+            if winner["family"] not in {
+                "EXIT_STRUCTURAL_WT_LOWER_TOP",
+                "BOTTOM_B_DELAYED_LOWER_TOP",
+                "BOTTOM_C_DELAYED_EMERGENCY",
+            }:
                 winner["compiled_python_parity"] = {
                     "status": "NOT_APPLICABLE"
                 }
                 continue
             param_values = dict(winner["params"])
             param_values.pop("max_wait_hours", None)
+            param_values.pop("emergency_label", None)
+            if isinstance(param_values.get("emergency_modes"), list):
+                param_values["emergency_modes"] = tuple(
+                    param_values["emergency_modes"]
+                )
             oracle_params = StructuralWtParams(**param_values)
             oracle_started = time.perf_counter()
             oracle_rows = [
@@ -2610,7 +2878,9 @@ def screen_artifact(
                     commission,
                     slippage,
                     side=side,
-                    profit_gate_pct=float(winner["profit_gate_pct"]),
+                    profit_gate_pct=float(
+                        winner.get("profit_gate_pct", -999.0)
+                    ),
                 )
                 for ctx in contexts
             ]
@@ -2627,12 +2897,16 @@ def screen_artifact(
                 "requested_notional_usd",
                 "filled_notional_usd",
                 "fill_ratio",
+                "normal_exit_pnl_usd",
+                "emergency_exit_pnl_usd",
             )
             exact_keys = (
                 "insolvent_folds",
                 "entry_capacity_breach",
                 "clamp_count",
                 "exit_fills",
+                "normal_exit_fills",
+                "emergency_exit_fills",
                 "reclaim_reentries",
                 "bars_flat_beyond_reclaim",
                 "future_htf_source_count",
@@ -2663,13 +2937,36 @@ def screen_artifact(
                 "compiled_grid_elapsed_seconds": (
                     compiled_structural_elapsed_seconds
                 ),
-                "compiled_candidates": len(structural_grid()),
+                "compiled_candidates": (
+                    len(structural_grid())
+                    if winner["family"] == "EXIT_STRUCTURAL_WT_LOWER_TOP"
+                    else len(bottom_delayed_grid())
+                    if winner["family"] == "BOTTOM_B_DELAYED_LOWER_TOP"
+                    else len(bottom_emergency_grid())
+                ),
                 "estimated_python_grid_seconds": (
-                    oracle_elapsed * len(structural_grid())
+                    oracle_elapsed
+                    * (
+                        len(structural_grid())
+                        if winner["family"]
+                        == "EXIT_STRUCTURAL_WT_LOWER_TOP"
+                        else len(bottom_delayed_grid())
+                        if winner["family"]
+                        == "BOTTOM_B_DELAYED_LOWER_TOP"
+                        else len(bottom_emergency_grid())
+                    )
                 ),
                 "estimated_speedup": (
                     oracle_elapsed
-                    * len(structural_grid())
+                    * (
+                        len(structural_grid())
+                        if winner["family"]
+                        == "EXIT_STRUCTURAL_WT_LOWER_TOP"
+                        else len(bottom_delayed_grid())
+                        if winner["family"]
+                        == "BOTTOM_B_DELAYED_LOWER_TOP"
+                        else len(bottom_emergency_grid())
+                    )
                     / compiled_structural_elapsed_seconds
                     if compiled_structural_elapsed_seconds > 0
                     else None
@@ -2780,6 +3077,19 @@ def screen_artifact(
                 "future_htf_source_count"
             ],
         }
+    if any(name in families for name in ("BOTTOM_A", "BOTTOM_B", "BOTTOM_C")):
+        payload["bottom_exit_contract"] = {
+            "code_audit": "BOTTOM_EXIT_CODE_AUDIT_20260726.md",
+            "same_entry": True,
+            "completed_timeframes_only": ["5m", "15m", "1h", "4h"],
+            "five_minute_native_or_interpolated_provenance_preserved": True,
+            "break_bar_profit_exit_used": False,
+            "immediate_break_retained_as_diagnostic_only": True,
+            "normal_and_emergency_exits_counted_separately": True,
+            "emergency_share_max_for_survival": 0.25,
+            "side_specific_bh_usd": ladder.BASE_UNIT,
+            "strategy_capacity_usd": ladder.CAPACITY,
+        }
     data.z.close()
     return payload
 
@@ -2794,7 +3104,8 @@ def main() -> int:
         default="WT_MTF,STRUCTURAL_WT",
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
-            "E01_CHANDELIER, STRUCTURAL_WT, and/or PARTIAL_WT"
+            "E01_CHANDELIER, BOTTOM_A, BOTTOM_B, BOTTOM_C, "
+            "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
     ap.add_argument(
@@ -2811,6 +3122,9 @@ def main() -> int:
         "WT_MTF",
         "GR_OPPOSITE",
         "E01_CHANDELIER",
+        "BOTTOM_A",
+        "BOTTOM_B",
+        "BOTTOM_C",
         "STRUCTURAL_WT",
         "PARTIAL_WT",
     }

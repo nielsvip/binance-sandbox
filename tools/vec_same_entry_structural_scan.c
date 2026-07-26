@@ -16,6 +16,8 @@ typedef struct {
     double peak_post_fill_notional_usd;
     double requested_notional_usd;
     double filled_notional_usd;
+    double normal_exit_pnl_usd;
+    double emergency_exit_pnl_usd;
     int insolvent;
     int entry_capacity_breach;
     int signals;
@@ -91,6 +93,8 @@ int vec_same_entry_structural_scan(
             if (pending == 2 && qty > 0.0) {
                 double px = op * (1.0 - side * slippage);
                 double notional = qty * px;
+                double realized = side*qty*(px-avg_entry)
+                    - commission*(qty*avg_entry+notional);
                 cash += side * (notional - side * commission * notional);
                 prior_exit_notional = dmin(CAPACITY, notional);
                 last_exit = px;
@@ -98,8 +102,13 @@ int vec_same_entry_structural_scan(
                                          : dmin(px, pending_ref);
                 qty = 0.0; avg_entry = NAN; gap_seen = 0;
                 exit_fill_row = i; out->exit_fills++;
-                if (pending_emergency) out->emergency_exit_fills++;
-                else out->normal_exit_fills++;
+                if (pending_emergency) {
+                    out->emergency_exit_fills++;
+                    out->emergency_exit_pnl_usd += realized;
+                } else {
+                    out->normal_exit_fills++;
+                    out->normal_exit_pnl_usd += realized;
+                }
                 pending_emergency = 0;
             } else if (pending == 1 || pending == 3) {
                 double px = op * (1.0 + side * slippage);
@@ -269,8 +278,10 @@ int vec_same_entry_structural_scan(
                         confirmation_mode==2 ? rollover :
                         confirmation_mode==3 ? (adverse || rollover) :
                         (adverse && rollover);
-                    confirmation_streak = confirmed ? confirmation_streak+1 : 0;
-                    continued_count = continued ? continued_count+1 : 0;
+                    if (!transitioned) {
+                        confirmation_streak = confirmed ? confirmation_streak+1 : 0;
+                        continued_count = continued ? continued_count+1 : 0;
+                    }
                     int emergency =
                         ((emergency_mask & 1) && emergency_adverse_atr > 0.0 &&
                          adverse_distance >= emergency_adverse_atr*state_arm_atr) ||

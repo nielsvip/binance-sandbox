@@ -37,8 +37,8 @@ class StructuralWtParams:
     def validate(self) -> None:
         if self.arm_tf not in {"1h", "4h", "D"}:
             raise ValueError("arm_tf must be 1h, 4h, or D")
-        if self.confirm_tf not in {"15m", "1h", "4h"}:
-            raise ValueError("confirm_tf must be 15m, 1h, or 4h")
+        if self.confirm_tf not in {"5m", "15m", "1h", "4h"}:
+            raise ValueError("confirm_tf must be 5m, 15m, 1h, or 4h")
         if self.prebreak_lookback < 2:
             raise ValueError("prebreak_lookback must be >=2")
         if self.max_wait_1h < 3:

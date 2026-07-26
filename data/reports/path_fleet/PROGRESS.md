@@ -1,6 +1,6 @@
 # Stock Path Fleet
 
-Updated: 2026-07-26T19:38:42.388448+00:00
+Updated: 2026-07-26T19:53:26.866862+00:00
 
 This is research-only. A positive B&H comparison is insufficient: every exit must also beat the strongest frozen result using the identical entry schedule. LONG and SHORT are never pooled.
 
@@ -14,7 +14,7 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | 2 | `ENTRY_STOCH_HHHL` | ENTRY | SCREENED | 1 | entry-overlay |
 | 2 | `EXIT_STRUCTURAL_WT_LOWER_TOP` | EXIT | SCREENED | 1 | path-fleet-structural |
 | 3 | `ENTRY_GOLDEN_RULE` | ENTRY | SCREENED | 0 | entry-overlay |
-| 3 | `EXIT_PARTIAL_RUNNER` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 3 | `EXIT_PARTIAL_RUNNER` | EXIT | SCREENED | 1 | path-fleet-partial |
 | 4 | `EXIT_WT_MTF` | EXIT | SCREENED | 1 | codex-wt-mtf-path |
 | 5 | `EXIT_GR_OPPOSITE` | EXIT | SCREENED | 2 | codex-gr-opposite-level-path |
 | 6 | `EXIT_E01_CHANDELIER` | EXIT | SCREENED | 1 | codex-e01-chandelier-path |
@@ -24,7 +24,7 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | 8 | `EXIT_E06_REGRESSION_RETEST` | EXIT | ADAPTER_REQUIRED | 0 | — |
 | 9 | `EXIT_MTF_ATR_TRAIL` | EXIT | ADAPTER_REQUIRED | 0 | — |
 | 10 | `EXIT_PEAK_GIVEBACK` | EXIT | ADAPTER_REQUIRED | 0 | — |
-| 20 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
+| 20 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ENTRY | SCREENED | 1 | entry-overlay |
 | 20 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_DC_TIER_AUG_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_LONG_WAIT_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
@@ -93,12 +93,12 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | `EXIT_GR_OPPOSITE` | research-only; 0 authoritative row(s) | Exit on opposite Golden Rule HTF votes. Timeframe votes and weights are reported separately so LONG/SHORT direction cannot be inverted or pooled. | min_tfs=[1, 2, 3]; min_indicators=[1, 2]; score=[4, 6, 8, 10, 12, 15.5]; weights_15m_1h_4h_D=['1/1/1/1', '0.5/1/2/3', '0/1/2/4'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_E01_CHANDELIER` | research-only; 0 authoritative row(s) | Monotonic ATR Chandelier stop on completed 4h or daily bars. | timeframe=['4h', 'D']; lookback=[10, 20, 30, 55]; atr_mult=[1.5, 2.0, 2.5, 3.0, 4.0]; profit_gate_pct=[0.0, 0.25, 0.5, 1.0] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `ENTRY_BB_RECOVERY` | BB_RECOVERY_ENABLED; 1 authoritative row(s) | Failed Bollinger breakout/breakdown followed by recovery into the band. | timeframes=['15m', '1h', '4h']; recovery_bars=[1, 2, 4, 8]; min_band_excursion_atr=[0.0, 0.25, 0.5, 1.0] | entry: same ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
-| `EXIT_E05_DIVERGENCE_RETEST` | research-only; 0 authoritative row(s) | Confirmed RSI/price divergence, structural break, then rebound/rollover exit. | pivot_radius=[2, 3, 4, 6]; divergence_min=[3, 5, 8, 12]; rebound_atr=[0.25, 0.5, 1.0]; max_wait_bars=[6, 12, 18, 24] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_E05_DIVERGENCE_RETEST` | research-only; 0 authoritative row(s) | Confirmed RSI/price divergence, structural break, then rebound/rollover exit. | pivot_radius=[2, 3, 5]; divergence_min=[3, 5, 8]; break_buffer_atr=[0.0, 0.25]; rebound_atr=[0.25, 0.5]; max_wait_bars=[8, 12, 20] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `ENTRY_DELTA_MTF` | research-only; 0 authoritative row(s) | Delta/momentum entry requiring a declared number of favorable completed TFs. | min_favorable_tfs=[1, 2, 3, 4]; decay_ratio=[0.25, 0.5, 0.75]; structural_gate=[False, True] | entry: same ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
-| `EXIT_E06_REGRESSION_RETEST` | research-only; 0 authoritative row(s) | Regression extreme arms an exit; reversion/retest confirms it before close. | lookback=[40, 60, 100, 160]; arm_z=[1.5, 2.0, 2.5, 3.0]; exit_z=[0.0, 0.5, 1.0]; rebound_atr=[0.25, 0.5, 0.7, 1.0] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_E06_REGRESSION_RETEST` | research-only; 0 authoritative row(s) | Regression extreme arms an exit; reversion/retest confirms it before close. | lookback=[40, 60, 100, 150, 250]; arm_z=[1.5, 2.0, 2.5, 3.0]; exit_z=[0.75, 1.0, 1.5, 2.0]; corr_gate=[0.5, 0.7, 0.85] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_MTF_ATR_TRAIL` | research-only; 0 authoritative row(s) | Profit-aware ATR trail compounded across completed timeframes. | timeframes=['1h', '4h', 'D']; atr_mult=[1.5, 2.0, 2.5, 3.0, 4.0]; min_profit_pct=[0.0, 0.25, 0.5, 1.0]; min_confirming_tfs=[1, 2] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_PEAK_GIVEBACK` | PEAK_GIVEBACK_ENABLED; 1 authoritative row(s) | Exit or reduce after giving back a declared fraction of MFE, gated above cost. | arm_gain_pct=[0.5, 1.0, 2.0, 4.0, 8.0]; giveback_fraction=[0.2, 0.33, 0.5, 0.67]; reduce_fraction=[0.25, 0.5, 1.0] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
-| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AUGMENT_TREND_RESUME_ENABLED; 1 authoritative row(s) | Augment on trend resume signal (momentum continuation). | config_default=['True']; event_types=['AUGMENT']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AUGMENT_TREND_RESUME_ENABLED; 1 authoritative row(s) | Research reconstruction of the removed stock trend-resume augment: while an existing position is profitable, add on a side-favorable 5m Donchian-basis, Stoch, and RSI continuation state. | min_gain_pct=[0.5, 1.0, 2.0, 3.0]; rsi_boundary_long_short=['60/40', '70/30', '80/20', '100/0']; add_start_position_mult=[0.25, 0.5] | entry: same frozen ladder entry schedule, sizing, and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | DC_BREAK_ENTRY_ENABLED; 2 authoritative row(s) | DC channel breakout entry. NH = new high, NM = new max. RATIO suffix = ratio adjustment. / DC breakout short (NH break) or long (NM break) with stop level in reason. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_DC_TIER_AUG_ENABLED` | DC_TIER_AUG_ENABLED; 1 authoritative row(s) | DC-tiered augment: add to position when DC NH/NM level reached. | config_default=['True']; event_types=['AUGMENT']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_LONG_WAIT_ENABLED` | LONG_WAIT_ENABLED; 1 authoritative row(s) | Low bounce wait entry. 1H dip + NH deep value + sniper confirmation. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
@@ -156,6 +156,46 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 
 | path | key | stage | state | strategy | B&H | same-entry control | alpha B&H | alpha control | TIM | trades |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -322.04% | -133.05% | -219.78% | -188.99pp | -102.26pp | 77.9% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -440.19% | -48.38% | -162.77% | -391.81pp | -277.42pp | 73.1% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1201.09% | 141.54% | 747.74% | +1059.54pp | +453.35pp | 89.8% | 21 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 259.64% | 13.86% | -30.35% | +245.78pp | +289.99pp | 81.0% | 40 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -4.69% | -11.54% | -304.93% | +6.85pp | +300.24pp | 79.4% | 21 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -1000.54% | -219.36% | -734.70% | -781.19pp | -265.84pp | 65.9% | 35 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -947.11% | -85.44% | -223.69% | -861.67pp | -723.43pp | 75.7% | 44 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -1142.62% | -153.31% | -589.06% | -989.32pp | -553.57pp | 76.1% | 31 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -641.32% | -82.31% | -818.37% | -559.00pp | +177.06pp | 82.0% | 39 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 544.08% | 69.84% | 407.15% | +474.24pp | +136.93pp | 74.4% | 22 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 477.43% | 113.27% | 411.17% | +364.16pp | +66.25pp | 85.0% | 15 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 5424.71% | 888.47% | 5414.04% | +4536.24pp | +10.67pp | 97.1% | 8 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 733.62% | 127.67% | 642.13% | +605.95pp | +91.49pp | 79.4% | 27 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 2808.88% | 381.95% | 2503.08% | +2426.93pp | +305.80pp | 87.7% | 23 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1289.89% | 104.11% | 1283.09% | +1185.78pp | +6.80pp | 83.0% | 31 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 440.91% | 103.59% | 163.19% | +337.32pp | +277.72pp | 84.5% | 22 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1450.49% | 214.03% | 1466.30% | +1236.46pp | -15.81pp | 85.5% | 25 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 732.26% | 118.22% | 531.31% | +614.04pp | +200.95pp | 82.6% | 17 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1149.22% | 123.02% | 1150.82% | +1026.20pp | -1.61pp | 79.4% | 29 |
+| `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1865.44% | 204.78% | 1683.80% | +1660.66pp | +181.64pp | 92.5% | 16 |
+| `EXIT_PARTIAL_RUNNER` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 192.97% | 37.50% | 67.76% | +155.47pp | +125.21pp | 43.8% | 40 |
+| `EXIT_PARTIAL_RUNNER` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -34.79% | 19.41% | 85.72% | -54.21pp | -120.51pp | 43.8% | 62 |
+| `EXIT_PARTIAL_RUNNER` | EGO_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 2.82% | 23.03% | 48.02% | -20.20pp | -45.20pp | 20.6% | 55 |
+| `EXIT_PARTIAL_RUNNER` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -391.49% | 21.95% | 50.25% | -413.44pp | -441.74pp | 34.8% | 87 |
+| `EXIT_PARTIAL_RUNNER` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1.38% | 54.33% | 481.90% | -52.95pp | -480.52pp | 57.7% | 54 |
+| `EXIT_PARTIAL_RUNNER` | ACN_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 327.62% | 44.50% | 400.98% | +283.12pp | -73.36pp | 55.3% | 153 |
+| `EXIT_PARTIAL_RUNNER` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 101.02% | 22.65% | 65.05% | +78.38pp | +35.97pp | 40.4% | 14 |
+| `EXIT_PARTIAL_RUNNER` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -156.56% | 22.27% | 66.58% | -178.83pp | -223.14pp | 41.3% | 103 |
+| `EXIT_PARTIAL_RUNNER` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -20.76% | 26.20% | 68.24% | -46.96pp | -89.00pp | 27.0% | 45 |
+| `EXIT_PARTIAL_RUNNER` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 347.55% | 36.98% | 109.33% | +310.57pp | +238.22pp | 29.7% | 28 |
+| `EXIT_PARTIAL_RUNNER` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 374.95% | 84.91% | 387.31% | +290.04pp | -12.36pp | 92.4% | 5 |
+| `EXIT_PARTIAL_RUNNER` | DINO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 460.60% | 90.70% | 485.24% | +369.90pp | -24.64pp | 81.5% | 11 |
+| `EXIT_PARTIAL_RUNNER` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 156.65% | 88.48% | 117.46% | +68.17pp | +39.19pp | 60.6% | 6 |
+| `EXIT_PARTIAL_RUNNER` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 135.04% | 121.26% | 707.27% | +13.78pp | -572.23pp | 57.7% | 87 |
+| `EXIT_PARTIAL_RUNNER` | AMD_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1098.02% | 134.45% | 1180.81% | +963.57pp | -82.79pp | 97.8% | 7 |
+| `EXIT_PARTIAL_RUNNER` | INTC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 903.10% | 139.23% | 964.02% | +763.87pp | -60.92pp | 90.4% | 20 |
+| `EXIT_PARTIAL_RUNNER` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1254.16% | 204.90% | 1376.23% | +1049.26pp | -122.07pp | 73.8% | 11 |
+| `EXIT_PARTIAL_RUNNER` | ARM_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 970.74% | 126.60% | 1082.44% | +844.13pp | -111.70pp | 89.5% | 11 |
+| `EXIT_PARTIAL_RUNNER` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1314.59% | 123.58% | 1672.73% | +1191.00pp | -358.14pp | 75.1% | 9 |
+| `EXIT_PARTIAL_RUNNER` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1024.17% | 467.09% | 2325.64% | +557.08pp | -1301.47pp | 74.8% | 111 |
 | `ENTRY_DELTA_MTF` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -250.88% | -133.05% | -219.78% | -117.83pp | -31.10pp | 41.9% | 25 |
 | `ENTRY_DELTA_MTF` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -6.37% | -48.38% | -162.77% | +42.01pp | +156.40pp | 40.4% | 26 |
 | `ENTRY_DELTA_MTF` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 730.52% | 141.54% | 747.74% | +588.98pp | -17.22pp | 58.9% | 15 |

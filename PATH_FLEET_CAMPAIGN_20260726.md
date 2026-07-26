@@ -127,3 +127,30 @@ diagnostic reproduced the current-engine schedule and accounting, including
 requires every validation fold—not only the aggregate—to remain in the
 70–80% band, and dedicated tests prevent aggregate exposure from hiding
 fold-level failures.
+
+### Trend-resume augment inventory repair
+
+The authoritative inventory listed `AUGMENT_TREND_RESUME_ENABLED`, but the
+active stock config and `tradier_manage.py` contain neither that switch nor the
+`Augment_Trend_Resume` reason. Active `evaluate_augment` now implements a
+different DC-tier path. The inventory item was therefore disconnected, not an
+untested live switch.
+
+For recoverable evidence, the last real implementation in
+`backups/before_desktop_tradier_fixes_20260721.py` was reconstructed as a
+research-only adapter. It adds to an already-open profitable position when
+price is on the favorable side of the 5m Donchian basis, Stoch K/D is aligned,
+and 5m RSI is not exhausted. The 32-setting sweep covered:
+
+- minimum gain 0.5%/1%/2%/3%;
+- mirrored RSI boundaries 60/40, 70/30, 80/20, and disabled 100/0;
+- additive 0.25x/0.5x `START_POSITION_SIZE`.
+
+The frozen 20-key cohort completed with zero future-HTF observations and no
+capacity breaches. Zero rows passed B&H, the identical ladder+E02 control, and
+70–80% weighted TIM in every fold. TTD_SHORT beat both return comparisons in
+every fold, but its aggregate TIM was 89.79%, so it remains gray and exact
+replay was not launched. All results are preserved in
+`ENTRY_AUGMENT_TREND_RESUME_TOP_BOTTOM10_20260726.{json,md}`. The active live
+path remains unchanged; reconnecting it requires an explicit implementation
+decision after a viable OOS setting exists.

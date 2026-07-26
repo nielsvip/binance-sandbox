@@ -1,3 +1,4 @@
+import dataclasses
 import math
 from types import SimpleNamespace
 
@@ -6,6 +7,7 @@ import numpy as np
 from tools.vec_same_entry_exit_adapter import (
     ChandelierParams,
     GrOppositeParams,
+    ProtectiveTrailParams,
     StaticExitBook,
     WtMtfParams,
     _entry_schedule_hash,
@@ -16,7 +18,10 @@ from tools.vec_same_entry_exit_adapter import (
     build_wt_mtf_book,
     e02_grid,
     chandelier_grid,
+    bottom_delayed_grid,
+    bottom_emergency_grid,
     gr_opposite_grid,
+    protective_trail_grid,
     simulate,
     simulate_structural_compiled,
     structural_grid,
@@ -448,6 +453,25 @@ def test_structural_registry_grid_is_complete_and_hour_normalized():
     assert ("4h", "1h", 4.0, 10, 48, 1.0, 48) in observed
 
 
+def test_bottom_exit_grids_cover_smaller_tfs_modes_and_rare_brakes():
+    path_a = protective_trail_grid()
+    path_b = bottom_delayed_grid()
+    path_c = bottom_emergency_grid()
+    assert len(path_a) == 220
+    assert {row.mode for row in path_a} == {"IMMEDIATE", "ATR", "STDEV", "DC"}
+    assert {row.trail_timeframe for row in path_a} == {"5m", "15m", "1h"}
+    assert len(path_b) == 864
+    assert {params.confirm_tf for params, _ in path_b} == {"5m", "15m", "1h"}
+    assert {params.confirmation_mode for params, _ in path_b} == {
+        "PRICE_ONLY", "WT_ONLY", "AND", "OR"
+    }
+    assert {params.confirmation_bars for params, _ in path_b} == {1, 2}
+    assert len(path_c) == 324
+    labels = {label for _, _, label in path_c}
+    assert {"ADVERSE_ATR_4", "ADVERSE_STDEV_5", "MAX_WAIT", "CONTINUED_5"} <= labels
+    assert all(params.emergency_modes for params, _, _ in path_c)
+
+
 def test_compiled_structural_scanner_matches_python_oracle():
     from tools.vec_band_ladder_walkforward import Curve, SignalData
     from tools.vec_same_entry_exit_adapter import StructuralWtExitBookAdapter
@@ -567,6 +591,53 @@ def test_compiled_structural_scanner_matches_python_oracle():
         "bars_flat_beyond_reclaim",
     ):
         assert compiled_result[key] == python_result[key], key
+
+    emergency_params = dataclasses.replace(
+        params,
+        emergency_modes=("ADVERSE_ATR",),
+        emergency_adverse_atr=1.0,
+    )
+    python_emergency = simulate(
+        data,
+        signals,
+        curve,
+        StructuralWtExitBookAdapter(
+            data, htfs, emergency_params, side="LONG"
+        ),
+        0,
+        n,
+        0.0005,
+        0.0005,
+        side="LONG",
+        profit_gate_pct=-999.0,
+    )
+    compiled_emergency = simulate_structural_compiled(
+        data,
+        signals,
+        curve,
+        htfs,
+        emergency_params,
+        0,
+        n,
+        0.0005,
+        0.0005,
+        side="LONG",
+        profit_gate_pct=-999.0,
+    )
+    assert compiled_emergency["emergency_exit_fills"] == 1
+    assert python_emergency["emergency_exit_fills"] == 1
+    assert compiled_emergency["normal_exit_fills"] == 0
+    assert compiled_emergency["exit_fills"] == python_emergency["exit_fills"]
+    assert math.isclose(
+        compiled_emergency["emergency_exit_pnl_usd"],
+        python_emergency["emergency_exit_pnl_usd"],
+        abs_tol=1e-9,
+    )
+    assert math.isclose(
+        compiled_emergency["capital_return_pct"],
+        python_emergency["capital_return_pct"],
+        abs_tol=1e-9,
+    )
 
 
 def test_partial_clip_keeps_runner_and_reclaims_clip():

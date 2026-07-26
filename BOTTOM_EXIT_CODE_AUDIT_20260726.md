@@ -68,6 +68,9 @@ lower-top exits and test only causal completed information:
 
 An emergency path is diagnostic/red if it becomes a routine exit. It must
 report `normal_exit_fills`, `emergency_exit_fills`, and emergency share.
+It must also report realized `normal_exit_pnl_usd` and
+`emergency_exit_pnl_usd`; a brake cannot conceal that it supplies most of the
+campaign P&L (or loss) merely by having a low event count.
 
 ## Non-negotiable validation
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Causal GR / WT_DC / structural-Stoch overlays on the frozen ladder.
+"""Causal entry-path overlays on the frozen ladder.
 
 This is a vector-first shortlist, not a live-promotion tool.  It consumes one
 completed ``vec_band_ladder_walkforward`` artifact and keeps, fold by fold:
@@ -103,7 +103,11 @@ def _causal_npz_view(
         "close": np.asarray(data.close, dtype=np.float64),
         "close_5m": np.asarray(data.close, dtype=np.float64),
         "k_5m": _base_arr(data, "k_5m", "stoch_k_5m", default=50.0),
+        "d_5m": _base_arr(data, "d_5m", "stoch_d_5m", default=50.0),
         "stoch_k_5m": _base_arr(data, "stoch_k_5m", "k_5m", default=50.0),
+        "stoch_d_5m": _base_arr(data, "stoch_d_5m", "d_5m", default=50.0),
+        "dc_high_5m_prev": _base_arr(data, "dc_high_5m_prev"),
+        "dc_low_5m_prev": _base_arr(data, "dc_low_5m_prev"),
         "wt_velocity_5m": _base_arr(data, "wt_velocity_5m"),
         "wt_acceleration_5m": _base_arr(data, "wt_acceleration_5m"),
     }
@@ -149,6 +153,13 @@ def _causal_npz_view(
                 view[key] = _completed_arr(data, h, key)
         if f"dc_pct_{tf}" not in view and f"dc_position_{tf}" in view:
             view[f"dc_pct_{tf}"] = view[f"dc_position_{tf}"]
+        # Donchian antecedent fields use ``dc_high_1h_prev`` ordering rather
+        # than the generic ``feature_tf`` ordering above.
+        for stem in ("dc_high", "dc_low"):
+            for suffix in ("prev", "ant"):
+                key = f"{stem}_{tf}_{suffix}"
+                if key in data.z.files:
+                    view[key] = _completed_arr(data, h, key)
     return view, audit
 
 
@@ -209,7 +220,11 @@ def _candidate_entry_mult(
     curve: ladder.Curve,
     green: ladder.SignalData | None = None,
 ) -> np.ndarray:
-    if candidate.family not in {"ENTRY_STOCH_HHHL", "ENTRY_BB_RECOVERY"}:
+    if candidate.family not in {
+        "ENTRY_STOCH_HHHL",
+        "ENTRY_BB_RECOVERY",
+        "ENTRY_DC_BREAK_ENTRY_ENABLED",
+    }:
         return _entry_mult(
             candidate_mask, control, direct_mult, candidate.role
         )
@@ -344,6 +359,94 @@ def _delta_candidates() -> list[Candidate]:
             (False, True),
         )
     ]
+
+
+def _dc_break_candidates() -> list[Candidate]:
+    """Ranges traceable to the two real, differently named DC entry paths.
+
+    ``5m``/``15m`` and the expansion/exhaustion controls come from
+    ``StockDaytradeWing._check_dc_break``. ``1h``/``4h``, directional Stoch,
+    and the asymmetric 0.05%/0.10% buffers come from the old swing
+    ``evaluate_open`` branch. Zero/0.20% buffers and union-with-green are
+    explicitly research-only extensions.
+    """
+    return [
+        _candidate(
+            "ENTRY_DC_BREAK_ENTRY_ENABLED",
+            role,
+            timeframe=tf,
+            buffer_fraction=buffer_fraction,
+            require_1h_expansion=expansion,
+            confirmation=confirmation,
+        )
+        for role, tf, buffer_fraction, expansion, confirmation in itertools.product(
+            ("direct", "union-with-green"),
+            ("5m", "15m", "1h", "4h"),
+            (0.0, 0.0005, 0.0010, 0.0020),
+            (False, True),
+            ("none", "not-exhausted", "directional-stoch"),
+        )
+    ]
+
+
+def _dc_break_masks(
+    view: dict[str, np.ndarray],
+    side: str,
+) -> dict[tuple[str, float, bool, str], np.ndarray]:
+    """Causal prior-channel breakout mirrors for the disconnected registry row.
+
+    The channel comparison always uses ``*_prev``. A completed 5m observation
+    can therefore request only a later fill; HTF values are forward-filled only
+    after their completed source bar is available.
+    """
+    n = len(view["close"])
+    price = np.asarray(view["close"], dtype=np.float64)
+    k5 = np.asarray(view.get("stoch_k_5m", np.full(n, 50.0)))
+    d5 = np.asarray(view.get("stoch_d_5m", np.full(n, 50.0)))
+    k15 = np.asarray(view.get("stoch_k_15m", np.full(n, 50.0)))
+    d15 = np.asarray(view.get("stoch_d_15m", np.full(n, 50.0)))
+    high_1h = np.asarray(view.get("dc_high_1h", np.zeros(n)))
+    high_1h_ant = np.asarray(view.get("dc_high_1h_ant", np.zeros(n)))
+    low_1h = np.asarray(view.get("dc_low_1h", np.zeros(n)))
+    low_1h_ant = np.asarray(view.get("dc_low_1h_ant", np.zeros(n)))
+    if side == "LONG":
+        expansion_state = (
+            (high_1h > 0) & (high_1h_ant > 0) & (high_1h > high_1h_ant)
+        )
+        not_exhausted = k15 <= 85.0
+        directional = (k5 > d5) & (k15 > d15)
+    else:
+        expansion_state = (
+            (low_1h > 0) & (low_1h_ant > 0) & (low_1h < low_1h_ant)
+        )
+        not_exhausted = k15 >= 15.0
+        directional = (k5 < d5) & (k15 < d15)
+    confirmations = {
+        "none": np.ones(n, dtype=bool),
+        "not-exhausted": not_exhausted,
+        "directional-stoch": directional,
+    }
+    out = {}
+    for tf, buffer_fraction, expansion, confirmation in itertools.product(
+        ("5m", "15m", "1h", "4h"),
+        (0.0, 0.0005, 0.0010, 0.0020),
+        (False, True),
+        ("none", "not-exhausted", "directional-stoch"),
+    ):
+        channel_key = (
+            f"dc_high_{tf}_prev" if side == "LONG" else f"dc_low_{tf}_prev"
+        )
+        channel = np.asarray(view.get(channel_key, np.zeros(n)))
+        valid = np.isfinite(channel) & (channel > 0) & np.isfinite(price)
+        if side == "LONG":
+            mask = valid & (price > channel * (1.0 + buffer_fraction))
+        else:
+            mask = valid & (price < channel * (1.0 - buffer_fraction))
+        if expansion:
+            mask &= expansion_state
+        mask &= confirmations[confirmation]
+        out[(tf, buffer_fraction, expansion, confirmation)] = mask
+    return out
 
 
 def _structure_states(
@@ -618,6 +721,7 @@ def _mask(
     structure_states: dict[tuple[str, float], np.ndarray] | None = None,
     bb_recovery_masks: dict[tuple[str, int, float], np.ndarray] | None = None,
     delta_masks: dict[tuple[int, float, bool], np.ndarray] | None = None,
+    dc_break_masks: dict[tuple[str, float, bool, str], np.ndarray] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -658,6 +762,17 @@ def _mask(
                 int(p["min_favorable_tfs"]),
                 float(p["directional_retention_ratio"]),
                 bool(p["structural_gate"]),
+            )
+        ]
+    if candidate.family == "ENTRY_DC_BREAK_ENTRY_ENABLED":
+        if dc_break_masks is None:
+            raise ValueError("DC-break masks are required")
+        return dc_break_masks[
+            (
+                str(p["timeframe"]),
+                float(p["buffer_fraction"]),
+                bool(p["require_1h_expansion"]),
+                str(p["confirmation"]),
             )
         ]
     passed = np.vstack(
@@ -725,6 +840,12 @@ def _forward_rank(
             and p["min_excursion_atr"] in {0.0, 0.5}
         ):
             sentinels.append(candidate)
+        if candidate.family == "ENTRY_DC_BREAK_ENTRY_ENABLED" and (
+            p["timeframe"] in {"5m", "15m"}
+            and p["buffer_fraction"] in {0.0005, 0.001}
+            and p["confirmation"] in {"not-exhausted", "directional-stoch"}
+        ):
+            sentinels.append(candidate)
     out: dict[str, Candidate] = {
         row[3].label: row[3] for row in scored[:shortlist]
     }
@@ -782,6 +903,7 @@ def build_frozen_overlay_signals(
     structure_states = _structure_states(data, htfs, side)
     bb_masks = _bb_recovery_masks(data, htfs, side)
     delta_masks, _ = _delta_masks(data, view, htfs, side)
+    dc_break_masks = _dc_break_masks(view, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
@@ -793,6 +915,7 @@ def build_frozen_overlay_signals(
         structure_states,
         bb_masks,
         delta_masks,
+        dc_break_masks,
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -837,12 +960,14 @@ def run(args: argparse.Namespace) -> Path:
     structure_states = _structure_states(data, htfs, side)
     bb_masks = _bb_recovery_masks(data, htfs, side)
     delta_masks, delta_input_audit = _delta_masks(data, view, htfs, side)
+    dc_break_masks = _dc_break_masks(view, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
         "ENTRY_STOCH_HHHL": _stoch_candidates,
         "ENTRY_BB_RECOVERY": _bb_recovery_candidates,
         "ENTRY_DELTA_MTF": _delta_candidates,
+        "ENTRY_DC_BREAK_ENTRY_ENABLED": _dc_break_candidates,
     }[args.family]()
     masks = {
         c: _mask(
@@ -853,6 +978,7 @@ def run(args: argparse.Namespace) -> Path:
             structure_states,
             bb_masks,
             delta_masks,
+            dc_break_masks,
         )
         for c in family_candidates
     }
@@ -971,6 +1097,12 @@ def run(args: argparse.Namespace) -> Path:
                     "role": winner.role,
                     "params": winner.params,
                 },
+                "selected_entry_signal_rows": int(
+                    np.count_nonzero(masks[winner][vl:vr])
+                ),
+                "selected_entry_request_count": int(
+                    np.count_nonzero(candidate_entries[winner][vl:vr] > 0)
+                ),
                 "inner_metrics": inner,
                 "validation_metrics": candidate_validation,
                 "same_frozen_ladder_e02_control": control_validation,
@@ -1020,11 +1152,23 @@ def run(args: argparse.Namespace) -> Path:
         "all_mandatory_reclaim": all(
             f["validation_metrics"]["bars_flat_beyond_reclaim"] == 0 for f in folds
         ),
+        "all_capacity_safe": all(
+            not f["validation_metrics"]["entry_capacity_breach"] for f in folds
+        ),
         "all_folds_exposure_policy_pass": all(
             f["exposure_policy_pass"] for f in folds
         ),
         "future_htf_count": sum(
             row["source_timestamp_future_count"] for row in causality.values()
+        ),
+        "entry_signal_rows": sum(
+            int(f["selected_entry_signal_rows"]) for f in folds
+        ),
+        "entry_request_count": sum(
+            int(f["selected_entry_request_count"]) for f in folds
+        ),
+        "entry_fill_count": sum(
+            int(f["validation_metrics"]["fill_count"]) for f in folds
         ),
     }
     aggregate["exposure_policy"] = {
@@ -1041,6 +1185,7 @@ def run(args: argparse.Namespace) -> Path:
         aggregate["all_folds_beat_bh"]
         and aggregate["all_folds_beat_control"]
         and aggregate["all_mandatory_reclaim"]
+        and aggregate["all_capacity_safe"]
         and aggregate["future_htf_count"] == 0
         and aggregate["exposure_policy"]["pass"]
         and aggregate["all_folds_exposure_policy_pass"]
@@ -1090,6 +1235,32 @@ def run(args: argparse.Namespace) -> Path:
                 "TF bars fires direct or union-with-green"
             ),
             "delta_input_audit": delta_input_audit,
+            "dc_break_wiring": {
+                "registry_switch": "DC_BREAK_ENTRY_ENABLED",
+                "registry_switch_status": (
+                    "DISCONNECTED: absent from config_tradier.py and unread by "
+                    "tradier_manage.py"
+                ),
+                "disabled_swing_branch": (
+                    "evaluate_open reads DC_BREAK_ENTRY_DISABLED with fail-closed "
+                    "default True; no matching config attribute exists"
+                ),
+                "separate_live_path": (
+                    "StockDaytradeWing is launched but is controlled by "
+                    "DC_DAYTRADE_ENABLED/TRADIER_DC_DAYTRADE_ENABLED"
+                ),
+                "screen_status": "RESEARCH_RECONSTRUCTION_NOT_LIVE_PROMOTABLE",
+                "production_derived": {
+                    "timeframes": ["5m", "15m", "1h", "4h"],
+                    "buffer_fraction": [0.0005, 0.001],
+                    "require_1h_expansion": [False, True],
+                    "confirmation": ["none", "not-exhausted", "directional-stoch"],
+                },
+                "research_extensions": {
+                    "buffer_fraction": [0.0, 0.002],
+                    "role": ["union-with-green"],
+                },
+            },
             "causality": causality,
         },
         "outer_folds": folds,
@@ -1124,6 +1295,7 @@ def main() -> None:
             "ENTRY_STOCH_HHHL",
             "ENTRY_BB_RECOVERY",
             "ENTRY_DELTA_MTF",
+            "ENTRY_DC_BREAK_ENTRY_ENABLED",
         ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))

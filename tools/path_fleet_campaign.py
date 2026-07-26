@@ -176,6 +176,50 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "DELTA_EXIT_DECAY_RATIO is exit-only.",
     ),
     PathFamily(
+        "ENTRY_DC_BREAK_ENTRY_ENABLED",
+        "ENTRY",
+        20,
+        "Disconnected legacy registry path. The named DC_BREAK_ENTRY_ENABLED "
+        "switch is absent. A research reconstruction combines the prior-channel "
+        "break semantics from the disabled swing branch and the separately "
+        "controlled StockDaytradeWing, without changing live configuration.",
+        {
+            "timeframe": ["5m", "15m", "1h", "4h"],
+            "buffer_fraction": [0.0, 0.0005, 0.001, 0.002],
+            "require_1h_expansion": [False, True],
+            "confirmation": ["none", "not-exhausted", "directional-stoch"],
+            "role": ["direct", "union-with-green"],
+            "live_switch_status": ["DISCONNECTED"],
+        },
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES_RESEARCH_RECONSTRUCTION",
+        "Never infer a live setting from this screen. evaluate_open is fail-closed "
+        "by DC_BREAK_ENTRY_DISABLED=True; StockDaytradeWing instead reads "
+        "DC_DAYTRADE_ENABLED/TRADIER_DC_DAYTRADE_ENABLED.",
+    ),
+    PathFamily(
+        "ENTRY_AUGMENT_TREND_RESUME_ENABLED",
+        "ENTRY",
+        20,
+        "Research reconstruction of the removed stock trend-resume augment: "
+        "while an existing position is profitable, add on a side-favorable "
+        "5m Donchian-basis, Stoch, and RSI continuation state.",
+        {
+            "min_gain_pct": [0.5, 1.0, 2.0, 3.0],
+            "rsi_boundary_long_short": ["60/40", "70/30", "80/20", "100/0"],
+            "add_start_position_mult": [0.25, 0.5],
+        },
+        "same frozen ladder entry schedule, sizing, and capacity",
+        "E02 N=30 + resting reclaim",
+        "tools/vec_augment_trend_resume_walkforward.py",
+        "READY_BOTH_SIDES_RESEARCH_RECONSTRUCTION",
+        "Disconnected from active tradier_manage/config. Last real source is "
+        "backups/before_desktop_tradier_fixes_20260721.py; no live setting may "
+        "be inferred or promoted until the path is deliberately rewired.",
+    ),
+    PathFamily(
         "EXIT_E02_DONCHIAN",
         "EXIT",
         1,
@@ -214,6 +258,74 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "Parity-gated compiled adapter freezes the accepted ladder schedule, "
         "uses completed HTF bars, and mirrors structural states by side; "
         "dc_low4_5m is excluded.",
+    ),
+    PathFamily(
+        "BOTTOM_A_PROTECTIVE_TRAIL",
+        "EXIT",
+        2,
+        "Completed adverse structure arms an immediate diagnostic or a later "
+        "monotonic ATR, rolling-stdev, or Donchian protective trail.",
+        {
+            "arm_timeframe": ["1h", "4h"],
+            "trail_timeframe": ["5m", "15m", "1h"],
+            "mode": ["IMMEDIATE_DIAGNOSTIC", "ATR", "STDEV", "DC"],
+            "break_buffer_atr": [0.0, 0.25],
+            "atr_mult": [1.5, 2.0, 3.0, 4.0],
+            "stdev_mult": [1.5, 2.0, 2.5, 3.0],
+            "lookback": [4, 10, 20, 40],
+        },
+        "exact frozen accepted ladder schedule",
+        "same-entry E02 N=30 control",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "The immediate break is retained only as a churn diagnostic. 5m "
+        "native/interpolated provenance is preserved; losses are not hidden "
+        "behind a zero-profit gate.",
+    ),
+    PathFamily(
+        "BOTTOM_B_DELAYED_LOWER_TOP",
+        "EXIT",
+        2,
+        "Arm on a completed lower-low/adverse break, do not sell at the break, "
+        "then exit at the next confirmed lower price/WT1 top (SHORT mirrored).",
+        {
+            "arm_timeframe": ["1h", "4h"],
+            "confirm_timeframe": ["5m", "15m", "1h"],
+            "confirmation_mode": ["PRICE_ONLY", "WT_ONLY", "AND", "OR"],
+            "confirmation_bars": [1, 2],
+            "rebound_atr": [0.25, 0.5, 1.0],
+            "prebreak_lookback": [4, 6],
+            "max_wait_hours": [12, 24, 48],
+        },
+        "exact frozen accepted ladder schedule",
+        "same-entry E02 N=30 control",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Compiled exact-contract screen with Python state-machine parity oracle. "
+        "No dc_low4_5m profit exit.",
+    ),
+    PathFamily(
+        "BOTTOM_C_DELAYED_EMERGENCY",
+        "EXIT",
+        2,
+        "Use the delayed lower-top state, but add a separately counted rare "
+        "emergency close when recovery never arrives.",
+        {
+            "arm_timeframe": ["1h", "4h"],
+            "confirm_timeframe": ["5m", "15m", "1h"],
+            "confirmation_mode": ["AND", "OR"],
+            "max_wait_hours": [12, 24, 48],
+            "emergency_adverse_atr": [2.0, 3.0, 4.0],
+            "emergency_adverse_stdev": [2.5, 3.5, 5.0],
+            "continued_adverse_bars": [3, 5],
+            "max_emergency_exit_share": [0.25],
+        },
+        "exact frozen accepted ladder schedule",
+        "same-entry E02 N=30 control",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Normal and emergency fills are reported separately. A routine "
+        "emergency path cannot survive the vector gate.",
     ),
     PathFamily(
         "EXIT_WT_MTF",
@@ -299,15 +411,18 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         7,
         "Confirmed RSI/price divergence, structural break, then rebound/rollover exit.",
         {
-            "pivot_radius": [2, 3, 4, 6],
-            "divergence_min": [3, 5, 8, 12],
-            "rebound_atr": [0.25, 0.5, 1.0],
-            "max_wait_bars": [6, 12, 18, 24],
+            "pivot_radius": [2, 3, 5],
+            "divergence_min": [3, 5, 8],
+            "break_buffer_atr": [0.0, 0.25],
+            "rebound_atr": [0.25, 0.5],
+            "max_wait_bars": [8, 12, 20],
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
         "tools/vec_top_exit_campaign.py",
         "ADAPTER_REQUIRED",
+        "Research-only; no equivalent named live state machine. These ranges "
+        "are extracted from _e05_candidates rather than the stale registry.",
     ),
     PathFamily(
         "EXIT_E06_REGRESSION_RETEST",
@@ -315,15 +430,19 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         8,
         "Regression extreme arms an exit; reversion/retest confirms it before close.",
         {
-            "lookback": [40, 60, 100, 160],
+            "lookback": [40, 60, 100, 150, 250],
             "arm_z": [1.5, 2.0, 2.5, 3.0],
-            "exit_z": [0.0, 0.5, 1.0],
-            "rebound_atr": [0.25, 0.5, 0.7, 1.0],
+            "exit_z": [0.75, 1.0, 1.5, 2.0],
+            "corr_gate": [0.5, 0.7, 0.85],
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        "tools/vec_top_exit_walkforward.py",
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_e06_adapter.py",
+        "READY_BOTH_SIDES",
+        "Same-entry research adapter is connected, but the registered "
+        "`rebound_atr` name is stale: active code consumes corr_gate and has "
+        "no live Tradier config key or separate post-break retest state.",
+        "Research-only prior-log-regression path. exit_z arms with exit_z < arm_z.",
     ),
     PathFamily(
         "EXIT_MTF_ATR_TRAIL",
@@ -367,6 +486,11 @@ def _slug(value: str) -> str:
 INVENTORY_CORE_MAP = {
     ("ENTRY", "WT_DC_ENTRY_ENABLED"): "ENTRY_WT_DC",
     ("ENTRY", "BB_RECOVERY_ENABLED"): "ENTRY_BB_RECOVERY",
+    ("ENTRY", "DC_BREAK_ENTRY_ENABLED"): "ENTRY_DC_BREAK_ENTRY_ENABLED",
+    (
+        "ENTRY",
+        "AUGMENT_TREND_RESUME_ENABLED",
+    ): "ENTRY_AUGMENT_TREND_RESUME_ENABLED",
     ("EXIT", "WT_HTF_EXIT_ENABLED"): "EXIT_WT_MTF",
     ("EXIT", "WT_CROSSUNDER_EXIT_ENABLED"): "EXIT_WT_MTF",
     ("EXIT", "PEAK_GIVEBACK_ENABLED"): "EXIT_PEAK_GIVEBACK",
