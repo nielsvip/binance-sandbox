@@ -46,6 +46,7 @@ from reentry_contract import (
     update_reentry_trace as _update_reentry_trace,
 )
 from tradier_indicators import analyze_multi_tf_state_tradier
+from tradier_augment_gates import dc_tier_aug_enabled as _dc_tier_aug_enabled
 from tradier_entry_contract import path_switch
 from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
@@ -8657,6 +8658,12 @@ class StockStrategy:
                         return False, "", 0.0, 0.0
                 except Exception:
                     pass
+
+            # Default True preserves the historical live behavior. This gate
+            # controls only the DC breakout-tier block below; earlier WT_D
+            # bounce and trailing augment paths remain independent.
+            if not _dc_tier_aug_enabled(config):
+                return False, "DC_TIER_AUG_DISABLED", 0.0, 0.0
 
             buf = 0.001
             tier_mults = {1: 1.0, 2: 2.0, 3: 3.0, 4: 5.0}

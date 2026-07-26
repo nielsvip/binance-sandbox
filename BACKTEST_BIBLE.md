@@ -1254,3 +1254,29 @@ Bottom-A first arms on an adverse 1h/4h break and then trails one smaller
 timeframe; job47 ratchets from entry on completed 1h/4h/D agreement. Full
 range coverage, paired min-2/min-1 deltas, aligned Bottom-A results and
 per-key gray evidence are in `EXIT_MTF_ATR_TRAIL_RESULTS_20260726.md`.
+
+### §15.14 — EXIT_ALGO_EXIT_ENABLED job66 is disconnected (2026-07-26)
+
+The inventory row is stale and must remain red. `ALGO_EXIT_ENABLED` is neither
+declared nor read. The only current declaration is
+`EXIT_ALGO_SCORE_ENABLED=False`, and its sole active read is in the Group-C
+discoverability tuple—not an `if`, router, or exit decision. There are zero
+active `calculate_signal_score(..., is_exit=True)` calls and zero active
+`ALGO_EXIT`/`ALGO_WEAK_EXIT` reason constants. The old call and return branches
+are comments, so toggling either name cannot emit a trade.
+
+The inventory description also does not match the removed code. The historical
+compound mixed five distinct hard-coded event types: 1h DC structure break
+(-15 score), 15m DC structure break (-10), 4h Stoch roll (-5), a >5% gain plus
+15m momentum turn (-5), and optional bear-mode bias (-20 LONG/+15 SHORT). The
+removed router used score thresholds -7/-4. It did not define a clean
+RSI/MFI/staleness path.
+
+No vector screen was run over invented semantics. Job66 records all aligned
+top-10 LONG/bottom-10 SHORT controls as `RED_DISCONNECTED_NO_SCREEN`, with zero
+actual ALGO events, no exact-replay queue, and no matrix promotion. Any future
+research reconstruction must give each historical event type its own path ID,
+completed-bar definition, numeric range, and causal result. The deterministic
+audit and rollback evidence are in
+`EXIT_ALGO_EXIT_ENABLED_AUDIT_20260726.md` and
+`tools/audit_algo_exit_wiring.py`.

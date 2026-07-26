@@ -288,10 +288,15 @@ def run(args: argparse.Namespace) -> Path:
             "hard_capacity_usd": ladder.CAPACITY,
             "wiring": {
                 "inventory_switch": "DC_TIER_AUG_ENABLED",
-                "switch_status": "PHANTOM_ABSENT_AND_UNREAD",
+                "switch_status": "CONNECTED_DEFAULT_TRUE",
                 "underlying_function_status": (
-                    "ACTIVE_UNCONDITIONALLY_INSIDE_evaluate_augment_AFTER_GAIN_GATE"
+                    "ACTIVE_WHEN_ENABLED_INSIDE_evaluate_augment_AFTER_GAIN_GATE"
                 ),
+                "backtest_live_parity": {
+                    "enabled": True,
+                    "scope": "DC breakout-tier block only",
+                    "default_preserves_previous_live_behavior": True,
+                },
             },
             "source_setting": {
                 "min_gain_pct": 3.0,

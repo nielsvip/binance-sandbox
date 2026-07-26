@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from tools.vec_same_entry_exit_adapter import (
+    AlgoStructureParams,
     ChandelierParams,
     GrOppositeParams,
     MtfAtrTrailExitBook,
@@ -14,6 +15,7 @@ from tools.vec_same_entry_exit_adapter import (
     WtMtfParams,
     _entry_schedule_hash,
     _golden_rule_completed_votes,
+    algo_structure_grid,
     build_donchian_book,
     build_chandelier_book,
     build_gr_opposite_book,
@@ -318,6 +320,27 @@ def test_e02_grid_is_exact_bounded_contract():
     assert all("5m" not in str(row) for row in rows)
 
 
+def test_algo_structure_grid_keeps_historical_events_separate():
+    rows = algo_structure_grid()
+    assert len(rows) == 4
+    assert {
+        (
+            row.timeframe,
+            row.lookback,
+            row.historical_score_delta,
+            row.profit_gate_pct,
+        )
+        for row in rows
+    } == {
+        ("1h", 20, -15, 0.0),
+        ("1h", 20, -15, 3.0),
+        ("15m", 20, -10, 0.0),
+        ("15m", 20, -10, 3.0),
+    }
+    with np.testing.assert_raises_regex(ValueError, "provenance mismatch"):
+        AlgoStructureParams("1h", 20, -10, 0.0).validate()
+
+
 def test_chandelier_grid_is_exact_standard_registered_contract():
     rows = chandelier_grid()
     assert len(rows) == 2 * 4 * 5 * 4
@@ -406,6 +429,15 @@ def test_completed_donchian_book_is_causal_and_side_mirrored():
     assert short_book.update(11, active=True).reclaim_reference == 10.0
     assert long_book.update(10, active=True).source_timestamps["1h"] < ts[10]
     assert short_book.update(11, active=True).source_timestamps["1h"] < ts[11]
+
+    long_15m = build_donchian_book(
+        data, {"15m": htf}, timeframe="15m", lookback=20, side="LONG"
+    )
+    assert all(
+        decision.source_timestamps["15m"] <= data.ts[row]
+        for row in range(n)
+        if (decision := long_15m.update(row, active=True)) is not None
+    )
 
 
 def test_entry_schedule_hash_changes_only_when_entry_schedule_changes():

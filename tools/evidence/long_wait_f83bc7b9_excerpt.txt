@@ -1,0 +1,20 @@
+Source: git commit f83bc7b9, tradier_manage.py lines 1926-1964
+Purpose: immutable audit excerpt for machines whose checkout lacks this commit.
+
+if not is_exit:
+    dc_low_15m = g('dc_low_15m')
+    dc_high_15m = g('dc_high_15m')
+    dc_low_5m = g('dc_low_5m')
+    dc_high_5m = g('dc_high_5m')
+
+    if is_long:
+        if dc_low_15m > 0 and (current_price - dc_low_15m) / dc_low_15m < 0.015:
+            setup_points += 5; reasons.append("Bounce_15m_Low")
+        elif dc_low_5m > 0 and (current_price - dc_low_5m) / dc_low_5m < 0.008:
+            setup_points += 4; reasons.append("Bounce_5m_Low")
+
+        if k_4h < 50:
+            setup_points += 5; reasons.append("4h_Deep_Value")
+
+        if k_1h < 40 and k_1h > g('stoch_k_1h_prev'):
+            setup_points += 3; reasons.append("1h_Turn_Up")

@@ -203,24 +203,48 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "ENTRY_DC_TIER_AUG_ENABLED",
         "ENTRY",
         20,
-        "Phantom inventory switch over an active augment block. "
-        "DC_TIER_AUG_ENABLED is absent and unread, while evaluate_augment "
-        "unconditionally applies profit-gated 5m/15m/1h/4h Donchian tier targets.",
+        "Connected gate over the existing profit-gated 5m/15m/1h/4h "
+        "Donchian tier-target block. Default True preserves the behavior that "
+        "predated the gate; False now disables only this tier block.",
         {
             "min_gain_pct": [1.0, 3.0, 5.0],
             "buffer_fraction": [0.0, 0.001, 0.002],
             "tier_profile": ["1/2/3/5", "1/1.5/2.5/4", "1/2/4/8"],
             "target_fill_ratio": [0.5, 0.75, 0.9],
             "tier4_maturity_atr": ["off", 0.7, 0.5],
-            "inventory_switch_status": ["PHANTOM_ABSENT_AND_UNREAD"],
+            "inventory_switch_status": ["CONNECTED_DEFAULT_TRUE"],
         },
         "same frozen ladder entry schedule, sizing, and $16k capacity",
         "E02 N=30 + resting reclaim",
         "tools/vec_dc_tier_augment_walkforward.py",
-        "READY_BOTH_SIDES_ACTIVE_FUNCTION_PHANTOM_SWITCH",
+        "READY_BOTH_SIDES_CONNECTED_DEFAULT_TRUE",
         "The source setting is gain 3%, buffer .1%, targets 1/2/3/5x, "
-        "75% fill gate, maturity guard off. Research extensions are labeled; "
-        "no switch-enable claim or live config promotion is allowed.",
+        "75% fill gate, maturity guard off. The repair changes no default/live "
+        "setting and does not promote any research setting.",
+    ),
+    PathFamily(
+        "ENTRY_LONG_WAIT_ENABLED",
+        "ENTRY",
+        20,
+        "Phantom switch for a removed historical score path. The reconstruction "
+        "requires a completed 5m/15m Donchian-low bounce, deep 4h Stoch, a "
+        "1h turn, and Stoch/WT confirmation; SHORT is an explicit research mirror.",
+        {
+            "bounce_timeframe": ["5m", "15m"],
+            "bounce_distance": [0.004, 0.008, 0.015, 0.025],
+            "deep_k4h": [20, 35, 50, 65],
+            "turn_k1h": [20, 40, 60, 80],
+            "confirmation": ["stoch5", "stoch15", "wt15", "two-of-three"],
+            "role": ["direct", "union-with-green"],
+            "inventory_switch_status": ["PHANTOM_ABSENT_AND_UNREAD"],
+        },
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES_RESEARCH_RECONSTRUCTION",
+        "Historical evidence comes from f83bc7b9 and backtest_results_20260331.csv. "
+        "The removed full score engine exposed WEAK/GOOD/STRONG_BUY, not a real "
+        "LONG_WAIT_ENABLED knob; reconstruction cannot be promoted as live parity.",
     ),
     PathFamily(
         "ENTRY_AUGMENT_TREND_RESUME_ENABLED",
@@ -501,8 +525,137 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_peak_giveback_adapter.py",
+        "READY_BOTH_SIDES",
+        "Research-only fractional-MFE adapter. The live Tradier path is a "
+        "different full-close, absolute-drop, loss-gated implementation under "
+        "PEAK_GIVEBACK_PROTECTION_ENABLED; never claim setting parity.",
+    ),
+    PathFamily(
+        path_id="EXIT_ALGO_EXIT_ENABLED",
+        kind="EXIT",
+        priority=20,
+        description=(
+            "Disconnected legacy compound-score exit. The stale inventory "
+            "key is absent; the replacement key is default-off and has no "
+            "active conditional/router/reason."
+        ),
+        settings={
+            "live_switch_status": [
+                "DISCONNECTED_DISABLED_INERT_REGISTRY_ROW"
+            ],
+            "inventory_key": ["ALGO_EXIT_ENABLED (absent)"],
+            "declared_key": ["EXIT_ALGO_SCORE_ENABLED=False"],
+            "historical_event_type": [
+                "STRUCTURE_1H_DC",
+                "STRUCTURE_15M_DC",
+                "STOCH_4H_ROLL",
+                "PROFIT_TAKE_15M",
+                "BEAR_MODE_BIAS",
+            ],
+            "historical_router_score_lte": [-7, -4],
+            "range_status": [
+                "NO_SCREEN_UNTIL_COMPONENTS_HAVE_SEPARATE_PATH_IDS"
+            ],
+        },
+        fixed_entry_control="exact frozen accepted ladder schedule",
+        fixed_exit_control="same-entry E02 N=30 control",
+        runner="tools/audit_algo_exit_wiring.py",
+        adapter_status="READY_AUDIT_ONLY_DISCONNECTED",
+        notes=(
+            "Do not vectorize the old calculate_signal_score compound under "
+            "this stale name. Any reconstruction must preregister separate "
+            "completed-bar event families and ranges first."
+        ),
+        config_keys=("EXIT_ALGO_SCORE_ENABLED",),
+    ),
+    PathFamily(
+        path_id="EXIT_ALGO_STRUCTURE_1H_15M",
+        kind="EXIT",
+        priority=21,
+        description=(
+            "Research decomposition of the removed ALGO scorer's completed "
+            "1h/15m adverse Donchian structure-break events."
+        ),
+        settings={
+            "timeframe": ["1h", "15m"],
+            "historical_score_delta_seed": [-15, -10],
+            "donchian_lookback_seed": [20],
+            "profit_gate_pct_research": [0.0, 3.0],
+            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+        },
+        fixed_entry_control="exact frozen accepted ladder schedule",
+        fixed_exit_control="same-entry E02 N=30 control",
+        runner="tools/vec_same_entry_exit_adapter.py",
+        adapter_status="READY_BOTH_SIDES_RESEARCH_DECOMPOSITION",
+        notes=(
+            "Standalone completed-bar event study; it does not reconstruct "
+            "the removed opaque base-score arithmetic or claim live parity."
+        ),
+    ),
+    PathFamily(
+        path_id="EXIT_ALGO_STOCH_4H_ROLL",
+        kind="EXIT",
+        priority=22,
+        description=(
+            "Research decomposition of the removed 4h Stoch peak/bottom roll."
+        ),
+        settings={
+            "timeframe_seed": ["4h"],
+            "historical_long_k_min_seed": [60],
+            "historical_short_k_max_seed": [20],
+            "historical_score_delta_seed": [-5],
+            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+        },
+        fixed_entry_control="exact frozen accepted ladder schedule",
+        fixed_exit_control="same-entry E02 N=30 control",
+        runner=None,
+        adapter_status="ADAPTER_REQUIRED",
+        notes="Must remain separate from DC structure and profit-turn events.",
+    ),
+    PathFamily(
+        path_id="EXIT_ALGO_PROFIT_TAKE_15M",
+        kind="EXIT",
+        priority=23,
+        description=(
+            "Research decomposition of the removed >5% gain plus adverse 15m "
+            "Stoch turn profit-taking event."
+        ),
+        settings={
+            "timeframe_seed": ["15m"],
+            "historical_gain_pct_strictly_above_seed": [5.0],
+            "historical_score_delta_seed": [-5],
+            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+        },
+        fixed_entry_control="exact frozen accepted ladder schedule",
+        fixed_exit_control="same-entry E02 N=30 control",
+        runner=None,
+        adapter_status="ADAPTER_REQUIRED",
+        notes="Must remain separate from DC structure and 4h Stoch-roll events.",
+    ),
+    PathFamily(
+        path_id="EXIT_ALGO_BEAR_MODE_BIAS",
+        kind="FILTER",
+        priority=24,
+        description=(
+            "Regime/filter study of the removed bear-mode score bias; not a "
+            "direct exit event."
+        ),
+        settings={
+            "historical_long_score_delta_seed": [-20],
+            "historical_short_score_delta_seed": [15],
+            "role": ["regime_filter"],
+            "direct_exit_authorized": [False],
+            "broader_range_status": ["TBD_FROM_FUNCTION_SOURCE"],
+        },
+        fixed_entry_control="exact frozen accepted ladder schedule",
+        fixed_exit_control="same-entry E02 N=30 control",
+        runner=None,
+        adapter_status="ADAPTER_REQUIRED_FILTER_ONLY",
+        notes=(
+            "Never emit a close from this bias alone unless new source proves "
+            "a direct historical exit branch."
+        ),
     ),
 )
 
@@ -513,10 +666,12 @@ def _slug(value: str) -> str:
 
 
 INVENTORY_CORE_MAP = {
+    ("EXIT", "ALGO_EXIT_ENABLED"): "EXIT_ALGO_EXIT_ENABLED",
     ("ENTRY", "WT_DC_ENTRY_ENABLED"): "ENTRY_WT_DC",
     ("ENTRY", "BB_RECOVERY_ENABLED"): "ENTRY_BB_RECOVERY",
     ("ENTRY", "DC_BREAK_ENTRY_ENABLED"): "ENTRY_DC_BREAK_ENTRY_ENABLED",
     ("ENTRY", "DC_TIER_AUG_ENABLED"): "ENTRY_DC_TIER_AUG_ENABLED",
+    ("ENTRY", "LONG_WAIT_ENABLED"): "ENTRY_LONG_WAIT_ENABLED",
     (
         "ENTRY",
         "AUGMENT_TREND_RESUME_ENABLED",

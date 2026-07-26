@@ -69,6 +69,7 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "BOTTOM_B_DELAYED_LOWER_TOP",
     "BOTTOM_C_DELAYED_EMERGENCY",
     "EXIT_MTF_ATR_TRAIL",
+    "EXIT_ALGO_STRUCTURE_1H_15M",
 }
 
 
@@ -300,6 +301,25 @@ class MtfAtrTrailParams:
             raise ValueError("MTF ATR confirmations must be 1 or 2")
 
 
+@dataclasses.dataclass(frozen=True)
+class AlgoStructureParams:
+    timeframe: str
+    lookback: int
+    historical_score_delta: int
+    profit_gate_pct: float
+
+    def validate(self) -> None:
+        expected = {"1h": -15, "15m": -10}
+        if self.timeframe not in expected:
+            raise ValueError("ALGO structure timeframe must be 1h or 15m")
+        if self.lookback != 20:
+            raise ValueError("only historical dc_low/dc_high seed N=20 allowed")
+        if self.historical_score_delta != expected[self.timeframe]:
+            raise ValueError("historical score-delta provenance mismatch")
+        if self.profit_gate_pct not in {0.0, 3.0}:
+            raise ValueError("unsupported ALGO structure research profit gate")
+
+
 class StaticExitBook:
     def __init__(
         self,
@@ -395,8 +415,8 @@ def build_donchian_book(
     channel edge is retained as the resting reclaim/top reference. No 5m
     series, interpolation shortcut, or first ``dc_low4`` break path is used.
     """
-    if timeframe not in {"1h", "4h", "D"}:
-        raise ValueError("Donchian timeframe must be 1h, 4h, or D")
+    if timeframe not in {"15m", "1h", "4h", "D"}:
+        raise ValueError("Donchian timeframe must be 15m, 1h, 4h, or D")
     if lookback not in {10, 15, 20, 30, 40, 55, 80}:
         raise ValueError("unsupported bounded Donchian lookback")
     side = side.upper()
@@ -442,6 +462,23 @@ def e02_grid() -> list[dict[str, Any]]:
         for lookback in (10, 15, 20, 30, 40, 55, 80)
         for profit_gate in (0.0, 0.25, 0.5, 1.0)
     ]
+
+
+def algo_structure_grid() -> list[AlgoStructureParams]:
+    rows = [
+        AlgoStructureParams(
+            timeframe=timeframe,
+            lookback=20,
+            historical_score_delta=(-15 if timeframe == "1h" else -10),
+            profit_gate_pct=profit_gate_pct,
+        )
+        for timeframe in ("1h", "15m")
+        for profit_gate_pct in (0.0, 3.0)
+    ]
+    for row in rows:
+        row.validate()
+    assert len(rows) == 4
+    return rows
 
 
 def build_wt_mtf_book(
@@ -2679,6 +2716,47 @@ def screen_artifact(
             candidates.append(
                 candidate_row("EXIT_E02_DONCHIAN", dict(params), fold_rows)
             )
+    if "ALGO_STRUCTURE" in families:
+        books = {}
+        for params in algo_structure_grid():
+            params.validate()
+            if params.timeframe not in books:
+                book = build_donchian_book(
+                    data,
+                    htfs,
+                    timeframe=params.timeframe,
+                    lookback=params.lookback,
+                    side=side,
+                )
+                book.label = (
+                    f"EXIT_ALGO_STRUCTURE_{params.timeframe}_N"
+                    f"{params.lookback}"
+                )
+                books[params.timeframe] = book
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    books[params.timeframe],
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=params.profit_gate_pct,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "EXIT_ALGO_STRUCTURE_1H_15M",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    research_decomposition_only=True,
+                    removed_compound_score_not_reconstructed=True,
+                )
+            )
     if "WT_MTF" in families:
         grid = wt_grid()
         # Vectorize completed-TF state construction once per signal block.
@@ -3373,6 +3451,24 @@ def screen_artifact(
             "side_specific_bh_usd": ladder.BASE_UNIT,
             "strategy_capacity_usd": ladder.CAPACITY,
         }
+    if "ALGO_STRUCTURE" in families:
+        payload["algo_structure_contract"] = {
+            "source_inventory_job": "EXIT_ALGO_EXIT_ENABLED",
+            "research_decomposition_only": True,
+            "live_switch_connected": False,
+            "removed_compound_score_reconstructed": False,
+            "candidate_count": 4,
+            "completed_timeframes_only": ["15m", "1h"],
+            "historical_score_delta_provenance": {
+                "1h": -15,
+                "15m": -10,
+            },
+            "donchian_lookback_seed": 20,
+            "profit_gate_pct_research": [0.0, 3.0],
+            "broader_ranges": "TBD_FROM_FUNCTION_SOURCE",
+            "side_specific_bh_usd": ladder.BASE_UNIT,
+            "strategy_capacity_usd": ladder.CAPACITY,
+        }
     data.z.close()
     return payload
 
@@ -3387,7 +3483,8 @@ def main() -> int:
         default="WT_MTF,STRUCTURAL_WT",
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
-            "E01_CHANDELIER, MTF_ATR_TRAIL, BOTTOM_A, BOTTOM_B, BOTTOM_C, "
+            "E01_CHANDELIER, MTF_ATR_TRAIL, ALGO_STRUCTURE, "
+            "BOTTOM_A, BOTTOM_B, BOTTOM_C, "
             "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
@@ -3406,6 +3503,7 @@ def main() -> int:
         "GR_OPPOSITE",
         "E01_CHANDELIER",
         "MTF_ATR_TRAIL",
+        "ALGO_STRUCTURE",
         "BOTTOM_A",
         "BOTTOM_B",
         "BOTTOM_C",

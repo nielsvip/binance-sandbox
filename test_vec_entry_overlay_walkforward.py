@@ -5,6 +5,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 import vec_entry_overlay_walkforward as overlay
+import audit_long_wait_wiring as long_wait_wiring
 
 
 def test_episode_starts_only_fire_once_per_contiguous_signal():
@@ -188,3 +189,36 @@ def test_dc_break_mask_uses_prior_channel_and_is_exact_side_mirror():
     key = ("5m", 0.0, True, "directional-stoch")
     assert long_masks[key].tolist() == [False, True, False, False]
     assert short_masks[key].tolist() == [False, False, True, True]
+
+
+def test_long_wait_reconstruction_grid_is_complete_and_side_mirrored():
+    rows = overlay._long_wait_candidates()
+    assert len(rows) == 1024
+    assert {row.role for row in rows} == {"direct", "union-with-green"}
+    view = {
+        "close": np.array([101.0, 101.0]),
+        "dc_low_5m": np.array([100.0, 100.0]),
+        "dc_high_5m": np.array([102.0, 102.0]),
+        "stoch_k_4h": np.array([30.0, 70.0]),
+        "stoch_k_1h": np.array([30.0, 70.0]),
+        "stoch_d_1h": np.array([20.0, 80.0]),
+        "stoch_k_5m": np.array([30.0, 70.0]),
+        "stoch_d_5m": np.array([20.0, 80.0]),
+        "stoch_k_15m": np.array([30.0, 70.0]),
+        "stoch_d_15m": np.array([20.0, 80.0]),
+        "wt1_15m": np.array([2.0, -2.0]),
+        "wt2_15m": np.array([1.0, -1.0]),
+    }
+    key = ("5m", 0.015, 50.0, 40.0, "two-of-three")
+    assert overlay._long_wait_masks(view, "LONG")[key].tolist() == [True, False]
+    assert overlay._long_wait_masks(view, "SHORT")[key].tolist() == [False, True]
+
+
+def test_long_wait_switch_is_phantom_but_removed_path_is_historically_proven():
+    result = long_wait_wiring.audit_repo()
+    assert result["classification"] == "PHANTOM_SWITCH_REMOVED_HISTORICAL_SCORE_PATH"
+    assert not result["switch_declared"]
+    assert not result["switch_read"]
+    assert not result["active_reason_present"]
+    assert result["removed_score_reasons_proven"]
+    assert result["historical_fill_rows"] > 0

@@ -68,8 +68,9 @@ def summarize(root: Path) -> dict:
     return {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "contract": {
-            "inventory_switch": "PHANTOM_ABSENT_AND_UNREAD",
-            "underlying_function": "ACTIVE_UNCONDITIONALLY_INSIDE_evaluate_augment",
+            "inventory_switch": "CONNECTED_DEFAULT_TRUE",
+            "underlying_function": "ACTIVE_WHEN_ENABLED_INSIDE_evaluate_augment",
+            "disabled_scope": "DC breakout-tier block only",
             "grid_candidates": 243,
             "same_control": "frozen ladder + E02 N30 + resting reclaim",
             "exact_rule": "strict vector survivors only",
@@ -83,10 +84,10 @@ def markdown(payload: dict) -> str:
     lines = [
         "# DC-tier augment causal campaign — 2026-07-26", "",
         "## Wiring verdict", "",
-        "`DC_TIER_AUG_ENABLED` is a phantom switch: it is absent from config and "
-        "unread by the router. The underlying tier block is nevertheless active "
-        "unconditionally inside `evaluate_augment` after the profit/cooldown gates. "
-        "The switch row stays red; the function screen is separate gray evidence.", "",
+        "`DC_TIER_AUG_ENABLED` is connected with default `True`, preserving the "
+        "prior behavior of the underlying tier block inside `evaluate_augment` "
+        "after the profit/cooldown gates. `False` disables only that tier block. "
+        "The campaign numbers remain research evidence, not live promotion.", "",
         "## Cohorts", "",
         "| cohort | rows | candidate | B&H | control | signals/requests/fills | survivors |",
         "|---|---:|---:|---:|---:|---:|---:|",

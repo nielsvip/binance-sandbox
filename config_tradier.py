@@ -1614,6 +1614,10 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # REVERTED 2026-05-18 18:30 (was 0.015 since 2026-05-17). 2026-05-17 flip had no sample-floor proof; isolated vec sweep queued.
+    # Gate only the existing DC breakout-tier augmentation inside
+    # evaluate_augment. Default True preserves the pre-switch live behavior.
+    # WT_D_BOUNCE_AUG and TRAILING_AUG are separate paths and are unaffected.
+    DC_TIER_AUG_ENABLED: bool = True
     # 2026-05-16: ATR-aware DT_TARGET kill-switch (DEFAULT OFF — sweep-validate before enable).
     # When True: effective target = max(2 × atr_5m / entry, TARGET_PCT, noloss_min). Reason label
     # switches to DT_TARGET_ATR when ATR-driven. When False: legacy max(TARGET_PCT, noloss_min)

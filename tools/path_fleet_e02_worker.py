@@ -118,6 +118,7 @@ def _ingest_symbol(
         "EXIT_GR_OPPOSITE",
         "EXIT_E01_CHANDELIER",
         "EXIT_MTF_ATR_TRAIL",
+        "EXIT_ALGO_STRUCTURE_1H_15M",
         "BOTTOM_A_PROTECTIVE_TRAIL",
         "BOTTOM_B_DELAYED_LOWER_TOP",
         "BOTTOM_C_DELAYED_EMERGENCY",

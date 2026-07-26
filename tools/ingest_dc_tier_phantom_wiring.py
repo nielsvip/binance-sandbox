@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append red zero-request rows for phantom DC_TIER_AUG_ENABLED switch."""
+"""Append connected-wiring proof rows for DC_TIER_AUG_ENABLED."""
 from __future__ import annotations
 
 import argparse
@@ -25,7 +25,7 @@ def main() -> int:
     args = ap.parse_args()
     root = args.fleet_root.resolve()
     audit = audit_repo()
-    if audit["classification"] != "PHANTOM_SWITCH_ACTIVE_UNCONDITIONAL_FUNCTION":
+    if audit["classification"] != "CONNECTED_DEFAULT_TRUE_EXISTING_BEHAVIOR_PRESERVED":
         raise RuntimeError(audit)
     con = sqlite3.connect(root / "queue.db")
     job_id = con.execute(
@@ -52,7 +52,7 @@ def main() -> int:
         seen.add((symbol, side))
         exists = con.execute(
             """select 1 from results where job_id=? and symbol=? and side=?
-               and stage='WIRING_AUDIT' limit 1""",
+               and stage='WIRING_REPAIR_AUDIT' limit 1""",
             (job_id, symbol, side),
         ).fetchone()
         if exists:
@@ -65,7 +65,8 @@ def main() -> int:
         metrics = fold["validation_metrics"]
         payload = {
             "job_id": job_id, "symbol": symbol, "side": side,
-            "stage": "WIRING_AUDIT", "status": "RED_DIAGNOSTIC_PHANTOM_SWITCH",
+            "stage": "WIRING_REPAIR_AUDIT",
+            "status": "CONNECTED_DEFAULT_TRUE_WIRING_PROOF",
             "strategy_return_pct": 0.0,
             "bh_return_pct": metrics["bh_capital_return_pct"],
             "same_entry_control_return_pct": metrics["capital_return_pct"],
@@ -74,7 +75,7 @@ def main() -> int:
             "artifact": str(root / f"job_{job_id}_{FAMILY}" / "wiring_audit.json"),
             "augment_signal_count": 0, "augment_request_count": 0,
             "augment_fill_count": 0, "wiring_audit": audit,
-            "metric_scope": "PHANTOM_SWITCH_ZERO_REQUEST_DIAGNOSTIC",
+            "metric_scope": "WIRING_ONLY_NO_PERFORMANCE_CLAIM",
         }
         tmp = root / f".dc_tier_wiring_{symbol}_{side}.json"
         fleet.atomic_json(tmp, payload)

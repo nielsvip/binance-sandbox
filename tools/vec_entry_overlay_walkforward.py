@@ -106,6 +106,8 @@ def _causal_npz_view(
         "d_5m": _base_arr(data, "d_5m", "stoch_d_5m", default=50.0),
         "stoch_k_5m": _base_arr(data, "stoch_k_5m", "k_5m", default=50.0),
         "stoch_d_5m": _base_arr(data, "stoch_d_5m", "d_5m", default=50.0),
+        "dc_high_5m": _base_arr(data, "dc_high_5m"),
+        "dc_low_5m": _base_arr(data, "dc_low_5m"),
         "dc_high_5m_prev": _base_arr(data, "dc_high_5m_prev"),
         "dc_low_5m_prev": _base_arr(data, "dc_low_5m_prev"),
         "wt_velocity_5m": _base_arr(data, "wt_velocity_5m"),
@@ -224,6 +226,7 @@ def _candidate_entry_mult(
         "ENTRY_STOCH_HHHL",
         "ENTRY_BB_RECOVERY",
         "ENTRY_DC_BREAK_ENTRY_ENABLED",
+        "ENTRY_LONG_WAIT_ENABLED",
     }:
         return _entry_mult(
             candidate_mask, control, direct_mult, candidate.role
@@ -387,6 +390,93 @@ def _dc_break_candidates() -> list[Candidate]:
             ("none", "not-exhausted", "directional-stoch"),
         )
     ]
+
+
+def _long_wait_candidates() -> list[Candidate]:
+    return [
+        _candidate(
+            "ENTRY_LONG_WAIT_ENABLED",
+            role,
+            bounce_timeframe=tf,
+            bounce_distance=distance,
+            deep_k4h=deep,
+            turn_k1h=turn,
+            confirmation=confirmation,
+        )
+        for role, tf, distance, deep, turn, confirmation in itertools.product(
+            ("direct", "union-with-green"),
+            ("5m", "15m"),
+            (0.004, 0.008, 0.015, 0.025),
+            (20.0, 35.0, 50.0, 65.0),
+            (20.0, 40.0, 60.0, 80.0),
+            ("stoch5", "stoch15", "wt15", "two-of-three"),
+        )
+    ]
+
+
+def _long_wait_masks(
+    view: dict[str, np.ndarray], side: str
+) -> dict[tuple[str, float, float, float, str], np.ndarray]:
+    """Reconstruct removed bounce/deep-value/turn reasons, mirrored by side."""
+    n = len(view["close"])
+    close = np.asarray(view["close"])
+    k4 = np.asarray(view.get("stoch_k_4h", np.full(n, 50.0)))
+    k1 = np.asarray(view.get("stoch_k_1h", np.full(n, 50.0)))
+    d1 = np.asarray(view.get("stoch_d_1h", np.full(n, 50.0)))
+    previous_k1 = np.r_[k1[0], k1[:-1]]
+    k5 = np.asarray(view.get("stoch_k_5m", np.full(n, 50.0)))
+    d5 = np.asarray(view.get("stoch_d_5m", np.full(n, 50.0)))
+    k15 = np.asarray(view.get("stoch_k_15m", np.full(n, 50.0)))
+    d15 = np.asarray(view.get("stoch_d_15m", np.full(n, 50.0)))
+    wt1 = np.asarray(view.get("wt1_15m", np.zeros(n)))
+    wt2 = np.asarray(view.get("wt2_15m", np.zeros(n)))
+    if side == "LONG":
+        confirmations = {
+            "stoch5": k5 > d5,
+            "stoch15": k15 > d15,
+            "wt15": wt1 > wt2,
+        }
+    else:
+        confirmations = {
+            "stoch5": k5 < d5,
+            "stoch15": k15 < d15,
+            "wt15": wt1 < wt2,
+        }
+    count = sum(mask.astype(np.int8) for mask in confirmations.values())
+    confirmations["two-of-three"] = count >= 2
+    out = {}
+    for tf, distance, deep, turn, confirmation in itertools.product(
+        ("5m", "15m"),
+        (0.004, 0.008, 0.015, 0.025),
+        (20.0, 35.0, 50.0, 65.0),
+        (20.0, 40.0, 60.0, 80.0),
+        ("stoch5", "stoch15", "wt15", "two-of-three"),
+    ):
+        if side == "LONG":
+            channel = np.asarray(view.get(f"dc_low_{tf}", np.zeros(n)))
+            bounce = (
+                (channel > 0)
+                & (close >= channel)
+                & ((close - channel) / np.maximum(channel, 1e-12) <= distance)
+            )
+            deep_state = k4 < deep
+            turn_state = (k1 < turn) & ((k1 > previous_k1) | (k1 > d1))
+        else:
+            channel = np.asarray(view.get(f"dc_high_{tf}", np.zeros(n)))
+            bounce = (
+                (channel > 0)
+                & (close <= channel)
+                & ((channel - close) / np.maximum(channel, 1e-12) <= distance)
+            )
+            deep_state = k4 > 100.0 - deep
+            turn_state = (
+                (k1 > 100.0 - turn)
+                & ((k1 < previous_k1) | (k1 < d1))
+            )
+        out[(tf, distance, deep, turn, confirmation)] = (
+            bounce & deep_state & turn_state & confirmations[confirmation]
+        )
+    return out
 
 
 def _dc_break_masks(
@@ -722,6 +812,9 @@ def _mask(
     bb_recovery_masks: dict[tuple[str, int, float], np.ndarray] | None = None,
     delta_masks: dict[tuple[int, float, bool], np.ndarray] | None = None,
     dc_break_masks: dict[tuple[str, float, bool, str], np.ndarray] | None = None,
+    long_wait_masks: dict[
+        tuple[str, float, float, float, str], np.ndarray
+    ] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -772,6 +865,18 @@ def _mask(
                 str(p["timeframe"]),
                 float(p["buffer_fraction"]),
                 bool(p["require_1h_expansion"]),
+                str(p["confirmation"]),
+            )
+        ]
+    if candidate.family == "ENTRY_LONG_WAIT_ENABLED":
+        if long_wait_masks is None:
+            raise ValueError("LONG_WAIT reconstruction masks are required")
+        return long_wait_masks[
+            (
+                str(p["bounce_timeframe"]),
+                float(p["bounce_distance"]),
+                float(p["deep_k4h"]),
+                float(p["turn_k1h"]),
                 str(p["confirmation"]),
             )
         ]
@@ -846,6 +951,13 @@ def _forward_rank(
             and p["confirmation"] in {"not-exhausted", "directional-stoch"}
         ):
             sentinels.append(candidate)
+        if candidate.family == "ENTRY_LONG_WAIT_ENABLED" and (
+            p["bounce_distance"] == 0.015
+            and p["deep_k4h"] == 50.0
+            and p["turn_k1h"] == 40.0
+            and p["confirmation"] in {"stoch5", "two-of-three"}
+        ):
+            sentinels.append(candidate)
     out: dict[str, Candidate] = {
         row[3].label: row[3] for row in scored[:shortlist]
     }
@@ -904,6 +1016,7 @@ def build_frozen_overlay_signals(
     bb_masks = _bb_recovery_masks(data, htfs, side)
     delta_masks, _ = _delta_masks(data, view, htfs, side)
     dc_break_masks = _dc_break_masks(view, side)
+    long_wait_masks = _long_wait_masks(view, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
@@ -916,6 +1029,7 @@ def build_frozen_overlay_signals(
         bb_masks,
         delta_masks,
         dc_break_masks,
+        long_wait_masks,
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -961,6 +1075,7 @@ def run(args: argparse.Namespace) -> Path:
     bb_masks = _bb_recovery_masks(data, htfs, side)
     delta_masks, delta_input_audit = _delta_masks(data, view, htfs, side)
     dc_break_masks = _dc_break_masks(view, side)
+    long_wait_masks = _long_wait_masks(view, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
@@ -968,6 +1083,7 @@ def run(args: argparse.Namespace) -> Path:
         "ENTRY_BB_RECOVERY": _bb_recovery_candidates,
         "ENTRY_DELTA_MTF": _delta_candidates,
         "ENTRY_DC_BREAK_ENTRY_ENABLED": _dc_break_candidates,
+        "ENTRY_LONG_WAIT_ENABLED": _long_wait_candidates,
     }[args.family]()
     masks = {
         c: _mask(
@@ -979,6 +1095,7 @@ def run(args: argparse.Namespace) -> Path:
             bb_masks,
             delta_masks,
             dc_break_masks,
+            long_wait_masks,
         )
         for c in family_candidates
     }
@@ -1261,6 +1378,15 @@ def run(args: argparse.Namespace) -> Path:
                     "role": ["union-with-green"],
                 },
             },
+            "long_wait_wiring": {
+                "inventory_switch": "LONG_WAIT_ENABLED",
+                "switch_status": "PHANTOM_ABSENT_AND_UNREAD",
+                "historical_status": (
+                    "REMOVED_SCORE_REASONS_RECONSTRUCTED_FROM_f83bc7b9_AND_"
+                    "backtest_results_20260331.csv"
+                ),
+                "reconstruction_only": True,
+            },
             "causality": causality,
         },
         "outer_folds": folds,
@@ -1296,6 +1422,7 @@ def main() -> None:
             "ENTRY_BB_RECOVERY",
             "ENTRY_DELTA_MTF",
             "ENTRY_DC_BREAK_ENTRY_ENABLED",
+            "ENTRY_LONG_WAIT_ENABLED",
         ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))
