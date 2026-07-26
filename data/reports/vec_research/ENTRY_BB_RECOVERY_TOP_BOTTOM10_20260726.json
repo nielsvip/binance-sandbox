@@ -1,0 +1,518 @@
+{
+  "cohorts": {
+    "BOTTOM_10_SHORT": {
+      "all_folds_beat_bh_count": 2,
+      "all_folds_beat_control_count": 1,
+      "bh_return_pct_sum": -508.14859808748224,
+      "candidate_return_pct_sum": -2758.227121468998,
+      "control_return_pct_sum": -1928.7596353014753,
+      "exposure_policy_pass_count": 1,
+      "rows": 10,
+      "strict_survivors": 0
+    },
+    "TOP_10_LONG": {
+      "all_folds_beat_bh_count": 8,
+      "all_folds_beat_control_count": 0,
+      "bh_return_pct_sum": 2379.1072118639836,
+      "candidate_return_pct_sum": 14615.579302331784,
+      "control_return_pct_sum": 15248.929021960555,
+      "exposure_policy_pass_count": 2,
+      "rows": 10,
+      "strict_survivors": 0
+    }
+  },
+  "contract": {
+    "below_or_nonrobust_status": "DISCARD_GRAY",
+    "family": "ENTRY_BB_RECOVERY",
+    "live_status": "sweep-only/default-off; no live config changed",
+    "min_excursion_atr": [
+      0.0,
+      0.25,
+      0.5,
+      1.0
+    ],
+    "recovery_bars": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "roles": [
+      "direct",
+      "union-with-green"
+    ],
+    "same_control": "frozen ladder + E02 4h N30 + resting reclaim",
+    "signal": "completed-TF close outside Bollinger band by declared ATR excursion, then completed close back inside within N TF bars",
+    "timeframes": [
+      "15m",
+      "1h",
+      "4h"
+    ],
+    "weighted_tim_target_pct": [
+      70,
+      80
+    ]
+  },
+  "created_utc": "2026-07-26T19:23:21.928964+00:00",
+  "rows": [
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190943Z_AMD_LONG",
+      "bh_multiple": 7.765867568673417,
+      "bh_return_pct": 204.77978811465744,
+      "candidate_return_pct": 1590.2927152394323,
+      "control_multiple": 0.9444668194459587,
+      "control_return_pct": 1683.7994543549203,
+      "exposure_policy_pass": true,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=8 bars; excursion=0 ATR",
+        "direct; TF=15m; recover<=2 bars; excursion=0.5 ATR",
+        "direct; TF=4h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "AMD",
+      "weighted_tim_pct": 72.32342116954848
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190927Z_ARM_LONG",
+      "bh_multiple": 7.110771366647813,
+      "bh_return_pct": 123.02022364128673,
+      "candidate_return_pct": 874.7686837870721,
+      "control_multiple": 0.7601238693456749,
+      "control_return_pct": 1150.8238578800124,
+      "exposure_policy_pass": true,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=2 bars; excursion=0.5 ATR",
+        "direct; TF=1h; recover<=1 bars; excursion=0.25 ATR",
+        "direct; TF=1h; recover<=1 bars; excursion=0.25 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "ARM",
+      "weighted_tim_pct": 75.17301721092734
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191005Z_DINO_LONG",
+      "bh_multiple": 5.31236901020514,
+      "bh_return_pct": 118.22124975442438,
+      "candidate_return_pct": 628.0349035431261,
+      "control_multiple": 1.1820429032948385,
+      "control_return_pct": 531.313120524251,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=15m; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=4h; recover<=8 bars; excursion=1 ATR",
+        "direct; TF=1h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "DINO",
+      "weighted_tim_pct": 66.4160583923644
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190935Z_INTC_LONG",
+      "bh_multiple": 7.745692106704217,
+      "bh_return_pct": 214.03152885779164,
+      "candidate_return_pct": 1657.8223236596325,
+      "control_multiple": 1.1306178675286966,
+      "control_return_pct": 1466.297651286282,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0.5 ATR",
+        "union-with-green; TF=1h; recover<=1 bars; excursion=0.5 ATR",
+        "direct; TF=1h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "INTC",
+      "weighted_tim_pct": 83.12669993965147
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190958Z_MPC_LONG",
+      "bh_multiple": 1.9442337038300652,
+      "bh_return_pct": 103.59163071551855,
+      "candidate_return_pct": 201.40633987182898,
+      "control_multiple": 1.2342196429272436,
+      "control_return_pct": 163.18516807441682,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=4h; recover<=2 bars; excursion=0.5 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MPC",
+      "weighted_tim_pct": 54.73279918792882
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190919Z_MRVL_LONG",
+      "bh_multiple": 13.739240272344706,
+      "bh_return_pct": 104.10623348167393,
+      "candidate_return_pct": 1430.3405556535351,
+      "control_multiple": 1.1147634091904461,
+      "control_return_pct": 1283.0888992779774,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=1h; recover<=1 bars; excursion=0.5 ATR",
+        "direct; TF=4h; recover<=8 bars; excursion=1 ATR",
+        "direct; TF=15m; recover<=1 bars; excursion=0.5 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MRVL",
+      "weighted_tim_pct": 58.720701212057705
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190841Z_MU_LONG",
+      "bh_multiple": 6.771895240612388,
+      "bh_return_pct": 381.9497630005161,
+      "candidate_return_pct": 2586.5237822162244,
+      "control_multiple": 1.0333357670859993,
+      "control_return_pct": 2503.081635807697,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=4h; recover<=2 bars; excursion=1 ATR",
+        "union-with-green; TF=1h; recover<=8 bars; excursion=1 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MU",
+      "weighted_tim_pct": 65.19623190914754
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190950Z_PBF_LONG",
+      "bh_multiple": 7.501685334213371,
+      "bh_return_pct": 127.67288706520714,
+      "candidate_return_pct": 957.7618244737444,
+      "control_multiple": 1.4915453031374046,
+      "control_return_pct": 642.1272102557874,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "direct; TF=1h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "PBF",
+      "weighted_tim_pct": 50.561473656430124
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190911Z_SNDK_LONG",
+      "bh_multiple": 4.698251558845837,
+      "bh_return_pct": 888.4673241916411,
+      "candidate_return_pct": 4174.242990866967,
+      "control_multiple": 0.771003489242925,
+      "control_return_pct": 5414.039040168029,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=1 bars; excursion=1 ATR",
+        "direct; TF=4h; recover<=2 bars; excursion=0 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "SNDK",
+      "weighted_tim_pct": 68.46691547682975
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191013Z_VLO_LONG",
+      "bh_multiple": 4.5413675349667155,
+      "bh_return_pct": 113.26658304126656,
+      "candidate_return_pct": 514.3851830202195,
+      "control_multiple": 1.25101892055705,
+      "control_return_pct": 411.1729843311847,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=1 bars; excursion=1 ATR",
+        "union-with-green; TF=4h; recover<=1 bars; excursion=1 ATR"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "VLO",
+      "weighted_tim_pct": 66.21129359537979
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191044Z_ACN_SHORT",
+      "bh_multiple": 6.313276693390895,
+      "bh_return_pct": 69.83729599844258,
+      "candidate_return_pct": 440.90217315640876,
+      "control_multiple": 1.082910557797345,
+      "control_return_pct": 407.145511678462,
+      "exposure_policy_pass": true,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=8 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=8 bars; excursion=1 ATR",
+        "direct; TF=1h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ACN",
+      "weighted_tim_pct": 73.4044651582179
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191114Z_ALB_SHORT",
+      "bh_multiple": 8.689786597060484,
+      "bh_return_pct": -82.31360627893449,
+      "candidate_return_pct": -715.2876725983987,
+      "control_multiple": 0.8740362469323443,
+      "control_return_pct": -818.3730081090862,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=2 bars; excursion=1 ATR",
+        "direct; TF=1h; recover<=4 bars; excursion=0.5 ATR",
+        "union-with-green; TF=15m; recover<=2 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ALB",
+      "weighted_tim_pct": 57.89540918779082
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191029Z_ASTS_SHORT",
+      "bh_multiple": 3.2849480939886555,
+      "bh_return_pct": -153.30760908123267,
+      "candidate_return_pct": -503.60753824535317,
+      "control_multiple": 0.8549389088145476,
+      "control_return_pct": -589.0567537084631,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=8 bars; excursion=1 ATR",
+        "direct; TF=4h; recover<=2 bars; excursion=0.25 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ASTS",
+      "weighted_tim_pct": 48.190304024803034
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": true,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191107Z_EGO_SHORT",
+      "bh_multiple": 1.689411820546132,
+      "bh_return_pct": -85.4387378283005,
+      "candidate_return_pct": -144.34121361967283,
+      "control_multiple": 0.645282222634707,
+      "control_return_pct": -223.68695209101412,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=8 bars; excursion=0.25 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "EGO",
+      "weighted_tim_pct": 26.71141261274097
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191059Z_HL_SHORT",
+      "bh_multiple": 6.754346057369874,
+      "bh_return_pct": -219.35524244446552,
+      "candidate_return_pct": -1481.6012169681885,
+      "control_multiple": 2.0166097217522085,
+      "control_return_pct": -734.69903521086,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=1h; recover<=2 bars; excursion=0.5 ATR",
+        "union-with-green; TF=1h; recover<=1 bars; excursion=1 ATR",
+        "union-with-green; TF=4h; recover<=2 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "HL",
+      "weighted_tim_pct": 52.29028257911273
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T190849Z_LAC_SHORT",
+      "bh_multiple": 38.15624719792719,
+      "bh_return_pct": -11.541295903690205,
+      "candidate_return_pct": -440.37253948562795,
+      "control_multiple": 1.444187382619112,
+      "control_return_pct": -304.92756326882494,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=15m; recover<=8 bars; excursion=1 ATR",
+        "direct; TF=15m; recover<=8 bars; excursion=1 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LAC",
+      "weighted_tim_pct": 59.84394953261714
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191122Z_LDOS_SHORT",
+      "bh_multiple": -3.198934510776234,
+      "bh_return_pct": 13.860357977561733,
+      "candidate_return_pct": -44.338377466134915,
+      "control_multiple": 1.4609377302757163,
+      "control_return_pct": -30.34925893642786,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=15m; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0.5 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LDOS",
+      "weighted_tim_pct": 33.06950518810077
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191052Z_TTD_SHORT",
+      "bh_multiple": 5.611506582930052,
+      "bh_return_pct": 141.54096581156944,
+      "candidate_return_pct": 794.2580614058993,
+      "control_multiple": 1.0622148553184716,
+      "control_return_pct": 747.7376704242816,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "direct; TF=15m; recover<=2 bars; excursion=1 ATR",
+        "direct; TF=1h; recover<=2 bars; excursion=0.5 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "TTD",
+      "weighted_tim_pct": 60.18327343960125
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191037Z_UEC_SHORT",
+      "bh_multiple": 7.949898862775852,
+      "bh_return_pct": -48.38169898684568,
+      "candidate_return_pct": -384.629613754688,
+      "control_multiple": 2.363017171217945,
+      "control_return_pct": -162.77055386628547,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; TF=1h; recover<=2 bars; excursion=0.25 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UEC",
+      "weighted_tim_pct": 44.13440723482092
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BB_RECOVERY_20260726T191021Z_UUUU_SHORT",
+      "bh_multiple": 2.098543592922492,
+      "bh_return_pct": -133.04902735158706,
+      "candidate_return_pct": -279.20918389324237,
+      "control_multiple": 1.2704048362317264,
+      "control_return_pct": -219.77969221325728,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BB_RECOVERY",
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "union-with-green; TF=1h; recover<=1 bars; excursion=1 ATR",
+        "direct; TF=15m; recover<=4 bars; excursion=0 ATR",
+        "union-with-green; TF=1h; recover<=4 bars; excursion=0 ATR"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UUUU",
+      "weighted_tim_pct": 43.294811071921615
+    }
+  ]
+}

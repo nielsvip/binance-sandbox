@@ -4,15 +4,18 @@ from types import SimpleNamespace
 import numpy as np
 
 from tools.vec_same_entry_exit_adapter import (
+    ChandelierParams,
     GrOppositeParams,
     StaticExitBook,
     WtMtfParams,
     _entry_schedule_hash,
     _golden_rule_completed_votes,
     build_donchian_book,
+    build_chandelier_book,
     build_gr_opposite_book,
     build_wt_mtf_book,
     e02_grid,
+    chandelier_grid,
     gr_opposite_grid,
     simulate,
     simulate_structural_compiled,
@@ -220,6 +223,57 @@ def test_gr_weakest_arm_has_eligible_completed_events():
     assert not availability["MFI"]
 
 
+def test_gr_min_tf_and_min_indicator_knobs_are_wired():
+    data = _fake_gr_data()
+    # Only 15m turns against the held LONG side.
+    for tf in ("1h", "4h", "D"):
+        data.z.rows[f"wt1_{tf}"][:] = 2.0
+        data.z.rows[f"rsi_{tf}"][:] = 60.0
+    htfs = {
+        tf: SimpleNamespace(
+            event_index=np.arange(8, dtype=np.int64),
+            source_ts=data.ts - 1,
+        )
+        for tf in ("15m", "1h", "4h", "D")
+    }
+    common = dict(
+        timeframes=("15m", "1h", "4h", "D"),
+        min_weighted_score=1.0,
+        weights=(1.0, 1.0, 1.0, 1.0),
+    )
+    one_tf = build_gr_opposite_book(
+        data,
+        htfs,
+        GrOppositeParams(min_tfs=1, min_indicators=2, **common),
+        side="LONG",
+    )
+    two_tf = build_gr_opposite_book(
+        data,
+        htfs,
+        GrOppositeParams(min_tfs=2, min_indicators=2, **common),
+        side="LONG",
+    )
+    assert np.count_nonzero(one_tf.events) == 5
+    assert np.count_nonzero(two_tf.events) == 0
+
+    # Leave only RSI against: one raw vote qualifies min_ind=1, not min_ind=2.
+    data.z.rows["wt1_15m"][:] = 2.0
+    one_ind = build_gr_opposite_book(
+        data,
+        htfs,
+        GrOppositeParams(min_tfs=1, min_indicators=1, **common),
+        side="LONG",
+    )
+    two_ind = build_gr_opposite_book(
+        data,
+        htfs,
+        GrOppositeParams(min_tfs=1, min_indicators=2, **common),
+        side="LONG",
+    )
+    assert np.count_nonzero(one_ind.events) == 5
+    assert np.count_nonzero(two_ind.events) == 0
+
+
 def test_vector_gr_votes_match_canonical_raw_scorer():
     from golden_rule_htf import _ind_score
 
@@ -254,6 +308,61 @@ def test_e02_grid_is_exact_bounded_contract():
     assert {row["lookback"] for row in rows} == {10, 15, 20, 30, 40, 55, 80}
     assert {row["profit_gate_pct"] for row in rows} == {0.0, 0.25, 0.5, 1.0}
     assert all("5m" not in str(row) for row in rows)
+
+
+def test_chandelier_grid_is_exact_standard_registered_contract():
+    rows = chandelier_grid()
+    assert len(rows) == 2 * 4 * 5 * 4
+    assert {row.timeframe for row in rows} == {"4h", "D"}
+    assert {row.lookback for row in rows} == {10, 20, 30, 55}
+    assert {row.atr_mult for row in rows} == {1.5, 2.0, 2.5, 3.0, 4.0}
+    assert {row.profit_gate_pct for row in rows} == {0.0, 0.25, 0.5, 1.0}
+
+
+def test_chandelier_is_monotonic_completed_causal_and_side_mirrored():
+    n = 14
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    high = np.array(list(range(10, 20)) + [19, 19, 19, 19], dtype=float)
+    low = np.array(list(range(20, 10, -1)) + [11, 11, 11, 11], dtype=float)
+    close = np.full(n, 18.0)
+    close[10:] = 16.0
+    data = SimpleNamespace(ts=ts, high=high, low=low)
+    htf = SimpleNamespace(
+        event_index=np.arange(n, dtype=np.int64),
+        source_ts=ts - 1,
+        high=high,
+        low=low,
+        close=close,
+        atr=np.ones(n),
+    )
+    params = ChandelierParams("4h", 10, 2.0)
+    long_book = build_chandelier_book(
+        data, {"4h": htf}, params, side="LONG"
+    )
+    short_book = build_chandelier_book(
+        data, {"4h": htf}, params, side="SHORT"
+    )
+    long_decisions = [
+        (row, decision)
+        for row in range(n)
+        if (decision := long_book.update(row, active=True)) is not None
+    ]
+    short_decisions = [
+        (row, decision)
+        for row in range(n)
+        if (decision := short_book.update(row, active=True)) is not None
+    ]
+    assert long_decisions[0][0] == 10
+    assert short_decisions[0][0] == 9
+    assert long_decisions[0][1].source_timestamps["4h"] < ts[10]
+    assert short_decisions[0][1].source_timestamps["4h"] < ts[9]
+    assert long_book.current_trail == 17.0
+    assert short_book.current_trail == 13.0
+    long_book.update(11, active=False)
+    assert math.isnan(long_book.current_trail)
+    assert long_book.audit["monotonic_while_active"]
+    assert long_book.audit["formula"] == "highest_high-ATR*mult"
+    assert short_book.audit["formula"] == "lowest_low+ATR*mult"
 
 
 def test_completed_donchian_book_is_causal_and_side_mirrored():

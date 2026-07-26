@@ -114,7 +114,10 @@ def _ingest_symbol(
     robust = any(row["params"] == winner["params"] for row in survivors)
     validation = winner["nested"]["validation"]
     zero_exit_mtm = int(validation["exit_fills"]) == 0
-    diagnostic_inert = path_id == "EXIT_GR_OPPOSITE" and zero_exit_mtm
+    diagnostic_inert = path_id in {
+        "EXIT_GR_OPPOSITE",
+        "EXIT_E01_CHANDELIER",
+    } and zero_exit_mtm
     payload = {
         "job_id": job_id,
         "symbol": result["symbol"],
@@ -139,7 +142,7 @@ def _ingest_symbol(
         "zero_exit_mtm": zero_exit_mtm,
         "inert": diagnostic_inert,
         "inert_reason": (
-            "no EXIT_GR_OPPOSITE fill in untouched validation"
+            f"no {path_id} fill in untouched validation"
             if diagnostic_inert
             else None
         ),

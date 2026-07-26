@@ -117,3 +117,29 @@ def test_failed_bb_recovery_is_side_mirrored_and_respects_excursion_deadline():
     assert overlay._failed_bb_recovery_events(
         short_close, upper, lower, atr, valid, "SHORT", 2, 1.0
     ).tolist() == [False, False, False, True, False]
+
+
+def test_delta_grid_is_direct_only_and_requested_dimensions_are_complete():
+    rows = overlay._delta_candidates()
+    assert len(rows) == 24
+    assert {row.role for row in rows} == {"direct"}
+    assert {row.params["min_favorable_tfs"] for row in rows} == {1, 2, 3, 4}
+    assert {row.params["directional_retention_ratio"] for row in rows} == {
+        0.25,
+        0.5,
+        0.75,
+    }
+    assert {row.params["structural_gate"] for row in rows} == {False, True}
+
+
+def test_delta_speed_is_exact_side_mirror():
+    velocity = np.array([2.0, -3.0, 0.0])
+    acceleration = np.array([4.0, -2.0, 6.0])
+    long_fav, long_opp = overlay._delta_side_speeds(
+        velocity, acceleration, "LONG"
+    )
+    short_fav, short_opp = overlay._delta_side_speeds(
+        velocity, acceleration, "SHORT"
+    )
+    assert long_fav.tolist() == short_opp.tolist()
+    assert long_opp.tolist() == short_fav.tolist()

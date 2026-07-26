@@ -169,8 +169,11 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "same ladder sizing and capacity",
         "E02 N=30 + resting reclaim",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES",
+        "Actual delta entry is direct-only. Requested decay ratios are reported "
+        "as research directional-retention filters because live "
+        "DELTA_EXIT_DECAY_RATIO is exit-only.",
     ),
     PathFamily(
         "EXIT_E02_DONCHIAN",
@@ -283,8 +286,10 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        "tools/vec_top_exit_campaign.py",
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Standard from-entry completed-4h/D monotonic Chandelier. The later "
+        "structural-arm adaptation remains a separate backlog experiment.",
     ),
     PathFamily(
         "EXIT_E05_DIVERGENCE_RETEST",

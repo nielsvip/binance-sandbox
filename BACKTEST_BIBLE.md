@@ -1005,3 +1005,34 @@ folds 21.56% and 77.16%), outside the preregistered band. Full settings,
 per-key rejection reasons and reproduction are in
 `WT_MTF_SAME_ENTRY_COHORT_RESULTS_20260726.md`; the result ledger is path-fleet
 job 40.
+
+### §15.6 — Opposite Golden Rule exit repair and screen (2026-07-26)
+
+`EXIT_GR_OPPOSITE` now retains raw opposite-direction indicator votes
+separately for completed 15m/1h/4h/D bars and applies explicit TF weights.
+The score is `sum(raw votes × TF weight)`, never the lossy historical
+`n_tfs × min_indicators` proxy. LONG consumes SHORT votes and SHORT consumes
+LONG votes. Each result stores per-TF vote/eligibility distributions, weights,
+input availability and completed-source hashes.
+
+The first 432-arm pass diagnosed a real red wiring defect: a single global
+edge trigger forgot an already-active opposite vote at entry or fold start,
+giving 19/20 zero-exit rows. GR direct exit is level-triggered in the actual
+path, so the repaired adapter evaluates it on every new completed HTF update
+while active. The 19 invalid rows remain `RED_DIAGNOSTIC_INERT`, not gray hold
+results.
+
+The repaired 20-key pass made 36–286 validation exits in every selected row.
+The weakest score-4 arm had 9,568–15,699 eligible completed updates and
+224–995 aggregate fills per key; all expected per-TF inputs were present and
+all source contracts were valid. There was no strict survivor. TTD_SHORT
+validated +573.05% versus +54.33% B&H and +481.90% control, but failed
+discovery control and exposure stability. SNDK_LONG validated +1,160.41% at
+79.81% exposure but remained far below its +2,325.64% identical-entry control.
+
+The tested `min_tfs` 1/2/3 and `min_indicators` 1/2 ranges changed zero fold
+fingerprints across the cohort because the raw-vote score already saturated
+them; they are red tested ranges and must not be repeated. Score/weights were
+only weakly responsive, while all profit-gate comparisons moved. Job 41 is
+`SCREENED`, exact replay is empty, and complete per-key evidence is in
+`GR_OPPOSITE_SAME_ENTRY_COHORT_RESULTS_20260726.md`.

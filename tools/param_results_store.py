@@ -904,7 +904,7 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     for result in fleet_results:
         identity = (
             result.get("path_id"), result.get("symbol"), result.get("side"),
-            result.get("stage"),
+            result.get("stage"), result.get("result_status"),
         )
         if identity in seen_results:
             continue
@@ -1001,12 +1001,13 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
 
     guide.append(("Restored sheet coverage",
                   f"PerSym keys={len(keys)}; Entry paths={entry_count}; Exit paths={exit_count}; "
-                  f"Path-fleet jobs={len(fleet_jobs)}; latest stage rows={len(latest_results)}."))
+                  f"Path-fleet jobs={len(fleet_jobs)}; latest stage/status rows={len(latest_results)}."))
     guide.append((
         "Path Fleet Results",
         "Separate vector/exact research ledger for the frozen top/bottom cohorts. "
         "It includes every logical path job, descriptions, parameter ranges, fixed "
-        "entry/exit controls and latest per-stage rows. Amber is research evidence, "
+        "entry/exit controls and latest per-stage/status rows. Superseded red wiring "
+        "diagnostics remain visible beside later repaired gray results. Amber is research evidence, "
         "gray is retained rejection, and only an exact promotion-allowed/matrix-written "
         "row may be green. These rows never overwrite repaired ENGINE cells.",
     ))

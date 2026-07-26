@@ -104,6 +104,8 @@ def _causal_npz_view(
         "close_5m": np.asarray(data.close, dtype=np.float64),
         "k_5m": _base_arr(data, "k_5m", "stoch_k_5m", default=50.0),
         "stoch_k_5m": _base_arr(data, "stoch_k_5m", "k_5m", default=50.0),
+        "wt_velocity_5m": _base_arr(data, "wt_velocity_5m"),
+        "wt_acceleration_5m": _base_arr(data, "wt_acceleration_5m"),
     }
     features = (
         "wt1",
@@ -129,6 +131,10 @@ def _causal_npz_view(
         "lrL_pct_b",
         "high",
         "low",
+        "wt_velocity",
+        "wt_acceleration",
+        "dc_basis_crossover",
+        "dc_basis_crossunder",
     )
     audit: dict[str, Any] = {}
     for tf, h in htfs.items():
@@ -323,6 +329,23 @@ def _bb_recovery_candidates() -> list[Candidate]:
     return rows
 
 
+def _delta_candidates() -> list[Candidate]:
+    return [
+        _candidate(
+            "ENTRY_DELTA_MTF",
+            "direct",
+            min_favorable_tfs=min_tfs,
+            directional_retention_ratio=ratio,
+            structural_gate=structural,
+        )
+        for min_tfs, ratio, structural in itertools.product(
+            (1, 2, 3, 4),
+            (0.25, 0.50, 0.75),
+            (False, True),
+        )
+    ]
+
+
 def _structure_states(
     data: top.ExecutionData,
     htfs: dict[str, top.HTFData],
@@ -450,6 +473,143 @@ def _failed_bb_recovery_events(
     return event
 
 
+def _delta_side_speeds(
+    velocity: np.ndarray,
+    acceleration: np.ndarray,
+    side: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Mirror the live delta engine's favorable/opposing raw speed."""
+    signed = 1.0 if side == "LONG" else -1.0
+    favorable = np.maximum(signed * velocity, 0.0)
+    opposing = np.maximum(-signed * velocity, 0.0)
+    favorable = np.maximum(favorable, np.maximum(signed * acceleration, 0.0) * 0.5)
+    opposing = np.maximum(opposing, np.maximum(-signed * acceleration, 0.0) * 0.5)
+    return favorable, opposing
+
+
+def _delta_structural_state(
+    data: top.ExecutionData,
+    h4: top.HTFData,
+    side: str,
+) -> np.ndarray:
+    """Live hh_hl_4h mirror: structure OR favorable HA color."""
+    full_event = data.full_indices[h4.event_index]
+    ha = (
+        np.asarray(data.z["ha_color_4h"], dtype=np.float64)[full_event]
+        if "ha_color_4h" in data.z.files
+        else np.zeros(len(full_event))
+    )
+    state = np.zeros(len(full_event), dtype=bool)
+    if side == "LONG":
+        state[1:] = (
+            ((h4.high[1:] > h4.high[:-1]) & (h4.low[1:] > h4.low[:-1]))
+            | (ha[1:] > 0)
+        )
+    else:
+        state[1:] = (
+            ((h4.high[1:] < h4.high[:-1]) & (h4.low[1:] < h4.low[:-1]))
+            | (ha[1:] < 0)
+        )
+    return top._align_feature(len(data.ts), h4, state.astype(float)) > 0.5
+
+
+def _delta_masks(
+    data: top.ExecutionData,
+    view: dict[str, np.ndarray],
+    htfs: dict[str, top.HTFData],
+    side: str,
+) -> tuple[dict[tuple[int, float, bool], np.ndarray], dict[str, Any]]:
+    """Actual live-entry inputs plus explicitly labeled research retention."""
+    weights = {"5m": 3.0, "15m": 2.0, "1h": 1.0, "4h": 1.0, "D": 0.5}
+    n = len(data.ts)
+    favorable_total = np.zeros(n, dtype=np.float64)
+    opposing_total = np.zeros(n, dtype=np.float64)
+    favorable_count = np.zeros(n, dtype=np.int8)
+    field_audit = {}
+    for tf, weight in weights.items():
+        velocity_key = f"wt_velocity_{tf}"
+        acceleration_key = f"wt_acceleration_{tf}"
+        velocity = np.asarray(view.get(velocity_key, np.zeros(n)), dtype=np.float64)
+        acceleration = np.asarray(
+            view.get(acceleration_key, np.zeros(n)), dtype=np.float64
+        )
+        favorable, opposing = _delta_side_speeds(
+            velocity, acceleration, side
+        )
+        favorable_total += favorable * weight
+        opposing_total += opposing * weight
+        favorable_count += (favorable > 0.5).astype(np.int8)
+        field_audit[tf] = {
+            "velocity_present": velocity_key in view,
+            "acceleration_present": acceleration_key in view,
+            "nonzero_velocity_rows": int(np.count_nonzero(velocity)),
+            "nonzero_acceleration_rows": int(np.count_nonzero(acceleration)),
+            "weight": weight,
+        }
+
+    dc = np.asarray(view.get("dc_position_1h", np.full(n, 0.5)))
+    bb = np.asarray(view.get("bb_pct_b_1h", np.full(n, 0.5)))
+    stoch = np.asarray(view.get("stoch_k_1h", np.full(n, 50.0)))
+    wt1 = np.asarray(view.get("wt1_1h", np.zeros(n)))
+    wt2 = np.asarray(view.get("wt2_1h", np.zeros(n)))
+    vel1 = np.asarray(view.get("wt_velocity_1h", np.zeros(n)))
+    basis_cross = np.asarray(
+        view.get(
+            (
+                "dc_basis_crossover_1h"
+                if side == "LONG"
+                else "dc_basis_crossunder_1h"
+            ),
+            np.zeros(n),
+        )
+    ) > 0
+    if side == "LONG":
+        zone = (
+            ((dc > 0.25) & (dc < 0.75) & (vel1 > 0) & (wt1 > wt2) & basis_cross)
+            | ((dc < 0.25) & (bb < 0.20) & (stoch < 25) & (vel1 > 0))
+        )
+    else:
+        zone = (
+            ((dc > 0.25) & (dc < 0.75) & (vel1 < 0) & (wt1 < wt2) & basis_cross)
+            | ((dc > 0.75) & (bb > 0.80) & (stoch > 75) & (vel1 < 0))
+        )
+    direction_ratio = favorable_total / np.maximum(
+        favorable_total + opposing_total, 1e-12
+    )
+    structural = _delta_structural_state(data, htfs["4h"], side)
+    masks = {}
+    for min_tfs, ratio, structural_gate in itertools.product(
+        (1, 2, 3, 4), (0.25, 0.50, 0.75), (False, True)
+    ):
+        mask = (
+            zone
+            & (favorable_count >= min_tfs)
+            & (direction_ratio >= ratio)
+        )
+        if structural_gate:
+            mask &= structural
+        masks[(min_tfs, ratio, structural_gate)] = mask
+    audit = {
+        "side": side,
+        "actual_live_inputs": {
+            "speed_threshold": 0.5,
+            "tf_weights": weights,
+            "favorable_tf_count": True,
+            "red_zone": "1h BASELINE/BOTTOM for LONG; BASELINE/TOP for SHORT",
+            "structural_gate": "live DELTA_HTF_GATE=hh_hl_4h mirror",
+        },
+        "requested_decay_ratio_mapping": (
+            "research-only favorable/(favorable+opposing) directional speed "
+            "retention; live DELTA_EXIT_DECAY_RATIO is exit-only and was not "
+            "misrepresented as an entry knob"
+        ),
+        "fields": field_audit,
+        "zone_rows": int(np.count_nonzero(zone)),
+        "structural_rows": int(np.count_nonzero(structural)),
+    }
+    return masks, audit
+
+
 def _mask(
     candidate: Candidate,
     view: dict[str, np.ndarray],
@@ -457,6 +617,7 @@ def _mask(
     gr_scores: dict[str, np.ndarray],
     structure_states: dict[tuple[str, float], np.ndarray] | None = None,
     bb_recovery_masks: dict[tuple[str, int, float], np.ndarray] | None = None,
+    delta_masks: dict[tuple[int, float, bool], np.ndarray] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -487,6 +648,16 @@ def _mask(
                 str(p["timeframe"]),
                 int(p["recovery_bars"]),
                 float(p["min_excursion_atr"]),
+            )
+        ]
+    if candidate.family == "ENTRY_DELTA_MTF":
+        if delta_masks is None:
+            raise ValueError("delta masks are required")
+        return delta_masks[
+            (
+                int(p["min_favorable_tfs"]),
+                float(p["directional_retention_ratio"]),
+                bool(p["structural_gate"]),
             )
         ]
     passed = np.vstack(
@@ -610,11 +781,18 @@ def build_frozen_overlay_signals(
     }
     structure_states = _structure_states(data, htfs, side)
     bb_masks = _bb_recovery_masks(data, htfs, side)
+    delta_masks, _ = _delta_masks(data, view, htfs, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
     mask = _mask(
-        candidate, view, side, gr_scores, structure_states, bb_masks
+        candidate,
+        view,
+        side,
+        gr_scores,
+        structure_states,
+        bb_masks,
+        delta_masks,
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -658,15 +836,23 @@ def run(args: argparse.Namespace) -> Path:
     }
     structure_states = _structure_states(data, htfs, side)
     bb_masks = _bb_recovery_masks(data, htfs, side)
+    delta_masks, delta_input_audit = _delta_masks(data, view, htfs, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
         "ENTRY_STOCH_HHHL": _stoch_candidates,
         "ENTRY_BB_RECOVERY": _bb_recovery_candidates,
+        "ENTRY_DELTA_MTF": _delta_candidates,
     }[args.family]()
     masks = {
         c: _mask(
-            c, view, side, gr_scores, structure_states, bb_masks
+            c,
+            view,
+            side,
+            gr_scores,
+            structure_states,
+            bb_masks,
+            delta_masks,
         )
         for c in family_candidates
     }
@@ -894,6 +1080,7 @@ def run(args: argparse.Namespace) -> Path:
                 "excursion arms; completed close back inside within 1/2/4/8 "
                 "TF bars fires direct or union-with-green"
             ),
+            "delta_input_audit": delta_input_audit,
             "causality": causality,
         },
         "outer_folds": folds,
@@ -927,6 +1114,7 @@ def main() -> None:
             "ENTRY_WT_DC",
             "ENTRY_STOCH_HHHL",
             "ENTRY_BB_RECOVERY",
+            "ENTRY_DELTA_MTF",
         ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))

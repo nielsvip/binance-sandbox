@@ -15,6 +15,8 @@ Implemented exit books:
 * ``WT_MTF``: completed-TF WaveTrend exhaustion/rollover vote;
 * ``GR_OPPOSITE``: explicit completed 15m/1h/4h/D opposite Golden Rule
   indicator votes. Per-TF raw votes and weights remain separately auditable;
+* ``E01_CHANDELIER``: standard monotonic completed-4h/D Chandelier from
+  entry, kept separate from the later structural-arm backlog adaptation;
 * ``STRUCTURAL_WT``: completed 4h lower-low arm followed by a later 1h lower
   price/WT1 top and rollover.  It never treats ``dc_low4`` as a profit exit.
 
@@ -55,7 +57,11 @@ from vec_paths.structural_wt_retest_exit import (  # noqa: E402
 
 STRUCTURAL_SCAN_SOURCE = ROOT / "tools" / "vec_same_entry_structural_scan.c"
 _STRUCTURAL_SCAN_LIBRARY: ctypes.CDLL | None = None
-ACTUAL_EXIT_REQUIRED_FAMILIES = {"EXIT_WT_MTF", "EXIT_GR_OPPOSITE"}
+ACTUAL_EXIT_REQUIRED_FAMILIES = {
+    "EXIT_WT_MTF",
+    "EXIT_GR_OPPOSITE",
+    "EXIT_E01_CHANDELIER",
+}
 
 
 class _StructuralScanMetrics(ctypes.Structure):
@@ -214,6 +220,24 @@ class GrOppositeParams:
             raise ValueError("GR weighted score must be positive")
         if any(weight < 0 for weight in self.weights):
             raise ValueError("GR weights must be non-negative")
+        if self.profit_gate_pct < 0:
+            raise ValueError("profit gate must be non-negative")
+
+
+@dataclasses.dataclass(frozen=True)
+class ChandelierParams:
+    timeframe: str
+    lookback: int
+    atr_mult: float
+    profit_gate_pct: float = 0.0
+
+    def validate(self) -> None:
+        if self.timeframe not in {"4h", "D"}:
+            raise ValueError("Chandelier timeframe must be 4h or D")
+        if self.lookback not in {10, 20, 30, 55}:
+            raise ValueError("unsupported bounded Chandelier lookback")
+        if self.atr_mult not in {1.5, 2.0, 2.5, 3.0, 4.0}:
+            raise ValueError("unsupported bounded Chandelier ATR multiple")
         if self.profit_gate_pct < 0:
             raise ValueError("profit gate must be non-negative")
 
@@ -760,6 +784,148 @@ def build_gr_opposite_book(
     )
 
 
+class ChandelierExitBook:
+    """Stateful one-way Chandelier over completed 4h or D bars."""
+
+    label = "EXIT_E01_CHANDELIER"
+
+    def __init__(
+        self,
+        data: Any,
+        htf: Any,
+        params: ChandelierParams,
+        *,
+        side: str,
+    ):
+        params.validate()
+        self.params = params
+        self.side = side.upper()
+        if self.side not in {"LONG", "SHORT"}:
+            raise ValueError("side must be LONG or SHORT")
+        self.is_long = self.side == "LONG"
+        self.execution_ts = np.asarray(data.ts, dtype=np.int64)
+        self.event_rows = np.asarray(htf.event_index, dtype=np.int64)
+        self.source_ts = np.asarray(htf.source_ts, dtype=np.int64)
+        self.completed_close = np.asarray(htf.close, dtype=np.float64)
+        self.completed_atr = np.asarray(htf.atr, dtype=np.float64)
+        if self.is_long:
+            self.completed_extreme = _rolling_max(
+                np.asarray(htf.high, dtype=np.float64), params.lookback
+            )
+            self.raw_stop = (
+                self.completed_extreme
+                - self.completed_atr * params.atr_mult
+            )
+        else:
+            self.completed_extreme = _rolling_min(
+                np.asarray(htf.low, dtype=np.float64), params.lookback
+            )
+            self.raw_stop = (
+                self.completed_extreme
+                + self.completed_atr * params.atr_mult
+            )
+        for row, source in zip(self.event_rows, self.source_ts):
+            if int(source) > int(self.execution_ts[int(row)]):
+                raise RuntimeError(
+                    f"future {params.timeframe} Chandelier source at row {row}"
+                )
+        digest = hashlib.sha256()
+        digest.update(self.source_ts.tobytes())
+        digest.update(self.raw_stop.tobytes())
+        self.audit = {
+            "timeframe": params.timeframe,
+            "lookback": params.lookback,
+            "atr_mult": params.atr_mult,
+            "formula": (
+                "highest_high-ATR*mult"
+                if self.is_long
+                else "lowest_low+ATR*mult"
+            ),
+            "monotonic_while_active": True,
+            "completed_source_count": int(len(self.event_rows)),
+            "raw_stop_sha256": digest.hexdigest(),
+        }
+        self.reset()
+
+    def reset(self) -> None:
+        self._was_active = False
+        self.current_trail = math.nan
+
+    def clone(self) -> "ChandelierExitBook":
+        clone = object.__new__(ChandelierExitBook)
+        clone.params = self.params
+        clone.side = self.side
+        clone.is_long = self.is_long
+        clone.execution_ts = self.execution_ts
+        clone.event_rows = self.event_rows
+        clone.source_ts = self.source_ts
+        clone.completed_close = self.completed_close
+        clone.completed_atr = self.completed_atr
+        clone.completed_extreme = self.completed_extreme
+        clone.raw_stop = self.raw_stop
+        clone.audit = self.audit
+        clone.reset()
+        return clone
+
+    def update(self, row: int, *, active: bool) -> ExitDecision | None:
+        if not active:
+            self.reset()
+            return None
+        slot = int(np.searchsorted(self.event_rows, row, side="right") - 1)
+        if slot < 0:
+            self._was_active = True
+            return None
+        candidate = float(self.raw_stop[slot])
+        if not self._was_active:
+            self._was_active = True
+            self.current_trail = candidate
+        # A stop decision is made only on a newly completed source bar.
+        if int(self.event_rows[slot]) != int(row) or not math.isfinite(candidate):
+            return None
+        if self.is_long:
+            self.current_trail = (
+                max(self.current_trail, candidate)
+                if math.isfinite(self.current_trail)
+                else candidate
+            )
+            triggered = float(self.completed_close[slot]) <= self.current_trail
+        else:
+            self.current_trail = (
+                min(self.current_trail, candidate)
+                if math.isfinite(self.current_trail)
+                else candidate
+            )
+            triggered = float(self.completed_close[slot]) >= self.current_trail
+        if not triggered:
+            return None
+        return ExitDecision(
+            reason=(
+                f"EXIT_E01_CHANDELIER_{self.params.timeframe}_"
+                f"N{self.params.lookback}_ATR{self.params.atr_mult:g}"
+            ),
+            reclaim_reference=float(self.completed_extreme[slot]),
+            source_timestamps={
+                self.params.timeframe: int(self.source_ts[slot])
+            },
+        )
+
+
+def build_chandelier_book(
+    data: Any,
+    htfs: dict[str, Any],
+    params: ChandelierParams,
+    *,
+    side: str,
+) -> ChandelierExitBook:
+    """Build the registered from-entry E01 path, without structural arming."""
+    return ChandelierExitBook(
+        data,
+        htfs[params.timeframe],
+        params,
+        side=side,
+    )
+
+
 class StructuralWtExitBookAdapter:
     label = "EXIT_STRUCTURAL_WT_LOWER_TOP"
 
@@ -1006,6 +1172,10 @@ def simulate(
         raise ValueError("simulation window too short")
     if not 0 < partial_exit_fraction <= 1:
         raise ValueError("partial_exit_fraction must be in (0,1]")
+    for book in (exit_book, runner_exit_book):
+        reset = getattr(book, "reset", None)
+        if callable(reset):
+            reset()
     side_sign = 1.0 if side == "LONG" else -1.0
     is_long = side == "LONG"
     cash = ladder.ACCOUNT_EQUITY
@@ -1423,6 +1593,24 @@ def gr_opposite_grid() -> list[GrOppositeParams]:
         for profit_gate in (0.0, 0.25, 0.5, 1.0)
     ]
     assert len(rows) == 432
+    return rows
+
+
+def chandelier_grid() -> list[ChandelierParams]:
+    """Exact 160-arm standard completed-HTF E01 grid."""
+    rows = [
+        ChandelierParams(
+            timeframe=timeframe,
+            lookback=lookback,
+            atr_mult=atr_mult,
+            profit_gate_pct=profit_gate,
+        )
+        for timeframe in ("4h", "D")
+        for lookback in (10, 20, 30, 55)
+        for atr_mult in (1.5, 2.0, 2.5, 3.0, 4.0)
+        for profit_gate in (0.0, 0.25, 0.5, 1.0)
+    ]
+    assert len(rows) == 160
     return rows
 
 
@@ -1913,6 +2101,49 @@ def screen_artifact(
                     vote_audit=book.audit,
                 )
             )
+    if "E01_CHANDELIER" in families:
+        grid = chandelier_grid()
+        signal_blocks = {
+            (params.timeframe, params.lookback, params.atr_mult): params
+            for params in grid
+        }
+        templates = {
+            key: build_chandelier_book(
+                data,
+                htfs,
+                dataclasses.replace(params, profit_gate_pct=0.0),
+                side=side,
+            )
+            for key, params in signal_blocks.items()
+        }
+        for params in grid:
+            template = templates[
+                (params.timeframe, params.lookback, params.atr_mult)
+            ]
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    template.clone(),
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    profit_gate_pct=params.profit_gate_pct,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "EXIT_E01_CHANDELIER",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    chandelier_audit=template.audit,
+                    structural_arm_used=False,
+                )
+            )
     if "STRUCTURAL_WT" in families:
         aligned_structural = {
             tf: _aligned_structural_tf(data, htfs[tf], tf)
@@ -2210,6 +2441,17 @@ def screen_artifact(
         "survivors": survivors,
         "candidates": candidates,
     }
+    if "E01_CHANDELIER" in families:
+        payload["e01_chandelier_contract"] = {
+            "registered_standard_path": True,
+            "activates_from_entry": True,
+            "monotonic_while_active": True,
+            "completed_timeframes_only": ["4h", "D"],
+            "structural_arm_used": False,
+            "structural_arm_backlog_separate": (
+                "TOP_EXIT_RESEARCH_BACKLOG_20260726.md"
+            ),
+        }
     if "GR_OPPOSITE" in families:
         weakest = next(
             (
@@ -2251,7 +2493,7 @@ def main() -> int:
         default="WT_MTF,STRUCTURAL_WT",
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
-            "STRUCTURAL_WT, and/or PARTIAL_WT"
+            "E01_CHANDELIER, STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
     ap.add_argument(
@@ -2267,6 +2509,7 @@ def main() -> int:
         "E02_GRID",
         "WT_MTF",
         "GR_OPPOSITE",
+        "E01_CHANDELIER",
         "STRUCTURAL_WT",
         "PARTIAL_WT",
     }
