@@ -66,6 +66,29 @@ required regression fields are absent, daily stochastic is incomplete, and the s
 65.2% discontinuity. It must be regenerated and pass the exact data contract before a worker
 can be added.
 
+## Verified live state
+
+At `2026-07-26T04:45:06Z` the digest counted 22 c2 ENGINE rows and excluded 6,622
+historical/c1 ENGINE rows. The latest timestamps continued advancing while the `*/10`
+`idle_npz_regen.sh` cron remained enabled.
+
+Frozen hashes:
+
+```text
+MU  f57ce885f72655026e594ce93fe883f61c20eab647568ee91ee5d7a4e9973fb3
+VT  4c7ff8d9008d8a4ad271b70a1413a7c62197ad64122c6d714fcb35b959579cce
+```
+
+The first repaired MU baseline is deliberately red:
+`PASS_WITH_CAPACITY_CLAMPS`, 3,181 real closes, 22.39% TIM, +1.4135%/month versus
++4.7610%/month B&H. Clamp-bearing runs are stored so the matrix can discover the settings
+that fix them, but the digest/exporter exclude them from best/promotable candidates.
+
+The first repaired VT baseline is structurally clean but losing:
+498 real closes, -0.2820%/month versus +0.2744%/month B&H. The result confirms the current
+function stack churns in the wrong direction; it is not an old LONG/SHORT-mixed or
+percentage-summed artifact.
+
 ## Rollback
 
 Compute-only rollback, without touching any result:

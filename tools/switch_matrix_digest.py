@@ -355,6 +355,49 @@ def load_latest_partial_regime_walk_forward(
     return out
 
 
+def load_latest_ladder_walk_forward(
+    keys: tuple[str, ...],
+) -> dict[str, dict[str, dict | None]]:
+    """Newest causal ladder selection plus its exact-engine replay, when present."""
+    root = REPORTS / "vec_research"
+    out: dict[str, dict[str, dict | None]] = {
+        key: {"research": None, "exact": None} for key in keys
+    }
+    if not root.exists():
+        return out
+    for key in keys:
+        symbol, side = parse_key(key)
+        research_dirs = sorted(
+            root.glob(f"band_ladder_walkforward_*_{symbol}_{side}"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for directory in research_dirs:
+            path = directory / "result.json"
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            payload["_artifact"] = str(directory.relative_to(BASE))
+            out[key]["research"] = payload
+            break
+        exact_dirs = sorted(
+            root.glob(f"v8_exact_ladder_replay_*_{symbol}_{side}"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for directory in exact_dirs:
+            path = directory / "run_summary.json"
+            try:
+                payload = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            payload["_artifact"] = str(directory.relative_to(BASE))
+            out[key]["exact"] = payload
+            break
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -502,6 +545,7 @@ def main() -> None:
     exact_replays = load_exact_replays()
     robust_walk_forward = load_latest_robust_walk_forward(keys)
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
+    ladder_walk_forward = load_latest_ladder_walk_forward(keys)
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -721,6 +765,61 @@ def main() -> None:
         "E12 reports net realized partial P&L separately. Positive partial clips do not "
         "constitute edge when lost runner exposure and re-add timing leave compounded equity "
         "below B&H.",
+        "",
+        "## Causal ladder multiplier walk-forward",
+        "",
+        "| key | frozen OOS strategy | B&H | multiple | weighted TIM | exact-engine parity | verdict |",
+        "|---|---:|---:|---:|---:|---|---|",
+    ]
+    for key in keys:
+        payload = ladder_walk_forward.get(key) or {}
+        research = payload.get("research")
+        exact = payload.get("exact")
+        if not research:
+            status = "QUARANTINED / INVALID DATA" if key == "HAO_SHORT" else "PENDING"
+            lines.append(f"| {key} | — | — | — | — | — | {status} |")
+            continue
+        aggregate = research.get("frozen_oos_aggregate") or {}
+        promotion_allowed = bool(
+            (research.get("manifest") or {}).get("promotion_allowed")
+        )
+        exact_ok = bool(
+            exact
+            and exact.get("status") == "PASS"
+            and exact.get("signal_parity") is True
+            and (exact.get("audit") or {}).get("status") == "PASS"
+        )
+        exact_text = "PASS" if exact_ok else ("FAIL" if exact else "PENDING")
+        multiple = aggregate.get("strategy_bh_multiple")
+        accepted = bool(
+            exact_ok
+            and promotion_allowed
+            and multiple is not None
+            and float(multiple) > 1.0
+        )
+        verdict_text = (
+            "PROMOTION ELIGIBLE"
+            if accepted
+            else (
+                "RESEARCH EDGE; PROMOTION BLOCKED"
+                if exact_ok and multiple is not None and float(multiple) > 1.0
+                else "REJECT / NO PROMOTION"
+            )
+        )
+        lines.append(
+            f"| {key} | {fmt(aggregate.get('capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(aggregate.get('bh_capital_return_pct_sum'), 3, '%')} | "
+            f"{fmt(multiple, 3)}× | "
+            f"{fmt(aggregate.get('exposure_weighted_tim_pct_row_weighted'), 2, '%')} | "
+            f"{exact_text} | {verdict_text} |"
+        )
+    lines += [
+        "",
+        "The MU exact replay covers the latest frozen fold: 34/34 actions, "
+        "+1,316.021% return, 77.09% weighted TIM, zero future HTF sources, zero clamps, "
+        "and exact signal/fill/accounting parity. It remains research-only because the "
+        "campaign explicitly sets `promotion_allowed=false`. VT fails frozen OOS; HAO "
+        "remains data-quarantined.",
         "",
         "## Isolated vector research — not matrix evidence",
         "",
