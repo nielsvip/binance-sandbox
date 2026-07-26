@@ -246,3 +246,13 @@ pre-final observations to 70% and keeps every high observation at or below
 24.90–36.17% on 5m bounce. The result is a bounded beam input/negative finding,
 not a parameter promotion. See
 `ENTRY_COMPONENT_TIM_REGIME_BEAM_20260726.{json,md}`.
+
+### Regime-conditioned exposure grid handoff
+
+Schema availability is 20/20 for the six fixed completed 1h/4h/D inputs.
+`tools/regime_conditioned_exposure_grid.py` exposes five monotonic binary/
+ternary policies and a pure single-family schedule transformer. Every output
+request is capped at 8x and uses a monotonic completed-1h density gate.
+Thresholds are global and side-mirrored; missing values are neutral. The
+consumer must use discovery folds only and re-simulate every arm. The grid
+spec is `REGIME_CONDITIONED_EXPOSURE_GRID_20260726.{json,md}`.

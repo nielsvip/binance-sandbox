@@ -1396,6 +1396,25 @@ only reduce already-high TIM (ASTS/SNDK); they do not solve the raise-low
 problem. Beam evidence is in
 `ENTRY_COMPONENT_TIM_REGIME_BEAM_20260726.{json,md}`.
 
+### §15.17 — causal regime-conditioned exposure grid (2026-07-26)
+
+Because no uniform multiplier solves the pre-final TIM spread, the next beam
+may condition one frozen entry schedule on a small global regime classifier.
+All 20 frozen NPZs contain the required completed features:
+`lrL_pct_b_4h/D`, 1h Stoch K/D, 4h ADX and 4h relative volume. LONG/SHORT use
+exactly mirrored band and Stoch direction; non-finite input is neutral.
+Supportive requires two favorable votes plus ADX>=20 or relative volume>=1;
+adverse requires two opposing votes; all other rows are neutral.
+
+The five-arm grid has two binary and three ternary policies. Multiplier scales
+are monotonic from adverse to supportive (0.625–1.375), minimum completed-1h
+entry gaps are non-increasing (3–0), and regime caps are monotonic at 3–8x.
+`apply_policy` consumes exactly one pre-final-frozen family schedule and clips
+every request to 8x; the account simulator must still enforce $16k capacity.
+No symbol threshold, final-fold selection, or blended overlay is allowed.
+This is a tested grid specification, not performance evidence. See
+`REGIME_CONDITIONED_EXPOSURE_GRID_20260726.{json,md}`.
+
 ### §15.17 — expanded causal bottom-exit campaign (2026-07-26)
 
 The first-break/DC-low path remains a diagnostic control, not a profit exit.
