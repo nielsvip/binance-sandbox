@@ -22,3 +22,8 @@ def flat_key_needs_evaluation(
         or wt_force_open_enabled
         or wt_dc_path_enabled
     )
+
+
+def path_switch(config, name: str, default: bool = True) -> bool:
+    """Read an explicit path master without inferring polarity from its name."""
+    return bool(getattr(config, name, default))

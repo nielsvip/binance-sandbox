@@ -46,6 +46,7 @@ from reentry_contract import (
     update_reentry_trace as _update_reentry_trace,
 )
 from tradier_indicators import analyze_multi_tf_state_tradier
+from tradier_entry_contract import path_switch
 from wt_dc_delta import DeltaTracker
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
@@ -7555,7 +7556,7 @@ class StockStrategy:
             _wt2_4h = float((_d_ind or {}).get('wt2_4h', 0) or 0)
             _wt1_D = float((_d_ind or {}).get('wt1_D', 0) or 0)
             _wt2_D = float((_d_ind or {}).get('wt2_D', 0) or 0)
-            if is_long:
+            if path_switch(config, "WT_CROSSUNDER_FINAL_ENABLED", True) and is_long:
                 # LTF: 5m/3m wt1 crossed under wt2 (going down)
                 _ltf_down = _wt1_5m < _wt2_5m
                 # 15m: going down OR overbought (wt1 > 95)
@@ -7572,7 +7573,7 @@ class StockStrategy:
                         _xu_D = _wt1_D < _wt2_D
                         logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
                         return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
-            else:
+            elif path_switch(config, "WT_CROSSUNDER_FINAL_ENABLED", True):
                 # SHORT exit: LTF going up (against short)
                 _ltf_up = _wt1_5m > _wt2_5m
                 # 15m: going up OR oversold (wt1 < -95)
@@ -7607,7 +7608,11 @@ class StockStrategy:
             elif _rz_sig and ((is_long and _rz_sig.exit_long) or (not is_long and _rz_sig.exit_short)):
                 logger.info(f"[RZ_EXIT_SUPPRESSED] {symbol} {'L' if is_long else 'S'}: {_rz_gate_reason}")
         # WT CROSSUNDER FINAL standalone — runs when the delta exit gate is disabled.
-        if not _is_opts_check and not _delta_exit_gate:
+        if (
+            not _is_opts_check
+            and not _delta_exit_gate
+            and path_switch(config, "WT_CROSSUNDER_FINAL_ENABLED", True)
+        ):
             _xu_ind = indicators if indicators else i
             _wt1_5m = float((_xu_ind or {}).get('wt1_5m', (_xu_ind or {}).get('wt1_3m', 0)) or 0)
             _wt2_5m = float((_xu_ind or {}).get('wt2_5m', (_xu_ind or {}).get('wt2_3m', 0)) or 0)
@@ -7665,14 +7670,20 @@ class StockStrategy:
                 return True, _reason, qty
             return False, f"OPTIONS_HOLD_D_intact_cross={_wt_cross_D}_ha={_ha_D}_g={gain:.2f}%", 0
         _exit_ind = indicators if indicators else i
-        _exit_score, _exit_reason = wt_dc_score_exit(_exit_ind, is_long, current_price, cfg=config)
+        _wtdc_exit_enabled = path_switch(config, "WT_DC_EXIT_ENABLED", True)
+        if _wtdc_exit_enabled:
+            _exit_score, _exit_reason = wt_dc_score_exit(
+                _exit_ind, is_long, current_price, cfg=config
+            )
+        else:
+            _exit_score, _exit_reason = 0.0, "WT_DC_EXIT_DISABLED"
         _exit_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 20)
         # STALE DATA GUARD: don't fire exits on indicators > 10min stale (prevents phantom exits)
         _ind_age = float(_exit_ind.get('age_5m', 0) or 0)
         _stale_max = getattr(config, 'WT_DC_EXIT_STALE_MAX_S', 600)
         if _ind_age > _stale_max:
             return False, f"STALE_DATA_age={_ind_age:.0f}s>{_stale_max}s", 0
-        if _exit_score >= _exit_threshold:
+        if _wtdc_exit_enabled and _exit_score >= _exit_threshold:
             _pp_up_e, _pp_dn_e, _, _ = _parabolic_state(_exit_ind or {}, config)
             if (is_long and _pp_up_e) or ((not is_long) and _pp_dn_e):
                 logger.warning(f"🌟 [WT_DC_EXIT_PARABOLIC_BYPASS] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% — parabolic {'UP' if is_long else 'DOWN'}trend, skipping close, let trend run")
@@ -7686,7 +7697,7 @@ class StockStrategy:
         # All legacy exits (K5M, ALGO, STRUCT_BREAK, IBS, etc.) are SUBORDINATE.
         # Only exception: position max hold timeout (8 hours).
         # --------------------------------------------------
-        if _exit_score < _exit_threshold:
+        if _wtdc_exit_enabled and _exit_score < _exit_threshold:
             # VARIANCE_FIX 2026-04-14 — canonical-switch exit gates run BEFORE SCORER_HOLD early return.
             # WT_EXIT_TFS/MIN_TFS/MI_EXIT_ENABLED were wired into evaluate_multi_tf_exit, but that code
             # is never reached because the wt_dc_score_exit early-returns above. Apply them here so the

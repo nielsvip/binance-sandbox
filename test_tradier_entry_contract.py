@@ -1,4 +1,4 @@
-from tradier_entry_contract import flat_key_needs_evaluation
+from tradier_entry_contract import flat_key_needs_evaluation, path_switch
 
 
 def test_isolated_wt_dc_routes_flat_key_to_real_process_position():
@@ -29,3 +29,11 @@ def test_existing_upstream_routes_remain_additive():
         }
         values[field] = True
         assert flat_key_needs_evaluation(**values)
+
+
+def test_explicit_path_switch_respects_false_and_missing_default():
+    class Config:
+        WT_DC_EXIT_ENABLED = False
+
+    assert not path_switch(Config(), "WT_DC_EXIT_ENABLED", True)
+    assert path_switch(Config(), "MISSING_PATH", True)
