@@ -27,6 +27,12 @@ class StructuralWtParams:
     rebound_atr: float = 0.5
     prebreak_lookback: int = 6
     max_wait_1h: int = 30
+    confirmation_mode: str = "AND"
+    confirmation_bars: int = 1
+    emergency_modes: tuple[str, ...] = ()
+    emergency_adverse_atr: float = 0.0
+    emergency_adverse_stdev: float = 0.0
+    emergency_continued_bars: int = 0
 
     def validate(self) -> None:
         if self.arm_tf not in {"1h", "4h", "D"}:
@@ -39,6 +45,22 @@ class StructuralWtParams:
             raise ValueError("max_wait_1h must be >=3")
         if self.rebound_atr < 0:
             raise ValueError("rebound_atr must be non-negative")
+        if self.confirmation_mode not in {"AND", "PRICE_ONLY", "WT_ONLY", "OR"}:
+            raise ValueError("unsupported confirmation_mode")
+        if self.confirmation_bars not in {1, 2}:
+            raise ValueError("confirmation_bars must be 1 or 2")
+        allowed_emergency = {
+            "ADVERSE_ATR",
+            "ADVERSE_STDEV",
+            "MAX_WAIT",
+            "CONTINUED",
+        }
+        if not set(self.emergency_modes) <= allowed_emergency:
+            raise ValueError("unsupported emergency mode")
+        if self.emergency_adverse_atr < 0 or self.emergency_adverse_stdev < 0:
+            raise ValueError("emergency distance thresholds must be non-negative")
+        if self.emergency_continued_bars < 0:
+            raise ValueError("emergency_continued_bars must be non-negative")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -94,6 +116,10 @@ class _PathState:
     rebound_price: float = math.nan
     rebound_wt: float = math.nan
     rebound_source_ts: int = 0
+    arm_close: float = math.nan
+    arm_stdev: float = math.nan
+    confirm_streak: int = 0
+    continued_count: int = 0
 
     def reset_arm(self) -> None:
         self.phase = "TREND"
@@ -107,6 +133,10 @@ class _PathState:
         self.rebound_price = math.nan
         self.rebound_wt = math.nan
         self.rebound_source_ts = 0
+        self.arm_close = math.nan
+        self.arm_stdev = math.nan
+        self.confirm_streak = 0
+        self.continued_count = 0
 
 
 class StructuralWtRetestExitBook:
@@ -197,6 +227,13 @@ class StructuralWtRetestExitBook:
                     state.arm_source_ts = bar.source_ts
                     state.wait = 0
                     state.arm_atr = bar.atr
+                    state.arm_close = bar.close
+                    closes = [item.close for item in prior]
+                    mean = sum(closes) / len(closes)
+                    state.arm_stdev = math.sqrt(
+                        sum((value - mean) ** 2 for value in closes)
+                        / len(closes)
+                    )
                     state.price_anchor = (
                         max(item.high for item in prior)
                         if side == "LONG"
@@ -257,6 +294,8 @@ class StructuralWtRetestExitBook:
                 or bar.wt1 > state.wt_anchor
             )
             leaf = "LONG_LOWER_PRICE_TOP_LOWER_WT1_TOP"
+            continued = previous is not None and bar.low < previous.low
+            adverse_distance = state.arm_close - state.damage_extreme
         else:
             state.damage_extreme = max(state.damage_extreme, bar.high)
             if bar.low <= state.rebound_price:
@@ -285,6 +324,8 @@ class StructuralWtRetestExitBook:
                 or bar.wt1 < state.wt_anchor
             )
             leaf = "SHORT_HIGHER_PRICE_BOTTOM_HIGHER_WT1_BOTTOM"
+            continued = previous is not None and bar.high > previous.high
+            adverse_distance = state.damage_extreme - state.arm_close
 
         if (
             state.phase == "WAIT_REBOUND"
@@ -297,7 +338,65 @@ class StructuralWtRetestExitBook:
             return None
 
         signal = None
-        if state.phase == "WAIT_CONFIRM" and adverse_price and wt_rollover:
+        if self.params.confirmation_mode == "PRICE_ONLY":
+            confirmed = adverse_price
+        elif self.params.confirmation_mode == "WT_ONLY":
+            confirmed = wt_rollover
+        elif self.params.confirmation_mode == "OR":
+            confirmed = adverse_price or wt_rollover
+        else:
+            confirmed = adverse_price and wt_rollover
+        state.confirm_streak = state.confirm_streak + 1 if confirmed else 0
+        state.continued_count = state.continued_count + 1 if continued else 0
+        emergency: str | None = None
+        if (
+            "ADVERSE_ATR" in self.params.emergency_modes
+            and self.params.emergency_adverse_atr > 0
+            and adverse_distance
+            >= self.params.emergency_adverse_atr * state.arm_atr
+        ):
+            emergency = "ADVERSE_ATR"
+        elif (
+            "ADVERSE_STDEV" in self.params.emergency_modes
+            and self.params.emergency_adverse_stdev > 0
+            and state.arm_stdev > 0
+            and adverse_distance
+            >= self.params.emergency_adverse_stdev * state.arm_stdev
+        ):
+            emergency = "ADVERSE_STDEV"
+        elif (
+            "CONTINUED" in self.params.emergency_modes
+            and self.params.emergency_continued_bars > 0
+            and state.continued_count >= self.params.emergency_continued_bars
+        ):
+            emergency = "CONTINUED"
+        elif "MAX_WAIT" in self.params.emergency_modes and state.wait >= self.params.max_wait_1h:
+            emergency = "MAX_WAIT"
+        if emergency is not None:
+            signal = ExitSignal(
+                position_side=side,
+                source_ts=bar.source_ts,
+                observed_ts=bar.observed_ts,
+                arm_source_ts=state.arm_source_ts,
+                price_anchor=state.price_anchor,
+                wt_anchor=state.wt_anchor,
+                retest_price=(
+                    state.rebound_price
+                    if math.isfinite(state.rebound_price)
+                    else bar.close
+                ),
+                retest_wt1=state.rebound_wt,
+                reason=(
+                    "V8_RESEARCH_STRUCT_WT_EMERGENCY_"
+                    f"{emergency}__arm{state.arm_source_ts}"
+                    "__MANDATORY_REENTRY"
+                ),
+            )
+            state.reset_arm()
+        elif (
+            state.phase == "WAIT_CONFIRM"
+            and state.confirm_streak >= self.params.confirmation_bars
+        ):
             signal = ExitSignal(
                 position_side=side,
                 source_ts=bar.source_ts,
@@ -313,7 +412,10 @@ class StructuralWtRetestExitBook:
                 ),
             )
             state.reset_arm()
-        elif invalid or state.wait >= self.params.max_wait_1h:
+        elif invalid or (
+            state.wait >= self.params.max_wait_1h
+            and "MAX_WAIT" not in self.params.emergency_modes
+        ):
             state.reset_arm()
         history.append(bar)
         return signal

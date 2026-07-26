@@ -52,19 +52,17 @@ static double dmin(double a, double b) { return a < b ? a : b; }
 static double dmax(double a, double b) { return a > b ? a : b; }
 
 static int add_obligation(
-    Obligation *items, double notional, double level, int row
+    Obligation *items, int *count, double notional, double level, int row
 ) {
     if (!(notional > 1e-9) || !isfinite(level)) return 0;
-    for (int j=0; j<MAX_OBLIGATIONS; ++j) {
-        if (!items[j].active) {
-            items[j].remaining=notional;
-            items[j].level=level;
-            items[j].created_row=row;
-            items[j].active=1;
-            return 1;
-        }
-    }
-    return -1;
+    if (*count>=MAX_OBLIGATIONS) return -1;
+    Obligation *item=&items[*count];
+    item->remaining=notional;
+    item->level=level;
+    item->created_row=row;
+    item->active=1;
+    (*count)++;
+    return 1;
 }
 
 int vec_same_entry_partial_scan(
@@ -98,6 +96,7 @@ int vec_same_entry_partial_scan(
     double pending_target=0.0, pending_ref=NAN, pending_fraction=0.0;
     Obligation obligations[MAX_OBLIGATIONS];
     memset(obligations,0,sizeof(obligations));
+    int obligation_count=0;
 
     for (int i=left; i<right; ++i) {
         double op=open_[i], cp=close[i];
@@ -115,7 +114,9 @@ int vec_same_entry_partial_scan(
                 qty -= close_qty;
                 double level=side>0 ? dmax(px,pending_ref)
                                     : dmin(px,pending_ref);
-                int added=add_obligation(obligations,notional,level,i);
+                int added=add_obligation(
+                    obligations,&obligation_count,notional,level,i
+                );
                 if (added<0) return 3;
                 out->reclaim_obligations_created += added;
                 if (pending==2) {
@@ -153,12 +154,14 @@ int vec_same_entry_partial_scan(
         }
 
         /* Every partial/full clip owns a persistent, independently fillable reclaim. */
-        for (int j=0; j<MAX_OBLIGATIONS; ++j) {
+        for (int j=0; j<obligation_count;) {
             Obligation *o=&obligations[j];
-            if (!o->active || i<=o->created_row) continue;
+            if (i<=o->created_row) { ++j; continue; }
+            /* When the account is at capacity, no obligation can fill. */
+            if (CAPACITY-qty*op<=1e-7) break;
             int open_through=side>0 ? op>=o->level : op<=o->level;
             int touched=side>0 ? high[i]>=o->level : low[i]<=o->level;
-            if (!open_through && !touched) continue;
+            if (!open_through && !touched) { ++j; continue; }
             double raw=open_through ? op : o->level;
             double px=raw*(1.0+side*slippage);
             double current=qty*px;
@@ -177,8 +180,12 @@ int vec_same_entry_partial_scan(
                 o->remaining-=actual;
             }
             if (o->remaining<=1e-7) {
-                o->active=0; out->reclaim_obligations_filled++;
+                out->reclaim_obligations_filled++;
+                obligations[j]=obligations[obligation_count-1];
+                obligation_count--;
+                continue;
             }
+            ++j;
         }
 
         double equity=cash+side*qty*cp;
@@ -254,7 +261,7 @@ int vec_same_entry_partial_scan(
         out->realized_full_gross_usd += gross;
         out->realized_full_net_usd += net;
     }
-    for (int j=0; j<MAX_OBLIGATIONS; ++j) if (obligations[j].active) {
+    for (int j=0; j<obligation_count; ++j) {
         out->reclaim_obligations_unfilled_at_end++;
         out->unfilled_obligation_notional_usd += obligations[j].remaining;
     }

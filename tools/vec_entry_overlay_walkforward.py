@@ -986,6 +986,11 @@ def run(args: argparse.Namespace) -> Path:
                     candidate_validation["capital_return_pct"]
                     > control_validation["capital_return_pct"]
                 ),
+                "exposure_policy_pass": (
+                    args.target_tim_low
+                    <= candidate_validation["exposure_weighted_tim_pct"]
+                    <= args.target_tim_high
+                ),
             }
         )
     candidate_sum = sum(f["validation_metrics"]["capital_return_pct"] for f in folds)
@@ -1015,6 +1020,9 @@ def run(args: argparse.Namespace) -> Path:
         "all_mandatory_reclaim": all(
             f["validation_metrics"]["bars_flat_beyond_reclaim"] == 0 for f in folds
         ),
+        "all_folds_exposure_policy_pass": all(
+            f["exposure_policy_pass"] for f in folds
+        ),
         "future_htf_count": sum(
             row["source_timestamp_future_count"] for row in causality.values()
         ),
@@ -1035,6 +1043,7 @@ def run(args: argparse.Namespace) -> Path:
         and aggregate["all_mandatory_reclaim"]
         and aggregate["future_htf_count"] == 0
         and aggregate["exposure_policy"]["pass"]
+        and aggregate["all_folds_exposure_policy_pass"]
     )
     output = {
         "manifest": {

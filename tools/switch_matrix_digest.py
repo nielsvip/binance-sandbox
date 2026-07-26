@@ -840,6 +840,14 @@ def main() -> None:
         "TIM gates. MU validated +1,127.00pp over B&H but -44.324pp versus E02 at "
         "65.21% TIM; SNDK's headline used 98.70% TIM. Path-fleet job 37 preserves all "
         "rows gray and correctly queues no exact replay.",
+        "- `EXIT_PARTIAL_RUNNER` completed the corrected 192-setting registry grid on "
+        "20 frozen keys (the listed 4×4×3×2×2 fields cannot equal 128; all clip sums "
+        "are valid). It produced **0 strict survivors**. Five selected validation "
+        "winners had zero fast partial fills; E05/E06 filled in only 25%/40% of their "
+        "validation settings versus WT 100%. The winners created 919 per-exit reclaim "
+        "obligations, filled 633 and left 286 open. MU made one partial (-$107.98 net) "
+        "versus ten slow full exits and lost 122.07pp to E02. Job 39 preserves all "
+        "20 rows gray and queues no exact replay.",
         "- Reentry invariant for structural research: after an exit, the stored exit/top level and "
         "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
         "must never erase it or allow price to outrun the stored level without reopening. "

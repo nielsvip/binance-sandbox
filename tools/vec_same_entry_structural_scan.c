@@ -21,6 +21,8 @@ typedef struct {
     int signals;
     int rejected_profit;
     int exit_fills;
+    int normal_exit_fills;
+    int emergency_exit_fills;
     int entry_fills;
     int ladder_reentries;
     int reclaim_reentries;
@@ -45,12 +47,16 @@ int vec_same_entry_structural_scan(
     const double *confirm_high, const double *confirm_low,
     const double *confirm_close, const double *confirm_wt,
     double rebound_atr, int lookback, int max_wait,
+    int confirmation_mode, int confirmation_bars,
+    int emergency_mask, double emergency_adverse_atr,
+    double emergency_adverse_stdev, int emergency_continued_bars,
     double profit_gate_pct, double commission, double slippage,
     StructuralScanMetrics *out
 ) {
     if (!out || n <= 0 || left < 0 || right > n || right-left < 100 ||
         (side != 1 && side != -1) || lookback < 2 || lookback > 10 ||
-        max_wait < 3) return 1;
+        max_wait < 3 || confirmation_mode < 0 || confirmation_mode > 3 ||
+        confirmation_bars < 1 || confirmation_bars > 2) return 1;
     memset(out, 0, sizeof(*out));
 
     double cash = ACCOUNT_EQUITY, qty = 0.0, avg_entry = NAN;
@@ -62,7 +68,7 @@ int vec_same_entry_structural_scan(
     double weighted = 0.0, held = 0.0, peak_post = 0.0;
 
     /* Independent completed-bar histories; same-TF ARM/CONFIRM is legal. */
-    double ah[10], al[10], aw[10];
+    double ah[10], al[10], ac[10], aw[10];
     int arm_count = 0, arm_slot = 0;
     double prev_arm_low = NAN, prev_arm_high = NAN;
     int have_confirm = 0;
@@ -71,8 +77,11 @@ int vec_same_entry_structural_scan(
     /* Structural state: 0 trend, 1 wait rebound, 2 wait confirmation. */
     int phase = 0, just_armed = 0, wait = 0;
     int64_t rebound_source = 0;
-    double state_arm_atr = NAN, price_anchor = NAN, wt_anchor = NAN;
+    double state_arm_atr = NAN, state_arm_close = NAN, state_arm_stdev = NAN;
+    double price_anchor = NAN, wt_anchor = NAN;
     double damage = NAN, rebound_price = NAN, rebound_wt = NAN;
+    int confirmation_streak = 0, continued_count = 0;
+    int pending_emergency = 0;
 
     for (int i=left; i<right; i++) {
         const double op = open_[i], cp = close[i];
@@ -89,6 +98,9 @@ int vec_same_entry_structural_scan(
                                          : dmin(px, pending_ref);
                 qty = 0.0; avg_entry = NAN; gap_seen = 0;
                 exit_fill_row = i; out->exit_fills++;
+                if (pending_emergency) out->emergency_exit_fills++;
+                else out->normal_exit_fills++;
+                pending_emergency = 0;
             } else if (pending == 1 || pending == 3) {
                 double px = op * (1.0 + side * slippage);
                 double current = qty * px;
@@ -171,10 +183,26 @@ int vec_same_entry_structural_scan(
                                              : dmin(wt_anchor, aw[idx]);
                     }
                     phase=1; just_armed=1;
-                    wait=0; state_arm_atr=arm_atr[i]; rebound_source=0;
+                    wait=0; state_arm_atr=arm_atr[i];
+                    state_arm_close=arm_close[i]; rebound_source=0;
+                    confirmation_streak=0; continued_count=0;
+                    double mean=0.0;
+                    for (int k=0; k<lookback; k++) {
+                        int idx=(arm_slot-1-k+10)%10;
+                        mean += ac[idx];
+                    }
+                    mean /= lookback;
+                    double variance=0.0;
+                    for (int k=0; k<lookback; k++) {
+                        int idx=(arm_slot-1-k+10)%10;
+                        double delta=ac[idx]-mean;
+                        variance += delta*delta;
+                    }
+                    state_arm_stdev=sqrt(variance/lookback);
                 }
             }
-            ah[arm_slot]=arm_high[i]; al[arm_slot]=arm_low[i]; aw[arm_slot]=arm_wt[i];
+            ah[arm_slot]=arm_high[i]; al[arm_slot]=arm_low[i];
+            ac[arm_slot]=arm_close[i]; aw[arm_slot]=arm_wt[i];
             arm_slot=(arm_slot+1)%10; if (arm_count<10) arm_count++;
             prev_arm_low=arm_low[i]; prev_arm_high=arm_high[i];
         }
@@ -192,6 +220,8 @@ int vec_same_entry_structural_scan(
                 } else {
                     wait++;
                     int adverse=0, rollover=0, invalid=0, enough=0, price_top=0, wt_top=0;
+                    int continued=0;
+                    double adverse_distance=0.0;
                     if (side > 0) {
                         damage=dmin(damage,confirm_low[i]);
                         if (confirm_high[i] >= rebound_price) {
@@ -208,6 +238,8 @@ int vec_same_entry_structural_scan(
                         rollover=have_confirm && confirm_wt[i] < prev_cw &&
                             prev_cw <= rebound_wt;
                         invalid=confirm_close[i] > price_anchor || confirm_wt[i] > wt_anchor;
+                        continued=have_confirm && confirm_low[i] < prev_cl;
+                        adverse_distance=state_arm_close-damage;
                     } else {
                         damage=dmax(damage,confirm_high[i]);
                         if (confirm_low[i] <= rebound_price) {
@@ -224,16 +256,40 @@ int vec_same_entry_structural_scan(
                         rollover=have_confirm && confirm_wt[i] > prev_cw &&
                             prev_cw >= rebound_wt;
                         invalid=confirm_close[i] < price_anchor || confirm_wt[i] < wt_anchor;
+                        continued=have_confirm && confirm_high[i] > prev_ch;
+                        adverse_distance=damage-state_arm_close;
                     }
                     int transitioned = 0;
                     if (phase==1 && enough && price_top && wt_top) {
                         phase=2;
                         transitioned=1;
                     }
-                    /* Python state machine returns on the transition bar. */
-                    if (!transitioned && phase==2 && adverse && rollover) {
-                        signal=1; signal_ref=rebound_price; phase=0; just_armed=0;
-                    } else if (!transitioned && (invalid || wait >= max_wait)) {
+                    int confirmed =
+                        confirmation_mode==1 ? adverse :
+                        confirmation_mode==2 ? rollover :
+                        confirmation_mode==3 ? (adverse || rollover) :
+                        (adverse && rollover);
+                    confirmation_streak = confirmed ? confirmation_streak+1 : 0;
+                    continued_count = continued ? continued_count+1 : 0;
+                    int emergency =
+                        ((emergency_mask & 1) && emergency_adverse_atr > 0.0 &&
+                         adverse_distance >= emergency_adverse_atr*state_arm_atr) ||
+                        ((emergency_mask & 2) && emergency_adverse_stdev > 0.0 &&
+                         state_arm_stdev > 0.0 &&
+                         adverse_distance >= emergency_adverse_stdev*state_arm_stdev) ||
+                        ((emergency_mask & 4) && wait >= max_wait) ||
+                        ((emergency_mask & 8) && emergency_continued_bars > 0 &&
+                         continued_count >= emergency_continued_bars);
+                    if (!transitioned && emergency) {
+                        signal=1;
+                        signal_ref=isfinite(rebound_price) ? rebound_price : confirm_close[i];
+                        pending_emergency=1; phase=0; just_armed=0;
+                    } else if (!transitioned && phase==2 &&
+                               confirmation_streak >= confirmation_bars) {
+                        signal=1; signal_ref=rebound_price;
+                        pending_emergency=0; phase=0; just_armed=0;
+                    } else if (!transitioned &&
+                               (invalid || (wait >= max_wait && !(emergency_mask & 4)))) {
                         phase=0; just_armed=0;
                     }
                 }
@@ -251,6 +307,7 @@ int vec_same_entry_structural_scan(
                 continue;
             }
             out->rejected_profit++;
+            pending_emergency=0;
         }
         if (active) {
             if (entry_mult[i] > 0.0) {

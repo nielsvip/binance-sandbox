@@ -1,0 +1,711 @@
+{
+  "cohorts": {
+    "BOTTOM_10_SHORT": {
+      "all_folds_beat_bh_count": 2,
+      "all_folds_beat_control_count": 1,
+      "all_folds_exposure_pass_count": 0,
+      "bh_return_pct_sum": -508.14859808748236,
+      "candidate_return_pct_sum": -2346.081959615108,
+      "control_return_pct_sum": -1928.7596353014753,
+      "entry_fills": 667,
+      "rows": 10,
+      "strict_survivors": 0
+    },
+    "TOP_10_LONG": {
+      "all_folds_beat_bh_count": 7,
+      "all_folds_beat_control_count": 2,
+      "all_folds_exposure_pass_count": 0,
+      "bh_return_pct_sum": 2379.1072118639836,
+      "candidate_return_pct_sum": 14625.915431517014,
+      "control_return_pct_sum": 15248.929021960557,
+      "entry_fills": 365,
+      "rows": 10,
+      "strict_survivors": 0
+    }
+  },
+  "contract": {
+    "actual_live_entry": "direct-only favorable WT velocity/acceleration TF count plus 1h red-zone and optional 4h structure gate",
+    "directional_retention_ratio": [
+      0.25,
+      0.5,
+      0.75
+    ],
+    "family": "ENTRY_DELTA_MTF",
+    "min_favorable_tfs": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "retention_status": "RESEARCH_ONLY: favorable/(favorable+opposing) speed; live DELTA_EXIT_DECAY_RATIO is exit-only",
+    "roles": [
+      "direct"
+    ],
+    "same_control": "frozen ladder + E02 4h N30 + resting reclaim",
+    "structural_gate": [
+      false,
+      true
+    ],
+    "timeframes": [
+      "5m",
+      "15m",
+      "1h",
+      "4h",
+      "D"
+    ],
+    "weighted_tim_target_each_fold_pct": [
+      70,
+      80
+    ]
+  },
+  "created_utc": "2026-07-26T19:38:41.774422+00:00",
+  "delta_input_audit_example": {
+    "actual_live_inputs": {
+      "favorable_tf_count": true,
+      "red_zone": "1h BASELINE/BOTTOM for LONG; BASELINE/TOP for SHORT",
+      "speed_threshold": 0.5,
+      "structural_gate": "live DELTA_HTF_GATE=hh_hl_4h mirror",
+      "tf_weights": {
+        "15m": 2.0,
+        "1h": 1.0,
+        "4h": 1.0,
+        "5m": 3.0,
+        "D": 0.5
+      }
+    },
+    "fields": {
+      "15m": {
+        "acceleration_present": true,
+        "nonzero_acceleration_rows": 45855,
+        "nonzero_velocity_rows": 45855,
+        "velocity_present": true,
+        "weight": 2.0
+      },
+      "1h": {
+        "acceleration_present": true,
+        "nonzero_acceleration_rows": 45849,
+        "nonzero_velocity_rows": 45849,
+        "velocity_present": true,
+        "weight": 1.0
+      },
+      "4h": {
+        "acceleration_present": true,
+        "nonzero_acceleration_rows": 45816,
+        "nonzero_velocity_rows": 45816,
+        "velocity_present": true,
+        "weight": 1.0
+      },
+      "5m": {
+        "acceleration_present": true,
+        "nonzero_acceleration_rows": 45855,
+        "nonzero_velocity_rows": 45855,
+        "velocity_present": true,
+        "weight": 3.0
+      },
+      "D": {
+        "acceleration_present": true,
+        "nonzero_acceleration_rows": 45776,
+        "nonzero_velocity_rows": 45776,
+        "velocity_present": true,
+        "weight": 0.5
+      }
+    },
+    "requested_decay_ratio_mapping": "research-only favorable/(favorable+opposing) directional speed retention; live DELTA_EXIT_DECAY_RATIO is exit-only and was not misrepresented as an entry knob",
+    "side": "SHORT",
+    "structural_rows": 24874,
+    "zone_rows": 2178
+  },
+  "exact_diagnostics": [
+    {
+      "actions": 11,
+      "artifact": "data/reports/vec_research/v8_exact_ladder_replay_20260726T193228Z_VLO_LONG",
+      "capital_return_pct": 485.2657798125077,
+      "future_htf_count": 0,
+      "promotion_allowed": false,
+      "signal_parity": true,
+      "source_artifact": "/home/niels/binance-sandbox/data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193120Z_VLO_LONG",
+      "status": "PASS",
+      "weighted_tim_pct": 96.54695039294901
+    }
+  ],
+  "rows": [
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193057Z_AMD_LONG",
+      "bh_return_pct": 204.77978811465744,
+      "candidate_return_pct": 1654.0567780325107,
+      "control_return_pct": 1683.7994543549203,
+      "entry_fills": 28,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        35.68251394048902,
+        87.06627064356947,
+        90.04909455951521
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "AMD",
+      "technical_exits": 14,
+      "weighted_tim_pct": 71.99948987069205
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193045Z_ARM_LONG",
+      "bh_return_pct": 123.02022364128673,
+      "candidate_return_pct": 1427.2648566613427,
+      "control_return_pct": 1150.8238578800124,
+      "entry_fills": 35,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        83.70283173721788,
+        52.52414915608375,
+        90.60045728448421
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=True",
+        "direct; favorable_TFs>=2; retention=0.75; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "ARM",
+      "technical_exits": 17,
+      "weighted_tim_pct": 76.0126902125588
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193115Z_DINO_LONG",
+      "bh_return_pct": 118.22124975442438,
+      "candidate_return_pct": 624.7634841835498,
+      "control_return_pct": 531.313120524251,
+      "entry_fills": 50,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        38.0375718471713,
+        70.33900671177463,
+        71.03764110349174
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=True",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=True"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "DINO",
+      "technical_exits": 16,
+      "weighted_tim_pct": 60.44402881176165
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193051Z_INTC_LONG",
+      "bh_return_pct": 214.03152885779164,
+      "candidate_return_pct": 919.325801505013,
+      "control_return_pct": 1466.297651286282,
+      "entry_fills": 42,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        80.08571414205764,
+        68.6596279647484,
+        77.99998259429995
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=2; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "INTC",
+      "technical_exits": 21,
+      "weighted_tim_pct": 75.60851981505392
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193109Z_MPC_LONG",
+      "bh_return_pct": 103.59163071551855,
+      "candidate_return_pct": 230.4517947567204,
+      "control_return_pct": 163.18516807441682,
+      "entry_fills": 47,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        40.428893740983106,
+        77.40921401711573,
+        39.61803281992322
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MPC",
+      "technical_exits": 20,
+      "weighted_tim_pct": 52.22595460826174
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193039Z_MRVL_LONG",
+      "bh_return_pct": 104.10623348167393,
+      "candidate_return_pct": 1500.2738192029276,
+      "control_return_pct": 1283.0888992779774,
+      "entry_fills": 33,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        84.7401628762305,
+        65.42567295644369,
+        73.20826412929668
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=True",
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=True"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MRVL",
+      "technical_exits": 18,
+      "weighted_tim_pct": 74.31047585273203
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T192958Z_MU_LONG",
+      "bh_return_pct": 381.9497630005161,
+      "candidate_return_pct": 2345.1527531129004,
+      "control_return_pct": 2503.081635807697,
+      "entry_fills": 35,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        34.33614737665358,
+        87.33339990596036,
+        65.27620083005615
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MU",
+      "technical_exits": 14,
+      "weighted_tim_pct": 62.756112826248234
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193103Z_PBF_LONG",
+      "bh_return_pct": 127.67288706520714,
+      "candidate_return_pct": 914.4623702345802,
+      "control_return_pct": 642.1272102557874,
+      "entry_fills": 43,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        21.12802590831341,
+        21.305849946064935,
+        88.73064382453383
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=2; retention=0.75; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "PBF",
+      "technical_exits": 22,
+      "weighted_tim_pct": 45.39591395608372
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193033Z_SNDK_LONG",
+      "bh_return_pct": 888.4673241916411,
+      "candidate_return_pct": 4393.120228673516,
+      "control_return_pct": 5414.039040168029,
+      "entry_fills": 12,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        87.77476786505869,
+        87.12059174825372
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "SNDK",
+      "technical_exits": 7,
+      "weighted_tim_pct": 87.43167045956656
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193437Z_VLO_LONG",
+      "bh_return_pct": 113.26658304126656,
+      "candidate_return_pct": 617.043545153954,
+      "control_return_pct": 411.1729843311847,
+      "entry_fills": 40,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        33.68098807820344,
+        88.99996768262992,
+        96.54695039294901
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=2; retention=0.75; struct4h=False"
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "VLO",
+      "technical_exits": 17,
+      "weighted_tim_pct": 74.33769515930115
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193145Z_ACN_SHORT",
+      "bh_return_pct": 69.83729599844258,
+      "candidate_return_pct": 417.74014353333774,
+      "control_return_pct": 407.145511678462,
+      "entry_fills": 60,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        25.389419928602994,
+        85.86229291061595,
+        85.66523242708386
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ACN",
+      "technical_exits": 17,
+      "weighted_tim_pct": 66.76759598150814
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193208Z_ALB_SHORT",
+      "bh_return_pct": -82.31360627893449,
+      "candidate_return_pct": -588.5203663887845,
+      "control_return_pct": -818.3730081090862,
+      "entry_fills": 62,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        61.43341886329191,
+        65.41538233861665,
+        29.000227411710156
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=True",
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ALB",
+      "technical_exits": 28,
+      "weighted_tim_pct": 51.060922555572155
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193133Z_ASTS_SHORT",
+      "bh_return_pct": -153.30760908123267,
+      "candidate_return_pct": -679.5841267617739,
+      "control_return_pct": -589.0567537084631,
+      "entry_fills": 74,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        74.27746587785913,
+        73.83576887799896,
+        20.776290221153133
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ASTS",
+      "technical_exits": 28,
+      "weighted_tim_pct": 54.883763450354294
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193203Z_EGO_SHORT",
+      "bh_return_pct": -85.4387378283005,
+      "candidate_return_pct": -189.65566637078288,
+      "control_return_pct": -223.68695209101412,
+      "entry_fills": 57,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        25.86238414301176,
+        26.818603125715676,
+        22.65430194818344
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=2; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "EGO",
+      "technical_exits": 34,
+      "weighted_tim_pct": 25.049811581453493
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193157Z_HL_SHORT",
+      "bh_return_pct": -219.35524244446552,
+      "candidate_return_pct": -1547.6641099622736,
+      "control_return_pct": -734.69903521086,
+      "entry_fills": 89,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        85.5666718449251,
+        70.48442732357474,
+        20.297017310822685
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "HL",
+      "technical_exits": 37,
+      "weighted_tim_pct": 57.18507566889875
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193004Z_LAC_SHORT",
+      "bh_return_pct": -11.541295903690205,
+      "candidate_return_pct": -124.81659322902547,
+      "control_return_pct": -304.92756326882494,
+      "entry_fills": 73,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        89.43388365670893,
+        77.63788039871447,
+        20.55165412908896
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=4; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LAC",
+      "technical_exits": 19,
+      "weighted_tim_pct": 60.786044567986934
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193214Z_LDOS_SHORT",
+      "bh_return_pct": 13.860357977561733,
+      "candidate_return_pct": -106.84695965011979,
+      "control_return_pct": -30.34925893642786,
+      "entry_fills": 76,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        47.40568563177825,
+        24.59859027084407,
+        17.225107095523395
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=2; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LDOS",
+      "technical_exits": 26,
+      "weighted_tim_pct": 29.13537432894162
+    },
+    {
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193151Z_TTD_SHORT",
+      "bh_return_pct": 141.54096581156944,
+      "candidate_return_pct": 730.5198515317152,
+      "control_return_pct": 747.7376704242816,
+      "entry_fills": 61,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        18.969664488871885,
+        85.51376002786219,
+        69.65446951080094
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=3; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=2; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=True"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "TTD",
+      "technical_exits": 15,
+      "weighted_tim_pct": 58.910121115636436
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193139Z_UEC_SHORT",
+      "bh_return_pct": -48.38169898684568,
+      "candidate_return_pct": -6.374957527459152,
+      "control_return_pct": -162.77055386628547,
+      "entry_fills": 54,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        73.01615994280891,
+        28.393515981130736,
+        22.71160713253348
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.75; struct4h=False",
+        "direct; favorable_TFs>=2; retention=0.5; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.25; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UEC",
+      "technical_exits": 26,
+      "weighted_tim_pct": 40.3580722950813
+    },
+    {
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_DELTA_MTF_20260726T193126Z_UUUU_SHORT",
+      "bh_return_pct": -133.04902735158706,
+      "candidate_return_pct": -250.87917478994177,
+      "control_return_pct": -219.77969221325728,
+      "entry_fills": 61,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_DELTA_MTF",
+      "fold_tim_pct": [
+        80.62336242756861,
+        28.262404249626055,
+        20.564838415279596
+      ],
+      "future_htf_count": 0,
+      "mandatory_reclaim": true,
+      "selected_settings_by_fold": [
+        "direct; favorable_TFs>=4; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=1; retention=0.25; struct4h=False",
+        "direct; favorable_TFs>=3; retention=0.5; struct4h=False"
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UUUU",
+      "technical_exits": 25,
+      "weighted_tim_pct": 41.94318064468142
+    }
+  ]
+}

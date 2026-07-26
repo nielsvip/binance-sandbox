@@ -17,6 +17,8 @@ Implemented exit books:
   indicator votes. Per-TF raw votes and weights remain separately auditable;
 * ``E01_CHANDELIER``: standard monotonic completed-4h/D Chandelier from
   entry, kept separate from the later structural-arm backlog adaptation;
+* ``BOTTOM_A_PROTECTIVE_TRAIL``: completed adverse structure arm followed by
+  an immediate diagnostic, ATR, rolling-stdev, or Donchian protective trail;
 * ``STRUCTURAL_WT``: completed 4h lower-low arm followed by a later 1h lower
   price/WT1 top and rollover.  It never treats ``dc_low4`` as a profit exit.
 
@@ -61,6 +63,9 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "EXIT_WT_MTF",
     "EXIT_GR_OPPOSITE",
     "EXIT_E01_CHANDELIER",
+    "BOTTOM_A_PROTECTIVE_TRAIL",
+    "BOTTOM_B_DELAYED_LOWER_TOP",
+    "BOTTOM_C_DELAYED_EMERGENCY",
 }
 
 
@@ -80,6 +85,8 @@ class _StructuralScanMetrics(ctypes.Structure):
         ("signals", ctypes.c_int),
         ("rejected_profit", ctypes.c_int),
         ("exit_fills", ctypes.c_int),
+        ("normal_exit_fills", ctypes.c_int),
+        ("emergency_exit_fills", ctypes.c_int),
         ("entry_fills", ctypes.c_int),
         ("ladder_reentries", ctypes.c_int),
         ("reclaim_reentries", ctypes.c_int),
@@ -148,6 +155,12 @@ def _structural_scan_library() -> ctypes.CDLL:
         f64,
         ctypes.c_double,
         ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_int,
         ctypes.c_double,
         ctypes.c_double,
@@ -240,6 +253,28 @@ class ChandelierParams:
             raise ValueError("unsupported bounded Chandelier ATR multiple")
         if self.profit_gate_pct < 0:
             raise ValueError("profit gate must be non-negative")
+
+
+@dataclasses.dataclass(frozen=True)
+class ProtectiveTrailParams:
+    arm_timeframe: str
+    trail_timeframe: str
+    mode: str
+    break_buffer_atr: float = 0.0
+    distance_mult: float = 2.0
+    lookback: int = 20
+
+    def validate(self) -> None:
+        if self.arm_timeframe not in {"1h", "4h"}:
+            raise ValueError("protective arm timeframe must be 1h or 4h")
+        if self.trail_timeframe not in {"5m", "15m", "1h"}:
+            raise ValueError("protective trail timeframe must be 5m, 15m, or 1h")
+        if self.mode not in {"IMMEDIATE", "ATR", "STDEV", "DC"}:
+            raise ValueError("unsupported protective trail mode")
+        if self.break_buffer_atr not in {0.0, 0.25}:
+            raise ValueError("unsupported break buffer")
+        if self.distance_mult <= 0 or self.lookback < 4:
+            raise ValueError("invalid protective trail distance/lookback")
 
 
 class StaticExitBook:
@@ -926,6 +961,244 @@ def build_chandelier_book(
     )
 
 
+class ProtectiveTrailExitBook:
+    """Adverse completed-structure arm followed by a protective trail.
+
+    ``IMMEDIATE`` is retained only as the dc-break churn comparator. The other
+    modes arm at the break and cannot exit until a later completed trail bar.
+    """
+
+    label = "BOTTOM_A_PROTECTIVE_TRAIL"
+
+    def __init__(
+        self,
+        data: Any,
+        htfs: dict[str, Any],
+        params: ProtectiveTrailParams,
+        *,
+        side: str,
+    ):
+        params.validate()
+        self.params = params
+        self.side = side.upper()
+        if self.side not in {"LONG", "SHORT"}:
+            raise ValueError("side must be LONG or SHORT")
+        self.is_long = self.side == "LONG"
+        self.execution_ts = np.asarray(data.ts, dtype=np.int64)
+        arm = htfs[params.arm_timeframe]
+        trail = htfs[params.trail_timeframe]
+        prior_low = np.concatenate(([np.nan], arm.low[:-1]))
+        prior_high = np.concatenate(([np.nan], arm.high[:-1]))
+        prior_atr = np.concatenate(([np.nan], arm.atr[:-1]))
+        if self.is_long:
+            arm_completed = (
+                (arm.low < prior_low)
+                & (
+                    arm.close
+                    < prior_low - params.break_buffer_atr * prior_atr
+                )
+            )
+        else:
+            arm_completed = (
+                (arm.high > prior_high)
+                & (
+                    arm.close
+                    > prior_high + params.break_buffer_atr * prior_atr
+                )
+            )
+        self.arm_rows = np.asarray(
+            arm.event_index[np.flatnonzero(arm_completed)], dtype=np.int64
+        )
+        arm_sources = np.asarray(
+            arm.source_ts[np.flatnonzero(arm_completed)], dtype=np.int64
+        )
+        self.arm_source_by_row = dict(
+            zip(self.arm_rows.tolist(), arm_sources.tolist())
+        )
+        self.trail_rows = np.asarray(trail.event_index, dtype=np.int64)
+        self.trail_sources = np.asarray(trail.source_ts, dtype=np.int64)
+        self.trail_close = np.asarray(trail.close, dtype=np.float64)
+        self.trail_high = np.asarray(trail.high, dtype=np.float64)
+        self.trail_low = np.asarray(trail.low, dtype=np.float64)
+        self.trail_atr = np.asarray(trail.atr, dtype=np.float64)
+        if params.mode == "STDEV":
+            self.distance = np.full(len(trail.close), np.nan, dtype=np.float64)
+            if len(trail.close) >= params.lookback:
+                windows = np.lib.stride_tricks.sliding_window_view(
+                    np.asarray(trail.close, dtype=np.float64), params.lookback
+                )
+                self.distance[params.lookback - 1 :] = np.std(
+                    windows, axis=1, ddof=0
+                )
+        elif params.mode == "DC":
+            self.distance = (
+                ladder.top._rolling_prior(trail.low, params.lookback, "min")
+                if self.is_long
+                else ladder.top._rolling_prior(
+                    trail.high, params.lookback, "max"
+                )
+            )
+        else:
+            self.distance = self.trail_atr
+        for row, source in list(self.arm_source_by_row.items()) + list(
+            zip(self.trail_rows.tolist(), self.trail_sources.tolist())
+        ):
+            if int(source) > int(self.execution_ts[int(row)]):
+                raise RuntimeError(
+                    f"future protective trail source at row {row}"
+                )
+        self.audit = {
+            "break_is_arm": params.mode != "IMMEDIATE",
+            "immediate_break_diagnostic": params.mode == "IMMEDIATE",
+            "five_minute_provenance_preserved": (
+                params.trail_timeframe == "5m"
+            ),
+            "arm_timeframe": params.arm_timeframe,
+            "trail_timeframe": params.trail_timeframe,
+        }
+        self.reset()
+
+    def reset(self) -> None:
+        self.armed = False
+        self.trail_level = math.nan
+        self.reclaim_reference = math.nan
+        self.arm_source = 0
+
+    def update(self, row: int, *, active: bool) -> ExitDecision | None:
+        if not active:
+            self.reset()
+            return None
+        if row in self.arm_source_by_row:
+            self.armed = True
+            self.trail_level = math.nan
+            self.reclaim_reference = (
+                float(self.trail_high[
+                    max(
+                        0,
+                        int(np.searchsorted(self.trail_rows, row, side="right"))
+                        - 1,
+                    )
+                ])
+                if self.is_long
+                else float(self.trail_low[
+                    max(
+                        0,
+                        int(np.searchsorted(self.trail_rows, row, side="right"))
+                        - 1,
+                    )
+                ])
+            )
+            self.arm_source = int(self.arm_source_by_row[row])
+            if self.params.mode == "IMMEDIATE":
+                return ExitDecision(
+                    reason="BOTTOM_A_IMMEDIATE_BREAK_DIAGNOSTIC",
+                    reclaim_reference=self.reclaim_reference,
+                    source_timestamps={
+                        self.params.arm_timeframe: self.arm_source
+                    },
+                )
+            # The adverse arm bar may never also be a trail exit.
+            return None
+        if not self.armed:
+            return None
+        slot = int(np.searchsorted(self.trail_rows, row, side="right") - 1)
+        if slot < 0 or int(self.trail_rows[slot]) != int(row):
+            return None
+        close = float(self.trail_close[slot])
+        if self.is_long:
+            self.reclaim_reference = max(
+                self.reclaim_reference, float(self.trail_high[slot])
+            )
+        else:
+            self.reclaim_reference = min(
+                self.reclaim_reference, float(self.trail_low[slot])
+            )
+        if self.params.mode == "DC":
+            candidate = float(self.distance[slot])
+        else:
+            distance = float(self.distance[slot])
+            candidate = (
+                close - self.params.distance_mult * distance
+                if self.is_long
+                else close + self.params.distance_mult * distance
+            )
+        if not math.isfinite(candidate) or candidate <= 0:
+            return None
+        self.trail_level = (
+            max(self.trail_level, candidate)
+            if self.is_long and math.isfinite(self.trail_level)
+            else min(self.trail_level, candidate)
+            if not self.is_long and math.isfinite(self.trail_level)
+            else candidate
+        )
+        fired = (
+            close <= self.trail_level
+            if self.is_long
+            else close >= self.trail_level
+        )
+        if not fired:
+            return None
+        return ExitDecision(
+            reason=(
+                f"BOTTOM_A_{self.params.mode}_{self.params.trail_timeframe}"
+            ),
+            reclaim_reference=float(self.reclaim_reference),
+            source_timestamps={
+                self.params.arm_timeframe: self.arm_source,
+                self.params.trail_timeframe: int(self.trail_sources[slot]),
+            },
+        )
+
+
+def protective_trail_grid() -> list[ProtectiveTrailParams]:
+    """Code-derived trail ranges plus explicitly tagged research breadth."""
+    rows: list[ProtectiveTrailParams] = []
+    for arm_tf in ("1h", "4h"):
+        for break_buffer in (0.0, 0.25):
+            rows.append(
+                ProtectiveTrailParams(
+                    arm_tf, "5m", "IMMEDIATE", break_buffer
+                )
+            )
+            for trail_tf in ("5m", "15m", "1h"):
+                for mult in (1.5, 2.0, 3.0, 4.0):
+                    rows.append(
+                        ProtectiveTrailParams(
+                            arm_tf,
+                            trail_tf,
+                            "ATR",
+                            break_buffer,
+                            mult,
+                            20,
+                        )
+                    )
+                for lookback in (10, 20, 40):
+                    for mult in (1.5, 2.0, 2.5, 3.0):
+                        rows.append(
+                            ProtectiveTrailParams(
+                                arm_tf,
+                                trail_tf,
+                                "STDEV",
+                                break_buffer,
+                                mult,
+                                lookback,
+                            )
+                        )
+                for lookback in (4, 20):
+                    rows.append(
+                        ProtectiveTrailParams(
+                            arm_tf,
+                            trail_tf,
+                            "DC",
+                            break_buffer,
+                            1.0,
+                            lookback,
+                        )
+                    )
+    assert len(rows) == 340
+    return rows
+
+
 class StructuralWtExitBookAdapter:
     label = "EXIT_STRUCTURAL_WT_LOWER_TOP"
 
@@ -1047,6 +1320,21 @@ def simulate_structural_compiled(
         data, htfs[params.confirm_tf], params.confirm_tf
     )
     out = _StructuralScanMetrics()
+    confirmation_mode = {
+        "AND": 0,
+        "PRICE_ONLY": 1,
+        "WT_ONLY": 2,
+        "OR": 3,
+    }[params.confirmation_mode]
+    emergency_mask = sum(
+        {
+            "ADVERSE_ATR": 1,
+            "ADVERSE_STDEV": 2,
+            "MAX_WAIT": 4,
+            "CONTINUED": 8,
+        }[mode]
+        for mode in params.emergency_modes
+    )
     rc = _structural_scan_library().vec_same_entry_structural_scan(
         len(data.ts),
         left,
@@ -1064,6 +1352,12 @@ def simulate_structural_compiled(
         params.rebound_atr,
         params.prebreak_lookback,
         params.max_wait_1h,
+        confirmation_mode,
+        params.confirmation_bars,
+        emergency_mask,
+        params.emergency_adverse_atr,
+        params.emergency_adverse_stdev,
+        params.emergency_continued_bars,
         profit_gate_pct,
         commission_rate,
         slippage_rate,
@@ -1093,6 +1387,13 @@ def simulate_structural_compiled(
         "signals": int(out.signals),
         "rejected_by_profit_gate": int(out.rejected_profit),
         "exit_fills": int(out.exit_fills),
+        "normal_exit_fills": int(out.normal_exit_fills),
+        "emergency_exit_fills": int(out.emergency_exit_fills),
+        "emergency_exit_share": (
+            float(out.emergency_exit_fills) / float(out.exit_fills)
+            if out.exit_fills
+            else 0.0
+        ),
         "partial_exit_fills": 0,
         "runner_exit_fills": 0,
         "clip_reclaim_reentries": 0,

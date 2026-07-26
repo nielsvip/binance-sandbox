@@ -1036,3 +1036,53 @@ them; they are red tested ranges and must not be repeated. Score/weights were
 only weakly responsive, while all profit-gate comparisons moved. Job 41 is
 `SCREENED`, exact replay is empty, and complete per-key evidence is in
 `GR_OPPOSITE_SAME_ENTRY_COHORT_RESULTS_20260726.md`.
+
+### §15.7 — Standard completed-HTF E01 Chandelier screen (2026-07-26)
+
+`EXIT_E01_CHANDELIER` now implements the registered standard path from entry:
+completed 4h/D × rolling lookback 10/20/30/55 × ATR multiple
+1.5/2/2.5/3/4 × profit gate 0/0.25/0.5/1%. LONG ratchets
+`highest high - ATR × multiple` upward; SHORT ratchets
+`lowest low + ATR × multiple` downward. The state resets per position and
+fold. The structural-arm/WT-divergence adaptation in
+`TOP_EXIT_RESEARCH_BACKLOG_20260726.md` is explicitly separate and was not
+used.
+
+All 20 frozen top/bottom keys completed 160 settings with actual validation
+exits, zero future sources and no zero-exit MTM winner. No strict survivor
+passed, so exact replay is empty. TTD_SHORT is the final-fold boundary:
++487.37% versus +54.33% B&H and +481.90% identical-entry control at 79.54%
+exposure with eight exits. Its first discovery fold was below both controls at
+18.15% exposure and aggregate discovery exposure was 52.74%, so it remains
+gray. UUUU has fifteen robust-alpha candidates but none with acceptable
+discovery/validation exposure.
+
+Timeframe, lookback and ATR ranges changed every matched fold fingerprint;
+profit gating changed 766/800. The path is connected, not red/inert. Its
+failure is the expected limitation of a from-entry volatility trail: wide
+settings become hold-like and narrow settings reduce exposure/churn. Job 42 is
+`SCREENED`; full per-key settings, exit counts and fold gates are in
+`E01_CHANDELIER_SAME_ENTRY_COHORT_RESULTS_20260726.md`.
+
+### §15.8 — Same-entry two-stage partial runner (2026-07-26)
+
+The partial-runner registry arithmetic is 4 first clips × 4 second clips × 3
+fast families × 2 slow families × 2 regime states = 192, not 128. All listed
+clip sums are valid (maximum 0.83), so the full 192-setting grid must run.
+
+`tools/vec_same_entry_partial_adapter.py` preserves the frozen ladder request
+hashes and uses compiled side-aware accounting. Each actual partial/full exit
+has its own persistent reclaim obligation; a later exit or capacity clamp does
+not erase it. Realized partial P&L, full P&L, actual exit fills, created/filled/
+open obligations, capacity, causality and exposure are reported separately.
+
+The frozen top-10 LONG/bottom-10 SHORT cohort produced zero strict survivors
+and no exact queue. Five selected validation winners had no fast partial fill.
+Across all fast-family validation settings, E05 fired in 25% and E06 in 40%,
+versus WT in 100%; these are connection/sparsity fingerprints, not comparable
+P&L samples. The 20 winners created 919 obligations from 919 technical fills;
+633 completed and 286 remained open. Only UEC had zero open obligations, but
+its 40.39% TIM failed policy. In-band MRVL, MU and SNDK lost 358.14pp, 122.07pp
+and 1,301.47pp to identical-entry E02. Full evidence and rollback scope are in
+`PARTIAL_RUNNER_RESULTS_20260726.md`; path-fleet job 39 preserves every row
+gray.

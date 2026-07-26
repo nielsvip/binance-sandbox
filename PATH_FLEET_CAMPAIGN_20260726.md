@@ -103,3 +103,27 @@ in `ENTRY_STOCH_HHHL_TOP_BOTTOM10_20260726.{json,md}`. PBF_LONG beat both return
 comparisons in every fold but reached only 46.88% weighted TIM; low-exposure
 PBF/MPC/VLO now route to ladder multiplier/trigger tuning rather than another
 Stoch threshold sweep.
+
+### DELTA_MTF entry
+
+`ENTRY_DELTA_MTF` was traced to the actual direct-entry path before testing.
+It counts side-favorable WT velocity/acceleration on completed
+5m/15m/1h/4h/D bars, applies the 1h delta red-zone, and can require mirrored
+4h price/Heikin-Ashi structure. The 24-setting causal sweep covered one through
+four favorable TFs, optional structure, and a research-only 0.25/0.50/0.75
+directional-retention ratio. That ratio is not `DELTA_EXIT_DECAY_RATIO`, which
+is an exit-only live knob; no live configuration was changed.
+
+All ten top LONG and ten bottom SHORT keys completed untouched-OOS screening.
+No key passed B&H, the identical ladder+E02 control, mandatory reclaim, zero
+future-HTF observations, and 70–80% weighted TIM in every fold together. The
+fleet job is `SCREENED`; all 20 results are retained gray in
+`ENTRY_DELTA_MTF_TOP_BOTTOM10_20260726.{json,md}`.
+
+VLO_LONG exposed an acceptance bug worth preserving as a regression. Its
+aggregate TIM was 74.34%, while fold TIM was 33.68%/89.00%/96.55%. An exact V8
+diagnostic reproduced the current-engine schedule and accounting, including
+96.55% last-fold TIM, but remained non-promotable. Vector acceptance now
+requires every validation fold—not only the aggregate—to remain in the
+70–80% band, and dedicated tests prevent aggregate exposure from hiding
+fold-level failures.

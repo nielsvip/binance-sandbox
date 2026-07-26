@@ -269,9 +269,11 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry full E02 N=30 control",
-        "tools/vec_partial_regime_walkforward.py",
-        "ADAPTER_REQUIRED",
-        "Standalone partial runner exists, but it must consume the ladder schedule before comparison.",
+        "tools/vec_same_entry_partial_adapter.py",
+        "READY_BOTH_SIDES",
+        "Compiled same-entry adapter consumes the frozen ladder schedule, "
+        "reports realized clip P&L, and keeps each clip reclaim obligation "
+        "persistent until filled.",
     ),
     PathFamily(
         "EXIT_E01_CHANDELIER",
