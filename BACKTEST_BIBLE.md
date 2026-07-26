@@ -268,6 +268,18 @@ Runner: `tools/persym_baseline_campaign.py` (S1 24/7 via cron + run_seq_test.sh;
 `data/reports/persym_campaign_digest.md` → morning email). Retired to `old/`:
 `per_sym_trb_profiles.py` (imported deleted v8_quick_engine; replaced by the campaign).
 
+**PARAM_BASELINE_STOCKS durable layout (restored 2026-07-26).** The recurring
+`param_results_store.export_xlsx()` must always regenerate `Workbook Guide`,
+`PerSym Results`, `Entry Paths`, and `Exit Paths`; it must also preserve the
+latest `Matrix_Top` produced by `tools/param_matrix.py`. `PerSym Results` and
+the two path matrices may read only contract-matched ENGINE rows from
+`stocks_repaired_20260725_c2`. Pre-repair campaigns and VEC screens remain in
+the legacy evidence sheets and must never fill or promote a repaired cell.
+Entry/Exit sheets use one column group per knob-registry path, with the human
+description, audited live reason(s), default, complete test grid, per-key tested
+settings, best setting, gain/mo, delta vs same-side B&H, and explicit promotion
+status. A baseline refresh that deletes any of these sheets is a report bug.
+
 **§12.9 STOCKS 4h = SESSION BARS (2026-07-18).** Live stock 4h was ALREADY session-anchored
 (open/noon/close = 09:30/12:45/16:00 ET via `tradier_indicators.get_4h_bin`); the NPZ was
 wall-clock UTC 4h — a parity break in EVERY `*_4h` stock field. `backtest_v8_precompute.py`

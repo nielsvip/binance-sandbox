@@ -32,6 +32,7 @@ def test_rank_init_claim_and_fail_closed_result(tmp_path):
     assert universe["top_long"][0]["symbol"] == "WIN"
     assert universe["bottom_short"][0]["symbol"] == "LOSE"
     fleet.init_campaign(root, universe, replace=True)
+    assert (root / "PATH_FLEET_REGISTRY.csv").read_text().startswith("path_id,kind")
     job = fleet.claim(root, "worker-1", 3600)
     assert job and job["status"] == "RUNNING"
     assert job["contract"]["matrix_eligible"] is False
