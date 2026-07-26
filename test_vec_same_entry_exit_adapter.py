@@ -8,6 +8,7 @@ from tools.vec_same_entry_exit_adapter import (
     WtMtfParams,
     _entry_schedule_hash,
     build_wt_mtf_book,
+    simulate,
 )
 
 
@@ -101,3 +102,52 @@ def test_entry_schedule_hash_changes_only_when_entry_schedule_changes():
     assert _entry_schedule_hash(data, first, curve, 0, 3) != _entry_schedule_hash(
         data, second, curve, 0, 3
     )
+
+
+def test_partial_clip_keeps_runner_and_reclaims_clip():
+    from tools.vec_band_ladder_walkforward import Curve, SignalData
+
+    n = 120
+    data = SimpleNamespace(
+        ts=np.arange(1, n + 1, dtype=np.int64) * 300,
+        open=np.full(n, 10.0),
+        high=np.full(n, 10.2),
+        low=np.full(n, 9.8),
+        close=np.full(n, 10.0),
+    )
+    curve = Curve("x", "linear", "green", "target", 30, 8, 4, 6, 3, 3, 1)
+    entry = np.zeros(n)
+    entry[0] = 4.0
+    signals = SignalData(
+        entry_mult=entry,
+        event_tf=np.zeros((3, n), dtype=np.uint8),
+        exit_event=np.zeros(n, dtype=np.uint8),
+        exit_ref=np.full(n, np.nan),
+        causality={},
+    )
+    events = np.zeros(n, dtype=np.uint8)
+    events[10] = 1
+    refs = np.full(n, np.nan)
+    refs[10] = 10.0
+    result = simulate(
+        data,
+        signals,
+        curve,
+        StaticExitBook("WT_PARTIAL", events, refs, {10: {"1h": 3000}}),
+        0,
+        n,
+        0.0,
+        0.0,
+        side="LONG",
+        partial_exit_fraction=0.25,
+        runner_exit_book=StaticExitBook(
+            "E02_DONCHIAN_4H_N30",
+            np.zeros(n, dtype=np.uint8),
+            np.full(n, np.nan),
+            {},
+        ),
+    )
+    assert result["partial_exit_fills"] == 1
+    assert result["clip_reclaim_reentries"] == 1
+    assert result["runner_exit_fills"] == 0
+    assert result["clip_obligations_unfilled_at_end"] == 0

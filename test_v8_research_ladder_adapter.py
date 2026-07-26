@@ -151,6 +151,34 @@ def test_short_schedule_uses_sell_to_open_and_buy_to_cover(tmp_path):
     )
 
 
+def test_zero_fill_capacity_request_is_audited_but_not_executed(tmp_path):
+    events = _events()
+    events.insert(
+        1,
+        {
+            "type": "CAPACITY_NO_FILL",
+            "reason": "ladder_add",
+            "signal_index": 1,
+            "source_signal_index": 1,
+            "signal_ts": 200,
+            "fill_index": 2,
+            "source_fill_index": 2,
+            "fill_ts": 300,
+            "latency_rth_bars": 1,
+            "requested_notional_usd": 1_000.0,
+            "filled_notional_usd": 0.0,
+            "clamped": True,
+            "entry_multiplier": 1.0,
+            "completed_htf_source_ts": {"1h": 190},
+        },
+    )
+    adapter = LadderReplayAdapter(_write_spec(tmp_path, events))
+    assert len(adapter.actions) == 2
+    assert len(adapter.audit_events) == 1
+    assert adapter._requested == 1_000.0
+    assert adapter._clamps == 1
+
+
 def test_schedule_and_weighted_tim_audit_use_actual_faithful_quantities(tmp_path):
     adapter = LadderReplayAdapter(_write_spec(tmp_path, _events()))
     entry, final = adapter.actions

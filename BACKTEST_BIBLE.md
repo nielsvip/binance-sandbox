@@ -910,3 +910,24 @@ The entry ablation contract also had to disable both numeric WT-DC threshold ali
 that, every named entry replay still admitted `WT_DC_ENTRY_*` signals and identical fingerprints
 were expected. `tools/exposure_ladder.py` now sets both thresholds out of reach before testing
 an entry path.
+
+### §15.2 — Causal SHORT ladder mirror and ratio guard (2026-07-26)
+
+The accepted LONG band-ladder/E02 research control may not be inverted or reused as SHORT
+evidence. `tools/vec_band_ladder_walkforward.py --side SHORT` now uses bearish completed-TF
+WT crosses, LH+LL with high/falling StochRSI, reflected regression-band depth, a completed-4h
+close above the prior high for E02, higher-price ladder reentry, and mandatory stored
+exit/bottom downward reclaim. SHORT cash, liability, slippage, commission, B&H, and capacity
+accounting are isolated from LONG.
+
+The frozen bottom-ten cohort found only ACN_SHORT (+407.15% vs +69.84%, 5.83x) and TTD_SHORT
+(+747.74% vs +141.54%, 5.28x) above positive side-aware B&H. The other eight failed; LAC, HL,
+and ALB crossed 100% account drawdown/insolvency. When side-aware B&H is non-positive,
+`strategy_bh_multiple` is N/A—negative divided by negative must never appear as a positive
+multiple. Alpha and absolute strategy P&L determine failure in that regime.
+
+The exact replay adapter now recomputes signals with their pre-validation HTF warmup and
+rebases only the engine-window indices. LAC's latest fold passed 27/27 exact actions, zero
+future HTF, next-RTH fills, capacity, TIM, and accounting parity; its three-fold aggregate
+still failed catastrophically, so parity proof does not imply strategy acceptance. Full
+evidence and rollback scope are in `SHORT_LADDER_MIRROR_RESULTS_20260726.md`.

@@ -245,6 +245,34 @@ def trace_frozen_curve(
                             ),
                         }
                     )
+                elif want > 0:
+                    # A request made while already at hard capacity is part of
+                    # the vector clamp accounting even though it must not emit
+                    # an engine order. Preserve it as an auditable source
+                    # signal so exact replay neither invents a zero-quantity
+                    # action nor silently drops the clamp.
+                    events.append(
+                        {
+                            "type": "CAPACITY_NO_FILL",
+                            "reason": str(pending["reason"]),
+                            "signal_index": signal_index - left,
+                            "source_signal_index": signal_index,
+                            "signal_ts": signal_ts,
+                            "fill_index": i - left,
+                            "source_fill_index": i,
+                            "fill_ts": int(data.ts[i]),
+                            "latency_rth_bars": 1,
+                            "requested_notional_usd": want,
+                            "filled_notional_usd": 0.0,
+                            "clamped": True,
+                            "entry_multiplier": float(
+                                pending.get("entry_multiplier", 0.0)
+                            ),
+                            "completed_htf_source_ts": dict(
+                                pending.get("completed_htf_source_ts") or {}
+                            ),
+                        }
+                    )
             pending = None
 
         mark_equity = equity(close)
@@ -588,7 +616,12 @@ def build_spec_and_schedule(
             ),
             "technical_exits": sum(event["type"] == "EXIT" for event in events),
             "mtm_final": sum(event["type"] == "MTM_FINAL" for event in events),
-            "actions": len(events),
+            "actions": sum(
+                event["type"] != "CAPACITY_NO_FILL" for event in events
+            ),
+            "capacity_no_fill_audits": sum(
+                event["type"] == "CAPACITY_NO_FILL" for event in events
+            ),
         },
         "accounting_tolerance_bp": 1e-4,
     }
@@ -613,6 +646,11 @@ class LadderReplayAdapter:
             raise LadderReplayError("event schedule hash mismatch")
         with gzip.open(schedule, "rt") as fh:
             self.events = [json.loads(line) for line in fh if line.strip()]
+        self.audit_events = [
+            event
+            for event in self.events
+            if str(event.get("type", "")).upper() == "CAPACITY_NO_FILL"
+        ]
         self.actions = self._build_actions()
         self._by_ts: dict[int, list[LadderReplayAction]] = {}
         for action in self.actions:
@@ -623,9 +661,12 @@ class LadderReplayAdapter:
         self._held_rows = 0
         self._weighted_exposure = 0.0
         self._peak_post_fill_notional = 0.0
-        self._requested = 0.0
+        self._requested = sum(
+            float(event["requested_notional_usd"])
+            for event in self.audit_events
+        )
         self._filled = 0.0
-        self._clamps = 0
+        self._clamps = len(self.audit_events)
 
     def _validate_spec(self) -> None:
         if self.spec.get("kind") != SPEC_KIND:
@@ -662,6 +703,14 @@ class LadderReplayAdapter:
         last_fill_index = -1
         for event in self.events:
             kind = str(event.get("type", "")).upper()
+            if kind == "CAPACITY_NO_FILL":
+                if (
+                    float(event.get("requested_notional_usd", 0.0)) <= 0.0
+                    or float(event.get("filled_notional_usd", -1.0)) != 0.0
+                    or not bool(event.get("clamped"))
+                ):
+                    raise LadderReplayError("invalid capacity no-fill audit event")
+                continue
             if kind not in {"ENTRY", "AUGMENT", "EXIT", "MTM_FINAL"}:
                 raise LadderReplayError(f"unsupported ladder event: {kind}")
             fill_index = int(event["fill_index"])
@@ -841,6 +890,34 @@ class LadderReplayAdapter:
             expected_fill = self.expected_fill_from_loaded_bar(action, raw)
             if not _close_enough(expected_fill, action.fill_price):
                 raise LadderReplayError("fill price does not match loaded NPZ bar")
+        for event in self.audit_events:
+            source_signal_index = int(event["source_signal_index"])
+            source_fill_index = int(event["source_fill_index"])
+            if source_fill_index != source_signal_index + 1:
+                raise LadderReplayError(
+                    "capacity no-fill did not occur at next RTH row"
+                )
+            if int(data.ts[source_signal_index]) != int(event["signal_ts"]):
+                raise LadderReplayError("capacity no-fill signal timestamp mismatch")
+            if int(data.ts[source_fill_index]) != int(event["fill_ts"]):
+                raise LadderReplayError("capacity no-fill timestamp mismatch")
+            actual_mult = float(signals.entry_mult[source_signal_index])
+            if not _close_enough(
+                actual_mult, float(event["entry_multiplier"]), rel=1e-9
+            ):
+                raise LadderReplayError(
+                    "capacity no-fill multiplier signal mismatch"
+                )
+            actual_sources = _event_sources(
+                signals, htfs, source_signal_index
+            )
+            if actual_sources != {
+                str(k): int(v)
+                for k, v in event["completed_htf_source_ts"].items()
+            }:
+                raise LadderReplayError(
+                    "capacity no-fill completed HTF source mismatch"
+                )
         data.z.close()
         return actual_sha
 
@@ -962,6 +1039,7 @@ class LadderReplayAdapter:
             "requested_notional_usd": self._requested,
             "filled_notional_usd": self._filled,
             "clamp_count": self._clamps,
+            "capacity_no_fill_audit_events": len(self.audit_events),
             "entry_capacity_breach": (
                 self._peak_post_fill_notional > self.capacity + 1e-6
             ),

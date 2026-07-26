@@ -28,7 +28,16 @@ The target exposure band is not universal. ARM and AMD are near the desired
 and VLO are below the top-performer target. Those are ladder-entry tuning
 problems, not reasons to weaken the benchmark for exit research.
 
-The current vector ladder is LONG-only. The frozen bottom-ten SHORT cohort is
-LAC, UUUU, ASTS, UEC, ACN, TTD, HL, EGO, ALB, and LDOS. These rows remain
-explicitly blocked until the mirrored SHORT ladder adapter exists; no LONG P&L
-is reused or inverted to fabricate SHORT results.
+The causal SHORT mirror is now implemented and job 33 has been backfilled
+without replacing these LONG rows. ACN_SHORT returned +407.15% versus +69.84%
+side-aware B&H (5.83x), and TTD_SHORT returned +747.74% versus +141.54%
+(5.28x). The other eight failed; LAC, HL, and ALB crossed 100% account
+drawdown/insolvency. A negative short-and-hold denominator is reported as N/A,
+never as a misleading positive multiple. Full semantics, cohort rows, and
+exact-replay evidence are in
+`SHORT_LADDER_MIRROR_RESULTS_20260726.md`.
+
+ACN and TTD subsequently passed exact current-engine replay of their latest
+untouched folds: ACN +388.07% versus +44.50% B&H (37/37 actions), TTD +280.88%
+versus +54.33% (32/32 actions). Both remained fail-closed with promotion and
+matrix writes disabled.
