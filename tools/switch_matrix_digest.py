@@ -398,6 +398,16 @@ def load_latest_ladder_walk_forward(
     return out
 
 
+def load_tradier_5m_coverage() -> dict:
+    """Native/interpolated execution provenance produced by the retention audit."""
+    path = REPORTS / "tradier_5m_coverage_latest.json"
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--keys", default=",".join(DEFAULT_KEYS),
@@ -546,6 +556,7 @@ def main() -> None:
     robust_walk_forward = load_latest_robust_walk_forward(keys)
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
+    coverage_5m = load_tradier_5m_coverage()
 
     lines = [
         f"# SWITCH_MATRIX_TRB progress digest — {now.strftime('%Y-%m-%d %H:%M:%SZ')}",
@@ -569,6 +580,43 @@ def main() -> None:
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.xlsx", now),
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.csv.gz", now),
         f"- Description coverage in current CSV: **{desc_filled:,}/{desc_total:,}** rows.",
+        "",
+        "## Stocks 5m execution provenance",
+        "",
+        "Historical native 5m availability is provider-limited. Older rows use the disclosed "
+        "containing-15m interpolation; native bars replace it permanently as they are collected.",
+        "",
+        "| key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |",
+        "|---|---:|---:|---|---:|---:|---|",
+    ]
+    coverage_symbols = coverage_5m.get("symbols", {})
+    for key in keys:
+        symbol, _side = parse_key(key)
+        row = coverage_symbols.get(symbol, {})
+        source = row.get("native_source", {})
+        npz = row.get("npz", {})
+        native = npz.get("native", {})
+        interpolated = npz.get("interpolated", {})
+        errors = row.get("errors") or []
+        if not row:
+            lines.append(f"| {key} | — | — | — | — | — | MISSING REPORT |")
+            continue
+        native_range = (
+            f"{str(source.get('start') or '—')[:10]} → "
+            f"{str(source.get('end') or '—')[:10]}"
+        )
+        lines.append(
+            f"| {key} | {source.get('rows', '—')} | "
+            f"{fmt(native.get('pct'), 2, '%')} | {native_range} | "
+            f"{interpolated.get('rows', '—')} | "
+            f"{fmt(interpolated.get('pct'), 2, '%')} | "
+            f"{'PASS' if not errors else 'FAIL: ' + '; '.join(errors[:2])} |"
+        )
+    lines += [
+        "",
+        "The append/merge ledger blocks any refresh that shrinks native row count, advances "
+        "the first timestamp, regresses the last timestamp, or introduces duplicate/out-of-order "
+        "timestamps. `synthetic_5m_parent_close_ts` records the bounded 0/5/10-minute parent lag.",
         "",
         "## Pilot-key matrix coverage",
         "",
