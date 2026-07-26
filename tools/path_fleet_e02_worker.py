@@ -117,6 +117,7 @@ def _ingest_symbol(
     diagnostic_inert = path_id in {
         "EXIT_GR_OPPOSITE",
         "EXIT_E01_CHANDELIER",
+        "EXIT_MTF_ATR_TRAIL",
         "BOTTOM_A_PROTECTIVE_TRAIL",
         "BOTTOM_B_DELAYED_LOWER_TOP",
         "BOTTOM_C_DELAYED_EMERGENCY",

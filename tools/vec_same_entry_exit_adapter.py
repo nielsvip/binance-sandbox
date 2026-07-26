@@ -19,6 +19,8 @@ Implemented exit books:
   entry, kept separate from the later structural-arm backlog adaptation;
 * ``BOTTOM_A_PROTECTIVE_TRAIL``: completed adverse structure arm followed by
   an immediate diagnostic, ATR, rolling-stdev, or Donchian protective trail;
+* ``MTF_ATR_TRAIL``: from-entry completed 1h/4h/D ATR ratchets whose latest
+  adverse states must agree across a declared number of timeframes;
 * ``STRUCTURAL_WT``: completed 4h lower-low arm followed by a later 1h lower
   price/WT1 top and rollover.  It never treats ``dc_low4`` as a profit exit.
 
@@ -66,6 +68,7 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "BOTTOM_A_PROTECTIVE_TRAIL",
     "BOTTOM_B_DELAYED_LOWER_TOP",
     "BOTTOM_C_DELAYED_EMERGENCY",
+    "EXIT_MTF_ATR_TRAIL",
 }
 
 
@@ -277,6 +280,24 @@ class ProtectiveTrailParams:
             raise ValueError("unsupported break buffer")
         if self.distance_mult <= 0 or self.lookback < 4:
             raise ValueError("invalid protective trail distance/lookback")
+
+
+@dataclasses.dataclass(frozen=True)
+class MtfAtrTrailParams:
+    timeframes: tuple[str, ...]
+    atr_mult: float
+    min_profit_pct: float
+    min_confirming_tfs: int
+
+    def validate(self) -> None:
+        if self.timeframes != ("1h", "4h", "D"):
+            raise ValueError("MTF ATR trail requires completed 1h/4h/D")
+        if self.atr_mult not in {1.5, 2.0, 2.5, 3.0, 4.0}:
+            raise ValueError("unsupported MTF ATR multiple")
+        if self.min_profit_pct not in {0.0, 0.25, 0.5, 1.0}:
+            raise ValueError("unsupported MTF ATR minimum profit")
+        if self.min_confirming_tfs not in {1, 2}:
+            raise ValueError("MTF ATR confirmations must be 1 or 2")
 
 
 class StaticExitBook:
@@ -1201,6 +1222,202 @@ def protective_trail_grid() -> list[ProtectiveTrailParams]:
     return rows
 
 
+class MtfAtrTrailExitBook:
+    """Research-only completed 1h/4h/D agreement ATR ratchet.
+
+    This deliberately does not claim live parity.  The shared live/v8 path in
+    ``vec_paths.mtf_atr_trail`` is one configurable timeframe.  This book
+    keeps an independent canonical from-entry ratchet for each completed HTF
+    and requires the configured number of latest HTF states to agree.
+    """
+
+    label = "EXIT_MTF_ATR_TRAIL"
+
+    def __init__(
+        self,
+        data: Any,
+        htfs: dict[str, Any],
+        params: MtfAtrTrailParams,
+        *,
+        side: str,
+    ):
+        params.validate()
+        self.params = params
+        self.side = side.upper()
+        if self.side not in {"LONG", "SHORT"}:
+            raise ValueError("side must be LONG or SHORT")
+        self.is_long = self.side == "LONG"
+        self.execution_ts = np.asarray(data.ts, dtype=np.int64)
+        self.execution_high = np.asarray(data.high, dtype=np.float64)
+        self.execution_low = np.asarray(data.low, dtype=np.float64)
+        self.tf_data: dict[str, dict[str, Any]] = {}
+        self.events_by_row: dict[int, list[tuple[str, int]]] = {}
+        for timeframe in params.timeframes:
+            tf = htfs[timeframe]
+            rows = np.asarray(tf.event_index, dtype=np.int64)
+            sources = np.asarray(tf.source_ts, dtype=np.int64)
+            closes = np.asarray(tf.close, dtype=np.float64)
+            highs = np.asarray(tf.high, dtype=np.float64)
+            lows = np.asarray(tf.low, dtype=np.float64)
+            atr = np.asarray(tf.atr, dtype=np.float64)
+            self.tf_data[timeframe] = {
+                "rows": rows,
+                "sources": sources,
+                "close": closes,
+                "high": highs,
+                "low": lows,
+                "atr": atr,
+            }
+            for slot, row in enumerate(rows.tolist()):
+                source = int(sources[slot])
+                if source > int(self.execution_ts[int(row)]):
+                    raise RuntimeError(
+                        f"future MTF ATR source {timeframe} at row {row}"
+                    )
+                self.events_by_row.setdefault(int(row), []).append(
+                    (timeframe, slot)
+                )
+        self.audit = {
+            "research_only_not_live_single_tf": True,
+            "canonical_ratchet_formula": (
+                "LONG max(entry-m*ATR,close-m*ATR), ratchet max; "
+                "SHORT exact mirror"
+            ),
+            "completed_timeframes": list(params.timeframes),
+            "profit_gate_uses_current_position_gain_pct": True,
+            "minimum_confirming_timeframes": params.min_confirming_tfs,
+        }
+        self.reset()
+
+    def reset(self) -> None:
+        self.trail_by_tf = {
+            timeframe: math.nan for timeframe in self.params.timeframes
+        }
+        self.adverse_by_tf = {
+            timeframe: False for timeframe in self.params.timeframes
+        }
+        self.source_by_tf = {
+            timeframe: 0 for timeframe in self.params.timeframes
+        }
+        self.reclaim_reference = math.nan
+
+    def update(self, row: int, *, active: bool) -> ExitDecision | None:
+        """Protocol fallback; simulation must supply position information."""
+        if not active:
+            self.reset()
+            return None
+        raise RuntimeError("MTF ATR trail requires entry price and current gain")
+
+    def update_with_position(
+        self,
+        row: int,
+        *,
+        active: bool,
+        entry_price: float,
+        current_gain_pct: float,
+    ) -> ExitDecision | None:
+        if not active:
+            self.reset()
+            return None
+        if not math.isfinite(entry_price) or entry_price <= 0:
+            return None
+        if self.is_long:
+            self.reclaim_reference = (
+                max(
+                    self.reclaim_reference,
+                    float(self.execution_high[row]),
+                )
+                if math.isfinite(self.reclaim_reference)
+                else float(self.execution_high[row])
+            )
+        else:
+            self.reclaim_reference = (
+                min(
+                    self.reclaim_reference,
+                    float(self.execution_low[row]),
+                )
+                if math.isfinite(self.reclaim_reference)
+                else float(self.execution_low[row])
+            )
+        updated = self.events_by_row.get(int(row), ())
+        if not updated:
+            return None
+        for timeframe, slot in updated:
+            values = self.tf_data[timeframe]
+            close = float(values["close"][slot])
+            atr = float(values["atr"][slot])
+            self.source_by_tf[timeframe] = int(values["sources"][slot])
+            if not (
+                math.isfinite(close)
+                and close > 0
+                and math.isfinite(atr)
+                and atr > 0
+            ):
+                self.adverse_by_tf[timeframe] = False
+                continue
+            previous = self.trail_by_tf[timeframe]
+            if self.is_long:
+                candidate = max(
+                    entry_price - self.params.atr_mult * atr,
+                    close - self.params.atr_mult * atr,
+                )
+                trail = (
+                    max(previous, candidate)
+                    if math.isfinite(previous)
+                    else candidate
+                )
+                adverse = close < trail
+            else:
+                candidate = min(
+                    entry_price + self.params.atr_mult * atr,
+                    close + self.params.atr_mult * atr,
+                )
+                trail = (
+                    min(previous, candidate)
+                    if math.isfinite(previous)
+                    else candidate
+                )
+                adverse = close > trail
+            self.trail_by_tf[timeframe] = trail
+            self.adverse_by_tf[timeframe] = adverse
+        confirming = [
+            timeframe
+            for timeframe in self.params.timeframes
+            if self.adverse_by_tf[timeframe]
+        ]
+        if len(confirming) < self.params.min_confirming_tfs:
+            return None
+        if current_gain_pct + 1e-12 < self.params.min_profit_pct:
+            return None
+        return ExitDecision(
+            reason=(
+                f"EXIT_MTF_ATR_TRAIL_{self.params.min_confirming_tfs}TF_"
+                f"x{self.params.atr_mult:g}_p{self.params.min_profit_pct:g}"
+            ),
+            reclaim_reference=float(self.reclaim_reference),
+            source_timestamps={
+                timeframe: int(self.source_by_tf[timeframe])
+                for timeframe in confirming
+            },
+        )
+
+
+def mtf_atr_trail_grid() -> list[MtfAtrTrailParams]:
+    rows = [
+        MtfAtrTrailParams(
+            timeframes=("1h", "4h", "D"),
+            atr_mult=atr_mult,
+            min_profit_pct=min_profit_pct,
+            min_confirming_tfs=min_confirming_tfs,
+        )
+        for atr_mult in (1.5, 2.0, 2.5, 3.0, 4.0)
+        for min_profit_pct in (0.0, 0.25, 0.5, 1.0)
+        for min_confirming_tfs in (1, 2)
+    ]
+    assert len(rows) == 40
+    return rows
+
+
 class StructuralWtExitBookAdapter:
     label = "EXIT_STRUCTURAL_WT_LOWER_TOP"
 
@@ -1510,6 +1727,30 @@ def simulate(
     def mark_equity(px: float) -> float:
         return cash + qty * px
 
+    def update_book(
+        book: ExitBook | None,
+        row: int,
+        close: float,
+    ) -> ExitDecision | None:
+        if book is None:
+            return None
+        positional = getattr(book, "update_with_position", None)
+        if callable(positional):
+            gain_pct = (
+                side_sign * (close - average_entry) / average_entry * 100.0
+                if active()
+                and math.isfinite(average_entry)
+                and average_entry > 0
+                else -math.inf
+            )
+            return positional(
+                row,
+                active=active(),
+                entry_price=average_entry,
+                current_gain_pct=gain_pct,
+            )
+        return book.update(row, active=active())
+
     for i in range(left, right):
         op = float(data.open[i])
         close = float(data.close[i])
@@ -1716,12 +1957,8 @@ def simulate(
         held += int(active())
         weighted += min(ladder.CAPACITY, abs(qty) * close) / ladder.CAPACITY
 
-        runner_decision = (
-            runner_exit_book.update(i, active=active())
-            if runner_exit_book is not None
-            else None
-        )
-        decision = exit_book.update(i, active=active())
+        runner_decision = update_book(runner_exit_book, i, close)
+        decision = update_book(exit_book, i, close)
         if i + 1 >= right:
             continue
         if runner_decision is not None and active():
@@ -2627,6 +2864,35 @@ def screen_artifact(
                     ),
                 )
             )
+    if "MTF_ATR_TRAIL" in families:
+        for params in mtf_atr_trail_grid():
+            template = MtfAtrTrailExitBook(data, htfs, params, side=side)
+            fold_rows = [
+                simulate(
+                    data,
+                    ctx["signals"],
+                    ctx["curve"],
+                    template,
+                    ctx["left"],
+                    ctx["right"],
+                    commission,
+                    slippage,
+                    side=side,
+                    # The book owns the preregistered current-profit threshold.
+                    profit_gate_pct=-999.0,
+                )
+                for ctx in contexts
+            ]
+            candidates.append(
+                candidate_row(
+                    "EXIT_MTF_ATR_TRAIL",
+                    dataclasses.asdict(params),
+                    fold_rows,
+                    path_audit=template.audit,
+                    research_only_not_live_single_tf=True,
+                    overlap_control="BOTTOM_A_PROTECTIVE_TRAIL",
+                )
+            )
     if "BOTTOM_B" in families or "BOTTOM_C" in families:
         aligned_bottom = {
             tf: _aligned_structural_tf(data, htfs[tf], tf)
@@ -3090,6 +3356,23 @@ def screen_artifact(
             "side_specific_bh_usd": ladder.BASE_UNIT,
             "strategy_capacity_usd": ladder.CAPACITY,
         }
+    if "MTF_ATR_TRAIL" in families:
+        payload["mtf_atr_trail_contract"] = {
+            "same_entry": True,
+            "completed_timeframes_only": ["1h", "4h", "D"],
+            "candidate_count": 40,
+            "current_position_profit_gate": True,
+            "min_confirming_timeframes": [1, 2],
+            "live_single_tf_path_unchanged": True,
+            "live_stocks_path_currently_disabled": True,
+            "bottom_a_overlap": (
+                "Both ratchet ATR distance. Bottom-A first arms on an adverse "
+                "1h/4h break and trails one 5m/15m/1h series; this path starts "
+                "at entry and requires latest completed 1h/4h/D agreement."
+            ),
+            "side_specific_bh_usd": ladder.BASE_UNIT,
+            "strategy_capacity_usd": ladder.CAPACITY,
+        }
     data.z.close()
     return payload
 
@@ -3104,7 +3387,7 @@ def main() -> int:
         default="WT_MTF,STRUCTURAL_WT",
         help=(
             "comma-separated E02_GRID, WT_MTF, GR_OPPOSITE, "
-            "E01_CHANDELIER, BOTTOM_A, BOTTOM_B, BOTTOM_C, "
+            "E01_CHANDELIER, MTF_ATR_TRAIL, BOTTOM_A, BOTTOM_B, BOTTOM_C, "
             "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
@@ -3122,6 +3405,7 @@ def main() -> int:
         "WT_MTF",
         "GR_OPPOSITE",
         "E01_CHANDELIER",
+        "MTF_ATR_TRAIL",
         "BOTTOM_A",
         "BOTTOM_B",
         "BOTTOM_C",

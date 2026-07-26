@@ -185,3 +185,27 @@ rows remain untouched. An append-only normalization added 20 explicitly scoped
 metadata. The pre-migration DB backup is
 `queue.db.bak_job50_metric_scope_20260726T2035Z`; the migration is idempotent.
 Full evidence is in `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.{json,md}`.
+
+### DC-tier augment phantom switch versus active function
+
+`DC_TIER_AUG_ENABLED` is also a phantom inventory switch: it is absent from
+`config_tradier.py` and never read. Unlike the disconnected DC-break entry,
+however, its underlying block is active and routed unconditionally inside
+`evaluate_augment` after the global profit and cooldown gates. The switch
+itself retains 20 red zero-request wiring rows; function results are separate.
+
+The 243-setting causal function screen used prior completed 5m/15m/1h/4h
+channels and swept gain 1/3/5%, buffer 0/0.10/0.20%, source targets 1/2/3/5x
+plus conservative 1/1.5/2.5/4x and aggressive 1/2/4/8x profiles, target-fill
+ratios 50/75/90%, and tier-4 maturity off/0.7/0.5 ATR. The exact source setting
+is gain 3%, buffer 0.10%, 1/2/3/5x, 75%, maturity off; extensions are research
+only.
+
+All 20 frozen keys completed with zero future-HTF, capacity, or reclaim
+violations. LONG produced 34,907 qualifying states and 134 requests/fills;
+SHORT produced 42,265 and 290. No key beat the identical ladder+E02 control in
+every fold and no key kept every fold inside 70–80% TIM. SNDK generated tier
+states but no request because its ladder notional already exceeded the selected
+targets; it remains inert discard evidence. Job 51 is `SCREENED`, has zero
+exact survivors, and stores normalized fold-aggregate/final-OOS rows plus red
+phantom-switch rows. See `ENTRY_DC_TIER_AUG_TOP_BOTTOM10_20260726.{json,md}`.

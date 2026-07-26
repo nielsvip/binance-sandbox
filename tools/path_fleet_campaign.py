@@ -200,6 +200,29 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "DC_DAYTRADE_ENABLED/TRADIER_DC_DAYTRADE_ENABLED.",
     ),
     PathFamily(
+        "ENTRY_DC_TIER_AUG_ENABLED",
+        "ENTRY",
+        20,
+        "Phantom inventory switch over an active augment block. "
+        "DC_TIER_AUG_ENABLED is absent and unread, while evaluate_augment "
+        "unconditionally applies profit-gated 5m/15m/1h/4h Donchian tier targets.",
+        {
+            "min_gain_pct": [1.0, 3.0, 5.0],
+            "buffer_fraction": [0.0, 0.001, 0.002],
+            "tier_profile": ["1/2/3/5", "1/1.5/2.5/4", "1/2/4/8"],
+            "target_fill_ratio": [0.5, 0.75, 0.9],
+            "tier4_maturity_atr": ["off", 0.7, 0.5],
+            "inventory_switch_status": ["PHANTOM_ABSENT_AND_UNREAD"],
+        },
+        "same frozen ladder entry schedule, sizing, and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        "tools/vec_dc_tier_augment_walkforward.py",
+        "READY_BOTH_SIDES_ACTIVE_FUNCTION_PHANTOM_SWITCH",
+        "The source setting is gain 3%, buffer .1%, targets 1/2/3/5x, "
+        "75% fill gate, maturity guard off. Research extensions are labeled; "
+        "no switch-enable claim or live config promotion is allowed.",
+    ),
+    PathFamily(
         "ENTRY_AUGMENT_TREND_RESUME_ENABLED",
         "ENTRY",
         20,
@@ -419,10 +442,11 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        "tools/vec_top_exit_campaign.py",
-        "ADAPTER_REQUIRED",
-        "Research-only; no equivalent named live state machine. These ranges "
-        "are extracted from _e05_candidates rather than the stale registry.",
+        "tools/vec_same_entry_e05_adapter.py",
+        "READY_BOTH_SIDES",
+        "Research-only; no equivalent named live state machine. The adapter "
+        "uses the _e05_candidates grid and requires divergence, then a later "
+        "break, rebound, and rollover—never a first-break exit.",
     ),
     PathFamily(
         "EXIT_E06_REGRESSION_RETEST",
@@ -457,8 +481,13 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         },
         "exact frozen accepted ladder schedule",
         "same-entry E02 N=30 control",
-        None,
-        "ADAPTER_REQUIRED",
+        "tools/vec_same_entry_exit_adapter.py",
+        "READY_BOTH_SIDES",
+        "Research-only completed 1h/4h/D agreement path. It does not replace "
+        "the canonical live/v8 single-TF ratchet, which is currently disabled "
+        "for stocks after 5m near-entry churn. Compare min_confirming_tfs=2 "
+        "against its exact min_confirming_tfs=1 pair and separately against "
+        "Bottom-A's adverse-break-armed single-TF trail.",
     ),
     PathFamily(
         "EXIT_PEAK_GIVEBACK",
@@ -487,6 +516,7 @@ INVENTORY_CORE_MAP = {
     ("ENTRY", "WT_DC_ENTRY_ENABLED"): "ENTRY_WT_DC",
     ("ENTRY", "BB_RECOVERY_ENABLED"): "ENTRY_BB_RECOVERY",
     ("ENTRY", "DC_BREAK_ENTRY_ENABLED"): "ENTRY_DC_BREAK_ENTRY_ENABLED",
+    ("ENTRY", "DC_TIER_AUG_ENABLED"): "ENTRY_DC_TIER_AUG_ENABLED",
     (
         "ENTRY",
         "AUGMENT_TREND_RESUME_ENABLED",

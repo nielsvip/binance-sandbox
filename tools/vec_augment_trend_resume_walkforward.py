@@ -132,6 +132,7 @@ def simulate(
     requested = filled = 0.0
     clamp_count = fill_count = exit_count = 0
     reclaim_count = lower_count = augment_fill_count = augment_signal_count = 0
+    augment_request_count = 0
     augment_requested = augment_filled = 0.0
     held_bars = 0
     weighted_exposure = 0.0
@@ -182,7 +183,7 @@ def simulate(
                 requested += max(0.0, want)
                 filled += actual
                 clamp_count += int(actual + 1e-9 < want)
-                if pending.get("reason") == "trend_resume":
+                if pending.get("reason") in {"trend_resume", "dc_tier"}:
                     augment_requested += max(0.0, want)
                     augment_filled += actual
                 if actual > 0:
@@ -207,7 +208,7 @@ def simulate(
                         in {"ladder_lower", "ladder_higher"}
                     )
                     augment_fill_count += int(
-                        pending.get("reason") == "trend_resume"
+                        pending.get("reason") in {"trend_resume", "dc_tier"}
                     )
             pending = None
 
@@ -248,13 +249,31 @@ def simulate(
                 )
                 if gain >= candidate.min_gain_pct:
                     augment_signal_count += 1
+                    tier_profile = getattr(candidate, "tier_profile", None)
+                    if tier_profile is not None:
+                        tier = int(augment_mask[i])
+                        target_mult = float(tier_profile[tier - 1])
+                        target_notional = ladder.BASE_UNIT * target_mult
+                        target_ratio = float(
+                            getattr(candidate, "target_fill_ratio", 0.75)
+                        )
+                        if notional >= target_notional * target_ratio:
+                            continue
+                        request_notional = target_notional
+                        absolute_target = True
+                        reason = "dc_tier"
+                    else:
+                        request_notional = (
+                            ladder.BASE_UNIT * candidate.add_mult
+                        )
+                        absolute_target = False
+                        reason = "trend_resume"
+                    augment_request_count += 1
                     pending = {
                         "kind": "entry",
-                        "requested_notional": (
-                            ladder.BASE_UNIT * candidate.add_mult
-                        ),
-                        "absolute_target": False,
-                        "reason": "trend_resume",
+                        "requested_notional": request_notional,
+                        "absolute_target": absolute_target,
+                        "reason": reason,
                     }
         else:
             if math.isfinite(last_exit_fill):
@@ -348,6 +367,7 @@ def simulate(
         "higher_reentries": lower_count if not is_long else 0,
         "bars_flat_beyond_reclaim": beyond_reclaim,
         "augment_signal_count": augment_signal_count,
+        "augment_request_count": augment_request_count,
         "augment_fill_count": augment_fill_count,
         "augment_requested_notional_usd": augment_requested,
         "augment_filled_notional_usd": augment_filled,

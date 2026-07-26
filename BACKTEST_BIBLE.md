@@ -1174,3 +1174,83 @@ chronological outer validation fold. Both must declare `metric_scope`,
 `trades_unit`/aggregation. Job 50 was normalized append-only under
 `entry_fleet_metric_scope_v1`; its 20 legacy mislabeled rows remain for audit.
 See `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.md`.
+
+### §15.12 — DC-tier augment switch/function separation (2026-07-26)
+
+`DC_TIER_AUG_ENABLED` is a phantom switch, not a functional on/off control.
+It is undeclared and unread. The underlying `evaluate_augment` DC-tier block
+is nevertheless active after the global gain/cooldown gates. Matrix and
+reports must show the switch wiring as red while reporting the active function
+screen separately; do not reuse the disconnected DC-break entry semantics.
+
+Source behavior uses a 3% profit gate, 0.10% prior-channel break buffer,
+1/2/3/5x target notionals, a current-notional-below-75%-of-target gate, and the
+tier-4 maturity guard off. The causal 243-setting research range also tested
+gain 1/5%, buffer 0/0.20%, conservative/aggressive target profiles, 50/90%
+target gates, and 0.5/0.7 ATR maturity blocks. Frozen ladder entries, E02 N30,
+$16k capacity, next-RTH fills, costs, side isolation and mandatory reclaim are
+unchanged.
+
+The frozen 20-key screen produced 77,172 qualifying observations and 424
+actual requests/fills, with zero future-HTF, capacity or reclaim violations.
+No key beat the identical control in every fold and none passed 70–80% TIM in
+every fold, so exact replay remained empty. Job 51 uses normalized
+`VEC_NESTED_FOLD_AGGREGATE` and final-fold `VEC_UNTOUCHED_OOS` units. Full
+evidence is in `ENTRY_DC_TIER_AUG_TOP_BOTTOM10_20260726.md`.
+
+### §15.12 — E05 divergence/break/retest correction (2026-07-26)
+
+E05 is a disconnected research adapter, not a wired Tradier switch. The stale
+job contract's guessed ranges must not be used: the active 108-arm grid is
+pivot radius 2/3/5, RSI divergence 3/5/8, structural-break buffer 0/0.25 ATR,
+rebound 0.25/0.5 ATR and maximum wait 8/12/20 completed 4h bars.
+
+The causal state is strict: two prior-only confirmed pivots arm divergence; a
+later break changes state but cannot exit; only a subsequent ATR rebound and
+later rollover can emit the completed-4h exit. The same frozen ladder entries,
+E02 comparator, $2k B&H, $16k capacity, costs and persistent reclaim
+accounting apply to every candidate. Regression tests prove the first break is
+not an exit and completed source timestamps never exceed observation time.
+
+The top-10 LONG/bottom-10 SHORT cohort completed 2,160 candidates with 76
+selected-winner signals, 74 actual exits, zero future HTF observations and
+zero strict survivors. No key had a candidate inside the 70–80% weighted-TIM
+band in every fold. Fifteen final-fold winners were connected and retained
+gray; five were red/inert. All 20 final folds beat B&H and 15 beat same-entry
+E02, but none passed the complete chronological robustness/reclaim contract,
+so job 44 is `SCREENED` and exact replay is empty. Full per-key results,
+registry reconciliation and rollback are in
+`EXIT_E05_DIVERGENCE_RETEST_RESULTS_20260726.md`.
+
+### §15.13 — Completed-HTF MTF ATR trail job47 (2026-07-26)
+
+The historical `MTF_ATR_TRAIL` name hides two different contracts. The
+canonical shared live/v8 implementation is a single configurable-timeframe
+ratchet using `max(entry-m*ATR, current-m*ATR)` for LONG and the exact SHORT
+mirror. Stocks currently disable it after the 5m setting caused near-entry
+churn. Job47 is a research-only path: it maintains independent canonical
+ratchets on completed 1h/4h/D bars and requires one or two latest timeframe
+states to agree. It does not alter or re-enable the live single-TF path.
+
+The bounded grid is 5 ATR multiples (1.5/2/2.5/3/4) × 4 current-position
+profit thresholds (0/0.25/0.5/1%) × 1/2 confirming timeframes = 40 arms per
+key. Frozen ladder entries, E02 control, persistent reclaim, costs, $2k
+side-specific B&H and $16k strategy capacity remain identical. Causal tests
+cover completed-source rejection, LONG/SHORT mirroring, the profit knob and
+the exact 40-arm registry.
+
+All 20 top-10 LONG/bottom-10 SHORT keys completed with actual exits and zero
+future HTF sources. In untouched validation, 793/800 arms beat B&H and 218/800
+beat the stronger same-entry E02 control. The selected row beat B&H for every
+key, showing that this path is connected and broadly B&H-positive. Requiring
+two timeframes beat its exact one-timeframe parameter pair in 277/400 cases;
+median improvement was 19.16pp. Five min-2 arms passed every-fold alpha/safety
+before exposure gating, but no arm passed the complete exposure/control
+promotion contract. Job47 is therefore `SCREENED`, with zero exact-replay
+queue and no matrix/live promotion.
+
+Bottom-A remains a separate aligned benchmark, not a causal ablation:
+Bottom-A first arms on an adverse 1h/4h break and then trails one smaller
+timeframe; job47 ratchets from entry on completed 1h/4h/D agreement. Full
+range coverage, paired min-2/min-1 deltas, aligned Bottom-A results and
+per-key gray evidence are in `EXIT_MTF_ATR_TRAIL_RESULTS_20260726.md`.

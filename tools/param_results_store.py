@@ -998,12 +998,13 @@ def _write_restored_workbook_sheets(wb, con, mode="tradier", base=BASE):
     fleet_sheet.freeze_panes = "I2"
     fleet_sheet.auto_filter.ref = fleet_sheet.dimensions
     fleet_sheet.sheet_view.showGridLines = False
-    for column in (5, 6, 7, 8, 27):
+    for column in (5, 6, 7, 8, 27, 28, 29, 30, 31, 32, 33, 34):
         for cell in fleet_sheet[get_column_letter(column)]:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
     widths = (
         38, 9, 8, 20, 70, 54, 44, 44, 12, 9, 24, 24, 17, 15, 16, 18,
-        24, 20, 18, 9, 14, 12, 18, 18, 14, 21, 70,
+        24, 20, 18, 9, 14, 12, 18, 18, 14, 21, 70, 40, 32, 42, 18, 42,
+        20, 42,
     )
     for column, width in enumerate(widths, 1):
         fleet_sheet.column_dimensions[get_column_letter(column)].width = width

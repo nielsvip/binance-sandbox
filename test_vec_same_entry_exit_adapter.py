@@ -7,6 +7,8 @@ import numpy as np
 from tools.vec_same_entry_exit_adapter import (
     ChandelierParams,
     GrOppositeParams,
+    MtfAtrTrailExitBook,
+    MtfAtrTrailParams,
     ProtectiveTrailParams,
     StaticExitBook,
     WtMtfParams,
@@ -21,6 +23,7 @@ from tools.vec_same_entry_exit_adapter import (
     bottom_delayed_grid,
     bottom_emergency_grid,
     gr_opposite_grid,
+    mtf_atr_trail_grid,
     protective_trail_grid,
     simulate,
     simulate_structural_compiled,
@@ -470,6 +473,135 @@ def test_bottom_exit_grids_cover_smaller_tfs_modes_and_rare_brakes():
     labels = {label for _, _, label in path_c}
     assert {"ADVERSE_ATR_4", "ADVERSE_STDEV_5", "MAX_WAIT", "CONTINUED_5"} <= labels
     assert all(params.emergency_modes for params, _, _ in path_c)
+
+
+def _mtf_atr_fixture(*, side="LONG"):
+    n = 8
+    ts = np.arange(1, n + 1, dtype=np.int64) * 300
+    if side == "LONG":
+        tf_close = {
+            "1h": np.array([10.0, 12.0, 9.0]),
+            "4h": np.array([10.0, 13.0, 10.0]),
+            "D": np.array([10.0, 11.0]),
+        }
+    else:
+        tf_close = {
+            "1h": np.array([10.0, 8.0, 11.0]),
+            "4h": np.array([10.0, 7.0, 10.0]),
+            "D": np.array([10.0, 9.0]),
+        }
+    tf_rows = {
+        "1h": np.array([0, 1, 2], dtype=np.int64),
+        "4h": np.array([0, 3, 4], dtype=np.int64),
+        "D": np.array([0, 5], dtype=np.int64),
+    }
+    data = SimpleNamespace(
+        ts=ts,
+        high=np.full(n, 15.0),
+        low=np.full(n, 5.0),
+    )
+    htfs = {}
+    for timeframe, closes in tf_close.items():
+        rows = tf_rows[timeframe]
+        htfs[timeframe] = SimpleNamespace(
+            event_index=rows,
+            source_ts=ts[rows] - 1,
+            close=closes,
+            high=closes + 0.5,
+            low=closes - 0.5,
+            atr=np.ones(len(rows)),
+        )
+    return data, htfs
+
+
+def test_mtf_atr_grid_is_exact_registered_contract():
+    rows = mtf_atr_trail_grid()
+    assert len(rows) == 40
+    assert {row.timeframes for row in rows} == {("1h", "4h", "D")}
+    assert {row.atr_mult for row in rows} == {1.5, 2.0, 2.5, 3.0, 4.0}
+    assert {row.min_profit_pct for row in rows} == {0.0, 0.25, 0.5, 1.0}
+    assert {row.min_confirming_tfs for row in rows} == {1, 2}
+
+
+def test_mtf_atr_completed_agreement_profit_gate_and_side_mirror():
+    for side, entry in (("LONG", 5.0), ("SHORT", 15.0)):
+        data, htfs = _mtf_atr_fixture(side=side)
+        one = MtfAtrTrailExitBook(
+            data,
+            htfs,
+            MtfAtrTrailParams(("1h", "4h", "D"), 2.0, 0.0, 1),
+            side=side,
+        )
+        two = MtfAtrTrailExitBook(
+            data,
+            htfs,
+            MtfAtrTrailParams(("1h", "4h", "D"), 2.0, 0.0, 2),
+            side=side,
+        )
+        one_decisions = []
+        two_decisions = []
+        for row in range(6):
+            gain = 10.0
+            first = one.update_with_position(
+                row,
+                active=True,
+                entry_price=entry,
+                current_gain_pct=gain,
+            )
+            second = two.update_with_position(
+                row,
+                active=True,
+                entry_price=entry,
+                current_gain_pct=gain,
+            )
+            if first is not None:
+                one_decisions.append((row, first))
+            if second is not None:
+                two_decisions.append((row, second))
+        assert one_decisions[0][0] == 2
+        assert two_decisions[0][0] == 4
+        assert set(two_decisions[0][1].source_timestamps) == {"1h", "4h"}
+        assert all(
+            source <= data.ts[two_decisions[0][0]]
+            for source in two_decisions[0][1].source_timestamps.values()
+        )
+
+        gated = MtfAtrTrailExitBook(
+            data,
+            htfs,
+            MtfAtrTrailParams(("1h", "4h", "D"), 2.0, 0.5, 1),
+            side=side,
+        )
+        gated.update_with_position(
+            0, active=True, entry_price=entry, current_gain_pct=1.0
+        )
+        gated.update_with_position(
+            1, active=True, entry_price=entry, current_gain_pct=1.0
+        )
+        assert (
+            gated.update_with_position(
+                2, active=True, entry_price=entry, current_gain_pct=0.49
+            )
+            is None
+        )
+        assert (
+            gated.update_with_position(
+                3, active=True, entry_price=entry, current_gain_pct=0.5
+            )
+            is not None
+        )
+
+
+def test_mtf_atr_rejects_future_completed_source():
+    data, htfs = _mtf_atr_fixture()
+    htfs["D"].source_ts[0] = data.ts[0] + 1
+    with np.testing.assert_raises_regex(RuntimeError, "future MTF ATR source"):
+        MtfAtrTrailExitBook(
+            data,
+            htfs,
+            MtfAtrTrailParams(("1h", "4h", "D"), 2.0, 0.0, 1),
+            side="LONG",
+        )
 
 
 def test_compiled_structural_scanner_matches_python_oracle():

@@ -1,6 +1,6 @@
 # Stock Path Fleet
 
-Updated: 2026-07-26T21:14:29.906189+00:00
+Updated: 2026-07-26T21:59:59.000861+00:00
 
 This is research-only. A positive B&H comparison is insufficient: every exit must also beat the strongest frozen result using the identical entry schedule. LONG and SHORT are never pooled.
 
@@ -22,14 +22,14 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | 5 | `EXIT_GR_OPPOSITE` | EXIT | SCREENED | 2 | codex-gr-opposite-level-path |
 | 6 | `EXIT_E01_CHANDELIER` | EXIT | SCREENED | 1 | codex-e01-chandelier-path |
 | 7 | `ENTRY_BB_RECOVERY` | ENTRY | SCREENED | 1 | entry-overlay |
-| 7 | `EXIT_E05_DIVERGENCE_RETEST` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 7 | `EXIT_E05_DIVERGENCE_RETEST` | EXIT | SCREENED | 1 | path-fleet-e05 |
 | 8 | `ENTRY_DELTA_MTF` | ENTRY | SCREENED | 1 | entry-overlay |
 | 8 | `EXIT_E06_REGRESSION_RETEST` | EXIT | SCREENED | 3 | path-fleet-e06 |
-| 9 | `EXIT_MTF_ATR_TRAIL` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 9 | `EXIT_MTF_ATR_TRAIL` | EXIT | SCREENED | 1 | path-fleet-mtf-atr-trail |
 | 10 | `EXIT_PEAK_GIVEBACK` | EXIT | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ENTRY | SCREENED | 1 | entry-overlay |
 | 20 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | ENTRY | SCREENED | 1 | dc-break-entry-agent |
-| 20 | `ENTRY_DC_TIER_AUG_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
+| 20 | `ENTRY_DC_TIER_AUG_ENABLED` | ENTRY | SCREENED | 1 | entry-overlay |
 | 20 | `ENTRY_LONG_WAIT_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_REENTRY_BREAKOUT_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_REENTRY_MOMENTUM_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
@@ -106,7 +106,7 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | `EXIT_PEAK_GIVEBACK` | PEAK_GIVEBACK_ENABLED; 1 authoritative row(s) | Exit or reduce after giving back a declared fraction of MFE, gated above cost. | arm_gain_pct=[0.5, 1.0, 2.0, 4.0, 8.0]; giveback_fraction=[0.2, 0.33, 0.5, 0.67]; reduce_fraction=[0.25, 0.5, 1.0] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AUGMENT_TREND_RESUME_ENABLED; 1 authoritative row(s) | Research reconstruction of the removed stock trend-resume augment: while an existing position is profitable, add on a side-favorable 5m Donchian-basis, Stoch, and RSI continuation state. | min_gain_pct=[0.5, 1.0, 2.0, 3.0]; rsi_boundary_long_short=['60/40', '70/30', '80/20', '100/0']; add_start_position_mult=[0.25, 0.5] | entry: same frozen ladder entry schedule, sizing, and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | DC_BREAK_ENTRY_ENABLED; 2 authoritative row(s) | Disconnected legacy registry path. The named DC_BREAK_ENTRY_ENABLED switch is absent. A research reconstruction combines the prior-channel break semantics from the disabled swing branch and the separately controlled StockDaytradeWing, without changing live configuration. | timeframe=['5m', '15m', '1h', '4h']; buffer_fraction=[0.0, 0.0005, 0.001, 0.002]; require_1h_expansion=[False, True]; confirmation=['none', 'not-exhausted', 'directional-stoch']; role=['direct', 'union-with-green']; live_switch_status=['DISCONNECTED'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
-| `ENTRY_DC_TIER_AUG_ENABLED` | DC_TIER_AUG_ENABLED; 1 authoritative row(s) | DC-tiered augment: add to position when DC NH/NM level reached. | config_default=['True']; event_types=['AUGMENT']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_DC_TIER_AUG_ENABLED` | DC_TIER_AUG_ENABLED; 1 authoritative row(s) | Phantom inventory switch over an active augment block. DC_TIER_AUG_ENABLED is absent and unread, while evaluate_augment unconditionally applies profit-gated 5m/15m/1h/4h Donchian tier targets. | min_gain_pct=[1.0, 3.0, 5.0]; buffer_fraction=[0.0, 0.001, 0.002]; tier_profile=['1/2/3/5', '1/1.5/2.5/4', '1/2/4/8']; target_fill_ratio=[0.5, 0.75, 0.9]; tier4_maturity_atr=['off', 0.7, 0.5]; inventory_switch_status=['PHANTOM_ABSENT_AND_UNREAD'] | entry: same frozen ladder entry schedule, sizing, and $16k capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_LONG_WAIT_ENABLED` | LONG_WAIT_ENABLED; 1 authoritative row(s) | Low bounce wait entry. 1H dip + NH deep value + sniper confirmation. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_REENTRY_BREAKOUT_ENABLED` | REENTRY_BREAKOUT_ENABLED; 1 authoritative row(s) | Reentry on DC15 (15-period DC) breakout after prior exit. prev_gain = gain at last exit. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_REENTRY_MOMENTUM_ENABLED` | REENTRY_MOMENTUM_ENABLED; 1 authoritative row(s) | Reentry when price reclaims last-sell level (momentum reclaim). | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
@@ -162,6 +162,106 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 
 | path | key | stage | state | strategy | B&H | same-entry control | alpha B&H | alpha control | TIM | trades |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `ENTRY_DC_TIER_AUG_ENABLED` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 128.22% | 26.20% | 1.98% | +102.03pp | +126.24pp | 74.4% | 9 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | UUUU_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -251.33% | -133.05% | -219.78% | -118.28pp | -31.55pp | 71.7% | 27 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 24.32% | 22.65% | 33.66% | +1.67pp | -9.34pp | 76.6% | 6 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | UEC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -409.20% | -48.38% | -162.77% | -360.82pp | -246.43pp | 72.3% | 27 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 280.88% | 54.33% | 280.88% | +226.55pp | +0.00pp | 86.1% | 6 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | TTD_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1129.85% | 141.54% | 747.74% | +988.31pp | +382.11pp | 85.8% | 21 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 348.21% | 37.50% | 66.62% | +310.70pp | +281.59pp | 84.3% | 5 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LDOS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 211.19% | 13.86% | -30.35% | +197.33pp | +241.54pp | 67.6% | 40 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 397.91% | 36.98% | 80.46% | +360.93pp | +317.45pp | 62.3% | 7 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LAC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 28.61% | -11.54% | -304.93% | +40.15pp | +333.53pp | 76.5% | 21 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -25.59% | 21.95% | 15.04% | -47.54pp | -40.63pp | 81.0% | 9 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | HL_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -923.24% | -219.36% | -734.70% | -703.88pp | -188.54pp | 63.8% | 35 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -104.66% | 23.03% | 4.84% | -127.69pp | -109.50pp | 72.1% | 7 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | EGO_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -706.94% | -85.44% | -223.69% | -621.51pp | -483.26pp | 60.9% | 44 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -58.98% | 22.27% | -17.12% | -81.25pp | -41.86pp | 69.6% | 16 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ASTS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -891.24% | -153.31% | -589.06% | -737.93pp | -302.18pp | 68.3% | 31 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 84.31% | 19.41% | 3.87% | +64.90pp | +80.44pp | 74.2% | 12 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ALB_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -643.43% | -82.31% | -818.37% | -561.12pp | +174.94pp | 80.8% | 39 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 387.66% | 44.50% | 388.07% | +343.16pp | -0.41pp | 88.4% | 4 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ACN_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 521.13% | 69.84% | 407.15% | +451.30pp | +113.99pp | 70.8% | 22 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 362.29% | 84.91% | 362.29% | +277.38pp | +0.00pp | 88.9% | 4 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | VLO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 434.13% | 113.27% | 411.17% | +320.86pp | +22.96pp | 80.1% | 15 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 2267.27% | 467.09% | 2267.27% | +1800.18pp | +0.00pp | 97.4% | 5 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | SNDK_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 5414.04% | 888.47% | 5414.04% | +4525.57pp | +0.00pp | 97.0% | 8 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 575.87% | 121.26% | 575.87% | +454.61pp | +0.00pp | 87.4% | 7 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | PBF_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 736.35% | 127.67% | 642.13% | +608.68pp | +94.23pp | 73.6% | 27 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1379.58% | 204.90% | 1337.78% | +1174.67pp | +41.80pp | 86.2% | 10 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MU_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 2739.89% | 381.95% | 2503.08% | +2357.94pp | +236.81pp | 85.5% | 23 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1301.80% | 123.58% | 1301.80% | +1178.22pp | +0.00pp | 73.7% | 7 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MRVL_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1308.05% | 104.11% | 1283.09% | +1203.95pp | +24.96pp | 82.9% | 31 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 271.68% | 88.48% | 106.89% | +183.20pp | +164.79pp | 81.8% | 6 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MPC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 361.98% | 103.59% | 163.19% | +258.39pp | +198.80pp | 79.8% | 22 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 778.27% | 139.23% | 778.27% | +639.04pp | +0.00pp | 89.3% | 7 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | INTC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1411.21% | 214.03% | 1466.30% | +1197.18pp | -55.09pp | 83.8% | 25 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 482.90% | 90.70% | 440.41% | +392.20pp | +42.50pp | 80.0% | 5 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | DINO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 785.39% | 118.22% | 531.31% | +667.17pp | +254.08pp | 78.8% | 17 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1036.52% | 126.60% | 1036.52% | +909.92pp | +0.00pp | 87.5% | 5 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ARM_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1116.63% | 123.02% | 1150.82% | +993.61pp | -34.20pp | 78.7% | 29 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1125.11% | 134.45% | 1125.11% | +990.66pp | +0.00pp | 97.1% | 6 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | AMD_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1798.70% | 204.78% | 1683.80% | +1593.92pp | +114.90pp | 89.0% | 16 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LDOS_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 37.50% | 66.62% | -37.50pp | -66.62pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ALB_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 19.41% | 3.87% | -19.41pp | -3.87pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | EGO_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 23.03% | 4.84% | -23.03pp | -4.84pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | HL_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 21.95% | 15.04% | -21.95pp | -15.04pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | TTD_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 54.33% | 280.88% | -54.33pp | -280.88pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ACN_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 44.50% | 388.07% | -44.50pp | -388.07pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | UEC_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 22.65% | 33.66% | -22.65pp | -33.66pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ASTS_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 22.27% | -17.12% | -22.27pp | +17.12pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | UUUU_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 26.20% | 1.98% | -26.20pp | -1.98pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | LAC_SHORT | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 36.98% | 80.46% | -36.98pp | -80.46pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | VLO_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 84.91% | 362.29% | -84.91pp | -362.29pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | DINO_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 90.70% | 440.41% | -90.70pp | -440.41pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MPC_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 88.48% | 106.89% | -88.48pp | -106.89pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | PBF_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 121.26% | 575.87% | -121.26pp | -575.87pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | AMD_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 134.45% | 1125.11% | -134.45pp | -1125.11pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | INTC_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 139.23% | 778.27% | -139.23pp | -778.27pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MU_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 204.90% | 1337.78% | -204.90pp | -1337.78pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | ARM_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 126.60% | 1036.52% | -126.60pp | -1036.52pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | MRVL_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 123.58% | 1301.80% | -123.58pp | -1301.80pp | 0.0% | 0 |
+| `ENTRY_DC_TIER_AUG_ENABLED` | SNDK_LONG | WIRING_AUDIT | RED_DIAGNOSTIC_PHANTOM_SWITCH | 0.00% | 467.09% | 2267.27% | -467.09pp | -2267.27pp | 0.0% | 0 |
+| `EXIT_MTF_ATR_TRAIL` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 315.71% | 84.91% | 387.31% | +230.81pp | -71.60pp | 57.7% | 15 |
+| `EXIT_MTF_ATR_TRAIL` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 54.99% | 26.20% | 68.24% | +28.80pp | -13.24pp | 20.1% | 3 |
+| `EXIT_MTF_ATR_TRAIL` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 89.32% | 22.65% | 65.05% | +66.67pp | +24.27pp | 14.3% | 11 |
+| `EXIT_MTF_ATR_TRAIL` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 489.44% | 54.33% | 481.90% | +435.11pp | +7.54pp | 92.4% | 5 |
+| `EXIT_MTF_ATR_TRAIL` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 2459.42% | 467.09% | 2325.64% | +1992.33pp | +133.79pp | 97.5% | 3 |
+| `EXIT_MTF_ATR_TRAIL` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 503.71% | 121.26% | 707.27% | +382.45pp | -203.56pp | 86.2% | 6 |
+| `EXIT_MTF_ATR_TRAIL` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1169.82% | 204.90% | 1376.23% | +964.92pp | -206.41pp | 62.7% | 4 |
+| `EXIT_MTF_ATR_TRAIL` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 202.64% | 123.58% | 1672.73% | +79.05pp | -1470.09pp | 61.1% | 7 |
+| `EXIT_MTF_ATR_TRAIL` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 110.84% | 88.48% | 117.46% | +22.36pp | -6.62pp | 18.1% | 13 |
+| `EXIT_MTF_ATR_TRAIL` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 49.12% | 37.50% | 67.76% | +11.62pp | -18.64pp | 13.3% | 15 |
+| `EXIT_MTF_ATR_TRAIL` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 72.65% | 36.98% | 109.33% | +35.68pp | -36.68pp | 16.6% | 11 |
+| `EXIT_MTF_ATR_TRAIL` | INTC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 732.04% | 139.23% | 964.02% | +592.81pp | -231.98pp | 72.9% | 14 |
+| `EXIT_MTF_ATR_TRAIL` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 66.21% | 21.95% | 50.25% | +44.25pp | +15.95pp | 15.3% | 11 |
+| `EXIT_MTF_ATR_TRAIL` | EGO_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 52.83% | 23.03% | 48.02% | +29.80pp | +4.81pp | 14.0% | 14 |
+| `EXIT_MTF_ATR_TRAIL` | DINO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 304.10% | 90.70% | 485.24% | +213.40pp | -181.14pp | 74.4% | 4 |
+| `EXIT_MTF_ATR_TRAIL` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 50.81% | 22.27% | 66.58% | +28.54pp | -15.76pp | 20.5% | 6 |
+| `EXIT_MTF_ATR_TRAIL` | ARM_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1081.36% | 126.60% | 1082.44% | +954.76pp | -1.07pp | 74.2% | 13 |
+| `EXIT_MTF_ATR_TRAIL` | AMD_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 848.73% | 134.45% | 1180.81% | +714.28pp | -332.08pp | 96.1% | 5 |
+| `EXIT_MTF_ATR_TRAIL` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 57.94% | 19.41% | 85.72% | +38.53pp | -27.77pp | 39.9% | 3 |
+| `EXIT_MTF_ATR_TRAIL` | ACN_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 347.41% | 44.50% | 400.98% | +302.92pp | -53.57pp | 72.8% | 9 |
+| `EXIT_E05_DIVERGENCE_RETEST` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 70.06% | 37.50% | 67.76% | +32.56pp | +2.30pp | 15.8% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 164.05% | 19.41% | 85.72% | +144.64pp | +78.34pp | 46.3% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | EGO_SHORT | VEC_UNTOUCHED_OOS | RED_DIAGNOSTIC_INERT | 46.44% | 23.03% | 48.02% | +23.42pp | -1.57pp | 21.6% | 0 |
+| `EXIT_E05_DIVERGENCE_RETEST` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 73.56% | 21.95% | 50.25% | +51.61pp | +23.31pp | 44.0% | 3 |
+| `EXIT_E05_DIVERGENCE_RETEST` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 580.76% | 54.33% | 481.90% | +526.44pp | +98.87pp | 97.5% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | ACN_SHORT | VEC_UNTOUCHED_OOS | RED_DIAGNOSTIC_INERT | 429.13% | 44.50% | 400.98% | +384.63pp | +28.15pp | 92.6% | 0 |
+| `EXIT_E05_DIVERGENCE_RETEST` | UEC_SHORT | VEC_UNTOUCHED_OOS | RED_DIAGNOSTIC_INERT | 75.31% | 22.65% | 65.05% | +52.66pp | +10.26pp | 21.7% | 0 |
+| `EXIT_E05_DIVERGENCE_RETEST` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 135.31% | 22.27% | 66.58% | +113.04pp | +68.73pp | 58.2% | 5 |
+| `EXIT_E05_DIVERGENCE_RETEST` | UUUU_SHORT | VEC_UNTOUCHED_OOS | RED_DIAGNOSTIC_INERT | 68.24% | 26.20% | 68.24% | +42.04pp | +0.00pp | 22.7% | 0 |
+| `EXIT_E05_DIVERGENCE_RETEST` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 166.29% | 36.98% | 109.33% | +129.32pp | +56.96pp | 32.1% | 2 |
+| `EXIT_E05_DIVERGENCE_RETEST` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 521.45% | 84.91% | 387.31% | +436.55pp | +134.14pp | 96.0% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | DINO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 603.57% | 90.70% | 485.24% | +512.87pp | +118.33pp | 96.5% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 235.02% | 88.48% | 117.46% | +146.54pp | +117.56pp | 50.2% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 672.90% | 121.26% | 707.27% | +551.64pp | -34.37pp | 93.9% | 5 |
+| `EXIT_E05_DIVERGENCE_RETEST` | AMD_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1373.64% | 134.45% | 1180.81% | +1239.19pp | +192.83pp | 99.4% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | INTC_LONG | VEC_UNTOUCHED_OOS | RED_DIAGNOSTIC_INERT | 958.64% | 139.23% | 964.02% | +819.41pp | -5.38pp | 98.6% | 0 |
+| `EXIT_E05_DIVERGENCE_RETEST` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1316.16% | 204.90% | 1376.23% | +1111.25pp | -60.07pp | 73.1% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | ARM_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1189.63% | 126.60% | 1082.44% | +1063.03pp | +107.19pp | 93.4% | 2 |
+| `EXIT_E05_DIVERGENCE_RETEST` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1021.57% | 123.58% | 1672.73% | +897.99pp | -651.15pp | 92.4% | 1 |
+| `EXIT_E05_DIVERGENCE_RETEST` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 4447.54% | 467.09% | 2325.64% | +3980.45pp | +2121.90pp | 98.8% | 1 |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY_RESEARCH_RECONSTRUCTION | 67.83% | 37.50% | 66.62% | +30.33pp | +1.21pp | 18.0% | 7 |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | LDOS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY_RESEARCH_RECONSTRUCTION | -75.35% | 13.86% | -30.35% | -89.21pp | -45.00pp | 31.2% | 39 |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY_RESEARCH_RECONSTRUCTION | -25.56% | 19.41% | 3.87% | -44.98pp | -29.43pp | 35.4% | 15 |
