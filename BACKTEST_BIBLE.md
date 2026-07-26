@@ -1086,3 +1086,25 @@ its 40.39% TIM failed policy. In-band MRVL, MU and SNDK lost 358.14pp, 122.07pp
 and 1,301.47pp to identical-entry E02. Full evidence and rollback scope are in
 `PARTIAL_RUNNER_RESULTS_20260726.md`; path-fleet job 39 preserves every row
 gray.
+
+### §15.9 — E06 regression extreme/channel-reentry reconciliation (2026-07-26)
+
+The E06 registry is stale relative to active research code. Its
+`rebound_atr` field is not consumed: `_e06_signal` takes a correlation gate
+and implements no ATR rebound. The active event fires on channel reentry or
+the first adverse completed-4h break, not a later post-break retest. Registry
+lookback 160/exit-z 0/0.5 also differ from the generator's historical ranges,
+and no Tradier live E06 config key exists.
+
+The same-entry campaign preserves all 192 registered combinations but labels
+the fourth values .25/.5/.7/1 as effective correlation gates. Across 3,840
+cohort candidates, 1,098 were inert. Correlation gate 1.0 was 960/960
+zero-signal/zero-fill and is a red tested range. Every selected validation
+winner was forced to have raw completed-4h signals and actual exits.
+
+There were zero strict survivors. MU validated at 73.46% exposure with one
+signal/fill, but lost 303.33pp to E02 and left one reclaim open. Several
+validation rows beat both controls but failed exposure/reclaim and discovery
+gates; SNDK's 99.63% exposure is hold-like. Job 46 stores all 20 rows gray and
+queues no exact replay. Full range fingerprints, per-key results and rollback
+scope are in `E06_REGRESSION_RETEST_RESULTS_20260726.md`.

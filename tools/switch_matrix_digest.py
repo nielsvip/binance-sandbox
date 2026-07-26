@@ -848,6 +848,13 @@ def main() -> None:
         "obligations, filled 633 and left 286 open. MU made one partial (-$107.98 net) "
         "versus ten slow full exits and lost 122.07pp to E02. Job 39 preserves all "
         "20 rows gray and queues no exact replay.",
+        "- `EXIT_E06_REGRESSION_RETEST` completed 3,840 same-entry candidates with "
+        "**0 strict survivors**. The registry is stale: `rebound_atr` is actually "
+        "passed to `corr_gate`, active code has no ATR rebound/later retest state, and "
+        "there is no live Tradier E06 config key. Correlation gate 1.0 was 960/960 "
+        "zero-signal/zero-fill (red); all 20 frozen winners had actual signals/exits. "
+        "MU was in-band at 73.46% but lost 303.33pp to E02 and left one reclaim open. "
+        "Job 46 preserves 20 gray rows and queues no exact replay.",
         "- Reentry invariant for structural research: after an exit, the stored exit/top level and "
         "reopen obligation remain latched. WT/stochastic vetoes may postpone reopening but "
         "must never erase it or allow price to outrun the stored level without reopening. "
