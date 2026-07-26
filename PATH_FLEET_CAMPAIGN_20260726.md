@@ -186,13 +186,13 @@ metadata. The pre-migration DB backup is
 `queue.db.bak_job50_metric_scope_20260726T2035Z`; the migration is idempotent.
 Full evidence is in `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.{json,md}`.
 
-### DC-tier augment phantom switch versus active function
+### DC-tier augment repaired switch and active function
 
-`DC_TIER_AUG_ENABLED` is also a phantom inventory switch: it is absent from
-`config_tradier.py` and never read. Unlike the disconnected DC-break entry,
-however, its underlying block is active and routed unconditionally inside
-`evaluate_augment` after the global profit and cooldown gates. The switch
-itself retains 20 red zero-request wiring rows; function results are separate.
+`DC_TIER_AUG_ENABLED` is now declared, read and gated with default `True`.
+This preserves the pre-repair behavior of the existing block after the global
+profit and cooldown gates. `False` disables only the DC tier block; WT_D bounce
+and trailing augment remain independent. Twenty repair-audit rows prove the
+connection without making a performance claim.
 
 The 243-setting causal function screen used prior completed 5m/15m/1h/4h
 channels and swept gain 1/3/5%, buffer 0/0.10/0.20%, source targets 1/2/3/5x
@@ -207,5 +207,23 @@ SHORT produced 42,265 and 290. No key beat the identical ladder+E02 control in
 every fold and no key kept every fold inside 70–80% TIM. SNDK generated tier
 states but no request because its ladder notional already exceeded the selected
 targets; it remains inert discard evidence. Job 51 is `SCREENED`, has zero
-exact survivors, and stores normalized fold-aggregate/final-OOS rows plus red
-phantom-switch rows. See `ENTRY_DC_TIER_AUG_TOP_BOTTOM10_20260726.{json,md}`.
+exact survivors, and stores normalized fold-aggregate/final-OOS rows plus the
+historical red and current repair-proof wiring evidence. See
+`ENTRY_DC_TIER_AUG_TOP_BOTTOM10_20260726.{json,md}`.
+## 2026-07-26 — job52 decomposition and bounce-reason jobs465/466
+
+`ENTRY_LONG_WAIT_ENABLED` is quarantined as a removed compound score label,
+not screened as an invented monolithic entry. Twenty red wiring rows retain
+the absence of a declaration/reader and point to four new reason paths:
+`ENTRY_BOUNCE_15M_LOW`, `ENTRY_BOUNCE_5M_LOW`, `ENTRY_4H_DEEP_VALUE`, and
+`ENTRY_1H_TURN_UP`.
+
+Jobs465/466 completed the frozen top-10 LONG/bottom-10 SHORT vector cohort.
+Both use 64 source-traceable settings, completed prior channels, side-isolated
+accounting, frozen ladder/E02/reclaim controls, costs and $16k capacity. Final
+chronological OOS LONG sums were 9,708.36% for 15m bounce and 10,232.69% for
+5m bounce, versus 1,581.21% B&H and 9,332.21% same-entry control. Final SHORT
+sums were 546.46% and 1,119.85%, versus 308.81% B&H and 858.30% control.
+Nested-fold sums remain separate and explicitly unit-labeled. No path/key
+passed the complete every-fold B&H/control/70–80% TIM contract; 80 normalized
+aggregate/final rows were retained gray and exact replay remained empty.

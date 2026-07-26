@@ -227,6 +227,8 @@ def _candidate_entry_mult(
         "ENTRY_BB_RECOVERY",
         "ENTRY_DC_BREAK_ENTRY_ENABLED",
         "ENTRY_LONG_WAIT_ENABLED",
+        "ENTRY_BOUNCE_15M_LOW",
+        "ENTRY_BOUNCE_5M_LOW",
     }:
         return _entry_mult(
             candidate_mask, control, direct_mult, candidate.role
@@ -412,6 +414,67 @@ def _long_wait_candidates() -> list[Candidate]:
             ("stoch5", "stoch15", "wt15", "two-of-three"),
         )
     ]
+
+
+def _bounce_candidates(family: str, timeframe: str) -> list[Candidate]:
+    return [
+        _candidate(
+            family,
+            role,
+            timeframe=timeframe,
+            distance=distance,
+            recovery_only=recovery_only,
+            confirmation=confirmation,
+        )
+        for role, distance, recovery_only, confirmation in itertools.product(
+            ("direct", "union-with-green"),
+            (0.004, 0.008, 0.015, 0.025),
+            (False, True),
+            ("none", "stoch5", "stoch15", "two-of-two"),
+        )
+    ]
+
+
+def _bounce_masks(
+    view: dict[str, np.ndarray], side: str
+) -> dict[tuple[str, float, bool, str], np.ndarray]:
+    """Causal completed-channel reconstruction of the two removed bounce reasons."""
+    n = len(view["close"])
+    close = np.asarray(view["close"], dtype=np.float64)
+    k5 = np.asarray(view.get("stoch_k_5m", np.full(n, 50.0)))
+    d5 = np.asarray(view.get("stoch_d_5m", np.full(n, 50.0)))
+    k15 = np.asarray(view.get("stoch_k_15m", np.full(n, 50.0)))
+    d15 = np.asarray(view.get("stoch_d_15m", np.full(n, 50.0)))
+    if side == "LONG":
+        confirms = {"stoch5": k5 > d5, "stoch15": k15 > d15}
+    else:
+        confirms = {"stoch5": k5 < d5, "stoch15": k15 < d15}
+    confirms["none"] = np.ones(n, dtype=bool)
+    confirms["two-of-two"] = confirms["stoch5"] & confirms["stoch15"]
+    out = {}
+    for tf, distance, recovery_only, confirmation in itertools.product(
+        ("5m", "15m"),
+        (0.004, 0.008, 0.015, 0.025),
+        (False, True),
+        ("none", "stoch5", "stoch15", "two-of-two"),
+    ):
+        stem = "dc_low" if side == "LONG" else "dc_high"
+        channel = np.asarray(view.get(f"{stem}_{tf}_prev", np.zeros(n)))
+        valid = np.isfinite(channel) & (channel > 0) & np.isfinite(close)
+        if side == "LONG":
+            proximity = (close - channel) / np.maximum(channel, 1e-12)
+            mask = valid & (proximity < distance)
+            if recovery_only:
+                mask &= close >= channel
+        else:
+            proximity = (channel - close) / np.maximum(channel, 1e-12)
+            mask = valid & (proximity < distance)
+            if recovery_only:
+                mask &= close <= channel
+        out[(tf, distance, recovery_only, confirmation)] = (
+            mask & confirms[confirmation]
+        )
+    return out
 
 
 def _long_wait_masks(
@@ -815,6 +878,7 @@ def _mask(
     long_wait_masks: dict[
         tuple[str, float, float, float, str], np.ndarray
     ] | None = None,
+    bounce_masks: dict[tuple[str, float, bool, str], np.ndarray] | None = None,
 ) -> np.ndarray:
     p = candidate.params
     is_long = side == "LONG"
@@ -877,6 +941,17 @@ def _mask(
                 float(p["bounce_distance"]),
                 float(p["deep_k4h"]),
                 float(p["turn_k1h"]),
+                str(p["confirmation"]),
+            )
+        ]
+    if candidate.family in {"ENTRY_BOUNCE_15M_LOW", "ENTRY_BOUNCE_5M_LOW"}:
+        if bounce_masks is None:
+            raise ValueError("bounce masks are required")
+        return bounce_masks[
+            (
+                str(p["timeframe"]),
+                float(p["distance"]),
+                bool(p["recovery_only"]),
                 str(p["confirmation"]),
             )
         ]
@@ -958,6 +1033,16 @@ def _forward_rank(
             and p["confirmation"] in {"stoch5", "two-of-three"}
         ):
             sentinels.append(candidate)
+        if candidate.family in {"ENTRY_BOUNCE_15M_LOW", "ENTRY_BOUNCE_5M_LOW"}:
+            source_distance = (
+                0.015 if candidate.family == "ENTRY_BOUNCE_15M_LOW" else 0.008
+            )
+            if (
+                p["distance"] == source_distance
+                and not p["recovery_only"]
+                and p["confirmation"] == "none"
+            ):
+                sentinels.append(candidate)
     out: dict[str, Candidate] = {
         row[3].label: row[3] for row in scored[:shortlist]
     }
@@ -1017,6 +1102,7 @@ def build_frozen_overlay_signals(
     delta_masks, _ = _delta_masks(data, view, htfs, side)
     dc_break_masks = _dc_break_masks(view, side)
     long_wait_masks = _long_wait_masks(view, side)
+    bounce_masks = _bounce_masks(view, side)
     control = ladder._build_signals(data, htfs, curve, 30, side)
     green_curve = dataclasses.replace(curve, trigger="green")
     green = ladder._build_signals(data, htfs, green_curve, 30, side)
@@ -1030,6 +1116,7 @@ def build_frozen_overlay_signals(
         delta_masks,
         dc_break_masks,
         long_wait_masks,
+        bounce_masks,
     )
     entry_mult = _candidate_entry_mult(
         candidate,
@@ -1076,6 +1163,7 @@ def run(args: argparse.Namespace) -> Path:
     delta_masks, delta_input_audit = _delta_masks(data, view, htfs, side)
     dc_break_masks = _dc_break_masks(view, side)
     long_wait_masks = _long_wait_masks(view, side)
+    bounce_masks = _bounce_masks(view, side)
     family_candidates = {
         "ENTRY_GOLDEN_RULE": _gr_candidates,
         "ENTRY_WT_DC": _wt_candidates,
@@ -1084,6 +1172,12 @@ def run(args: argparse.Namespace) -> Path:
         "ENTRY_DELTA_MTF": _delta_candidates,
         "ENTRY_DC_BREAK_ENTRY_ENABLED": _dc_break_candidates,
         "ENTRY_LONG_WAIT_ENABLED": _long_wait_candidates,
+        "ENTRY_BOUNCE_15M_LOW": lambda: _bounce_candidates(
+            "ENTRY_BOUNCE_15M_LOW", "15m"
+        ),
+        "ENTRY_BOUNCE_5M_LOW": lambda: _bounce_candidates(
+            "ENTRY_BOUNCE_5M_LOW", "5m"
+        ),
     }[args.family]()
     masks = {
         c: _mask(
@@ -1096,6 +1190,7 @@ def run(args: argparse.Namespace) -> Path:
             delta_masks,
             dc_break_masks,
             long_wait_masks,
+            bounce_masks,
         )
         for c in family_candidates
     }
@@ -1386,6 +1481,32 @@ def run(args: argparse.Namespace) -> Path:
                     "backtest_results_20260331.csv"
                 ),
                 "reconstruction_only": True,
+                "disposition": (
+                    "QUARANTINED_REMOVED_COMPOUND_LABEL; component reasons "
+                    "must be screened as separate path IDs"
+                ),
+            },
+            "bounce_reason_contract": {
+                "applies_to": [
+                    "ENTRY_BOUNCE_15M_LOW",
+                    "ENTRY_BOUNCE_5M_LOW",
+                ],
+                "historical_source": (
+                    "f83bc7b9 tradier_manage.py; immutable excerpt at "
+                    "tools/evidence/long_wait_f83bc7b9_excerpt.txt"
+                ),
+                "source_distances": {"15m": 0.015, "5m": 0.008},
+                "causal_channel": (
+                    "latest completed prior dc_low for LONG; explicit "
+                    "dc_high mirror for SHORT"
+                ),
+                "source_semantics": (
+                    "distance ceiling without a recovery floor"
+                ),
+                "research_extension": (
+                    "recovery_only=True requires price back inside channel; "
+                    "Stoch confirmations and union-with-green are labeled"
+                ),
             },
             "causality": causality,
         },
@@ -1423,6 +1544,8 @@ def main() -> None:
             "ENTRY_DELTA_MTF",
             "ENTRY_DC_BREAK_ENTRY_ENABLED",
             "ENTRY_LONG_WAIT_ENABLED",
+            "ENTRY_BOUNCE_15M_LOW",
+            "ENTRY_BOUNCE_5M_LOW",
         ),
     )
     ap.add_argument("--npz-dir", default=str(top.DEFAULT_NPZ))

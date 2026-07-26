@@ -226,25 +226,99 @@ CORE_PATHS: tuple[PathFamily, ...] = (
         "ENTRY_LONG_WAIT_ENABLED",
         "ENTRY",
         20,
-        "Phantom switch for a removed historical score path. The reconstruction "
-        "requires a completed 5m/15m Donchian-low bounce, deep 4h Stoch, a "
-        "1h turn, and Stoch/WT confirmation; SHORT is an explicit research mirror.",
+        "Removed aggregate score label, not one entry path. Historical source "
+        "combined four independent reasons; those are registered separately.",
         {
-            "bounce_timeframe": ["5m", "15m"],
-            "bounce_distance": [0.004, 0.008, 0.015, 0.025],
-            "deep_k4h": [20, 35, 50, 65],
-            "turn_k1h": [20, 40, 60, 80],
-            "confirmation": ["stoch5", "stoch15", "wt15", "two-of-three"],
-            "role": ["direct", "union-with-green"],
             "inventory_switch_status": ["PHANTOM_ABSENT_AND_UNREAD"],
+            "historical_reason_paths": [
+                "ENTRY_BOUNCE_15M_LOW",
+                "ENTRY_BOUNCE_5M_LOW",
+                "ENTRY_4H_DEEP_VALUE",
+                "ENTRY_1H_TURN_UP",
+            ],
+        },
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        None,
+        "QUARANTINED_REMOVED_COMPOUND_LABEL",
+        "Historical evidence comes from f83bc7b9 and backtest_results_20260331.csv. "
+        "Never manufacture an opaque LONG_WAIT score from its component reasons.",
+        source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
+    ),
+    PathFamily(
+        "ENTRY_BOUNCE_15M_LOW",
+        "ENTRY",
+        20,
+        "Removed LONG reason: price is within a percentage ceiling above the "
+        "latest completed 15m Donchian low. SHORT is a labeled research mirror "
+        "near the completed 15m Donchian high.",
+        {
+            "distance": [0.004, 0.008, 0.015, 0.025],
+            "source_distance": [0.015],
+            "recovery_only": [False, True],
+            "confirmation": ["none", "stoch5", "stoch15", "two-of-two"],
+            "role": ["direct", "union-with-green"],
         },
         "same frozen ladder sizing and $16k capacity",
         "E02 N=30 + resting reclaim",
         "tools/vec_entry_overlay_walkforward.py",
-        "READY_BOTH_SIDES_RESEARCH_RECONSTRUCTION",
-        "Historical evidence comes from f83bc7b9 and backtest_results_20260331.csv. "
-        "The removed full score engine exposed WEAK/GOOD/STRONG_BUY, not a real "
-        "LONG_WAIT_ENABLED knob; reconstruction cannot be promoted as live parity.",
+        "READY_BOTH_SIDES_SOURCE_PROVEN_RECONSTRUCTION",
+        "Source used current dc_low_15m and no lower bound. Research uses the "
+        "latest completed prior channel; recovery_only=True excludes closes "
+        "still below the channel. Source setting is retained as a sentinel.",
+        source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
+    ),
+    PathFamily(
+        "ENTRY_BOUNCE_5M_LOW",
+        "ENTRY",
+        20,
+        "Removed LONG reason: price is within a percentage ceiling above the "
+        "prior 5m Donchian low. SHORT is a labeled research mirror near the "
+        "prior 5m Donchian high.",
+        {
+            "distance": [0.004, 0.008, 0.015, 0.025],
+            "source_distance": [0.008],
+            "recovery_only": [False, True],
+            "confirmation": ["none", "stoch5", "stoch15", "two-of-two"],
+            "role": ["direct", "union-with-green"],
+        },
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        "tools/vec_entry_overlay_walkforward.py",
+        "READY_BOTH_SIDES_SOURCE_PROVEN_RECONSTRUCTION",
+        "Causal screen uses dc_low/high_5m_prev. recovery_only=True is an "
+        "explicit extension that excludes prices still beyond the channel.",
+        source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
+    ),
+    PathFamily(
+        "ENTRY_4H_DEEP_VALUE",
+        "ENTRY",
+        20,
+        "Removed LONG score reason for completed 4h Stoch K below a deep-value "
+        "threshold; SHORT requires an explicit mirrored definition.",
+        {"stoch_k_threshold": [20, 35, 50, 65], "role": ["filter", "direct"]},
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        None,
+        "ADAPTER_REQUIRED_SEPARATE_REASON",
+        "Source threshold was k_4h < 50 and awarded score points; it was not a "
+        "standalone order path.",
+        source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
+    ),
+    PathFamily(
+        "ENTRY_1H_TURN_UP",
+        "ENTRY",
+        20,
+        "Removed LONG score reason for completed 1h Stoch K below threshold "
+        "and rising versus the prior completed 1h value.",
+        {"stoch_k_threshold": [20, 40, 60, 80], "role": ["filter", "direct"]},
+        "same frozen ladder sizing and $16k capacity",
+        "E02 N=30 + resting reclaim",
+        None,
+        "ADAPTER_REQUIRED_SEPARATE_REASON",
+        "Source threshold was k_1h < 40 and k_1h > previous k_1h; SHORT mirror "
+        "must remain explicitly research-only.",
+        source_rows=("tools/evidence/long_wait_f83bc7b9_excerpt.txt",),
     ),
     PathFamily(
         "ENTRY_AUGMENT_TREND_RESUME_ENABLED",
@@ -801,7 +875,11 @@ def _inventory_paths() -> tuple[PathFamily, ...]:
 
     # Coverage is fail-closed: the generated registry must retain all 64
     # authoritative source rows even when aliases share a switch/job.
-    retained = sum(len(p.source_rows) for p in paths.values())
+    retained = sum(
+        source_row.count(" | event=")
+        for path in paths.values()
+        for source_row in path.source_rows
+    )
     expected = len(TRADIER_ENTRY_PATHS) + len(TRADIER_EXIT_PATHS)
     if retained != expected:
         raise RuntimeError(

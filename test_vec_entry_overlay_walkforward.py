@@ -222,3 +222,41 @@ def test_long_wait_switch_is_phantom_but_removed_path_is_historically_proven():
     assert not result["active_reason_present"]
     assert result["removed_score_reasons_proven"]
     assert result["historical_fill_rows"] > 0
+
+
+def test_removed_bounce_reasons_are_separate_source_traceable_grids():
+    bounce15 = overlay._bounce_candidates("ENTRY_BOUNCE_15M_LOW", "15m")
+    bounce5 = overlay._bounce_candidates("ENTRY_BOUNCE_5M_LOW", "5m")
+    assert len(bounce15) == len(bounce5) == 64
+    assert {row.params["timeframe"] for row in bounce15} == {"15m"}
+    assert {row.params["timeframe"] for row in bounce5} == {"5m"}
+    assert any(
+        row.params["distance"] == 0.015
+        and not row.params["recovery_only"]
+        and row.params["confirmation"] == "none"
+        for row in bounce15
+    )
+    assert any(
+        row.params["distance"] == 0.008
+        and not row.params["recovery_only"]
+        and row.params["confirmation"] == "none"
+        for row in bounce5
+    )
+
+
+def test_bounce_masks_use_prior_channel_and_mirror_side():
+    view = {
+        "close": np.array([101.0, 99.0]),
+        "dc_low_5m_prev": np.array([100.0, 100.0]),
+        "dc_high_5m_prev": np.array([100.0, 100.0]),
+        "stoch_k_5m": np.array([60.0, 40.0]),
+        "stoch_d_5m": np.array([50.0, 50.0]),
+        "stoch_k_15m": np.array([60.0, 40.0]),
+        "stoch_d_15m": np.array([50.0, 50.0]),
+    }
+    source = ("5m", 0.015, False, "none")
+    recovered = ("5m", 0.015, True, "none")
+    assert overlay._bounce_masks(view, "LONG")[source].tolist() == [True, True]
+    assert overlay._bounce_masks(view, "LONG")[recovered].tolist() == [True, False]
+    assert overlay._bounce_masks(view, "SHORT")[source].tolist() == [True, True]
+    assert overlay._bounce_masks(view, "SHORT")[recovered].tolist() == [False, True]

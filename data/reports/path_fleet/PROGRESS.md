@@ -1,6 +1,6 @@
 # Stock Path Fleet
 
-Updated: 2026-07-26T22:12:26.836113+00:00
+Updated: 2026-07-26T22:26:33.198557+00:00
 
 This is research-only. A positive B&H comparison is insufficient: every exit must also beat the strongest frozen result using the identical entry schedule. LONG and SHORT are never pooled.
 
@@ -26,11 +26,15 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | 8 | `ENTRY_DELTA_MTF` | ENTRY | SCREENED | 1 | entry-overlay |
 | 8 | `EXIT_E06_REGRESSION_RETEST` | EXIT | SCREENED | 3 | path-fleet-e06 |
 | 9 | `EXIT_MTF_ATR_TRAIL` | EXIT | SCREENED | 1 | path-fleet-mtf-atr-trail |
-| 10 | `EXIT_PEAK_GIVEBACK` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 10 | `EXIT_PEAK_GIVEBACK` | EXIT | SCREENED | 1 | codex-peak-giveback-path |
+| 20 | `ENTRY_1H_TURN_UP` | ENTRY | ADAPTER_REQUIRED | 0 | — |
+| 20 | `ENTRY_4H_DEEP_VALUE` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | ENTRY | SCREENED | 1 | entry-overlay |
+| 20 | `ENTRY_BOUNCE_15M_LOW` | ENTRY | SCREENED | 1 | entry-overlay |
+| 20 | `ENTRY_BOUNCE_5M_LOW` | ENTRY | SCREENED | 1 | entry-overlay |
 | 20 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | ENTRY | SCREENED | 1 | dc-break-entry-agent |
 | 20 | `ENTRY_DC_TIER_AUG_ENABLED` | ENTRY | SCREENED | 1 | entry-overlay |
-| 20 | `ENTRY_LONG_WAIT_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
+| 20 | `ENTRY_LONG_WAIT_ENABLED` | ENTRY | QUARANTINED | 0 | wiring-audit |
 | 20 | `ENTRY_REENTRY_BREAKOUT_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_REENTRY_MOMENTUM_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
 | 20 | `ENTRY_REENTRY_PROBE_ENABLED` | ENTRY | ADAPTER_REQUIRED | 0 | — |
@@ -71,6 +75,10 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | 20 | `EXIT_TECH_BREAKDOWN_ENABLED` | EXIT | ADAPTER_REQUIRED | 0 | — |
 | 20 | `EXIT_WT_15M_VEL_SLOW_GAIN_BAND_PCT_WT_VEL_DECEL_RATIO` | EXIT | ADAPTER_REQUIRED | 0 | — |
 | 20 | `EXIT_WT_DC_EXIT_ENABLED` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 21 | `EXIT_ALGO_STRUCTURE_1H_15M` | EXIT | SCREENED | 1 | path-fleet-algo-structure |
+| 22 | `EXIT_ALGO_STOCH_4H_ROLL` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 23 | `EXIT_ALGO_PROFIT_TAKE_15M` | EXIT | ADAPTER_REQUIRED | 0 | — |
+| 24 | `EXIT_ALGO_BEAR_MODE_BIAS` | FILTER | ADAPTER_REQUIRED | 0 | — |
 | 50 | `ENTRY_DISASTER_GUARD_ENABLED` | ENTRY | QUARANTINED | 0 | — |
 | 50 | `ENTRY_FH_MOMENTUM_ENABLED` | ENTRY | QUARANTINED | 0 | — |
 | 50 | `ENTRY_TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK` | ENTRY | QUARANTINED | 0 | — |
@@ -104,10 +112,14 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | `EXIT_E06_REGRESSION_RETEST` | R, e, s, e, a, r, c, h, -, o, n, l, y,  , p, r, i, o, r, -, l, o, g, -, r, e, g, r, e, s, s, i, o, n,  , p, a, t, h, .,  , e, x, i, t, _, z,  , a, r, m, s,  , w, i, t, h,  , e, x, i, t, _, z,  , <,  , a, r, m, _, z, .; 0 authoritative row(s) | Regression extreme arms an exit; reversion/retest confirms it before close. | lookback=[40, 60, 100, 150, 250]; arm_z=[1.5, 2.0, 2.5, 3.0]; exit_z=[0.75, 1.0, 1.5, 2.0]; corr_gate=[0.5, 0.7, 0.85] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_MTF_ATR_TRAIL` | research-only; 0 authoritative row(s) | Profit-aware ATR trail compounded across completed timeframes. | timeframes=['1h', '4h', 'D']; atr_mult=[1.5, 2.0, 2.5, 3.0, 4.0]; min_profit_pct=[0.0, 0.25, 0.5, 1.0]; min_confirming_tfs=[1, 2] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_PEAK_GIVEBACK` | PEAK_GIVEBACK_ENABLED; 1 authoritative row(s) | Exit or reduce after giving back a declared fraction of MFE, gated above cost. | arm_gain_pct=[0.5, 1.0, 2.0, 4.0, 8.0]; giveback_fraction=[0.2, 0.33, 0.5, 0.67]; reduce_fraction=[0.25, 0.5, 1.0] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `ENTRY_1H_TURN_UP` | research-only; 1 authoritative row(s) | Removed LONG score reason for completed 1h Stoch K below threshold and rising versus the prior completed 1h value. | stoch_k_threshold=[20, 40, 60, 80]; role=['filter', 'direct'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_4H_DEEP_VALUE` | research-only; 1 authoritative row(s) | Removed LONG score reason for completed 4h Stoch K below a deep-value threshold; SHORT requires an explicit mirrored definition. | stoch_k_threshold=[20, 35, 50, 65]; role=['filter', 'direct'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_AUGMENT_TREND_RESUME_ENABLED` | AUGMENT_TREND_RESUME_ENABLED; 1 authoritative row(s) | Research reconstruction of the removed stock trend-resume augment: while an existing position is profitable, add on a side-favorable 5m Donchian-basis, Stoch, and RSI continuation state. | min_gain_pct=[0.5, 1.0, 2.0, 3.0]; rsi_boundary_long_short=['60/40', '70/30', '80/20', '100/0']; add_start_position_mult=[0.25, 0.5] | entry: same frozen ladder entry schedule, sizing, and capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_BOUNCE_15M_LOW` | research-only; 1 authoritative row(s) | Removed LONG reason: price is within a percentage ceiling above the latest completed 15m Donchian low. SHORT is a labeled research mirror near the completed 15m Donchian high. | distance=[0.004, 0.008, 0.015, 0.025]; source_distance=[0.015]; recovery_only=[False, True]; confirmation=['none', 'stoch5', 'stoch15', 'two-of-two']; role=['direct', 'union-with-green'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_BOUNCE_5M_LOW` | research-only; 1 authoritative row(s) | Removed LONG reason: price is within a percentage ceiling above the prior 5m Donchian low. SHORT is a labeled research mirror near the prior 5m Donchian high. | distance=[0.004, 0.008, 0.015, 0.025]; source_distance=[0.008]; recovery_only=[False, True]; confirmation=['none', 'stoch5', 'stoch15', 'two-of-two']; role=['direct', 'union-with-green'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_DC_BREAK_ENTRY_ENABLED` | DC_BREAK_ENTRY_ENABLED; 2 authoritative row(s) | Disconnected legacy registry path. The named DC_BREAK_ENTRY_ENABLED switch is absent. A research reconstruction combines the prior-channel break semantics from the disabled swing branch and the separately controlled StockDaytradeWing, without changing live configuration. | timeframe=['5m', '15m', '1h', '4h']; buffer_fraction=[0.0, 0.0005, 0.001, 0.002]; require_1h_expansion=[False, True]; confirmation=['none', 'not-exhausted', 'directional-stoch']; role=['direct', 'union-with-green']; live_switch_status=['DISCONNECTED'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_DC_TIER_AUG_ENABLED` | DC_TIER_AUG_ENABLED; 1 authoritative row(s) | Connected gate over the existing profit-gated 5m/15m/1h/4h Donchian tier-target block. Default True preserves the behavior that predated the gate; False now disables only this tier block. | min_gain_pct=[1.0, 3.0, 5.0]; buffer_fraction=[0.0, 0.001, 0.002]; tier_profile=['1/2/3/5', '1/1.5/2.5/4', '1/2/4/8']; target_fill_ratio=[0.5, 0.75, 0.9]; tier4_maturity_atr=['off', 0.7, 0.5]; inventory_switch_status=['CONNECTED_DEFAULT_TRUE'] | entry: same frozen ladder entry schedule, sizing, and $16k capacity; exit: E02 N=30 + resting reclaim |
-| `ENTRY_LONG_WAIT_ENABLED` | LONG_WAIT_ENABLED; 1 authoritative row(s) | Phantom switch for a removed historical score path. The reconstruction requires a completed 5m/15m Donchian-low bounce, deep 4h Stoch, a 1h turn, and Stoch/WT confirmation; SHORT is an explicit research mirror. | bounce_timeframe=['5m', '15m']; bounce_distance=[0.004, 0.008, 0.015, 0.025]; deep_k4h=[20, 35, 50, 65]; turn_k1h=[20, 40, 60, 80]; confirmation=['stoch5', 'stoch15', 'wt15', 'two-of-three']; role=['direct', 'union-with-green']; inventory_switch_status=['PHANTOM_ABSENT_AND_UNREAD'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
+| `ENTRY_LONG_WAIT_ENABLED` | LONG_WAIT_ENABLED; 2 authoritative row(s) | Removed aggregate score label, not one entry path. Historical source combined four independent reasons; those are registered separately. | inventory_switch_status=['PHANTOM_ABSENT_AND_UNREAD']; historical_reason_paths=['ENTRY_BOUNCE_15M_LOW', 'ENTRY_BOUNCE_5M_LOW', 'ENTRY_4H_DEEP_VALUE', 'ENTRY_1H_TURN_UP'] | entry: same frozen ladder sizing and $16k capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_REENTRY_BREAKOUT_ENABLED` | REENTRY_BREAKOUT_ENABLED; 1 authoritative row(s) | Reentry on DC15 (15-period DC) breakout after prior exit. prev_gain = gain at last exit. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_REENTRY_MOMENTUM_ENABLED` | REENTRY_MOMENTUM_ENABLED; 1 authoritative row(s) | Reentry when price reclaims last-sell level (momentum reclaim). | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_REENTRY_PROBE_ENABLED` | REENTRY_PROBE_ENABLED; 1 authoritative row(s) | Exploratory reentry probe after exit. Small position, no prior reentry. | config_default=['True']; event_types=['OPEN']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
@@ -148,6 +160,10 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 | `EXIT_TECH_BREAKDOWN_ENABLED` | TECH_BREAKDOWN_ENABLED; 1 authoritative row(s) | Technical breakdown: price breaks key technical level. | config_default=['True']; event_types=['CLOSE']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_WT_15M_VEL_SLOW_GAIN_BAND_PCT_WT_VEL_DECEL_RATIO` | WT_15M_VEL_SLOW_GAIN_BAND_PCT, WT_VEL_DECEL_RATIO; 1 authoritative row(s) | R2 for tradier. WT velocity slowdown near breakeven using R2_TF_LIST (1h/4h/D for stocks). | config_default=['True']; event_types=['CLOSE']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `EXIT_WT_DC_EXIT_ENABLED` | WT_DC_EXIT_ENABLED; 2 authoritative row(s) | DC channel structure break. NH low broken (long) or NH high broken (short). Top close path (463+263 fires). / WT+DC composite exit with velocity + TF alignment + divergence signals. | config_default=['True']; event_types=['CLOSE']; range_status=['EXTRACT_FROM_CONFIG_AND_FUNCTION_BEFORE_CLAIM'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | research-only; 0 authoritative row(s) | Research decomposition of the removed ALGO scorer's completed 1h/15m adverse Donchian structure-break events. | timeframe=['1h', '15m']; historical_score_delta_seed=[-15, -10]; donchian_lookback_seed=[20]; profit_gate_pct_research=[0.0, 3.0]; broader_range_status=['TBD_FROM_FUNCTION_SOURCE'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_ALGO_STOCH_4H_ROLL` | research-only; 0 authoritative row(s) | Research decomposition of the removed 4h Stoch peak/bottom roll. | timeframe_seed=['4h']; historical_long_k_min_seed=[60]; historical_short_k_max_seed=[20]; historical_score_delta_seed=[-5]; broader_range_status=['TBD_FROM_FUNCTION_SOURCE'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_ALGO_PROFIT_TAKE_15M` | research-only; 0 authoritative row(s) | Research decomposition of the removed >5% gain plus adverse 15m Stoch turn profit-taking event. | timeframe_seed=['15m']; historical_gain_pct_strictly_above_seed=[5.0]; historical_score_delta_seed=[-5]; broader_range_status=['TBD_FROM_FUNCTION_SOURCE'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
+| `EXIT_ALGO_BEAR_MODE_BIAS` | research-only; 0 authoritative row(s) | Regime/filter study of the removed bear-mode score bias; not a direct exit event. | historical_long_score_delta_seed=[-20]; historical_short_score_delta_seed=[15]; role=['regime_filter']; direct_exit_authorized=[False]; broader_range_status=['TBD_FROM_FUNCTION_SOURCE'] | entry: exact frozen accepted ladder schedule; exit: same-entry E02 N=30 control |
 | `ENTRY_DISASTER_GUARD_ENABLED` | DISASTER_GUARD_ENABLED; 1 authoritative row(s) | 10-gate disaster guard added after MU SHORT $12k loss. Blocks entries when: daily gain negative, HTF misaligned, RSI extreme, etc. | config_default=['True']; event_types=['OPEN (BLOCKED)']; range_status=['QUARANTINED_NO_SWEEP'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_FH_MOMENTUM_ENABLED` | FH_MOMENTUM_ENABLED; 1 authoritative row(s) | DEAD: First-Hour Momentum strategy for stocks. Default OFF (B band missing). No history events. | config_default=['False']; event_types=['OPEN']; range_status=['QUARANTINED_NO_SWEEP'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
 | `ENTRY_TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK` | TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK; 1 authoritative row(s) | Blocks entry when opposite side already open (Tradier can't hold LONG+SHORT simultaneously). Not a strategy — a physics gate. | config_default=['True']; event_types=['OPEN (BLOCKED)']; range_status=['QUARANTINED_NO_SWEEP'] | entry: same frozen ladder sizing and capacity; exit: E02 N=30 + resting reclaim |
@@ -162,6 +178,146 @@ This is research-only. A positive B&H comparison is insufficient: every exit mus
 
 | path | key | stage | state | strategy | B&H | same-entry control | alpha B&H | alpha control | TIM | trades |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `ENTRY_BOUNCE_5M_LOW` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 22.12% | 26.20% | 1.98% | -4.08pp | +20.14pp | 24.1% | 18 |
+| `ENTRY_BOUNCE_5M_LOW` | UUUU_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -313.28% | -133.05% | -219.78% | -180.23pp | -93.50pp | 47.8% | 50 |
+| `ENTRY_BOUNCE_5M_LOW` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 58.33% | 22.65% | 33.66% | +35.69pp | +24.67pp | 25.2% | 14 |
+| `ENTRY_BOUNCE_5M_LOW` | UEC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -162.63% | -48.38% | -162.77% | -114.25pp | +0.14pp | 46.9% | 44 |
+| `ENTRY_BOUNCE_5M_LOW` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 491.08% | 54.33% | 280.88% | +436.75pp | +210.20pp | 93.7% | 6 |
+| `ENTRY_BOUNCE_5M_LOW` | TTD_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 861.58% | 141.54% | 747.74% | +720.04pp | +113.84pp | 69.3% | 24 |
+| `ENTRY_BOUNCE_5M_LOW` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 65.40% | 37.50% | 66.62% | +27.90pp | -1.21pp | 18.2% | 8 |
+| `ENTRY_BOUNCE_5M_LOW` | LDOS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -63.58% | 13.86% | -30.35% | -77.44pp | -33.23pp | 35.4% | 55 |
+| `ENTRY_BOUNCE_5M_LOW` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 92.41% | 36.98% | 80.46% | +55.43pp | +11.95pp | 23.0% | 18 |
+| `ENTRY_BOUNCE_5M_LOW` | LAC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -505.57% | -11.54% | -304.93% | -494.03pp | -200.65pp | 57.3% | 29 |
+| `ENTRY_BOUNCE_5M_LOW` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -6.87% | 21.95% | 15.04% | -28.83pp | -21.91pp | 22.6% | 11 |
+| `ENTRY_BOUNCE_5M_LOW` | HL_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -1319.05% | -219.36% | -734.70% | -1099.69pp | -584.35pp | 62.9% | 51 |
+| `ENTRY_BOUNCE_5M_LOW` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 27.74% | 23.03% | 4.84% | +4.71pp | +22.90pp | 27.5% | 13 |
+| `ENTRY_BOUNCE_5M_LOW` | EGO_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -196.60% | -85.44% | -223.69% | -111.17pp | +27.08pp | 29.5% | 61 |
+| `ENTRY_BOUNCE_5M_LOW` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -33.87% | 22.27% | -17.12% | -56.14pp | -16.75pp | 25.7% | 19 |
+| `ENTRY_BOUNCE_5M_LOW` | ASTS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -1387.43% | -153.31% | -589.06% | -1234.12pp | -798.37pp | 66.5% | 57 |
+| `ENTRY_BOUNCE_5M_LOW` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -8.60% | 19.41% | 3.87% | -28.01pp | -12.47pp | 36.5% | 16 |
+| `ENTRY_BOUNCE_5M_LOW` | ALB_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -818.27% | -82.31% | -818.37% | -735.96pp | +0.10pp | 64.3% | 44 |
+| `ENTRY_BOUNCE_5M_LOW` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 412.11% | 44.50% | 388.07% | +367.61pp | +24.04pp | 97.6% | 6 |
+| `ENTRY_BOUNCE_5M_LOW` | ACN_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 500.74% | 69.84% | 407.15% | +430.91pp | +93.60pp | 75.6% | 32 |
+| `ENTRY_BOUNCE_5M_LOW` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 331.94% | 84.91% | 362.29% | +247.03pp | -30.35pp | 91.0% | 4 |
+| `ENTRY_BOUNCE_5M_LOW` | VLO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 517.73% | 113.27% | 411.17% | +404.46pp | +106.56pp | 71.9% | 22 |
+| `ENTRY_BOUNCE_5M_LOW` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 2202.01% | 467.09% | 2267.27% | +1734.92pp | -65.26pp | 97.6% | 7 |
+| `ENTRY_BOUNCE_5M_LOW` | SNDK_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 5342.50% | 888.47% | 5414.04% | +4454.03pp | -71.54pp | 96.6% | 9 |
+| `ENTRY_BOUNCE_5M_LOW` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 799.00% | 121.26% | 575.87% | +677.74pp | +223.13pp | 95.0% | 9 |
+| `ENTRY_BOUNCE_5M_LOW` | PBF_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 866.48% | 127.67% | 642.13% | +738.80pp | +224.35pp | 52.6% | 44 |
+| `ENTRY_BOUNCE_5M_LOW` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1567.62% | 204.90% | 1337.78% | +1362.71pp | +229.84pp | 82.8% | 8 |
+| `ENTRY_BOUNCE_5M_LOW` | MU_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 2675.11% | 381.95% | 2503.08% | +2293.16pp | +172.02pp | 68.8% | 21 |
+| `ENTRY_BOUNCE_5M_LOW` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1303.49% | 123.58% | 1301.80% | +1179.91pp | +1.68pp | 96.0% | 11 |
+| `ENTRY_BOUNCE_5M_LOW` | MRVL_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1063.60% | 104.11% | 1283.09% | +959.49pp | -219.49pp | 88.9% | 39 |
+| `ENTRY_BOUNCE_5M_LOW` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 177.68% | 88.48% | 106.89% | +89.20pp | +70.78pp | 40.5% | 9 |
+| `ENTRY_BOUNCE_5M_LOW` | MPC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 284.77% | 103.59% | 163.19% | +181.17pp | +121.58pp | 55.5% | 24 |
+| `ENTRY_BOUNCE_5M_LOW` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1064.41% | 139.23% | 778.27% | +925.18pp | +286.15pp | 96.4% | 10 |
+| `ENTRY_BOUNCE_5M_LOW` | INTC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1663.46% | 214.03% | 1466.30% | +1449.43pp | +197.17pp | 90.1% | 30 |
+| `ENTRY_BOUNCE_5M_LOW` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 536.09% | 90.70% | 440.41% | +445.39pp | +95.68pp | 90.6% | 5 |
+| `ENTRY_BOUNCE_5M_LOW` | DINO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 739.29% | 118.22% | 531.31% | +621.07pp | +207.98pp | 73.9% | 22 |
+| `ENTRY_BOUNCE_5M_LOW` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1111.27% | 126.60% | 1036.52% | +984.66pp | +74.74pp | 95.6% | 7 |
+| `ENTRY_BOUNCE_5M_LOW` | ARM_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1269.52% | 123.02% | 1150.82% | +1146.50pp | +118.69pp | 84.5% | 28 |
+| `ENTRY_BOUNCE_5M_LOW` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1139.19% | 134.45% | 1125.11% | +1004.74pp | +14.09pp | 96.7% | 5 |
+| `ENTRY_BOUNCE_5M_LOW` | AMD_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1702.09% | 204.78% | 1683.80% | +1497.31pp | +18.29pp | 78.4% | 24 |
+| `ENTRY_BOUNCE_15M_LOW` | UUUU_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 41.35% | 26.20% | 1.98% | +15.15pp | +39.36pp | 22.8% | 14 |
+| `ENTRY_BOUNCE_15M_LOW` | UUUU_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -315.74% | -133.05% | -219.78% | -182.69pp | -95.96pp | 42.6% | 41 |
+| `ENTRY_BOUNCE_15M_LOW` | UEC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 52.84% | 22.65% | 33.66% | +30.19pp | +19.18pp | 22.9% | 14 |
+| `ENTRY_BOUNCE_15M_LOW` | UEC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -195.13% | -48.38% | -162.77% | -146.75pp | -32.36pp | 42.2% | 44 |
+| `ENTRY_BOUNCE_15M_LOW` | TTD_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 11.07% | 54.33% | 280.88% | -43.25pp | -269.81pp | 65.7% | 7 |
+| `ENTRY_BOUNCE_15M_LOW` | TTD_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 472.91% | 141.54% | 747.74% | +331.37pp | -274.82pp | 53.2% | 22 |
+| `ENTRY_BOUNCE_15M_LOW` | LDOS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 63.60% | 37.50% | 66.62% | +26.10pp | -3.02pp | 17.9% | 8 |
+| `ENTRY_BOUNCE_15M_LOW` | LDOS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -54.53% | 13.86% | -30.35% | -68.39pp | -24.18pp | 35.0% | 55 |
+| `ENTRY_BOUNCE_15M_LOW` | LAC_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 79.54% | 36.98% | 80.46% | +42.56pp | -0.92pp | 22.1% | 18 |
+| `ENTRY_BOUNCE_15M_LOW` | LAC_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -421.30% | -11.54% | -304.93% | -409.76pp | -116.37pp | 58.2% | 28 |
+| `ENTRY_BOUNCE_15M_LOW` | HL_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -6.29% | 21.95% | 15.04% | -28.25pp | -21.33pp | 21.5% | 11 |
+| `ENTRY_BOUNCE_15M_LOW` | HL_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -1098.41% | -219.36% | -734.70% | -879.06pp | -363.71pp | 49.9% | 42 |
+| `ENTRY_BOUNCE_15M_LOW` | EGO_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -2.96% | 23.03% | 4.84% | -25.99pp | -7.80pp | 26.7% | 14 |
+| `ENTRY_BOUNCE_15M_LOW` | EGO_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -237.87% | -85.44% | -223.69% | -152.43pp | -14.19pp | 28.4% | 61 |
+| `ENTRY_BOUNCE_15M_LOW` | ASTS_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1.00% | 22.27% | -17.12% | -21.27pp | +18.12pp | 23.6% | 19 |
+| `ENTRY_BOUNCE_15M_LOW` | ASTS_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -1014.12% | -153.31% | -589.06% | -860.82pp | -425.07pp | 59.4% | 49 |
+| `ENTRY_BOUNCE_15M_LOW` | ALB_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | -41.12% | 19.41% | 3.87% | -60.53pp | -44.99pp | 34.6% | 13 |
+| `ENTRY_BOUNCE_15M_LOW` | ALB_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | -667.62% | -82.31% | -818.37% | -585.30pp | +150.76pp | 56.5% | 41 |
+| `ENTRY_BOUNCE_15M_LOW` | ACN_SHORT | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 347.43% | 44.50% | 388.07% | +302.94pp | -40.64pp | 95.1% | 7 |
+| `ENTRY_BOUNCE_15M_LOW` | ACN_SHORT | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 418.09% | 69.84% | 407.15% | +348.25pp | +10.94pp | 74.4% | 33 |
+| `ENTRY_BOUNCE_15M_LOW` | VLO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 427.66% | 84.91% | 362.29% | +342.75pp | +65.37pp | 96.4% | 5 |
+| `ENTRY_BOUNCE_15M_LOW` | VLO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 611.90% | 113.27% | 411.17% | +498.63pp | +200.73pp | 71.4% | 19 |
+| `ENTRY_BOUNCE_15M_LOW` | SNDK_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1824.75% | 467.09% | 2267.27% | +1357.66pp | -442.52pp | 90.9% | 7 |
+| `ENTRY_BOUNCE_15M_LOW` | SNDK_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 4992.22% | 888.47% | 5414.04% | +4103.75pp | -421.82pp | 93.5% | 10 |
+| `ENTRY_BOUNCE_15M_LOW` | PBF_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 551.51% | 121.26% | 575.87% | +430.25pp | -24.36pp | 87.9% | 9 |
+| `ENTRY_BOUNCE_15M_LOW` | PBF_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 627.49% | 127.67% | 642.13% | +499.82pp | -14.64pp | 49.5% | 42 |
+| `ENTRY_BOUNCE_15M_LOW` | MU_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1186.30% | 204.90% | 1337.78% | +981.40pp | -151.48pp | 70.7% | 10 |
+| `ENTRY_BOUNCE_15M_LOW` | MU_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 2300.77% | 381.95% | 2503.08% | +1918.82pp | -202.31pp | 66.1% | 24 |
+| `ENTRY_BOUNCE_15M_LOW` | MRVL_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1415.39% | 123.58% | 1301.80% | +1291.81pp | +113.58pp | 87.5% | 10 |
+| `ENTRY_BOUNCE_15M_LOW` | MRVL_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1373.85% | 104.11% | 1283.09% | +1269.74pp | +90.76pp | 76.6% | 30 |
+| `ENTRY_BOUNCE_15M_LOW` | MPC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 179.14% | 88.48% | 106.89% | +90.66pp | +72.25pp | 40.5% | 9 |
+| `ENTRY_BOUNCE_15M_LOW` | MPC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 283.51% | 103.59% | 163.19% | +179.92pp | +120.32pp | 54.9% | 30 |
+| `ENTRY_BOUNCE_15M_LOW` | INTC_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1324.31% | 139.23% | 778.27% | +1185.08pp | +546.04pp | 84.9% | 5 |
+| `ENTRY_BOUNCE_15M_LOW` | INTC_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1890.71% | 214.03% | 1466.30% | +1676.68pp | +424.41pp | 78.7% | 23 |
+| `ENTRY_BOUNCE_15M_LOW` | DINO_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 589.61% | 90.70% | 440.41% | +498.91pp | +149.21pp | 92.9% | 5 |
+| `ENTRY_BOUNCE_15M_LOW` | DINO_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 787.20% | 118.22% | 531.31% | +668.98pp | +255.88pp | 73.4% | 18 |
+| `ENTRY_BOUNCE_15M_LOW` | ARM_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1074.65% | 126.60% | 1036.52% | +948.04pp | +38.12pp | 86.0% | 5 |
+| `ENTRY_BOUNCE_15M_LOW` | ARM_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1279.24% | 123.02% | 1150.82% | +1156.22pp | +128.41pp | 71.5% | 24 |
+| `ENTRY_BOUNCE_15M_LOW` | AMD_LONG | VEC_UNTOUCHED_OOS | DISCARD_GRAY | 1135.03% | 134.45% | 1125.11% | +1000.58pp | +9.92pp | 90.9% | 5 |
+| `ENTRY_BOUNCE_15M_LOW` | AMD_LONG | VEC_NESTED_FOLD_AGGREGATE | DISCARD_GRAY | 1455.10% | 204.78% | 1683.80% | +1250.32pp | -228.70pp | 68.1% | 26 |
+| `ENTRY_LONG_WAIT_ENABLED` | LDOS_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 37.50% | 66.62% | -37.50pp | -66.62pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | ALB_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 19.41% | 3.87% | -19.41pp | -3.87pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | EGO_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 23.03% | 4.84% | -23.03pp | -4.84pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | HL_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 21.95% | 15.04% | -21.95pp | -15.04pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | TTD_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 54.33% | 280.88% | -54.33pp | -280.88pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | ACN_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 44.50% | 388.07% | -44.50pp | -388.07pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | UEC_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 22.65% | 33.66% | -22.65pp | -33.66pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | ASTS_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 22.27% | -17.12% | -22.27pp | +17.12pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | UUUU_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 26.20% | 1.98% | -26.20pp | -1.98pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | LAC_SHORT | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 36.98% | 80.46% | -36.98pp | -80.46pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | VLO_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 84.91% | 362.29% | -84.91pp | -362.29pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | DINO_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 90.70% | 440.41% | -90.70pp | -440.41pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | MPC_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 88.48% | 106.89% | -88.48pp | -106.89pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | PBF_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 121.26% | 575.87% | -121.26pp | -575.87pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | AMD_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 134.45% | 1125.11% | -134.45pp | -1125.11pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | INTC_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 139.23% | 778.27% | -139.23pp | -778.27pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | MU_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 204.90% | 1337.78% | -204.90pp | -1337.78pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | ARM_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 126.60% | 1036.52% | -126.60pp | -1036.52pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | MRVL_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 123.58% | 1301.80% | -123.58pp | -1301.80pp | 0.0% | 0 |
+| `ENTRY_LONG_WAIT_ENABLED` | SNDK_LONG | WIRING_AUDIT | RED_REMOVED_COMPOUND_LABEL | 0.00% | 467.09% | 2267.27% | -467.09pp | -2267.27pp | 0.0% | 0 |
+| `EXIT_PEAK_GIVEBACK` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 137.98% | 37.50% | 67.76% | +100.48pp | +70.22pp | 34.4% | 51 |
+| `EXIT_PEAK_GIVEBACK` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 124.61% | 19.41% | 85.72% | +105.19pp | +38.89pp | 45.5% | 37 |
+| `EXIT_PEAK_GIVEBACK` | EGO_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -160.18% | 23.03% | 48.02% | -183.20pp | -208.19pp | 34.6% | 50 |
+| `EXIT_PEAK_GIVEBACK` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 39.44% | 21.95% | 50.25% | +17.48pp | -10.82pp | 48.1% | 68 |
+| `EXIT_PEAK_GIVEBACK` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 203.55% | 54.33% | 481.90% | +149.22pp | -278.35pp | 80.5% | 46 |
+| `EXIT_PEAK_GIVEBACK` | ACN_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 279.88% | 44.50% | 400.98% | +235.38pp | -121.10pp | 88.7% | 42 |
+| `EXIT_PEAK_GIVEBACK` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 120.31% | 22.65% | 65.05% | +97.67pp | +55.26pp | 28.0% | 51 |
+| `EXIT_PEAK_GIVEBACK` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | -96.13% | 22.27% | 66.58% | -118.40pp | -162.71pp | 42.6% | 70 |
+| `EXIT_PEAK_GIVEBACK` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1.29% | 26.20% | 68.24% | -24.91pp | -66.95pp | 38.1% | 40 |
+| `EXIT_PEAK_GIVEBACK` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 344.74% | 36.98% | 109.33% | +307.76pp | +235.41pp | 39.1% | 10 |
+| `EXIT_PEAK_GIVEBACK` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 288.74% | 84.91% | 387.31% | +203.83pp | -98.57pp | 88.3% | 62 |
+| `EXIT_PEAK_GIVEBACK` | DINO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 331.98% | 90.70% | 485.24% | +241.28pp | -153.26pp | 76.6% | 15 |
+| `EXIT_PEAK_GIVEBACK` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 222.90% | 88.48% | 117.46% | +134.42pp | +105.44pp | 59.8% | 15 |
+| `EXIT_PEAK_GIVEBACK` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 470.35% | 121.26% | 707.27% | +349.08pp | -236.92pp | 76.7% | 137 |
+| `EXIT_PEAK_GIVEBACK` | AMD_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1042.63% | 134.45% | 1180.81% | +908.18pp | -138.18pp | 97.4% | 9 |
+| `EXIT_PEAK_GIVEBACK` | INTC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 812.27% | 139.23% | 964.02% | +673.04pp | -151.74pp | 79.7% | 42 |
+| `EXIT_PEAK_GIVEBACK` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1073.83% | 204.90% | 1376.23% | +868.92pp | -302.40pp | 73.3% | 22 |
+| `EXIT_PEAK_GIVEBACK` | ARM_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 768.94% | 126.60% | 1082.44% | +642.34pp | -313.50pp | 86.6% | 24 |
+| `EXIT_PEAK_GIVEBACK` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 837.43% | 123.58% | 1672.73% | +713.85pp | -835.29pp | 73.4% | 31 |
+| `EXIT_PEAK_GIVEBACK` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 2175.23% | 467.09% | 2325.64% | +1708.15pp | -150.40pp | 98.2% | 16 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | VLO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 276.47% | 84.91% | 387.31% | +191.57pp | -110.83pp | 68.2% | 10 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | UUUU_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 63.54% | 26.20% | 68.24% | +37.34pp | -4.70pp | 21.5% | 3 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | UEC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 63.64% | 22.65% | 65.05% | +40.99pp | -1.41pp | 16.8% | 6 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | TTD_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 440.23% | 54.33% | 481.90% | +385.91pp | -41.66pp | 89.7% | 7 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | SNDK_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1988.94% | 467.09% | 2325.64% | +1521.85pp | -336.70pp | 96.5% | 6 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | PBF_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 421.99% | 121.26% | 707.27% | +300.73pp | -285.28pp | 85.6% | 11 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | MU_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 382.73% | 204.90% | 1376.23% | +177.82pp | -993.50pp | 45.3% | 15 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | MRVL_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 658.77% | 123.58% | 1672.73% | +535.19pp | -1013.95pp | 73.8% | 8 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | MPC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 117.72% | 88.48% | 117.46% | +29.24pp | +0.26pp | 23.5% | 9 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | LDOS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 48.19% | 37.50% | 67.76% | +10.69pp | -19.57pp | 11.3% | 22 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | LAC_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 61.65% | 36.98% | 109.33% | +24.67pp | -47.68pp | 18.0% | 6 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | INTC_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 1128.27% | 139.23% | 964.02% | +989.04pp | +164.26pp | 92.6% | 4 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | HL_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 42.43% | 21.95% | 50.25% | +20.48pp | -7.82pp | 19.0% | 6 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | EGO_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 55.17% | 23.03% | 48.02% | +32.14pp | +7.15pp | 18.5% | 5 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | DINO_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 434.95% | 90.70% | 485.24% | +344.25pp | -50.29pp | 79.2% | 7 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | ASTS_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 113.47% | 22.27% | 66.58% | +91.20pp | +46.89pp | 19.9% | 12 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | ARM_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 949.51% | 126.60% | 1082.44% | +822.91pp | -132.93pp | 72.1% | 18 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | AMD_LONG | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 667.37% | 134.45% | 1180.81% | +532.92pp | -513.44pp | 89.2% | 17 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | ALB_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 60.17% | 19.41% | 85.72% | +40.76pp | -25.55pp | 39.8% | 8 |
+| `EXIT_ALGO_STRUCTURE_1H_15M` | ACN_SHORT | VEC_UNTOUCHED_OOS | GRAY_REJECTED | 280.37% | 44.50% | 400.98% | +235.88pp | -120.60pp | 63.2% | 13 |
 | `ENTRY_DC_TIER_AUG_ENABLED` | LDOS_SHORT | WIRING_REPAIR_AUDIT | CONNECTED_DEFAULT_TRUE_WIRING_PROOF | 0.00% | 37.50% | 66.62% | -37.50pp | -66.62pp | 0.0% | 0 |
 | `ENTRY_DC_TIER_AUG_ENABLED` | ALB_SHORT | WIRING_REPAIR_AUDIT | CONNECTED_DEFAULT_TRUE_WIRING_PROOF | 0.00% | 19.41% | 3.87% | -19.41pp | -3.87pp | 0.0% | 0 |
 | `ENTRY_DC_TIER_AUG_ENABLED` | EGO_SHORT | WIRING_REPAIR_AUDIT | CONNECTED_DEFAULT_TRUE_WIRING_PROOF | 0.00% | 23.03% | 4.84% | -23.03pp | -4.84pp | 0.0% | 0 |

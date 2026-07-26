@@ -1177,11 +1177,12 @@ See `ENTRY_DC_BREAK_TOP_BOTTOM10_20260726.md`.
 
 ### §15.12 — DC-tier augment switch/function separation (2026-07-26)
 
-`DC_TIER_AUG_ENABLED` is a phantom switch, not a functional on/off control.
-It is undeclared and unread. The underlying `evaluate_augment` DC-tier block
-is nevertheless active after the global gain/cooldown gates. Matrix and
-reports must show the switch wiring as red while reporting the active function
-screen separately; do not reuse the disconnected DC-break entry semantics.
+`DC_TIER_AUG_ENABLED` is now a functional switch with default `True`. Before
+the repair it was undeclared and unread while the underlying
+`evaluate_augment` DC-tier block ran unconditionally after the global
+gain/cooldown gates. The gate now wraps only that existing tier block:
+`True` preserves the pre-repair live behavior exactly and `False` returns
+`DC_TIER_AUG_DISABLED`. WT_D bounce and trailing-augment paths are independent.
 
 Source behavior uses a 3% profit gate, 0.10% prior-channel break buffer,
 1/2/3/5x target notionals, a current-notional-below-75%-of-target gate, and the
@@ -1280,3 +1281,32 @@ completed-bar definition, numeric range, and causal result. The deterministic
 audit and rollback evidence are in
 `EXIT_ALGO_EXIT_ENABLED_AUDIT_20260726.md` and
 `tools/audit_algo_exit_wiring.py`.
+
+### §15.15 — LONG_WAIT removed-label decomposition (2026-07-26)
+
+`LONG_WAIT_ENABLED` is absent and unread. It was not one entry function:
+commit `f83bc7b9` shows an old score engine combining four independent LONG
+reasons—`Bounce_15m_Low`, `Bounce_5m_Low`, `4h_Deep_Value`, and
+`1h_Turn_Up`—before returning generic WEAK/GOOD/STRONG_BUY recommendations.
+The historical ledger contains 22 `LONG_WAIT:` fills, but that label cannot be
+reconstructed honestly as one opaque switch. Job52 is quarantined red with
+zero executable requests; its immutable source excerpt is
+`tools/evidence/long_wait_f83bc7b9_excerpt.txt`.
+
+The reasons have separate path IDs. Jobs465/466 test the source-provable
+15m/5m bounce reasons first. LONG uses proximity to the latest completed prior
+Donchian low; SHORT is an explicit research mirror at the prior high. The old
+source ceilings (1.5%/0.8%) are mandatory shortlist sentinels. The 64-arm
+per-path range also tests 0.4/0.8/1.5/2.5%, source semantics versus requiring
+recovery inside the channel, no/5m/15m/two-TF Stoch confirmation, and
+direct/union-with-green roles.
+
+In the final chronological OOS fold, the top-10 LONG sums were 9,708.36%
+(15m) and 10,232.69% (5m), versus 1,581.21% B&H and 9,332.21% control.
+Bottom-10 SHORT sums were 546.46% and 1,119.85%, versus 308.81% B&H and
+858.30% control. Nested-fold sums are retained separately with the explicit
+unit `SUM_OF_FOLD_CAPITAL_RETURN_PCT`; they must never be presented as a
+single final-OOS result. No key passed 70–80% weighted TIM in every validation
+fold, and no strict survivor exists. All 40 path/key screens therefore remain
+gray, exact replay is empty, and no live setting changed. The result digest is
+`ENTRY_BOUNCE_REASONS_TOP_BOTTOM10_20260726.md`.

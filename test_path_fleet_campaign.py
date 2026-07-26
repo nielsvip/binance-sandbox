@@ -65,6 +65,13 @@ def test_rank_init_claim_and_fail_closed_result(tmp_path):
 def test_registry_requires_same_entry_control():
     assert fleet.PATHS
     assert all(p.fixed_entry_control and p.fixed_exit_control for p in fleet.PATHS)
-    assert all(p.kind in {"ENTRY", "EXIT"} for p in fleet.PATHS)
-    assert sum(len(p.source_rows) for p in fleet.PATHS) == 64
+    assert all(p.kind in {"ENTRY", "EXIT", "FILTER"} for p in fleet.PATHS)
+    assert (
+        sum(
+            source_row.count(" | event=")
+            for path in fleet.PATHS
+            for source_row in path.source_rows
+        )
+        == 64
+    )
     assert any(p.config_keys == ("SENT_STRAT_DIVERGENCE_ENABLED",) for p in fleet.PATHS)
