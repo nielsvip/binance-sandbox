@@ -662,6 +662,13 @@ keys of numbers nobody can compare to anything (§1).
 - **The spreadsheet is a generated artifact.** `param_cells` fills continuously but
   `SWITCH_MATRIX_TRB.xlsx` only changes when the exporter runs; S1 had NO cron doing that, so
   the sheet sat still while the DB grew underneath it. It now runs every watchdog cycle.
+- **A changed contract fingerprint must replace the logical current cell.** The original
+  store used `INSERT OR IGNORE` behind a UNIQUE key that did not include
+  `contract_fingerprint`. After an engine/NPZ fix, the old row kept the slot forever: workers
+  recomputed the same unit continuously, logged success, and the current matrix stayed blank.
+  `insert_cell()` now archives the displaced row verbatim in `param_cell_history`, then
+  atomically promotes the new ENGINE result. VEC can never overwrite ENGINE. Check both
+  `MAX(param_cells.ts)` and `param_cell_history` after any fingerprint change.
 - **Operational**: `run_symbol` blocks while free RAM < `--min-avail` (default 8000MB, a figure
   from old ~10.8GB multi-symbol runs; a single-symbol run is 527–632MB) — at 14 workers the
   fleet parked itself in its own guard, alive and doing nothing. Orphaned engines survive every

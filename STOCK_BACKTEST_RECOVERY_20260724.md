@@ -44,6 +44,29 @@ Acceptance remains strict: fresh Tier-2 engine result, real closes, changed
 trade fingerprint, and performance above the same-key B&H floor. Vector runs
 are screening shortcuts only until replayed through the engine.
 
+### 2026-07-26 repaired-matrix refill defect
+
+The repaired campaign contained 149 MU/VT cells, but all carried the prior
+code+NPZ+side contract fingerprint. The exporter correctly quarantined them,
+so the authoritative main sheets showed zero filled cells. Fresh baselines
+completed under the new contract:
+
+- MU_LONG: `PASS_WITH_CAPACITY_CLAMPS`;
+- VT_LONG: `PASS`.
+
+The workers then exposed a database defect: `param_cells` has a logical-cell
+UNIQUE key that excludes the contract fingerprint, while `insert_cell()` used
+`INSERT OR IGNORE`. A valid rerun could therefore never displace an invalidated
+row; workers repeatedly recomputed it and the database timestamp did not move.
+
+The store now preserves the old row as JSON in `param_cell_history` and
+atomically promotes a new ENGINE row when the contract fingerprint changes.
+Tier-1 VEC rows still cannot overwrite ENGINE. Six MU/VT workers were restarted
+after deployment so their next completed cells use the repaired write path.
+The digest reports raw current-campaign rows separately from accepted
+current-fingerprint rows, preventing another silent “running but not filling”
+failure.
+
 ### Native and interpolated 5m history
 
 Historical stocks 5m coverage is provider-limited. The older execution history is therefore

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T07:16:43.695675+00:00",
+  "timestamp": "2026-07-26T07:31:43.345354+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,12 +35,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "ENAUSDC",
-      "net_score": -10.5,
-      "long_score": 0,
-      "short_score": 10.5
     },
     {
       "symbol": "ACTUSDT",
@@ -499,6 +493,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ENAUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ARBUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -734,8 +734,8 @@
     },
     {
       "symbol": "BEATUSDT",
-      "net_score": 17.5,
-      "long_score": 17.5,
+      "net_score": 18.1,
+      "long_score": 18.1,
       "short_score": 0
     },
     {
@@ -790,17 +790,11 @@
   "top_longs": [
     [
       "BEATUSDT",
-      17.5,
-      3.632
+      18.1,
+      3.717
     ]
   ],
-  "top_shorts": [
-    [
-      "ENAUSDC",
-      10.5,
-      0.08577277
-    ]
-  ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

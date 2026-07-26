@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS param_cells (
 );
 CREATE INDEX IF NOT EXISTS idx_cells_param ON param_cells(mode, campaign, param);
 CREATE INDEX IF NOT EXISTS idx_cells_key ON param_cells(mode, campaign, symbol, side);
+CREATE TABLE IF NOT EXISTS param_cell_history (
+  mode TEXT, symbol TEXT, side TEXT, campaign TEXT, param TEXT,
+  value_json TEXT, archived_ts TEXT, replacement_contract_fingerprint TEXT,
+  archive_reason TEXT, row_json TEXT,
+  UNIQUE(mode, symbol, side, campaign, param, value_json, archived_ts)
+);
+CREATE INDEX IF NOT EXISTS idx_cell_history_key
+  ON param_cell_history(mode, campaign, symbol, side, param);
 """
 
 MIGRATIONS = (
@@ -146,6 +154,10 @@ def _schema_current(con):
     except sqlite3.OperationalError:
         return False
     if not cols["param_cells"] or not cols["key_baseline"]:
+        return False
+    if con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='param_cell_history'"
+    ).fetchone() is None:
         return False
     for mig in MIGRATIONS:
         parts = mig.split()
@@ -239,18 +251,58 @@ def insert_cell(con, row):
             "validation_status", "contract_fingerprint", "real_closes", "mtm_count",
             "opens_long", "opens_short", "requested_fill_ratio", "size_clamp_count",
             "reentry_pending", "reentry_violations", "result_audit_json")
-    busy_retry(lambda: con.execute(
-        f"INSERT OR IGNORE INTO param_cells ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
-        [row.get(c) for c in cols]))
-    # TIER UPGRADE (2026-07-21): a Tier-1 vec SCREEN cell must never keep a slot that the
-    # faithful Tier-2 engine has since measured. Engine overwrites VEC/LAB; never the reverse.
-    if str(row.get("tier", "")).upper() == "ENGINE":
-        busy_retry(lambda: con.execute(
-            f"UPDATE param_cells SET {','.join(f'{c}=?' for c in cols)} "
-            "WHERE mode=? AND symbol=? AND side=? AND campaign=? AND param=? AND value_json=? "
-            "AND (tier IS NULL OR tier<>'ENGINE')",
-            [row.get(c) for c in cols]
-            + [row.get(k) for k in ("mode", "symbol", "side", "campaign", "param", "value_json")]))
+    key_cols = ("mode", "symbol", "side", "campaign", "param", "value_json")
+    key = [row.get(c) for c in key_cols]
+
+    def write_cell():
+        existing = con.execute(
+            f"SELECT {','.join(cols)} FROM param_cells WHERE "
+            + " AND ".join(f"{c}=?" for c in key_cols),
+            key,
+        ).fetchone()
+        if existing is None:
+            con.execute(
+                f"INSERT INTO param_cells ({','.join(cols)}) "
+                f"VALUES ({','.join('?' * len(cols))})",
+                [row.get(c) for c in cols],
+            )
+            return
+
+        incoming_engine = str(row.get("tier", "")).upper() == "ENGINE"
+        old = dict(zip(cols, existing))
+        old_engine = str(old.get("tier") or "").upper() == "ENGINE"
+        contract_changed = (
+            incoming_engine
+            and old.get("contract_fingerprint") != row.get("contract_fingerprint")
+        )
+        tier_upgrade = incoming_engine and not old_engine
+        if not (contract_changed or tier_upgrade):
+            return
+
+        # A repaired contract can invalidate an existing logical cell while the UNIQUE key
+        # remains identical. INSERT OR IGNORE used to discard every valid rerun forever, so
+        # six 24/7 workers repeatedly recomputed cells without advancing the matrix. Preserve
+        # the displaced measurement verbatim, then atomically promote the new ENGINE result.
+        con.execute(
+            "INSERT INTO param_cell_history "
+            "(mode,symbol,side,campaign,param,value_json,archived_ts,"
+            "replacement_contract_fingerprint,archive_reason,row_json) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            [
+                *key,
+                str(time.time_ns()),
+                row.get("contract_fingerprint"),
+                "TIER_UPGRADE" if tier_upgrade else "CONTRACT_REFRESH",
+                json.dumps(old, sort_keys=True, default=str),
+            ],
+        )
+        con.execute(
+            f"UPDATE param_cells SET {','.join(f'{c}=?' for c in cols)} WHERE "
+            + " AND ".join(f"{c}=?" for c in key_cols),
+            [row.get(c) for c in cols] + key,
+        )
+
+    busy_retry(write_cell)
     # COMMIT HERE, ALWAYS (2026-07-21). SQLite allows one writer at a time, and a writer holds
     # the lock from its first statement until it commits. combo_search.py inserted inside a loop
     # whose body runs a FULL 9-15min engine (key_gain_mo) and only committed after the loop — so
