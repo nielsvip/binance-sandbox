@@ -1,0 +1,3726 @@
+{
+  "cohorts": {
+    "ENTRY_BOUNCE_15M_LOW__BOTTOM_10_SHORT": {
+      "all_folds_beat_bh_count": 1,
+      "all_folds_beat_control_count": 0,
+      "all_folds_tim_count": 0,
+      "bh_return_pct_sum": 308.80875400189467,
+      "candidate_return_pct_sum": 546.4619292210191,
+      "control_return_pct_sum": 858.2971269973511,
+      "fills": 1336,
+      "nested_fold_bh_return_pct_sum": -508.1485980874824,
+      "nested_fold_candidate_return_pct_sum": -3113.717662982284,
+      "nested_fold_control_return_pct_sum": -1928.7596353014753,
+      "requests": 8541,
+      "rows": 10,
+      "signals": 53551,
+      "strict_survivors": 0
+    },
+    "ENTRY_BOUNCE_15M_LOW__TOP_10_LONG": {
+      "all_folds_beat_bh_count": 7,
+      "all_folds_beat_control_count": 2,
+      "all_folds_tim_count": 0,
+      "bh_return_pct_sum": 1581.2115640415414,
+      "candidate_return_pct_sum": 9708.356571227221,
+      "control_return_pct_sum": 9332.207792505464,
+      "fills": 686,
+      "nested_fold_bh_return_pct_sum": 2379.1072118639836,
+      "nested_fold_candidate_return_pct_sum": 15601.980115476574,
+      "nested_fold_control_return_pct_sum": 15248.929021960557,
+      "requests": 5923,
+      "rows": 10,
+      "signals": 77020,
+      "strict_survivors": 0
+    },
+    "ENTRY_BOUNCE_5M_LOW__BOTTOM_10_SHORT": {
+      "all_folds_beat_bh_count": 2,
+      "all_folds_beat_control_count": 1,
+      "all_folds_tim_count": 0,
+      "bh_return_pct_sum": 308.80875400189467,
+      "candidate_return_pct_sum": 1119.8450225737104,
+      "control_return_pct_sum": 858.2971269973511,
+      "fills": 1795,
+      "nested_fold_bh_return_pct_sum": -508.1485980874824,
+      "nested_fold_candidate_return_pct_sum": -3404.0883142907924,
+      "nested_fold_control_return_pct_sum": -1928.7596353014753,
+      "requests": 13000,
+      "rows": 10,
+      "signals": 106024,
+      "strict_survivors": 0
+    },
+    "ENTRY_BOUNCE_5M_LOW__TOP_10_LONG": {
+      "all_folds_beat_bh_count": 8,
+      "all_folds_beat_control_count": 1,
+      "all_folds_tim_count": 0,
+      "bh_return_pct_sum": 1581.2115640415414,
+      "candidate_return_pct_sum": 10232.691163660827,
+      "control_return_pct_sum": 9332.207792505464,
+      "fills": 803,
+      "nested_fold_bh_return_pct_sum": 2379.1072118639836,
+      "nested_fold_candidate_return_pct_sum": 16124.536578588075,
+      "nested_fold_control_return_pct_sum": 15248.929021960557,
+      "requests": 8423,
+      "rows": 10,
+      "signals": 194353,
+      "strict_survivors": 0
+    }
+  },
+  "contract": {
+    "bounce_distance": [
+      0.004,
+      0.008,
+      0.015,
+      0.025
+    ],
+    "bounce_timeframe": [
+      "5m",
+      "15m"
+    ],
+    "confirmation": [
+      "none",
+      "stoch5",
+      "stoch15",
+      "two-of-two"
+    ],
+    "exact_rule": "strict every-fold survivors only",
+    "grid_candidates_per_path": 64,
+    "historical_reasons": "SEPARATE_SOURCE_REASONS_PROVEN_AT_f83bc7b9",
+    "nested_fold_sums": "retained separately under aggregate_metrics; never presented as single final-OOS returns",
+    "parent_label": "LONG_WAIT_REMOVED_AND_QUARANTINED",
+    "reconstruction_only": true,
+    "recovery_only": [
+      false,
+      true
+    ],
+    "report_primary_metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+    "roles": [
+      "direct",
+      "union-with-green"
+    ],
+    "same_control": "frozen ladder + E02 N30 + resting reclaim",
+    "short_side": "EXPLICIT_RESEARCH_MIRROR"
+  },
+  "created_utc": "2026-07-26T22:30:44.163470+00:00",
+  "families": [
+    "ENTRY_BOUNCE_15M_LOW",
+    "ENTRY_BOUNCE_5M_LOW"
+  ],
+  "rows": [
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 204.7797881146574,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1683.7994543549203,
+        "strategy_return_pct": 1455.09968908316,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 68.14945857620053,
+        "tim_unit": "PCT",
+        "trades": 26
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222517Z_AMD_LONG",
+      "bh_return_pct": 134.45127631309217,
+      "candidate_return_pct": 1135.0303057948065,
+      "control_return_pct": 1125.1074038655374,
+      "entry_fill_count": 58,
+      "entry_request_count": 640,
+      "entry_signal_rows": 3776,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 134.45127631309217,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1125.1074038655374,
+        "strategy_return_pct": 1135.0303057948065,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 90.85296888674085,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        38.42601958316262,
+        71.74118655466829,
+        90.85296888674085
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_546ae167b5",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "AMD",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 90.85296888674085
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 123.02022364128673,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1150.8238578800124,
+        "strategy_return_pct": 1279.2380486749657,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 71.52440772464041,
+        "tim_unit": "PCT",
+        "trades": 24
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222517Z_ARM_LONG",
+      "bh_return_pct": 126.60405366721074,
+      "candidate_return_pct": 1074.6474700515566,
+      "control_return_pct": 1036.5228750155122,
+      "entry_fill_count": 51,
+      "entry_request_count": 130,
+      "entry_signal_rows": 284,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 126.60405366721074,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1036.5228750155122,
+        "strategy_return_pct": 1074.6474700515566,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 86.0050785160834,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        62.96779173970361,
+        63.801604156300456,
+        86.0050785160834
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "ARM",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 86.0050785160834
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 118.22124975442439,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 531.313120524251,
+        "strategy_return_pct": 787.1975876645515,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 73.37409219993536,
+        "tim_unit": "PCT",
+        "trades": 18
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222522Z_DINO_LONG",
+      "bh_return_pct": 90.70132580125754,
+      "candidate_return_pct": 589.613221897851,
+      "control_return_pct": 440.4078884747945,
+      "entry_fill_count": 70,
+      "entry_request_count": 777,
+      "entry_signal_rows": 19309,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 90.70132580125754,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 440.4078884747945,
+        "strategy_return_pct": 589.613221897851,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 92.91376820575786,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        39.48875891170371,
+        84.45458794680562,
+        92.91376820575786
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "DINO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 92.91376820575786
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 214.03152885779164,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1466.297651286282,
+        "strategy_return_pct": 1890.710016582927,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 78.73987130523676,
+        "tim_unit": "PCT",
+        "trades": 23
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222528Z_INTC_LONG",
+      "bh_return_pct": 139.23162607466847,
+      "candidate_return_pct": 1324.3116000451935,
+      "control_return_pct": 778.2689081918213,
+      "entry_fill_count": 61,
+      "entry_request_count": 167,
+      "entry_signal_rows": 463,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 139.23162607466847,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 778.2689081918213,
+        "strategy_return_pct": 1324.3116000451935,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 84.87058106343221,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        65.93029310248232,
+        84.3034627543858,
+        84.87058106343221
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "INTC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 84.87058106343221
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 103.59163071551855,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 163.18516807441682,
+        "strategy_return_pct": 283.50669190496825,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 54.90616900081738,
+        "tim_unit": "PCT",
+        "trades": 30
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222527Z_MPC_LONG",
+      "bh_return_pct": 88.47969709778054,
+      "candidate_return_pct": 179.13781104199563,
+      "control_return_pct": 106.89152194910021,
+      "entry_fill_count": 89,
+      "entry_request_count": 1405,
+      "entry_signal_rows": 16933,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 88.47969709778054,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 106.89152194910021,
+        "strategy_return_pct": 179.13781104199563,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 40.46325381316221,
+        "tim_unit": "PCT",
+        "trades": 9,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        42.55943078967022,
+        82.6300779368917,
+        40.46325381316221
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MPC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 40.46325381316221
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 104.10623348167393,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1283.0888992779774,
+        "strategy_return_pct": 1373.850347545482,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 76.58766894965835,
+        "tim_unit": "PCT",
+        "trades": 30
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222533Z_MRVL_LONG",
+      "bh_return_pct": 123.58271432366617,
+      "candidate_return_pct": 1415.3890819915644,
+      "control_return_pct": 1301.8042139592224,
+      "entry_fill_count": 70,
+      "entry_request_count": 159,
+      "entry_signal_rows": 428,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 123.58271432366617,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1301.8042139592224,
+        "strategy_return_pct": 1415.3890819915644,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 87.51224585330858,
+        "tim_unit": "PCT",
+        "trades": 10,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        72.16461727950406,
+        69.4044330149006,
+        87.51224585330858
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MRVL",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 87.51224585330858
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 381.9497630005161,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 2503.081635807697,
+        "strategy_return_pct": 2300.7711392778083,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 66.10627677460253,
+        "tim_unit": "PCT",
+        "trades": 24
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222533Z_MU_LONG",
+      "bh_return_pct": 204.9048862019815,
+      "candidate_return_pct": 1186.3037477279547,
+      "control_return_pct": 1337.7787549949162,
+      "entry_fill_count": 79,
+      "entry_request_count": 829,
+      "entry_signal_rows": 10450,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 204.9048862019815,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1337.7787549949162,
+        "strategy_return_pct": 1186.3037477279547,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 70.6542565176999,
+        "tim_unit": "PCT",
+        "trades": 10,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        41.05833741696819,
+        85.20214126524745,
+        70.6542565176999
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MU",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 70.6542565176999
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 127.67288706520714,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 642.1272102557874,
+        "strategy_return_pct": 627.4893366412279,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 49.53341781942196,
+        "tim_unit": "PCT",
+        "trades": 42
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222533Z_PBF_LONG",
+      "bh_return_pct": 121.26311234634873,
+      "candidate_return_pct": 551.5144674207879,
+      "control_return_pct": 575.8718616559796,
+      "entry_fill_count": 133,
+      "entry_request_count": 921,
+      "entry_signal_rows": 4214,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 121.26311234634873,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 575.8718616559796,
+        "strategy_return_pct": 551.5144674207879,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 87.8574390927298,
+        "tim_unit": "PCT",
+        "trades": 9,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        31.285205377348316,
+        25.131855018209258,
+        87.8574390927298
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_370e14acb2",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_5233a9ec46",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "PBF",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 87.8574390927298
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 888.4673241916411,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 5414.039040168029,
+        "strategy_return_pct": 4992.217155732165,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 93.52919757934438,
+        "tim_unit": "PCT",
+        "trades": 10
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222530Z_SNDK_LONG",
+      "bh_return_pct": 467.0874478222656,
+      "candidate_return_pct": 1824.7519259935827,
+      "control_return_pct": 2267.267460783638,
+      "entry_fill_count": 30,
+      "entry_request_count": 318,
+      "entry_signal_rows": 1932,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 467.0874478222656,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 2267.267460783638,
+        "strategy_return_pct": 1824.7519259935827,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 90.93904047959937,
+        "tim_unit": "PCT",
+        "trades": 7,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        96.38595424067002,
+        90.93904047959937
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_9eee1ff59f",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_370e14acb2",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "SNDK",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 90.93904047959937
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 113.26658304126656,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 411.1729843311847,
+        "strategy_return_pct": 611.9001023693182,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 71.42369100403607,
+        "tim_unit": "PCT",
+        "trades": 19
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222539Z_VLO_LONG",
+      "bh_return_pct": 84.90542439326981,
+      "candidate_return_pct": 427.65693926192745,
+      "control_return_pct": 362.28690361494137,
+      "entry_fill_count": 45,
+      "entry_request_count": 577,
+      "entry_signal_rows": 19231,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 84.90542439326981,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 362.28690361494137,
+        "strategy_return_pct": 427.65693926192745,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 96.43981326173324,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        35.11640449229847,
+        78.79840649757946,
+        96.43981326173324
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_9f98ea2a1b",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "VLO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 96.43981326173324
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 69.83729599844258,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 407.145511678462,
+        "strategy_return_pct": 418.08971268625896,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 74.43883423916307,
+        "tim_unit": "PCT",
+        "trades": 33
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222516Z_ACN_SHORT",
+      "bh_return_pct": 44.496811873790826,
+      "candidate_return_pct": 347.4342062039026,
+      "control_return_pct": 388.07087249898467,
+      "entry_fill_count": 137,
+      "entry_request_count": 972,
+      "entry_signal_rows": 5609,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 44.496811873790826,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 388.07087249898467,
+        "strategy_return_pct": 347.4342062039026,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 95.13445452825246,
+        "tim_unit": "PCT",
+        "trades": 7,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        28.832697868181803,
+        95.63071721247171,
+        95.13445452825246
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_2327e28384",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_2327e28384",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ACN",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 95.13445452825246
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -82.31360627893449,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -818.3730081090861,
+        "strategy_return_pct": -667.6151025478904,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 56.46105805001106,
+        "tim_unit": "PCT",
+        "trades": 41
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222517Z_ALB_SHORT",
+      "bh_return_pct": 19.412470988897663,
+      "candidate_return_pct": -41.117688984986124,
+      "control_return_pct": 3.870972883957438,
+      "entry_fill_count": 103,
+      "entry_request_count": 545,
+      "entry_signal_rows": 4708,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 19.412470988897663,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 3.870972883957438,
+        "strategy_return_pct": -41.117688984986124,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 34.565942184939374,
+        "tim_unit": "PCT",
+        "trades": 13,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        68.13306167598104,
+        69.38081048095447,
+        34.565942184939374
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_2327e28384",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_3f1055b925",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ALB",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 34.565942184939374
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -153.30760908123267,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -589.0567537084631,
+        "strategy_return_pct": -1014.1239326000743,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 59.36752674807645,
+        "tim_unit": "PCT",
+        "trades": 49
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222522Z_ASTS_SHORT",
+      "bh_return_pct": 22.270313733651207,
+      "candidate_return_pct": 1.003045195067898,
+      "control_return_pct": -17.12103761217022,
+      "entry_fill_count": 130,
+      "entry_request_count": 779,
+      "entry_signal_rows": 3984,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 22.270313733651207,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -17.12103761217022,
+        "strategy_return_pct": 1.003045195067898,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 23.597768217484838,
+        "tim_unit": "PCT",
+        "trades": 19,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        81.9935854459419,
+        77.04167630183922,
+        23.597768217484838
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_eea7bebc81",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_2327e28384",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_b58b9a5a79",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ASTS",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 23.597768217484838
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -85.4387378283005,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -223.68695209101412,
+        "strategy_return_pct": -237.87196827031647,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 28.41421822900719,
+        "tim_unit": "PCT",
+        "trades": 61
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222522Z_EGO_SHORT",
+      "bh_return_pct": 23.025445973287795,
+      "candidate_return_pct": -2.9632705084752162,
+      "control_return_pct": 4.839178641528179,
+      "entry_fill_count": 184,
+      "entry_request_count": 1346,
+      "entry_signal_rows": 8132,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 23.025445973287795,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 4.839178641528179,
+        "strategy_return_pct": -2.9632705084752162,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 26.69481505063675,
+        "tim_unit": "PCT",
+        "trades": 14,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        30.036025298623965,
+        28.688400410034003,
+        26.69481505063675
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_546ae167b5",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_370e14acb2",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_546ae167b5",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "EGO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 26.69481505063675
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -219.35524244446552,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -734.6990352108601,
+        "strategy_return_pct": -1098.4106107854655,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 49.886836032690034,
+        "tim_unit": "PCT",
+        "trades": 42
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222522Z_HL_SHORT",
+      "bh_return_pct": 21.954458589534084,
+      "candidate_return_pct": -6.29133509699368,
+      "control_return_pct": 15.040325246225711,
+      "entry_fill_count": 118,
+      "entry_request_count": 582,
+      "entry_signal_rows": 3401,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 21.954458589534084,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 15.040325246225711,
+        "strategy_return_pct": -6.29133509699368,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 21.469690867939338,
+        "tim_unit": "PCT",
+        "trades": 11,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        62.13115305049826,
+        69.39431703540164,
+        21.469690867939338
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a5b43362cf",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d644db4fd7",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.008,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "HL",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 21.469690867939338
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -11.541295903690205,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -304.92756326882494,
+        "strategy_return_pct": -421.30071658486133,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 58.24884008895815,
+        "tim_unit": "PCT",
+        "trades": 28
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222528Z_LAC_SHORT",
+      "bh_return_pct": 36.97698487952406,
+      "candidate_return_pct": 79.53862082205133,
+      "control_return_pct": 80.45635493115223,
+      "entry_fill_count": 100,
+      "entry_request_count": 498,
+      "entry_signal_rows": 2899,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 36.97698487952406,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 80.45635493115223,
+        "strategy_return_pct": 79.53862082205133,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 22.137726425297306,
+        "tim_unit": "PCT",
+        "trades": 18,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        90.85002229245444,
+        66.75700261793666,
+        22.137726425297306
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_5233a9ec46",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_7d708f4253",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_47ee166364",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LAC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 22.137726425297306
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 13.860357977561732,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -30.34925893642785,
+        "strategy_return_pct": -54.525443706640445,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 34.98341130729731,
+        "tim_unit": "PCT",
+        "trades": 55
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222528Z_LDOS_SHORT",
+      "bh_return_pct": 37.502275681795886,
+      "candidate_return_pct": 63.600950666373045,
+      "control_return_pct": 66.61711672127494,
+      "entry_fill_count": 226,
+      "entry_request_count": 1919,
+      "entry_signal_rows": 13043,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 37.502275681795886,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 66.61711672127494,
+        "strategy_return_pct": 63.600950666373045,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 17.892768575587358,
+        "tim_unit": "PCT",
+        "trades": 8,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        60.079337558122155,
+        29.55340092468386,
+        17.892768575587358
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LDOS",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 17.892768575587358
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 141.54096581156944,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 747.7376704242816,
+        "strategy_return_pct": 472.91339106272943,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 53.24323607373823,
+        "tim_unit": "PCT",
+        "trades": 22
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222536Z_TTD_SHORT",
+      "bh_return_pct": 54.32517524788675,
+      "candidate_return_pct": 11.073336128788743,
+      "control_return_pct": 280.87856778396537,
+      "entry_fill_count": 102,
+      "entry_request_count": 327,
+      "entry_signal_rows": 1100,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 54.32517524788675,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 280.87856778396537,
+        "strategy_return_pct": 11.073336128788743,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 65.74123880927395,
+        "tim_unit": "PCT",
+        "trades": 7,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        19.143107134245238,
+        72.29263011470465,
+        65.74123880927395
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_56a226c1de",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d2b601e75a",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "TTD",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 65.74123880927395
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -48.38169898684567,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -162.77055386628544,
+        "strategy_return_pct": -195.13307128788776,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 42.22653298531826,
+        "tim_unit": "PCT",
+        "trades": 44
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222539Z_UEC_SHORT",
+      "bh_return_pct": 22.647777897177566,
+      "candidate_return_pct": 52.837561012471085,
+      "control_return_pct": 33.66031117641041,
+      "entry_fill_count": 110,
+      "entry_request_count": 819,
+      "entry_signal_rows": 4974,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 22.647777897177566,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 33.66031117641041,
+        "strategy_return_pct": 52.837561012471085,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 22.898815970453345,
+        "tim_unit": "PCT",
+        "trades": 14,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        75.83552986120526,
+        31.202333297451947,
+        22.898815970453345
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_d644db4fd7",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.008,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_546ae167b5",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_a3254938d3",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UEC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 22.898815970453345
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -133.04902735158709,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -219.77969221325728,
+        "strategy_return_pct": -315.73992094813593,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 42.58681870889187,
+        "tim_unit": "PCT",
+        "trades": 41
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_15M_LOW_20260726T222539Z_UUUU_SHORT",
+      "bh_return_pct": 26.197039136348838,
+      "candidate_return_pct": 41.346503782819404,
+      "control_return_pct": 1.984464726022452,
+      "entry_fill_count": 126,
+      "entry_request_count": 754,
+      "entry_signal_rows": 5701,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_15M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 26.197039136348838,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1.984464726022452,
+        "strategy_return_pct": 41.346503782819404,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 22.82528921226807,
+        "tim_unit": "PCT",
+        "trades": 14,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        78.14702377075105,
+        30.128058467958553,
+        22.82528921226807
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_direct_7d708f4253",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "15m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_370e14acb2",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_15M_LOW",
+          "label": "ENTRY_BOUNCE_15M_LOW_union-with-green_e089841eb7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "15m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UUUU",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 22.82528921226807
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 204.7797881146574,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1683.7994543549203,
+        "strategy_return_pct": 1702.0923089074952,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 78.40826030734836,
+        "tim_unit": "PCT",
+        "trades": 24
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222545Z_AMD_LONG",
+      "bh_return_pct": 134.45127631309217,
+      "candidate_return_pct": 1139.194280181851,
+      "control_return_pct": 1125.1074038655374,
+      "entry_fill_count": 68,
+      "entry_request_count": 853,
+      "entry_signal_rows": 26009,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 134.45127631309217,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1125.1074038655374,
+        "strategy_return_pct": 1139.194280181851,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 96.72595655564506,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        39.96221232946522,
+        95.22894841352355,
+        96.72595655564506
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_1033a368d7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_bf48f3ce68",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "AMD",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 96.72595655564506
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 123.02022364128673,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1150.8238578800124,
+        "strategy_return_pct": 1269.5158580675118,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 84.46000370467371,
+        "tim_unit": "PCT",
+        "trades": 28
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222545Z_ARM_LONG",
+      "bh_return_pct": 126.60405366721074,
+      "candidate_return_pct": 1111.2660059505163,
+      "control_return_pct": 1036.5228750155122,
+      "entry_fill_count": 50,
+      "entry_request_count": 347,
+      "entry_signal_rows": 27741,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 126.60405366721074,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1036.5228750155122,
+        "strategy_return_pct": 1111.2660059505163,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 95.6202610701929,
+        "tim_unit": "PCT",
+        "trades": 7,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        90.64845286002955,
+        66.1963650301731,
+        95.6202610701929
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "ARM",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 95.6202610701929
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 118.22124975442439,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 531.313120524251,
+        "strategy_return_pct": 739.2936467061916,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 73.90386727645489,
+        "tim_unit": "PCT",
+        "trades": 22
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222549Z_DINO_LONG",
+      "bh_return_pct": 90.70132580125754,
+      "candidate_return_pct": 536.0883910198731,
+      "control_return_pct": 440.4078884747945,
+      "entry_fill_count": 106,
+      "entry_request_count": 879,
+      "entry_signal_rows": 23897,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 90.70132580125754,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 440.4078884747945,
+        "strategy_return_pct": 536.0883910198731,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 90.57909943283843,
+        "tim_unit": "PCT",
+        "trades": 5,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        39.35010633679363,
+        88.7897039115833,
+        90.57909943283843
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_818ea3bb66",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "DINO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 90.57909943283843
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 214.03152885779164,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1466.297651286282,
+        "strategy_return_pct": 1663.4630493097548,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 90.05794290801563,
+        "tim_unit": "PCT",
+        "trades": 30
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222553Z_INTC_LONG",
+      "bh_return_pct": 139.23162607466847,
+      "candidate_return_pct": 1064.4149659168652,
+      "control_return_pct": 778.2689081918213,
+      "entry_fill_count": 75,
+      "entry_request_count": 608,
+      "entry_signal_rows": 16414,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 139.23162607466847,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 778.2689081918213,
+        "strategy_return_pct": 1064.4149659168652,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 96.4390565760181,
+        "tim_unit": "PCT",
+        "trades": 10,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        83.9753977686574,
+        88.8700754265455,
+        96.4390565760181
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_bf48f3ce68",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_43f00d8471",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_bf48f3ce68",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "INTC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 96.4390565760181
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 103.59163071551855,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 163.18516807441682,
+        "strategy_return_pct": 284.76637893077657,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 55.520382209206524,
+        "tim_unit": "PCT",
+        "trades": 24
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222555Z_MPC_LONG",
+      "bh_return_pct": 88.47969709778054,
+      "candidate_return_pct": 177.67586536171373,
+      "control_return_pct": 106.89152194910021,
+      "entry_fill_count": 65,
+      "entry_request_count": 1472,
+      "entry_signal_rows": 17526,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 88.47969709778054,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 106.89152194910021,
+        "strategy_return_pct": 177.67586536171373,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 40.47546363618615,
+        "tim_unit": "PCT",
+        "trades": 9,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        42.35784431668307,
+        84.69001709952406,
+        40.47546363618615
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_daeaa6ac7a",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.008,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_bf48f3ce68",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MPC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 40.47546363618615
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 104.10623348167393,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1283.0888992779774,
+        "strategy_return_pct": 1063.5981387118638,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 88.90321849477286,
+        "tim_unit": "PCT",
+        "trades": 39
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222559Z_MRVL_LONG",
+      "bh_return_pct": 123.58271432366617,
+      "candidate_return_pct": 1303.4883583585913,
+      "control_return_pct": 1301.8042139592224,
+      "entry_fill_count": 119,
+      "entry_request_count": 565,
+      "entry_signal_rows": 1217,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 123.58271432366617,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1301.8042139592224,
+        "strategy_return_pct": 1303.4883583585913,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 96.02862082585665,
+        "tim_unit": "PCT",
+        "trades": 11,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        91.59100475051426,
+        78.85409707496063,
+        96.02862082585665
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_cb479c8fd1",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MRVL",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 96.02862082585665
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 381.9497630005161,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 2503.081635807697,
+        "strategy_return_pct": 2675.1056100058163,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 68.77646603436756,
+        "tim_unit": "PCT",
+        "trades": 21
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222600Z_MU_LONG",
+      "bh_return_pct": 204.9048862019815,
+      "candidate_return_pct": 1567.6187717752614,
+      "control_return_pct": 1337.7787549949162,
+      "entry_fill_count": 54,
+      "entry_request_count": 902,
+      "entry_signal_rows": 23139,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 204.9048862019815,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1337.7787549949162,
+        "strategy_return_pct": 1567.6187717752614,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 82.84849001824033,
+        "tim_unit": "PCT",
+        "trades": 8,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        41.142405245126476,
+        79.86165580054494,
+        82.84849001824033
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "MU",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 82.84849001824033
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 127.67288706520714,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 642.1272102557874,
+        "strategy_return_pct": 866.4753298345607,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 52.58492079967802,
+        "tim_unit": "PCT",
+        "trades": 44
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222600Z_PBF_LONG",
+      "bh_return_pct": 121.26311234634873,
+      "candidate_return_pct": 798.998142446421,
+      "control_return_pct": 575.8718616559796,
+      "entry_fill_count": 164,
+      "entry_request_count": 1637,
+      "entry_signal_rows": 17497,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 121.26311234634873,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 575.8718616559796,
+        "strategy_return_pct": 798.998142446421,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 95.02874642078677,
+        "tim_unit": "PCT",
+        "trades": 9,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        32.456917533192396,
+        25.481300976850275,
+        95.02874642078677
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_abf9f7f792",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.008,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "PBF",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 95.02874642078677
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 888.4673241916411,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 5414.039040168029,
+        "strategy_return_pct": 5342.495329313733,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 96.5519578849043,
+        "tim_unit": "PCT",
+        "trades": 9
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222558Z_SNDK_LONG",
+      "bh_return_pct": 467.0874478222656,
+      "candidate_return_pct": 2202.0100024000503,
+      "control_return_pct": 2267.267460783638,
+      "entry_fill_count": 19,
+      "entry_request_count": 423,
+      "entry_signal_rows": 16511,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 467.0874478222656,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 2267.267460783638,
+        "strategy_return_pct": 2202.0100024000503,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 97.57823627639236,
+        "tim_unit": "PCT",
+        "trades": 7,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        95.42004676200497,
+        97.57823627639236
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "SNDK",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 97.57823627639236
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 113.26658304126656,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 411.1729843311847,
+        "strategy_return_pct": 517.7309288003702,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 71.9398757529246,
+        "tim_unit": "PCT",
+        "trades": 22
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222605Z_VLO_LONG",
+      "bh_return_pct": 84.90542439326981,
+      "candidate_return_pct": 331.9363802496835,
+      "control_return_pct": 362.28690361494137,
+      "entry_fill_count": 83,
+      "entry_request_count": 737,
+      "entry_signal_rows": 24402,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 84.90542439326981,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 362.28690361494137,
+        "strategy_return_pct": 331.9363802496835,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 90.97980428876777,
+        "tim_unit": "PCT",
+        "trades": 4,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        35.54384330788876,
+        85.99457283390048,
+        90.97980428876777
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_818ea3bb66",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "LONG",
+      "status": "DISCARD_GRAY",
+      "symbol": "VLO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 90.97980428876777
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 69.83729599844258,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 407.145511678462,
+        "strategy_return_pct": 500.7438467131075,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 75.58267049567463,
+        "tim_unit": "PCT",
+        "trades": 32
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": true,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222541Z_ACN_SHORT",
+      "bh_return_pct": 44.496811873790826,
+      "candidate_return_pct": 412.10818678839877,
+      "control_return_pct": 388.07087249898467,
+      "entry_fill_count": 162,
+      "entry_request_count": 1050,
+      "entry_signal_rows": 5829,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 44.496811873790826,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 388.07087249898467,
+        "strategy_return_pct": 412.10818678839877,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 97.57672004155772,
+        "tim_unit": "PCT",
+        "trades": 6,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        28.753960906959453,
+        96.52534625127761,
+        97.57672004155772
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ACN",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 97.57672004155772
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -82.31360627893449,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -818.3730081090861,
+        "strategy_return_pct": -818.2699552760375,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 64.31618280236634,
+        "tim_unit": "PCT",
+        "trades": 44
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222544Z_ALB_SHORT",
+      "bh_return_pct": 19.412470988897663,
+      "candidate_return_pct": -8.600075077044403,
+      "control_return_pct": 3.870972883957438,
+      "entry_fill_count": 171,
+      "entry_request_count": 967,
+      "entry_signal_rows": 13596,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 19.412470988897663,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 3.870972883957438,
+        "strategy_return_pct": -8.600075077044403,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 36.53291222786248,
+        "tim_unit": "PCT",
+        "trades": 16,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        87.72963455888481,
+        72.4225644880693,
+        36.53291222786248
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_818ea3bb66",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ALB",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 36.53291222786248
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -153.30760908123267,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -589.0567537084631,
+        "strategy_return_pct": -1387.4255353919102,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 66.54855967534812,
+        "tim_unit": "PCT",
+        "trades": 57
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222547Z_ASTS_SHORT",
+      "bh_return_pct": 22.270313733651207,
+      "candidate_return_pct": -33.86987801570221,
+      "control_return_pct": -17.12103761217022,
+      "entry_fill_count": 191,
+      "entry_request_count": 1521,
+      "entry_signal_rows": 6079,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 22.270313733651207,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -17.12103761217022,
+        "strategy_return_pct": -33.86987801570221,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 25.700598328432676,
+        "tim_unit": "PCT",
+        "trades": 19,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        88.82247809175367,
+        90.16274717340238,
+        25.700598328432676
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_cb479c8fd1",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_cb479c8fd1",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_1033a368d7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "ASTS",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 25.700598328432676
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -85.4387378283005,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -223.68695209101412,
+        "strategy_return_pct": -196.6047179531347,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 29.504565272655118,
+        "tim_unit": "PCT",
+        "trades": 61
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222550Z_EGO_SHORT",
+      "bh_return_pct": 23.025445973287795,
+      "candidate_return_pct": 27.739993422447515,
+      "control_return_pct": 4.839178641528179,
+      "entry_fill_count": 191,
+      "entry_request_count": 1434,
+      "entry_signal_rows": 9750,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 23.025445973287795,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 4.839178641528179,
+        "strategy_return_pct": 27.739993422447515,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 27.530813824014007,
+        "tim_unit": "PCT",
+        "trades": 13,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        30.362868727072847,
+        30.78099644743997,
+        27.530813824014007
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_2641789468",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_b98d3258f0",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_ca12176b06",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "EGO",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 27.530813824014007
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -219.35524244446552,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -734.6990352108601,
+        "strategy_return_pct": -1319.0464877643299,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 62.912235584345595,
+        "tim_unit": "PCT",
+        "trades": 51
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222550Z_HL_SHORT",
+      "bh_return_pct": 21.954458589534084,
+      "candidate_return_pct": -6.874059377800404,
+      "control_return_pct": 15.040325246225711,
+      "entry_fill_count": 224,
+      "entry_request_count": 1098,
+      "entry_signal_rows": 13803,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 21.954458589534084,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 15.040325246225711,
+        "strategy_return_pct": -6.874059377800404,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 22.56618132953035,
+        "tim_unit": "PCT",
+        "trades": 11,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        87.80868159148613,
+        83.37557191526592,
+        22.56618132953035
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_43f00d8471",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "HL",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 22.56618132953035
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -11.541295903690205,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -304.92756326882494,
+        "strategy_return_pct": -505.57495001005947,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 57.34268873328178,
+        "tim_unit": "PCT",
+        "trades": 29
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222555Z_LAC_SHORT",
+      "bh_return_pct": 36.97698487952406,
+      "candidate_return_pct": 92.4054833127184,
+      "control_return_pct": 80.45635493115223,
+      "entry_fill_count": 108,
+      "entry_request_count": 989,
+      "entry_signal_rows": 7290,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 36.97698487952406,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 80.45635493115223,
+        "strategy_return_pct": 92.4054833127184,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 23.03446377149453,
+        "tim_unit": "PCT",
+        "trades": 18,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        85.77771433721861,
+        67.86415236684414,
+        23.03446377149453
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_43f00d8471",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_1033a368d7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LAC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 23.03446377149453
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 13.860357977561732,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -30.34925893642785,
+        "strategy_return_pct": -63.583974157801,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 35.40894419735596,
+        "tim_unit": "PCT",
+        "trades": 55
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222555Z_LDOS_SHORT",
+      "bh_return_pct": 37.502275681795886,
+      "candidate_return_pct": 65.40422275652563,
+      "control_return_pct": 66.61711672127494,
+      "entry_fill_count": 224,
+      "entry_request_count": 2046,
+      "entry_signal_rows": 14615,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 37.502275681795886,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 66.61711672127494,
+        "strategy_return_pct": 65.40422275652563,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 18.184205160275496,
+        "tim_unit": "PCT",
+        "trades": 8,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        60.888616699269164,
+        29.756325506780332,
+        18.184205160275496
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_2641789468",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_2641789468",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_2641789468",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "LDOS",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 18.184205160275496
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": 141.54096581156944,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 747.7376704242816,
+        "strategy_return_pct": 861.5800857667209,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 69.28546564972572,
+        "tim_unit": "PCT",
+        "trades": 24
+      },
+      "all_folds_beat_bh": true,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222604Z_TTD_SHORT",
+      "bh_return_pct": 54.32517524788675,
+      "candidate_return_pct": 491.07740930350775,
+      "control_return_pct": 280.87856778396537,
+      "entry_fill_count": 192,
+      "entry_request_count": 738,
+      "entry_signal_rows": 14732,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 54.32517524788675,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 280.87856778396537,
+        "strategy_return_pct": 491.07740930350775,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 93.72652296470406,
+        "tim_unit": "PCT",
+        "trades": 6,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        20.734468019950658,
+        89.08247430696993,
+        93.72652296470406
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_2641789468",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_6938df8d38",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_05cc0a528e",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.025,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "TTD",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 93.72652296470406
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -48.38169898684567,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -162.77055386628544,
+        "strategy_return_pct": -162.62744133573676,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 46.93395366559629,
+        "tim_unit": "PCT",
+        "trades": 44
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222604Z_UEC_SHORT",
+      "bh_return_pct": 22.647777897177566,
+      "candidate_return_pct": 58.333794407382626,
+      "control_return_pct": 33.66031117641041,
+      "entry_fill_count": 134,
+      "entry_request_count": 1688,
+      "entry_signal_rows": 12338,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 22.647777897177566,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 33.66031117641041,
+        "strategy_return_pct": 58.333794407382626,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 25.197436198433365,
+        "tim_unit": "PCT",
+        "trades": 14,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        86.11447091151929,
+        33.20435254631001,
+        25.197436198433365
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_43f00d8471",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.004,
+            "recovery_only": false,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_1033a368d7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_1033a368d7",
+          "params": {
+            "confirmation": "none",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UEC",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 25.197436198433365
+    },
+    {
+      "aggregate_metrics": {
+        "bh_return_pct": -133.04902735158709,
+        "metric_scope": "NESTED_OUTER_VALIDATION_FOLD_AGGREGATE",
+        "return_aggregation": "SUM_ACROSS_OUTER_VALIDATION_FOLDS",
+        "return_unit": "SUM_OF_FOLD_CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": -219.77969221325728,
+        "strategy_return_pct": -313.2791848816111,
+        "tim_aggregation": "ROW_WEIGHTED_MEAN_ACROSS_OUTER_VALIDATION_FOLDS",
+        "tim_pct": 47.81507535103958,
+        "tim_unit": "PCT",
+        "trades": 50
+      },
+      "all_folds_beat_bh": false,
+      "all_folds_beat_control": false,
+      "all_folds_exposure_policy_pass": false,
+      "artifact": "data/reports/vec_research/entry_overlay_ENTRY_BOUNCE_5M_LOW_20260726T222605Z_UUUU_SHORT",
+      "bh_return_pct": 26.197039136348838,
+      "candidate_return_pct": 22.11994505327675,
+      "control_return_pct": 1.984464726022452,
+      "entry_fill_count": 198,
+      "entry_request_count": 1469,
+      "entry_signal_rows": 7992,
+      "exposure_policy_pass": false,
+      "family": "ENTRY_BOUNCE_5M_LOW",
+      "final_oos_metrics": {
+        "bh_return_pct": 26.197039136348838,
+        "fold_index": 3,
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "return_unit": "CAPITAL_RETURN_PCT",
+        "same_entry_control_return_pct": 1.984464726022452,
+        "strategy_return_pct": 22.11994505327675,
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_pct": 24.11759249589521,
+        "tim_unit": "PCT",
+        "trades": 18,
+        "validation_window": [
+          "2026-01-01",
+          "2026-07-25"
+        ]
+      },
+      "fold_tim_pct": [
+        91.2948423304143,
+        32.06928000612466,
+        24.11759249589521
+      ],
+      "future_htf_count": 0,
+      "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+      "return_unit": "CAPITAL_RETURN_PCT",
+      "selected_settings_by_fold": [
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_direct_f30cb6f9ae",
+          "params": {
+            "confirmation": "two-of-two",
+            "distance": 0.015,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "direct"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ea3f10aca1",
+          "params": {
+            "confirmation": "stoch15",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        },
+        {
+          "family": "ENTRY_BOUNCE_5M_LOW",
+          "label": "ENTRY_BOUNCE_5M_LOW_union-with-green_ca90d3e412",
+          "params": {
+            "confirmation": "stoch5",
+            "distance": 0.025,
+            "recovery_only": true,
+            "timeframe": "5m"
+          },
+          "role": "union-with-green"
+        }
+      ],
+      "side": "SHORT",
+      "status": "DISCARD_GRAY",
+      "symbol": "UUUU",
+      "tim_unit": "PCT",
+      "weighted_tim_pct": 24.11759249589521
+    }
+  ]
+}
