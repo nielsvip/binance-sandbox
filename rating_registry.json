@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-26T14:46:56.549873+00:00",
+  "timestamp": "2026-07-26T15:01:58.804923+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -38,9 +38,9 @@
     },
     {
       "symbol": "ACEUSDT",
-      "net_score": -10.5,
+      "net_score": -10.4,
       "long_score": 0,
-      "short_score": 10.5
+      "short_score": 10.4
     },
     {
       "symbol": "SPXUSDT",
@@ -803,8 +803,8 @@
   "top_shorts": [
     [
       "ACEUSDT",
-      10.5,
-      0.08383929
+      10.4,
+      0.08381877
     ]
   ],
   "hedge_usage": {

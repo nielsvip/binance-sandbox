@@ -37,6 +37,14 @@ def main() -> int:
     ap.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT)
     ap.add_argument("--account", default="trb")
     ap.add_argument("--capital", type=float, default=10_000.0)
+    ap.add_argument(
+        "--npz-path",
+        type=Path,
+        help=(
+            "relocated immutable NPZ; accepted only when its SHA-256 matches "
+            "the frozen source artifact"
+        ),
+    )
     args = ap.parse_args()
 
     artifact = args.artifact.resolve()
@@ -50,7 +58,10 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=False)
     schedule_path = out / "frozen_ladder_schedule.jsonl.gz"
     spec = build_spec_and_schedule(
-        artifact, schedule_path=schedule_path, account=args.account
+        artifact,
+        schedule_path=schedule_path,
+        account=args.account,
+        npz_path_override=args.npz_path,
     )
     spec_path = out / "research_ladder_spec.json"
     spec_path.write_text(json.dumps(spec, sort_keys=True, indent=2) + "\n")

@@ -415,6 +415,7 @@ def build_spec_and_schedule(
     *,
     schedule_path: str | Path,
     account: str = "trb",
+    npz_path_override: str | Path | None = None,
 ) -> dict[str, Any]:
     artifact = Path(artifact_dir).resolve()
     payload = json.loads((artifact / "result.json").read_text())
@@ -428,7 +429,10 @@ def build_spec_and_schedule(
         raise LadderReplayError("source artifact contains no frozen outer fold")
     frozen = folds[-1]
     start, end = frozen["validation"]
-    npz_path = Path(manifest["npz"])
+    # Frozen artifacts retain an absolute S1 path, but the rolling indicator archive at that
+    # path is legitimately refreshed. Permit an explicit immutable copy only when its bytes
+    # still match the artifact fingerprint; this relocates data without changing evidence.
+    npz_path = Path(npz_path_override or manifest["npz"])
     data = ladder.top._load_execution(
         str(manifest["symbol"]).upper(),
         npz_path.resolve().parent,

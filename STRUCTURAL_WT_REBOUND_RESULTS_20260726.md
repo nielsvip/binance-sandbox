@@ -167,6 +167,12 @@ same-entry, same-window causal control. The next structural experiment should
 only be retained if it improves that control or demonstrates an explicitly
 accepted drawdown/exposure tradeoff on untouched data.
 
+Current-engine exact parity was rerun on 2026-07-26 in
+`v8_exact_ladder_replay_20260726T145112Z_MU_LONG` and passed all 34 actions,
+accounting, capacity and completed-HTF checks with the same `+1,316.021%`
+return. The E02 control is therefore current as a research benchmark, while
+remaining deliberately non-promotable/non-matrix.
+
 ## Nested/frozen same-ladder validation
 
 **Artifact:** `data/reports/vec_research/struct_wt_nested_frozen_20260726T073000Z`

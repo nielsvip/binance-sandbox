@@ -219,3 +219,24 @@ Fingerprints:
   `6369bbb67c5a73640df092c16df8d5267392b888fe5a90faf33ad1f01d0aff18`
 
 Safety state remains `matrix_written=false`, `promotion_allowed=false`.
+
+### Current-engine revalidation — 2026-07-26
+
+The same frozen fold was rerun after the structural/reentry and matrix-store
+repairs:
+
+`data/reports/vec_research/v8_exact_ladder_replay_20260726T145112Z_MU_LONG`
+
+The rolling `backtest_v8/indicators/MU.npz` path had changed, so the runner used
+the immutable repaired-campaign copy through the new explicit `--npz-path`
+relocation option. Relocation is accepted only when SHA-256 still equals the
+source artifact's `f57ce8…` fingerprint; it cannot substitute different data.
+
+The current engine (`6bf57199…`) again executed all `34/34` actions and matched
+`+1,316.021377830872%`, `$26,320.4275566`, `77.0916576519%` weighted TIM,
+zero clamps/capacity breaches, zero future HTF inputs and the expected
+next-RTH fills. Signal, schedule and accounting audits all passed. This keeps
+the 6.4117×-B&H MU result as the strongest exact-parity research control.
+Safety remains `matrix_written=false`, `promotion_allowed=false`; the next gate
+is independent symbol/period evidence and conversion from the isolated
+research route into a normal, fingerprinted Tier-2 matrix cell.
