@@ -2141,3 +2141,43 @@ validation before receiving a new fingerprint. No matrix, live, canonical or
 promotion state changed. Full hashes, fields, commands and rollback are in
 `VT_IMMUTABLE_LINEAGE_AUDIT_20260727.md`; the machine receipt is
 `data/reports/VT_NPZ_LINEAGE_AUDIT_20260727.json`.
+
+### §15.37 — SHORT metric polarity and native asymmetry audit (2026-07-27)
+
+The routed SHORT stack was classified metric by metric instead of assuming
+that every LONG number should be negated. The 54-row frozen inventory contains
+8 sign-inverted comparisons, 6 complemented bounded thresholds, 9 genuinely
+side-neutral magnitude/accounting fields and 31 SHORT-native state variables.
+The active WT/DC entry/exit comparators, adverse fill, P&L and fixed-unit
+side-aware B&H contracts are directionally correct; no active double inversion
+was found. The apparent `_score_short()` mirror in `wt_dc_entry_scorer.py` is
+live-inert because the public scorer returns through the multi-TF scorer first.
+
+The important remaining defect is policy, not arithmetic. The
+`TOP_REJECTION_SHORT` correction path arms during an extended bullish state,
+then the common disaster guard rejects an up day, RSI>=65, bullish D/4h,
+missing bearish D/4h confirmation and bullish daily WT. Those vetoes are valid
+for blind bear continuation but contradictory for a bounded correction short.
+No live bypass was introduced without exact evidence.
+
+A preregistered vector screen tested four coherent correction profiles across
+NVDA/MU/SNDK/MRVL/ARM and four bear-continuation profiles where data allowed.
+There were 24 candidate/key evaluations and 48 discovery-fold simulations.
+MSTR failed closed on incomplete Stoch/regression fields; COIN failed closed on
+pre-fix HTF timestamp aliases. MRVL alone had discovery-strict rows, but its
+hash-frozen untouched FINAL lost -6.8872% versus the 0% cash floor. All other
+FINAL folds stayed sealed. Exact replay was empty.
+
+Bullish structural reclaim caused 120/170 correction covers and 65/72 bear
+covers, while ATR emergency covers were only 4 and 0. Poor SHORT results are
+therefore not explained by an inverted emergency comparator. The evidence
+points to early entries and ordinary-rebound churn; the next native cover
+sequence must distinguish squeeze emergency, lower-top rebound failure and
+confirmed bullish structural reversal.
+
+The V2 runner writes/hashes the full discovery grid and selection freeze before
+the first FINAL call, then reopens and hash-checks the NPZ. Six loser rows were
+preserved gray in the fleet; no matrix/live/canonical-data mutation occurred.
+Full findings and rollback are in
+`SHORT_METRIC_POLARITY_AUDIT_20260727.md`; the compact receipt is
+`data/reports/vec_research/SHORT_METRIC_POLARITY_RECEIPT_20260727.json`.

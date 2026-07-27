@@ -1,0 +1,121 @@
+{
+  "artifact": "data/reports/vec_research/short_metric_polarity_20260727T040647Z",
+  "contract": "SHORT_POLARITY_TWO_BOOKS_SEALED_FINAL_V2",
+  "stage": "SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2",
+  "source_sha256": "fb004600a765a66145fb7392fcc9237b9370a5cc3681a27fc8247b519105383f",
+  "preregistration_sha256": "78e8e8dcc68bd8c56ddcae38b3770f489386e1052dd28976567f9917a2659c51",
+  "metric_inventory_sha256": "11b1085904a29862e82118d8894be67a0f9261c177bf665b1ed829be4067f8d5",
+  "discovery_grid_sha256": "ac2f740061cc2b3b876c717d01627acec8e01ad23181c24ff8a56d6f7e87b2a5",
+  "discovery_freeze_sha256": "680c7e67002a8b6af2f2095643cf95625c0b1c40ca625d3d93b3b21a4eada9d8",
+  "metric_class_counts": {
+    "SIGN_INVERTED": 8,
+    "THRESHOLD_COMPLEMENTED": 6,
+    "SIDE_NEUTRAL": 9,
+    "SHORT_NATIVE": 31
+  },
+  "screen": {
+    "candidate_evaluations": 24,
+    "discovery_fold_simulations": 48,
+    "valid_keys": 6,
+    "data_blocked_keys": 2,
+    "discovery_survivor_keys": 1,
+    "final_evaluated_keys": 1,
+    "exact_replay_count": 0
+  },
+  "rows": [
+    {
+      "symbol": "NVDA",
+      "book": "CORRECTION",
+      "selected": "C08_ATR_ACCEL_SHOCK__COV_C_RIDE",
+      "discovery_pass_count": 0,
+      "d1_capital_floor_exits_tim": [0.0, 0.0, 0, 0.0],
+      "d2_capital_floor_exits_tim": [-1.543444, 0.0, 1, 0.609208],
+      "final": null,
+      "status": "GRAY_DISCOVERY_REJECTED",
+      "npz_sha256": "596aa553cd45d27462cbe8ca7e0e923d526eb75ed9a8a37bb219851471bf20be"
+    },
+    {
+      "symbol": "MU",
+      "book": "CORRECTION",
+      "selected": "C02_STRUCT_IMPULSE__COV_C_FAST",
+      "discovery_pass_count": 0,
+      "d1_capital_floor_exits_tim": [26.247889, 0.0, 10, 0.896843],
+      "d2_capital_floor_exits_tim": [-5.228720, 0.0, 4, 1.348247],
+      "final": null,
+      "status": "GRAY_DISCOVERY_REJECTED",
+      "npz_sha256": "4ce1a1cea298ef3d801e6a2425d2307100e936631fbe423307905950d72734e2"
+    },
+    {
+      "symbol": "SNDK",
+      "book": "CORRECTION",
+      "selected": "C06_REJECTION_WICK__COV_C_FAST",
+      "discovery_pass_count": 0,
+      "d1_capital_floor_exits_tim": [0.0, 11.529458, 0, 0.0],
+      "d2_capital_floor_exits_tim": [-6.920756, 0.0, 6, 1.948636],
+      "final": null,
+      "status": "GRAY_DISCOVERY_REJECTED",
+      "npz_sha256": "5dc3706736aacf4d920d44c7a54f95bba92756f0bce55d8611f5853df12597e2"
+    },
+    {
+      "symbol": "MRVL",
+      "book": "CORRECTION",
+      "selected": "C08_ATR_ACCEL_SHOCK__COV_C_RIDE",
+      "discovery_pass_count": 2,
+      "d1_capital_floor_exits_tim": [3.678539, 0.0, 3, 0.949125],
+      "d2_capital_floor_exits_tim": [13.226289, 0.0, 2, 1.657845],
+      "final_capital_floor_exits_tim": [-6.887160, 0.0, 5, 2.012207],
+      "status": "GRAY_FINAL_REJECTED",
+      "npz_sha256": "7af6b225f078750e23a2c10abeeea4d4161bda8486095fe449903657c714c9ed"
+    },
+    {
+      "symbol": "ARM",
+      "book": "CORRECTION",
+      "selected": "C04_STRUCT_OR_WT_VOL__COV_C_BAL",
+      "discovery_pass_count": 0,
+      "d1_capital_floor_exits_tim": [10.808406, 0.0, 8, 1.830102],
+      "d2_capital_floor_exits_tim": [18.467980, 31.947305, 5, 3.737384],
+      "final": null,
+      "status": "GRAY_DISCOVERY_REJECTED",
+      "npz_sha256": "1f50f9aed419d9d21c0b875ea1a22777db4a095a2335bcf80c3fc6d256fe3d07"
+    },
+    {
+      "symbol": "IBIT",
+      "book": "BEAR",
+      "selected": "B04_ATR_VOL_BREAK__COV_B_FAST",
+      "discovery_pass_count": 0,
+      "d1_capital_floor_exits_tim": [-10.193495, 0.0, 8, 2.219988],
+      "d2_capital_floor_exits_tim": [6.799625, 17.779976, 4, 3.016079],
+      "final": null,
+      "status": "GRAY_DISCOVERY_REJECTED",
+      "npz_sha256": "b72b6b48e639d37f1cfac9f0b5cc08437de9e6323fdbcfc36829490dcc85fc1a"
+    }
+  ],
+  "data_errors": {
+    "MSTR": "stoch coverage incomplete and required 4h/D regression fields missing",
+    "COIN": "15m/1h/4h/D timestamps are pre-fix base-timestamp aliases"
+  },
+  "exit_attribution": {
+    "correction_all_candidates": {
+      "technical_exits": 170,
+      "BULL_STRUCTURAL_RECLAIM": 120,
+      "MAX_HOLD": 27,
+      "DOWNSIDE_EXHAUSTION": 16,
+      "EMERGENCY_ATR": 4,
+      "VOLATILITY_TRAILING_COVER": 3
+    },
+    "bear_all_candidates": {
+      "technical_exits": 72,
+      "BULL_STRUCTURAL_RECLAIM": 65,
+      "MAX_HOLD": 4,
+      "DOWNSIDE_EXHAUSTION": 3,
+      "EMERGENCY_ATR": 0
+    }
+  },
+  "fleet_ingest": {
+    "appended": 6,
+    "backup": "data/reports/path_fleet/queue.db.bak_short_metric_polarity_20260727T040656Z",
+    "matrix_written": false
+  },
+  "matrix_written": false,
+  "promotion_allowed": false
+}
