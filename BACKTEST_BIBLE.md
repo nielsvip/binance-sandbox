@@ -2031,3 +2031,35 @@ One attributable gray discovery row was appended idempotently under
 Full registry, folds, hashes and rollback are in
 `DINO_PHASE3_JOINT_STABILITY_RESULTS_20260727.md`; compact machine evidence is
 `data/reports/vec_research/dino_phase3_joint_stability_20260727T0610Z/summary.json`.
+
+### §15.34 — MU_LONG DAILY_DEEP Pareto holdout (2026-07-27)
+
+The already-preregistered §15.30 candidate 151 was reconsidered under a
+fixed Pareto/risk contract rather than a new grid. Before F3 was opened, the
+contract required every discovery fold to make at least 2x positive B&H,
+stay at 70–80% weighted exposure, remain causal/solvent/capacity-safe, fill at
+least 99% of requests with no more than five clamps, and preserve reclaim.
+Relative to the unstable source, it could sacrifice at most 25% of return
+only while improving distance to the exposure band by at least 10 points;
+drawdown was capped at 40% and source deterioration at 25 points, while
+minimum equity had to remain above $7,500 and within $2,000 of source. There
+was no score and F3 could not change the rule.
+
+Candidate 151 passed discovery. F1 returned +567.3980% versus +44.0878% B&H
+at 77.3903% weighted TIM; F2 returned +707.2979% versus +132.9570% B&H at
+77.4247%. Both had zero clamps. F2 retained 77.80% of the source's raw return
+while replacing its 150 clamps and 23.09% fill ratio with zero clamps and
+100% fill.
+
+The once-opened F3 returned +1,170.7005% versus +205.2519% B&H (5.704x),
+with zero clamps, 35.8534% maximum drawdown and $7,912.35 minimum equity.
+It failed the frozen contract because weighted TIM fell to 68.6153%, 1.3847
+points below the band; the already-stable source exposure meant its 11.04%
+return sacrifice also lacked the declared exposure compensation. Exact-v3
+replay passed 33/33 actions, zero refusals/future HTF sources, zero TIM delta
+and `-2.27e-11` bp accounting delta. Thus the miss is genuine, not vector
+parity error. The result remains gray: useful stable-B&H evidence, but neither
+raw-return optimal nor robust across all folds. No matrix/live/canonical state
+changed. Full detail is in
+`MU_DAILY_DEEP_PARETO_HOLDOUT_RESULTS_20260727.md`; compact evidence is
+`data/reports/vec_research/MU_DAILY_DEEP_PARETO_HOLDOUT_RECEIPT_20260727.json`.
