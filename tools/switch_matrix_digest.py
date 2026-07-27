@@ -431,6 +431,21 @@ def load_hao_short_native_phase3() -> dict | None:
     return payload
 
 
+def load_hao_short_exposure_phase4() -> dict | None:
+    """Load gray HAO phase-4 persistence evidence; never imply promotion."""
+    path = (
+        REPORTS
+        / "vec_research"
+        / "HAO_SHORT_EXPOSURE_PHASE4_RECEIPT_20260727.json"
+    )
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    payload["_artifact"] = str(path.relative_to(BASE))
+    return payload
+
+
 def load_latest_ladder_retunes() -> list[dict]:
     """Latest frozen exposure-retune artifact for every discovered symbol/side.
 
@@ -763,6 +778,7 @@ def main() -> None:
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
     mu_pareto_holdout = load_mu_daily_deep_pareto_holdout()
     hao_short_phase3 = load_hao_short_native_phase3()
+    hao_short_phase4 = load_hao_short_exposure_phase4()
     ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
@@ -1248,6 +1264,47 @@ def main() -> None:
         "V1–V3 were explicitly invalidated. V4 fixes the persistent-reentry state "
         "contract, uses the shared completed-parent clock, and keeps the final fold sealed "
         "because no discovery candidate met every exposure/control gate.",
+        "",
+        "## HAO SHORT exposure/persistence phase 4",
+        "",
+        "| contract | discovery strict | D1 strategy / B&H / TIM | "
+        "D2 strategy / B&H / TIM | final strategy / B&H / TIM | exact | verdict |",
+        "|---|---:|---|---|---|---|---|",
+    ]
+    if not hao_short_phase4:
+        lines.append("| — | — | — | — | — | — | NO RECEIPT |")
+    else:
+        folds = hao_short_phase4.get("frozen_discovery") or []
+        final = hao_short_phase4.get("final") or {}
+
+        def phase4_fold_text(index: int) -> str:
+            if index >= len(folds):
+                return "—"
+            row = folds[index] or {}
+            return (
+                f"{fmt(row.get('strategy_return_pct'), 2, '%')} / "
+                f"{fmt(row.get('bh_return_pct'), 2, '%')} / "
+                f"{fmt(row.get('weighted_tim_pct'), 2, '%')}"
+            )
+
+        final_text = (
+            f"{fmt(final.get('strategy_return_pct'), 2, '%')} / "
+            f"{fmt(final.get('bh_return_pct'), 2, '%')} / "
+            f"{fmt(final.get('weighted_tim_pct'), 2, '%')}"
+        )
+        lines.append(
+            f"| `{hao_short_phase4.get('contract', '—')}` | "
+            f"{hao_short_phase4.get('discovery_strict_count', '—')} | "
+            f"{phase4_fold_text(0)} | {phase4_fold_text(1)} | {final_text} | "
+            f"{hao_short_phase4.get('exact_replay_status', '—')} | "
+            f"{hao_short_phase4.get('status', '—')} |"
+        )
+    lines += [
+        "",
+        "The frozen phase-4 E02 policy achieved 70–80% weighted exposure and beat "
+        "side-aware B&H plus the phase-3 same-exit control in both discovery folds. "
+        "Its untouched final return remained strong but weighted TIM fell to 36.05%; "
+        "the row is gray, exact did not run, and no matrix/live state changed.",
         "",
         "## Top-10 ladder exposure retune",
         "",

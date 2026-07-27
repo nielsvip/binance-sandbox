@@ -2181,3 +2181,35 @@ preserved gray in the fleet; no matrix/live/canonical-data mutation occurred.
 Full findings and rollback are in
 `SHORT_METRIC_POLARITY_AUDIT_20260727.md`; the compact receipt is
 `data/reports/vec_research/SHORT_METRIC_POLARITY_RECEIPT_20260727.json`.
+
+### §15.38 — HAO_SHORT exposure and reclaim persistence phase 4 (2026-07-27)
+
+The accepted §15.36 gray diagnostic was held fixed at
+`F01_BEAR_REGIME`, `L_EXACT_0875_CAP6` and E02/E05 while a bounded,
+vector-first campaign changed only position persistence: delivered cap, staged
+initial depth, resting reclaim and one completed-1h bearish-impulse add. SHORT
+fills remained adverse, B&H used a $2,000 side-specific unit, capacity stayed
+$16,000, and 8,162 completed-HTF/impulse source checks found zero future
+sources. A reclaim can execute only at or below its stored SHORT reference.
+
+The discovery-frozen E02 policy `SEED4 → STAGE7.5 + REST_RECLAIM + ADD1`
+returned +536.6057% versus +67.3870% B&H in fold 1 at 77.9472% weighted
+TIM, and +174.1376% versus +20.6375% B&H in fold 2 at 71.2819% TIM. It
+also beat the phase-3 same-exit controls in both folds and remained solvent
+and within capacity. E05 had zero strict rows because it did not beat
+identical-entry E02 consistently.
+
+Only after the discovery freeze was fold 3 opened. It returned +1,746.5002%
+versus +99.7766% short B&H and +1,021.7546% for the phase-3 E02 control,
+but weighted TIM collapsed to 36.0456%. It therefore failed the fixed 70–80%
+gate; exact v3 did not run and no result became matrix-green or live eligible.
+The all-range gray inventory preserves 26 V1, 10 boundary-confirmation and 8
+reclaim-confirmation rows.
+
+The finite-fold reclaim gate was corrected to distinguish an untouched resting
+order from a due/touched but unfilled obligation. The former is valid boundary
+state; the latter still fails closed. Full protocol, results, hashes,
+invalidations and rollback are in
+`HAO_SHORT_EXPOSURE_PHASE4_RESULTS_20260727.md`; the compact fleet-compatible
+receipt is
+`data/reports/vec_research/HAO_SHORT_EXPOSURE_PHASE4_RECEIPT_20260727.json`.

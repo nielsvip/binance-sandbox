@@ -173,6 +173,37 @@ def test_load_hao_short_native_phase3(tmp_path, monkeypatch):
     )
 
 
+def test_load_hao_short_exposure_phase4_is_gray_receipt(tmp_path, monkeypatch):
+    reports = tmp_path / "data" / "reports"
+    receipt = (
+        reports
+        / "vec_research"
+        / "HAO_SHORT_EXPOSURE_PHASE4_RECEIPT_20260727.json"
+    )
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text(
+        json.dumps(
+            {
+                "contract": "HAO_SHORT_EXPOSURE_PHASE4_V3_RECLAIM_CONFIRM",
+                "discovery_strict_count": 3,
+                "status": "GRAY_DISCOVERY_PASS_FINAL_TIM_FAIL",
+                "promotion_allowed": False,
+            }
+        )
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    row = digest.load_hao_short_exposure_phase4()
+
+    assert row is not None
+    assert row["discovery_strict_count"] == 3
+    assert row["promotion_allowed"] is False
+    assert row["_artifact"].endswith(
+        "HAO_SHORT_EXPOSURE_PHASE4_RECEIPT_20260727.json"
+    )
+
+
 def test_ladder_retune_exact_must_reference_same_source_artifact(
     tmp_path, monkeypatch
 ):
