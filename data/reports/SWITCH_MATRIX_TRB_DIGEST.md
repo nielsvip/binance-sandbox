@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-27 14:30:40Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-27 15:30:42Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-27T14:30:32Z` (0m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-27T14:30:32Z` (0m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **489**; new current rows in 24h: **489**.
-- Raw repaired-campaign pilot rows since cutoff: **987**; **498** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,120/7,609**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-27T15:26:39Z` (4m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-27T15:26:39Z` (4m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **541**; new current rows in 24h: **541**.
+- Raw repaired-campaign pilot rows since cutoff: **987**; **446** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,068/7,609**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 14:30:40Z (0m old, 399,252 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 14:30:05Z (0m old, 37,709 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 15:30:42Z (0m old, 399,977 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 15:30:06Z (0m old, 37,827 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 91/3,522 | 2.6% | 2026-07-27T14:30:32Z | 0m | 62 |
-| VT_LONG | 316/3,522 | 9.0% | 2026-07-27T14:29:14Z | 1m | 146 |
+| MU_LONG | 107/3,522 | 3.0% | 2026-07-27T15:26:39Z | 4m | 65 |
+| VT_LONG | 352/3,522 | 10.0% | 2026-07-27T15:25:41Z | 5m | 150 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -68,14 +68,14 @@ These historical rows are retained for diagnosis and excluded from the automatic
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-27T14:56:52Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.25` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T14:50:13Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.2` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T14:49:56Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-27T14:29:40Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_DEADBAND` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
 | 2026-07-27T13:49:04Z | stocks_repaired_20260725_c2 | `STOP_PACK=ARROW_TH05` | 0.8577 | 4.7609 | -3.9032 | 0.180× | 46.88% | 2049 | RED: CAPACITY CLAMPS |
 | 2026-07-27T13:30:52Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_L` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
 | 2026-07-27T13:30:16Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_TRIM_L` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
 | 2026-07-27T13:30:00Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_TRIM` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:19:22Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_BAND_FULL` | 1.7221 | 4.7609 | -3.0388 | 0.362× | 48.38% | 1871 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:19:19Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_BAND_HARVEST` | 1.7453 | 4.7610 | -3.0157 | 0.367× | 48.44% | 1846 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:19:15Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -83,14 +83,14 @@ Best trading candidate: **none with at least two trades and complete return metr
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-27T15:25:41Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_QUICK_EXIT=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T15:25:25Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_SPIKE_FADE_EXIT=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T15:25:13Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_SPIKE_FADE_EXIT=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T15:19:24Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_QUICK_EXIT=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 | 2026-07-27T13:51:24Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=150` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 | 2026-07-27T13:51:10Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=125` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 | 2026-07-27T13:50:29Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=100` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 | 2026-07-27T13:48:22Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=75` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:48:11Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=50` | -0.2939 | 0.2744 | -0.5683 | -1.071× | 2.99% | 512 | REJECT |
-| 2026-07-27T13:35:22Z | stocks_repaired_20260725_c2 | `WT_3M_FORCE_OPEN_TF_LADDER_MULT=1.25` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:32:13Z | stocks_repaired_20260725_c2 | `WT_3M_FORCE_OPEN_TF_LADDER_MULT=1` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:32:11Z | stocks_repaired_20260725_c2 | `WT_3M_FORCE_OPEN_TF_LADDER_MULT=0.75` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -157,6 +157,14 @@ This lane used a preregistered Pareto contract before opening the final fold. A 
 | `HAO_SHORT_NATIVE_PHASE3_V4` | 48 | 12 | 12 | 0 | SEALED_NOT_EVALUATED | NOT_RUN_DISCOVERY_GATE_FAILED | GRAY_REJECTED_QUARANTINED |
 
 V1–V3 were explicitly invalidated. V4 fixes the persistent-reentry state contract, uses the shared completed-parent clock, and keeps the final fold sealed because no discovery candidate met every exposure/control gate.
+
+## HAO SHORT exposure/persistence phase 4
+
+| contract | discovery strict | D1 strategy / B&H / TIM | D2 strategy / B&H / TIM | final strategy / B&H / TIM | exact | verdict |
+|---|---:|---|---|---|---|---|
+| `HAO_SHORT_EXPOSURE_PHASE4_V3_RECLAIM_CONFIRM` | 3 | 536.61% / 67.39% / 77.95% | 174.14% / 20.64% / 71.28% | 1746.50% / 99.78% / 36.05% | NOT_RUN_FINAL_GATE_FAILED | GRAY_DISCOVERY_PASS_FINAL_TIM_FAIL |
+
+The frozen phase-4 E02 policy achieved 70–80% weighted exposure and beat side-aware B&H plus the phase-3 same-exit control in both discovery folds. Its untouched final return remained strong but weighted TIM fell to 36.05%; the row is gray, exact did not run, and no matrix/live state changed.
 
 ## Top-10 ladder exposure retune
 
@@ -241,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T14:30:32Z | 0m |
+| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T15:26:39Z | 4m |
 
 ## Reading the matrix
 
