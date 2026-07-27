@@ -115,7 +115,7 @@ def metric_inventory() -> list[dict[str, str]]:
                     "tools/vec_short_native_phase2.py:156-327"))
     for name in ("atr_ratio_1h", "relative_volume_1h", "adx_14_4h"):
         add(_metric("SHORT_NATIVE_CONTEXT", name, "SIDE_NEUTRAL",
-                    "magnitude/regime threshold; never negate", 
+                    "magnitude/regime threshold; never negate",
                     "tools/vec_short_native_phase2.py:156-327"))
     for name, semantics in (
         ("price_velocity_atr_1h", "(previous-close - close)/ATR; positive means downside"),
@@ -178,7 +178,7 @@ def metric_inventory() -> list[dict[str, str]]:
         add(_metric("SHORT_NATIVE_COVER", name, "SHORT_NATIVE", semantics,
                     "tools/vec_short_native_phase2.py:360-505"))
     add(_metric("SHORT_NATIVE_COVER", "notional/capacity", "SIDE_NEUTRAL",
-                "absolute notional capped at $16k", 
+                "absolute notional capped at $16k",
                 "tools/vec_short_native_phase2.py:340-505"))
 
     # Ledger/reporting semantics are part of a polarity audit because a correct

@@ -480,6 +480,14 @@ def simulate(
                 }
             )
         qty = 0.0
+    reclaim_obligation_open = math.isfinite(reclaim_level)
+    reclaim_obligation_due = bool(
+        reclaim_obligation_open
+        and (
+            float(data.low[right - 1]) <= reclaim_level
+            or float(data.close[right - 1]) <= reclaim_level
+        )
+    )
     minimum_equity = min(minimum_equity, cash)
     pnl = cash - ACCOUNT_USD
     bh_entry = adverse_fill_price(
@@ -521,7 +529,8 @@ def simulate(
         "vetoed_ladder_requests": vetoed_requests,
         "vetoed_reclaim_rows": vetoed_reclaims,
         "reclaim_above_reference_rejections": rejected_above_reference,
-        "reclaim_obligation_open_at_end": math.isfinite(reclaim_level),
+        "reclaim_obligation_open_at_end": reclaim_obligation_open,
+        "reclaim_obligation_due_at_end": reclaim_obligation_due,
         "requested_notional_usd": requested,
         "filled_notional_usd": filled,
         "clamp_count": clamps,
@@ -560,7 +569,9 @@ def normalize_fold(
         and row["entry_fills"] > 0
         and row["exit_fills"] > 0
         and row["future_htf_source_count"] == 0
-        and not row["reclaim_obligation_open_at_end"]
+        # A resting order whose level was never reached is valid finite-fold
+        # state, not a missed reentry. Only a due/touched obligation may fail.
+        and not row["reclaim_obligation_due_at_end"]
     )
     exit_gate = bool(
         exit_family == "EXIT_E02_DONCHIAN" or strategy > same_entry
@@ -586,6 +597,12 @@ def normalize_fold(
         "impulse_adds": int(row["impulse_adds"]),
         "reclaim_above_reference_rejections": int(
             row["reclaim_above_reference_rejections"]
+        ),
+        "reclaim_obligation_open_at_end": bool(
+            row["reclaim_obligation_open_at_end"]
+        ),
+        "reclaim_obligation_due_at_end": bool(
+            row["reclaim_obligation_due_at_end"]
         ),
         "future_htf_source_count": int(row["future_htf_source_count"]),
         "solvent": not bool(row["insolvent"]),
@@ -722,6 +739,7 @@ def run(args: argparse.Namespace) -> Path:
                 "peak_post_fill_notional_usd_lte": CAPACITY_USD,
                 "future_completed_htf_source_count": 0,
                 "reclaim_fill_lte_stored_reference": True,
+                "no_due_or_touched_reclaim_obligation_at_fold_end": True,
                 "first_strictly_later_availability_fill": True,
                 "adverse_short_fills_and_costs": True,
             },
@@ -973,7 +991,11 @@ def run(args: argparse.Namespace) -> Path:
                 "exact_replay_status": (
                     "FROZEN_FINAL_SCHEDULE_REQUIRES_BACKTEST_V8_V3"
                     if any(x["all_three_folds_strict"] for x in revealed)
-                    else "NOT_RUN_DISCOVERY_GATE_FAILED"
+                    else (
+                        "NOT_RUN_FINAL_GATE_FAILED"
+                        if discovery_strict
+                        else "NOT_RUN_DISCOVERY_GATE_FAILED"
+                    )
                 ),
             },
             "feature_audit": feature_audit,

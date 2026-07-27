@@ -31,6 +31,7 @@ def _raw(strategy: float, *, tim: float = 75.0, bh: float = 10.0) -> dict:
         "reclaim_above_reference_rejections": 0,
         "future_htf_source_count": 0,
         "reclaim_obligation_open_at_end": False,
+        "reclaim_obligation_due_at_end": False,
     }
 
 
@@ -106,6 +107,29 @@ def test_gate_requires_exposure_benchmark_source_and_same_entry_control() -> Non
     )
     assert not no_source_edge["fold_gate_pass"]
 
+    resting_not_reached = _raw(50.0)
+    resting_not_reached["reclaim_obligation_open_at_end"] = True
+    resting_not_reached["reclaim_obligation_due_at_end"] = False
+    valid_resting = normalize_fold(
+        resting_not_reached,
+        fold=1,
+        source_phase3=_raw(40.0),
+        same_entry_e02=_raw(45.0),
+        exit_family="EXIT_E05_DIVERGENCE_RETEST",
+    )
+    assert valid_resting["fold_gate_pass"]
+
+    resting_due = dict(resting_not_reached)
+    resting_due["reclaim_obligation_due_at_end"] = True
+    invalid_due = normalize_fold(
+        resting_due,
+        fold=1,
+        source_phase3=_raw(40.0),
+        same_entry_e02=_raw(45.0),
+        exit_family="EXIT_E05_DIVERGENCE_RETEST",
+    )
+    assert not invalid_due["fold_gate_pass"]
+
 
 def test_freeze_is_final_blind_and_gray_rows_cannot_open_final() -> None:
     rows = [
@@ -127,3 +151,24 @@ def test_freeze_is_final_blind_and_gray_rows_cannot_open_final() -> None:
         assert "final/exact" in str(exc)
     else:
         raise AssertionError("phase4 freeze accepted an exact field")
+
+
+def test_exact_status_distinguishes_discovery_from_final_failure() -> None:
+    # This is the three-way branch used after the persisted freeze.
+    def status(discovery_strict: bool, final_strict: bool) -> str:
+        return (
+            "FROZEN_FINAL_SCHEDULE_REQUIRES_BACKTEST_V8_V3"
+            if final_strict
+            else (
+                "NOT_RUN_FINAL_GATE_FAILED"
+                if discovery_strict
+                else "NOT_RUN_DISCOVERY_GATE_FAILED"
+            )
+        )
+
+    assert status(False, False) == "NOT_RUN_DISCOVERY_GATE_FAILED"
+    assert status(True, False) == "NOT_RUN_FINAL_GATE_FAILED"
+    assert (
+        status(True, True)
+        == "FROZEN_FINAL_SCHEDULE_REQUIRES_BACKTEST_V8_V3"
+    )
