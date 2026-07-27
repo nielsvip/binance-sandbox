@@ -47,9 +47,11 @@ XLS_ATTACH = ["SYMBOL_OVERVIEW_crypto.xlsx", "SYMBOL_OVERVIEW_stocks.xlsx"]
 XLS_LINK_ONLY = ["PERSYM_APPLIED_REVIEW.xlsx", "FULL_PARAM_MATRIX_crypto.xlsx", "FULL_PARAM_MATRIX_stocks.xlsx"]
 TWELVE_H = 12 * 3600
 MATRIX_FILL_STAGES = (
+    "VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
     "VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
     "VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
 )
+MATRIX_FILL_STAGE_PLACEHOLDERS = ",".join("?" for _ in MATRIX_FILL_STAGES)
 MATRIX_FILL_PRIORITY = ("MU", "ARM", "PBF")
 
 
@@ -98,7 +100,8 @@ def _usable_fleet_db():
         try:
             con = sqlite3.connect(str(path))
             count = con.execute(
-                "SELECT COUNT(*) FROM results WHERE stage IN (?,?)",
+                "SELECT COUNT(*) FROM results WHERE stage IN (%s)"
+                % MATRIX_FILL_STAGE_PLACEHOLDERS,
                 MATRIX_FILL_STAGES,
             ).fetchone()[0]
             con.close()
@@ -294,8 +297,8 @@ def _latest_matrix_filling_campaigns_section():
         con.row_factory = sqlite3.Row
         raw_rows = con.execute(
             """SELECT * FROM results
-               WHERE stage IN (?,?)
-               ORDER BY id""",
+               WHERE stage IN (%s)
+               ORDER BY id""" % MATRIX_FILL_STAGE_PLACEHOLDERS,
             MATRIX_FILL_STAGES,
         ).fetchall()
         con.close()

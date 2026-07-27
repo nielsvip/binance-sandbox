@@ -90,6 +90,17 @@ def test_latest_matrix_campaign_section_is_manifest_driven_and_truthful(
     con = _fleet_db(db)
     regime = "regime_campaign"
     immutable = "immutable_campaign"
+    state_aware = "state_aware_campaign"
+    _insert(
+        con,
+        4,
+        "VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
+        "PBF",
+        "LONG",
+        state_aware,
+        [True, True],
+        [71.0, 75.0],
+    )
     _insert(
         con,
         1,
@@ -125,6 +136,17 @@ def test_latest_matrix_campaign_section_is_manifest_driven_and_truthful(
 
     root = tmp_path / "vec_research"
     for campaign, results, exact in (
+        (
+            state_aware,
+            [
+                {
+                    "symbol": "PBF",
+                    "side": "LONG",
+                    "candidate_count": 4608,
+                }
+            ],
+            [],
+        ),
         (
             regime,
             [
@@ -174,6 +196,7 @@ def test_latest_matrix_campaign_section_is_manifest_driven_and_truthful(
     section = digest._latest_matrix_filling_campaigns_section()
 
     assert "RESEARCH ONLY" in section
+    assert "VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS" in section
     assert "VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS" in section
     assert "VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS" in section
     assert section.index("MU_LONG") < section.index("ARM_LONG")
