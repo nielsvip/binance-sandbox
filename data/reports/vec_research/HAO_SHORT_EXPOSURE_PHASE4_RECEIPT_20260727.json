@@ -1,0 +1,138 @@
+{
+  "accepted_phase3_result_sha256": "daa59b46e8229e8bce145c5eeef3a403435ae1388dd10e78ad379e7e2aaf62ca",
+  "artifact": "data/npz_recovery/hao_recovery_20260727T0010Z/controls/short_exposure_phase4/hao_short_exposure_phase4_reclaim_confirm_20260727T041459Z",
+  "availability_clock": "SYNTHETIC_PARENT_CLOSE_AVAILABILITY_V1",
+  "canonical_live_matrix_or_green_fleet_write": false,
+  "contract": "HAO_SHORT_EXPOSURE_PHASE4_V3_RECLAIM_CONFIRM",
+  "discovery_candidate_count": 8,
+  "discovery_freeze_file_sha256": "c4438942994f8558dd41989d32d1b3462923470a4c90ccdbb7b2a190b737ae33",
+  "discovery_grid_file_sha256": "06870cae22dcd2007ab0dd6024a9070ba5d4a08f1bcf6c7ba090da1c206c7b66",
+  "discovery_strict_count": 3,
+  "exact_replay_status": "NOT_RUN_FINAL_GATE_FAILED",
+  "feature_audit": {
+    "completed_1h_impulse_source_checks": 3258,
+    "completed_htf_source_checks": 4904,
+    "future_sources": 0,
+    "impulse_events": 77
+  },
+  "final": {
+    "bh_return_pct": 99.77662999174952,
+    "binary_tim_pct": 82.15728940006217,
+    "capacity_ok": true,
+    "fold_gate_pass": false,
+    "future_htf_source_count": 0,
+    "max_drawdown_account_pct": 39.038512201427324,
+    "minimum_account_equity_usd": 6607.975438386664,
+    "phase3_same_exit_control_return_pct": 1021.7545772304887,
+    "reclaim_obligation_due_at_end": false,
+    "solvent": true,
+    "strategy_return_pct": 1746.500177136008,
+    "strategy_vs_bh_multiple": 17.504100682498752,
+    "weighted_tim_pct": 36.04563780167992
+  },
+  "final_fold_status": "EVALUATED_FROZEN_DISCOVERY_STRICT_ONLY",
+  "fleet_rows": [
+    {
+      "bh_return_pct": 67.38699859204971,
+      "campaign": "hao_short_exposure_phase4_v3",
+      "fold": "DISCOVERY_1",
+      "matrix_eligible": false,
+      "path": "F01|EXACT_.875_CAP8|SEED4_STAGE7.5|REST_RECLAIM|BEAR_ADD1|E02",
+      "side": "SHORT",
+      "strategy_return_pct": 536.6057053248948,
+      "symbol": "HAO",
+      "time_in_market_pct": 77.94719103120835,
+      "verdict": "GRAY_DISCOVERY_PASS_FINAL_TIM_FAIL"
+    },
+    {
+      "bh_return_pct": 20.63753141614633,
+      "campaign": "hao_short_exposure_phase4_v3",
+      "fold": "DISCOVERY_2",
+      "matrix_eligible": false,
+      "path": "F01|EXACT_.875_CAP8|SEED4_STAGE7.5|REST_RECLAIM|BEAR_ADD1|E02",
+      "side": "SHORT",
+      "strategy_return_pct": 174.13758495708115,
+      "symbol": "HAO",
+      "time_in_market_pct": 71.28193324612805,
+      "verdict": "GRAY_DISCOVERY_PASS_FINAL_TIM_FAIL"
+    },
+    {
+      "bh_return_pct": 99.77662999174952,
+      "campaign": "hao_short_exposure_phase4_v3",
+      "fold": "FINAL",
+      "matrix_eligible": false,
+      "path": "F01|EXACT_.875_CAP8|SEED4_STAGE7.5|REST_RECLAIM|BEAR_ADD1|E02",
+      "side": "SHORT",
+      "strategy_return_pct": 1746.500177136008,
+      "symbol": "HAO",
+      "time_in_market_pct": 36.04563780167992,
+      "verdict": "GRAY_FINAL_TIM_FAIL_NO_EXACT"
+    }
+  ],
+  "frozen_candidate": {
+    "exit_family": "EXIT_E02_DONCHIAN",
+    "policy": "C_STAGE7_5_REST_ADD1"
+  },
+  "frozen_discovery": [
+    {
+      "bh_return_pct": 67.38699859204971,
+      "fold": 1,
+      "minimum_account_equity_usd": 8165.000537636592,
+      "phase3_same_exit_control_return_pct": 152.37860197844373,
+      "strategy_return_pct": 536.6057053248948,
+      "strategy_vs_bh_multiple": 7.963045046321492,
+      "weighted_tim_pct": 77.94719103120835
+    },
+    {
+      "bh_return_pct": 20.63753141614633,
+      "fold": 2,
+      "minimum_account_equity_usd": 1828.1137539657357,
+      "phase3_same_exit_control_return_pct": 134.1112274047152,
+      "strategy_return_pct": 174.13758495708115,
+      "strategy_vs_bh_multiple": 8.437907686034576,
+      "weighted_tim_pct": 71.28193324612805
+    }
+  ],
+  "invalidations": [
+    {
+      "artifact_suffix": "20260727T041407Z",
+      "reason": "exact status label said discovery failure although discovery passed; metrics and selection unchanged",
+      "replaced_by_suffix": "20260727T041459Z"
+    }
+  ],
+  "isolated_npz_sha256_after": "17907495bd909a1ea7ebcd6c7846134a7e70ae966b0fe7e79c3006107bb36332",
+  "preserved_gray_ranges": {
+    "v1": {
+      "artifact_suffix": "20260727T040932Z",
+      "candidate_count": 26,
+      "discovery_strict_count": 0,
+      "final_status": "SEALED_NOT_EVALUATED",
+      "result_sha256": "88ef0178a014349725972e3b3826c1de3c022d6f3057a474511d703d51c8cf7a"
+    },
+    "v2": {
+      "artifact_suffix": "20260727T041132Z",
+      "candidate_count": 10,
+      "discovery_strict_count": 0,
+      "final_status": "SEALED_NOT_EVALUATED",
+      "result_sha256": "4498cd38c5d93fcbffd6f0843a56a7e3606247d2873cfd79330ed2843efb62cd"
+    },
+    "v3": {
+      "artifact_suffix": "20260727T041459Z",
+      "candidate_count": 8,
+      "discovery_strict_count": 3,
+      "final_status": "EVALUATED_FROZEN_DISCOVERY_STRICT_ONLY",
+      "result_sha256": "c504f8db5dd250e98fd3fe48401a214e3fa9142787301a663ac8fe740026a0e9"
+    }
+  },
+  "preregistration_file_sha256": "e290b17937e5119c1451c5f41557214bcd0be907eda9ba856122dff74fd78249",
+  "promotion_allowed": false,
+  "result_sha256": "c504f8db5dd250e98fd3fe48401a214e3fa9142787301a663ac8fe740026a0e9",
+  "runner_sha256": {
+    "base": "5b54357e24422d3524b7049c75471269205e2c05256f55bf495db01a3469bb37",
+    "boundary_confirm": "90b6364f30d57025689042edc544cd37bc4e0113b17e0ebd9d3ad60988fdc18e",
+    "reclaim_confirm": "ef9ded42bc19762c21835d9171c0da51bc0fe174ef02d19b652f1ced93bf827f"
+  },
+  "source_artifact_result_sha256": "dff84d48cb54e5d796aade003d9e1888b22b13ebda7e3126f9b57992a261e3da",
+  "status": "GRAY_DISCOVERY_PASS_FINAL_TIM_FAIL",
+  "symbol_side": "HAO_SHORT"
+}
