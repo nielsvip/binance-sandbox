@@ -21,7 +21,10 @@ import argparse
 import csv
 import gzip
 import json
+import os
 import sqlite3
+import time
+import zipfile
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
@@ -698,7 +701,10 @@ def main():
                  if a.tier == "ENGINE" else
                  "# [DIAGNOSTIC ONLY] TIER=VEC — Tier-1 vectorized screen (v8_vec_sweep, ~85% live parity).\n"
                  "# Deltas are vs the Tier-1 baseline. NEVER comparable to the ENGINE file, never promotion evidence.\n")
-    with gzip.open(OUT_CSV, "wt") as fh:
+    csv_tmp = OUT_CSV.with_name(
+        f".{OUT_CSV.name}.tmp.{os.getpid()}.{time.time_ns()}"
+    )
+    with gzip.open(csv_tmp, "wt") as fh:
         fh.write(tier_note)
         fh.write("# cell values: delta gain/mo versus the same-key B&H floor (not versus the old trading baseline)\n")
         fh.write("# cell colors: GREEN=beats B&H | RED=equal/zero-trade/fingerprint-identical (wiring bug) | "
@@ -719,6 +725,7 @@ def main():
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(header)
         for r in matrix: w.writerow(["" if x is None else x for x in r])
+    os.replace(csv_tmp, OUT_CSV)
     # USER 2026-07-21: separate ENTRY vs EXIT switches, group rows per switch, and grey
     # every value-row that is NOT that switch's best (mutually exclusive: only one value
     # of a switch can be live) — numbers stay visible, styling marks the losers.
@@ -1042,7 +1049,17 @@ def main():
         wsi.column_dimensions["A"].width = 48
         wsi.column_dimensions["C"].width = 58
         wsi.column_dimensions["E"].width = 95
-        wb.save(OUT_XLSX)
+        xlsx_tmp = OUT_XLSX.with_name(
+            f".{OUT_XLSX.name}.tmp.{os.getpid()}.{time.time_ns()}.xlsx"
+        )
+        wb.save(xlsx_tmp)
+        with zipfile.ZipFile(xlsx_tmp) as archive:
+            bad_member = archive.testzip()
+            if bad_member is not None:
+                raise RuntimeError(f"generated workbook has corrupt member {bad_member}")
+            if "xl/workbook.xml" not in archive.namelist():
+                raise RuntimeError("generated workbook is missing xl/workbook.xml")
+        os.replace(xlsx_tmp, OUT_XLSX)
         xls_note = str(OUT_XLSX)
     except Exception as e:
         xls_note = f"(xlsx skipped: {e})"
