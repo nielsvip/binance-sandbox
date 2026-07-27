@@ -1470,3 +1470,54 @@ completed, but the frozen ladder itself failed its control gate
 is research evidence over a failed entry baseline and cannot be promoted. The
 1,164-candidate VT follow-up had no survivor: the selected A/B/C final returns
 were -63.62%/-7.04%/-12.42% versus +1.57% B&H, with only 42.70–55.12% TIM.
+
+### §15.18 — bottom exits across immutable entry schedules (2026-07-27)
+
+The dedicated bottom-selling lane is complete at vector tier. Standalone and
+immutable-entry beams jointly evaluated 33,744 adverse-break protective
+ATR/STDEV/DC trails, 47,424 armed-break then later lower-price/WT-top exits,
+7,296 delayed exits with a separately attributed rare-collapse brake, and
+3,040 completed-HTF MTF-ATR trails: 91,504 evaluations total.
+
+The 56-schedule entry/exit beam included priority MU, ARM and PBF plus the
+remaining top/bottom cohort. Every exit consumed one frozen entry schedule;
+selection stayed discovery-only and final OOS was revealed after the beam was
+frozen. No all-fold survivor or exact queue resulted. ARM's 4h-arm/15m-STDEV
+diagnostic made 1,298.86% versus 126.60% B&H and 1,155.90% E02 at 70.04% TIM,
+but one discovery fold had only 46.83% TIM. DINO delayed-lower-top and TTD
+protective rows were also final-only successes with opposite discovery-fold
+failures. They remain gray.
+
+Paired emergency overlays confirm that an emergency brake is not the main
+strategy: every family had negative mean impact versus its exact no-brake B
+base; even ATR6 and continued-adverse-8 averaged -4.68pp and -4.90pp. The
+next bounded experiment must change causal global entry/re-entry density
+while freezing the promising exit geometry, not tune a brake or the observed
+final fold. Full evidence is in
+`BOTTOM_EXIT_ENTRY_BEAM_SYNTHESIS_20260727.{md,json}`.
+
+### §15.19 — causal regime entry/exit priority beam (2026-07-27)
+
+The preregistered causal-regime follow-up screened the frozen MU DC-tier,
+ARM 4h-deep-value and PBF DC-tier entry schedules. Each schedule was crossed
+with five fixed global, mirrored completed-bar exposure policies and 1,456
+exit candidates per policy: 21,840 vector combinations. Selection used only
+the discovery folds; the final chronological fold was revealed after each
+policy/exit beam was frozen. No symbol-specific threshold, blended entry
+family or final-fold retuning was allowed.
+
+The batch completed without execution errors but produced no all-fold
+survivor. Discovery-selected final rows were appended to the fleet as
+`VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS / GRAY_REJECTED`: MU made 631.17%
+versus 204.90% B&H and 1,121.36% same-entry E02 at 71.44% TIM, ARM made
+991.94% versus 126.60% / 1,153.03% at 68.83% TIM, and PBF made 474.96%
+versus 121.26% / 566.49% at 81.88% TIM. Their discovery TIM pairs were
+78.55/98.40%, 78.24/33.02%, and 61.11/78.11%, respectively.
+
+This falsifies the idea that one broad-market regime label can repair the
+observed exposure instability for these frozen entry schedules. The next
+bounded exposure model must use causal schedule/account state available in
+discovery data—such as filled capacity, entry-event drought and outstanding
+reclaim state—rather than widening the same five market-regime policies.
+Exact replay and live configuration remain unchanged. See
+`REGIME_ENTRY_EXIT_BEAM_PRIORITY_RESULTS_20260727.md`.
