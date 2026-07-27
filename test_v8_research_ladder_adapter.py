@@ -17,6 +17,7 @@ from tools.v8_research_ladder_adapter import (
     _write_schedule_deterministic,
     audit_execution_provenance,
 )
+from tools.research_availability_clock import CLOCK_CONTRACT
 
 
 def _write_spec(
@@ -85,6 +86,27 @@ def _write_spec(
         "accounting_tolerance_bp": 1e-4,
     }
     if version == SPEC_VERSION:
+        for event in events:
+            signal_ts = int(event["signal_ts"])
+            fill_ts = int(event["fill_ts"])
+            signal_row = int(
+                event.get("source_signal_index", event["signal_index"])
+            )
+            fill_row = int(
+                event.get("source_fill_index", event["fill_index"])
+            )
+            event.update(
+                {
+                    "signal_availability_ts": signal_ts,
+                    "signal_source_ts": signal_ts,
+                    "signal_source_row_index": signal_row,
+                    "signal_clock_index": signal_row,
+                    "fill_availability_ts": fill_ts,
+                    "fill_source_ts": fill_ts,
+                    "fill_source_row_index": fill_row,
+                    "fill_clock_index": fill_row,
+                }
+            )
         source_result = tmp_path / "result.json"
         source_result.write_text('{"frozen":true}\n')
         selection_inputs = {
@@ -106,7 +128,17 @@ def _write_spec(
                     "sha256": "0" * 64,
                     "execution_provenance": {
                         "safe_for_exact_engine": True,
+                        "availability_source_rows_sha256": "a" * 64,
                     },
+                },
+                "availability_clock": {
+                    "kind": CLOCK_CONTRACT,
+                    "ordering": "availability_ts_then_source_row_index",
+                    "window_rows_sha256": "a" * 64,
+                    "native_rows_at_source_ts": True,
+                    "synthetic_rows_at_parent_close_ts": True,
+                    "next_rth_fill": "first_strictly_later_availability",
+                    "preserve_duplicate_availability_rows": True,
                 },
                 "entry_schedule": {
                     "path": str(schedule),
@@ -367,7 +399,13 @@ def test_v2_parser_requires_explicit_matching_exit_contract(tmp_path):
         LadderReplayAdapter(path)
 
 
-def test_synthetic_5m_parent_future_fails_exact_engine_provenance():
+def test_legacy_v2_parent_clock_contract_fails_closed(tmp_path):
+    path = _write_spec(tmp_path, _events(), version=2)
+    with pytest.raises(LadderReplayError, match="fail-closed"):
+        LadderReplayAdapter(path)
+
+
+def test_synthetic_5m_parent_lag_is_safe_under_shared_availability_clock():
     class FakeZ(dict):
         @property
         def files(self):
@@ -385,11 +423,12 @@ def test_synthetic_5m_parent_future_fails_exact_engine_provenance():
         z=FakeZ(synthetic_5m_parent_close_ts=parent),
     )
     audit = audit_execution_provenance(data, left=0, right=len(ts))
-    assert audit["status"] == "BLOCKED"
-    assert audit["safe_for_exact_engine"] is False
+    assert audit["status"] == "PASS"
+    assert audit["safe_for_exact_engine"] is True
     assert audit["synthetic_rows"] == 3
     assert audit["future_parent_rows"] == 2
     assert audit["parent_lag_max_seconds"] == 600
+    assert audit["policy"] == "SYNTHETIC_PARENT_CLOSE_AVAILABILITY_V1"
 
 
 def test_synthetic_rows_observable_at_parent_close_are_safe():

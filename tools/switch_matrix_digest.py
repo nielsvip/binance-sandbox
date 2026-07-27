@@ -1158,15 +1158,15 @@ def main() -> None:
         strict = bool(aggregate.get("vector_survivor"))
         relaxed = bool(aggregate.get("relaxed_bh_survivor"))
         if strict and exact_ok:
-            verdict = "EXACT PASS; PROMOTION POLICY CHECK"
+            ladder_verdict = "EXACT PASS; PROMOTION POLICY CHECK"
         elif strict:
-            verdict = "VECTOR SURVIVOR; EXACT REQUIRED"
+            ladder_verdict = "VECTOR SURVIVOR; EXACT REQUIRED"
         elif relaxed and exact_ok:
-            verdict = "RESEARCH EDGE; FOLD/CONTROL BLOCKED"
+            ladder_verdict = "RESEARCH EDGE; FOLD/CONTROL BLOCKED"
         elif relaxed:
-            verdict = "RESEARCH EDGE; EXACT/FOLD BLOCKED"
+            ladder_verdict = "RESEARCH EDGE; EXACT/FOLD BLOCKED"
         else:
-            verdict = "REJECT / NO PROMOTION"
+            ladder_verdict = "REJECT / NO PROMOTION"
         lines.append(
             f"| {payload.get('_key', '—')} | "
             f"{fmt(aggregate.get('capital_return_pct_sum'), 3, '%')} | "
@@ -1177,7 +1177,8 @@ def main() -> None:
             f"{fmt(aggregate.get('exposure_weighted_tim_pct_row_weighted'), 2, '%')} | "
             f"{fold_tim} | {fmt((aggregate.get('fill_ratio') or 0) * 100, 1, '%')} | "
             f"{aggregate.get('clamp_count', '—')} | "
-            f"{'PASS' if exact_ok else ('FAIL' if exact else '—')} | {verdict} |"
+            f"{'PASS' if exact_ok else ('FAIL' if exact else '—')} | "
+            f"{ladder_verdict} |"
         )
     lines += [
         "",
