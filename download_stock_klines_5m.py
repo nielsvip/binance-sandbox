@@ -168,6 +168,14 @@ def main(argv=None):
         action="store_true",
         help="refresh every selected symbol from its latest retained bar minus a two-day overlap",
     )
+    parser.add_argument(
+        "--repair-range",
+        action="store_true",
+        help=(
+            "fetch exactly --from-date..--to-date even when the symbol is marked "
+            "complete, then append/merge without deleting retained timestamps"
+        ),
+    )
     parser.add_argument("--symbols", default="", help="comma-separated symbol override")
     parser.add_argument("--from-date", default=FROM_DATE)
     parser.add_argument(
@@ -188,7 +196,11 @@ def main(argv=None):
         for value in args.symbols.split(",")
         if value.strip()
     ] or SYMBOLS
-    remaining = selected if args.incremental else [s for s in selected if s not in completed]
+    remaining = (
+        selected
+        if args.incremental or args.repair_range
+        else [s for s in selected if s not in completed]
+    )
     print(f"=== Massive.com REAL 5m Stock Klines Downloader ===")
     print(f"Symbols: {len(selected)} selected, {len(completed)} done, {len(remaining)} scheduled")
     print(f"Mode: {'incremental append/merge' if args.incremental else 'initial backfill'}")
@@ -202,7 +214,9 @@ def main(argv=None):
         print(f"\n[{len(completed)+1}/{len(SYMBOLS)}] {symbol}...")
         existing = load_existing(symbol)
         from_date = (
-            incremental_start(existing, args.from_date)
+            args.from_date
+            if args.repair_range
+            else incremental_start(existing, args.from_date)
             if args.incremental
             else args.from_date
         )

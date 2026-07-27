@@ -2101,11 +2101,19 @@ def main():
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--mode", choices=["tradier", "crypto"], required=True)
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="write NPZs to an explicit versioned directory instead of the canonical indicator directory",
+    )
     args = parser.parse_args()
     # Set module-level MODE so compute_tf_arrays uses the correct annualization
     # factor (252 trading days for tradier, 365 calendar days for crypto).
-    global MODE
+    global MODE, OUT_DIR
     MODE = args.mode
+    if args.out_dir is not None:
+        OUT_DIR = args.out_dir
     klines_dir = TRADIER_KLINES if args.mode == "tradier" else CRYPTO_KLINES
     if args.symbols:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
