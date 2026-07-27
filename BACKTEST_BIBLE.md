@@ -2098,3 +2098,46 @@ raw-return optimal nor robust across all folds. No matrix/live/canonical state
 changed. Full detail is in
 `MU_DAILY_DEEP_PARETO_HOLDOUT_RESULTS_20260727.md`; compact evidence is
 `data/reports/vec_research/MU_DAILY_DEEP_PARETO_HOLDOUT_RECEIPT_20260727.json`.
+
+### §15.35 — VT immutable NPZ lineage and regeneration gate (2026-07-27)
+
+VT does not need another blind canonical regeneration. The rolling NPZ already
+contains all 41,190 currently retained native 5m timestamps, replaces 1,506
+rows that were synthetic in the frozen July 25 snapshot, and adds 127 native
+rows. Its RTH synthetic share is now 0.2273%. All raw OHLCV is finite and
+internally valid; there are no duplicate timestamps, negative volumes,
+split-like 0.5x/2x events or future 15m/1h/4h/D source timestamps. WT, Stoch,
+Donchian and long-regression HTF fields are finite, non-constant and
+high-cardinality. The former empty-HTF VT defect is fixed.
+
+The authoritative 5m source nevertheless remains incomplete from
+2026-03-30 23:25 UTC through 2026-06-08 12:30 UTC: 6,008,700 seconds
+(69.545 days). The available 15m source begins June 30 and cannot repair that
+hole. The +15.3685% adjacent-source move is the price change across the missing
+interval, not an executable one-bar jump, and retained data shows no split.
+Therefore no new recovery NPZ was built and full-history regeneration remains
+fail-closed until an archival provider supplies that exact interval.
+
+This does not explain the accepted ladder's negative result. Its untouched
+final window, 2025-09-02 through 2026-03-27, ends before the hole and contains
+13,780 base rows with zero synthetic rows. It returned -61.846244% versus
++1.574993% B&H. Exact v3 replay executed 27/27 actions with zero future HTF
+sources and matched accounting within `5.68e-12` bp with zero TIM delta.
+VT's negative native holdout is thus strategy behavior, not missing data,
+future HTF information, corporate action, or vector/exact disagreement.
+
+The frozen `4c7ff8d9…` NPZ and its parent-clock recovery `aeb5148f…` remain
+immutable and array-identical across all original fields; the latter adds only
+synthetic parent-close provenance. The newer rolling `8b6f80c0…` file changes
+indicators only from July 1 onward as authentic rows replace interpolation, so
+it cannot be substituted under an old result fingerprint.
+
+`download_stock_klines_5m.py --repair-range` now supports an explicit
+retention-safe repair request, and precompute accepts a versioned `--out-dir`
+so a future complete rebuild cannot overwrite canonical evidence. The repair
+must fetch March 30–June 8, pass the lineage audit with no material gap, build
+to a new recovery directory, and rerun unchanged causal vector plus exact
+validation before receiving a new fingerprint. No matrix, live, canonical or
+promotion state changed. Full hashes, fields, commands and rollback are in
+`VT_IMMUTABLE_LINEAGE_AUDIT_20260727.md`; the machine receipt is
+`data/reports/VT_NPZ_LINEAGE_AUDIT_20260727.json`.
