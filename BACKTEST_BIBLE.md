@@ -1591,3 +1591,15 @@ unchanged-entry ladder controls (`alpha_vs_control=0`,
 attributed to any switch/value. They remain visible research receipts; they
 fill zero canonical ENGINE cells. Numeric cells become filled only when a
 contract-matched exact row names the same key, path knob, and setting.
+
+The one required process reload was completed without killing an engine
+child. Old daemon PIDs `20621/20652/20685` (MU) and
+`20701/20709/20718` (VT) were stopped at the parent only; their six existing
+engine trees drained normally before each parent received TERM+CONT. The
+watchdog then launched fresh PIDs `3629226/3629254/3629260` and
+`3629267/3629272/3629296`. The first new-contract receipt was the VT_LONG
+baseline at `2026-07-27T01:14:58Z`, fingerprint prefix
+`tradier-matrix-c2-20260725:0160390c2ce54d8c`, validation `PASS`. The MU_LONG
+baseline was still computing at this checkpoint. This was a one-time reload,
+not a recurring worker restart, and no live-trading process or configuration
+was touched.
