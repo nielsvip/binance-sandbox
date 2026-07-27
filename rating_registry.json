@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-07-27T08:33:39.032162+00:00",
+  "timestamp": "2026-07-27T08:48:40.795858+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 130
   },
   "unified_ranking": [
+    {
+      "symbol": "COMPUSDT",
+      "net_score": -20.1,
+      "long_score": 0,
+      "short_score": 20.1
+    },
+    {
+      "symbol": "GALAUSDT",
+      "net_score": -17.3,
+      "long_score": 0,
+      "short_score": 17.3
+    },
     {
       "symbol": "PTBUSDT",
       "net_score": -16.6,
@@ -31,22 +43,40 @@
       "short_score": 13.6
     },
     {
-      "symbol": "1000BONKUSDC",
-      "net_score": -13.2,
-      "long_score": 0,
-      "short_score": 13.2
-    },
-    {
       "symbol": "SKYAIUSDT",
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
     },
     {
-      "symbol": "1000XECUSDT",
-      "net_score": -10.3,
+      "symbol": "ARKMUSDT",
+      "net_score": -12.6,
       "long_score": 0,
-      "short_score": 10.3
+      "short_score": 12.6
+    },
+    {
+      "symbol": "1000FLOKIUSDT",
+      "net_score": -11.7,
+      "long_score": 0,
+      "short_score": 11.7
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "net_score": -11.5,
+      "long_score": 0,
+      "short_score": 11.5
+    },
+    {
+      "symbol": "SANDUSDT",
+      "net_score": -10.9,
+      "long_score": 0,
+      "short_score": 10.9
+    },
+    {
+      "symbol": "BTCUSDC",
+      "net_score": -10.8,
+      "long_score": 0,
+      "short_score": 10.8
     },
     {
       "symbol": "BLURUSDT",
@@ -104,12 +134,6 @@
     },
     {
       "symbol": "SUIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ARKMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -277,12 +301,6 @@
       "short_score": 0
     },
     {
-      "symbol": "1000FLOKIUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ZILUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -325,6 +343,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000BONKUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AGLDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,12 +356,6 @@
     },
     {
       "symbol": "WIFUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SANDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -391,6 +409,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000XECUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -422,18 +446,6 @@
     },
     {
       "symbol": "BSVUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GALAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -493,19 +505,7 @@
       "short_score": 0
     },
     {
-      "symbol": "COMPUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DASHUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -727,15 +727,15 @@
       "short_score": 0
     },
     {
-      "symbol": "BEATUSDT",
-      "net_score": 15.5,
-      "long_score": 15.5,
-      "short_score": 0
-    },
-    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "BEATUSDT",
+      "net_score": 17.2,
+      "long_score": 17.2,
       "short_score": 0
     },
     {
@@ -790,20 +790,45 @@
   "top_longs": [
     [
       "BEATUSDT",
-      15.5,
-      3.714
+      17.2,
+      3.72142219
     ]
   ],
   "top_shorts": [
     [
-      "1000BONKUSDC",
-      13.2,
-      0.003095
+      "COMPUSDT",
+      20.1,
+      17.23503957
     ],
     [
-      "1000XECUSDT",
-      10.3,
-      0.00644736
+      "GALAUSDT",
+      17.3,
+      0.001978
+    ],
+    [
+      "ARKMUSDT",
+      12.6,
+      0.1064
+    ],
+    [
+      "1000FLOKIUSDT",
+      11.7,
+      0.02205078
+    ],
+    [
+      "1000LUNCUSDT",
+      11.5,
+      0.05330726
+    ],
+    [
+      "SANDUSDT",
+      10.9,
+      0.04504
+    ],
+    [
+      "BTCUSDC",
+      10.8,
+      65130.2
     ]
   ],
   "hedge_usage": {
