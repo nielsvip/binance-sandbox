@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-27 15:30:42Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-27 16:30:41Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-27T15:26:39Z` (4m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-27T15:26:39Z` (4m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **541**; new current rows in 24h: **541**.
-- Raw repaired-campaign pilot rows since cutoff: **987**; **446** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,068/7,609**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-27T16:29:15Z` (1m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-27T16:29:15Z` (1m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **595**; new current rows in 24h: **595**.
+- Raw repaired-campaign pilot rows since cutoff: **987**; **392** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,014/7,609**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 15:30:42Z (0m old, 399,977 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 15:30:06Z (0m old, 37,827 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 16:30:41Z (0m old, 400,553 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 16:30:04Z (0m old, 37,861 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 107/3,522 | 3.0% | 2026-07-27T15:26:39Z | 4m | 65 |
-| VT_LONG | 352/3,522 | 10.0% | 2026-07-27T15:25:41Z | 5m | 150 |
+| MU_LONG | 122/3,522 | 3.5% | 2026-07-27T16:23:55Z | 6m | 74 |
+| VT_LONG | 391/3,522 | 11.1% | 2026-07-27T16:29:15Z | 1m | 189 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -68,14 +68,14 @@ These historical rows are retained for diagnosis and excluded from the automatic
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
-| 2026-07-27T14:56:52Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.25` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T14:50:13Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.2` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T14:49:56Z | stocks_repaired_20260725_c2 | `LR_PCTB_D_LONG_ENTRY_THRESHOLD=0.15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T14:29:40Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_DEADBAND` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:49:04Z | stocks_repaired_20260725_c2 | `STOP_PACK=ARROW_TH05` | 0.8577 | 4.7609 | -3.9032 | 0.180× | 46.88% | 2049 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:30:52Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_L` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:30:16Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_TRIM_L` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
-| 2026-07-27T13:30:00Z | stocks_repaired_20260725_c2 | `STOP_PACK=RIDE_REGIME_TRIM` | 0.9717 | 4.7610 | -3.7893 | 0.204× | 46.89% | 2059 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:23:55Z | stocks_repaired_20260725_c2 | `RSI2_EXIT_THRESHOLD_LONG=87.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:23:09Z | stocks_repaired_20260725_c2 | `RSI2_EXIT_THRESHOLD_LONG=70` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:21:02Z | stocks_repaired_20260725_c2 | `RSI2_EXIT_THRESHOLD_LONG=52.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:10:13Z | stocks_repaired_20260725_c2 | `RSI2_EXIT_THRESHOLD_LONG=35` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:08:54Z | stocks_repaired_20260725_c2 | `REENTRY_STOCH_K_MAX_LONG=120` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T16:07:10Z | stocks_repaired_20260725_c2 | `REENTRY_STOCH_K_MAX_LONG=100` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T15:57:03Z | stocks_repaired_20260725_c2 | `REENTRY_STOCH_K_MAX_LONG=80` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-27T15:56:16Z | stocks_repaired_20260725_c2 | `REENTRY_STOCH_K_MAX_LONG=60` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -83,14 +83,14 @@ Best trading candidate: **none with at least two trades and complete return metr
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
-| 2026-07-27T15:25:41Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_QUICK_EXIT=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T15:25:25Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_SPIKE_FADE_EXIT=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T15:25:13Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_SPIKE_FADE_EXIT=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T15:19:24Z | stocks_repaired_20260725_c2 | `ABLATION_DISABLE_QUICK_EXIT=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:51:24Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=150` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:51:10Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=125` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:50:29Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=100` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T13:48:22Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=75` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:29:15Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_DC_FLOOR=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:29:01Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_DC_FLOOR=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:28:52Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_ACCEL_THRESHOLD=-0.05` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:23:58Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_ACCEL_THRESHOLD=-0.075` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:23:53Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_ACCEL_THRESHOLD=-0.1` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:23:29Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_ACCEL_THRESHOLD=-0.125` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:18:04Z | stocks_repaired_20260725_c2 | `DELTA_EXIT_ACCEL_THRESHOLD=-0.15` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T16:18:00Z | stocks_repaired_20260725_c2 | `DC_RECOVERY_EXIT_TOLERANCE_PCT=0.09375` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T15:26:39Z | 4m |
+| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T16:29:15Z | 1m |
 
 ## Reading the matrix
 
