@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T16:48:45.358227+00:00",
+  "timestamp": "2026-07-27T17:03:51.645543+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,10 +7,34 @@
   },
   "unified_ranking": [
     {
+      "symbol": "ADAUSDC",
+      "net_score": -22.1,
+      "long_score": 0,
+      "short_score": 22.1
+    },
+    {
+      "symbol": "ARBUSDC",
+      "net_score": -21.6,
+      "long_score": 0,
+      "short_score": 21.6
+    },
+    {
       "symbol": "1000LUNCUSDT",
       "net_score": -21.1,
       "long_score": 0,
       "short_score": 21.1
+    },
+    {
+      "symbol": "XRPUSDC",
+      "net_score": -19.5,
+      "long_score": 0,
+      "short_score": 19.5
+    },
+    {
+      "symbol": "RUNEUSDT",
+      "net_score": -17.2,
+      "long_score": 0,
+      "short_score": 17.2
     },
     {
       "symbol": "PTBUSDT",
@@ -26,15 +50,27 @@
     },
     {
       "symbol": "SANDUSDT",
-      "net_score": -14.7,
+      "net_score": -15.2,
       "long_score": 0,
-      "short_score": 14.7
+      "short_score": 15.2
     },
     {
       "symbol": "XMRUSDT",
       "net_score": -14.7,
       "long_score": 0,
       "short_score": 14.7
+    },
+    {
+      "symbol": "API3USDT",
+      "net_score": -14.6,
+      "long_score": 0,
+      "short_score": 14.6
+    },
+    {
+      "symbol": "BTCUSDC",
+      "net_score": -13.7,
+      "long_score": 0,
+      "short_score": 13.7
     },
     {
       "symbol": "BOMEUSDC",
@@ -47,6 +83,12 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
+    },
+    {
+      "symbol": "ETHFIUSDC",
+      "net_score": -10.1,
+      "long_score": 0,
+      "short_score": 10.1
     },
     {
       "symbol": "TIAUSDC",
@@ -68,12 +110,6 @@
     },
     {
       "symbol": "ETHUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "ETHFIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -205,12 +241,6 @@
       "short_score": 0
     },
     {
-      "symbol": "API3USDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SAGAUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -224,12 +254,6 @@
     },
     {
       "symbol": "WLDUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "XRPUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -403,12 +427,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ARBUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "1INCHUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -452,12 +470,6 @@
     },
     {
       "symbol": "WLFIUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "RUNEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -583,12 +595,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "DASHUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -703,12 +709,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ADAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "VIRTUALUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -790,14 +790,49 @@
   "top_longs": [],
   "top_shorts": [
     [
+      "ADAUSDC",
+      22.1,
+      0.15864139
+    ],
+    [
+      "ARBUSDC",
+      21.6,
+      0.07932278
+    ],
+    [
       "1000LUNCUSDT",
       21.1,
-      0.05166091
+      0.05172
+    ],
+    [
+      "XRPUSDC",
+      19.5,
+      1.09250834
+    ],
+    [
+      "RUNEUSDT",
+      17.2,
+      0.42674333
     ],
     [
       "SANDUSDT",
-      14.7,
-      0.044275
+      15.2,
+      0.04422
+    ],
+    [
+      "API3USDT",
+      14.6,
+      0.219
+    ],
+    [
+      "BTCUSDC",
+      13.7,
+      64812.8
+    ],
+    [
+      "ETHFIUSDC",
+      10.1,
+      0.412
     ]
   ],
   "hedge_usage": {
