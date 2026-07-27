@@ -143,6 +143,36 @@ def test_load_mu_daily_deep_pareto_holdout(tmp_path, monkeypatch):
     )
 
 
+def test_load_hao_short_native_phase3(tmp_path, monkeypatch):
+    reports = tmp_path / "data" / "reports"
+    receipt = (
+        reports
+        / "vec_research"
+        / "HAO_SHORT_NATIVE_PHASE3_RECEIPT_20260727.json"
+    )
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text(
+        json.dumps(
+            {
+                "contract": "HAO_SHORT_NATIVE_PHASE3_V4",
+                "candidate_count": 48,
+                "final_fold_status": "SEALED_NOT_EVALUATED",
+            }
+        )
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    row = digest.load_hao_short_native_phase3()
+
+    assert row is not None
+    assert row["contract"] == "HAO_SHORT_NATIVE_PHASE3_V4"
+    assert row["candidate_count"] == 48
+    assert row["_artifact"].endswith(
+        "HAO_SHORT_NATIVE_PHASE3_RECEIPT_20260727.json"
+    )
+
+
 def test_ladder_retune_exact_must_reference_same_source_artifact(
     tmp_path, monkeypatch
 ):

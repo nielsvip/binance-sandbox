@@ -420,6 +420,17 @@ def load_mu_daily_deep_pareto_holdout() -> dict | None:
     return payload
 
 
+def load_hao_short_native_phase3() -> dict | None:
+    """Load the corrected, sealed HAO SHORT-native phase-3 receipt."""
+    path = REPORTS / "vec_research" / "HAO_SHORT_NATIVE_PHASE3_RECEIPT_20260727.json"
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    payload["_artifact"] = str(path.relative_to(BASE))
+    return payload
+
+
 def load_latest_ladder_retunes() -> list[dict]:
     """Latest frozen exposure-retune artifact for every discovered symbol/side.
 
@@ -751,6 +762,7 @@ def main() -> None:
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
     mu_pareto_holdout = load_mu_daily_deep_pareto_holdout()
+    hao_short_phase3 = load_hao_short_native_phase3()
     ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
@@ -1204,6 +1216,38 @@ def main() -> None:
         "This lane used a preregistered Pareto contract before opening the final fold. "
         "A strong return cannot repair a missed exposure gate after the result is known; "
         "the row therefore remains gray and is not written to the promotion matrix.",
+        "",
+        "## HAO SHORT-native phase 3",
+        "",
+        "| contract | candidates | E02 beat side benchmark | E05 beat side benchmark | "
+        "TIM-valid | final | exact | verdict |",
+        "|---|---:|---:|---:|---:|---|---|---|",
+    ]
+    if not hao_short_phase3:
+        lines.append("| — | — | — | — | — | — | — | NO RECEIPT |")
+    else:
+        exits = hao_short_phase3.get("exit_summary") or {}
+        e02 = exits.get("EXIT_E02_DONCHIAN") or {}
+        e05 = exits.get("EXIT_E05_DIVERGENCE_RETEST") or {}
+        tim_valid = sum(
+            int((row or {}).get("weighted_tim_70_80_both_discovery_folds") or 0)
+            for row in (e02, e05)
+        )
+        lines.append(
+            f"| `{hao_short_phase3.get('contract', '—')}` | "
+            f"{hao_short_phase3.get('candidate_count', '—')} | "
+            f"{e02.get('beats_short_bh_or_cash_both_discovery_folds', '—')} | "
+            f"{e05.get('beats_short_bh_or_cash_both_discovery_folds', '—')} | "
+            f"{tim_valid} | "
+            f"{hao_short_phase3.get('final_fold_status', '—')} | "
+            f"{hao_short_phase3.get('exact_replay_status', '—')} | "
+            f"{hao_short_phase3.get('status', '—')} |"
+        )
+    lines += [
+        "",
+        "V1–V3 were explicitly invalidated. V4 fixes the persistent-reentry state "
+        "contract, uses the shared completed-parent clock, and keeps the final fold sealed "
+        "because no discovery candidate met every exposure/control gate.",
         "",
         "## Top-10 ladder exposure retune",
         "",
