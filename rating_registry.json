@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-07-27T05:03:32.028071+00:00",
+  "timestamp": "2026-07-27T05:18:35.180901+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 130
   },
   "unified_ranking": [
+    {
+      "symbol": "AIAUSDT",
+      "net_score": -17.2,
+      "long_score": 0,
+      "short_score": 17.2
+    },
     {
       "symbol": "PTBUSDT",
       "net_score": -16.6,
@@ -23,12 +29,6 @@
       "net_score": -14.7,
       "long_score": 0,
       "short_score": 14.7
-    },
-    {
-      "symbol": "AIAUSDT",
-      "net_score": -14.2,
-      "long_score": 0,
-      "short_score": 14.2
     },
     {
       "symbol": "BOMEUSDC",
@@ -176,6 +176,12 @@
     },
     {
       "symbol": "ARKMUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -715,15 +721,15 @@
       "short_score": 0
     },
     {
-      "symbol": "HYPEUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
       "symbol": "ONDOUSDT",
       "net_score": 13.1,
       "long_score": 13.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "net_score": 14.0,
+      "long_score": 14.0,
       "short_score": 0
     },
     {
@@ -736,12 +742,6 @@
       "symbol": "PENDLEUSDT",
       "net_score": 20.9,
       "long_score": 20.9,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
-      "net_score": 22.6,
-      "long_score": 22.6,
       "short_score": 0
     },
     {
@@ -789,21 +789,16 @@
   ],
   "top_longs": [
     [
-      "APEUSDT",
-      22.6,
-      0.15039798
-    ],
-    [
       "HYPEUSDT",
-      11.3,
-      60.34044762
+      14.0,
+      60.409
     ]
   ],
   "top_shorts": [
     [
       "AIAUSDT",
-      14.2,
-      0.06242
+      17.2,
+      0.06204552
     ]
   ],
   "hedge_usage": {
