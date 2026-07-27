@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T04:33:34.470141+00:00",
+  "timestamp": "2026-07-27T04:48:30.820552+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -38,9 +38,9 @@
     },
     {
       "symbol": "AIAUSDT",
-      "net_score": -12.0,
+      "net_score": -10.0,
       "long_score": 0,
-      "short_score": 12.0
+      "short_score": 10.0
     },
     {
       "symbol": "BLURUSDT",
@@ -722,8 +722,8 @@
     },
     {
       "symbol": "HYPEUSDT",
-      "net_score": 11.9,
-      "long_score": 11.9,
+      "net_score": 12.3,
+      "long_score": 12.3,
       "short_score": 0
     },
     {
@@ -790,15 +790,15 @@
   "top_longs": [
     [
       "HYPEUSDT",
-      11.9,
-      60.203
+      12.3,
+      60.19988095
     ]
   ],
   "top_shorts": [
     [
       "AIAUSDT",
-      12.0,
-      0.06543
+      10.0,
+      0.06505
     ]
   ],
   "hedge_usage": {
