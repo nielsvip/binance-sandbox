@@ -145,9 +145,11 @@ Returns are fixed-$2,000 capital returns; floor is
 The fleet ingest appended six gray discovery rows after backing up
 `queue.db.bak_short_metric_polarity_20260727T040656Z`. They are explicitly
 `matrix_eligible=false`, `promotion_allowed=false`; `matrix_written=false`.
+The final source-matched rerun backed up the DB again, appended zero and
+idempotently skipped all six.
 
-Canonical full artifact:
-`data/reports/vec_research/short_metric_polarity_20260727T040647Z/` on s1.
+Canonical source-matched full artifact:
+`data/reports/vec_research/short_metric_polarity_20260727T041203Z/` on s1.
 Tracked receipt:
 `data/reports/vec_research/SHORT_METRIC_POLARITY_RECEIPT_20260727.json`.
 

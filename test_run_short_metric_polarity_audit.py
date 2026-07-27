@@ -76,3 +76,42 @@ def test_short_fill_and_benchmark_polarity_regression():
     short_bh = (start - end) / start * 100
     assert short_bh == -20.0
     assert max(short_bh, 0.0) == 0.0
+
+
+def test_active_wtdc_short_entry_is_single_inversion():
+    from wt_dc_entry_scorer import score_entry
+
+    score, reason = score_entry({
+        "wt1_D": -20, "wt2_D": -10,
+        "wt1_4h": -15, "wt2_4h": -5,
+        "wt_cross_1h": "BEAR",
+        "dc_position_1h": .75,
+        "stoch_k_5m": 80,
+    }, is_long=False)
+    assert score == 100
+    assert "D_bear" in reason and "1h_cross_BEAR" in reason
+
+
+def test_active_wtdc_short_cover_complements_bounded_thresholds():
+    from wt_dc_exit_scorer import score_exit
+
+    score, reason = score_exit({
+        "wt_cross_1h": "BULL",
+        "wt1_4h": 10, "wt2_4h": 0,
+        "wt1_D": 5, "wt2_D": 0,
+        "stoch_k_1h": 10, "stoch_k_4h": 15,
+        "dc_position_1h": .10, "dc_position_4h": .15,
+    }, is_long=False)
+    assert score == 100
+    assert "STRICT_EXIT" in reason
+
+
+def test_policy_collision_and_short_ranker_are_explicit_in_source():
+    manage = (audit.ROOT / "tradier_manage.py").read_text()
+    delta = (audit.ROOT / "wt_dc_delta.py").read_text()
+    assert "TOP_REJECTION_SHORT" in delta
+    assert "DG_RSI15M_TOO_BULL_FOR_SHORT" in manage
+    assert "DG_SHORT_NO_HTF_CONFIRM" in manage
+    # This is correct: negative raw return becomes a positive SHORT ranking
+    # score, which is then sorted descending.
+    assert "return score if is_long else -score" in manage

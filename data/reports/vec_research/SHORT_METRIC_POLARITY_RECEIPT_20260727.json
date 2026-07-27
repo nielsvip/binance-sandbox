@@ -1,12 +1,12 @@
 {
-  "artifact": "data/reports/vec_research/short_metric_polarity_20260727T040647Z",
+  "artifact": "data/reports/vec_research/short_metric_polarity_20260727T041203Z",
   "contract": "SHORT_POLARITY_TWO_BOOKS_SEALED_FINAL_V2",
   "stage": "SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2",
-  "source_sha256": "fb004600a765a66145fb7392fcc9237b9370a5cc3681a27fc8247b519105383f",
-  "preregistration_sha256": "78e8e8dcc68bd8c56ddcae38b3770f489386e1052dd28976567f9917a2659c51",
+  "source_sha256": "6092e4fcb78bb4bda00c92889559708c5662aa5d0e89a75dc4f0a949dac041ef",
+  "preregistration_sha256": "78e78d5d3b656527086d5221b3a2a87c601b77fc847962f48d475a630aafbdeb",
   "metric_inventory_sha256": "11b1085904a29862e82118d8894be67a0f9261c177bf665b1ed829be4067f8d5",
-  "discovery_grid_sha256": "ac2f740061cc2b3b876c717d01627acec8e01ad23181c24ff8a56d6f7e87b2a5",
-  "discovery_freeze_sha256": "680c7e67002a8b6af2f2095643cf95625c0b1c40ca625d3d93b3b21a4eada9d8",
+  "discovery_grid_sha256": "dcabc0c4b1737d6175695ecd85c10a2ea6d8b6943ebc8dfd4b3c9e18294facc5",
+  "discovery_freeze_sha256": "2c514f7b6f300ae5d0eaa93b569b4e670115dea312c812fe6259737da47c3468",
   "metric_class_counts": {
     "SIGN_INVERTED": 8,
     "THRESHOLD_COMPLEMENTED": 6,
@@ -114,7 +114,12 @@
   "fleet_ingest": {
     "appended": 6,
     "backup": "data/reports/path_fleet/queue.db.bak_short_metric_polarity_20260727T040656Z",
-    "matrix_written": false
+    "matrix_written": false,
+    "source_matched_rerun": {
+      "appended": 0,
+      "skipped": 6,
+      "backup": "data/reports/path_fleet/queue.db.bak_short_metric_polarity_20260727T041212Z"
+    }
   },
   "matrix_written": false,
   "promotion_allowed": false
