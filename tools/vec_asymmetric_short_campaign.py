@@ -219,6 +219,7 @@ def _simulate(
     max_dd = 0.0
     held = 0
     entries = scales = exits = wins = 0
+    exit_reason_counts: dict[str, int] = {}
     correction_pnl = 0.0
     trade_returns: list[float] = []
 
@@ -281,6 +282,7 @@ def _simulate(
                 correction_pnl += max(0.0, ret)
                 wins += int(ret > 0)
                 exits += 1
+                exit_reason_counts[reason] = exit_reason_counts.get(reason, 0) + 1
                 qty = 0.0
                 avg_entry = 0.0
                 open_entry_fees = 0.0
@@ -355,6 +357,8 @@ def _simulate(
         "entries": entries,
         "scale_fills": scales,
         "technical_exits": exits,
+        "exit_reason_counts": exit_reason_counts,
+        "emergency_exit_count": int(exit_reason_counts.get("EMERGENCY", 0)),
         "win_rate_pct": wins / max(1, exits) * 100.0,
         "downside_variation_opportunity_pct": downside,
         "correction_capture_pct": correction_pnl / max(1e-12, downside) * 100.0,

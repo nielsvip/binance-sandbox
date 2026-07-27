@@ -3,6 +3,7 @@ from tools.run_hao_solvency_ladder_grid import (
     _candidate_id,
     freeze_discovery,
     preregistered_settings,
+    scan_e05_candidate,
 )
 
 
@@ -73,3 +74,30 @@ def test_freeze_rejects_final_fold_fields():
         assert "final-fold" in str(exc)
     else:
         raise AssertionError("freeze accepted final-fold data")
+
+
+def test_one_e05_candidate_uses_validated_compiled_execution_route():
+    calls = []
+
+    class Execution:
+        @staticmethod
+        def _scan(data, ctx, events, commission, slippage, side):
+            calls.append((data, ctx, events, commission, slippage, side))
+            return {"capital_return_pct": 12.5}
+
+    class E05:
+        execution = Execution
+
+    result = scan_e05_candidate(
+        E05,
+        "data",
+        {"fold": 1},
+        "events",
+        0.0005,
+        0.0002,
+        "SHORT",
+    )
+    assert result == {"capital_return_pct": 12.5}
+    assert calls == [
+        ("data", {"fold": 1}, "events", 0.0005, 0.0002, "SHORT")
+    ]
