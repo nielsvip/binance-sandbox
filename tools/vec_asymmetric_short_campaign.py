@@ -35,6 +35,7 @@ if str(ROOT) not in sys.path:
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 from tools import vec_top_exit_campaign as top  # noqa: E402
+from tools.research_fill_contract import adverse_fill_price  # noqa: E402
 from research_availability_clock import (  # noqa: E402
     next_strictly_later_index,
 )
@@ -201,6 +202,8 @@ def _simulate(
     right: int,
     commission_bps: float,
     slippage_bps: float,
+    *,
+    emit_schedule: bool = False,
 ) -> dict[str, Any]:
     commission = commission_bps / 10_000.0
     slip = slippage_bps / 10_000.0
@@ -212,7 +215,7 @@ def _simulate(
     next_scale = math.nan
     peak_gain = 0.0
     open_entry_fees = 0.0
-    pending: tuple[str, int, str] | None = None
+    pending: tuple[str, int, int, str] | None = None
     realized = 0.0
     peak_eq = ACCOUNT_USD
     min_eq = ACCOUNT_USD
@@ -222,6 +225,9 @@ def _simulate(
     exit_reason_counts: dict[str, int] = {}
     correction_pnl = 0.0
     trade_returns: list[float] = []
+    schedule_events: list[dict[str, Any]] = []
+    requested_notional = filled_notional = weighted_exposure = 0.0
+    peak_post_fill_notional = 0.0
 
     def equity(px: float) -> float:
         return cash + qty * px
@@ -235,16 +241,32 @@ def _simulate(
             return
         fill = next_strictly_later_index(data.ts, signal_i, right)
         if fill is not None:
-            pending = (kind, int(fill), reason)
+            pending = (kind, int(fill), int(signal_i), reason)
+
+    def clock_fields(prefix: str, idx: int) -> dict[str, int]:
+        return {
+            f"{prefix}_ts": int(data.ts[idx]),
+            f"{prefix}_availability_ts": int(data.ts[idx]),
+            f"{prefix}_source_ts": int(data.source_ts[idx]),
+            f"{prefix}_source_row_index": int(data.full_indices[idx]),
+            f"{prefix}_clock_index": int(idx),
+        }
 
     for i in range(left, right):
         op, close = float(data.open[i]), float(data.close[i])
         if pending is not None and i == pending[1]:
-            kind, _, reason = pending
+            kind, _, signal_i, reason = pending
             pending = None
             if kind == "ENTRY" and qty == 0:
-                px = op * (1.0 + slip)
+                px = adverse_fill_price(
+                    op,
+                    position_side="SHORT",
+                    opening=True,
+                    slippage_rate=slip,
+                )
                 target = min(CAPACITY_USD, BASE_USD * c.entry_mult)
+                requested_notional += target
+                filled_notional += target
                 q = target / px
                 entry_fee = commission * q * px
                 cash += q * px - entry_fee
@@ -256,11 +278,43 @@ def _simulate(
                 next_scale = px - c.scale_trigger_atr * entry_atr
                 peak_gain = 0.0
                 entries += 1
+                peak_post_fill_notional = max(
+                    peak_post_fill_notional, abs(qty) * px
+                )
+                if emit_schedule:
+                    schedule_events.append({
+                        "type": "ENTRY",
+                        "reason": reason,
+                        "signal_index": signal_i - left,
+                        "fill_index": i - left,
+                        "latency_rth_bars": 1,
+                        "fill_px": px,
+                        "quantity": q,
+                        "requested_notional_usd": target,
+                        "filled_notional_usd": target,
+                        "position_qty_before_fill": 0.0,
+                        "position_qty_after_fill": abs(qty),
+                        "post_fill_notional_usd": abs(qty) * px,
+                        "entry_capacity_usd": CAPACITY_USD,
+                        "clamped": False,
+                        "semantics": "add",
+                        "entry_multiplier": c.entry_mult,
+                        "completed_htf_source_ts": {},
+                        **clock_fields("signal", signal_i),
+                        **clock_fields("fill", i),
+                    })
             elif kind == "SCALE" and qty < 0:
-                px = op * (1.0 + slip)
+                px = adverse_fill_price(
+                    op,
+                    position_side="SHORT",
+                    opening=True,
+                    slippage_rate=slip,
+                )
                 cap = min(CAPACITY_USD, BASE_USD * c.max_mult)
                 add_notional = max(0.0, min(BASE_USD, cap - notional(px)))
+                requested_notional += add_notional
                 if add_notional > 1.0:
+                    filled_notional += add_notional
                     add_q = add_notional / px
                     old_q = abs(qty)
                     entry_fee = commission * add_q * px
@@ -270,8 +324,38 @@ def _simulate(
                     avg_entry = (avg_entry * old_q + px * add_q) / (old_q + add_q)
                     next_scale = px - c.scale_trigger_atr * entry_atr
                     scales += 1
+                    peak_post_fill_notional = max(
+                        peak_post_fill_notional, abs(qty) * px
+                    )
+                    if emit_schedule:
+                        schedule_events.append({
+                            "type": "AUGMENT",
+                            "reason": reason,
+                            "signal_index": signal_i - left,
+                            "fill_index": i - left,
+                            "latency_rth_bars": 1,
+                            "fill_px": px,
+                            "quantity": add_q,
+                            "requested_notional_usd": add_notional,
+                            "filled_notional_usd": add_notional,
+                            "position_qty_before_fill": old_q,
+                            "position_qty_after_fill": abs(qty),
+                            "post_fill_notional_usd": abs(qty) * px,
+                            "entry_capacity_usd": CAPACITY_USD,
+                            "clamped": False,
+                            "semantics": "add",
+                            "entry_multiplier": 1.0,
+                            "completed_htf_source_ts": {},
+                            **clock_fields("signal", signal_i),
+                            **clock_fields("fill", i),
+                        })
             elif kind == "EXIT" and qty < 0:
-                px = op * (1.0 - slip)
+                px = adverse_fill_price(
+                    op,
+                    position_side="SHORT",
+                    opening=False,
+                    slippage_rate=slip,
+                )
                 q = abs(qty)
                 exit_fee = commission * q * px
                 pnl = (avg_entry - px) * q - open_entry_fees - exit_fee
@@ -283,6 +367,22 @@ def _simulate(
                 wins += int(ret > 0)
                 exits += 1
                 exit_reason_counts[reason] = exit_reason_counts.get(reason, 0) + 1
+                if emit_schedule:
+                    schedule_events.append({
+                        "type": "EXIT",
+                        "reason": reason,
+                        "signal_index": signal_i - left,
+                        "fill_index": i - left,
+                        "latency_rth_bars": 1,
+                        "fill_px": px,
+                        "quantity": q,
+                        "filled_notional_usd": q * px,
+                        "position_qty_after_fill": 0.0,
+                        "entry_capacity_usd": CAPACITY_USD,
+                        "completed_htf_source_ts": {},
+                        **clock_fields("signal", signal_i),
+                        **clock_fields("fill", i),
+                    })
                 qty = 0.0
                 avg_entry = 0.0
                 open_entry_fees = 0.0
@@ -293,6 +393,7 @@ def _simulate(
                 schedule("ENTRY", i, "CONFIRMED_1H_ROLLOVER")
         else:
             held += 1
+            weighted_exposure += min(CAPACITY_USD, notional(close)) / CAPACITY_USD
             gain = (avg_entry - close) / avg_entry
             peak_gain = max(peak_gain, gain)
             atr = entry_atr if math.isfinite(entry_atr) and entry_atr > 0 else close * 0.02
@@ -340,7 +441,7 @@ def _simulate(
     opp = max(0.0, short_bh)
     rows = max(1, right - left)
     downside = _downside_opportunity(data.close[left:right])
-    return {
+    result = {
         "strategy_return_pct": strategy_return,
         "realized_cash_return_pct": realized / ACCOUNT_USD * 100.0,
         "open_mtm_return_pct": mtm / ACCOUNT_USD * 100.0,
@@ -354,6 +455,11 @@ def _simulate(
         "minimum_account_equity_usd": min_eq,
         "insolvent": min_eq <= 0.0,
         "time_in_market_pct": held / rows * 100.0,
+        "exposure_weighted_tim_pct": weighted_exposure / rows * 100.0,
+        "peak_post_fill_notional_usd": peak_post_fill_notional,
+        "requested_notional_usd": requested_notional,
+        "filled_notional_usd": filled_notional,
+        "clamp_count": 0,
         "entries": entries,
         "scale_fills": scales,
         "technical_exits": exits,
@@ -367,6 +473,9 @@ def _simulate(
         "start_ts": int(data.ts[left]),
         "end_ts": int(data.ts[right - 1]),
     }
+    if emit_schedule:
+        result["schedule_events"] = schedule_events
+    return result
 
 
 def _idx(data: top.ExecutionData, date: str) -> int:

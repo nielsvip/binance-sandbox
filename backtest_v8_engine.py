@@ -7885,9 +7885,28 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             flush=True,
         )
     if _research_ladder_spec_path_t:
-        from tools.v8_research_ladder_adapter import LadderReplayAdapter
+        from tools.v8_research_ladder_adapter import (
+            LadderReplayAdapter,
+            SPEC_KIND as _ladder_spec_kind_t,
+        )
+        from tools.v8_research_short_guard_adapter import (
+            ShortGuardReplayAdapter,
+            SPEC_KIND as _short_guard_spec_kind_t,
+        )
 
-        _research_ladder_adapter_t = LadderReplayAdapter(
+        _research_ladder_kind_t = json.loads(
+            Path(_research_ladder_spec_path_t).read_text()
+        ).get("kind")
+        if _research_ladder_kind_t == _ladder_spec_kind_t:
+            _research_ladder_adapter_cls_t = LadderReplayAdapter
+        elif _research_ladder_kind_t == _short_guard_spec_kind_t:
+            _research_ladder_adapter_cls_t = ShortGuardReplayAdapter
+        else:
+            raise RuntimeError(
+                "V8_RESEARCH_LADDER unsupported replay spec kind: "
+                f"{_research_ladder_kind_t!r}"
+            )
+        _research_ladder_adapter_t = _research_ladder_adapter_cls_t(
             _research_ladder_spec_path_t
         )
         _research_ladder_loaded_store_t = stores.get(
@@ -8417,7 +8436,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     executed_trades[-1] if executed_trades else {}
                 )
                 if not str(_ladder_emitted_t.get("reason", "")).startswith(
-                    "V8_RESEARCH_BAND_LADDER_REPLAY"
+                    _research_ladder_adapter_t.reason_prefix
                 ):
                     raise RuntimeError(
                         "V8_RESEARCH_LADDER engine did not emit requested fill"
@@ -9355,7 +9374,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 )
                 else "FAIL"
             ),
-            "tier": "VEC_RESEARCH_EXACT_ENGINE_LADDER_PARITY",
+            "tier": (
+                "V8_EXACT_REPLAY_SHORT_GUARD_PARITY"
+                if _research_ladder_adapter_t.spec.get("kind")
+                == "V8_RESEARCH_SHORT_GUARD_REPLAY"
+                else "VEC_RESEARCH_EXACT_ENGINE_LADDER_PARITY"
+            ),
             "schedule": _research_ladder_schedule_audit_t,
             "accounting": _research_ladder_accounting_audit_t,
             "fingerprints": {

@@ -951,6 +951,9 @@ class LadderReplayAdapter:
         self.spec_path = Path(spec_path).resolve()
         self.spec = json.loads(self.spec_path.read_text())
         self._validate_spec()
+        self.reason_prefix = str(
+            self.spec.get("reason_prefix") or REASON_PREFIX
+        )
         self.symbol = str(self.spec["symbol"]).upper()
         self.position_side = str(self.spec["side"]).upper()
         self.account = str(self.spec["account"])
@@ -1203,7 +1206,7 @@ class LadderReplayAdapter:
                 action = "CLOSE"
                 full_close = True
                 leaf = (
-                    "E02_DONCHIAN_4H_N30"
+                    str(event.get("reason") or "EXIT").upper()
                     if kind == "EXIT"
                     else "END_OF_VALIDATION_MTM"
                 )
@@ -1224,7 +1227,7 @@ class LadderReplayAdapter:
                     fill_price=fill_px,
                     quantity=action_qty,
                     full_close=full_close,
-                    reason=f"{REASON_PREFIX}__{leaf}",
+                    reason=f"{self.reason_prefix}__{leaf}",
                     source_event=event,
                 )
             )
@@ -1674,7 +1677,7 @@ class LadderReplayAdapter:
         closes = [
             row
             for row in executed_trades
-            if str(row.get("reason", "")).startswith(REASON_PREFIX)
+            if str(row.get("reason", "")).startswith(self.reason_prefix)
             and row.get("pnl_dollars") is not None
         ]
         pnl = sum(float(row["pnl_dollars"]) for row in closes)

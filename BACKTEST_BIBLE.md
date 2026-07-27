@@ -1723,3 +1723,31 @@ per-fold evidence and
 rollback scope are in `SHORT_ASYMMETRY_AUDIT_20260727.md` and
 `data/reports/vec_research/asymmetric_short_20260727T020907Z/`. The fleet
 receipts retain the numerically identical initial `020146Z` run.
+
+### §15.26 — isolated HAO_SHORT ladder solvency grid (2026-07-27)
+
+The hash-bound recovery NPZ was crossed with a preregistered ladder solvency
+grid without touching canonical data, live config, the matrix or path fleet.
+The 75 ladder settings were global request scales 0.50–1.0, delivered caps
+4–8x, and three monotone per-TF reduction profiles around each fold's frozen
+trigger/mode/semantics. E02, fixed E05 divergence/retest and fixed
+peak-giveback made 225 discovery candidates.
+
+Folds 1–2 alone ranked and froze 12 unique rows; the freeze receipt was
+persisted before fold 3 was simulated. There were zero discovery-strict and
+zero all-three-fold strict survivors. All 12 finalists were solvent in every
+fold, but remained gray. The closest E05 1.0-scale/6x-cap row had discovery
+returns 293.84% and 53.41% versus short B&H 67.39% and 20.64%, with TIM
+70.50% and 79.84%; it nevertheless trailed identical-entry E02 by 45.86pp
+and 11.43pp. Its untouched final made 1,986.91% versus 99.78% B&H and
+1,455.22% E02 at 70.45% TIM. That final-only lift did not participate in
+selection and cannot override the discovery rejection.
+
+All 44 insolvency observations were in discovery fold 2: 42 peak-giveback,
+one E02 and one E05. The 0.50 scale eliminated insolvency but suppressed
+fold-1 exposure, showing why blanket deleveraging is not an alpha-preserving
+answer. Exact replay remains ineligible because HAO's 15m-derived 5m rows
+still require parent-close availability in the exact engine. Full results and
+rollback scope are in `HAO_SOLVENCY_LADDER_RESULTS_20260727.md`; the compact
+machine receipt is
+`data/reports/vec_research/HAO_SOLVENCY_LADDER_RECEIPT_20260727.json`.
