@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_AWAITING_APPEND_ONLY_HOLDOUT",
+  "symbol": "PBF",
+  "side": "LONG",
+  "npz_path": "backtest_v8/indicators/PBF.npz",
+  "freeze_end_epoch": 1784923200,
+  "freeze_end_utc": "2026-07-24T20:00:00+00:00",
+  "holdout_not_before_utc": "2026-07-26T00:00:00+00:00",
+  "frozen_prefix_rows": 56525,
+  "frozen_prefix_sha256": "c3e99b6d716cb31bd04324cb51b716aae00dd117ab8592aafe61f86fbc8c5400",
+  "controller": "online_wf126_v1",
+  "controller_window_completed_1h_slots": 126,
+  "required_complete_windows": 2,
+  "entry_artifact": "data/reports/vec_research/entry_overlay_ENTRY_DC_TIER_AUG_ENABLED_20260726T215909Z_PBF_LONG",
+  "protocol": "ONLINE_EXPOSURE_WALKFORWARD_PROTOCOL_20260727.md",
+  "protocol_sha256": "45aff49539c07630aa40fd142319a25db3700af910a4274f4404c22d41dd2d01",
+  "controller_sha256": "fcebffb534e95b3e31f3a00054eac79c3ae27dde1f8ed76260a4ff4f2e71cf43",
+  "readiness_tool_sha256": "a1808b4b33e84ea10f5eb1c3b22484808e88f938ca3412cb48210e4f074064ce",
+  "acceptance_excludes_observed_data_through_utc": "2026-07-25T23:59:59+00:00",
+  "promotion_allowed": false,
+  "notes": "Readiness is fail-closed. No evaluation, tuning, exact replay, or live change is allowed until the frozen historical prefix matches and at least two new complete controller windows exist."
+}

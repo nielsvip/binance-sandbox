@@ -48,13 +48,14 @@ def test_not_ready_fails_closed_without_launch_or_tuning(tmp_path):
 
 def test_ready_only_after_slots_calendar_and_prefix_pass(tmp_path):
     path = tmp_path / "PBF.npz"
-    _write_npz(path, 20)
+    _write_npz(path, 24)
     prefix, _ = prefix_sha256(path, 9 * 3600)
     result = holdout_readiness(
         path, _receipt(prefix, not_before="1970-01-01T13:00:00+00:00")
     )
     assert result["status"] == "READY_FOR_FROZEN_EVALUATION"
     assert result["complete_controller_windows"] >= 2
+    assert result["post_freeze_completed_1h_slots"] == 11
 
 
 def test_historical_prefix_drift_blocks_even_with_enough_new_data(tmp_path):

@@ -66,8 +66,9 @@ All dates through 2026-07-25 have already been inspected and cannot be called
 untouched again. They may be used only for deterministic protocol checks and
 for freezing the three exits above.
 
-The acceptance holdout starts strictly after the frozen PBF NPZ ending
-2026-07-24 20:00 UTC. Accrual is append-only. The primary verdict requires at
+The acceptance holdout starts at 2026-07-26 00:00 UTC, strictly after both
+the frozen PBF NPZ ending 2026-07-24 20:00 UTC and all dates inspected through
+2026-07-25. Accrual is append-only. The primary verdict requires at
 least 126 completed 1h slots plus one subsequent complete controller window;
 the intended minimum is two later calendar months. At every update, hashes of
 the preceding window inputs, emitted schedule, controller state, frozen entry,

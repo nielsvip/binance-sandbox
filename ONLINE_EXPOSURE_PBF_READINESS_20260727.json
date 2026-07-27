@@ -1,0 +1,23 @@
+{
+  "status": "BLOCKED",
+  "symbol": "PBF",
+  "npz": "backtest_v8/indicators/PBF.npz",
+  "freeze_end_utc": "2026-07-24T20:00:00+00:00",
+  "holdout_not_before_utc": "2026-07-26T00:00:00+00:00",
+  "latest_execution_utc": "2026-07-24T20:00:00+00:00",
+  "controller_window_completed_1h_slots": 126,
+  "required_complete_windows": 2,
+  "post_freeze_completed_1h_slots": 0,
+  "complete_controller_windows": 0,
+  "remaining_completed_1h_slots": 252,
+  "frozen_prefix_rows": 56525,
+  "frozen_prefix_sha256_expected": "c3e99b6d716cb31bd04324cb51b716aae00dd117ab8592aafe61f86fbc8c5400",
+  "frozen_prefix_sha256_current": "c3e99b6d716cb31bd04324cb51b716aae00dd117ab8592aafe61f86fbc8c5400",
+  "frozen_prefix_valid": true,
+  "blocked_reasons": [
+    "NEED_252_MORE_COMPLETED_1H_SLOTS",
+    "CALENDAR_HOLDOUT_BEFORE_2026-07-26T00:00:00+00:00"
+  ],
+  "launch_performed": false,
+  "tuning_performed": false
+}
