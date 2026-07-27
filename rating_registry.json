@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T13:33:46.607391+00:00",
+  "timestamp": "2026-07-27T13:48:39.474664+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -25,12 +25,6 @@
       "short_score": 14.7
     },
     {
-      "symbol": "BIGTIMEUSDT",
-      "net_score": -14.3,
-      "long_score": 0,
-      "short_score": 14.3
-    },
-    {
       "symbol": "BOMEUSDC",
       "net_score": -13.6,
       "long_score": 0,
@@ -41,24 +35,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "net_score": -11.3,
-      "long_score": 0,
-      "short_score": 11.3
-    },
-    {
-      "symbol": "1000LUNCUSDT",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
-    },
-    {
-      "symbol": "ARBUSDC",
-      "net_score": -10.1,
-      "long_score": 0,
-      "short_score": 10.1
     },
     {
       "symbol": "IMXUSDT",
@@ -74,6 +50,12 @@
     },
     {
       "symbol": "BEATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -307,6 +289,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ASTERUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ACEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -368,12 +356,6 @@
     },
     {
       "symbol": "EIGENUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -685,6 +667,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BIGTIMEUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "IDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -715,6 +703,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ARBUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "YFIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -736,6 +730,12 @@
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
+      "short_score": 0
+    },
+    {
+      "symbol": "APEUSDT",
+      "net_score": 18.8,
+      "long_score": 18.8,
       "short_score": 0
     },
     {
@@ -787,29 +787,14 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [
+  "top_longs": [
     [
-      "BIGTIMEUSDT",
-      14.3,
-      0.006386
-    ],
-    [
-      "ASTERUSDT",
-      11.3,
-      0.6244695
-    ],
-    [
-      "1000LUNCUSDT",
-      10.2,
-      0.052895
-    ],
-    [
-      "ARBUSDC",
-      10.1,
-      0.08115594
+      "APEUSDT",
+      18.8,
+      0.16281475
     ]
   ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
