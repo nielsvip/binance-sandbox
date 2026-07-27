@@ -2,7 +2,9 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 import backtest_v8_engine as engine
@@ -10,11 +12,19 @@ from tools.v8_research_ladder_adapter import (
     LadderReplayAdapter,
     LadderReplayError,
     SPEC_KIND,
+    SPEC_VERSION,
+    _canonical_sha256,
+    _write_schedule_deterministic,
+    audit_execution_provenance,
 )
 
 
 def _write_spec(
-    tmp_path: Path, events: list[dict], *, side: str = "LONG"
+    tmp_path: Path,
+    events: list[dict],
+    *,
+    side: str = "LONG",
+    version: int = 1,
 ) -> Path:
     schedule = tmp_path / "schedule.jsonl.gz"
     with gzip.open(schedule, "wt") as fh:
@@ -22,7 +32,7 @@ def _write_spec(
             fh.write(json.dumps(event) + "\n")
     spec = {
         "kind": SPEC_KIND,
-        "version": 1,
+        "version": version,
         "promotion_allowed": False,
         "matrix_written": False,
         "source_artifact": str(tmp_path),
@@ -74,6 +84,59 @@ def _write_spec(
         },
         "accounting_tolerance_bp": 1e-4,
     }
+    if version == SPEC_VERSION:
+        source_result = tmp_path / "result.json"
+        source_result.write_text('{"frozen":true}\n')
+        selection_inputs = {
+            "fold": 3,
+            "train": ["2025-01-01", "2026-01-01"],
+            "selected_curve": spec["curve"],
+            "selected_candidate": None,
+            "selection_score": 1.0,
+            "inner_metrics": [],
+        }
+        spec.update(
+            {
+                "source_result": str(source_result),
+                "expected_source_result_sha256": hashlib.sha256(
+                    source_result.read_bytes()
+                ).hexdigest(),
+                "source_npz": {
+                    "path": str(tmp_path / "MU.npz"),
+                    "sha256": "0" * 64,
+                    "execution_provenance": {
+                        "safe_for_exact_engine": True,
+                    },
+                },
+                "entry_schedule": {
+                    "path": str(schedule),
+                    "sha256": spec["expected_schedule_sha256"],
+                },
+                "fold_boundaries": {
+                    "fold": 3,
+                    "train_start": "2025-01-01",
+                    "train_end_exclusive": "2026-01-01",
+                    "validation_start": "2026-01-01",
+                    "validation_end_exclusive": "2026-01-03",
+                },
+                "selection_provenance": {
+                    "frozen_fold": 3,
+                    "selected_from_training_only": True,
+                    "validation_or_final_metrics_used_for_selection": False,
+                    "selection_inputs": selection_inputs,
+                    "selection_inputs_sha256": _canonical_sha256(
+                        selection_inputs
+                    ),
+                    "validation_evidence_sha256": "f" * 64,
+                },
+                "ladder_multipliers": {
+                    "D": {"bottom": 8.0, "top": 5.0},
+                    "4h": {"bottom": 4.0, "top": 2.0},
+                    "1h": {"bottom": 2.0, "top": 1.0},
+                    "hard_max": 8.0,
+                },
+            }
+        )
     path = tmp_path / "spec.json"
     path.write_text(json.dumps(spec))
     return path
@@ -253,3 +316,80 @@ def test_engine_adapter_is_default_off_and_mutually_exclusive():
     assert "V8_RESEARCH_LADDER_SPEC" in source
     assert "mutually exclusive" in source
     assert "V8_RESEARCH_BAND_LADDER_REPLAY" in source
+
+
+def test_schedule_gzip_is_byte_deterministic_across_paths(tmp_path):
+    events = _events()
+    first = _write_schedule_deterministic(tmp_path / "a.gz", events)
+    second = _write_schedule_deterministic(tmp_path / "different_name.gz", events)
+    assert first.read_bytes() == second.read_bytes()
+    assert hashlib.sha256(first.read_bytes()).hexdigest() == hashlib.sha256(
+        second.read_bytes()
+    ).hexdigest()
+
+
+def test_v2_parser_binds_source_selection_and_rejects_final_leakage(tmp_path):
+    path = _write_spec(tmp_path, _events(), version=SPEC_VERSION)
+    parsed = LadderReplayAdapter(path)
+    assert parsed.spec["selection_provenance"][
+        "validation_or_final_metrics_used_for_selection"
+    ] is False
+
+    payload = json.loads(path.read_text())
+    payload["selection_provenance"][
+        "validation_or_final_metrics_used_for_selection"
+    ] = True
+    path.write_text(json.dumps(payload))
+    with pytest.raises(LadderReplayError, match="training-only"):
+        LadderReplayAdapter(path)
+
+
+def test_v2_parser_rejects_source_result_mutation(tmp_path):
+    path = _write_spec(tmp_path, _events(), version=SPEC_VERSION)
+    (tmp_path / "result.json").write_text('{"frozen":false}\n')
+    with pytest.raises(LadderReplayError, match="source result fingerprint"):
+        LadderReplayAdapter(path)
+
+
+def test_synthetic_5m_parent_future_fails_exact_engine_provenance():
+    class FakeZ(dict):
+        @property
+        def files(self):
+            return list(self)
+
+    ts = np.arange(12, dtype=np.int64) * 300 + 1_700_000_000
+    synthetic = np.zeros(12, dtype=np.uint8)
+    synthetic[3:6] = 1
+    parent = ts.copy()
+    parent[3:6] += np.array([600, 300, 0], dtype=np.int64)
+    data = SimpleNamespace(
+        synthetic=synthetic,
+        ts=ts,
+        full_indices=np.arange(12, dtype=np.int64),
+        z=FakeZ(synthetic_5m_parent_close_ts=parent),
+    )
+    audit = audit_execution_provenance(data, left=0, right=len(ts))
+    assert audit["status"] == "BLOCKED"
+    assert audit["safe_for_exact_engine"] is False
+    assert audit["synthetic_rows"] == 3
+    assert audit["future_parent_rows"] == 2
+    assert audit["parent_lag_max_seconds"] == 600
+
+
+def test_synthetic_rows_observable_at_parent_close_are_safe():
+    class FakeZ(dict):
+        @property
+        def files(self):
+            return list(self)
+
+    ts = np.arange(12, dtype=np.int64) * 300 + 1_700_000_000
+    synthetic = np.ones(12, dtype=np.uint8)
+    data = SimpleNamespace(
+        synthetic=synthetic,
+        ts=ts,
+        full_indices=np.arange(12, dtype=np.int64),
+        z=FakeZ(synthetic_5m_parent_close_ts=ts.copy()),
+    )
+    audit = audit_execution_provenance(data, left=0, right=len(ts))
+    assert audit["status"] == "PASS"
+    assert audit["future_parent_rows"] == 0

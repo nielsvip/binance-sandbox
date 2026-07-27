@@ -747,8 +747,25 @@ def run(args: argparse.Namespace) -> Path:
     snap = out / "source_snapshot"
     snap.mkdir()
     snap.joinpath(Path(__file__).name).write_bytes(Path(__file__).read_bytes())
-    print(json.dumps({"artifact": str(out), **aggregate}, sort_keys=True))
     data.z.close()
+    replay_receipt = None
+    if getattr(args, "emit_replay_spec", True):
+        # Import locally: the exact adapter imports this module for its pure
+        # signal/accounting functions.  Delaying the reverse import avoids a
+        # module-import cycle and keeps live code entirely uninvolved.
+        from tools.v8_research_ladder_adapter import emit_replay_bundle
+
+        replay_receipt = emit_replay_bundle(out, account="trb")
+    print(
+        json.dumps(
+            {
+                "artifact": str(out),
+                **aggregate,
+                "research_ladder_replay": replay_receipt,
+            },
+            sort_keys=True,
+        )
+    )
     return out
 
 
@@ -778,6 +795,14 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=20260725)
     ap.add_argument("--commission-bps", type=float, default=5.0)
     ap.add_argument("--slippage-bps", type=float, default=2.0)
+    ap.add_argument(
+        "--no-replay-spec",
+        action="store_false",
+        dest="emit_replay_spec",
+        help=(
+            "skip the default research-ladder replay bundle/blocked receipt"
+        ),
+    )
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     if args.self_test:

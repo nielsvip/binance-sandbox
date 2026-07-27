@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import io
 import json
 import math
 from dataclasses import dataclass
@@ -25,7 +26,8 @@ from tools import vec_band_ladder_walkforward as ladder
 
 
 SPEC_KIND = "V8_RESEARCH_BAND_LADDER_REPLAY"
-SPEC_VERSION = 1
+SPEC_VERSION = 2
+LEGACY_SPEC_VERSION = 1
 REASON_PREFIX = "V8_RESEARCH_BAND_LADDER_REPLAY"
 
 
@@ -39,6 +41,118 @@ def sha256_file(path: str | Path) -> str:
         for chunk in iter(lambda: fh.read(4 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _canonical_sha256(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _write_schedule_deterministic(
+    path: str | Path, events: list[dict[str, Any]]
+) -> Path:
+    """Write a byte-stable gzip schedule.
+
+    ``gzip.open(..., "wt")`` embeds wall-clock mtime and the output filename in
+    the gzip header.  That made the exact-replay fingerprint change even when
+    the frozen event ledger did not.  A blank filename plus mtime=0 makes the
+    compressed bytes a pure function of the ordered events.
+    """
+    target = Path(path).resolve()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("wb") as raw:
+        with gzip.GzipFile(
+            filename="",
+            mode="wb",
+            fileobj=raw,
+            mtime=0,
+        ) as compressed:
+            with io.TextIOWrapper(
+                compressed, encoding="utf-8", newline="\n"
+            ) as text:
+                for event in events:
+                    text.write(
+                        json.dumps(
+                            event,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                            allow_nan=False,
+                        )
+                        + "\n"
+                    )
+    return target
+
+
+def audit_execution_provenance(
+    data: Any,
+    *,
+    left: int,
+    right: int,
+) -> dict[str, Any]:
+    """Return the execution-bar provenance contract for one replay window.
+
+    A 15m-derived 5m row is only causally consumable at its containing 15m
+    close.  The current exact engine iterates the timestamp printed on the
+    synthetic row and does not delay it until ``synthetic_5m_parent_close_ts``.
+    Therefore a window containing a synthetic row whose parent close is in the
+    future must fail closed; replaying it would reproduce vector output, but it
+    would not be exact causal engine evidence.
+    """
+    left = int(left)
+    right = int(right)
+    synthetic = np.asarray(data.synthetic, dtype=np.uint8)[left:right].astype(
+        bool
+    )
+    ts = np.asarray(data.ts, dtype=np.int64)[left:right]
+    parent_key = "synthetic_5m_parent_close_ts"
+    has_parent = parent_key in getattr(data.z, "files", ())
+    if synthetic.any() and not has_parent:
+        return {
+            "status": "BLOCKED",
+            "safe_for_exact_engine": False,
+            "reason": (
+                "synthetic 5m execution rows are present but "
+                "synthetic_5m_parent_close_ts provenance is missing"
+            ),
+            "rows": int(right - left),
+            "synthetic_rows": int(synthetic.sum()),
+            "future_parent_rows": None,
+        }
+    if has_parent:
+        full = np.asarray(data.full_indices, dtype=np.int64)[left:right]
+        parent = np.asarray(data.z[parent_key], dtype=np.int64)[full]
+    else:
+        parent = ts.copy()
+    unsafe = synthetic & (parent > ts)
+    lag = parent[synthetic] - ts[synthetic]
+    safe = not bool(unsafe.any())
+    return {
+        "status": "PASS" if safe else "BLOCKED",
+        "safe_for_exact_engine": safe,
+        "reason": (
+            None
+            if safe
+            else (
+                "exact engine exposes 15m-derived 5m OHLC before the "
+                "containing parent bar closes"
+            )
+        ),
+        "policy": "synthetic_parent_close_must_not_exceed_execution_timestamp",
+        "rows": int(right - left),
+        "synthetic_rows": int(synthetic.sum()),
+        "synthetic_pct": (
+            100.0 * float(synthetic.mean()) if len(synthetic) else 0.0
+        ),
+        "future_parent_rows": int(unsafe.sum()),
+        "parent_lag_min_seconds": int(lag.min()) if len(lag) else 0,
+        "parent_lag_max_seconds": int(lag.max()) if len(lag) else 0,
+    }
 
 
 @dataclass(frozen=True)
@@ -494,9 +608,15 @@ def build_spec_and_schedule(
     schedule_path: str | Path,
     account: str = "trb",
     npz_path_override: str | Path | None = None,
+    result_path: str | Path | None = None,
 ) -> dict[str, Any]:
     artifact = Path(artifact_dir).resolve()
-    payload = json.loads((artifact / "result.json").read_text())
+    source_result = Path(result_path or artifact / "result.json").resolve()
+    if source_result.parent != artifact:
+        raise LadderReplayError(
+            "source result must be inside the research artifact directory"
+        )
+    payload = json.loads(source_result.read_text())
     manifest = payload["manifest"]
     if manifest.get("promotion_allowed") or manifest.get("matrix_eligible"):
         raise LadderReplayError("source ladder artifact must remain research-only")
@@ -524,64 +644,153 @@ def build_spec_and_schedule(
     expected_npz_sha = str(
         manifest.get("control_npz_sha256") or manifest["npz_sha256"]
     )
-    if sha256_file(data.path) != expected_npz_sha:
+    try:
+        if sha256_file(data.path) != expected_npz_sha:
+            raise LadderReplayError(
+                "source artifact NPZ fingerprint no longer matches"
+            )
+        htf_names = (
+            ("15m", "1h", "4h", "D") if is_overlay else ladder.TF_ORDER
+        )
+        htfs = {tf: ladder.top._compress_htf(data, tf) for tf in htf_names}
+        curve = ladder.Curve(
+            **(frozen["curve"] if is_overlay else frozen["selected_curve"])
+        )
+        if is_overlay:
+            from tools.vec_entry_overlay_walkforward import (
+                build_frozen_overlay_signals,
+            )
+
+            signals = build_frozen_overlay_signals(
+                data, htfs, curve, frozen["selected_candidate"], side
+            )
+            expected_metrics = frozen["validation_metrics"]
+        else:
+            signals = ladder._build_signals(
+                data, htfs, curve, int(manifest["exit"]["n"]), side
+            )
+            expected_metrics = frozen["validation_metrics"]
+        left = ladder._date_index(data, start)
+        right = ladder._date_index(data, end)
+        execution_provenance = audit_execution_provenance(
+            data, left=left, right=right
+        )
+        if not execution_provenance["safe_for_exact_engine"]:
+            raise LadderReplayError(
+                "unsafe synthetic 5m provenance: "
+                + str(execution_provenance["reason"])
+                + f"; future_parent_rows="
+                f"{execution_provenance['future_parent_rows']}"
+            )
+        metrics, events = trace_frozen_curve(
+            data,
+            signals,
+            htfs,
+            curve,
+            commission_rate=float(manifest["commission_bps_one_way"])
+            / 10_000.0,
+            slippage_rate=float(manifest["slippage_bps_one_way"])
+            / 10_000.0,
+            side=side,
+            left=left,
+            right=right,
+        )
+        _assert_metrics_match(metrics, expected_metrics)
+    finally:
         data.z.close()
-        raise LadderReplayError("source artifact NPZ fingerprint no longer matches")
-    htf_names = ("15m", "1h", "4h", "D") if is_overlay else ladder.TF_ORDER
-    htfs = {tf: ladder.top._compress_htf(data, tf) for tf in htf_names}
-    curve = ladder.Curve(
-        **(frozen["curve"] if is_overlay else frozen["selected_curve"])
-    )
-    if is_overlay:
-        from tools.vec_entry_overlay_walkforward import (
-            build_frozen_overlay_signals,
-        )
 
-        signals = build_frozen_overlay_signals(
-            data, htfs, curve, frozen["selected_candidate"], side
-        )
-        expected_metrics = frozen["validation_metrics"]
-    else:
-        signals = ladder._build_signals(
-            data, htfs, curve, int(manifest["exit"]["n"]), side
-        )
-        expected_metrics = frozen["validation_metrics"]
-    metrics, events = trace_frozen_curve(
-        data,
-        signals,
-        htfs,
-        curve,
-        commission_rate=float(manifest["commission_bps_one_way"]) / 10_000.0,
-        slippage_rate=float(manifest["slippage_bps_one_way"]) / 10_000.0,
-        side=side,
-        left=ladder._date_index(data, start),
-        right=ladder._date_index(data, end),
+    schedule = _write_schedule_deterministic(schedule_path, events)
+    selection_inputs = {
+        "fold": int(frozen["fold"]),
+        "train": list(frozen["train"]),
+        "selected_curve": (
+            frozen["curve"] if is_overlay else frozen["selected_curve"]
+        ),
+        "selected_candidate": (
+            frozen["selected_candidate"] if is_overlay else None
+        ),
+        "selection_score": frozen.get("selection_score"),
+        "inner_metrics": frozen.get("inner_metrics"),
+    }
+    validation_evidence = {
+        "validation": list(frozen["validation"]),
+        "validation_metrics": frozen["validation_metrics"],
+    }
+    source_snapshot = artifact / "source_snapshot" / (
+        "vec_entry_overlay_walkforward.py"
+        if is_overlay
+        else "vec_band_ladder_walkforward.py"
     )
-    _assert_metrics_match(metrics, expected_metrics)
-    data.z.close()
-
-    schedule = Path(schedule_path).resolve()
-    schedule.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(schedule, "wt") as fh:
-        for event in events:
-            fh.write(json.dumps(event, sort_keys=True, allow_nan=False) + "\n")
     return {
         "kind": SPEC_KIND,
         "version": SPEC_VERSION,
         "promotion_allowed": False,
         "matrix_written": False,
         "source_artifact": str(artifact),
+        "source_result": str(source_result),
+        "source_result_relative": source_result.name,
+        "expected_source_result_sha256": sha256_file(source_result),
+        "source_vector_code_sha256": (
+            sha256_file(source_snapshot) if source_snapshot.exists() else None
+        ),
         "symbol": str(manifest["symbol"]).upper(),
         "side": side,
         "account": account,
         "event_schedule": str(schedule),
         "expected_schedule_sha256": sha256_file(schedule),
+        "entry_schedule": {
+            "path": str(schedule),
+            "sha256": sha256_file(schedule),
+            "ordered_events": len(events),
+            "executable_actions": sum(
+                event["type"] != "CAPACITY_NO_FILL" for event in events
+            ),
+            "fill_rule": "next_RTH_open_except_final_MTM_at_close",
+        },
         "npz_path": str(npz_path.resolve()),
         "expected_npz_sha256": expected_npz_sha,
+        "source_npz": {
+            "path": str(npz_path.resolve()),
+            "sha256": expected_npz_sha,
+            "contract": manifest.get("contract"),
+            "execution_provenance": execution_provenance,
+        },
         "validation_start": start,
         "validation_end_exclusive": end,
         "source_start": source_start,
+        "fold_boundaries": {
+            "fold": int(frozen["fold"]),
+            "train_start": str(frozen["train"][0]),
+            "train_end_exclusive": str(frozen["train"][1]),
+            "validation_start": str(start),
+            "validation_end_exclusive": str(end),
+        },
+        "selection_provenance": {
+            "frozen_fold": int(frozen["fold"]),
+            "selected_from_training_only": True,
+            "validation_or_final_metrics_used_for_selection": False,
+            "selection_inputs_sha256": _canonical_sha256(selection_inputs),
+            "validation_evidence_sha256": _canonical_sha256(
+                validation_evidence
+            ),
+            "selection_inputs": selection_inputs,
+        },
         "curve": frozen["curve"] if is_overlay else frozen["selected_curve"],
+        "ladder_multipliers": {
+            "D": {
+                "bottom": float(curve.d_bottom),
+                "top": float(curve.d_top),
+            },
+            "4h": {
+                "bottom": float(curve.h4_bottom),
+                "top": float(curve.h4_top),
+            },
+            "1h": {
+                "bottom": float(curve.h1_bottom),
+                "top": float(curve.h1_top),
+            },
+            "hard_max": float(manifest["hard_max_multiplier"]),
+        },
         "entry_overlay": (
             frozen["selected_candidate"] if is_overlay else None
         ),
@@ -625,6 +834,78 @@ def build_spec_and_schedule(
         },
         "accounting_tolerance_bp": 1e-4,
     }
+
+
+def emit_replay_bundle(
+    artifact_dir: str | Path,
+    *,
+    account: str = "trb",
+    npz_path_override: str | Path | None = None,
+    result_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Materialize one parser-validated replay bundle or a blocked receipt.
+
+    The function deliberately returns a receipt instead of turning a valid
+    vector artifact into a failed campaign. Exact-engine eligibility is a
+    stricter tier. A blocked receipt is machine-readable evidence that no spec
+    may be handed to ``backtest_v8_engine``.
+    """
+    artifact = Path(artifact_dir).resolve()
+    bundle = artifact / "research_ladder_replay"
+    bundle.mkdir(parents=True, exist_ok=True)
+    source_result = Path(result_path or artifact / "result.json").resolve()
+    receipt_path = bundle / "receipt.json"
+    try:
+        schedule = bundle / "frozen_ladder_schedule.jsonl.gz"
+        spec = build_spec_and_schedule(
+            artifact,
+            schedule_path=schedule,
+            account=account,
+            npz_path_override=npz_path_override,
+            result_path=source_result,
+        )
+        spec_path = bundle / "research_ladder_spec.json"
+        spec_path.write_text(
+            json.dumps(spec, sort_keys=True, indent=2, allow_nan=False) + "\n"
+        )
+        # Parse the exact bytes that the engine will consume before advertising
+        # the bundle as runnable.
+        parsed = LadderReplayAdapter(spec_path)
+        receipt = {
+            "status": "READY_FOR_EXACT_ENGINE",
+            "tier": "VEC_RESEARCH_REPLAY_SPEC_V2",
+            "source_result": str(source_result),
+            "source_result_sha256": sha256_file(source_result),
+            "spec": str(spec_path),
+            "spec_sha256": sha256_file(spec_path),
+            "schedule": str(schedule),
+            "schedule_sha256": sha256_file(schedule),
+            "actions": len(parsed.actions),
+            "synthetic_execution_provenance": spec["source_npz"][
+                "execution_provenance"
+            ],
+            "selection_final_leakage": False,
+            "promotion_allowed": False,
+            "matrix_written": False,
+        }
+    except (LadderReplayError, KeyError, ValueError) as exc:
+        receipt = {
+            "status": "BLOCKED_FAIL_CLOSED",
+            "tier": "VEC_RESEARCH_REPLAY_SPEC_V2",
+            "source_result": str(source_result),
+            "source_result_sha256": (
+                sha256_file(source_result) if source_result.exists() else None
+            ),
+            "reason": str(exc),
+            "spec_emitted": False,
+            "selection_final_leakage": False,
+            "promotion_allowed": False,
+            "matrix_written": False,
+        }
+    receipt_path.write_text(
+        json.dumps(receipt, sort_keys=True, indent=2, allow_nan=False) + "\n"
+    )
+    return receipt
 
 
 class LadderReplayAdapter:
@@ -671,7 +952,8 @@ class LadderReplayAdapter:
     def _validate_spec(self) -> None:
         if self.spec.get("kind") != SPEC_KIND:
             raise LadderReplayError(f"wrong spec kind: {self.spec.get('kind')!r}")
-        if int(self.spec.get("version", 0)) != SPEC_VERSION:
+        version = int(self.spec.get("version", 0))
+        if version not in {LEGACY_SPEC_VERSION, SPEC_VERSION}:
             raise LadderReplayError("unsupported ladder replay spec version")
         required = {
             "symbol",
@@ -696,6 +978,72 @@ class LadderReplayAdapter:
             raise LadderReplayError("ladder replay side must be LONG or SHORT")
         if float(self.spec["hard_capacity_usd"]) <= 0:
             raise LadderReplayError("hard_capacity_usd must be positive")
+        if version == SPEC_VERSION:
+            strict_required = {
+                "source_result",
+                "expected_source_result_sha256",
+                "source_npz",
+                "entry_schedule",
+                "fold_boundaries",
+                "selection_provenance",
+                "ladder_multipliers",
+            }
+            strict_missing = sorted(strict_required - set(self.spec))
+            if strict_missing:
+                raise LadderReplayError(
+                    f"missing v2 replay provenance fields: {strict_missing}"
+                )
+            source_result = Path(self.spec["source_result"]).resolve()
+            if not source_result.is_file():
+                raise LadderReplayError("source result is unavailable")
+            if sha256_file(source_result) != str(
+                self.spec["expected_source_result_sha256"]
+            ):
+                raise LadderReplayError("source result fingerprint mismatch")
+            selection = self.spec["selection_provenance"]
+            if (
+                not bool(selection.get("selected_from_training_only"))
+                or bool(
+                    selection.get(
+                        "validation_or_final_metrics_used_for_selection"
+                    )
+                )
+            ):
+                raise LadderReplayError(
+                    "frozen selection is not proven training-only"
+                )
+            if _canonical_sha256(
+                selection.get("selection_inputs")
+            ) != str(selection.get("selection_inputs_sha256")):
+                raise LadderReplayError("selection input fingerprint mismatch")
+            bounds = self.spec["fold_boundaries"]
+            if (
+                str(bounds.get("train_end_exclusive"))
+                != str(bounds.get("validation_start"))
+                or str(bounds.get("validation_start"))
+                != str(self.spec.get("validation_start"))
+                or str(bounds.get("validation_end_exclusive"))
+                != str(self.spec.get("validation_end_exclusive"))
+            ):
+                raise LadderReplayError(
+                    "non-contiguous or mismatched frozen fold boundaries"
+                )
+            provenance = self.spec["source_npz"].get(
+                "execution_provenance", {}
+            )
+            if not bool(provenance.get("safe_for_exact_engine")):
+                raise LadderReplayError(
+                    "unsafe synthetic 5m provenance in replay spec"
+                )
+            if (
+                str(self.spec["source_npz"].get("sha256"))
+                != str(self.spec["expected_npz_sha256"])
+                or str(self.spec["entry_schedule"].get("sha256"))
+                != str(self.spec["expected_schedule_sha256"])
+            ):
+                raise LadderReplayError(
+                    "nested provenance fingerprint mismatch"
+                )
 
     def _build_actions(self) -> list[LadderReplayAction]:
         out: list[LadderReplayAction] = []
@@ -817,30 +1165,77 @@ class LadderReplayAdapter:
             "ladder",
             str(self.spec["validation_end_exclusive"]),
         )
-        is_overlay = bool(self.spec.get("entry_overlay"))
-        htf_names = ("15m", "1h", "4h", "D") if is_overlay else ladder.TF_ORDER
-        htfs = {tf: ladder.top._compress_htf(data, tf) for tf in htf_names}
-        curve = ladder.Curve(**self.spec["curve"])
-        if is_overlay:
-            from tools.vec_entry_overlay_walkforward import (
-                build_frozen_overlay_signals,
+        try:
+            if int(self.spec.get("version", 0)) == SPEC_VERSION:
+                live_provenance = audit_execution_provenance(
+                    data,
+                    left=ladder._date_index(
+                        data, str(self.spec["validation_start"])
+                    ),
+                    right=ladder._date_index(
+                        data, str(self.spec["validation_end_exclusive"])
+                    ),
+                )
+                if not live_provenance["safe_for_exact_engine"]:
+                    raise LadderReplayError(
+                        "loaded NPZ has unsafe synthetic 5m provenance: "
+                        + str(live_provenance["reason"])
+                    )
+                expected_provenance = self.spec["source_npz"][
+                    "execution_provenance"
+                ]
+                for key in (
+                    "rows",
+                    "synthetic_rows",
+                    "future_parent_rows",
+                    "parent_lag_min_seconds",
+                    "parent_lag_max_seconds",
+                ):
+                    if live_provenance.get(key) != expected_provenance.get(key):
+                        raise LadderReplayError(
+                            f"execution provenance mismatch for {key}"
+                        )
+            is_overlay = bool(self.spec.get("entry_overlay"))
+            htf_names = (
+                ("15m", "1h", "4h", "D")
+                if is_overlay
+                else ladder.TF_ORDER
             )
+            htfs = {
+                tf: ladder.top._compress_htf(data, tf) for tf in htf_names
+            }
+            curve = ladder.Curve(**self.spec["curve"])
+            if is_overlay:
+                from tools.vec_entry_overlay_walkforward import (
+                    build_frozen_overlay_signals,
+                )
 
-            signals = build_frozen_overlay_signals(
-                data,
-                htfs,
-                curve,
-                self.spec["entry_overlay"],
-                self.position_side,
-            )
-        else:
-            signals = ladder._build_signals(
-                data,
-                htfs,
-                curve,
-                int(self.spec.get("exit_n", 30)),
-                self.position_side,
-            )
+                signals = build_frozen_overlay_signals(
+                    data,
+                    htfs,
+                    curve,
+                    self.spec["entry_overlay"],
+                    self.position_side,
+                )
+            else:
+                signals = ladder._build_signals(
+                    data,
+                    htfs,
+                    curve,
+                    int(self.spec.get("exit_n", 30)),
+                    self.position_side,
+                )
+            self._validate_actions_against_npz(data, htfs, signals)
+        finally:
+            data.z.close()
+        return actual_sha
+
+    def _validate_actions_against_npz(
+        self,
+        data: Any,
+        htfs: dict[str, Any],
+        signals: ladder.SignalData,
+    ) -> None:
         for action in self.actions:
             event = action.source_event
             source_fill_index = int(
@@ -918,8 +1313,6 @@ class LadderReplayAdapter:
                 raise LadderReplayError(
                     "capacity no-fill completed HTF source mismatch"
                 )
-        data.z.close()
-        return actual_sha
 
     def expected_fill_from_loaded_bar(
         self, action: LadderReplayAction, raw_price: float
