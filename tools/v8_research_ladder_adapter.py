@@ -104,12 +104,12 @@ def audit_execution_provenance(
     """Return the shared parent-close availability contract for one window."""
     left = int(left)
     right = int(right)
-    synthetic = np.asarray(data.synthetic, dtype=np.uint8)[left:right].astype(
-        bool
-    )
     try:
         full_clock = build_availability_clock(data)
     except ValueError as exc:
+        synthetic = np.asarray(
+            data.synthetic, dtype=np.uint8
+        )[left:right].astype(bool)
         return {
             "status": "BLOCKED",
             "safe_for_exact_engine": False,
@@ -118,6 +118,7 @@ def audit_execution_provenance(
             "synthetic_rows": int(synthetic.sum()),
             "future_parent_rows": None,
         }
+    synthetic = full_clock.synthetic[left:right].astype(bool)
     availability = full_clock.availability_ts[left:right]
     source_ts = full_clock.source_ts[left:right]
     lag = availability[synthetic] - source_ts[synthetic]

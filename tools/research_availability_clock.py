@@ -83,22 +83,31 @@ def _clock_hash(
 def build_availability_clock(data: Any) -> AvailabilityClock:
     """Build a stable clock for the rows currently selected in ``data``."""
     source_row_index = np.asarray(data.full_indices, dtype=np.int64)
-    source_ts = np.asarray(data.z["timestamps"], dtype=np.int64)[
-        source_row_index
-    ]
+    files = set(getattr(data.z, "files", ()))
+    if "timestamps" in files:
+        source_ts = np.asarray(data.z["timestamps"], dtype=np.int64)[
+            source_row_index
+        ]
+    elif hasattr(data, "source_ts"):
+        source_ts = np.asarray(data.source_ts, dtype=np.int64)
+    else:
+        # Small audit fixtures and already filtered execution views may expose
+        # their source timestamps directly without duplicating the full NPZ
+        # ``timestamps`` array.
+        source_ts = np.asarray(data.ts, dtype=np.int64)
     synthetic = np.asarray(data.synthetic, dtype=np.uint8).astype(bool)
     if not (
         len(source_row_index) == len(source_ts) == len(synthetic)
     ):
         raise AvailabilityClockError("execution clock arrays have unequal lengths")
     parent_key = "synthetic_5m_parent_close_ts"
-    if synthetic.any() and parent_key not in data.z.files:
+    if synthetic.any() and parent_key not in files:
         raise AvailabilityClockError(
             "synthetic rows require synthetic_5m_parent_close_ts"
         )
     parent = (
         np.asarray(data.z[parent_key], dtype=np.int64)[source_row_index]
-        if parent_key in data.z.files
+        if parent_key in files
         else source_ts
     )
     availability = np.where(synthetic, parent, source_ts).astype(np.int64)

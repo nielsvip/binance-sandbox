@@ -176,6 +176,17 @@ def _write_spec(
                 },
             }
         )
+    # Version-specific fields are added to the in-memory events above, so
+    # materialize the schedule only after that mutation. Otherwise the spec
+    # advertises v3 clock provenance that is absent from the bytes parsed by
+    # the adapter.
+    with gzip.open(schedule, "wt") as fh:
+        for event in events:
+            fh.write(json.dumps(event) + "\n")
+    schedule_sha = hashlib.sha256(schedule.read_bytes()).hexdigest()
+    spec["expected_schedule_sha256"] = schedule_sha
+    if version == SPEC_VERSION:
+        spec["entry_schedule"]["sha256"] = schedule_sha
     path = tmp_path / "spec.json"
     path.write_text(json.dumps(spec))
     return path
