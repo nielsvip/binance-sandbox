@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T10:48:42.714597+00:00",
+  "timestamp": "2026-07-27T11:03:44.318865+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -344,12 +344,6 @@
     },
     {
       "symbol": "MASKUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -733,6 +727,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BEATUSDT",
+      "net_score": 16.3,
+      "long_score": 16.3,
+      "short_score": 0
+    },
+    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
@@ -787,7 +787,13 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "BEATUSDT",
+      16.3,
+      4.09384806
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
