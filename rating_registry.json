@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T14:48:47.027128+00:00",
+  "timestamp": "2026-07-27T15:03:45.350401+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -31,28 +31,16 @@
       "short_score": 13.6
     },
     {
-      "symbol": "RUNEUSDT",
-      "net_score": -13.5,
-      "long_score": 0,
-      "short_score": 13.5
-    },
-    {
       "symbol": "SKYAIUSDT",
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
     },
     {
-      "symbol": "ALGOUSDT",
-      "net_score": -12.2,
+      "symbol": "RUNEUSDT",
+      "net_score": -10.8,
       "long_score": 0,
-      "short_score": 12.2
-    },
-    {
-      "symbol": "1000LUNCUSDT",
-      "net_score": -11.1,
-      "long_score": 0,
-      "short_score": 11.1
+      "short_score": 10.8
     },
     {
       "symbol": "BLURUSDT",
@@ -343,12 +331,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BEATUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "SANDUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -446,6 +428,12 @@
     },
     {
       "symbol": "GALAUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "1000LUNCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -649,6 +637,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ALGOUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "AVAXUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -739,6 +733,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BEATUSDT",
+      "net_score": 17.7,
+      "long_score": 17.7,
+      "short_score": 0
+    },
+    {
       "symbol": "PENDLEUSDT",
       "net_score": 20.9,
       "long_score": 20.9,
@@ -787,22 +787,18 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "BEATUSDT",
+      17.7,
+      4.38536761
+    ]
+  ],
   "top_shorts": [
     [
       "RUNEUSDT",
-      13.5,
-      0.4255556
-    ],
-    [
-      "ALGOUSDT",
-      12.2,
-      0.08104548
-    ],
-    [
-      "1000LUNCUSDT",
-      11.1,
-      0.05087592
+      10.8,
+      0.42544667
     ]
   ],
   "hedge_usage": {
