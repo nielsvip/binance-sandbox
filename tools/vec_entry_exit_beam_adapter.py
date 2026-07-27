@@ -34,11 +34,13 @@ import vec_band_ladder_walkforward as ladder  # noqa: E402
 import vec_dc_tier_augment_walkforward as dc_tier  # noqa: E402
 import vec_entry_overlay_walkforward as overlay  # noqa: E402
 import regime_conditioned_exposure_grid as regime_grid  # noqa: E402
+import state_aware_exposure_grid as state_grid  # noqa: E402
 import vec_same_entry_e05_adapter as e05  # noqa: E402
 import vec_same_entry_exit_adapter as generic  # noqa: E402
 import vec_same_entry_peak_giveback_adapter as peak  # noqa: E402
 
 ACTIVE_REGIME_POLICY: str | None = None
+ACTIVE_STATE_POLICY: str | None = None
 
 
 def _source_and_control(
@@ -391,6 +393,55 @@ def beam_fold_contexts(
             ctx["entry_beam_materialization"][
                 "regime_conditioned_exposure"
             ] = condition_audit
+    if ACTIVE_STATE_POLICY is not None:
+        policy = next(
+            row
+            for row in state_grid.policy_grid()
+            if row.name == ACTIVE_STATE_POLICY
+        )
+        rows = np.arange(len(data.ts), dtype=np.int64)
+        slots = np.searchsorted(
+            np.asarray(htfs["1h"].event_index, dtype=np.int64),
+            rows,
+            side="right",
+        ) - 1
+        for ctx in contexts:
+            left, right = int(ctx["left"]), int(ctx["right"])
+            original = ctx["signals"]
+            conditioned, condition_audit = state_grid.apply_policy(
+                original.entry_mult[left:right],
+                original.exit_event[left:right],
+                original.exit_ref[left:right],
+                data.open[left:right],
+                data.high[left:right],
+                data.low[left:right],
+                slots[left:right],
+                policy,
+                side=side,
+                target_semantics=ctx["curve"].semantics == "target",
+            )
+            entry_mult = np.zeros(len(data.ts), dtype=np.float64)
+            entry_mult[left:right] = conditioned
+            ctx["signals"] = ladder.SignalData(
+                entry_mult=np.ascontiguousarray(entry_mult),
+                event_tf=original.event_tf,
+                exit_event=original.exit_event,
+                exit_ref=original.exit_ref,
+                causality={
+                    **original.causality,
+                    "state_aware_exposure": {
+                        **condition_audit,
+                        "completed_1h_event_time_only": True,
+                        "market_regime_features": False,
+                        "symbol_specific_thresholds": False,
+                        "source_e02_state_exogenous": True,
+                    },
+                },
+                entry_source_ts=overlay._entry_sources(entry_mult, htfs),
+            )
+            ctx["entry_beam_materialization"][
+                "state_aware_exposure"
+            ] = condition_audit
     return source, data, htfs, contexts
 
 
@@ -406,12 +457,19 @@ def main() -> int:
         "--regime-policy",
         choices=tuple(row.name for row in regime_grid.policy_grid()),
     )
+    ap.add_argument(
+        "--state-policy",
+        choices=tuple(row.name for row in state_grid.policy_grid()),
+    )
     ap.add_argument("--exposure-min-pct", type=float, default=70.0)
     ap.add_argument("--exposure-max-pct", type=float, default=80.0)
     args = ap.parse_args()
 
-    global ACTIVE_REGIME_POLICY
+    global ACTIVE_REGIME_POLICY, ACTIVE_STATE_POLICY
     ACTIVE_REGIME_POLICY = args.regime_policy
+    ACTIVE_STATE_POLICY = args.state_policy
+    if ACTIVE_REGIME_POLICY is not None and ACTIVE_STATE_POLICY is not None:
+        raise ValueError("market-regime and state-aware policies may not be blended")
     generic._fold_contexts = beam_fold_contexts
     e05.shared._fold_contexts = beam_fold_contexts
     peak.shared._fold_contexts = beam_fold_contexts
@@ -443,6 +501,7 @@ def main() -> int:
         "entry_blending": False,
         "context_materializer": __file__,
         "regime_policy": args.regime_policy,
+        "state_policy": args.state_policy,
     }
     args.out_dir.mkdir(parents=True, exist_ok=False)
     (args.out_dir / "result.json").write_text(
