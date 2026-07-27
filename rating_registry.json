@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T12:48:45.753753+00:00",
+  "timestamp": "2026-07-27T13:03:47.568562+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,6 +35,18 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
+    },
+    {
+      "symbol": "ACTUSDT",
+      "net_score": -12.6,
+      "long_score": 0,
+      "short_score": 12.6
+    },
+    {
+      "symbol": "XRPUSDC",
+      "net_score": -10.2,
+      "long_score": 0,
+      "short_score": 10.2
     },
     {
       "symbol": "BLURUSDT",
@@ -211,12 +223,6 @@
       "short_score": 0
     },
     {
-      "symbol": "XRPUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LPTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -326,12 +332,6 @@
     },
     {
       "symbol": "WIFUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -577,12 +577,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ACTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "TIAUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -739,6 +733,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BEATUSDT",
+      "net_score": 20.3,
+      "long_score": 20.3,
+      "short_score": 0
+    },
+    {
       "symbol": "PENDLEUSDT",
       "net_score": 20.9,
       "long_score": 20.9,
@@ -787,8 +787,25 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [],
+  "top_longs": [
+    [
+      "BEATUSDT",
+      20.3,
+      4.19527039
+    ]
+  ],
+  "top_shorts": [
+    [
+      "ACTUSDT",
+      12.6,
+      0.00890861
+    ],
+    [
+      "XRPUSDC",
+      10.2,
+      1.10362352
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
