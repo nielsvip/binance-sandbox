@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T00:32:55.773511+00:00",
+  "timestamp": "2026-07-27T00:47:59.067892+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -152,6 +152,12 @@
     },
     {
       "symbol": "BRETTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "XLMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -499,12 +505,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ZECUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "AVAXUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -715,15 +715,15 @@
       "short_score": 0
     },
     {
-      "symbol": "XLMUSDT",
-      "net_score": 11.3,
-      "long_score": 11.3,
-      "short_score": 0
-    },
-    {
       "symbol": "ONDOUSDT",
       "net_score": 13.1,
       "long_score": 13.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZECUSDC",
+      "net_score": 15.9,
+      "long_score": 15.9,
       "short_score": 0
     },
     {
@@ -733,15 +733,15 @@
       "short_score": 0
     },
     {
-      "symbol": "PENDLEUSDT",
-      "net_score": 20.9,
-      "long_score": 20.9,
+      "symbol": "GRASSUSDT",
+      "net_score": 20.3,
+      "long_score": 20.3,
       "short_score": 0
     },
     {
-      "symbol": "GRASSUSDT",
-      "net_score": 21.1,
-      "long_score": 21.1,
+      "symbol": "PENDLEUSDT",
+      "net_score": 20.9,
+      "long_score": 20.9,
       "short_score": 0
     },
     {
@@ -790,13 +790,13 @@
   "top_longs": [
     [
       "GRASSUSDT",
-      21.1,
-      0.35376638
+      20.3,
+      0.3527
     ],
     [
-      "XLMUSDT",
-      11.3,
-      0.18265
+      "ZECUSDC",
+      15.9,
+      507.26
     ]
   ],
   "top_shorts": [],

@@ -238,6 +238,131 @@ def load_cells(campaign, tier="ENGINE"):
     return cells, inert, cell_meta, base
 
 
+def load_engine_coverage(campaign):
+    """Explain why an ENGINE cell is blank without importing VEC evidence.
+
+    The canonical matrix deliberately exposes only contract-matched ``param_cells``.
+    This companion index is diagnostic metadata:
+
+    * ``stale`` means an exact engine row exists for the same key/knob/value, but its
+      code+NPZ+side fingerprint is no longer current;
+    * ``vec_only`` means a vector screen exists, but there is no current exact-engine
+      measurement.  It remains blank and is explicitly labelled EXACT_QUEUE_EMPTY;
+    * ``fleet_exact`` lists V8 exact replays from the path-fleet ledger.  They are
+      informational unless their payload explicitly names one attributable matrix
+      knob/value.  Return-% is never silently converted to gain/month.
+
+    Keeping this outside ``load_cells`` is important: no VEC or research-only value can
+    enter the ENGINE numeric cell dictionary by accident.
+    """
+    out = {
+        "stale": set(),
+        "invalid": set(),
+        "vec_only": set(),
+        "raw_engine_rows": 0,
+        "current_engine_rows": 0,
+        "stale_engine_rows": 0,
+        "invalid_engine_rows": 0,
+        "fleet_exact": [],
+        "fleet_exact_attributable": 0,
+    }
+    if not DB.exists():
+        return out
+    con = sqlite3.connect(str(DB))
+    con.row_factory = sqlite3.Row
+    valid_statuses = {
+        "PASS", "PASS_WITH_CAPACITY_CLAMPS", "INCOMPLETE_NO_REAL_CLOSE",
+    }
+    rows = con.execute(
+        "SELECT symbol,side,param,value_json,validation_status,contract_fingerprint,"
+        "ts,source_file FROM param_cells WHERE mode='tradier' "
+        "AND COALESCE(tier,'ENGINE')='ENGINE' AND campaign=? AND ts>=? ORDER BY ts",
+        (campaign, CURRENT_ENGINE_CUTOFF),
+    ).fetchall()
+    out["raw_engine_rows"] = len(rows)
+    expected = {}
+    if rows:
+        try:
+            try:
+                from tools import persym_baseline_campaign as psc
+            except ModuleNotFoundError:
+                import persym_baseline_campaign as psc
+            expected = {
+                f"{row['symbol']}_{row['side']}": psc.matrix_contract_fingerprint(
+                    row["symbol"], row["side"]
+                )
+                for row in rows
+            }
+        except Exception:
+            expected = {}
+    for row in rows:
+        key = f"{row['symbol']}_{row['side']}"
+        logical = (row["param"], norm_val(row["value_json"]), key)
+        if row["validation_status"] not in valid_statuses:
+            out["invalid"].add(logical)
+            out["invalid_engine_rows"] += 1
+        elif row["contract_fingerprint"] != expected.get(key):
+            out["stale"].add(logical)
+            out["stale_engine_rows"] += 1
+        else:
+            out["current_engine_rows"] += 1
+    # This query is presence-only.  No VEC metric is selected or returned.
+    try:
+        for row in con.execute(
+            "SELECT DISTINCT symbol,side,param,value_json FROM param_cells "
+            "WHERE mode='tradier' AND tier='VEC'"
+        ):
+            out["vec_only"].add(
+                (row["param"], norm_val(row["value_json"]),
+                 f"{row['symbol']}_{row['side']}")
+            )
+    except sqlite3.OperationalError:
+        pass
+    con.close()
+
+    fleet_db = BASE / "data" / "reports" / "path_fleet" / "queue.db"
+    if fleet_db.exists():
+        try:
+            fleet = sqlite3.connect(f"file:{fleet_db}?mode=ro", uri=True, timeout=30)
+            fleet.row_factory = sqlite3.Row
+            for row in fleet.execute(
+                "SELECT j.path_id,r.symbol,r.side,r.stage,r.status,"
+                "r.strategy_return_pct,r.bh_return_pct,r.same_entry_control_return_pct,"
+                "r.payload_json,r.artifact,r.created_at "
+                "FROM results r JOIN jobs j ON j.id=r.job_id "
+                "WHERE r.exact_replay=1 OR UPPER(r.stage) LIKE '%EXACT%' "
+                "ORDER BY r.created_at"
+            ):
+                payload = {}
+                try:
+                    payload = json.loads(row["payload_json"] or "{}")
+                except (TypeError, json.JSONDecodeError):
+                    pass
+                param = payload.get("matrix_param") or payload.get("param")
+                value = payload.get("matrix_value", payload.get("value_json"))
+                attributable = bool(
+                    payload.get("attributable")
+                    and param is not None
+                    and value is not None
+                )
+                if attributable:
+                    out["fleet_exact_attributable"] += 1
+                out["fleet_exact"].append({
+                    "path_id": row["path_id"], "key": f"{row['symbol']}_{row['side']}",
+                    "stage": row["stage"], "status": row["status"],
+                    "strategy_return_pct": row["strategy_return_pct"],
+                    "bh_return_pct": row["bh_return_pct"],
+                    "same_entry_control_return_pct": row["same_entry_control_return_pct"],
+                    "matrix_param": param, "matrix_value": value,
+                    "attributable": attributable, "artifact": row["artifact"],
+                    "created_at": row["created_at"],
+                })
+            fleet.close()
+        except sqlite3.OperationalError:
+            pass
+    return out
+
+
 _REG = None
 
 
@@ -445,6 +570,11 @@ def main():
     rows = manifest_rows()
     inventory = manifest_inventory()
     cells, inert, cell_meta, base = load_cells(a.campaign, a.tier)
+    engine_coverage = (
+        load_engine_coverage(a.campaign)
+        if a.tier == "ENGINE" and a.campaign == CURRENT_ENGINE_CAMPAIGN
+        else None
+    )
     known = set(rows)
     actionable_names = {p for p, _v in rows}
     rows += sorted({
@@ -490,9 +620,32 @@ def main():
         vals = {c: cells.get((param, val, c)) for c in cols}
         got = {c: v for c, v in vals.items() if v is not None}
         n_inert = sum(1 for c in got if inert.get((param, val, c)))
+        stale_keys = (
+            [c for c in cols if (param, val, c) in engine_coverage["stale"]]
+            if engine_coverage else []
+        )
+        invalid_keys = (
+            [c for c in cols if (param, val, c) in engine_coverage["invalid"]]
+            if engine_coverage else []
+        )
+        vec_only_keys = (
+            [
+                c for c in cols
+                if (param, val, c) in engine_coverage["vec_only"]
+                and (param, val, c) not in engine_coverage["stale"]
+            ]
+            if engine_coverage else []
+        )
         if a.only_tested and not got: continue
         if not got:
-            status = "PENDING"
+            if stale_keys:
+                status = "STALE_ENGINE_CONTRACT"
+            elif invalid_keys:
+                status = "ENGINE_VALIDATION_FAILED"
+            elif vec_only_keys:
+                status = "EXACT_QUEUE_EMPTY"
+            else:
+                status = "NOT_ENGINE_TESTED"
         elif dead.get(param):
             status = "RECONNECT"
         elif degenerate.get(param):
@@ -525,8 +678,12 @@ def main():
             # below-B&H diagnostics are gray even when nominal gain stays >0.
             states.append(matrix_cell_state(param, meta))
         matrix_states.append(states)
-        coverage.append([param, val, status, len(got), n_inert,
-                         sum(1 for v in got.values() if v > 0), sum(1 for v in got.values() if v < 0)])
+        coverage.append([
+            param, val, status, len(got), n_inert,
+            sum(1 for v in got.values() if v > 0),
+            sum(1 for v in got.values() if v < 0),
+            len(stale_keys), len(invalid_keys), len(vec_only_keys),
+        ])
     # USER 2026-07-21: stocks trigger runs on wt1_5m (WT_FORCE_OPEN_TRIGGER_TF='5m',
     # tradier_manage ~2698) — display 5m; config knob keeps the legacy WT_3M_ name.
     for r in matrix:
@@ -548,7 +705,11 @@ def main():
         fh.write("# status: OK=value moved the sim | INERT_AT_VALUE=this value changed nothing | "
                  "RECONNECT=no value changed anything (knob unread by the code) | "
                  "DEGENERATE=values differ from baseline but not from each other (knob saturates "
-                 "or vec/live default mismatch) | PENDING=not tested yet\n")
+                 "or vec/live default mismatch) | STALE_ENGINE_CONTRACT=exact row preserved but "
+                 "invalidated by current code+NPZ+side fingerprint | "
+                 "ENGINE_VALIDATION_FAILED=exact run exists but failed the repaired contract | "
+                 "EXACT_QUEUE_EMPTY=VEC evidence exists but no attributable current exact result | "
+                 "NOT_ENGINE_TESTED=no exact ENGINE evidence for this switch/value\n")
         fh.write("# stocks: WT trigger TF = 5m (wt1_5m); rows named WT1_5M_FORCE_OPEN[cfg:WT_3M] map to config knobs WT_3M_FORCE_OPEN_*\n")
         # 2026-07-21: was a naive ",".join — list-valued switches (R2_TF_LIST=['d','15m'], TF
         # whitelists, symbol lists) embed commas, which shifted every key column right for those
@@ -624,6 +785,13 @@ def main():
                         for c in row_cells[:META_COLS]:
                             c.font = red_font
                             c.fill = inert_fill
+                    elif r[4] in (
+                        "STALE_ENGINE_CONTRACT", "ENGINE_VALIDATION_FAILED",
+                        "EXACT_QUEUE_EMPTY", "NOT_ENGINE_TESTED",
+                    ):
+                        for c in row_cells[:META_COLS]:
+                            c.font = grey_font
+                            c.fill = grey_fill
                     states = color_map.get((r[0] if r[0] else sw, r[1], str(r[2])), [])
                     for offset, state in enumerate(states, start=META_COLS):
                         if offset >= len(row_cells) or state is None:
@@ -766,8 +934,100 @@ def main():
             for cell in row:
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
         ws2 = wb.create_sheet("Coverage")
-        ws2.append(["switch", "value", "status", "keys_tested", "keys_inert", "keys_helped", "keys_hurt"])
+        ws2.append([
+            "switch", "value", "status", "keys_current_engine", "keys_inert",
+            "keys_helped", "keys_hurt", "keys_stale_contract",
+            "keys_engine_validation_failed", "keys_vec_only_exact_queue_empty",
+        ])
         for r in coverage: ws2.append(r)
+        if engine_coverage:
+            wse = wb.create_sheet("Engine Coverage", 0)
+            wse.append(["metric", "count", "meaning"])
+            wse.append([
+                "raw repaired-campaign ENGINE rows",
+                engine_coverage["raw_engine_rows"],
+                "Preserved exact-engine rows since the repaired cutoff, before current-contract filtering.",
+            ])
+            wse.append([
+                "current contract ENGINE rows",
+                engine_coverage["current_engine_rows"],
+                "Rows whose code+NPZ+side fingerprint matches this export. Only these may fill numeric matrix cells.",
+            ])
+            wse.append([
+                "stale contract ENGINE rows",
+                engine_coverage["stale_engine_rows"],
+                "Exact results from an older contract. Preserved, explicitly labelled, never copied into current cells.",
+            ])
+            wse.append([
+                "ENGINE validation failures",
+                engine_coverage["invalid_engine_rows"],
+                "Exact runs that failed the repaired validation contract.",
+            ])
+            wse.append([
+                "path-fleet V8 exact replay rows",
+                len(engine_coverage["fleet_exact"]),
+                "Separate exact replays. They do not fill an OFAT switch cell unless the payload explicitly identifies one attributable knob/value.",
+            ])
+            wse.append([
+                "path-fleet exact rows attributable to switch/value",
+                engine_coverage["fleet_exact_attributable"],
+                "Explicit attribution only; return-% is not silently converted to gain/month.",
+            ])
+            wse.append([])
+            wse.append([
+                "status", "definition",
+                "Numeric ENGINE cell remains blank unless a current contract-matched exact result exists.",
+            ])
+            wse.append([
+                "STALE_ENGINE_CONTRACT",
+                "An exact row exists for this switch/value/key, but its fingerprint is obsolete.",
+            ])
+            wse.append([
+                "ENGINE_VALIDATION_FAILED",
+                "An exact row exists, but validation failed.",
+            ])
+            wse.append([
+                "EXACT_QUEUE_EMPTY",
+                "A VEC diagnostic exists, but there is no attributable current exact-engine result.",
+            ])
+            wse.append([
+                "NOT_ENGINE_TESTED",
+                "No exact ENGINE evidence exists for this switch/value.",
+            ])
+            wse.freeze_panes = "A2"
+            wse.column_dimensions["A"].width = 48
+            wse.column_dimensions["B"].width = 18
+            wse.column_dimensions["C"].width = 110
+            for row in wse.iter_rows():
+                for cell in row:
+                    cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+            wsx = wb.create_sheet("Exact Engine Evidence")
+            wsx.append([
+                "path_id", "key", "stage", "status", "strategy_return_%",
+                "B&H_return_%", "same_entry_control_return_%",
+                "matrix_param", "matrix_value", "attributable_to_switch_value",
+                "artifact", "created_at",
+            ])
+            for exact in engine_coverage["fleet_exact"]:
+                wsx.append([
+                    exact["path_id"], exact["key"], exact["stage"], exact["status"],
+                    exact["strategy_return_pct"], exact["bh_return_pct"],
+                    exact["same_entry_control_return_pct"], exact["matrix_param"],
+                    exact["matrix_value"], "YES" if exact["attributable"] else "NO",
+                    exact["artifact"], exact["created_at"],
+                ])
+                if not exact["attributable"]:
+                    for cell in wsx[wsx.max_row]:
+                        cell.fill = grey_fill
+                        cell.font = grey_font
+            wsx.freeze_panes = "A2"
+            wsx.auto_filter.ref = wsx.dimensions
+            for col, width in {
+                "A": 28, "B": 18, "C": 24, "D": 18, "E": 18, "F": 18,
+                "G": 28, "H": 36, "I": 18, "J": 28, "K": 90, "L": 20,
+            }.items():
+                wsx.column_dimensions[col].width = width
         ws3 = wb.create_sheet("Baselines")
         ws3.append(["key", "gain_per_mo", "bh_per_mo", "delta_vs_bh", "trades", "campaign"])
         for k in cols:

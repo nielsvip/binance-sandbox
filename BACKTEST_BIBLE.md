@@ -1521,3 +1521,73 @@ discovery data—such as filled capacity, entry-event drought and outstanding
 reclaim state—rather than widening the same five market-regime policies.
 Exact replay and live configuration remain unchanged. See
 `REGIME_ENTRY_EXIT_BEAM_PRIORITY_RESULTS_20260727.md`.
+
+### §15.20 — causal schedule/account-state priority beam (2026-07-27)
+
+The next preregistered beam replaced broad-market labels with fixed global
+state from one already-frozen entry schedule: scheduled capacity utilization,
+completed-1h request drought, and a source-E02 reclaim anchor latched until
+OHLC touch. The source-E02 state was frozen exogenous entry-schedule state
+shared by every exit candidate; it was not allowed to read the candidate's
+future ledger. Four monotonic policies used fixed 50%/75% utilization bands,
+decreasing scale/cap and increasing request gaps as utilization rose. Every
+request remained at or below 8x/$16,000.
+
+MU DC-tier, ARM 4h-deep-value, and PBF DC-tier were each crossed with E02 plus
+extended bottom A/B exits: 12 policy shards and 13,824 vector evaluations.
+Discovery-only ranking froze the top eight exits before final-fold reveal.
+All shards completed without errors; no every-fold survivor reached exact
+replay.
+
+The state model did move the deficient discovery folds in the intended
+direction. ARM's second-fold TIM improved from the global-regime 33.02% to
+41.29%, MU's excessive second fold fell from 98.40% to 91.31%, and PBF moved
+from 61.11/78.11% to 70.54/75.06%. PBF's selected reclaim-priority bottom-B
+exit therefore passed both discovery folds against B&H and identical-entry
+E02. The untouched final did not generalize: PBF made 519.70% versus 121.26%
+B&H and 641.10% E02 at 83.44% TIM. ARM and MU final rows also remained below
+E02 and outside the 70–80% band at 69.60% and 69.51%.
+
+Three rows were appended idempotently as
+`VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS / GRAY_REJECTED` after backup
+`queue.db.bak_state_aware_20260727T0045Z`. Exact replay, live configuration,
+and canonical NPZs remain unchanged. Full evidence is in
+`STATE_AWARE_ENTRY_EXIT_BEAM_RESULTS_20260727.md`.
+
+### §15.20 — canonical ENGINE matrix zero-coverage diagnosis (2026-07-27)
+
+The refreshed canonical `SWITCH_MATRIX_TRB` correctly reported zero current
+ENGINE rows even though `param_results_stocks.db` contained 968 rows in
+`stocks_repaired_20260725_c2` (267 MU_LONG and 701 VT_LONG). Every preserved
+row carried the contract fingerprint from the code loaded by the long-running
+matrix workers, while the exporter computed the newer on-disk
+code+NPZ+side fingerprint. This is stale exact evidence, not a DB outage and
+not permission to backfill ENGINE cells from the 560-row VEC diagnostic view.
+
+The root operational bug was a process-lifetime `lru_cache` on
+`matrix_contract_fingerprint()`: workers could continue after contract files
+changed and stamp results with their cached old fingerprint. The cache now
+keys on file size/mtime for every contract input and the frozen symbol NPZ.
+A repaired worker also records its process-start source signature, exits when
+loaded code differs from disk, and quarantines a result if the contract
+changes during an engine invocation. The watchdog must restart that worker;
+the next result is then generated and ingested under one coherent contract.
+
+The ENGINE exporter still refuses stale or invalid evidence. Blank work is
+now classified explicitly:
+
+- `STALE_ENGINE_CONTRACT`: exact row preserved, but the fingerprint is old;
+- `ENGINE_VALIDATION_FAILED`: exact execution exists but failed the repaired
+  validation contract;
+- `EXACT_QUEUE_EMPTY`: VEC diagnostic evidence exists but no attributable
+  current exact-engine result exists;
+- `NOT_ENGINE_TESTED`: no exact ENGINE evidence exists for that switch/value.
+
+`Engine Coverage` records current/stale/invalid totals and `Exact Engine
+Evidence` lists fleet V8 replays without mixing their return-percent units
+into gain/month cells. The three exact fleet rows present at diagnosis were
+unchanged-entry ladder controls (`alpha_vs_control=0`,
+`matrix_written=false`, `promotion_allowed=false`) and therefore could not be
+attributed to any switch/value. They remain visible research receipts; they
+fill zero canonical ENGINE cells. Numeric cells become filled only when a
+contract-matched exact row names the same key, path knob, and setting.

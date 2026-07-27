@@ -74,6 +74,22 @@ MATRIX_CONTRACT_FILES = STAMP_FILES + [
     "tools/param_results_store.py",
 ]
 
+
+def _matrix_process_source_signature():
+    """Identity of code loaded by this worker (NPZs are checked per symbol)."""
+    out = []
+    for rel in MATRIX_CONTRACT_FILES:
+        path = SBX / rel
+        try:
+            stat = path.stat()
+            out.append((rel, stat.st_size, stat.st_mtime_ns))
+        except OSError:
+            out.append((rel, -1, -1))
+    return tuple(out)
+
+
+_MATRIX_PROCESS_SOURCE_SIGNATURE = _matrix_process_source_signature()
+
 # Extreme-stop packs (user 2026-07-18): channel/band extremes as the ONLY stop,
 # near-entry-price stops disabled to cut churn. Engine reads dc_low_{tf}/bb_{field}_{tf}
 # generically (backtest_v8_engine ~7896) so D/W TFs need no engine change.
@@ -272,14 +288,24 @@ def stamp():
     return "|".join(parts)
 
 
-@lru_cache(maxsize=256)
-def matrix_contract_fingerprint(sym, side):
-    """Hash every executable/data input required by the repaired matrix contract.
+def _matrix_contract_signature(sym):
+    """Cheap cache key that changes whenever a contract input changes on disk."""
+    paths = [SBX / rel for rel in MATRIX_CONTRACT_FILES]
+    paths.append(MATRIX_NPZ_DIR / f"{sym.upper()}.npz")
+    signature = []
+    for path in paths:
+        try:
+            stat = path.stat()
+            signature.append((str(path), stat.st_size, stat.st_mtime_ns))
+        except OSError:
+            signature.append((str(path), -1, -1))
+    return tuple(signature)
 
-    ``stamp()`` is retained for backwards-compatible cache labelling.  This stronger digest
-    additionally binds the closed-HTF/re-entry contract, the exact symbol NPZ and the intended
-    side.  SWITCH_MATRIX reports use it to keep every pre-fix row historical.
-    """
+
+@lru_cache(maxsize=256)
+def _matrix_contract_fingerprint_cached(sym, side, signature):
+    """Hash a stable input snapshot; ``signature`` invalidates the process cache."""
+    del signature  # used only as the lru key
     h = hashlib.sha256()
     h.update(
         f"{MATRIX_CONTRACT_VERSION}|{sym.upper()}|{side.upper()}|"
@@ -293,6 +319,18 @@ def matrix_contract_fingerprint(sym, side):
     h.update(str(npz).encode())
     h.update(npz.read_bytes() if npz.exists() else b"<ABSENT>")
     return f"{MATRIX_CONTRACT_VERSION}:{h.hexdigest()}"
+
+
+def matrix_contract_fingerprint(sym, side):
+    """Hash every executable/data input required by the repaired matrix contract.
+
+    ``stamp()`` is retained for backwards-compatible cache labelling.  This stronger digest
+    additionally binds the closed-HTF/re-entry contract, the exact symbol NPZ and the intended
+    side.  SWITCH_MATRIX reports use it to keep every pre-fix row historical.
+    """
+    return _matrix_contract_fingerprint_cached(
+        sym.upper(), side.upper(), _matrix_contract_signature(sym)
+    )
 
 
 def parse_v8_result(path):
@@ -315,7 +353,7 @@ def parse_v8_result(path):
     return out
 
 
-def matrix_run_audit(sym, side, trades, result):
+def matrix_run_audit(sym, side, trades, result, contract_fingerprint=None):
     """Fail closed on every structural condition needed for a truthful matrix row."""
     from backtest_data_contract import audit_ladder_result, audit_npz
 
@@ -388,7 +426,9 @@ def matrix_run_audit(sym, side, trades, result):
         "contract_version": MATRIX_CONTRACT_VERSION,
         "fixed_end_exclusive": MATRIX_END_DATE,
         "frozen_npz": str(MATRIX_NPZ_DIR / f"{sym.upper()}.npz"),
-        "contract_fingerprint": matrix_contract_fingerprint(sym, side),
+        "contract_fingerprint": (
+            contract_fingerprint or matrix_contract_fingerprint(sym, side)
+        ),
         "symbol": sym.upper(),
         "side": side,
         "data_contract": {
@@ -542,13 +582,23 @@ def run_symbol(
     side = str(side or "").upper()
     if side and side not in ("LONG", "SHORT"):
         raise ValueError(f"invalid side {side!r}")
+    run_contract_fp = None
+    if require_matrix_contract:
+        if _matrix_process_source_signature() != _MATRIX_PROCESS_SOURCE_SIGNATURE:
+            # A daemon imports the engine/audit modules once but can live for days.  Continuing
+            # after one of those files changes would stamp old in-memory behavior with the new
+            # on-disk fingerprint.  Exit so the watchdog starts a fresh interpreter.
+            raise SystemExit(
+                "matrix contract source changed after worker start; restart required"
+            )
+        run_contract_fp = matrix_contract_fingerprint(sym, side)
     cell_dir = TRADES_ROOT / cell_tag
     cell_dir.mkdir(parents=True, exist_ok=True)
     jsonl = cell_dir / f"cell__{sym}.jsonl"
     result_file = cell_dir / f"v8result__{sym}.txt"
     if require_matrix_contract and jsonl.exists():
         prior = load_matrix_run_audit(cell_tag, sym)
-        expected_fp = matrix_contract_fingerprint(sym, side)
+        expected_fp = run_contract_fp
         if not prior or prior.get("contract_fingerprint") != expected_fp:
             # Preserve, but never reuse, a cache from another code/NPZ contract.  The old
             # runner reused identical tags after source repairs and silently relabelled stale
@@ -602,6 +652,24 @@ def run_symbol(
                 # None = caller skips this sym; the next cron pass retries.
                 print(f"[engine-fail] {cell_tag}/{sym} rc={rc} no JSONL — skipped, will retry", flush=True)
                 return None
+        if require_matrix_contract:
+            final_contract_fp = matrix_contract_fingerprint(sym, side)
+            if (
+                _matrix_process_source_signature() != _MATRIX_PROCESS_SOURCE_SIGNATURE
+                or final_contract_fp != run_contract_fp
+            ):
+                suffix = f".contract_changed_during_run.{os.getpid()}.{time.time_ns()}"
+                for stale in (
+                    jsonl,
+                    result_file,
+                    cell_dir / f"stamp__{sym}.txt",
+                    cell_dir / f"override__{sym}.json",
+                ):
+                    if stale.exists():
+                        stale.rename(stale.with_name(stale.name + suffix))
+                raise SystemExit(
+                    "matrix contract changed during engine run; result quarantined"
+                )
     by_side = {"LONG": [], "SHORT": []}
     if jsonl.exists():
         for ln in jsonl.read_text().splitlines():
@@ -616,7 +684,10 @@ def run_symbol(
                 by_side[trade_side].append(t)
     if require_matrix_contract:
         intended = by_side.get(side, [])
-        audit = matrix_run_audit(sym, side, intended, parse_v8_result(result_file))
+        audit = matrix_run_audit(
+            sym, side, intended, parse_v8_result(result_file),
+            contract_fingerprint=run_contract_fp,
+        )
         audit_path = cell_dir / f"audit__{sym}.json"
         audit_path.write_text(json.dumps(audit, sort_keys=True, indent=2) + "\n")
         if audit["status"] == "FAIL":
