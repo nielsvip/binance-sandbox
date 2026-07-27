@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-27 18:30:41Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-27 19:30:41Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-27T18:30:13Z` (0m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-27T18:30:13Z` (0m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **703**; new current rows in 24h: **703**.
-- Raw repaired-campaign pilot rows since cutoff: **987**; **284** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,906/7,609**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-27T19:29:32Z` (1m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-27T19:29:32Z` (1m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **758**; new current rows in 24h: **758**.
+- Raw repaired-campaign pilot rows since cutoff: **987**; **229** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,851/7,609**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 18:30:40Z (0m old, 401,545 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 18:30:05Z (0m old, 37,924 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 19:30:41Z (0m old, 401,994 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 19:30:06Z (0m old, 37,976 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 155/3,522 | 4.4% | 2026-07-27T18:27:33Z | 3m | 100 |
-| VT_LONG | 466/3,522 | 13.2% | 2026-07-27T18:30:13Z | 0m | 264 |
+| MU_LONG | 171/3,522 | 4.9% | 2026-07-27T19:29:32Z | 1m | 100 |
+| VT_LONG | 505/3,522 | 14.3% | 2026-07-27T19:27:34Z | 3m | 303 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -83,14 +83,14 @@ Best trading candidate: **none with at least two trades and complete return metr
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
-| 2026-07-27T18:30:13Z | stocks_repaired_20260725_c2 | `EXIT_SCORER_FULL_SCORE=75` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:29:25Z | stocks_repaired_20260725_c2 | `EXIT_SCORER_FULL_SCORE=50` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:29:19Z | stocks_repaired_20260725_c2 | `EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:24:25Z | stocks_repaired_20260725_c2 | `EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:23:50Z | stocks_repaired_20260725_c2 | `EXIT_MI_ENABLED=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:23:38Z | stocks_repaired_20260725_c2 | `EXIT_MI_ENABLED=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:18:39Z | stocks_repaired_20260725_c2 | `EXIT_MAX_HOLD_MINUTES=149998.5` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T18:18:14Z | stocks_repaired_20260725_c2 | `EXIT_MAX_HOLD_MINUTES=124998.75` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:27:34Z | stocks_repaired_20260725_c2 | `LR_BAND_SLOPE_FLIP_EXIT_ENABLED=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:27:15Z | stocks_repaired_20260725_c2 | `LR_BAND_SLOPE_FLIP_EXIT_ENABLED=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:27:14Z | stocks_repaired_20260725_c2 | `HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:22:42Z | stocks_repaired_20260725_c2 | `HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:22:41Z | stocks_repaired_20260725_c2 | `HTF_W_REVERSAL_EXIT_TRADIER_ENABLED=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:22:39Z | stocks_repaired_20260725_c2 | `HTF_W_REVERSAL_EXIT_TRADIER_ENABLED=True` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:17:52Z | stocks_repaired_20260725_c2 | `GR_HTF_DIRECT_EXIT_SCORE=18` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-27T19:17:43Z | stocks_repaired_20260725_c2 | `GR_HTF_DIRECT_EXIT_SCORE=12` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T18:30:13Z | 0m |
+| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T19:29:32Z | 1m |
 
 ## Reading the matrix
 
