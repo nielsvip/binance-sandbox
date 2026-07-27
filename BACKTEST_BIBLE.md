@@ -1603,3 +1603,36 @@ baseline at `2026-07-27T01:14:58Z`, fingerprint prefix
 baseline was still computing at this checkpoint. This was a one-time reload,
 not a recurring worker restart, and no live-trading process or configuration
 was touched.
+
+### §15.22 — HAO isolated history recovery remains quarantined (2026-07-27)
+
+HAO's missing 4h/daily regression fields and weak daily Stoch were traced to
+the canonical raw history beginning only on 2026-04-09. The precomputer
+correctly omits a long-regression field when the source has fewer than
+`length + 2` bars; zero-filling those fields would have created false
+evidence. The June 8 move to 2.04 is also real market data, separate from the
+May 21 1-for-128 reverse split, and must never be smoothed.
+
+An isolated recovery root fetched adjusted native 5m/15m history from
+2024-07-26 through 2026-07-24 and built a versioned NPZ without touching
+canonical HAO or VT. The candidate has 44,879 rows and 1,054 fields; every
+required 4h/D `lrL` field is present, daily Stoch is 93.69% finite, and the
+completed-source future count is zero for 1h/4h/D/W/M. Its 30,513 native 5m
+rows and 14,366 explicitly flagged 15m-derived rows remain separately
+attributed. The recovery NPZ hash is
+`17907495bd909a1ea7ebcd6c7846134a7e70ae966b0fe7e79c3006107bb36332`.
+
+The data repair did not validate the strategy. A frozen HAO_SHORT
+ladder-plus-E02 diagnostic made a fold-sum +2,181.39% versus +187.80% short
+B&H (11.615x) at 73.72% TIM, but one fold was insolvent, minimum equity fell
+to -$910.61, and account drawdown reached 107.73%. A separate bounded
+E03/E06/E08/E09 top-exit screen with mandatory E11+E10 reclaim compounded to
+-100% versus +895.08% B&H over ten frozen folds and was also insolvent.
+Neither result is matrix-eligible. Exact ladder parity remains blocked because
+the vector artifact does not emit a research-ladder replay spec.
+
+Canonical HAO and VT hashes remained unchanged. The candidate is
+`QUARANTINED_NOT_PROMOTED`; full rollback, provenance, control results, and
+promotion requirements are documented in
+`HAO_VERSIONED_RECOVERY_20260727.md` and
+`data/reports/vec_research/hao_recovery_20260727T0010Z/`.
