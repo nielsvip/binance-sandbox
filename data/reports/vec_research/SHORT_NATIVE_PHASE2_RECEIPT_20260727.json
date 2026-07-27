@@ -1,0 +1,169 @@
+{
+  "artifact": "data/reports/vec_research/short_native_phase2_20260727T031824Z",
+  "candidate_pairs_per_valid_key": 24,
+  "contract": "SHORT_NATIVE_TWO_BOOKS_PHASE2_V1",
+  "data_errors": [
+    {
+      "reason": "unusable/missing Stoch and LR fields",
+      "symbol": "MSTR"
+    },
+    {
+      "reason": "15m/1h/4h/D timestamps predate closed-bar fix",
+      "symbol": "COIN"
+    }
+  ],
+  "discovery_freeze_sha256": "73d8a219f97271b12638aa6502701f8812eed6e0e1ee88902cf1619288cb068a",
+  "discovery_grid_sha256": "40dafec2eecf191826c89f4c9b5f594f3909035957850128fc5719b21e7a69dc",
+  "exact_replays": 0,
+  "fleet": {
+    "appended": 8,
+    "backup": "queue.db.bak_short_native_phase2_20260727T031637Z",
+    "idempotence_appended": 0,
+    "idempotence_skipped": 8,
+    "matrix_written": false
+  },
+  "fold_contract": {
+    "D1": [
+      "2024-03-26",
+      "2025-07-01"
+    ],
+    "D2": [
+      "2025-07-01",
+      "2026-01-01"
+    ],
+    "FINAL_UNTOUCHED": [
+      "2026-01-01",
+      "2026-07-25"
+    ]
+  },
+  "preregistration_sha256": "e75dd83b613ea54e01c3ed3e81d49e047c14bc578fe056446e686ba8552b5fb2",
+  "results": [
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 13.944142369646123,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": -3.1479558357647877,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 0,
+      "final_account_return_pct": -1.5248210667315651,
+      "final_capital_return_pct": -7.624105333657825,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 2.3060227889310907,
+      "selected": "C07_PERSISTENT_LHLL__COV_C_RIDE",
+      "status": "GRAY_REJECTED",
+      "symbol": "NVDA"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 38.27064598288416,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": -14.107420685254784,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 0,
+      "final_account_return_pct": -11.529523856171945,
+      "final_capital_return_pct": -57.64761928085973,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 6.042213968656581,
+      "selected": "C02_STRUCT_IMPULSE__COV_C_RIDE",
+      "status": "GRAY_REJECTED",
+      "symbol": "MU"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 0.0,
+      "d1_floor_pct": 11.529457746645,
+      "d2_capital_return_pct": -2.2820906455589465,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 0,
+      "final_account_return_pct": -9.293474801507582,
+      "final_capital_return_pct": -46.46737400753791,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 5.780556310591646,
+      "selected": "C07_PERSISTENT_LHLL__COV_C_RIDE",
+      "status": "GRAY_REJECTED",
+      "symbol": "SNDK"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 34.961929897968545,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": 4.226375680494676,
+      "d2_floor_pct": 31.947305209413713,
+      "discovery_pass_count": 0,
+      "final_account_return_pct": -5.023926156644594,
+      "final_capital_return_pct": -25.119630783222963,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 7.967730239303844,
+      "selected": "C03_WT_ROLLOVER__COV_C_RIDE",
+      "status": "GRAY_REJECTED",
+      "symbol": "ARM"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 3.678538783084332,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": 13.226288634053981,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 5,
+      "final_account_return_pct": -1.3774319479383483,
+      "final_capital_return_pct": -6.887159739691742,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 2.012206751859622,
+      "selected": "C08_ATR_ACCEL_SHOCK__COV_C_RIDE",
+      "status": "GRAY_REJECTED",
+      "symbol": "MRVL"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 2.3360152370079956,
+      "d1_floor_pct": 1.2458449452978249,
+      "d2_capital_return_pct": 8.945676654113232,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 2,
+      "final_account_return_pct": -9.120583984928926,
+      "final_capital_return_pct": -45.60291992464463,
+      "final_floor_pct": 0.0,
+      "final_tim_pct": 6.3168388617002,
+      "selected": "C01_STRUCT_BAL__COV_C_FAST",
+      "status": "GRAY_REJECTED",
+      "symbol": "LRCX"
+    },
+    {
+      "book": "CORRECTION",
+      "d1_capital_return_pct": 64.38054542405598,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": 6.42845215234429,
+      "d2_floor_pct": 0.0,
+      "discovery_pass_count": 2,
+      "final_account_return_pct": 1.3454974142435094,
+      "final_capital_return_pct": 6.727487071217547,
+      "final_floor_pct": 31.040684763696202,
+      "final_tim_pct": 1.6036966567001905,
+      "selected": "C03_WT_ROLLOVER__COV_C_BAL",
+      "status": "GRAY_REJECTED",
+      "symbol": "PLTR"
+    },
+    {
+      "book": "BEAR",
+      "d1_capital_return_pct": 2.247373134078225,
+      "d1_floor_pct": 0.0,
+      "d2_capital_return_pct": 1.5552718691928022,
+      "d2_floor_pct": 17.779976326120096,
+      "discovery_pass_count": 0,
+      "final_account_return_pct": 1.747395904073237,
+      "final_capital_return_pct": 8.736979520366186,
+      "final_floor_pct": 28.31788773340479,
+      "final_tim_pct": 5.815320611377408,
+      "selected": "B06_PERSISTENT_LHLL__COV_B_BAL",
+      "status": "GRAY_REJECTED",
+      "symbol": "IBIT"
+    }
+  ],
+  "source_sha256": "b2ee40b1fc041d53e289b0bff5da7060a21537f68f7b8ee4a86d2410fb59456f",
+  "stage": "VEC_SHORT_NATIVE_PHASE2_UNTOUCHED_OOS",
+  "status": "PASS_NO_SURVIVORS",
+  "survivors": 0,
+  "valid_keys": 8,
+  "vector_candidate_pairs": 192,
+  "vector_discovery_fold_simulations": 384
+}
