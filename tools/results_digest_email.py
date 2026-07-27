@@ -22,6 +22,8 @@ import html as html_lib
 import json
 import logging
 import os
+import re
+import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
@@ -44,6 +46,11 @@ DASHBOARD_URL = "http://localhost:5077/results"
 XLS_ATTACH = ["SYMBOL_OVERVIEW_crypto.xlsx", "SYMBOL_OVERVIEW_stocks.xlsx"]
 XLS_LINK_ONLY = ["PERSYM_APPLIED_REVIEW.xlsx", "FULL_PARAM_MATRIX_crypto.xlsx", "FULL_PARAM_MATRIX_stocks.xlsx"]
 TWELVE_H = 12 * 3600
+MATRIX_FILL_STAGES = (
+    "VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
+    "VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS",
+)
+MATRIX_FILL_PRIORITY = ("MU", "ARM", "PBF")
 
 
 def _switch_matrix_digest_section():
@@ -72,6 +79,462 @@ def _switch_matrix_digest_section():
         "<p%s>source <code>%s</code> &middot; age %.1fh</p>"
         "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
     ) % (stale, html_lib.escape(str(path)), age_h, html_lib.escape(body[:24000]))
+
+
+def _usable_fleet_db():
+    """Return the first path-fleet DB that actually contains beam rows."""
+    candidates = [
+        Path(os.environ["PATH_FLEET_DB_PATH"])
+        if os.environ.get("PATH_FLEET_DB_PATH")
+        else None,
+        BASE_PATH / "data" / "reports" / "path_fleet" / "queue.db",
+        Path(
+            "/home/niels/binance-sandbox/data/reports/path_fleet/queue.db"
+        ),
+    ]
+    for path in candidates:
+        if path is None or not path.exists():
+            continue
+        try:
+            con = sqlite3.connect(str(path))
+            count = con.execute(
+                "SELECT COUNT(*) FROM results WHERE stage IN (?,?)",
+                MATRIX_FILL_STAGES,
+            ).fetchone()[0]
+            con.close()
+            if count:
+                return path
+        except (OSError, sqlite3.Error):
+            continue
+    return None
+
+
+def _vec_research_root():
+    candidates = [
+        Path(os.environ["VEC_RESEARCH_ROOT"])
+        if os.environ.get("VEC_RESEARCH_ROOT")
+        else None,
+        BASE_PATH / "data" / "reports" / "vec_research",
+        Path("/home/niels/binance-sandbox/data/reports/vec_research"),
+    ]
+    return next((p for p in candidates if p is not None and p.exists()), None)
+
+
+def _load_campaign_manifest(root, campaign_id):
+    """Load the campaign's immutable/compact manifest, never a hardcoded result."""
+    if (
+        root is None
+        or not campaign_id
+        or not re.fullmatch(r"[A-Za-z0-9_.-]+", str(campaign_id))
+    ):
+        return {}, None
+    campaign_dir = root / str(campaign_id)
+    for name in (
+        "campaign_manifest.json",
+        "compact_result.json",
+        "campaign_result.json",
+    ):
+        path = campaign_dir / name
+        if not path.exists():
+            continue
+        try:
+            return json.loads(path.read_text()), path
+        except (OSError, ValueError):
+            continue
+    return {}, None
+
+
+def _manifest_counts(manifest):
+    results = manifest.get("results") or []
+    counts = manifest.get("counts") or {}
+    candidates = counts.get("candidate_rows")
+    if not isinstance(candidates, (int, float)):
+        vals = [
+            r.get("candidate_count")
+            for r in results
+            if isinstance(r, dict)
+            and isinstance(r.get("candidate_count"), (int, float))
+        ]
+        candidates = sum(vals) if vals else None
+    schedules = counts.get("entry_schedules")
+    if not isinstance(schedules, (int, float)):
+        schedules = len(results) if results else None
+    exact = manifest.get("exact_replay_queue")
+    exact_count = len(exact) if isinstance(exact, list) else None
+    if exact_count is None:
+        exact_count = counts.get("exact_replay_queue")
+    return candidates, schedules, exact_count
+
+
+def _manifest_candidate_counts(manifest):
+    out = {}
+    for row in manifest.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        symbol, side = row.get("symbol"), row.get("side")
+        count = row.get("candidate_count")
+        if (
+            symbol
+            and side
+            and isinstance(count, (int, float))
+        ):
+            key = (str(symbol), str(side).upper())
+            out[key] = out.get(key, 0) + int(count)
+    return out
+
+
+def _fold_failure_reasons(fold, tim_low, tim_high):
+    reasons = []
+    alpha_bh = fold.get("alpha_vs_bh_pp")
+    alpha_control = fold.get(
+        "alpha_vs_same_entry_e02_pp",
+        fold.get("alpha_vs_control_pp"),
+    )
+    tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
+    exits = fold.get("exit_fills", fold.get("actual_exit_fills"))
+    if isinstance(alpha_bh, (int, float)) and alpha_bh <= 0:
+        reasons.append("&le;B&amp;H")
+    if isinstance(alpha_control, (int, float)) and alpha_control <= 0:
+        reasons.append("&le;control")
+    if isinstance(tim, (int, float)):
+        if tim < tim_low:
+            reasons.append("TIM&lt;%.0f" % tim_low)
+        elif tim > tim_high:
+            reasons.append("TIM&gt;%.0f" % tim_high)
+    if isinstance(exits, (int, float)) and exits < 1:
+        reasons.append("no exit")
+    if int(fold.get("future_htf_source_count") or 0):
+        reasons.append("future HTF")
+    if fold.get("entry_capacity_breach"):
+        reasons.append("capacity")
+    if fold.get("insolvent"):
+        reasons.append("insolvent")
+    return reasons
+
+
+def _discovery_cell(payload, tim_low, tim_high):
+    evidence = payload.get("discovery_fold_evidence") or []
+    gates = payload.get("discovery_fold_gate_pass") or []
+    parts = []
+    for idx, fold in enumerate(evidence):
+        if not isinstance(fold, dict):
+            continue
+        passed = bool(gates[idx]) if idx < len(gates) else False
+        tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
+        tim_text = "%.1f%%" % tim if isinstance(tim, (int, float)) else "TIM?"
+        reasons = _fold_failure_reasons(fold, tim_low, tim_high)
+        suffix = "" if passed or not reasons else " (%s)" % ", ".join(reasons)
+        parts.append(
+            "F%s%s %s%s"
+            % (
+                html_lib.escape(str(fold.get("fold", idx + 1))),
+                "&#10003;" if passed else "&#10007;",
+                tim_text,
+                suffix,
+            )
+        )
+    return "<br>".join(parts) if parts else "no discovery-fold evidence"
+
+
+def _gray_reason(row, payload, tim_low, tim_high):
+    reasons = []
+    gates = payload.get("discovery_fold_gate_pass") or []
+    if gates and not all(bool(v) for v in gates):
+        reasons.append("discovery fold failed")
+    strategy = row.get("strategy_return_pct")
+    bh = row.get("bh_return_pct")
+    control = row.get("same_entry_control_return_pct")
+    tim = row.get("tim_pct")
+    if isinstance(strategy, (int, float)) and isinstance(bh, (int, float)):
+        if strategy <= bh:
+            reasons.append("final &le; B&amp;H")
+    if (
+        isinstance(strategy, (int, float))
+        and isinstance(control, (int, float))
+        and strategy <= control
+    ):
+        reasons.append("final &le; control")
+    if isinstance(tim, (int, float)):
+        if tim < tim_low:
+            reasons.append("final TIM&lt;%.0f" % tim_low)
+        elif tim > tim_high:
+            reasons.append("final TIM&gt;%.0f" % tim_high)
+    if not row.get("exact_replay"):
+        reasons.append("not exact-validated")
+    return "; ".join(reasons) or html_lib.escape(str(row.get("status") or "research only"))
+
+
+def _discovery_rank(item, tim_low, tim_high):
+    """Display representative chosen without looking at the untouched final."""
+    payload = item["payload"]
+    gates = payload.get("discovery_fold_gate_pass") or []
+    evidence = payload.get("discovery_fold_evidence") or []
+    tim_distance = 0.0
+    for fold in evidence:
+        if not isinstance(fold, dict):
+            continue
+        tim = fold.get("weighted_tim_pct", fold.get("tim_pct"))
+        if isinstance(tim, (int, float)):
+            tim_distance += abs(float(tim) - (tim_low + tim_high) / 2.0)
+        else:
+            tim_distance += 1e6
+    return (sum(bool(v) for v in gates), -tim_distance, item["row"]["id"])
+
+
+def _latest_matrix_filling_campaigns_section():
+    """Latest vector matrix work, with untouched-final rows kept research-only."""
+    db_path = _usable_fleet_db()
+    if db_path is None:
+        return (
+            "<h2>Latest matrix-filling campaigns</h2>"
+            "<p class='r'><b>MISSING:</b> no append-only path-fleet beam rows.</p>"
+        )
+    try:
+        con = sqlite3.connect(str(db_path))
+        con.row_factory = sqlite3.Row
+        raw_rows = con.execute(
+            """SELECT * FROM results
+               WHERE stage IN (?,?)
+               ORDER BY id""",
+            MATRIX_FILL_STAGES,
+        ).fetchall()
+        con.close()
+    except (OSError, sqlite3.Error) as exc:
+        return (
+            "<h2>Latest matrix-filling campaigns</h2>"
+            "<p class='r'>fleet read failed: %s</p>"
+            % html_lib.escape(str(exc))
+        )
+
+    parsed = []
+    for raw in raw_rows:
+        row = dict(raw)
+        try:
+            payload = json.loads(row.get("payload_json") or "{}")
+        except ValueError:
+            continue
+        campaign_id = payload.get("campaign_id")
+        if not campaign_id:
+            continue
+        parsed.append({"row": row, "payload": payload, "campaign_id": campaign_id})
+
+    # For each stage/key, report only its newest append-only campaign. Multiple
+    # entry schedules in that campaign are represented using discovery data only.
+    latest_campaign = {}
+    for item in parsed:
+        row = item["row"]
+        key = (row["stage"], row["symbol"], row["side"])
+        marker = (float(row.get("created_at") or 0), int(row["id"]))
+        if key not in latest_campaign or marker > latest_campaign[key][0]:
+            latest_campaign[key] = (marker, item["campaign_id"])
+    parsed = [
+        item
+        for item in parsed
+        if item["campaign_id"]
+        == latest_campaign[
+            (
+                item["row"]["stage"],
+                item["row"]["symbol"],
+                item["row"]["side"],
+            )
+        ][1]
+    ]
+
+    research_root = _vec_research_root()
+    campaign_ids = sorted({item["campaign_id"] for item in parsed})
+    manifests = {}
+    manifest_paths = {}
+    for campaign_id in campaign_ids:
+        manifests[campaign_id], manifest_paths[campaign_id] = (
+            _load_campaign_manifest(research_root, campaign_id)
+        )
+
+    campaign_rows = []
+    for campaign_id in sorted(
+        campaign_ids,
+        key=lambda c: max(
+            item["row"]["created_at"]
+            for item in parsed
+            if item["campaign_id"] == c
+        ),
+        reverse=True,
+    ):
+        manifest = manifests[campaign_id]
+        candidates, schedules, exact = _manifest_counts(manifest)
+        contract = manifest.get("contract") or {}
+        strategy_cap = contract.get("strategy_capacity_usd")
+        bh_cap = contract.get("bh_capital_usd")
+        keys = {
+            (item["row"]["symbol"], item["row"]["side"])
+            for item in parsed
+            if item["campaign_id"] == campaign_id
+        }
+        stage_names = {
+            item["row"]["stage"]
+            for item in parsed
+            if item["campaign_id"] == campaign_id
+        }
+        source = manifest_paths.get(campaign_id)
+        campaign_rows.append(
+            "<tr><td><code>%s</code></td><td>%s</td><td>%d</td>"
+            "<td>%s / %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+            % (
+                html_lib.escape(campaign_id),
+                "<br>".join(
+                    "<code>%s</code>" % html_lib.escape(stage)
+                    for stage in sorted(stage_names)
+                ),
+                len(keys),
+                "$%s" % "{:,.0f}".format(strategy_cap)
+                if isinstance(strategy_cap, (int, float))
+                else "&mdash;",
+                "$%s" % "{:,.0f}".format(bh_cap)
+                if isinstance(bh_cap, (int, float))
+                else "&mdash;",
+                "{:,}".format(int(schedules))
+                if isinstance(schedules, (int, float))
+                else "&mdash;",
+                "{:,}".format(int(candidates))
+                if isinstance(candidates, (int, float))
+                else "&mdash;",
+                "{:,}".format(int(exact))
+                if isinstance(exact, (int, float))
+                else "&mdash;",
+                html_lib.escape(source.name) if source else "manifest missing",
+            )
+        )
+
+    grouped = {}
+    for item in parsed:
+        row = item["row"]
+        key = (
+            row["stage"],
+            row["symbol"],
+            row["side"],
+            item["campaign_id"],
+        )
+        grouped.setdefault(key, []).append(item)
+
+    details = []
+    for stage in MATRIX_FILL_STAGES:
+        stage_groups = [
+            (key, values)
+            for key, values in grouped.items()
+            if key[0] == stage
+        ]
+        if not stage_groups:
+            continue
+        for side in ("LONG", "SHORT"):
+            side_groups = [
+                (key, values)
+                for key, values in stage_groups
+                if str(key[2]).upper() == side
+            ]
+            if not side_groups:
+                continue
+            side_groups.sort(
+                key=lambda pair: (
+                    MATRIX_FILL_PRIORITY.index(pair[0][1])
+                    if pair[0][1] in MATRIX_FILL_PRIORITY
+                    else len(MATRIX_FILL_PRIORITY),
+                    pair[0][1],
+                )
+            )
+            rows = []
+            for key, items in side_groups:
+                campaign_id = key[3]
+                manifest = manifests.get(campaign_id) or {}
+                contract = manifest.get("contract") or {}
+                tim_gate = contract.get("every_fold_tim_gate_pct") or [70.0, 80.0]
+                try:
+                    tim_low, tim_high = float(tim_gate[0]), float(tim_gate[1])
+                except (TypeError, ValueError, IndexError):
+                    tim_low, tim_high = 70.0, 80.0
+                representative = max(
+                    items,
+                    key=lambda item: _discovery_rank(item, tim_low, tim_high),
+                )
+                row, payload = representative["row"], representative["payload"]
+                per_key_candidates = _manifest_candidate_counts(manifest).get(
+                    (str(row["symbol"]), str(row["side"]).upper())
+                )
+                strategy, bh, control = (
+                    row.get("strategy_return_pct"),
+                    row.get("bh_return_pct"),
+                    row.get("same_entry_control_return_pct"),
+                )
+                final_text = (
+                    "%s vs B&amp;H %s<br>vs control %s"
+                    % (_fmt_pct(strategy), _fmt_pct(bh), _fmt_pct(control))
+                )
+                rows.append(
+                    "<tr><td><b>%s_%s</b></td><td>%s<br>%s</td>"
+                    "<td>%s</td><td>%s<br>%s exits</td><td>%s<br>%s</td>"
+                    "<td>%s / %d fleet rows</td></tr>"
+                    % (
+                        html_lib.escape(str(row["symbol"])),
+                        html_lib.escape(str(row["side"])),
+                        html_lib.escape(str(payload.get("entry_family") or "?")),
+                        html_lib.escape(str(payload.get("exit_family") or "?")),
+                        _discovery_cell(payload, tim_low, tim_high),
+                        final_text,
+                        html_lib.escape(str(row.get("trades") or 0)),
+                        _fmt_pct(row.get("tim_pct")),
+                        _gray_reason(row, payload, tim_low, tim_high),
+                        "{:,}".format(int(per_key_candidates))
+                        if isinstance(per_key_candidates, (int, float))
+                        else "&mdash;",
+                        len(items),
+                    )
+                )
+            details.append(
+                "<h3><code>%s</code> &mdash; %s (kept separate)</h3>%s"
+                % (
+                    html_lib.escape(stage),
+                    side,
+                    _table(
+                        [
+                            "key",
+                            "discovery-selected entry / exit",
+                            "discovery folds (pass + TIM)",
+                            "untouched final capital return",
+                            "TIM / why gray",
+                            "candidates / rows",
+                        ],
+                        rows,
+                    ),
+                )
+            )
+
+    return (
+        "<h2>Latest matrix-filling campaigns "
+        "<span style='color:#666'>[RESEARCH ONLY &mdash; NOT ACCEPTED/LIVE]</span></h2>"
+        "<p><b>Scope/units:</b> returns are capital-return percent on one final "
+        "chronological outer-validation fold (no fold summing); TIM is percent. "
+        "Strategy capacity and B&amp;H capital are shown from each campaign contract. "
+        "Control is the identical frozen entry schedule with E02. "
+        "Representative rows are selected only by discovery-fold gate coverage "
+        "and TIM proximity; the untouched final is displayed afterward. "
+        "Gray rows remain rejected and cannot be promoted without every discovery "
+        "gate plus exact-engine validation.</p>"
+        "<h3>Append-only campaign manifests</h3>%s%s"
+        % (
+            _table(
+                [
+                    "campaign",
+                    "fleet stage",
+                    "keys",
+                    "strategy / B&amp;H capital",
+                    "entry schedules",
+                    "vector candidates",
+                    "exact queue",
+                    "manifest",
+                ],
+                campaign_rows,
+            ),
+            "".join(details),
+        )
+    )
 
 
 def _load_state():
@@ -551,7 +1014,9 @@ def build_digest(prev_state, now):
     </div>
     </body></html>""" % (
         me.CSS, win_start_iso, win_end_iso, (now - win_start) / 3600.0, DASHBOARD_URL, DASHBOARD_URL,
-        _gainmo_sections(), stale_banner, _switch_matrix_digest_section(),
+        _gainmo_sections(), stale_banner,
+        _latest_matrix_filling_campaigns_section()
+        + _switch_matrix_digest_section(),
         _table(["mode", "key", "real_sharpe_1sym", "gated"], gated_rows, "none this window"),
         _table(["mode", "key", "real_sharpe_1sym", "when"], reenabled_rows, "none this window"),
         _table(["mode", "key", "before &rarr; after", "when"], rescued_rows, "none this window"),
