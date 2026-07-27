@@ -2213,3 +2213,112 @@ invalidations and rollback are in
 `HAO_SHORT_EXPOSURE_PHASE4_RESULTS_20260727.md`; the compact fleet-compatible
 receipt is
 `data/reports/vec_research/HAO_SHORT_EXPOSURE_PHASE4_RECEIPT_20260727.json`.
+
+### §15.39 — pilot-key lineage readout and the handle-priority / sampling policy (2026-07-27)
+
+Read-only synthesis of the recovered work for the four pilot keys, plus the
+testing policy that makes fleet-out affordable. Full detail in
+[`MU_HAO_VT_NVDA_LINEAGE_AND_HANDLE_PRIORITY_20260727.md`](MU_HAO_VT_NVDA_LINEAGE_AND_HANDLE_PRIORITY_20260727.md).
+
+**Where MU_LONG's numbers come from.** The old `stocks_baseline_v2_s4h` MU_LONG
+baseline was 19 trades / 0.13% TIM / −0.24% against +632.98% B&H — capture 0.000.
+The +1,170.7005% vs +205.2519% (5.704x) F3 figure is a different construction, not
+a tuned version of that baseline: the §13.7 exposure ladder inverted the search
+(stage 0 = all exits off = B&H floor), §15/§15.1 repaired the zero-trade and 5m
+provenance contracts, §15.27 added the shared parent-close clock, and §15.30/§15.34
+ran a regression-band *sizing* ladder (D/4h/1h band-depth multipliers, 8x capacity
+clip, fixed completed-4h Donchian-N30 exit, mandatory zero-buffer reclaim). Nearly
+all of the gain is exposure and sizing, not entry or exit selection.
+
+**Do not quote it as Tier-2.** `tools/v8_research_ladder_adapter.py` claims in its
+docstring to replay "through `backtest_v8_engine`", but that module — and the whole
+chain `vec_band_ladder_walkforward`, `run_mu_ladder_*`, `run_hao_short_exposure_*`,
+`v8_research_short_guard_adapter` — contains no import of and no subprocess call to
+`backtest_v8_engine`. "Exact replay" proves the vector selection and a
+schedule-level accounting oracle agree; it does not prove parity with
+`check_entry_candidates_for_account()`/`check_exit_candidates_for_account()`. The
+docstring must be corrected.
+
+**Pilot-key status.** MU_LONG floor (real Tier-2 stage 0) +716.12% at 99.97% TIM;
+best research F3 gray, failed its own exposure band by 1.3847 points. HAO_SHORT
+floor +99.81% at 100.00% TIM; phase-4 F3 +1,746.50% vs +99.78% short B&H but 36.05%
+weighted TIM, failed the gate; NPZ still quarantined and 15m history is only 3.5
+months (136.96 -> 0.16). VT_LONG is the working negative control: −15.36% aggregate
+/ −61.85% final vs +1.57% B&H at 80.32% TIM, and §15.35 proved that is strategy
+behaviour, not the 69.545-day data hole. **NVDA_LONG has never been run** — no
+repaired campaign, no stage-0 floor, no ladder; its baseline is still 1 trade /
+0.11% TIM. Measured 15m floor 95.79 -> 206.80 = +115.88%.
+
+**FOUR different B&H bases are in circulation — never compare across them.**
+`key_baseline` MU/LONG `stocks_repaired_20260725_c2` records `bh_pct=133.0586`,
+while MU's instrument return over the exact NPZ the engine loads
+(`backtest_v8/indicators/MU.npz`, 114,641 rows, 2024-03-26 -> 2026-07-24) is
+119.00 -> 910.77 = **+665.35%**. The deviation is *exactly* 5x on both repaired
+keys (MU 133.0586x5=665.29 vs 665.35, ratio 5.0004; VT 6.7019x5=33.51 vs 33.57,
+ratio 5.0090) because 5 = $10,000 solvency account / $2,000 deployed unit. So
+`bh_pct` in `stocks_repaired_20260725_c*` is **account-based, not
+instrument-based** — and since `acc_gain_pct` shares that base
+(39.5035/133.0586=0.2969 and -6.8871/6.7019=-1.0276 reproduce the stored values
+exactly), **`capture_vs_bh` inside that campaign is internally valid**. MU_LONG's
+repaired baseline really does capture 0.297 of B&H. The bases now live are:
+`stocks_repaired_*` = account base (instrument/5); `stocks_baseline_v2_s4h` =
+instrument base (632.98); stage-0 Tier-2 / 15m recompute = instrument base
+(+716.12% / +665.35%); band-ladder research folds = $2,000-unit base with the
+strategy leg levered to 8x while B&H is not. Ranking or differencing across two
+bases is the same error class as 13.5 cross-tier differencing. Fix by adding an
+explicit `bh_base`/`return_base` column and making the exporter refuse mixed
+bases — **do not silently rescale stored rows.** Receipt:
+`data/handle_priority/BH_METRIC_DEFECT_MU_LONG_20260727.json`.
+
+**Handle priority.** Of 185 params in the repaired ENGINE campaigns, **159 (86%)
+have zero non-inert cells on every key tested**; VEC is 13,455/83,604 cells
+non-inert (16.1%). Testing is therefore tiered, not uniform:
+
+- **Tier A — every key (~65 cells/key).** `STOP_PACK` lean exit-off packs (ENGINE,
+  best +2.8250 %/mo; MU_LONG +118.46% at 54.52% TIM vs baseline +39.50% at 22.39% —
+  the only Tier-2-proven step change), `MTF_ARMED_ENTRY_ENABLED` (99.1% hit),
+  `BB_PULLBACK_GATE_ENABLED` (96.0%), `BB_BREAKOUT_ENABLED` (95.5%),
+  `WT_3M_FORCE_OPEN_ENABLED` (92.6%), `BB_PULLBACK_GATE_SHORT_MIN/LONG_MAX`,
+  `BB_RSI_STOCH_SCALP_ENABLED` (91.4%), `WT_DC_ENTRY_THRESHOLD` (low hit rate but
+  −10.94..+2.43 range — must be tuned per key, never screened), `ENTRY_ZONE_LONG`,
+  `K_ZONE_LONG_THRESHOLD_TRADIER`, `MIN_POSITION_SIZE`/`START_POSITION_SIZE`/
+  `MAX_AUGMENTS_PER_POSITION`, `LR_PCTB_D_LONG_ENTRY_ENABLED`+`LR_BAND_ENTRY_R2_MIN`,
+  and `GOLDEN_RULE_REQUIRE_ACTIVATION` **only after reconnect-verification** (§15.1
+  found identical two-value Tier-2 fingerprints).
+- **Tier B — 1 key in 5 (24 keys).** 25–82% hit rate or modest magnitude:
+  `HTF_TREND_VETO_ENABLED`, `GOLDEN_RULE_HTF_MIN_TFS`, `PARTIAL_PROFIT_LOCK_*`,
+  `MIN_GAIN*`, `MTF_GR_*`, `DC_BREAK_LOW_REQUIRE_HTF_ENABLED`, `DC_LOW_STOP_ENABLED`,
+  `DC_LOW4_STOP_ENABLED`, `BB_FROZEN_STOP_ENABLED`, `MFI_ENTRY_ENABLED`,
+  `R3_HTF_FLIP_EXIT_ENABLED`, `PEAK_GIVEBACK_HARD_ZERO_ENABLED`, `R2_PEAK_MIN_PCT`,
+  `REGIME_DETECTION_ENABLED`, `MTF_ARMED_WT_DIRECTION_SUSPEND_ENABLED` (worst −23.57).
+- **Tier C — 1 key in 10 (12 keys).** The `+1.607` clone block (~20 params with
+  identical 226/49/20 fingerprints — co-varying, fix attribution rather than
+  re-measure), `REENTRY_B*`, `DELTA_*`, `WT_15M_VEL_*`, `REGIME_*` thresholds,
+  `CONNORS_RSI2_*`, `CATALYST_*`, `TR_TREND_V1_ENABLED`.
+- **Tier D — do not test, fix wiring.** 29 params with zero non-inert cells in
+  83,604 VEC rows plus ~40 at 0.0% hit rate, and the entire `TRC_*_BUDGET`,
+  `SATOSHIT_*`, `MI_*`, `STDEV_*`, `TRADIER_*` alias, `SCALP_*`, `ORB_*` families
+  from the repaired ENGINE campaign. Honour §13.5: never prune a sub-knob whose
+  master `_ENABLED` is False — gated off is not unwired.
+
+**Promotion/demotion.** A Tier B/C handle positive on >=2 sampled keys returns to
+Tier A next cycle; a Tier A handle inert or negative on >=80% of the first 24 keys
+drops to Tier B; a Tier D handle re-enters only after its two-value fingerprint
+moves, never on a delta. Re-tier every 24 completed keys. Sample sets are
+stratified by trend sign x volatility quartile x side, fixed in advance and written
+to disk (`data/handle_priority/sample_frame_20260727.json`) so sampling cannot
+become cherry-picking; the four pilot keys are always included.
+
+**Budget.** At the measured ~50 min/unit for a baseline that actually trades:
+Tier A 7,670 units + Tier B 1,680 + Tier C 1,560 = **10,910 units = 9,092
+core-hours = 31.6 days on S1 or 7.9 days on one 48-core box**, versus 411,230 units
+(298 days on that box) for the blind grid on the same 118 trb keys — a ~38x
+reduction that satisfies the §13.4 rent-a-server decision rule. Tier A across all
+230 symbols x 2 sides is 29,900 units (21.6 days on a 48-core box).
+
+**Execution order.** (1) fix the adapter docstring and the MU `bh_pct` row; (2) fan
+`STOP_PACK` out to all 118 trb keys (590 units) — it is the only Tier-2-proven step
+change and immediately tests whether MU is an artifact; (3) reconnect-verify
+`GOLDEN_RULE_REQUIRE_ACTIVATION`; (4) run NVDA_LONG stage-0 + band-ladder as the
+transferability test; (5) Tier A in full, then B, then C, re-tiering every 24 keys;
+(6) only then extend to the remaining `symbols_tradier.json` keys.

@@ -4,7 +4,16 @@
 The vector campaign performs candidate selection.  This module has a narrower
 job: materialize one already-frozen validation curve as an auditable fill
 schedule, bind every fill and completed-HTF source timestamp to the source NPZ,
-and replay the schedule through ``backtest_v8_engine``.
+and replay that schedule against this module's own accounting oracle.
+
+NOT TIER-2.  This module does not import, call, or subprocess
+``backtest_v8_engine``.  A passing "exact replay" proves that the vector
+selection and the schedule-level accounting agree with each other and that no
+future HTF source was observed.  It does NOT prove parity with the live
+decision path (``check_entry_candidates_for_account`` /
+``check_exit_candidates_for_account``).  Per ``BACKTEST_BIBLE.md`` §15 only
+``backtest_v8_engine.py`` is Tier-2 decision evidence, so no number produced
+here may be quoted as a Tier-2 result.
 
 Nothing in this module is imported by live processes.  Specs are fail-closed,
 explicitly forbid promotion, and support one symbol/position side only.

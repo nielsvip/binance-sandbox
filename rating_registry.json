@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T23:05:19.505737+00:00",
+  "timestamp": "2026-07-27T23:20:15.671967+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -7,13 +7,61 @@
   },
   "unified_ranking": [
     {
+      "symbol": "XRPUSDC",
+      "net_score": -24.1,
+      "long_score": 0,
+      "short_score": 24.1
+    },
+    {
+      "symbol": "SANDUSDT",
+      "net_score": -21.4,
+      "long_score": 0,
+      "short_score": 21.4
+    },
+    {
+      "symbol": "ARBUSDC",
+      "net_score": -20.1,
+      "long_score": 0,
+      "short_score": 20.1
+    },
+    {
+      "symbol": "1000PEPEUSDC",
+      "net_score": -18.3,
+      "long_score": 0,
+      "short_score": 18.3
+    },
+    {
+      "symbol": "WLDUSDC",
+      "net_score": -18.0,
+      "long_score": 0,
+      "short_score": 18.0
+    },
+    {
       "symbol": "PTBUSDT",
       "net_score": -16.6,
       "long_score": 0,
       "short_score": 16.6
     },
     {
+      "symbol": "1000FLOKIUSDT",
+      "net_score": -16.2,
+      "long_score": 0,
+      "short_score": 16.2
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "net_score": -16.1,
+      "long_score": 0,
+      "short_score": 16.1
+    },
+    {
       "symbol": "BIOUSDC",
+      "net_score": -15.8,
+      "long_score": 0,
+      "short_score": 15.8
+    },
+    {
+      "symbol": "BTCUSDC",
       "net_score": -15.8,
       "long_score": 0,
       "short_score": 15.8
@@ -25,58 +73,16 @@
       "short_score": 14.7
     },
     {
-      "symbol": "FILUSDC",
-      "net_score": -14.3,
-      "long_score": 0,
-      "short_score": 14.3
-    },
-    {
-      "symbol": "ARBUSDC",
-      "net_score": -14.2,
-      "long_score": 0,
-      "short_score": 14.2
-    },
-    {
       "symbol": "BOMEUSDC",
       "net_score": -13.6,
       "long_score": 0,
       "short_score": 13.6
     },
     {
-      "symbol": "XRPUSDC",
-      "net_score": -13.0,
-      "long_score": 0,
-      "short_score": 13.0
-    },
-    {
-      "symbol": "SOLUSDC",
-      "net_score": -12.9,
-      "long_score": 0,
-      "short_score": 12.9
-    },
-    {
       "symbol": "SKYAIUSDT",
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "1000FLOKIUSDT",
-      "net_score": -12.1,
-      "long_score": 0,
-      "short_score": 12.1
-    },
-    {
-      "symbol": "1000LUNCUSDT",
-      "net_score": -11.2,
-      "long_score": 0,
-      "short_score": 11.2
-    },
-    {
-      "symbol": "BTCUSDC",
-      "net_score": -10.2,
-      "long_score": 0,
-      "short_score": 10.2
     },
     {
       "symbol": "ACTUSDT",
@@ -259,12 +265,6 @@
       "short_score": 0
     },
     {
-      "symbol": "WLDUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BSVUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -356,12 +356,6 @@
     },
     {
       "symbol": "CHRUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "SANDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -595,6 +589,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SOLUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -655,12 +655,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BTCDOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ACEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -679,13 +673,13 @@
       "short_score": 0
     },
     {
-      "symbol": "UNIUSDC",
+      "symbol": "FILUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "1000PEPEUSDC",
+      "symbol": "UNIUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -730,6 +724,12 @@
       "symbol": "ONDOUSDT",
       "net_score": 13.1,
       "long_score": 13.1,
+      "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
+      "net_score": 13.6,
+      "long_score": 13.6,
       "short_score": 0
     },
     {
@@ -787,42 +787,53 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "BTCDOMUSDT",
+      13.6,
+      5521.52772182
+    ]
+  ],
   "top_shorts": [
     [
-      "FILUSDC",
-      14.3,
-      0.69036326
+      "XRPUSDC",
+      24.1,
+      1.06260049
+    ],
+    [
+      "SANDUSDT",
+      21.4,
+      0.04338067
     ],
     [
       "ARBUSDC",
-      14.2,
-      0.0766
+      20.1,
+      0.07695169
     ],
     [
-      "XRPUSDC",
-      13.0,
-      1.0658
+      "1000PEPEUSDC",
+      18.3,
+      0.00282463
     ],
     [
-      "SOLUSDC",
-      12.9,
-      73.81
+      "WLDUSDC",
+      18.0,
+      0.3244
     ],
     [
       "1000FLOKIUSDT",
-      12.1,
-      0.02069
+      16.2,
+      0.020704
     ],
     [
       "1000LUNCUSDT",
-      11.2,
-      0.05010467
+      16.1,
+      0.05035772
     ],
     [
       "BTCUSDC",
-      10.2,
-      63757.0
+      15.8,
+      63595.1
     ]
   ],
   "hedge_usage": {
