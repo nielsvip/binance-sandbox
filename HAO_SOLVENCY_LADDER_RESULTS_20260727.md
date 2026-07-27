@@ -24,7 +24,9 @@ That is 225 discovery candidates, not 225 ladder shapes.
 
 Only folds 1 and 2 were evaluated for ranking. The runner persisted
 `preregistration.json`, then `discovery_freeze.json`, before it simulated fold
-3. The freeze contains no final metric and has SHA-256
+3. The freeze contains no final metric. Its file SHA-256 is
+`6ffbfbb70c4fe16053563c20a22ef188495a7adab7add4d06139b35a2241849b`;
+the ordered selected-candidate digest stored inside it is
 `c7aef4a3f49dc43356fc62a63133c6ff2fb79e5e55124b862fa20463799702e0`.
 The frozen union is top four per exit plus top eight overall, yielding 12
 unique candidates. Mutating an unrelated post-discovery field cannot change
@@ -98,6 +100,9 @@ separate blocker from the zero-survivor result.
 Machine evidence is in:
 
 `data/npz_recovery/hao_recovery_20260727T0010Z/controls/solvency_grid/hao_short_ladder_grid_20260727T0515Z/`
+
+The raw `result.json` SHA-256 is
+`d267b0cd06851b0adc8861ad4a613c07b125f1d97e0ce07e92f5adb1a044fc31`.
 
 The compact repository receipt is
 `data/reports/vec_research/HAO_SOLVENCY_LADDER_RECEIPT_20260727.json`.

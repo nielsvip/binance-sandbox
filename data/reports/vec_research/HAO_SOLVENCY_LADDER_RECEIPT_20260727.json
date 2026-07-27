@@ -1,0 +1,33 @@
+{
+  "artifact": "data/npz_recovery/hao_recovery_20260727T0010Z/controls/solvency_grid/hao_short_ladder_grid_20260727T0515Z",
+  "all_three_fold_solvent_frozen_count": 12,
+  "all_three_fold_strict_survivor_count": 0,
+  "canonical_hao_npz_sha256_after": "2865773e683700abd8222e7e9e17e24a5704bdf22a62ef3c09e130798b355b98",
+  "canonical_or_live_write": false,
+  "discovery_candidate_count": 225,
+  "discovery_freeze_file_sha256": "6ffbfbb70c4fe16053563c20a22ef188495a7adab7add4d06139b35a2241849b",
+  "discovery_selection_sha256": "c7aef4a3f49dc43356fc62a63133c6ff2fb79e5e55124b862fa20463799702e0",
+  "discovery_strict_count": 0,
+  "exact_replay_allowed": false,
+  "exact_replay_blocker": "15m-derived 5m HAO rows require parent-close availability in exact execution before a causal replay spec can be emitted",
+  "exit_candidate_count": 3,
+  "final_fold_used_for_selection": false,
+  "frozen_candidate_count": 12,
+  "insolvency_attribution": {
+    "all_events_fold": 2,
+    "by_exit": {
+      "EXIT_E02_DONCHIAN": 1,
+      "EXIT_E05_DIVERGENCE_RETEST": 1,
+      "EXIT_PEAK_GIVEBACK": 42
+    },
+    "total": 44
+  },
+  "isolated_hao_npz_sha256_after": "17907495bd909a1ea7ebcd6c7846134a7e70ae966b0fe7e79c3006107bb36332",
+  "ladder_setting_count": 75,
+  "matrix_write": false,
+  "preregistration_file_sha256": "4361d192350052881e05b2ecbe528dbc046417250f70dd0d9a9f82dd508e5702",
+  "result_file_sha256": "d267b0cd06851b0adc8861ad4a613c07b125f1d97e0ce07e92f5adb1a044fc31",
+  "result_gate": "each fold solvent, DD<100%, return>B&H and same-entry E02, weighted TIM 70-80%, actual exits, persistent reclaim, zero future HTF",
+  "status": "GRAY_REJECTED_QUARANTINED",
+  "symbol_side": "HAO_SHORT"
+}

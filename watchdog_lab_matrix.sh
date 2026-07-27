@@ -104,14 +104,17 @@ launch_repaired() {
   symbol=$1; side=$2; tag=$3
   needle="param_matrix_daemon.py --tag $tag --only $symbol --side $side --all-tiers --safe-contract"
   if ! pgrep -f "$needle" >/dev/null; then
+    # `disown` is ineffective when this script is started by non-interactive cron: bash can
+    # remain the daemon's parent and wait indefinitely, which prevents a clean watchdog cycle
+    # after a contract-fingerprint exit. `setsid -f` makes the worker an independent session
+    # owned by init, so this ten-minute script can finish and later replace failed workers.
     cd "$SBX" && PSC_CAMPAIGN="$REPAIRED_CAMPAIGN" \
       PSC_MATRIX_NPZ_DIR="$REPAIRED_NPZ_DIR" \
       PSC_MATRIX_END_DATE="$REPAIRED_END_DATE" \
-      nohup nice -n 18 "$PY" \
+      setsid -f nohup nice -n 18 "$PY" \
       tools/param_matrix_daemon.py --tag "$tag" --only "$symbol" --side "$side" \
       --all-tiers --safe-contract --min-avail 5000 \
-      >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null &
-    disown
+      >> "$LOGDIR/param_matrix_${tag}.log" 2>&1 < /dev/null
     echo "$(date -u +%FT%TZ) relaunched repaired matrix $tag (${symbol}_${side})" \
       >> "$LOGDIR/lab_matrix_watchdog.log"
   fi

@@ -6336,6 +6336,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             (
                 "V8_RESEARCH_TOP_EXIT_REPLAY",
                 "V8_RESEARCH_BAND_LADDER_REPLAY",
+                "V8_RESEARCH_SHORT_GUARD_REPLAY",
                 "V8_RESEARCH_STRUCT_WT_RETEST_EXIT",
             )
         )
