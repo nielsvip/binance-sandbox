@@ -84,7 +84,9 @@ def test_path_fleet_exact_requires_explicit_switch_attribution(tmp_path):
     fleet.commit()
     fleet.close()
 
-    with patch.object(export, "DB", db), patch.object(export, "BASE", tmp_path):
+    with patch.object(export, "DB", db), patch.object(
+        export, "FLEET_DB", fleet_dir / "queue.db"
+    ):
         audit = export.load_engine_coverage(export.CURRENT_ENGINE_CAMPAIGN)
 
     assert len(audit["fleet_exact"]) == 2

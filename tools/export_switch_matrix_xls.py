@@ -26,6 +26,7 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 DB = BASE / "data" / "param_results_stocks.db"
+FLEET_DB = BASE / "data" / "reports" / "path_fleet" / "queue.db"
 CURRENT_ENGINE_CAMPAIGN = "stocks_repaired_20260725_c2"
 CURRENT_ENGINE_CUTOFF = "2026-07-26T04:15:00Z"
 
@@ -320,7 +321,7 @@ def load_engine_coverage(campaign):
         pass
     con.close()
 
-    fleet_db = BASE / "data" / "reports" / "path_fleet" / "queue.db"
+    fleet_db = FLEET_DB
     if fleet_db.exists():
         try:
             fleet = sqlite3.connect(f"file:{fleet_db}?mode=ro", uri=True, timeout=30)

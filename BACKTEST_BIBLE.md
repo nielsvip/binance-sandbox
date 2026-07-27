@@ -1554,7 +1554,7 @@ Three rows were appended idempotently as
 and canonical NPZs remain unchanged. Full evidence is in
 `STATE_AWARE_ENTRY_EXIT_BEAM_RESULTS_20260727.md`.
 
-### §15.20 — canonical ENGINE matrix zero-coverage diagnosis (2026-07-27)
+### §15.21 — canonical ENGINE matrix zero-coverage diagnosis (2026-07-27)
 
 The refreshed canonical `SWITCH_MATRIX_TRB` correctly reported zero current
 ENGINE rows even though `param_results_stocks.db` contained 968 rows in

@@ -65,4 +65,3 @@ not merely inability to move TIM.
 
 Three discovery-selected failures were appended as `GRAY_REJECTED`. A second
 ingestion run appended zero and skipped all three, proving idempotence.
-
