@@ -109,3 +109,20 @@ def test_contract_fingerprint_cache_invalidates_when_source_changes(tmp_path):
         second = campaign.matrix_contract_fingerprint("MU", "LONG")
     campaign._matrix_contract_fingerprint_cached.cache_clear()
     assert first != second
+
+
+def test_current_engine_pack_rows_are_visible_but_vec_unknowns_are_not():
+    manifest = [("KNOWN_SWITCH", "true")]
+    exact_cells = {
+        ("STOP_PACK", "bb_frozen_d", "VT_LONG"): -0.57,
+        ("KNOWN_SWITCH", "false", "VT_LONG"): 1.0,
+    }
+    engine_rows = export.include_observed_rows(
+        manifest, exact_cells, "ENGINE"
+    )
+    vec_rows = export.include_observed_rows(manifest, exact_cells, "VEC")
+
+    assert ("STOP_PACK", "bb_frozen_d") in engine_rows
+    assert ("KNOWN_SWITCH", "false") in engine_rows
+    assert ("STOP_PACK", "bb_frozen_d") not in vec_rows
+    assert ("KNOWN_SWITCH", "false") in vec_rows

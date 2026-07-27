@@ -367,6 +367,29 @@ def load_engine_coverage(campaign):
     return out
 
 
+def include_observed_rows(rows, cells, tier):
+    """Add measured values that are absent from the current manifest.
+
+    A current-contract ENGINE result is exact evidence and must remain visible
+    even when it belongs to a generated campaign pack such as ``STOP_PACK``
+    rather than a standalone config knob.  VEC-only unknowns remain excluded
+    because they are diagnostic and are not permission to expand the
+    actionable inventory.
+    """
+    out = list(rows)
+    known = set(out)
+    actionable_names = {param for param, _value in out}
+    out += sorted(
+        {
+            (param, value)
+            for (param, value, _key) in cells
+            if (param, value) not in known
+            and (tier == "ENGINE" or param in actionable_names)
+        }
+    )
+    return out
+
+
 _REG = None
 
 
@@ -579,12 +602,7 @@ def main():
         if a.tier == "ENGINE" and a.campaign == CURRENT_ENGINE_CAMPAIGN
         else None
     )
-    known = set(rows)
-    actionable_names = {p for p, _v in rows}
-    rows += sorted({
-        (p, v) for (p, v, _k) in cells
-        if p in actionable_names and (p, v) not in known
-    })
+    rows = include_observed_rows(rows, cells, a.tier)
     # USER 2026-07-21: options not traded — params neither tested nor listed in the work-list
     rows = [pv for pv in rows if "OPTION" not in pv[0]]
     # USER 2026-07-21: WT1-cross trigger rows FIRST in every matrix
