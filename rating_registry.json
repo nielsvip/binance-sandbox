@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T00:02:56.251156+00:00",
+  "timestamp": "2026-07-27T00:17:58.074559+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -625,12 +625,6 @@
       "short_score": 0
     },
     {
-      "symbol": "GRASSUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "ASTERUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -733,6 +727,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GRASSUSDT",
+      "net_score": 15.7,
+      "long_score": 15.7,
+      "short_score": 0
+    },
+    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
@@ -787,7 +787,13 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "GRASSUSDT",
+      15.7,
+      0.35640167
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
