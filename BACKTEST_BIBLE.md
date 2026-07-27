@@ -1997,3 +1997,37 @@ Six attributable rows were appended as
 appended zero. No live/canonical/matrix state changed. Full per-fold evidence,
 registry, rollback and machine paths are in
 `TOP_EXIT_RECLAIM_PHASE3_RESULTS_20260727.md`.
+
+### §15.32 — DINO phase-3 ladder/exit joint stability (2026-07-27)
+
+The DINO follow-up froze `P3_COMBO_DIV_OR_STRUCTURE`, its 0.5% profit gate and
+the persistent zero-buffer reclaim, then screened 54 preregistered coherent
+ladder transformations. The grid covered green, structural, union and
+completed-HTF WT-state triggers; linear/center-plateau shape; target/add
+semantics; three scale/cap blocks; and one declared completed-4h refill
+overlay. Reclaim remained checked on every available base bar because a slower
+cadence could forget an intrabar touch.
+
+Selection evaluated discovery folds 1 and 2 only. Each candidate received a
+new E02 comparison with the identical entry schedule under the shared
+parent-close clock, adverse costs, $2,000 comparison unit, $16,000 capacity and
+$10,000 solvency. The final fold was code-sealed unless a candidate passed
+B&H, same-entry E02, 70–80% weighted TIM, actual-exit, solvency/capacity,
+causality and reclaim gates in both discovery folds.
+
+There were zero discovery-strict candidates, so the final fold was never
+evaluated or serialized and exact replay remained locked. The best discovery
+profile, structure/linear/add scaled 1.5x and capped at 4 units, repaired fold
+1 exposure from 18.99% to 78.49% and kept fold 2 at 73.79%. It made 201.19%
+versus 15.25% B&H in fold 1, but same-entry E02 made 212.98%, a -11.79pp
+control failure. Fold 2 passed at 48.44% versus 47.26% E02 and 12.27% B&H.
+All 54 profiles lost to E02 in fold 1; six passed every fold-2 gate. Thus the
+remaining instability is the fixed top exit's timing under dense entries, not
+the original sparse ladder.
+
+One attributable gray discovery row was appended idempotently under
+`ENTRY_STOCH_HHHL`, with fixed exit
+`EXIT_STRUCTURAL_WT_LOWER_TOP`; no matrix/live/canonical/exact state changed.
+Full registry, folds, hashes and rollback are in
+`DINO_PHASE3_JOINT_STABILITY_RESULTS_20260727.md`; compact machine evidence is
+`data/reports/vec_research/dino_phase3_joint_stability_20260727T0610Z/summary.json`.
