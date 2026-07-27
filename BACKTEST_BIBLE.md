@@ -1887,3 +1887,39 @@ live setting, canonical data, matrix result or verdict changed. Full incident,
 test, rollback and hashes are in
 `MATRIX_WATCHDOG_DETACH_REPAIR_20260727.md`; the machine receipt is
 `data/reports/MATRIX_WATCHDOG_AUDIT_20260727.json`.
+
+### §15.31 — causal top exits with guaranteed reclaim, phase 3 (2026-07-27)
+
+The next LONG top-harvest pass froze the accepted ladder requests and screened
+36 single exits plus six preregistered OR combinations for MU, MRVL, SNDK,
+DINO and ARM, with VT as the negative control: 252 causal vector evaluations.
+The registry covered completed 4h divergence/break/retest, structural lower
+high/lower low, failed higher high, prior-only regression excursion,
+completed 4h/D WT top roll, and 4h/D volatility exhaustion followed by 1h
+damage. Two Chandelier trails were comparison-only emergency controls. A first
+`dc_low4` break was never a profit exit.
+
+Every candidate used the shared parent-close availability clock, first
+strictly later fills, costs, $2,000 B&H, $16,000 capacity, $10,000 solvency,
+the identical-entry 4h/N30 E02 control, and the existing persistent resting
+reclaim checked before discretionary entries. Promotion required actual
+exits, positive alpha over B&H and E02, 70–80% weighted TIM, solvency/capacity,
+zero future HTF sources and zero flat bars beyond reclaim in every fold.
+Selection saw discovery folds only.
+
+All six keys completed, but there were zero discovery-strict and zero
+all-fold-strict candidates, so exact replay remained empty. DINO was the
+useful near miss: its divergence-or-structure row passed folds 2 and 3,
+making 562.03% versus 485.24% E02 and 90.70% B&H at 78.51% final TIM, but
+fold 1 made only 30.85% versus 46.82% E02 at 18.99% TIM. MU's break/retest
+row improved E02 in both discovery folds, but exposure was 34.21%/95.07%;
+the untouched final then lost 41.31pp to E02. MRVL was insolvent in fold 1.
+SNDK, ARM and VT top paths were too sparse or inert and stayed near hold-level
+exposure.
+
+Six attributable rows were appended as
+`VEC_TOP_EXIT_RECLAIM_PHASE3_UNTOUCHED_OOS / GRAY_REJECTED` after backup
+`queue.db.bak_top_exit_reclaim_phase3_20260727T0318Z`; the idempotence rerun
+appended zero. No live/canonical/matrix state changed. Full per-fold evidence,
+registry, rollback and machine paths are in
+`TOP_EXIT_RECLAIM_PHASE3_RESULTS_20260727.md`.
