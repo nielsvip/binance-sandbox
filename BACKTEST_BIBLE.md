@@ -1628,15 +1628,17 @@ B&H (11.615x) at 73.72% TIM, but one fold was insolvent, minimum equity fell
 to -$910.61, and account drawdown reached 107.73%. A separate bounded
 E03/E06/E08/E09 top-exit screen with mandatory E11+E10 reclaim compounded to
 -100% versus +895.08% B&H over ten frozen folds and was also insolvent.
-Neither result is matrix-eligible. The vector ladder now emits deterministic
-version-2 replay bundles with source-result/NPZ hashes, frozen training-only
-selection provenance, fold boundaries, curve/multipliers, capital/capacity,
-costs, and an ordered fill schedule. The isolated HAO artifact was the first
+Neither result is matrix-eligible. At this checkpoint the vector ladder
+emitted deterministic version-2 replay bundles with source-result/NPZ hashes,
+frozen training-only selection provenance, fold boundaries, curve/multipliers,
+capital/capacity, costs, and an ordered fill schedule. The isolated HAO
+artifact was the first
 smoke: emission failed closed because 1,381 interpolated 5m rows in its final
 validation fold expose containing-15m OHLC before that parent bar closes. The
-current exact engine does not delay synthetic rows to parent-close
-availability. Therefore no HAO spec was emitted and exact parity remains
-blocked for a causal execution-data reason, not a missing-schema reason.
+exact engine then in use did not delay synthetic rows to parent-close
+availability. Therefore no HAO spec was emitted at this checkpoint. The
+shared v3 clock in §15.27 subsequently repairs that mechanical blocker; it
+does not make this insolvent HAO candidate eligible or constitute HAO parity.
 The machine receipt is
 `data/reports/vec_research/hao_recovery_20260727T0010Z/research_ladder_replay/receipt.json`.
 
@@ -1724,6 +1726,51 @@ rollback scope are in `SHORT_ASYMMETRY_AUDIT_20260727.md` and
 `data/reports/vec_research/asymmetric_short_20260727T020907Z/`. The fleet
 receipts retain the numerically identical initial `020146Z` run.
 
+Those eight rows were subsequently invalidated—not merely left gray—after
+§15.25 proved that this simulator reversed SHORT slippage. The displayed
+returns in this historical paragraph must not be used as evidence.
+
+### §15.25 — SHORT guard decomposition, slippage and exact parity (2026-07-27)
+
+The preregistered disaster-guard decomposition held data causality, first
+strictly later availability fills, $2,000 base, $16,000 capacity, ATR
+emergency cover and solvency invariant while testing seven named common-guard
+vetoes. Before any live or matrix promotion, exact replay exposed reversed
+SHORT fill slippage in the asymmetric simulator: entries/scales sold above
+the raw price and covers bought below it. The canonical adverse contract now
+uses `raw*(1-slip)` for a SHORT open and `raw*(1+slip)` for a cover. A
+four-way LONG/SHORT open/close test protects the formula. An audit found the
+other side-aware vector Python/C kernels already correct.
+
+All 8 asymmetric and 77 exercised guard-decomposition fleet rows are
+`INVALIDATED_REVERSED_SLIPPAGE`. The 11 bear-cohort rows that made zero fills
+remain gray. Backups were taken before each update; the latest is
+`queue.db.bak_short_slippage_20260727T025628Z`.
+
+The denominator contract is now explicit. Strategy headline return and B&H
+both use the fixed $2,000 unit; $10,000 account return remains a separate
+solvency measure; capacity remains $16,000. D1 and D2 must each beat
+`max(short B&H, cash=0)` before FINAL or exact replay. The original selector
+omitted that every-fold comparison. Corrected ARM G21 fails D2 and now stops
+before spec emission. Its earlier replay is
+`INVALIDATED_DISCOVERY_BENCHMARK`.
+
+LRCX_SHORT G14 is the sole reconciled exact receipt. Corrected fixed-unit
+returns were +12.6289% versus +1.2458% B&H in D1, +0.1901% versus the 0% cash
+floor in D2, and +9.6534% versus the 0% cash floor in FINAL. FINAL account
+return was +1.9307%. The exact engine executed 25/25 actions, eight
+lifecycles, one emergency cover and no refusal; capital/account accounting,
+binary/weighted TIM and capacity all matched. Peak notional was $8,000.
+This is `EXACT_PARITY_ONLY`, with no matrix write or promotion.
+
+SHORT remains two explicit books: brief confirmed correction shorts in
+overbought bullish names, and continuation shorts only in confirmed bearish
+states. Momentum-crash research warns that loser-short exposure becomes
+option-like in turbulent rebounds, supporting regime-specific risk and timing
+instead of a generic inverse-LONG mirror. Full formulas, hashes, citations,
+fleet receipts, invalidations and rollback are in
+`SHORT_GUARD_DECOMPOSITION_RESULTS_20260727.md`.
+
 ### §15.26 — isolated HAO_SHORT ladder solvency grid (2026-07-27)
 
 The hash-bound recovery NPZ was crossed with a preregistered ladder solvency
@@ -1746,8 +1793,97 @@ selection and cannot override the discovery rejection.
 All 44 insolvency observations were in discovery fold 2: 42 peak-giveback,
 one E02 and one E05. The 0.50 scale eliminated insolvency but suppressed
 fold-1 exposure, showing why blanket deleveraging is not an alpha-preserving
-answer. Exact replay remains ineligible because HAO's 15m-derived 5m rows
-still require parent-close availability in the exact engine. Full results and
-rollback scope are in `HAO_SOLVENCY_LADDER_RESULTS_20260727.md`; the compact
-machine receipt is
+answer. The shared v3 parent-close clock in §15.27 is now available to both
+vector and exact research, so clock support is no longer HAO's blocker.
+Nevertheless, zero strict discovery survivors means no HAO exact replay was
+launched or warranted; replaying a rejected row would be diagnostic only and
+could not promote it. Full results and rollback scope are in
+`HAO_SOLVENCY_LADDER_RESULTS_20260727.md`; the compact machine receipt is
 `data/reports/vec_research/HAO_SOLVENCY_LADDER_RECEIPT_20260727.json`.
+
+### §15.27 — shared parent-close clock and MU_LONG exact v3 replay (2026-07-27)
+
+Interpolated 15m-derived 5m rows are now observed on one research-only clock
+in both the vector ladder and exact replay. Native rows remain available at
+their native timestamp. A synthetic row becomes available at
+`synthetic_5m_parent_close_ts`; rows sharing one parent close remain distinct
+and are ordered by stable `source_row_index`. Signals cannot fill against an
+already-closed sibling released in the same batch: next-RTH means the first
+strictly later availability. Completed HTF sources must be no later than that
+availability. Replay spec v3 binds the ordered availability/source-row hash,
+and unsafe v2 specs fail closed. No live path, matrix row, or canonical NPZ
+was changed.
+
+The immutable repaired MU archive (`f57ce885…`) predated the explicit parent
+field. A separately versioned research copy added only that field using
+`ceil(source_timestamp/900)*900`. The formula matched all 99,115 rows still
+synthetic in the rolling archive with zero mismatches; every original array
+is hash-recorded in the receipt. Source and rolling canonical files were not
+mutated. The copy is
+`data/npz_recovery/mu_parent_clock_20260727/MU.npz`, SHA-256
+`82b9110fac514bc9eddfe4bc50227ab135e4d55783f7c712dc2b85e3eca77def`.
+Rollback is deletion of that isolated directory and the v3 research outputs;
+the original `f57ce885…` archive remains the immutable parent.
+
+The deterministic 244-curve MU_LONG ladder/E02 walk-forward was rerun on this
+clock without changing its seed, grid, costs, capacity, folds, or exits. It
+reproduced the frozen evidence:
+
+- fold 1: +226.6728% versus +44.0878% B&H (5.141x), 34.3659% weighted TIM,
+  minimum equity $9,551.39, zero clamps;
+- fold 2: +909.1468% versus +132.9570% B&H (6.838x), 90.3630% weighted TIM,
+  minimum equity $7,758.43, 150 capacity clamps;
+- fold 3: +1,316.0214% versus +205.2519% B&H (6.4117x), 77.0917% weighted
+  TIM, minimum equity $8,210.77, zero clamps.
+
+The aggregate is +2,451.8409% versus +382.2968% B&H (6.41345x), 68.0038%
+row-weighted TIM, and zero insolvent folds. Fold 1 is below the 70–80%
+exposure band, fold 2 is above it and heavily clamped, so this is a strong
+research control—not promotion evidence.
+
+The untouched final fold then passed exact engine replay. The engine executed
+34/34 scheduled actions with no refusals, recomputed all source events from
+the loaded NPZ, found zero future HTF inputs, and matched
++1,316.0213778308723% with accounting delta `9.09e-11` bp. Binary TIM
+94.16613823715916% and weighted TIM 77.09165765192097% both had zero delta;
+capacity, schedule, signal, and accounting audits passed. The receipt is
+`data/reports/vec_research/parent_clock_v3_20260727/`
+`v8_exact_ladder_replay_20260727T024800Z_MU_LONG/`.
+`matrix_written=false` and `promotion_allowed=false`.
+
+VT_LONG was the negative-control smoke. Its three-fold aggregate remained
+-15.3641% versus +13.7857% B&H at 80.3196% weighted TIM, solvent but rejected.
+The final fold exact replay nevertheless proved mechanical parity: 27/27
+actions, zero future HTF sources, -61.84624448382941% with `5.68e-12` bp
+accounting delta, and exact 66.40871754704759% weighted TIM. This confirms the
+clock does not manufacture alpha. Its receipt is
+`data/reports/vec_research/parent_clock_v3_20260727/`
+`v8_exact_ladder_replay_20260727T025047Z_VT_LONG/`; it remains gray.
+
+### §15.28 — exact-matrix watchdog independent-session repair (2026-07-27)
+
+The repaired matrix daemons correctly fail closed when the engine/source
+contract fingerprint changes, but their watchdog launcher relied on
+`nohup ... &` plus `disown`. Cron uses non-interactive Bash, so this was not a
+reliable independent-session contract: rapid fingerprint rotations could leave
+the watchdog lifecycle coupled to a dying generation and undermine the next
+ten-minute self-heal.
+
+Only the repaired lane's launch primitive changed. It now uses
+`setsid -f nohup nice -n 18` without shell backgrounding or `disown`.
+`setsid -f` returns immediately after creating an init-owned session. An
+isolated Linux regression launches all six fake daemons, verifies
+`PPID=1/SID=PID`, makes them exit as if their contract fingerprint changed, and
+proves the next watchdog cycle launches six different PIDs. It passed directly
+on S1 in 1.534 seconds; the test skips on macOS because Darwin has neither Linux
+`setsid` nor `/proc`.
+
+The read-only acceptance audit then found exactly `rm1..rm3` on `MU_LONG` and
+`rv1..rv3` on `VT_LONG`, all six independently detached; all eight active
+repaired engine/timeout processes had a live worker ancestor; five claims
+belonged to live PIDs and zero to dead PIDs. The unsuffixed current canonical
+workbook remained a readable 12-sheet export (387,433 bytes). No strategy,
+live setting, canonical data, matrix result or verdict changed. Full incident,
+test, rollback and hashes are in
+`MATRIX_WATCHDOG_DETACH_REPAIR_20260727.md`; the machine receipt is
+`data/reports/MATRIX_WATCHDOG_AUDIT_20260727.json`.

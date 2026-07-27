@@ -1,5 +1,22 @@
 # Deterministic frozen-ladder exact-replay specification — 2026-07-27
 
+## Current status after v3
+
+The “not implemented” parent-close follow-up below is now implemented for
+research. Spec v3 gives native rows their native timestamp, releases
+15m-derived rows at `synthetic_5m_parent_close_ts`, preserves
+`source_row_index` when several rows share one availability, fills only on the
+first strictly later availability, and binds the availability/source-row
+hash. MU_LONG passed 34/34 exact actions under this clock with zero accounting
+or TIM delta; VT_LONG passed as a negative control. V2 remains fail-closed for
+unsafe synthetic windows.
+
+This mechanical repair does not validate HAO. The preregistered HAO solvency
+grid had zero strict discovery survivors, so no HAO v3 exact replay was
+launched or warranted. The v2 HAO receipt and design history below remain
+useful provenance, but their statement that the clock is “not implemented” is
+superseded by `BACKTEST_BIBLE.md` §15.27.
+
 ## Outcome
 
 The vector ladder's missing replay-spec handoff is repaired in research
@@ -70,7 +87,7 @@ artifact whose replay window has no future-parent synthetic rows. Changing
 the vector event timing merely to force a pass is forbidden because it would
 break parity with the frozen selection.
 
-## Minimal causal-engine follow-up (not implemented)
+## Minimal causal-engine follow-up (historical design, implemented in v3)
 
 The safe repair is a research-only execution clock, not a weaker provenance
 check:

@@ -1,0 +1,125 @@
+{
+  "campaign": "stocks_repaired_20260725_c2",
+  "canonical_workbook": {
+    "mtime": 1785120639.3585148,
+    "path": "/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.xlsx",
+    "sheet_count": 12,
+    "sheets": [
+      "Engine Coverage",
+      "Entry",
+      "Exit",
+      "Sizing",
+      "Other",
+      "Ladder",
+      "BandLadder",
+      "DC4 Diagnostics",
+      "Coverage",
+      "Exact Engine Evidence",
+      "Baselines",
+      "Inventory"
+    ],
+    "size": 387433
+  },
+  "claims_total": 5,
+  "dead_claims": [],
+  "failures": [],
+  "repaired_engines": [
+    {
+      "pid": 4173133,
+      "ppid": 4172908,
+      "worker_owned": true
+    },
+    {
+      "pid": 4173134,
+      "ppid": 4173133,
+      "worker_owned": true
+    },
+    {
+      "pid": 4189791,
+      "ppid": 4173014,
+      "worker_owned": true
+    },
+    {
+      "pid": 4189793,
+      "ppid": 4189791,
+      "worker_owned": true
+    },
+    {
+      "pid": 4193494,
+      "ppid": 4172963,
+      "worker_owned": true
+    },
+    {
+      "pid": 4193495,
+      "ppid": 4193494,
+      "worker_owned": true
+    },
+    {
+      "pid": 4193497,
+      "ppid": 4172939,
+      "worker_owned": true
+    },
+    {
+      "pid": 4193498,
+      "ppid": 4193497,
+      "worker_owned": true
+    }
+  ],
+  "status": "PASS",
+  "workers": {
+    "rm1": [
+      {
+        "pid": 4172908,
+        "ppid": 1,
+        "sid": 4172908,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rm2": [
+      {
+        "pid": 4172920,
+        "ppid": 1,
+        "sid": 4172920,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rm3": [
+      {
+        "pid": 4172931,
+        "ppid": 1,
+        "sid": 4172931,
+        "side": "LONG",
+        "symbol": "MU"
+      }
+    ],
+    "rv1": [
+      {
+        "pid": 4172939,
+        "ppid": 1,
+        "sid": 4172939,
+        "side": "LONG",
+        "symbol": "VT"
+      }
+    ],
+    "rv2": [
+      {
+        "pid": 4172963,
+        "ppid": 1,
+        "sid": 4172963,
+        "side": "LONG",
+        "symbol": "VT"
+      }
+    ],
+    "rv3": [
+      {
+        "pid": 4173014,
+        "ppid": 1,
+        "sid": 4173014,
+        "side": "LONG",
+        "symbol": "VT"
+      }
+    ]
+  }
+}

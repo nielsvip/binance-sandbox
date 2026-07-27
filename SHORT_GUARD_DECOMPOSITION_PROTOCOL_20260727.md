@@ -44,12 +44,31 @@ Each profile chooses one bounded entry/scale/fast-cover setting using D1
 (2024-03-26→2025-07-01) and D2 (2025-07-01→2026-01-01) only. FINAL
 (2026-01-01→2026-07-25) remains untouched until selection freezes.
 
-Every fold requires positive strategy return, at least two actual exits,
-solvency, drawdown below 100%, zero future completed-source observations and
-the invariant emergency controls. Final reporting includes raw strategy,
+Every discovery and final fold requires positive fixed-$2,000-unit capital
+return, at least two actual exits, solvency, drawdown below 100%, zero future
+completed-source observations, the invariant emergency controls, and capital
+return above the side-specific short B&H opportunity floor (`max(short B&H,
+cash=0)`). Account return remains separately normalized by the $10,000
+solvency ledger. Final reporting includes raw strategy,
 realized cash, open MTM, cash=0, fixed-notional short B&H, long B&H opportunity,
 drawdown, TIM, correction capture, exit-reason counts and emergency covers. A
 multiple is undefined when short B&H is nonpositive.
 
 Only a solvent all-fold survivor may enter exact replay. All other completed
 rows are gray and retained idempotently.
+
+## Post-freeze contract correction
+
+The first artifact exposed two fail-closed defects before promotion:
+
+- SHORT entry/scale and cover slippage signs were reversed in the vector
+  simulator. All 85 fleet rows that exercised that simulator are marked
+  `INVALIDATED_REVERSED_SLIPPAGE`.
+- the initial discovery predicate required positive cash return but did not
+  require beating the fixed-$2,000 opportunity benchmark in every discovery
+  fold. The repaired predicate does. ARM G21 therefore fails before spec
+  emission.
+
+The only reconciled exact receipt is LRCX G14. Its result, hashes, emergency
+cover and rollback evidence are in
+`SHORT_GUARD_DECOMPOSITION_RESULTS_20260727.md`.

@@ -3,6 +3,7 @@ from tools.vec_short_guard_decomposition import (
     EMERGENCY_KEYS,
     GuardProfile,
     PREREGISTERED_PROFILES,
+    _select,
     guard_decision,
 )
 
@@ -62,3 +63,28 @@ def test_full_path_scoped_profile_can_bypass_only_conflict_set():
         qualified_top=True, causal_rollover=True,
     )
     assert ok and reasons == ()
+
+
+def _fold(*, capital: float, opportunity: float) -> dict:
+    return {
+        "capital_return_pct": capital,
+        "opportunity_benchmark_pct": opportunity,
+        "beats_opportunity_benchmark": capital > opportunity,
+        "insolvent": False,
+        "max_drawdown_account_pct": 2.0,
+        "technical_exits": 3,
+        "correction_capture_pct": 5.0,
+    }
+
+
+def test_discovery_gate_beats_fixed_2k_opportunity_in_every_fold():
+    passed, _ = _select([
+        _fold(capital=8.0, opportunity=0.0),
+        _fold(capital=7.0, opportunity=31.0),
+    ])
+    assert not passed
+    passed, _ = _select([
+        _fold(capital=8.0, opportunity=1.0),
+        _fold(capital=7.0, opportunity=0.0),
+    ])
+    assert passed

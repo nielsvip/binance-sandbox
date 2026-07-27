@@ -436,6 +436,7 @@ def _simulate(
     final_eq = equity(final_px)
     mtm = (avg_entry - final_px) * abs(qty) if qty < 0 else 0.0
     strategy_return = (final_eq / ACCOUNT_USD - 1.0) * 100.0
+    capital_return = (final_eq - ACCOUNT_USD) / BASE_USD * 100.0
     long_bh = (final_px / float(data.close[left]) - 1.0) * 100.0
     short_bh = -long_bh
     opp = max(0.0, short_bh)
@@ -443,14 +444,16 @@ def _simulate(
     downside = _downside_opportunity(data.close[left:right])
     result = {
         "strategy_return_pct": strategy_return,
+        "account_return_pct": strategy_return,
+        "capital_return_pct": capital_return,
         "realized_cash_return_pct": realized / ACCOUNT_USD * 100.0,
         "open_mtm_return_pct": mtm / ACCOUNT_USD * 100.0,
         "cash_benchmark_pct": 0.0,
         "short_bh_return_pct": short_bh,
         "long_bh_opportunity_return_pct": long_bh,
         "opportunity_benchmark_pct": opp,
-        "strategy_bh_multiple": strategy_return / short_bh if short_bh > 0 else None,
-        "beats_opportunity_benchmark": strategy_return > opp,
+        "strategy_bh_multiple": capital_return / short_bh if short_bh > 0 else None,
+        "beats_opportunity_benchmark": capital_return > opp,
         "max_drawdown_account_pct": max_dd,
         "minimum_account_equity_usd": min_eq,
         "insolvent": min_eq <= 0.0,
@@ -499,14 +502,15 @@ def _windows(data: top.ExecutionData):
 
 def _select(discovery: list[dict[str, Any]]) -> tuple:
     solvent = all(not r["insolvent"] and r["max_drawdown_account_pct"] < 100 for r in discovery)
-    positive = all(r["strategy_return_pct"] > 0 for r in discovery)
+    positive = all(r["capital_return_pct"] > 0 for r in discovery)
     active = all(r["technical_exits"] >= 2 for r in discovery)
+    beats = all(r["beats_opportunity_benchmark"] for r in discovery)
     score = (
-        float(np.median([r["strategy_return_pct"] for r in discovery]))
+        float(np.median([r["capital_return_pct"] for r in discovery]))
         - 0.35 * max(r["max_drawdown_account_pct"] for r in discovery)
         + 0.05 * float(np.median([r["correction_capture_pct"] for r in discovery]))
     )
-    return solvent and positive and active, score
+    return solvent and positive and active and beats, score
 
 
 def run(args: argparse.Namespace) -> Path:

@@ -59,22 +59,22 @@ frozen folds it compounded to -100% versus +895.08% short B&H, used 88.79%
 TIM, and included one insolvent fold. No strict-policy result exists and the
 row remains gray/quarantined.
 
-The missing-spec tooling blocker is fixed. Vector ladder artifacts now emit a
-deterministic version-2 exact-replay bundle, binding the source-result and NPZ
-hashes, frozen training-only selection, fold boundaries, ladder curve,
-capital/capacity, costs, and ordered fill schedule. The isolated HAO artifact
-was the first smoke test. It correctly produced a fail-closed receipt instead
-of a spec: the final validation window contains 1,381 interpolated 5m rows
-whose containing 15m parent close occurs after the synthetic execution
-timestamp. The current exact engine does not delay those rows until the parent
-close, so replaying them would reproduce vector output without proving causal
-engine parity. This is now an explicit data/engine-provenance blocker, not a
-missing-format blocker and not permission to label the vector result exact.
+The missing-spec tooling blocker was fixed first with a deterministic v2
+bundle. Its initial HAO smoke correctly failed closed because 1,381
+interpolated final-fold rows were still being exposed before parent close.
+The later shared v3 research clock now releases those rows at
+`synthetic_5m_parent_close_ts` in both vector and exact replay, retains stable
+source-row identity, and binds that ordered clock in the spec. Clock support
+is therefore no longer HAO's blocker. HAO remains ineligible because its
+original candidate was insolvent and the preregistered solvency grid found
+zero strict discovery survivors. No HAO v3 exact replay has been claimed;
+replaying a rejected row would be diagnostic only.
 
 Machine receipt:
 `data/reports/vec_research/hao_recovery_20260727T0010Z/research_ladder_replay/receipt.json`.
-No replay spec was emitted, and no canonical NPZ, matrix cell, symbol universe,
-or live configuration was changed.
+The cited receipt remains the historical v2 fail-close. No HAO v3 replay spec
+was emitted, and no canonical NPZ, matrix cell, symbol universe, or live
+configuration was changed.
 
 ## Rollback and promotion rule
 

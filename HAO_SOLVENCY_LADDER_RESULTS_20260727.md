@@ -91,11 +91,12 @@ The isolated NPZ hash before and after was
 Canonical HAO remained
 `2865773e683700abd8222e7e9e17e24a5704bdf22a62ef3c09e130798b355b98`.
 
-Exact replay is **not eligible**. As documented in the recovery audit, the
-isolated final fold contains 15m-derived 5m rows whose containing-bar OHLC
-must not be available until parent close. Until the exact engine enforces that
-availability clock, no causal HAO replay spec may be emitted. This is a
-separate blocker from the zero-survivor result.
+Exact replay is **not eligible for this grid**, but the reason is no longer
+missing clock support. The shared v3 research clock now releases
+15m-derived rows only at parent close in both vector and exact replay. This
+grid still has zero strict discovery survivors; launching exact replay for a
+rejected finalist would be diagnostic only and could not promote it. No HAO
+v3 parity claim has been made.
 
 Machine evidence is in:
 

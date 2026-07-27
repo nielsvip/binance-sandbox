@@ -27,9 +27,12 @@
 # "should NEVER stop unless it is replaced by a more advanced system"). Cron: */10.
 # Workers: 2x stocks + 2x crypto (vectorized numpy, modest RAM — respects S1 utilization floor
 # without competing with Tier-2 sweeps for the big allocations).
-SBX=/home/niels/binance-sandbox
-PY=/home/niels/.conda/envs/binance_env/bin/python
-LOGDIR=/home/niels/logs
+# The MATRIX_* overrides are intentionally test-only seams. Production cron sets none of them,
+# so its paths remain byte-for-byte equivalent; the focused launcher regression uses a private
+# temporary tree and can never touch the real result DB, claims, logs, or reports.
+SBX=${MATRIX_SBX:-/home/niels/binance-sandbox}
+PY=${MATRIX_PY:-/home/niels/.conda/envs/binance_env/bin/python}
+LOGDIR=${MATRIX_LOGDIR:-/home/niels/logs}
 mkdir -p "$LOGDIR"
 launch() {
   mode=$1; tag=$2

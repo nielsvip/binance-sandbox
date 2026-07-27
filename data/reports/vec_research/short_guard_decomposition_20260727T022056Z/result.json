@@ -1,0 +1,2116 @@
+{
+  "errors": [
+    {
+      "book": "BEAR",
+      "error": "['stoch_k_4h unusable: finite=87.9%, nonzero=86.8%, unique=217', 'stoch_k_D unusable: finite=61.0%, nonzero=60.9%, unique=50', 'missing required field lrL_pct_b_4h', 'missing required field lrL_slope_4h', 'missing required field lrL_pct_b_D', 'missing required field lrL_slope_D']",
+      "symbol": "MSTR"
+    },
+    {
+      "book": "BEAR",
+      "error": "['timestamp_15m is base timestamp alias; NPZ predates closed-bar fix', 'timestamp_1h is base timestamp alias; NPZ predates closed-bar fix', 'timestamp_4h is base timestamp alias; NPZ predates closed-bar fix', 'timestamp_D is base timestamp alias; NPZ predates closed-bar fix']",
+      "symbol": "COIN"
+    }
+  ],
+  "manifest": {
+    "account_usd": 10000.0,
+    "base_usd": 2000.0,
+    "benchmark_contract": "raw strategy, realized cash, open MTM, cash=0, fixed-notional short B&H, long B&H opportunity, DD, TIM, correction capture",
+    "capacity_usd": 16000.0,
+    "conflicting_vetoes": [
+      "DAY_GAIN",
+      "RSI_15M",
+      "RSI_1H",
+      "BULL_D_CANDLE",
+      "BULL_4H_CANDLE",
+      "NO_BEAR_HTF_CONFIRM",
+      "BULL_D_WT"
+    ],
+    "costs": {
+      "commission_bps_one_way": 5.0,
+      "slippage_bps_one_way": 2.0
+    },
+    "created_utc": "2026-07-27T02:20:56.939477+00:00",
+    "emergency_invariants": [
+      "DATA_CONTRACT_VALID",
+      "COMPLETED_SOURCE_CAUSAL",
+      "CAPACITY_WITHIN_16000",
+      "NEXT_AVAILABILITY_FILL",
+      "ATR_EMERGENCY_COVER_ENABLED",
+      "SOLVENCY_GATE_ENABLED"
+    ],
+    "entry_contract": "completed 1h LH+LL close below prior low AND bearish WT",
+    "fill_contract": "first strictly later availability batch open",
+    "fold_contract": {
+      "D1": [
+        "2024-03-26",
+        "2025-07-01"
+      ],
+      "D2": [
+        "2025-07-01",
+        "2026-01-01"
+      ],
+      "FINAL_UNTOUCHED": [
+        "2026-01-01",
+        "2026-07-25"
+      ]
+    },
+    "matrix_eligible": false,
+    "preregistered_profiles": [
+      {
+        "bypass": [],
+        "label": "G00_ALL_VETOES"
+      },
+      {
+        "bypass": [
+          "DAY_GAIN"
+        ],
+        "label": "G11_DAY_GAIN"
+      },
+      {
+        "bypass": [
+          "RSI_15M"
+        ],
+        "label": "G12_RSI_15M"
+      },
+      {
+        "bypass": [
+          "RSI_1H"
+        ],
+        "label": "G13_RSI_1H"
+      },
+      {
+        "bypass": [
+          "BULL_D_CANDLE"
+        ],
+        "label": "G14_BULL_D_CANDLE"
+      },
+      {
+        "bypass": [
+          "BULL_4H_CANDLE"
+        ],
+        "label": "G15_BULL_4H_CANDLE"
+      },
+      {
+        "bypass": [
+          "NO_BEAR_HTF_CONFIRM"
+        ],
+        "label": "G16_NO_BEAR_HTF_CONFIRM"
+      },
+      {
+        "bypass": [
+          "BULL_D_WT"
+        ],
+        "label": "G17_BULL_D_WT"
+      },
+      {
+        "bypass": [
+          "DAY_GAIN",
+          "RSI_15M",
+          "RSI_1H"
+        ],
+        "label": "G20_OVERBOUGHT_BLOCK"
+      },
+      {
+        "bypass": [
+          "BULL_D_CANDLE",
+          "BULL_4H_CANDLE",
+          "NO_BEAR_HTF_CONFIRM",
+          "BULL_D_WT"
+        ],
+        "label": "G21_BULL_STATE_BLOCK"
+      },
+      {
+        "bypass": [
+          "DAY_GAIN",
+          "RSI_15M",
+          "RSI_1H",
+          "BULL_D_CANDLE",
+          "BULL_4H_CANDLE",
+          "NO_BEAR_HTF_CONFIRM",
+          "BULL_D_WT"
+        ],
+        "label": "G99_TOP_REJECTION_PATH_SCOPED"
+      }
+    ],
+    "promotion_allowed": false,
+    "source_sha256": "d645a3e8a2099d34f4265c141feee07d0c0229134d97c31fd398ced3122533aa",
+    "stage": "VEC_SHORT_GUARD_DECOMPOSITION_UNTOUCHED_OOS",
+    "tier": "VEC_RESEARCH"
+  },
+  "results": [
+    {
+      "all_fold_profiles": [],
+      "book": "BEAR",
+      "profiles": [
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G00_ALL_VETOES",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [],
+            "label": "G00_ALL_VETOES"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "DAY_GAIN"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G11_DAY_GAIN",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "DAY_GAIN"
+            ],
+            "label": "G11_DAY_GAIN"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "RSI_15M"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G12_RSI_15M",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "RSI_15M"
+            ],
+            "label": "G12_RSI_15M"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "RSI_1H"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G13_RSI_1H",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "RSI_1H"
+            ],
+            "label": "G13_RSI_1H"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "BULL_D_CANDLE"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G14_BULL_D_CANDLE",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "BULL_D_CANDLE"
+            ],
+            "label": "G14_BULL_D_CANDLE"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "BULL_4H_CANDLE"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G15_BULL_4H_CANDLE",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "BULL_4H_CANDLE"
+            ],
+            "label": "G15_BULL_4H_CANDLE"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "NO_BEAR_HTF_CONFIRM"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G16_NO_BEAR_HTF_CONFIRM",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "NO_BEAR_HTF_CONFIRM"
+            ],
+            "label": "G16_NO_BEAR_HTF_CONFIRM"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "BULL_D_WT"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G17_BULL_D_WT",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "BULL_D_WT"
+            ],
+            "label": "G17_BULL_D_WT"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "DAY_GAIN",
+              "RSI_15M",
+              "RSI_1H"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G20_OVERBOUGHT_BLOCK",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "DAY_GAIN",
+              "RSI_15M",
+              "RSI_1H"
+            ],
+            "label": "G20_OVERBOUGHT_BLOCK"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "BULL_D_CANDLE",
+              "BULL_4H_CANDLE",
+              "NO_BEAR_HTF_CONFIRM",
+              "BULL_D_WT"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G21_BULL_STATE_BLOCK",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "BULL_D_CANDLE",
+              "BULL_4H_CANDLE",
+              "NO_BEAR_HTF_CONFIRM",
+              "BULL_D_WT"
+            ],
+            "label": "G21_BULL_STATE_BLOCK"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        },
+        {
+          "all_fold_survivor": false,
+          "discovery_gate_pass": false,
+          "folds": {
+            "D1": {
+              "beats_opportunity_benchmark": true,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.44270623111412716,
+              "downside_variation_opportunity_pct": 1398.7594414760358,
+              "emergency_exit_count": 0,
+              "end_ts": 1751313600,
+              "entries": 3,
+              "exit_reason_counts": {
+                "EXHAUST": 1,
+                "MAX_HOLD": 1,
+                "TRAIL": 1
+              },
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": 51.81132779501401,
+              "max_drawdown_account_pct": 0.8515970270661958,
+              "minimum_account_equity_usd": 9995.829743870514,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 0.0,
+              "realized_cash_return_pct": 3.488461219995228,
+              "rows": 24865,
+              "scale_fills": 8,
+              "short_bh_return_pct": -51.81132779501401,
+              "start_ts": 1711459800,
+              "strategy_bh_multiple": null,
+              "strategy_return_pct": 3.4884612199952425,
+              "technical_exits": 3,
+              "time_in_market_pct": 0.9008646692137542,
+              "trade_returns_pct": [
+                1.4138833202142427,
+                3.00049873627378,
+                1.7780131492235502
+              ],
+              "win_rate_pct": 100.0
+            },
+            "D2": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 471.1185813745532,
+              "emergency_exit_count": 0,
+              "end_ts": 1767214800,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -17.779976326120096,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 17.779976326120096,
+              "realized_cash_return_pct": 0.0,
+              "rows": 10013,
+              "scale_fills": 0,
+              "short_bh_return_pct": 17.779976326120096,
+              "start_ts": 1751376600,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            },
+            "FINAL": {
+              "beats_opportunity_benchmark": false,
+              "cash_benchmark_pct": 0.0,
+              "correction_capture_pct": 0.0,
+              "downside_variation_opportunity_pct": 685.3133279683524,
+              "emergency_exit_count": 0,
+              "end_ts": 1784923200,
+              "entries": 0,
+              "exit_reason_counts": {},
+              "insolvent": false,
+              "long_bh_opportunity_return_pct": -28.31788773340479,
+              "max_drawdown_account_pct": 0.0,
+              "minimum_account_equity_usd": 10000.0,
+              "open_mtm_return_pct": 0.0,
+              "opportunity_benchmark_pct": 28.31788773340479,
+              "realized_cash_return_pct": 0.0,
+              "rows": 11057,
+              "scale_fills": 0,
+              "short_bh_return_pct": 28.31788773340479,
+              "start_ts": 1767364200,
+              "strategy_bh_multiple": 0.0,
+              "strategy_return_pct": 0.0,
+              "technical_exits": 0,
+              "time_in_market_pct": 0.0,
+              "trade_returns_pct": [],
+              "win_rate_pct": 0.0
+            }
+          },
+          "guard_audit": {
+            "allowed_entries": 6,
+            "blocked_rollovers_by_component": {
+              "BULL_4H_CANDLE": 0,
+              "BULL_D_CANDLE": 0,
+              "BULL_D_WT": 0,
+              "DAY_GAIN": 0,
+              "NO_BEAR_HTF_CONFIRM": 0,
+              "RSI_15M": 0,
+              "RSI_1H": 0
+            },
+            "bypassed_conflicts": [
+              "DAY_GAIN",
+              "RSI_15M",
+              "RSI_1H",
+              "BULL_D_CANDLE",
+              "BULL_4H_CANDLE",
+              "NO_BEAR_HTF_CONFIRM",
+              "BULL_D_WT"
+            ],
+            "causal_rollovers": 6,
+            "emergency_invariants": {
+              "ATR_EMERGENCY_COVER_ENABLED": true,
+              "CAPACITY_WITHIN_16000": true,
+              "COMPLETED_SOURCE_CAUSAL": true,
+              "DATA_CONTRACT_VALID": true,
+              "NEXT_AVAILABILITY_FILL": true,
+              "SOLVENCY_GATE_ENABLED": true
+            },
+            "other_blocks": {
+              "NOT_QUALIFIED_TOP": 0,
+              "NO_CAUSAL_ROLLOVER": 0
+            },
+            "profile": "G99_TOP_REJECTION_PATH_SCOPED",
+            "qualified_top_observations": 36
+          },
+          "profile": {
+            "bypass": [
+              "DAY_GAIN",
+              "RSI_15M",
+              "RSI_1H",
+              "BULL_D_CANDLE",
+              "BULL_4H_CANDLE",
+              "NO_BEAR_HTF_CONFIRM",
+              "BULL_D_WT"
+            ],
+            "label": "G99_TOP_REJECTION_PATH_SCOPED"
+          },
+          "selected_candidate": {
+            "arm_hours": 12,
+            "book": "BEAR",
+            "cover_k": 25,
+            "emergency_atr": 3.0,
+            "entry_mult": 1,
+            "max_hold_hours": 64,
+            "max_mult": 4,
+            "overbought_k": 55,
+            "overbought_pb": 0.55,
+            "profit_atr": 2.5,
+            "scale_trigger_atr": 0.5,
+            "trail_fraction": 0.4
+          },
+          "selected_label": "BEAR_K55_PB0.55_A12_I1_S0.5x4_P2.5_T0.4_C25_E3_H64",
+          "selected_on_discovery_only": true,
+          "selection_score": 1.4146594549489961,
+          "source_future_count": 0,
+          "status": "GRAY_REJECTED",
+          "untouched_final": {
+            "beats_opportunity_benchmark": false,
+            "cash_benchmark_pct": 0.0,
+            "correction_capture_pct": 0.0,
+            "downside_variation_opportunity_pct": 685.3133279683524,
+            "emergency_exit_count": 0,
+            "end_ts": 1784923200,
+            "entries": 0,
+            "exit_reason_counts": {},
+            "insolvent": false,
+            "long_bh_opportunity_return_pct": -28.31788773340479,
+            "max_drawdown_account_pct": 0.0,
+            "minimum_account_equity_usd": 10000.0,
+            "open_mtm_return_pct": 0.0,
+            "opportunity_benchmark_pct": 28.31788773340479,
+            "realized_cash_return_pct": 0.0,
+            "rows": 11057,
+            "scale_fills": 0,
+            "short_bh_return_pct": 28.31788773340479,
+            "start_ts": 1767364200,
+            "strategy_bh_multiple": 0.0,
+            "strategy_return_pct": 0.0,
+            "technical_exits": 0,
+            "time_in_market_pct": 0.0,
+            "trade_returns_pct": [],
+            "win_rate_pct": 0.0
+          }
+        }
+      ],
+      "side": "SHORT",
+      "survivor_profiles": [],
+      "symbol": "IBIT"
+    }
+  ]
+}

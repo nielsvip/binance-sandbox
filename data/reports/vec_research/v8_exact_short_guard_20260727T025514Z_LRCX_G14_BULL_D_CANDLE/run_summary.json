@@ -1,0 +1,83 @@
+{
+  "audit": {
+    "accounting": {
+      "account_delta_bp": -1.0436096431476471e-12,
+      "actual_account_return_pct": 1.9306812380475276,
+      "actual_capital_return_pct": 9.653406190237638,
+      "closed_lifecycles": 8,
+      "commission_bps_one_way": 5.0,
+      "delta_bp": 0.0,
+      "expected_account_return_pct": 1.930681238047538,
+      "expected_capital_return_pct": 9.653406190237638,
+      "headline_contract": "capital_return_pct=P&L/$2k fixed B&H unit; account_return_pct=P&L/$10k solvency ledger",
+      "promotion_allowed": false,
+      "slippage_bps_one_way": 2.0,
+      "status": "PASS",
+      "total_pnl_dollars": 193.06812380475276
+    },
+    "causality": {
+      "completed_htf_only": true,
+      "exact_source_events_recomputed_from_loaded_npz": true,
+      "final_mtm_latency_rth_bars": 0,
+      "future_htf_source_count": 0,
+      "signal_to_fill_latency_rth_bars": 1
+    },
+    "fingerprints": {
+      "backtest_v8_engine_sha256": "00ea247b7c8b18c42e05713d239d2837b36ec44be4366dd0c836d4157a9e515f",
+      "event_schedule_sha256": "249e0dbae8b84af33194866d2445c7848fc16cc416dac00d6ba375b2aedc9199",
+      "npz_sha256": "e993b5aa7a74b50a9f57b48b1502ed51eebf42916258d4361cbeb9e77bf99055",
+      "tradier_manage_sha256": "606b8e64864636e799e436a8d1e3dc450e0b543a87bdae510c9f74051e3524f5"
+    },
+    "matrix_written": false,
+    "promotion_allowed": false,
+    "schedule": {
+      "capacity": {
+        "actual_peak_post_fill_notional_usd": 8000.0,
+        "capacity_no_fill_audit_events": 0,
+        "clamp_count": 0,
+        "entry_capacity_breach": false,
+        "expected_capacity_usd": 16000.0,
+        "expected_peak_post_fill_notional_usd": 8000.0,
+        "filled_notional_usd": 32178.479336905766,
+        "requested_notional_usd": 32178.479336905766,
+        "status": "PASS"
+      },
+      "completed_htf_only": true,
+      "executed": 25,
+      "matrix_written": false,
+      "mismatches": [],
+      "next_rth_open_fills": true,
+      "promotion_allowed": false,
+      "refused": [],
+      "schedule_status": "PASS",
+      "scheduled": 25,
+      "semantics": "add",
+      "signal_parity": true,
+      "status": "PASS",
+      "time_in_market": {
+        "actual_binary_pct": 4.214246873300707,
+        "actual_weighted_pct": 0.7631200383851748,
+        "binary_delta_pp": 0.0,
+        "expected_binary_pct": 4.214246873300707,
+        "expected_weighted_pct": 0.7631200383851748,
+        "held_rows": 465,
+        "rows": 11034,
+        "status": "PASS",
+        "weighted_delta_pp": 0.0
+      }
+    },
+    "signal_parity": true,
+    "status": "PASS",
+    "tier": "V8_EXACT_REPLAY_SHORT_GUARD_PARITY"
+  },
+  "engine_sha256": "00ea247b7c8b18c42e05713d239d2837b36ec44be4366dd0c836d4157a9e515f",
+  "matrix_written": false,
+  "output": "/home/niels/binance-sandbox/data/reports/vec_research/v8_exact_short_guard_20260727T025514Z_LRCX_G14_BULL_D_CANDLE",
+  "promotion_allowed": false,
+  "returncode": 0,
+  "schedule_sha256": "249e0dbae8b84af33194866d2445c7848fc16cc416dac00d6ba375b2aedc9199",
+  "source_artifact": "/home/niels/binance-sandbox/data/reports/vec_research/short_guard_decomposition_20260727T022041Z",
+  "spec_sha256": "8159c84837b18a78645e95006d508d0f9dc4b054ad3d886a6f8be5a5e6237be1",
+  "status": "PASS",
+  "tier": "V8_EXACT_REPLAY_SHORT_GUARD_PARITY"
+}
