@@ -1684,3 +1684,42 @@ appended zero and skipped all 44. Exact replay and live/canonical data remain
 unchanged. Full evidence is in
 `BOTTOM_STRUCTURAL_V2_RESULTS_20260727.md` and
 `data/reports/vec_research/BOTTOM_STRUCTURAL_V2_RESULTS_20260727.json`.
+
+### §15.24 — SHORT is two books, not inverse LONG (2026-07-27)
+
+A config-to-engine audit separated established-bear continuation shorts from
+brief correction shorts in overbought LONG-universe names. WT/DC continuation,
+SHORT exit mirrors, structural covers and guaranteed re-entry are mostly
+side-specific. The correction generator also exists:
+`TOP_REJECTION_SHORT` arms at a top and requires negative 1h/5m velocity plus
+high 5m Stoch. It is effectively unreachable, however, because the common
+disaster guard rejects SHORTs on a +2.5% day, at RSI>=65, during bullish D/4h
+candles, without bearish D/4h confirmation, or with bullish daily WT. Those are
+the defining conditions of a patient overbought correction setup. This is a
+path-policy contradiction, not evidence that all SHORT indicators should be
+sign-inverted. Live config remains unchanged until a dedicated path-scoped
+bypass survives exact replay.
+
+SHORT reporting also had concrete defects. Research tools divided by
+`abs(long B&H)`, divided by nonpositive short B&H, or used `entry/end-1` as a
+plain short return. The corrected contract is fixed-notional
+`(entry-end)/entry`; if side-specific short B&H is nonpositive, its multiple is
+undefined and cash at 0% is the opportunity floor. Capture, reopt, pilot,
+priority ingest, switch-lab and two HTF reports now enforce that contract.
+
+The first causal asymmetric campaign tested seven overbought correction names
+and three crypto/bear candidates with completed 1h/4h/D data, next-batch fills,
+$2k base/$16k capacity, costs, discovery-only selection and an untouched final
+fold. It found zero immutable survivors. Final correction returns included
+NVDA -2.07%, MU -2.44%, SNDK -2.05%, ARM -3.61%, PLTR +3.44%, MRVL -14.08%
+and LRCX +2.80%; PLTR/LRCX failed discovery and all rows remain gray. IBIT
+starved; MSTR and COIN failed their data contracts. No exact replay was
+launched. Eight attributable
+`VEC_ASYMMETRIC_SHORT_UNTOUCHED_OOS / GRAY_REJECTED` rows were appended to
+the fleet after `queue.db.bak_asymmetric_short_20260727T0201Z`; the
+idempotence rerun appended zero. With no identical-entry E02 comparator,
+control alpha is pinned to zero. Full path inventory, benchmark changes,
+per-fold evidence and
+rollback scope are in `SHORT_ASYMMETRY_AUDIT_20260727.md` and
+`data/reports/vec_research/asymmetric_short_20260727T020907Z/`. The fleet
+receipts retain the numerically identical initial `020146Z` run.
