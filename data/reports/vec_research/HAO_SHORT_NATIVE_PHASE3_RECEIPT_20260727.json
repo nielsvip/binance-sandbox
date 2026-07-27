@@ -1,0 +1,88 @@
+{
+  "artifact": "data/npz_recovery/hao_recovery_20260727T0010Z/controls/short_native_phase3/hao_short_native_phase3_20260727T041500Z",
+  "availability_clock": {
+    "contract": "SYNTHETIC_PARENT_CLOSE_AVAILABILITY_V1",
+    "rows": 27092,
+    "rows_sha256": "5b36c1af26fcd19993717162838410e9df9f4d135ee2a82105b6ad2a261be5ee",
+    "shared_availability_rows": 5487,
+    "synthetic_rows": 7641
+  },
+  "candidate_count": 48,
+  "canonical_live_matrix_or_fleet_write": false,
+  "contract": "HAO_SHORT_NATIVE_PHASE3_V4",
+  "discovery_freeze_sha256": "68e35bda68447bd02299579eb044f8de0a8511ab5166c77fb655d6b957bcdb7a",
+  "discovery_strict_count": 0,
+  "exact_replay_status": "NOT_RUN_DISCOVERY_GATE_FAILED",
+  "exit_summary": {
+    "EXIT_E02_DONCHIAN": {
+      "beats_short_bh_or_cash_both_discovery_folds": 12,
+      "candidates": 24,
+      "solvent_and_within_capacity_both_discovery_folds": 24,
+      "weighted_tim_70_80_both_discovery_folds": 0
+    },
+    "EXIT_E05_DIVERGENCE_RETEST": {
+      "beats_same_entry_e02_both_discovery_folds": 0,
+      "beats_short_bh_or_cash_both_discovery_folds": 12,
+      "candidates": 24,
+      "solvent_and_within_capacity_both_discovery_folds": 12,
+      "weighted_tim_70_80_both_discovery_folds": 0
+    }
+  },
+  "feature_audit": {
+    "completed_htf_source_checks": 4904,
+    "future_completed_htf_sources": 0
+  },
+  "final_fold_used_for_selection": false,
+  "final_fold_status": "SEALED_NOT_EVALUATED",
+  "final_strict_count": 0,
+  "frozen_gray_diagnostics": [
+    {
+      "candidate_id": "2bd6063a7c8ff68e",
+      "entry_filter": "F01_BEAR_REGIME",
+      "exit": "EXIT_E02_DONCHIAN",
+      "folds": [
+        {
+          "bh_return_pct": 67.38699859204971,
+          "fold": 1,
+          "strategy_return_pct": 152.37860197844373,
+          "weighted_tim_pct": 37.2640334606823
+        },
+        {
+          "bh_return_pct": 20.63753141614633,
+          "fold": 2,
+          "strategy_return_pct": 134.1112274047152,
+          "weighted_tim_pct": 58.68725306495471
+        }
+      ],
+      "ladder": "L_EXACT_0875_CAP6"
+    },
+    {
+      "candidate_id": "1e528e8aafd4c851",
+      "entry_filter": "F01_BEAR_REGIME",
+      "exit": "EXIT_E05_DIVERGENCE_RETEST",
+      "folds": [
+        {
+          "alpha_vs_same_entry_e02_pp": -40.503509767543136,
+          "bh_return_pct": 67.38699859204971,
+          "fold": 1,
+          "strategy_return_pct": 111.87509221090059,
+          "weighted_tim_pct": 57.003563947469324
+        },
+        {
+          "alpha_vs_same_entry_e02_pp": 42.18219802378752,
+          "bh_return_pct": 20.63753141614633,
+          "fold": 2,
+          "strategy_return_pct": 176.29342542850273,
+          "weighted_tim_pct": 58.21991699649067
+        }
+      ],
+      "ladder": "L_EXACT_0875_CAP6"
+    }
+  ],
+  "isolated_npz_sha256_after": "17907495bd909a1ea7ebcd6c7846134a7e70ae966b0fe7e79c3006107bb36332",
+  "preregistration_sha256": "6712b9207664ae4d8130b4a00b5e0ed1b46d1ce4a614b1d6dea26aafebb0e711",
+  "result_sha256": "daa59b46e8229e8bce145c5eeef3a403435ae1388dd10e78ad379e7e2aaf62ca",
+  "source_artifact_result_sha256": "dff84d48cb54e5d796aade003d9e1888b22b13ebda7e3126f9b57992a261e3da",
+  "status": "GRAY_REJECTED_QUARANTINED",
+  "symbol_side": "HAO_SHORT"
+}

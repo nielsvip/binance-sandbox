@@ -405,6 +405,21 @@ def load_latest_ladder_walk_forward(
     return out
 
 
+def load_mu_daily_deep_pareto_holdout() -> dict | None:
+    """Load the sealed MU Pareto holdout receipt as gray research evidence."""
+    path = (
+        REPORTS
+        / "vec_research"
+        / "MU_DAILY_DEEP_PARETO_HOLDOUT_RECEIPT_20260727.json"
+    )
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    payload["_artifact"] = str(path.relative_to(BASE))
+    return payload
+
+
 def load_latest_ladder_retunes() -> list[dict]:
     """Latest frozen exposure-retune artifact for every discovered symbol/side.
 
@@ -735,6 +750,7 @@ def main() -> None:
     robust_walk_forward = load_latest_robust_walk_forward(keys)
     partial_regime_walk_forward = load_latest_partial_regime_walk_forward(keys)
     ladder_walk_forward = load_latest_ladder_walk_forward(keys)
+    mu_pareto_holdout = load_mu_daily_deep_pareto_holdout()
     ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
@@ -1146,6 +1162,48 @@ def main() -> None:
         "and exact signal/fill/accounting parity. It remains research-only because the "
         "campaign explicitly sets `promotion_allowed=false`. VT fails frozen OOS; HAO "
         "remains data-quarantined.",
+        "",
+        "## MU stable-ladder Pareto holdout",
+        "",
+        "| candidate | discovery | untouched holdout | B&H | multiple | TIM | exact | verdict |",
+        "|---|---|---:|---:|---:|---:|---|---|",
+    ]
+    if not mu_pareto_holdout:
+        lines.append("| — | — | — | — | — | — | — | NO RECEIPT |")
+    else:
+        candidate = mu_pareto_holdout.get("candidate") or {}
+        discovery = mu_pareto_holdout.get("discovery") or {}
+        final = mu_pareto_holdout.get("final") or {}
+        exact = mu_pareto_holdout.get("exact_v3") or {}
+        exact_ok = bool(
+            exact.get("status") == "PASS"
+            and exact.get("signal_parity") is True
+            and int(exact.get("actions_scheduled") or 0)
+            == int(exact.get("actions_executed") or -1)
+            and int(exact.get("future_htf_count") or 0) == 0
+        )
+        failures = ", ".join(final.get("failures") or []) or "none"
+        verdict_text = (
+            "PROMOTION ELIGIBLE"
+            if bool(final.get("pass"))
+            and exact_ok
+            and bool(mu_pareto_holdout.get("promotion_allowed"))
+            else f"GRAY / HOLDOUT REJECT ({failures})"
+        )
+        lines.append(
+            f"| C{candidate.get('number', '—')} `{candidate.get('label', '—')}` | "
+            f"{'PASS' if discovery.get('pass') else 'FAIL'} | "
+            f"{fmt(final.get('return_pct'), 3, '%')} | "
+            f"{fmt(final.get('bh_return_pct'), 3, '%')} | "
+            f"{fmt(final.get('bh_multiple'), 3)}× | "
+            f"{fmt(final.get('weighted_tim_pct'), 2, '%')} | "
+            f"{'PASS' if exact_ok else 'FAIL/PENDING'} | {verdict_text} |"
+        )
+    lines += [
+        "",
+        "This lane used a preregistered Pareto contract before opening the final fold. "
+        "A strong return cannot repair a missed exposure gate after the result is known; "
+        "the row therefore remains gray and is not written to the promotion matrix.",
         "",
         "## Top-10 ladder exposure retune",
         "",

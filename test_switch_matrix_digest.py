@@ -114,6 +114,35 @@ def test_load_latest_partial_regime_walk_forward(tmp_path, monkeypatch):
     assert rows["VT_LONG"]["run_id"] == "vt-partial"
 
 
+def test_load_mu_daily_deep_pareto_holdout(tmp_path, monkeypatch):
+    reports = tmp_path / "data" / "reports"
+    receipt = (
+        reports
+        / "vec_research"
+        / "MU_DAILY_DEEP_PARETO_HOLDOUT_RECEIPT_20260727.json"
+    )
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text(
+        json.dumps(
+            {
+                "classification": "GRAY_PARETO_HOLDOUT_REJECTED",
+                "final": {"return_pct": 1170.7, "weighted_tim_pct": 68.62},
+            }
+        )
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    row = digest.load_mu_daily_deep_pareto_holdout()
+
+    assert row is not None
+    assert row["classification"] == "GRAY_PARETO_HOLDOUT_REJECTED"
+    assert row["final"]["weighted_tim_pct"] == 68.62
+    assert row["_artifact"].endswith(
+        "MU_DAILY_DEEP_PARETO_HOLDOUT_RECEIPT_20260727.json"
+    )
+
+
 def test_ladder_retune_exact_must_reference_same_source_artifact(
     tmp_path, monkeypatch
 ):

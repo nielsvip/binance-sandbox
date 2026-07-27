@@ -2032,6 +2032,41 @@ Full registry, folds, hashes and rollback are in
 `DINO_PHASE3_JOINT_STABILITY_RESULTS_20260727.md`; compact machine evidence is
 `data/reports/vec_research/dino_phase3_joint_stability_20260727T0610Z/summary.json`.
 
+### §15.36 — isolated HAO_SHORT native-entry phase 3 (2026-07-27)
+
+The hash-bound HAO recovery NPZ remained quarantined while three all-fold
+solvent §15.26 ladder reductions were crossed with eight SHORT-native
+completed-bear filters and E02 versus fixed E05 divergence/break/retest.
+The filters covered completed D/4h bear state, 1h lower-high/lower-low,
+WaveTrend rollover, downside ATR acceleration and failed bullish reclaim.
+Every fill used the shared parent-close clock's first strictly later
+availability, adverse SHORT fills, costs, a $2,000 comparison unit, $10,000
+solvency ledger and $16,000 capacity. Completed-HTF audit made 4,904 source
+checks with zero future sources.
+
+The 48-candidate discovery screen produced zero strict rows. Twelve of 24 E02
+rows and twelve of 24 E05 rows beat the positive short B&H in both discovery
+folds, but zero achieved 70–80% exposure-weighted TIM in both folds. Zero E05
+rows beat identical-entry E02 in both folds: the ungated fixed E05 exit lost
+36–38pp to E02 in fold 1 but gained 60–67pp in fold 2. The best gray filtered
+E02 made 152.38% versus 67.39% B&H in fold 1 and 134.11% versus 20.64% in
+fold 2, but weighted TIM was only 37.26%/58.69%. Its binary occupancy
+86.43%/76.52% shows the defect is undersized deployment, not simply too many
+flat bars.
+
+Final stayed sealed: it was neither simulated nor serialized because no
+discovery row passed. Exact v3 therefore did not run. V1–V3 artifacts remain
+explicitly invalidated for, respectively, pre-freeze final-baseline
+evaluation, stale reclaim-touch execution above the stored SHORT reference,
+and final evaluation despite zero discovery-strict candidates. Corrected V4
+keeps a vetoed reclaim obligation but can fill only while the current bar is
+at or through its stored level.
+
+Nothing wrote canonical indicators, live/config state, matrix cells or fleet
+rows. Full gates, discovery folds, invalidations and rollback are in
+`HAO_SHORT_NATIVE_PHASE3_RESULTS_20260727.md`; compact evidence is
+`data/reports/vec_research/HAO_SHORT_NATIVE_PHASE3_RECEIPT_20260727.json`.
+
 ### §15.34 — MU_LONG DAILY_DEEP Pareto holdout (2026-07-27)
 
 The already-preregistered §15.30 candidate 151 was reconsidered under a

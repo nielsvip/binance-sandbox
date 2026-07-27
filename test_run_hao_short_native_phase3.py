@@ -4,10 +4,12 @@ from tools.run_hao_short_native_phase3 import (
     ENTRY_FILTERS,
     LADDER_PROFILES,
     candidate_id,
+    final_evaluation_candidates,
     freeze_discovery,
     normalize_fold,
     preregistered_candidates,
     rank_key,
+    should_request_short_reclaim,
 )
 
 
@@ -127,6 +129,43 @@ def test_fold_gate_requires_tim_solvency_capacity_and_no_future_source() -> None
     assert row["future_htf_source_count"] == 1
 
 
+def test_vetoed_reclaim_touch_does_not_fill_later_above_level() -> None:
+    level = 100.0
+    assert not should_request_short_reclaim(
+        reclaim_level=level,
+        bar_low=99.0,
+        bar_close=99.5,
+        entry_gate=False,
+    )
+    # Once the veto clears, a recovery above the level is not a delayed market
+    # short. The stored obligation waits for another touch/cross.
+    assert not should_request_short_reclaim(
+        reclaim_level=level,
+        bar_low=101.0,
+        bar_close=102.0,
+        entry_gate=True,
+    )
+    assert should_request_short_reclaim(
+        reclaim_level=level,
+        bar_low=99.0,
+        bar_close=101.0,
+        entry_gate=True,
+    )
+
+
+def test_fold_gate_requires_an_actual_exit() -> None:
+    raw = _raw(20.0)
+    raw["exit_fills"] = 0
+    row = normalize_fold(
+        raw,
+        fold=3,
+        baseline_e02=_raw(10.0),
+        same_entry_e02=_raw(15.0),
+        exit_family="EXIT_E05_DIVERGENCE_RETEST",
+    )
+    assert not row["fold_gate_pass"]
+
+
 def test_discovery_freeze_is_final_blind_and_exact_bounded() -> None:
     rows = [
         _candidate("e02-gray", "EXIT_E02_DONCHIAN", 2.0, False),
@@ -137,12 +176,14 @@ def test_discovery_freeze_is_final_blind_and_exact_bounded() -> None:
         "e02-gray",
         "e05-gray",
     }
+    assert final_evaluation_candidates(gray) == []
     strict_rows = rows + [
         _candidate("strict-low", "EXIT_E02_DONCHIAN", 10.0, True),
         _candidate("strict-high", "EXIT_E05_DIVERGENCE_RETEST", 20.0, True),
     ]
     frozen = freeze_discovery(strict_rows)
     assert [row["candidate_id"] for row in frozen] == ["strict-high"]
+    assert final_evaluation_candidates(frozen) == frozen
     assert rank_key(frozen[0]) < rank_key(strict_rows[-2])
 
     contaminated = [{**rows[0], "untouched_final": {"return": 999}}]
