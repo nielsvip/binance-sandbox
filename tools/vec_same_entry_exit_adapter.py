@@ -2990,15 +2990,61 @@ def _fold_contexts(
         "ladder",
         None,
     )
-    if not data.contract["valid"]:
-        data.z.close()
-        raise RuntimeError(f"{symbol} quarantined: {data.contract['errors']}")
     current_sha = hashlib.sha256(Path(data.path).read_bytes()).hexdigest()
     if current_sha != manifest["npz_sha256"]:
         data.z.close()
         raise RuntimeError(
             f"{symbol} NPZ hash drift: artifact={manifest['npz_sha256']} current={current_sha}"
         )
+    if not data.contract["valid"]:
+        # The isolated/versioned HAO recovery contains one independently
+        # verified real 2026-07-14 discontinuity.  Accept it only when the
+        # source artifact carries the exact hash/timestamp-bound receipt.
+        receipt_path = artifact / "verified_jump_exception_receipt.json"
+        accepted = False
+        if (
+            symbol == "HAO"
+            and receipt_path.exists()
+            and len(data.contract["errors"]) == 1
+            and str(data.contract["errors"][0]).startswith(
+                "unadjusted/corrupt price discontinuity:"
+            )
+        ):
+            receipt = json.loads(receipt_path.read_text())
+            # Match the receipt's full NPZ bar sequence.  ``data.close`` is
+            # RTH-filtered and its adjacent rows can span an overnight gap.
+            receipt_ts = np.asarray(data.z["timestamps"], dtype=np.int64)
+            receipt_close = np.asarray(data.z["close"], dtype=np.float64)
+            jumps = np.abs(np.diff(receipt_close) / receipt_close[:-1])
+            jump_index = int(np.argmax(jumps)) + 1
+            jump_ts = datetime.fromtimestamp(
+                int(receipt_ts[jump_index]), tz=timezone.utc
+            ).isoformat()
+            jump_pct = float(jumps[jump_index - 1]) * 100.0
+            accepted = bool(
+                receipt.get("npz_sha256") == current_sha
+                and receipt.get("verified_jump_ts") == jump_ts
+                and math.isclose(
+                    float(receipt.get("verified_jump_pct", math.nan)),
+                    jump_pct,
+                    rel_tol=0.0,
+                    abs_tol=1e-9,
+                )
+                and str(receipt.get("scope", "")).startswith(
+                    "isolated vector control only"
+                )
+            )
+            if accepted:
+                data.contract["valid"] = True
+                data.contract["errors"] = []
+                data.contract["warnings"].append(
+                    "hash/timestamp-bound isolated HAO jump receipt honored"
+                )
+        if not accepted:
+            data.z.close()
+            raise RuntimeError(
+                f"{symbol} quarantined: {data.contract['errors']}"
+            )
     htfs = {
         tf: ladder.top._compress_htf(data, tf)
         for tf in ("5m", "15m", "1h", "4h", "D", "W")

@@ -1645,3 +1645,42 @@ Canonical HAO and VT hashes remained unchanged. The candidate is
 promotion requirements are documented in
 `HAO_VERSIONED_RECOVERY_20260727.md` and
 `data/reports/vec_research/hao_recovery_20260727T0010Z/`.
+
+### §15.23 — qualified-arm delayed lower-top exits v2 (2026-07-27)
+
+The second-generation bottom-exit pass tightened the exact requested
+sequence. A completed 15m/1h ATR, rolling-STDEV, or prior-window DC/support
+break now only **arms** the path; it cannot sell. A later completed
+5m/15m/1h rebound must make a lower price/WT1 top for LONG (the exact higher
+bottom mirror for SHORT), followed by a distinct adverse price and/or WT
+rollover before the next-RTH exit. Only three late emergency overlays remain:
+ATR6, STDEV7, and eight uninterrupted adverse bars. An emergency share above
+10% fails.
+
+The preregistered compiled pass evaluated 960 delayed-B settings and 12
+discovery-pruned emergency-C overlays per immutable entry schedule over the
+top/bottom-20 cohort plus VT_LONG and isolated HAO_SHORT: 21,384 evaluations.
+Selection used discovery folds only. Every fold required positive alpha over
+side-specific $2,000 B&H and identical-entry E02, 70–80% TIM, actual exits,
+solvency under $16,000 capacity, zero future HTF sources, and no forgotten
+reclaim. Compiled winners passed the Python state oracle.
+
+There were 110 final-only candidates, zero discovery-only candidates, and
+zero all-fold survivors. Discovery fold 2 was especially restrictive:
+only 32/20,160 eligible B rows passed for keys having that fold; no
+emergency-C row passed. Final E02 alpha and exposure remained the dominant
+failures. MU's selected B made 370.68% versus 204.90% B&H but only 44.48%
+TIM and trailed E02's 1,376.23%. VT made -38.35% versus +1.57% B&H at
+44.56% TIM. Isolated HAO's final fold made 1,936.14% versus 99.78% B&H and
+1,551.41% E02 at 71.86% TIM, but discovery fold 1 missed E02/TIM and fold 2
+missed TIM and was insolvent; it remains quarantined.
+
+Late brakes again reduced results on average versus the exact paired B base:
+ATR6 -33.74pp, STDEV7 -32.46pp, and continued-8 -4.36pp. The fleet received
+44 attributable `VEC_BOTTOM_STRUCTURAL_V2_UNTOUCHED_OOS / GRAY_REJECTED`
+rows after backup
+`queue.db.bak_bottom_structural_v2_20260727T0200Z`; an idempotence rerun
+appended zero and skipped all 44. Exact replay and live/canonical data remain
+unchanged. Full evidence is in
+`BOTTOM_STRUCTURAL_V2_RESULTS_20260727.md` and
+`data/reports/vec_research/BOTTOM_STRUCTURAL_V2_RESULTS_20260727.json`.
