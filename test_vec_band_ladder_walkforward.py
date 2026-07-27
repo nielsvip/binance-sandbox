@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import sys
 from types import SimpleNamespace
 
@@ -6,6 +7,23 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 import vec_band_ladder_walkforward as ladder
+
+
+def test_direct_file_bootstrap_can_import_replay_bundle_emitter():
+    root = Path(__file__).resolve().parent
+    code = (
+        "import runpy;"
+        "runpy.run_path('tools/vec_band_ladder_walkforward.py');"
+        "from tools.v8_research_ladder_adapter import emit_replay_bundle;"
+        "assert callable(emit_replay_bundle)"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_remembered_ladder_is_clipped_to_eight_x():
