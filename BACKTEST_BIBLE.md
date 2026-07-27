@@ -1922,6 +1922,46 @@ rollback are in `SHORT_NATIVE_PHASE2_RESULTS_20260727.md`; canonical machine
 evidence is
 `data/reports/vec_research/short_native_phase2_20260727T031824Z/`.
 
+### §15.30 — MU_LONG stable-exposure ladder and partial-scanner clock repair (2026-07-27)
+
+A 320-row causal ladder screen held E02 4h/N30 fixed and targeted the §15.27
+exposure defect directly. Coherent target curves varied tilted D/4h/1h
+multipliers, interpolation, green/structure-state triggers, 5x–8x effective
+caps and bounded reclaim observation; add semantics was excluded because the
+source fold already showed 150 clamps. Selection saw only folds 1–2 and fold
+3 remained sealed unless one row passed every gate.
+
+The best mechanical fix was the daily-deep, center-plateau, green, target,
+8x-cap row. It made +567.40% versus +44.09% B&H at 77.39% TIM in fold 1 and
++707.30% versus +132.96% B&H at 77.42% TIM in fold 2, with zero clamps,
+zero capacity breaches and minimum equities $8,136/$8,614. It nevertheless
+trailed the existing fold-2 ladder/E02 control by 201.85pp. There were zero
+strict discovery survivors.
+
+The preregistered contingency froze the five nearest ladders and screened 70
+same-entry E03/E06/E09 top-exit pairs. It also produced zero discovery
+survivors. Its apparent fold-2 E06 leader made +1,051.28%, but generated zero
+actual top exits and had 87.86% TIM; it was a hold result, not E06 evidence.
+Fold 3 stayed sealed and no exact replay ran. All failures remain gray. The
+fleet received 320 ladder and 30 attributable E06 rows; its idempotence rerun
+appended zero.
+
+The audit also repaired a real compiled-scanner clock defect: the old
+same-entry partial/E06 binary required `pending_signal+1`, allowing no safe
+duplicate parent-close batch. It now waits through the batch and fills on the
+first strictly later availability, suppresses sibling signals, requires the
+shared clock and fails on unsorted timestamps. The suspected duplicate
+terminal booking was explicitly disproved—both tracked and deployed old
+source contained one terminal booking—so it is not an invalidation reason.
+The actual clock defect explicitly invalidated 43 old report artifacts and
+80 fleet rows. Byte-identical report backups and prior fleet statuses remain
+recorded.
+
+The repaired S1 smoke matched independent Python accounting exactly for LONG,
+SHORT, terminal liquidation, full exit/reclaim, duplicate availability
+batches and native/synthetic source cases. Full gates, fold metrics, hashes,
+rollback and receipts are in `MU_LADDER_STABILITY_RESULTS_20260727.md`.
+
 ### §15.31 — causal top exits with guaranteed reclaim, phase 3 (2026-07-27)
 
 The next LONG top-harvest pass froze the accepted ladder requests and screened

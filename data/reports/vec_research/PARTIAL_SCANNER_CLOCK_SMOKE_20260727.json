@@ -1,0 +1,65 @@
+{
+  "clock_contract": "SYNTHETIC_PARENT_CLOSE_AVAILABILITY_V1",
+  "created_utc": "2026-07-27T03:31:22.762440+00:00",
+  "exit_reclaim_python_oracle": {
+    "capital_return_pct": 78.77650544516182,
+    "native_delta_pp": 0.0,
+    "synthetic_delta_pp": 0.0
+  },
+  "native_synthetic_parent_close_parity": {
+    "binary_tim_pct": {
+      "delta": 0.0,
+      "native_source": 95.83333333333333,
+      "synthetic_parent_source": 95.83333333333333
+    },
+    "capital_return_pct": {
+      "delta": 0.0,
+      "native_source": 78.77650544516182,
+      "synthetic_parent_source": 78.77650544516182
+    },
+    "entry_fills": {
+      "delta": 0,
+      "native_source": 2,
+      "synthetic_parent_source": 2
+    },
+    "exposure_weighted_tim_pct": {
+      "delta": 0.0,
+      "native_source": 47.97170939737277,
+      "synthetic_parent_source": 47.97170939737277
+    },
+    "full_exit_fills": {
+      "delta": 0,
+      "native_source": 1,
+      "synthetic_parent_source": 1
+    },
+    "future_htf_count": {
+      "delta": 0,
+      "native_source": 0,
+      "synthetic_parent_source": 0
+    }
+  },
+  "scanner_source": "/home/niels/binance-sandbox/tools/vec_same_entry_partial_scan.c",
+  "scanner_source_sha256": "e41fe9f59d2a9d5d60872208b8b24844b4eba8277d1247984ca6fc0f8e1f2780",
+  "status": "PASS",
+  "strictly_later_duplicate_batch": "PASS",
+  "terminal_duplicate_diagnosis": "DISPROVED",
+  "terminal_liquidation_booking_count": 1,
+  "terminal_oracle": [
+    {
+      "binary_tim_pct": 96.66666666666667,
+      "compiled_capital_return_pct": 79.36813437312539,
+      "delta_pp": 0.0,
+      "entry_fills": 1,
+      "python_oracle_capital_return_pct": 79.36813437312539,
+      "side": "LONG"
+    },
+    {
+      "binary_tim_pct": 96.66666666666667,
+      "compiled_capital_return_pct": -80.6321344268853,
+      "delta_pp": 0.0,
+      "entry_fills": 1,
+      "python_oracle_capital_return_pct": -80.6321344268853,
+      "side": "SHORT"
+    }
+  ]
+}
