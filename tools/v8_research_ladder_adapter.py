@@ -23,11 +23,17 @@ from typing import Any
 import numpy as np
 
 from tools import vec_band_ladder_walkforward as ladder
+from tools.research_availability_clock import (
+    CLOCK_CONTRACT,
+    build_availability_clock,
+    next_strictly_later_index,
+)
 
 
 SPEC_KIND = "V8_RESEARCH_BAND_LADDER_REPLAY"
-SPEC_VERSION = 2
+SPEC_VERSION = 3
 LEGACY_SPEC_VERSION = 1
+PARENT_UNSAFE_SPEC_VERSION = 2
 REASON_PREFIX = "V8_RESEARCH_BAND_LADDER_REPLAY"
 
 
@@ -95,63 +101,55 @@ def audit_execution_provenance(
     left: int,
     right: int,
 ) -> dict[str, Any]:
-    """Return the execution-bar provenance contract for one replay window.
-
-    A 15m-derived 5m row is only causally consumable at its containing 15m
-    close.  The current exact engine iterates the timestamp printed on the
-    synthetic row and does not delay it until ``synthetic_5m_parent_close_ts``.
-    Therefore a window containing a synthetic row whose parent close is in the
-    future must fail closed; replaying it would reproduce vector output, but it
-    would not be exact causal engine evidence.
-    """
+    """Return the shared parent-close availability contract for one window."""
     left = int(left)
     right = int(right)
     synthetic = np.asarray(data.synthetic, dtype=np.uint8)[left:right].astype(
         bool
     )
-    ts = np.asarray(data.ts, dtype=np.int64)[left:right]
-    parent_key = "synthetic_5m_parent_close_ts"
-    has_parent = parent_key in getattr(data.z, "files", ())
-    if synthetic.any() and not has_parent:
+    try:
+        full_clock = build_availability_clock(data)
+    except ValueError as exc:
         return {
             "status": "BLOCKED",
             "safe_for_exact_engine": False,
-            "reason": (
-                "synthetic 5m execution rows are present but "
-                "synthetic_5m_parent_close_ts provenance is missing"
-            ),
+            "reason": str(exc),
             "rows": int(right - left),
             "synthetic_rows": int(synthetic.sum()),
             "future_parent_rows": None,
         }
-    if has_parent:
-        full = np.asarray(data.full_indices, dtype=np.int64)[left:right]
-        parent = np.asarray(data.z[parent_key], dtype=np.int64)[full]
-    else:
-        parent = ts.copy()
-    unsafe = synthetic & (parent > ts)
-    lag = parent[synthetic] - ts[synthetic]
-    safe = not bool(unsafe.any())
+    availability = full_clock.availability_ts[left:right]
+    source_ts = full_clock.source_ts[left:right]
+    lag = availability[synthetic] - source_ts[synthetic]
+    window_hash = _canonical_sha256(
+        [
+            [
+                int(availability[i]),
+                int(source_ts[i]),
+                int(full_clock.source_row_index[left + i]),
+                int(synthetic[i]),
+            ]
+            for i in range(right - left)
+        ]
+    )
     return {
-        "status": "PASS" if safe else "BLOCKED",
-        "safe_for_exact_engine": safe,
-        "reason": (
-            None
-            if safe
-            else (
-                "exact engine exposes 15m-derived 5m OHLC before the "
-                "containing parent bar closes"
-            )
-        ),
-        "policy": "synthetic_parent_close_must_not_exceed_execution_timestamp",
+        "status": "PASS",
+        "safe_for_exact_engine": True,
+        "reason": None,
+        "policy": CLOCK_CONTRACT,
+        "ordering": "availability_ts_then_source_row_index",
         "rows": int(right - left),
         "synthetic_rows": int(synthetic.sum()),
         "synthetic_pct": (
             100.0 * float(synthetic.mean()) if len(synthetic) else 0.0
         ),
-        "future_parent_rows": int(unsafe.sum()),
+        "future_parent_rows": int(np.count_nonzero(lag > 0)),
         "parent_lag_min_seconds": int(lag.min()) if len(lag) else 0,
         "parent_lag_max_seconds": int(lag.max()) if len(lag) else 0,
+        "shared_availability_rows": int(
+            len(availability) - len(np.unique(availability))
+        ),
+        "availability_source_rows_sha256": window_hash,
     }
 
 
@@ -243,16 +241,29 @@ def trace_frozen_curve(
     def equity(px: float) -> float:
         return cash + side_sign * qty * px
 
+    def clock_fields(prefix: str, index: int) -> dict[str, int]:
+        source_ts = np.asarray(
+            getattr(data, "source_ts", data.ts), dtype=np.int64
+        )
+        return {
+            f"{prefix}_ts": int(data.ts[index]),
+            f"{prefix}_availability_ts": int(data.ts[index]),
+            f"{prefix}_source_ts": int(source_ts[index]),
+            f"{prefix}_source_row_index": int(data.full_indices[index]),
+            f"{prefix}_clock_index": int(index),
+        }
+
     for i in range(left, right):
         op = float(data.open[i])
         close = float(data.close[i])
-        if pending is not None:
+        if pending is not None and i == int(pending["fill_index"]):
             kind = str(pending["kind"])
             signal_index = int(pending["signal_index"])
             signal_ts = int(data.ts[signal_index])
-            if i != signal_index + 1:
+            if int(data.ts[i]) <= signal_ts:
                 raise LadderReplayError(
-                    f"{kind} signal row {signal_index} did not fill at next RTH row {i}"
+                    f"{kind} signal row {signal_index} did not fill at the "
+                    f"next strictly later availability row {i}"
                 )
             if kind == "exit" and qty > 0:
                 px = op * (1.0 - side_sign * slippage_rate)
@@ -275,11 +286,7 @@ def trace_frozen_curve(
                         "type": "EXIT",
                         "reason": "E02_DONCHIAN_4h_N30",
                         "signal_index": signal_index - left,
-                        "source_signal_index": signal_index,
-                        "signal_ts": signal_ts,
                         "fill_index": i - left,
-                        "source_fill_index": i,
-                        "fill_ts": int(data.ts[i]),
                         "latency_rth_bars": 1,
                         "fill_px": px,
                         "quantity": close_qty,
@@ -289,6 +296,8 @@ def trace_frozen_curve(
                         "completed_htf_source_ts": {
                             "4h": int(pending["source_ts"])
                         },
+                        **clock_fields("signal", signal_index),
+                        **clock_fields("fill", i),
                     }
                 )
                 gap_seen = False
@@ -332,11 +341,7 @@ def trace_frozen_curve(
                             "type": "ENTRY" if prior_qty <= 0 else "AUGMENT",
                             "reason": reason,
                             "signal_index": signal_index - left,
-                            "source_signal_index": signal_index,
-                            "signal_ts": signal_ts,
                             "fill_index": i - left,
-                            "source_fill_index": i,
-                            "fill_ts": int(data.ts[i]),
                             "latency_rth_bars": 1,
                             "fill_px": px,
                             "quantity": add_qty,
@@ -357,6 +362,8 @@ def trace_frozen_curve(
                             "completed_htf_source_ts": dict(
                                 pending.get("completed_htf_source_ts") or {}
                             ),
+                            **clock_fields("signal", signal_index),
+                            **clock_fields("fill", i),
                         }
                     )
                 elif want > 0:
@@ -370,11 +377,7 @@ def trace_frozen_curve(
                             "type": "CAPACITY_NO_FILL",
                             "reason": str(pending["reason"]),
                             "signal_index": signal_index - left,
-                            "source_signal_index": signal_index,
-                            "signal_ts": signal_ts,
                             "fill_index": i - left,
-                            "source_fill_index": i,
-                            "fill_ts": int(data.ts[i]),
                             "latency_rth_bars": 1,
                             "requested_notional_usd": want,
                             "filled_notional_usd": 0.0,
@@ -385,6 +388,8 @@ def trace_frozen_curve(
                             "completed_htf_source_ts": dict(
                                 pending.get("completed_htf_source_ts") or {}
                             ),
+                            **clock_fields("signal", signal_index),
+                            **clock_fields("fill", i),
                         }
                     )
             pending = None
@@ -401,7 +406,12 @@ def trace_frozen_curve(
         held_bars += int(qty > 0)
         weighted_exposure += min(ladder.CAPACITY, notional) / ladder.CAPACITY
 
+        if pending is not None:
+            continue
         if i + 1 >= right:
+            continue
+        fill_index = next_strictly_later_index(data.ts, i, right)
+        if fill_index is None:
             continue
         if qty > 0:
             if signals.exit_event[i]:
@@ -419,6 +429,7 @@ def trace_frozen_curve(
                     "ref": ref,
                     "signal_index": i,
                     "source_ts": int(h4.source_ts[int(match[0])]),
+                    "fill_index": fill_index,
                 }
             elif signals.entry_mult[i] > 0:
                 mult = float(signals.entry_mult[i])
@@ -428,6 +439,7 @@ def trace_frozen_curve(
                     "absolute_target": curve.semantics == "target",
                     "reason": "ladder_add",
                     "signal_index": i,
+                    "fill_index": fill_index,
                     "entry_multiplier": mult,
                     "completed_htf_source_ts": _event_sources(
                         signals, htfs, i
@@ -452,6 +464,7 @@ def trace_frozen_curve(
                         "absolute_target": True,
                         "reason": "reclaim",
                         "signal_index": i,
+                        "fill_index": fill_index,
                         "entry_multiplier": 0.0,
                         "completed_htf_source_ts": {},
                     }
@@ -463,6 +476,7 @@ def trace_frozen_curve(
                         "absolute_target": curve.semantics == "target",
                         "reason": "ladder_lower" if is_long else "ladder_higher",
                         "signal_index": i,
+                        "fill_index": fill_index,
                         "entry_multiplier": mult,
                         "completed_htf_source_ts": _event_sources(
                             signals, htfs, i
@@ -480,6 +494,7 @@ def trace_frozen_curve(
                     "absolute_target": curve.semantics == "target",
                     "reason": "initial_ladder",
                     "signal_index": i,
+                    "fill_index": fill_index,
                     "entry_multiplier": mult,
                     "completed_htf_source_ts": _event_sources(
                         signals, htfs, i
@@ -500,11 +515,7 @@ def trace_frozen_curve(
                 "type": "MTM_FINAL",
                 "reason": "END_OF_VALIDATION_MTM",
                 "signal_index": i - left,
-                "source_signal_index": i,
-                "signal_ts": int(data.ts[i]),
                 "fill_index": i - left,
-                "source_fill_index": i,
-                "fill_ts": int(data.ts[i]),
                 "latency_rth_bars": 0,
                 "fill_px": px,
                 "quantity": close_qty,
@@ -512,6 +523,8 @@ def trace_frozen_curve(
                 "position_qty_after_fill": 0.0,
                 "entry_capacity_usd": ladder.CAPACITY,
                 "completed_htf_source_ts": {},
+                **clock_fields("signal", i),
+                **clock_fields("fill", i),
             }
         )
 
@@ -755,9 +768,31 @@ def build_spec_and_schedule(
             "contract": manifest.get("contract"),
             "execution_provenance": execution_provenance,
         },
+        "availability_clock": {
+            "kind": CLOCK_CONTRACT,
+            "ordering": "availability_ts_then_source_row_index",
+            "window_rows_sha256": execution_provenance[
+                "availability_source_rows_sha256"
+            ],
+            "native_rows_at_source_ts": True,
+            "synthetic_rows_at_parent_close_ts": True,
+            "next_rth_fill": "first_strictly_later_availability",
+            "preserve_duplicate_availability_rows": True,
+        },
         "validation_start": start,
         "validation_end_exclusive": end,
         "source_start": source_start,
+        "exit_n": int(manifest["exit"]["n"]),
+        "exit_contract": {
+            "family": str(manifest["exit"]["family"]),
+            "timeframe": str(manifest["exit"]["tf"]),
+            "n": int(manifest["exit"]["n"]),
+            "signal": (
+                "completed_4h_close_below_prior_N_low"
+                if side == "LONG"
+                else "completed_4h_close_above_prior_N_high"
+            ),
+        },
         "fold_boundaries": {
             "fold": int(frozen["fold"]),
             "train_start": str(frozen["train"][0]),
@@ -873,7 +908,7 @@ def emit_replay_bundle(
         parsed = LadderReplayAdapter(spec_path)
         receipt = {
             "status": "READY_FOR_EXACT_ENGINE",
-            "tier": "VEC_RESEARCH_REPLAY_SPEC_V2",
+            "tier": "VEC_RESEARCH_REPLAY_SPEC_V3",
             "source_result": str(source_result),
             "source_result_sha256": sha256_file(source_result),
             "spec": str(spec_path),
@@ -891,7 +926,7 @@ def emit_replay_bundle(
     except (LadderReplayError, KeyError, ValueError) as exc:
         receipt = {
             "status": "BLOCKED_FAIL_CLOSED",
-            "tier": "VEC_RESEARCH_REPLAY_SPEC_V2",
+            "tier": "VEC_RESEARCH_REPLAY_SPEC_V3",
             "source_result": str(source_result),
             "source_result_sha256": (
                 sha256_file(source_result) if source_result.exists() else None
@@ -934,8 +969,15 @@ class LadderReplayAdapter:
         ]
         self.actions = self._build_actions()
         self._by_ts: dict[int, list[LadderReplayAction]] = {}
+        self._by_clock: dict[tuple[int, int], list[LadderReplayAction]] = {}
         for action in self.actions:
             self._by_ts.setdefault(action.fill_ts, []).append(action)
+            source_row = action.source_event.get("fill_source_row_index")
+            if source_row is not None:
+                self._by_clock.setdefault(
+                    (action.fill_ts, int(source_row)), []
+                ).append(action)
+        self.runtime_clock: list[dict[str, int]] = []
         self.executed: list[dict[str, Any]] = []
         self.refused: list[dict[str, Any]] = []
         self._observed_rows = 0
@@ -953,6 +995,11 @@ class LadderReplayAdapter:
         if self.spec.get("kind") != SPEC_KIND:
             raise LadderReplayError(f"wrong spec kind: {self.spec.get('kind')!r}")
         version = int(self.spec.get("version", 0))
+        if version == PARENT_UNSAFE_SPEC_VERSION:
+            raise LadderReplayError(
+                "v2 ladder replay specs are fail-closed: they do not bind "
+                "the shared synthetic parent-close availability clock"
+            )
         if version not in {LEGACY_SPEC_VERSION, SPEC_VERSION}:
             raise LadderReplayError("unsupported ladder replay spec version")
         required = {
@@ -987,6 +1034,9 @@ class LadderReplayAdapter:
                 "fold_boundaries",
                 "selection_provenance",
                 "ladder_multipliers",
+                "exit_n",
+                "exit_contract",
+                "availability_clock",
             }
             strict_missing = sorted(strict_required - set(self.spec))
             if strict_missing:
@@ -1035,6 +1085,22 @@ class LadderReplayAdapter:
                 raise LadderReplayError(
                     "unsafe synthetic 5m provenance in replay spec"
                 )
+            clock = self.spec["availability_clock"]
+            if (
+                str(clock.get("kind")) != CLOCK_CONTRACT
+                or str(clock.get("ordering"))
+                != "availability_ts_then_source_row_index"
+                or not bool(clock.get("native_rows_at_source_ts"))
+                or not bool(clock.get("synthetic_rows_at_parent_close_ts"))
+                or str(clock.get("next_rth_fill"))
+                != "first_strictly_later_availability"
+                or not bool(clock.get("preserve_duplicate_availability_rows"))
+                or str(clock.get("window_rows_sha256"))
+                != str(provenance.get("availability_source_rows_sha256"))
+            ):
+                raise LadderReplayError(
+                    "invalid or mismatched availability clock contract"
+                )
             if (
                 str(self.spec["source_npz"].get("sha256"))
                 != str(self.spec["expected_npz_sha256"])
@@ -1043,6 +1109,16 @@ class LadderReplayAdapter:
             ):
                 raise LadderReplayError(
                     "nested provenance fingerprint mismatch"
+                )
+            exit_contract = self.spec["exit_contract"]
+            if (
+                str(exit_contract.get("family")) != "E02_DONCHIAN"
+                or str(exit_contract.get("timeframe")) != "4h"
+                or int(exit_contract.get("n", 0)) <= 0
+                or int(exit_contract["n"]) != int(self.spec["exit_n"])
+            ):
+                raise LadderReplayError(
+                    "unsupported or inconsistent ladder exit contract"
                 )
 
     def _build_actions(self) -> list[LadderReplayAction]:
@@ -1070,6 +1146,33 @@ class LadderReplayAdapter:
             if kind == "MTM_FINAL":
                 if latency != 0 or signal_index != fill_index:
                     raise LadderReplayError("MTM_FINAL must occur on its mark row")
+            elif int(self.spec.get("version", 0)) == SPEC_VERSION:
+                required_clock = {
+                    "signal_availability_ts",
+                    "signal_source_ts",
+                    "signal_source_row_index",
+                    "fill_availability_ts",
+                    "fill_source_ts",
+                    "fill_source_row_index",
+                }
+                missing_clock = sorted(required_clock - set(event))
+                if missing_clock:
+                    raise LadderReplayError(
+                        f"event missing v3 clock fields: {missing_clock}"
+                    )
+                if (
+                    latency != 1
+                    or int(event["fill_availability_ts"])
+                    <= int(event["signal_availability_ts"])
+                    or int(event["fill_ts"])
+                    != int(event["fill_availability_ts"])
+                    or int(event["signal_ts"])
+                    != int(event["signal_availability_ts"])
+                ):
+                    raise LadderReplayError(
+                        "ladder signal must fill at the first strictly later "
+                        "availability"
+                    )
             elif latency != 1 or fill_index != signal_index + 1:
                 raise LadderReplayError("ladder signal must fill at next RTH row")
             fill_px = float(event["fill_px"])
@@ -1166,15 +1269,18 @@ class LadderReplayAdapter:
             str(self.spec["validation_end_exclusive"]),
         )
         try:
-            if int(self.spec.get("version", 0)) == SPEC_VERSION:
+            version = int(self.spec.get("version", 0))
+            left = ladder._date_index(
+                data, str(self.spec["validation_start"])
+            )
+            right = ladder._date_index(
+                data, str(self.spec["validation_end_exclusive"])
+            )
+            if version == SPEC_VERSION:
                 live_provenance = audit_execution_provenance(
                     data,
-                    left=ladder._date_index(
-                        data, str(self.spec["validation_start"])
-                    ),
-                    right=ladder._date_index(
-                        data, str(self.spec["validation_end_exclusive"])
-                    ),
+                    left=left,
+                    right=right,
                 )
                 if not live_provenance["safe_for_exact_engine"]:
                     raise LadderReplayError(
@@ -1190,11 +1296,27 @@ class LadderReplayAdapter:
                     "future_parent_rows",
                     "parent_lag_min_seconds",
                     "parent_lag_max_seconds",
+                    "shared_availability_rows",
+                    "availability_source_rows_sha256",
                 ):
                     if live_provenance.get(key) != expected_provenance.get(key):
                         raise LadderReplayError(
                             f"execution provenance mismatch for {key}"
                         )
+                self.runtime_clock = [
+                    {
+                        "availability_ts": int(data.ts[i]),
+                        "source_ts": int(data.source_ts[i]),
+                        "source_row_index": int(data.full_indices[i]),
+                        "clock_index": int(i),
+                    }
+                    for i in range(left, right)
+                ]
+            elif bool(np.any(data.synthetic[left:right])):
+                raise LadderReplayError(
+                    "legacy ladder replay spec is unsafe for synthetic 5m "
+                    "rows because it does not bind the parent-close clock"
+                )
             is_overlay = bool(self.spec.get("entry_overlay"))
             htf_names = (
                 ("15m", "1h", "4h", "D")
@@ -1218,11 +1340,16 @@ class LadderReplayAdapter:
                     self.position_side,
                 )
             else:
+                exit_n = (
+                    int(self.spec["exit_contract"]["n"])
+                    if int(self.spec.get("version", 0)) == SPEC_VERSION
+                    else int(self.spec.get("exit_n", 30))
+                )
                 signals = ladder._build_signals(
                     data,
                     htfs,
                     curve,
-                    int(self.spec.get("exit_n", 30)),
+                    exit_n,
                     self.position_side,
                 )
             self._validate_actions_against_npz(data, htfs, signals)
@@ -1236,16 +1363,46 @@ class LadderReplayAdapter:
         htfs: dict[str, Any],
         signals: ladder.SignalData,
     ) -> None:
+        version = int(self.spec.get("version", 0))
         for action in self.actions:
             event = action.source_event
-            source_fill_index = int(
-                event.get("source_fill_index", action.fill_index)
-            )
-            source_signal_index = int(
-                event.get("source_signal_index", action.signal_index)
-            )
+            if version == SPEC_VERSION:
+                source_fill_index = int(event["fill_clock_index"])
+                source_signal_index = int(event["signal_clock_index"])
+                if int(data.full_indices[source_fill_index]) != int(
+                    event["fill_source_row_index"]
+                ):
+                    raise LadderReplayError(
+                        "fill source-row identity mismatch in loaded NPZ"
+                    )
+                if int(data.full_indices[source_signal_index]) != int(
+                    event["signal_source_row_index"]
+                ):
+                    raise LadderReplayError(
+                        "signal source-row identity mismatch in loaded NPZ"
+                    )
+                expected_next = next_strictly_later_index(
+                    data.ts,
+                    source_signal_index,
+                    len(data.ts),
+                )
+                if action.event_type != "MTM_FINAL" and (
+                    expected_next is None or expected_next != source_fill_index
+                ):
+                    raise LadderReplayError(
+                        "fill is not the first strictly later availability row"
+                    )
+            else:
+                source_fill_index = int(
+                    event.get("source_fill_index", action.fill_index)
+                )
+                source_signal_index = int(
+                    event.get("source_signal_index", action.signal_index)
+                )
             if source_fill_index >= len(data.ts):
-                raise LadderReplayError("fill index exceeds loaded validation rows")
+                raise LadderReplayError(
+                    "fill index exceeds loaded validation rows"
+                )
             if int(data.ts[source_fill_index]) != action.fill_ts:
                 raise LadderReplayError("fill timestamp/index mismatch in loaded NPZ")
             if int(data.ts[source_signal_index]) != action.signal_ts:
@@ -1286,12 +1443,24 @@ class LadderReplayAdapter:
             if not _close_enough(expected_fill, action.fill_price):
                 raise LadderReplayError("fill price does not match loaded NPZ bar")
         for event in self.audit_events:
-            source_signal_index = int(event["source_signal_index"])
-            source_fill_index = int(event["source_fill_index"])
-            if source_fill_index != source_signal_index + 1:
-                raise LadderReplayError(
-                    "capacity no-fill did not occur at next RTH row"
+            if version == SPEC_VERSION:
+                source_signal_index = int(event["signal_clock_index"])
+                source_fill_index = int(event["fill_clock_index"])
+                expected_next = next_strictly_later_index(
+                    data.ts, source_signal_index, len(data.ts)
                 )
+                if expected_next != source_fill_index:
+                    raise LadderReplayError(
+                        "capacity no-fill did not occur at first strictly "
+                        "later availability"
+                    )
+            else:
+                source_signal_index = int(event["source_signal_index"])
+                source_fill_index = int(event["source_fill_index"])
+                if source_fill_index != source_signal_index + 1:
+                    raise LadderReplayError(
+                        "capacity no-fill did not occur at next RTH row"
+                    )
             if int(data.ts[source_signal_index]) != int(event["signal_ts"]):
                 raise LadderReplayError("capacity no-fill signal timestamp mismatch")
             if int(data.ts[source_fill_index]) != int(event["fill_ts"]):
@@ -1325,7 +1494,20 @@ class LadderReplayAdapter:
             else 1.0 + side_sign * slip
         )
 
-    def actions_at(self, ts: int) -> list[LadderReplayAction]:
+    def actions_at(
+        self, ts: int, source_row_index: int | None = None
+    ) -> list[LadderReplayAction]:
+        if int(self.spec.get("version", 0)) == SPEC_VERSION:
+            if source_row_index is None:
+                raise LadderReplayError(
+                    "v3 replay actions require source_row_index identity"
+                )
+            return list(
+                self._by_clock.get(
+                    (int(ts), int(source_row_index)),
+                    (),
+                )
+            )
         return list(self._by_ts.get(int(ts), ()))
 
     def record_result(

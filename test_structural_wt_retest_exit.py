@@ -79,6 +79,47 @@ def test_long_damage_arms_but_only_distinct_lower_price_and_wt_top_exits():
     assert "MANDATORY_REENTRY" in signal.reason
 
 
+def test_v2_atr_arm_rejects_weak_break_then_arms_on_qualified_break():
+    book = StructuralWtRetestExitBook(
+        StructuralWtParams(
+            arm_tf="1h",
+            confirm_tf="15m",
+            prebreak_lookback=3,
+            arm_break_mode="ATR",
+            arm_break_threshold=1.0,
+        )
+    )
+    for bar in (
+        _bar(1, 110, 100, 108, 60),
+        _bar(2, 112, 102, 110, 65),
+        _bar(3, 114, 104, 112, 70),
+    ):
+        book.update(
+            symbol="MU",
+            position_side="LONG",
+            active=True,
+            bar=bar,
+            role="ARM",
+        )
+    # This breaks the previous low but not the previous close by a full ATR.
+    book.update(
+        symbol="MU",
+        position_side="LONG",
+        active=True,
+        bar=_bar(4, 113, 103, 111, 50),
+        role="ARM",
+    )
+    assert book.state_snapshot("MU", "LONG")["phase"] == "TREND"
+    book.update(
+        symbol="MU",
+        position_side="LONG",
+        active=True,
+        bar=_bar(5, 111, 101, 108.5, 35),
+        role="ARM",
+    )
+    assert book.state_snapshot("MU", "LONG")["phase"] == "WAIT_REBOUND"
+
+
 def test_short_is_exact_mirror_and_state_is_side_isolated():
     book = StructuralWtRetestExitBook(
         StructuralWtParams(

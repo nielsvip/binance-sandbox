@@ -267,7 +267,7 @@ def _load_execution(
         if "synthetic_5m" in z.files
         else np.zeros(len(idx), dtype=np.uint8)
     )
-    return ExecutionData(
+    data = ExecutionData(
         symbol=symbol,
         path=str(path),
         ts=np.ascontiguousarray(ts_all[idx]),
@@ -280,6 +280,14 @@ def _load_execution(
         z=z,
         contract=contract,
     )
+    if profile == "ladder":
+        # Ladder research and its exact replay share one causal observation
+        # clock.  This is an in-memory view only; the canonical NPZ is never
+        # rewritten.
+        from research_availability_clock import apply_availability_clock
+
+        apply_availability_clock(data)
+    return data
 
 
 def _compress_htf(data: ExecutionData, tf: str) -> HTFData:

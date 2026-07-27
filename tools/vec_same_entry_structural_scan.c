@@ -50,6 +50,7 @@ int vec_same_entry_structural_scan(
     const double *confirm_close, const double *confirm_wt,
     double rebound_atr, int lookback, int max_wait,
     int confirmation_mode, int confirmation_bars,
+    int arm_break_mode, double arm_break_threshold,
     int emergency_mask, double emergency_adverse_atr,
     double emergency_adverse_stdev, int emergency_continued_bars,
     double profit_gate_pct, double commission, double slippage,
@@ -58,6 +59,8 @@ int vec_same_entry_structural_scan(
     if (!out || n <= 0 || left < 0 || right > n || right-left < 100 ||
         (side != 1 && side != -1) || lookback < 2 || lookback > 10 ||
         max_wait < 3 || confirmation_mode < 0 || confirmation_mode > 3 ||
+        arm_break_mode < 0 || arm_break_mode > 3 ||
+        arm_break_threshold < 0.0 ||
         confirmation_bars < 1 || confirmation_bars > 3) return 1;
     memset(out, 0, sizeof(*out));
 
@@ -178,9 +181,54 @@ int vec_same_entry_structural_scan(
                 phase=0; just_armed=0;
             } else if (phase == 0 && arm_count >= lookback &&
                        isfinite(prev_arm_low) && isfinite(prev_arm_high)) {
-                int broke = side > 0
-                    ? (arm_low[i] < prev_arm_low && arm_close[i] < prev_arm_low)
-                    : (arm_high[i] > prev_arm_high && arm_close[i] > prev_arm_high);
+                double prior_mean=0.0, prior_stdev=0.0;
+                double prior_support=side > 0 ? INFINITY : -INFINITY;
+                for (int k=0; k<lookback; k++) {
+                    int idx=(arm_slot-1-k+10)%10;
+                    prior_mean += ac[idx];
+                    prior_support = side > 0
+                        ? dmin(prior_support, al[idx])
+                        : dmax(prior_support, ah[idx]);
+                }
+                prior_mean /= lookback;
+                for (int k=0; k<lookback; k++) {
+                    int idx=(arm_slot-1-k+10)%10;
+                    double delta=ac[idx]-prior_mean;
+                    prior_stdev += delta*delta;
+                }
+                prior_stdev=sqrt(prior_stdev/lookback);
+                int broke=0;
+                if (side > 0) {
+                    if (arm_break_mode==1)
+                        broke=arm_low[i] < prev_arm_low &&
+                            arm_close[i] < ac[(arm_slot-1+10)%10]
+                                - arm_break_threshold*arm_atr[i];
+                    else if (arm_break_mode==2)
+                        broke=arm_low[i] < prev_arm_low &&
+                            arm_close[i] < prior_mean
+                                - arm_break_threshold*prior_stdev;
+                    else if (arm_break_mode==3)
+                        broke=arm_close[i] < prior_support
+                            - arm_break_threshold*arm_atr[i];
+                    else
+                        broke=arm_low[i] < prev_arm_low &&
+                            arm_close[i] < prev_arm_low;
+                } else {
+                    if (arm_break_mode==1)
+                        broke=arm_high[i] > prev_arm_high &&
+                            arm_close[i] > ac[(arm_slot-1+10)%10]
+                                + arm_break_threshold*arm_atr[i];
+                    else if (arm_break_mode==2)
+                        broke=arm_high[i] > prev_arm_high &&
+                            arm_close[i] > prior_mean
+                                + arm_break_threshold*prior_stdev;
+                    else if (arm_break_mode==3)
+                        broke=arm_close[i] > prior_support
+                            + arm_break_threshold*arm_atr[i];
+                    else
+                        broke=arm_high[i] > prev_arm_high &&
+                            arm_close[i] > prev_arm_high;
+                }
                 if (broke) {
                     price_anchor = side > 0 ? -INFINITY : INFINITY;
                     wt_anchor = side > 0 ? -INFINITY : INFINITY;
@@ -195,19 +243,7 @@ int vec_same_entry_structural_scan(
                     wait=0; state_arm_atr=arm_atr[i];
                     state_arm_close=arm_close[i]; rebound_source=0;
                     confirmation_streak=0; continued_count=0;
-                    double mean=0.0;
-                    for (int k=0; k<lookback; k++) {
-                        int idx=(arm_slot-1-k+10)%10;
-                        mean += ac[idx];
-                    }
-                    mean /= lookback;
-                    double variance=0.0;
-                    for (int k=0; k<lookback; k++) {
-                        int idx=(arm_slot-1-k+10)%10;
-                        double delta=ac[idx]-mean;
-                        variance += delta*delta;
-                    }
-                    state_arm_stdev=sqrt(variance/lookback);
+                    state_arm_stdev=prior_stdev;
                 }
             }
             ah[arm_slot]=arm_high[i]; al[arm_slot]=arm_low[i];

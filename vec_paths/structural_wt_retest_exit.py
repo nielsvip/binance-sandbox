@@ -33,6 +33,13 @@ class StructuralWtParams:
     emergency_adverse_atr: float = 0.0
     emergency_adverse_stdev: float = 0.0
     emergency_continued_bars: int = 0
+    # V2 keeps the historical one-bar break as the default, but can require
+    # an explicitly qualified causal arm before the delayed retest logic.
+    # ATR: close passes the previous close by ``arm_break_threshold`` ATR.
+    # STDEV: close passes the prior-window mean by threshold rolling stdev.
+    # DC_SUPPORT: close passes the prior-window low/high by threshold ATR.
+    arm_break_mode: str = "PREV_BAR"
+    arm_break_threshold: float = 0.0
 
     def validate(self) -> None:
         if self.arm_tf not in {"15m", "1h", "4h", "D"}:
@@ -61,6 +68,15 @@ class StructuralWtParams:
             raise ValueError("emergency distance thresholds must be non-negative")
         if self.emergency_continued_bars < 0:
             raise ValueError("emergency_continued_bars must be non-negative")
+        if self.arm_break_mode not in {
+            "PREV_BAR",
+            "ATR",
+            "STDEV",
+            "DC_SUPPORT",
+        }:
+            raise ValueError("unsupported arm break mode")
+        if self.arm_break_threshold < 0:
+            raise ValueError("arm break threshold must be non-negative")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -214,13 +230,65 @@ class StructuralWtRetestExitBook:
                 and len(prior) >= self.params.prebreak_lookback
             ):
                 if side == "LONG":
-                    structural_break = (
-                        bar.low < previous.low and bar.close < previous.low
-                    )
+                    if self.params.arm_break_mode == "ATR":
+                        structural_break = (
+                            bar.low < previous.low
+                            and bar.close
+                            < previous.close
+                            - self.params.arm_break_threshold * bar.atr
+                        )
+                    elif self.params.arm_break_mode == "STDEV":
+                        closes = [item.close for item in prior]
+                        mean = sum(closes) / len(closes)
+                        stdev = math.sqrt(
+                            sum((value - mean) ** 2 for value in closes)
+                            / len(closes)
+                        )
+                        structural_break = (
+                            bar.low < previous.low
+                            and bar.close
+                            < mean - self.params.arm_break_threshold * stdev
+                        )
+                    elif self.params.arm_break_mode == "DC_SUPPORT":
+                        structural_break = bar.close < (
+                            min(item.low for item in prior)
+                            - self.params.arm_break_threshold * bar.atr
+                        )
+                    else:
+                        structural_break = (
+                            bar.low < previous.low
+                            and bar.close < previous.low
+                        )
                 else:
-                    structural_break = (
-                        bar.high > previous.high and bar.close > previous.high
-                    )
+                    if self.params.arm_break_mode == "ATR":
+                        structural_break = (
+                            bar.high > previous.high
+                            and bar.close
+                            > previous.close
+                            + self.params.arm_break_threshold * bar.atr
+                        )
+                    elif self.params.arm_break_mode == "STDEV":
+                        closes = [item.close for item in prior]
+                        mean = sum(closes) / len(closes)
+                        stdev = math.sqrt(
+                            sum((value - mean) ** 2 for value in closes)
+                            / len(closes)
+                        )
+                        structural_break = (
+                            bar.high > previous.high
+                            and bar.close
+                            > mean + self.params.arm_break_threshold * stdev
+                        )
+                    elif self.params.arm_break_mode == "DC_SUPPORT":
+                        structural_break = bar.close > (
+                            max(item.high for item in prior)
+                            + self.params.arm_break_threshold * bar.atr
+                        )
+                    else:
+                        structural_break = (
+                            bar.high > previous.high
+                            and bar.close > previous.high
+                        )
                 if structural_break:
                     state.phase = "WAIT_REBOUND"
                     state.just_armed = True

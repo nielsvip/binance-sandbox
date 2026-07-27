@@ -1735,6 +1735,7 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
             # Preserve the exact file actually opened so research provenance
             # checks cannot be redirected by a path declared inside a spec.
             store.source_npz_path = str(npz_path.resolve())
+            store.source_row_offset = int(_start_idx)
         except Exception as _e:
             v8_logger.warning(f"[NPZ_LOAD_FAIL] {sym}: {type(_e).__name__}: {_e}")
             continue
@@ -7780,6 +7781,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _research_spec_path_t = os.environ.get("V8_RESEARCH_TOP_EXIT_SPEC", "").strip()
     _research_ladder_adapter_t = None
     _research_ladder_audit_t = None
+    _research_ladder_clock_t = []
     _research_ladder_spec_path_t = os.environ.get(
         "V8_RESEARCH_LADDER_SPEC", ""
     ).strip()
@@ -7910,18 +7912,40 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _research_ladder_adapter_t.symbol
             ),
         )
-        _missing_ladder_ts_t = sorted(
-            {
-                action.fill_ts
-                for action in _research_ladder_adapter_t.actions
-            }
-            - set(all_ts)
+        _ladder_source_offset_t = int(
+            getattr(_research_ladder_loaded_store_t, "source_row_offset", 0)
         )
-        if _missing_ladder_ts_t:
-            raise RuntimeError(
-                "V8_RESEARCH_LADDER schedule timestamps absent from loaded NPZ: "
-                f"{_missing_ladder_ts_t[:10]}"
+        for _clock_row_t in _research_ladder_adapter_t.runtime_clock:
+            _clock_store_idx_t = (
+                int(_clock_row_t["source_row_index"])
+                - _ladder_source_offset_t
             )
+            if not (
+                0
+                <= _clock_store_idx_t
+                < len(_research_ladder_loaded_store_t.timestamps)
+            ):
+                raise RuntimeError(
+                    "V8_RESEARCH_LADDER source row is absent from runtime store"
+                )
+            if int(
+                _research_ladder_loaded_store_t.timestamps[_clock_store_idx_t]
+            ) != int(_clock_row_t["source_ts"]):
+                raise RuntimeError(
+                    "V8_RESEARCH_LADDER source row/timestamp identity mismatch"
+                )
+            _research_ladder_clock_t.append(
+                {
+                    **_clock_row_t,
+                    "store_index": _clock_store_idx_t,
+                }
+            )
+        if not _research_ladder_clock_t:
+            raise RuntimeError("V8_RESEARCH_LADDER availability clock is empty")
+        all_ts = [
+            int(row["availability_ts"])
+            for row in _research_ladder_clock_t
+        ]
         print(
             "V8_RESEARCH_LADDER_INIT: "
             f"symbol={_research_ladder_adapter_t.symbol} "
@@ -7963,6 +7987,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         manager._get_extras = lambda symbol: {}
         v8_logger.info(f"[V8_STRATEGY_HOOK] MINERVINI_ENABLED={_v8_minervini_on} CLENOW_ENABLED={_v8_clenow_on} — real evaluate_* wired at live cadence (1800s), _get_extras neutralized (NPZ snapshot is the no-lookahead source)")
     for step, ts in enumerate(all_ts):
+        _ladder_clock_row_t = (
+            _research_ladder_clock_t[step]
+            if _research_ladder_clock_t
+            else None
+        )
         if step > 0 and manager.position_manager:
             _dt_t = max(0.0, float(ts) - float(all_ts[step - 1]))
             _active_sides_t = set()
@@ -7990,7 +8019,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if _bt_rg_t is not None and (step % 50 == 0):
             _bt_rg_t.tick(len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')]))
         for sym, store in stores.items():
-            idx = store.ts_to_idx.get(ts, -1)
+            idx = (
+                int(_ladder_clock_row_t["store_index"])
+                if (
+                    _ladder_clock_row_t is not None
+                    and sym == _research_ladder_adapter_t.symbol
+                )
+                else store.ts_to_idx.get(ts, -1)
+            )
             if idx < 0: continue
             p = store.price(idx)
             if p <= 0: continue
@@ -8291,7 +8327,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _ladder_replay_store_t = stores[
                 _research_ladder_adapter_t.symbol
             ]
-            _ladder_replay_idx_t = _ladder_replay_store_t.ts_to_idx[int(ts)]
+            _ladder_replay_idx_t = int(_ladder_clock_row_t["store_index"])
             _ladder_replay_open_t = float(
                 _ladder_replay_store_t.get(
                     "open_5m",
@@ -8310,7 +8346,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     ),
                 )
             )
-            _ladder_actions_t = _research_ladder_adapter_t.actions_at(ts)
+            _ladder_actions_t = _research_ladder_adapter_t.actions_at(
+                ts,
+                int(_ladder_clock_row_t["source_row_index"]),
+            )
 
             def _ladder_runtime_qty_t():
                 _position_t = (

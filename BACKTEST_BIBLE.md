@@ -1628,8 +1628,17 @@ B&H (11.615x) at 73.72% TIM, but one fold was insolvent, minimum equity fell
 to -$910.61, and account drawdown reached 107.73%. A separate bounded
 E03/E06/E08/E09 top-exit screen with mandatory E11+E10 reclaim compounded to
 -100% versus +895.08% B&H over ten frozen folds and was also insolvent.
-Neither result is matrix-eligible. Exact ladder parity remains blocked because
-the vector artifact does not emit a research-ladder replay spec.
+Neither result is matrix-eligible. The vector ladder now emits deterministic
+version-2 replay bundles with source-result/NPZ hashes, frozen training-only
+selection provenance, fold boundaries, curve/multipliers, capital/capacity,
+costs, and an ordered fill schedule. The isolated HAO artifact was the first
+smoke: emission failed closed because 1,381 interpolated 5m rows in its final
+validation fold expose containing-15m OHLC before that parent bar closes. The
+current exact engine does not delay synthetic rows to parent-close
+availability. Therefore no HAO spec was emitted and exact parity remains
+blocked for a causal execution-data reason, not a missing-schema reason.
+The machine receipt is
+`data/reports/vec_research/hao_recovery_20260727T0010Z/research_ladder_replay/receipt.json`.
 
 Canonical HAO and VT hashes remained unchanged. The candidate is
 `QUARANTINED_NOT_PROMOTED`; full rollback, provenance, control results, and

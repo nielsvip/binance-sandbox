@@ -135,6 +135,13 @@ def _write_spec(
                     "1h": {"bottom": 2.0, "top": 1.0},
                     "hard_max": 8.0,
                 },
+                "exit_n": 30,
+                "exit_contract": {
+                    "family": "E02_DONCHIAN",
+                    "timeframe": "4h",
+                    "n": 30,
+                    "signal": "completed_4h_close_below_prior_N_low",
+                },
             }
         )
     path = tmp_path / "spec.json"
@@ -348,6 +355,15 @@ def test_v2_parser_rejects_source_result_mutation(tmp_path):
     path = _write_spec(tmp_path, _events(), version=SPEC_VERSION)
     (tmp_path / "result.json").write_text('{"frozen":false}\n')
     with pytest.raises(LadderReplayError, match="source result fingerprint"):
+        LadderReplayAdapter(path)
+
+
+def test_v2_parser_requires_explicit_matching_exit_contract(tmp_path):
+    path = _write_spec(tmp_path, _events(), version=SPEC_VERSION)
+    payload = json.loads(path.read_text())
+    payload["exit_contract"]["n"] = 17
+    path.write_text(json.dumps(payload))
+    with pytest.raises(LadderReplayError, match="exit contract"):
         LadderReplayAdapter(path)
 
 

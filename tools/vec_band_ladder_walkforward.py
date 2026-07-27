@@ -46,6 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import vec_top_exit_campaign as top  # noqa: E402
+from research_availability_clock import next_strictly_later_index  # noqa: E402
 
 
 TF_ORDER = ("D", "4h", "1h")
@@ -344,7 +345,7 @@ def _simulate(
         op = float(data.open[i])
         close = float(data.close[i])
         # Every completed-bar signal fills at the next RTH open.
-        if pending is not None:
+        if pending is not None and i == int(pending["fill_index"]):
             kind = pending["kind"]
             if kind == "exit" and has_position():
                 px = op * (1.0 - side_sign * slippage_rate)
@@ -397,14 +398,27 @@ def _simulate(
         held_bars += int(has_position())
         weighted_exposure += min(CAPACITY, notional) / CAPACITY
 
+        # All rows released by one 15m parent close form one observation
+        # batch. A signal in that batch cannot fill against another already
+        # closed sibling; it waits for the next strictly later RTH
+        # availability.
+        if pending is not None:
+            continue
         if i + 1 >= right:
+            continue
+        fill_index = next_strictly_later_index(data.ts, i, right)
+        if fill_index is None:
             continue
         if has_position():
             if signals.exit_event[i]:
                 ref = float(signals.exit_ref[i])
                 if not math.isfinite(ref):
                     ref = float(data.high[i] if is_long else data.low[i])
-                pending = {"kind": "exit", "ref": ref}
+                pending = {
+                    "kind": "exit",
+                    "ref": ref,
+                    "fill_index": fill_index,
+                }
             elif signals.entry_mult[i] > 0:
                 request = BASE_UNIT * float(signals.entry_mult[i])
                 pending = {
@@ -412,6 +426,7 @@ def _simulate(
                     "requested_notional": request,
                     "absolute_target": curve.semantics == "target",
                     "reason": "ladder_add",
+                    "fill_index": fill_index,
                 }
         else:
             if math.isfinite(last_exit_fill):
@@ -429,6 +444,7 @@ def _simulate(
                         "requested_notional": max(BASE_UNIT, prior_exit_notional),
                         "absolute_target": True,
                         "reason": "reclaim",
+                        "fill_index": fill_index,
                     }
                 elif signals.entry_mult[i] > 0 and gap_seen:
                     pending = {
@@ -436,6 +452,7 @@ def _simulate(
                         "requested_notional": BASE_UNIT * float(signals.entry_mult[i]),
                         "absolute_target": curve.semantics == "target",
                         "reason": "ladder_lower" if is_long else "ladder_higher",
+                        "fill_index": fill_index,
                     }
                 elif (
                     close > reclaim_level if is_long else close < reclaim_level
@@ -447,6 +464,7 @@ def _simulate(
                     "requested_notional": BASE_UNIT * float(signals.entry_mult[i]),
                     "absolute_target": curve.semantics == "target",
                     "reason": "initial_ladder",
+                    "fill_index": fill_index,
                 }
 
     # Final liquidation makes every fold independently accountable.

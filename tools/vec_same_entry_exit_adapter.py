@@ -71,6 +71,8 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
     "BOTTOM_A_PROTECTIVE_TRAIL_EXTENDED",
     "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
     "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
+    "BOTTOM_B_STRUCTURAL_V2",
+    "BOTTOM_C_STRUCTURAL_V2_EMERGENCY",
     "EXIT_MTF_ATR_TRAIL",
     "EXIT_ALGO_STRUCTURE_1H_15M",
     "EXIT_ALGO_STOCH_4H_ROLL",
@@ -79,6 +81,7 @@ ACTUAL_EXIT_REQUIRED_FAMILIES = {
 EMERGENCY_EXIT_FAMILIES = {
     "BOTTOM_C_DELAYED_EMERGENCY",
     "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
+    "BOTTOM_C_STRUCTURAL_V2_EMERGENCY",
 }
 COMPILED_STRUCTURAL_FAMILIES = {
     "EXIT_STRUCTURAL_WT_LOWER_TOP",
@@ -86,6 +89,8 @@ COMPILED_STRUCTURAL_FAMILIES = {
     "BOTTOM_C_DELAYED_EMERGENCY",
     "BOTTOM_B_DELAYED_LOWER_TOP_EXTENDED",
     "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED",
+    "BOTTOM_B_STRUCTURAL_V2",
+    "BOTTOM_C_STRUCTURAL_V2_EMERGENCY",
 }
 
 
@@ -151,42 +156,44 @@ def _structural_scan_library() -> ctypes.CDLL:
     f64 = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
     u8 = np.ctypeslib.ndpointer(dtype=np.uint8, ndim=1, flags="C_CONTIGUOUS")
     library.vec_same_entry_structural_scan.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        i64,
-        f64,
-        f64,
-        f64,
-        f64,
-        f64,
-        u8,
-        i64,
-        f64,
-        f64,
-        f64,
-        f64,
-        f64,
-        u8,
-        i64,
-        f64,
-        f64,
-        f64,
-        f64,
-        ctypes.c_double,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_int,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
+        ctypes.c_int,  # n
+        ctypes.c_int,  # left
+        ctypes.c_int,  # right
+        ctypes.c_int,  # side
+        ctypes.c_int,  # semantics
+        i64,  # ts
+        f64,  # open
+        f64,  # high
+        f64,  # low
+        f64,  # close
+        f64,  # entry_mult
+        u8,  # arm_event
+        i64,  # arm_source
+        f64,  # arm_high
+        f64,  # arm_low
+        f64,  # arm_close
+        f64,  # arm_wt
+        f64,  # arm_atr
+        u8,  # confirm_event
+        i64,  # confirm_source
+        f64,  # confirm_high
+        f64,  # confirm_low
+        f64,  # confirm_close
+        f64,  # confirm_wt
+        ctypes.c_double,  # rebound_atr
+        ctypes.c_int,  # lookback
+        ctypes.c_int,  # max_wait
+        ctypes.c_int,  # confirmation_mode
+        ctypes.c_int,  # confirmation_bars
+        ctypes.c_int,  # arm_break_mode
+        ctypes.c_double,  # arm_break_threshold
+        ctypes.c_int,  # emergency_mask
+        ctypes.c_double,  # emergency_adverse_atr
+        ctypes.c_double,  # emergency_adverse_stdev
+        ctypes.c_int,  # emergency_continued_bars
+        ctypes.c_double,  # profit_gate_pct
+        ctypes.c_double,  # commission
+        ctypes.c_double,  # slippage
         ctypes.POINTER(_StructuralScanMetrics),
     ]
     library.vec_same_entry_structural_scan.restype = ctypes.c_int
@@ -1833,6 +1840,12 @@ def simulate_structural_compiled(
         "WT_ONLY": 2,
         "OR": 3,
     }[params.confirmation_mode]
+    arm_break_mode = {
+        "PREV_BAR": 0,
+        "ATR": 1,
+        "STDEV": 2,
+        "DC_SUPPORT": 3,
+    }[params.arm_break_mode]
     emergency_mask = sum(
         {
             "ADVERSE_ATR": 1,
@@ -1861,6 +1874,8 @@ def simulate_structural_compiled(
         params.max_wait_1h,
         confirmation_mode,
         params.confirmation_bars,
+        arm_break_mode,
+        params.arm_break_threshold,
         emergency_mask,
         params.emergency_adverse_atr,
         params.emergency_adverse_stdev,
@@ -2701,6 +2716,116 @@ def bottom_emergency_variants() -> list[tuple[str, dict[str, Any]]]:
     ]
 
 
+def bottom_structural_v2_grid() -> list[tuple[StructuralWtParams, int]]:
+    """Bounded v2: qualify the arm, then sell only after the later top.
+
+    This is deliberately not another field-by-field expansion.  Five fixed
+    causal arm profiles cover ATR displacement, rolling-STDEV displacement,
+    and prior-window DC/support breaks.  All confirmation geometry is mirrored
+    by side in the compiled scanner.
+    """
+    arm_profiles = (
+        ("ATR", 0.5),
+        ("ATR", 1.0),
+        ("STDEV", 1.0),
+        ("STDEV", 1.5),
+        ("DC_SUPPORT", 0.0),
+    )
+    rows: list[tuple[StructuralWtParams, int]] = []
+    for arm_tf in ("15m", "1h"):
+        for arm_mode, arm_threshold in arm_profiles:
+            for confirm_tf in ("5m", "15m", "1h"):
+                bars_per_hour = {"5m": 12, "15m": 4, "1h": 1}[confirm_tf]
+                for confirmation_mode in ("PRICE_ONLY", "WT_ONLY", "AND", "OR"):
+                    for confirmation_bars in (1, 2):
+                        for rebound_atr in (0.5, 1.0):
+                            for wait_hours in (24, 48):
+                                rows.append(
+                                    (
+                                        StructuralWtParams(
+                                            arm_tf=arm_tf,
+                                            confirm_tf=confirm_tf,
+                                            rebound_atr=rebound_atr,
+                                            prebreak_lookback=6,
+                                            max_wait_1h=wait_hours
+                                            * bars_per_hour,
+                                            confirmation_mode=confirmation_mode,
+                                            confirmation_bars=confirmation_bars,
+                                            arm_break_mode=arm_mode,
+                                            arm_break_threshold=arm_threshold,
+                                        ),
+                                        wait_hours,
+                                    )
+                                )
+    assert len(rows) == 960
+    assert len({dataclasses.astuple(params) for params, _ in rows}) == 960
+    return rows
+
+
+def prune_bottom_structural_v2_bases(
+    rows: list[dict[str, Any]],
+    *,
+    exposure_min_pct: float,
+    exposure_max_pct: float,
+    limit: int = 4,
+) -> list[dict[str, Any]]:
+    """Freeze emergency bases using discovery folds only."""
+    if limit != 4:
+        raise ValueError("bottom structural v2 requires four B bases")
+
+    def rank(row: dict[str, Any]) -> tuple[Any, ...]:
+        nested = row["nested"]
+        discovery = nested["discovery"]
+        return (
+            not bool(nested["robust_discovery_all_folds"]),
+            int(discovery["exit_fills"]) <= 0,
+            abs(
+                float(
+                    discovery["exposure_weighted_tim_pct_row_weighted"]
+                )
+                - (exposure_min_pct + exposure_max_pct) / 2.0
+            ),
+            -float(nested["discovery_alpha_vs_same_entry_e02_pp"]),
+            -float(nested["discovery_alpha_vs_bh_pp"]),
+            float(discovery["max_drawdown_account_pct_max"]),
+            hashlib.sha256(
+                json.dumps(row["params"], sort_keys=True).encode("utf-8")
+            ).hexdigest(),
+        )
+
+    if len(rows) < limit:
+        raise ValueError("bottom structural v2 lacks B bases")
+    return sorted(rows, key=rank)[:limit]
+
+
+def bottom_structural_v2_emergency_variants(
+) -> list[tuple[str, dict[str, Any]]]:
+    """Only rare, late brakes; tighter variants already failed generation 1."""
+    return [
+        (
+            "ADVERSE_ATR_6",
+            {
+                "emergency_modes": ("ADVERSE_ATR",),
+                "emergency_adverse_atr": 6.0,
+            },
+        ),
+        (
+            "ADVERSE_STDEV_7",
+            {
+                "emergency_modes": ("ADVERSE_STDEV",),
+                "emergency_adverse_stdev": 7.0,
+            },
+        ),
+        (
+            "CONTINUED_8",
+            {
+                "emergency_modes": ("CONTINUED",),
+                "emergency_continued_bars": 8,
+            },
+        ),
+    ]
+
+
 def prune_bottom_b_extended_bases(
     rows: list[dict[str, Any]],
     *,
@@ -2797,6 +2922,10 @@ def compiled_structural_candidate_count(family: str) -> int:
         return len(bottom_delayed_grid_extended())
     if family == "BOTTOM_C_DELAYED_EMERGENCY_EXTENDED":
         return 8 * len(bottom_emergency_variants())
+    if family == "BOTTOM_B_STRUCTURAL_V2":
+        return len(bottom_structural_v2_grid())
+    if family == "BOTTOM_C_STRUCTURAL_V2_EMERGENCY":
+        return 4 * len(bottom_structural_v2_emergency_variants())
     raise ValueError(f"not a compiled structural family: {family}")
 
 
@@ -3558,6 +3687,7 @@ def screen_artifact(
         or "BOTTOM_C" in families
         or "BOTTOM_B_EXT" in families
         or "BOTTOM_C_EXT" in families
+        or "BOTTOM_V2" in families
     ):
         aligned_bottom = {
             tf: _aligned_structural_tf(data, htfs[tf], tf)
@@ -3716,6 +3846,98 @@ def screen_artifact(
                             paired_b_params_sha256=base_hash,
                             paired_b_metrics=base_row["metrics"],
                             extended_parameter_range=True,
+                        )
+                    )
+        if "BOTTOM_V2" in families:
+            v2_b_candidates: list[dict[str, Any]] = []
+            for params, wait_hours in bottom_structural_v2_grid():
+                fold_rows = [
+                    simulate_structural_compiled(
+                        data,
+                        ctx["signals"],
+                        ctx["curve"],
+                        htfs,
+                        params,
+                        ctx["left"],
+                        ctx["right"],
+                        commission,
+                        slippage,
+                        side=side,
+                        profit_gate_pct=-999.0,
+                        aligned_by_tf=aligned_bottom,
+                    )
+                    for ctx in contexts
+                ]
+                row = candidate_row(
+                    "BOTTOM_B_STRUCTURAL_V2",
+                    {
+                        **dataclasses.asdict(params),
+                        "max_wait_hours": wait_hours,
+                    },
+                    fold_rows,
+                    break_bar_can_exit=False,
+                    dc_low4_profit_exit_used=False,
+                    qualified_arm_required=True,
+                    v2_preregistered=True,
+                )
+                v2_b_candidates.append(row)
+                candidates.append(row)
+            for base_rank, base_row in enumerate(
+                prune_bottom_structural_v2_bases(
+                    v2_b_candidates,
+                    exposure_min_pct=exposure_min_pct,
+                    exposure_max_pct=exposure_max_pct,
+                ),
+                start=1,
+            ):
+                base_values = dict(base_row["params"])
+                wait_hours = int(base_values.pop("max_wait_hours"))
+                if isinstance(base_values.get("emergency_modes"), list):
+                    base_values["emergency_modes"] = tuple(
+                        base_values["emergency_modes"]
+                    )
+                base_params = StructuralWtParams(**base_values)
+                base_hash = hashlib.sha256(
+                    json.dumps(
+                        base_row["params"], sort_keys=True
+                    ).encode("utf-8")
+                ).hexdigest()
+                for emergency_label, overlay in (
+                    bottom_structural_v2_emergency_variants()
+                ):
+                    params = dataclasses.replace(base_params, **overlay)
+                    fold_rows = [
+                        simulate_structural_compiled(
+                            data,
+                            ctx["signals"],
+                            ctx["curve"],
+                            htfs,
+                            params,
+                            ctx["left"],
+                            ctx["right"],
+                            commission,
+                            slippage,
+                            side=side,
+                            profit_gate_pct=-999.0,
+                            aligned_by_tf=aligned_bottom,
+                        )
+                        for ctx in contexts
+                    ]
+                    candidates.append(
+                        candidate_row(
+                            "BOTTOM_C_STRUCTURAL_V2_EMERGENCY",
+                            {
+                                **dataclasses.asdict(params),
+                                "max_wait_hours": wait_hours,
+                                "emergency_label": emergency_label,
+                            },
+                            fold_rows,
+                            emergency_must_be_rare_share_max=0.10,
+                            break_bar_can_exit=False,
+                            dc_low4_profit_exit_used=False,
+                            paired_b_discovery_rank=base_rank,
+                            paired_b_params_sha256=base_hash,
+                            v2_preregistered=True,
                         )
                     )
         compiled_structural_elapsed_seconds += (
@@ -4083,6 +4305,7 @@ def screen_artifact(
             "BOTTOM_A_EXT",
             "BOTTOM_B_EXT",
             "BOTTOM_C_EXT",
+            "BOTTOM_V2",
         )
     ):
         payload["bottom_exit_contract"] = {
@@ -4097,6 +4320,19 @@ def screen_artifact(
             "side_specific_bh_usd": ladder.BASE_UNIT,
             "strategy_capacity_usd": ladder.CAPACITY,
         }
+        if "BOTTOM_V2" in families:
+            payload["bottom_exit_contract"].update(
+                {
+                    "v2_qualified_arm_modes": [
+                        "ATR",
+                        "STDEV",
+                        "DC_SUPPORT",
+                    ],
+                    "v2_candidate_count": 972,
+                    "v2_emergency_share_max_for_survival": 0.10,
+                    "v2_emergency_bases_selected_discovery_only": 4,
+                }
+            )
     if "MTF_ATR_TRAIL" in families:
         payload["mtf_atr_trail_contract"] = {
             "same_entry": True,
@@ -4182,6 +4418,7 @@ def main() -> int:
             "ALGO_PROFIT_TAKE_15M, "
             "BOTTOM_A, BOTTOM_B, BOTTOM_C, "
             "BOTTOM_A_EXT, BOTTOM_B_EXT, BOTTOM_C_EXT, "
+            "BOTTOM_V2, "
             "STRUCTURAL_WT, and/or PARTIAL_WT"
         ),
     )
@@ -4209,6 +4446,7 @@ def main() -> int:
         "BOTTOM_A_EXT",
         "BOTTOM_B_EXT",
         "BOTTOM_C_EXT",
+        "BOTTOM_V2",
         "STRUCTURAL_WT",
         "PARTIAL_WT",
     }

@@ -59,9 +59,22 @@ frozen folds it compounded to -100% versus +895.08% short B&H, used 88.79%
 TIM, and included one insolvent fold. No strict-policy result exists and the
 row remains gray/quarantined.
 
-Exact ladder-engine parity could not be run because the vector ladder artifact
-does not emit the `research-ladder-spec` consumed by `backtest_v8_engine.py`.
-This is a tooling blocker, not permission to label the vector result exact.
+The missing-spec tooling blocker is fixed. Vector ladder artifacts now emit a
+deterministic version-2 exact-replay bundle, binding the source-result and NPZ
+hashes, frozen training-only selection, fold boundaries, ladder curve,
+capital/capacity, costs, and ordered fill schedule. The isolated HAO artifact
+was the first smoke test. It correctly produced a fail-closed receipt instead
+of a spec: the final validation window contains 1,381 interpolated 5m rows
+whose containing 15m parent close occurs after the synthetic execution
+timestamp. The current exact engine does not delay those rows until the parent
+close, so replaying them would reproduce vector output without proving causal
+engine parity. This is now an explicit data/engine-provenance blocker, not a
+missing-format blocker and not permission to label the vector result exact.
+
+Machine receipt:
+`data/reports/vec_research/hao_recovery_20260727T0010Z/research_ladder_replay/receipt.json`.
+No replay spec was emitted, and no canonical NPZ, matrix cell, symbol universe,
+or live configuration was changed.
 
 ## Rollback and promotion rule
 

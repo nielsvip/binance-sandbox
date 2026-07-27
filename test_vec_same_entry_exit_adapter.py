@@ -33,6 +33,8 @@ from tools.vec_same_entry_exit_adapter import (
     bottom_delayed_grid_extended,
     bottom_emergency_grid,
     bottom_emergency_variants,
+    bottom_structural_v2_emergency_variants,
+    bottom_structural_v2_grid,
     gr_opposite_grid,
     mtf_atr_trail_grid,
     protective_trail_grid,
@@ -626,6 +628,30 @@ def test_extended_bottom_grids_are_bounded_and_add_missing_dimensions():
     }
 
 
+def test_bottom_structural_v2_grid_is_bounded_and_qualified():
+    rows = bottom_structural_v2_grid()
+    brakes = bottom_structural_v2_emergency_variants()
+    assert len(rows) == 960
+    assert {params.arm_tf for params, _ in rows} == {"15m", "1h"}
+    assert {params.arm_break_mode for params, _ in rows} == {
+        "ATR",
+        "STDEV",
+        "DC_SUPPORT",
+    }
+    assert {params.confirm_tf for params, _ in rows} == {"5m", "15m", "1h"}
+    assert {params.confirmation_mode for params, _ in rows} == {
+        "PRICE_ONLY",
+        "WT_ONLY",
+        "AND",
+        "OR",
+    }
+    assert {label for label, _ in brakes} == {
+        "ADVERSE_ATR_6",
+        "ADVERSE_STDEV_7",
+        "CONTINUED_8",
+    }
+
+
 def test_c_ext_prunes_exactly_eight_b_bases_without_final_fold_leakage():
     candidates = []
     for index in range(10):
@@ -930,6 +956,8 @@ def test_compiled_structural_scanner_matches_python_oracle():
 
     emergency_params = dataclasses.replace(
         params,
+        arm_break_mode="ATR",
+        arm_break_threshold=1.0,
         emergency_modes=("ADVERSE_ATR",),
         emergency_adverse_atr=1.0,
     )

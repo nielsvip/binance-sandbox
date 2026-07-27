@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-27 00:30:39Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-27 01:10:41Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
 - Current repaired matrix latest row: `none` (unknown old).
-- Generic DB activity (includes historical/stage tables): `2026-07-27T00:30:03Z` (0m old); it is not matrix freshness.
+- Generic DB activity (includes historical/stage tables): `2026-07-27T00:59:51Z` (10m old); it is not matrix freshness.
 - Current repaired-contract ENGINE rows: **0**; new current rows in 24h: **0**.
-- Raw repaired-campaign pilot rows since cutoff: **963**; **963** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,585/7,585**. They remain preserved as evidence.
+- Raw repaired-campaign pilot rows since cutoff: **987**; **987** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **7,609/7,609**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 00:30:38Z (0m old, 310,771 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 00:30:37Z (0m old, 58,043 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-27 01:10:40Z (0m old, 387,170 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-27 01:10:04Z (0m old, 35,613 bytes)
 - Description coverage in current CSV: **3,522/3,522** rows.
 
 ## Stocks 5m execution provenance
@@ -168,6 +168,9 @@ The full-period MU multiple is an optimization-screen headline, not a robust cla
 
 | path | key | stage | metric scope / units | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `BOTTOM_B_DELAYED_LOWER_TOP` | PBF_LONG | VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 519.697% | 121.263% | 4.286× | 398.434pp | -121.403pp | 83.44% | 6 |
+| `BOTTOM_A_PROTECTIVE_TRAIL` | ARM_LONG | VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 929.638% | 126.604% | 7.343× | 803.034pp | -217.679pp | 69.60% | 24 |
+| `BOTTOM_B_DELAYED_LOWER_TOP` | MU_LONG | VEC_STATE_AWARE_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 597.832% | 204.905% | 2.918× | 392.927pp | -633.484pp | 69.51% | 7 |
 | `BOTTOM_B_DELAYED_LOWER_TOP` | PBF_LONG | VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 474.956% | 121.263% | 3.917× | 353.693pp | -91.531pp | 81.88% | 2 |
 | `BOTTOM_A_PROTECTIVE_TRAIL` | ARM_LONG | VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 991.938% | 126.604% | 7.835× | 865.334pp | -161.096pp | 68.83% | 24 |
 | `BOTTOM_B_DELAYED_LOWER_TOP` | MU_LONG | VEC_REGIME_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 631.167% | 204.905% | 3.080× | 426.262pp | -490.198pp | 71.44% | 5 |
@@ -195,9 +198,6 @@ The full-period MU multiple is an optimization-screen headline, not a robust cla
 | `BOTTOM_A_PROTECTIVE_TRAIL` | LDOS_SHORT | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 36.042% | 37.502% | 0.961× | -1.460pp | -31.715pp | 10.53% | 60 |
 | `EXIT_MTF_ATR_TRAIL` | LDOS_SHORT | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 245.836% | 37.502% | 6.555× | 208.334pp | -103.511pp | 40.83% | 22 |
 | `BOTTOM_A_PROTECTIVE_TRAIL` | LAC_SHORT | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 67.941% | 36.977% | 1.837× | 30.964pp | -41.392pp | 11.75% | 22 |
-| `BOTTOM_A_PROTECTIVE_TRAIL` | LAC_SHORT | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 383.197% | 36.977% | 10.363× | 346.220pp | -114.591pp | 35.89% | 18 |
-| `BOTTOM_A_PROTECTIVE_TRAIL` | INTC_LONG | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 852.743% | 139.232% | 6.125× | 713.511pp | -111.274pp | 92.18% | 6 |
-| `BOTTOM_A_PROTECTIVE_TRAIL` | INTC_LONG | VEC_ENTRY_EXIT_BEAM_UNTOUCHED_OOS | FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD; return=CAPITAL_RETURN_PCT (NONE_SINGLE_FOLD); TIM=PCT (NONE_SINGLE_FOLD) | GRAY_REJECTED | 421.547% | 139.232% | 3.028× | 282.315pp | -532.415pp | 77.66% | 55 |
 
 Metric guardrail: `VEC_NESTED_FOLD_AGGREGATE` returns are sums of outer-validation-fold capital-return percentages and are not a single holdout return. Only `FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD` rows use single-fold capital-return percentages; `LEGACY_UNSCOPED` rows are historical evidence and must not drive promotion.
 
@@ -207,7 +207,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 963 | 2026-07-27T00:27:08Z | 3m |
+| ENGINE | stocks_repaired_20260725_c2 | 987 | 2026-07-27T00:59:51Z | 10m |
 
 ## Reading the matrix
 
