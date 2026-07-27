@@ -530,6 +530,11 @@ def load_path_fleet_progress() -> dict:
         row["tim_aggregation"] = (
             payload.get("tim_aggregation") or "LEGACY_UNSCOPED"
         )
+        row["tim_metric"] = payload.get("tim_metric")
+        row["tim_binary_pct"] = payload.get("tim_binary_pct")
+        row["tim_weighted_pct"] = payload.get("tim_weighted_pct")
+        row["capital_base_usd"] = payload.get("capital_base_usd")
+        row["fold"] = payload.get("fold")
     try:
         universe = json.loads(universe_path.read_text())
     except (OSError, json.JSONDecodeError):
@@ -542,6 +547,29 @@ def load_path_fleet_progress() -> dict:
         "rows": rows,
         "universe": universe,
     }
+
+
+def format_fleet_metric_scope(row: dict) -> str:
+    """Human-readable scope without hiding binary/weighted exact TIM."""
+    scope = row.get("metric_scope") or "LEGACY_UNSCOPED"
+    ret = row.get("return_unit") or "LEGACY_UNSCOPED"
+    ret_agg = row.get("return_aggregation") or "LEGACY_UNSCOPED"
+    tim_unit = row.get("tim_unit") or "LEGACY_UNSCOPED"
+    tim_agg = row.get("tim_aggregation") or "LEGACY_UNSCOPED"
+    parts = [
+        f"{scope}",
+        f"return={ret} ({ret_agg})",
+        f"TIM={tim_unit} ({tim_agg})",
+    ]
+    binary = row.get("tim_binary_pct")
+    weighted = row.get("tim_weighted_pct")
+    if binary is not None or weighted is not None:
+        parts.append(
+            f"binary={fmt(binary, 3, '%')}; weighted={fmt(weighted, 3, '%')}"
+        )
+    if row.get("fold"):
+        parts.append(f"fold={row['fold']}")
+    return "; ".join(parts)
 
 
 def main() -> None:
@@ -1302,11 +1330,7 @@ def main() -> None:
                 f"| `{row.get('path_id') or '—'}` | "
                 f"{row.get('symbol') or '—'}_{row.get('side') or '—'} | "
                 f"{row.get('stage') or '—'} | "
-                f"{row.get('metric_scope') or 'LEGACY_UNSCOPED'}; "
-                f"return={row.get('return_unit') or 'LEGACY_UNSCOPED'} "
-                f"({row.get('return_aggregation') or 'LEGACY_UNSCOPED'}); "
-                f"TIM={row.get('tim_unit') or 'LEGACY_UNSCOPED'} "
-                f"({row.get('tim_aggregation') or 'LEGACY_UNSCOPED'}) | "
+                f"{format_fleet_metric_scope(row)} | "
                 f"{row.get('status') or '—'} | "
                 f"{fmt(strategy, 3, '%')} | {fmt(bh, 3, '%')} | "
                 f"{fmt(multiple, 3)}× | {fmt(row.get('alpha_vs_bh_pp'), 3, 'pp')} | "

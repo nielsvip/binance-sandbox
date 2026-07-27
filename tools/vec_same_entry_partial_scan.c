@@ -100,9 +100,17 @@ int vec_same_entry_partial_scan(
 
     for (int i=left; i<right; ++i) {
         double op=open_[i], cp=close[i];
+        /* The adapter must pass the resolved availability clock in ts. */
+        if (i>left && ts[i]<ts[i-1]) return 4;
         if (pending) {
-            if (pending_signal+1!=i) return 2;
-            if ((pending==2 || pending==3) && qty>1e-12) {
+            /*
+             * Several synthetic 5m rows can be released by one 15m parent
+             * close.  They are one observation batch, so a signal from that
+             * batch fills only on the first strictly later availability.
+             */
+            if (ts[i]<ts[pending_signal]) return 2;
+            if (ts[i]>ts[pending_signal] &&
+                (pending==2 || pending==3) && qty>1e-12) {
                 double px=op*(1.0-side*slippage);
                 double close_qty=pending==2 ? qty*pending_fraction : qty;
                 close_qty=dmin(qty,dmax(0.0,close_qty));
@@ -132,7 +140,8 @@ int vec_same_entry_partial_scan(
                 }
                 out->technical_exit_fills++;
                 if (qty<=1e-12) { qty=0.0; avg_entry=NAN; }
-            } else if (pending==1) {
+                pending=0;
+            } else if (ts[i]>ts[pending_signal] && pending==1) {
                 double px=op*(1.0+side*slippage);
                 double current=qty*px;
                 double want=pending_abs
@@ -149,12 +158,12 @@ int vec_same_entry_partial_scan(
                     qty=new_qty; out->entry_fills++;
                     peak_post=dmax(peak_post,qty*px);
                 }
+                pending=0;
             }
-            pending=0;
         }
 
         /* Every partial/full clip owns a persistent, independently fillable reclaim. */
-        for (int j=0; j<obligation_count;) {
+        for (int j=0; !pending && j<obligation_count;) {
             Obligation *o=&obligations[j];
             if (i<=o->created_row) { ++j; continue; }
             /* When the account is at capacity, no obligation can fill. */
@@ -197,6 +206,9 @@ int vec_same_entry_partial_scan(
         weighted += dmin(CAPACITY,qty*cp)/CAPACITY;
         held += qty>1e-12;
         if (equity<=0.0) out->insolvent=1;
+
+        /* A pending order suppresses sibling signals in its source batch. */
+        if (pending) continue;
 
         int slow_trigger=slow_mode==2 && slow_event[i];
         if (slow_mode==1 && isfinite(slow_raw_stop[i]) &&

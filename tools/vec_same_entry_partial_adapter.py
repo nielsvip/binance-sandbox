@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 from tools import vec_partial_regime_walkforward as partial  # noqa: E402
 from tools import vec_same_entry_exit_adapter as shared  # noqa: E402
 from tools import vec_band_ladder_walkforward as ladder  # noqa: E402
+from tools.research_availability_clock import CLOCK_CONTRACT  # noqa: E402
 
 
 C_SOURCE = ROOT / "tools" / "vec_same_entry_partial_scan.c"
@@ -108,6 +109,25 @@ def _library() -> ctypes.CDLL:
     lib.vec_same_entry_partial_scan.restype = ctypes.c_int
     _LIBRARY = lib
     return lib
+
+
+def require_resolved_availability_clock(data: Any) -> None:
+    """Fail closed unless ``ts`` is the shared ordered observation clock."""
+    contract = getattr(data, "availability_clock", None)
+    if not isinstance(contract, dict) or contract.get("kind") != CLOCK_CONTRACT:
+        raise RuntimeError(
+            "same-entry partial scanner requires the resolved parent-close "
+            f"availability clock {CLOCK_CONTRACT}"
+        )
+    ts = np.asarray(data.ts, dtype=np.int64)
+    if np.any(ts[1:] < ts[:-1]):
+        raise RuntimeError("same-entry partial availability clock is unsorted")
+    if not np.array_equal(
+        ts, np.asarray(getattr(data, "availability_ts", ()), dtype=np.int64)
+    ):
+        raise RuntimeError(
+            "same-entry partial ts differs from resolved availability_ts"
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -226,6 +246,7 @@ def _scan(
     slippage: float,
     side: str,
 ) -> dict[str, Any]:
+    require_resolved_availability_clock(data)
     fast = components[setting.fast_family]
     slow = (
         components["E01"]

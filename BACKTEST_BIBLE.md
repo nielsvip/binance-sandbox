@@ -1888,6 +1888,40 @@ test, rollback and hashes are in
 `MATRIX_WATCHDOG_DETACH_REPAIR_20260727.md`; the machine receipt is
 `data/reports/MATRIX_WATCHDOG_AUDIT_20260727.json`.
 
+### §15.29 — two-book SHORT-native phase 2 (2026-07-27)
+
+The next SHORT screen stopped treating corrections as inverse LONGs. Its
+bull-regime book armed only at a completed overbought 4h/D top, then required
+a completed 1h lower-high/lower-low break, bearish WT rollover or their
+preregistered combination. Its bear book required an established D/4h bear
+state plus a failed reclaim or persistent downside break. The 192 data-valid
+candidate pairs explicitly covered downside velocity/acceleration, ATR and
+volume expansion, failed reclaim, structure persistence, peak/SMA distance and
+regime. Covers were downside exhaustion, bullish structural reclaim, ATR
+volatility trail, max hold and a rare emergency—not generic inverse-LONG exits.
+
+D1 and D2 were run first with the shared parent-close clock, adverse SHORT
+fills, $2,000 comparison unit, $10,000 solvency ledger, $16,000 capacity and
+`max(short B&H, cash=0)` in every discovery fold. The complete discovery grid
+and one setting per key were persisted before FINAL was opened. MRVL had 5/24
+discovery passes, LRCX 2/24 and PLTR 2/24, but their frozen FINAL returns were
+-6.89%, -45.60% and +6.73% versus respective floors 0%, 0% and 31.04%.
+IBIT was positive in every fold but made only +8.74% versus +28.32% short B&H
+in FINAL at 5.82% binary TIM. All other data-valid keys failed discovery.
+MSTR and COIN remained fail-closed data errors. There were zero exact
+finalists and no matrix or live change.
+
+Eight attributable rows were appended to the fleet as gray vector research;
+an idempotence run skipped all eight. The current LRCX §15.25 exact row was
+separately repaired metadata-only: its unchanged +9.653406% fixed-$2,000
+FINAL return now carries
+`FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD`, and the digest displays its
+unchanged 4.214247% binary and 0.763120% weighted TIM instead of
+`LEGACY_UNSCOPED`. Full folds, contract hashes, fleet backups, diagnosis and
+rollback are in `SHORT_NATIVE_PHASE2_RESULTS_20260727.md`; canonical machine
+evidence is
+`data/reports/vec_research/short_native_phase2_20260727T031824Z/`.
+
 ### §15.31 — causal top exits with guaranteed reclaim, phase 3 (2026-07-27)
 
 The next LONG top-harvest pass froze the accepted ladder requests and screened

@@ -19,6 +19,32 @@ PATH_ID = "ENTRY_DISASTER_GUARD_ENABLED"
 INVALID = "INVALIDATED_REVERSED_SLIPPAGE"
 
 
+def exact_metric_scope(summary: dict, spec: dict) -> dict:
+    """Explicit units for the single FINAL exact receipt.
+
+    ``tim_pct`` in the fleet schema remains the existing binary TIM number;
+    weighted TIM is retained beside it.  This metadata changes no result.
+    """
+    tim = summary["audit"]["schedule"]["time_in_market"]
+    boundaries = spec.get("fold_boundaries") or {}
+    return {
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "fold": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_unit": "FIXED_2000_USD_CAPITAL_RETURN_PCT",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "capital_base_usd": 2000,
+        "tim_unit": "PCT",
+        "tim_metric": "BINARY_AND_EXPOSURE_WEIGHTED_TIME_IN_MARKET",
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_binary_pct": tim["actual_binary_pct"],
+        "tim_weighted_pct": tim["actual_weighted_pct"],
+        "validation_window": {
+            "start": boundaries.get("validation_start"),
+            "end_exclusive": boundaries.get("validation_end_exclusive"),
+        },
+    }
+
+
 def _passes(summary: dict) -> bool:
     audit = summary.get("audit") or {}
     schedule = audit.get("schedule") or {}
@@ -162,6 +188,7 @@ def main() -> int:
                 "invalidated; parity evidence cannot promote"
             ),
             "promotion_allowed": False,
+            **exact_metric_scope(summary, spec),
         }
         path = out / f"{spec['symbol']}_SHORT_exact.json"
         fleet.atomic_json(path, payload)

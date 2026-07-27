@@ -214,3 +214,59 @@ def test_path_fleet_loader_exposes_metric_scope_and_units(tmp_path, monkeypatch)
         progress["rows"][0]["tim_aggregation"]
         == payload["tim_aggregation"]
     )
+
+
+def test_exact_short_scope_renders_fixed_unit_and_both_tim_measures(
+    tmp_path, monkeypatch
+):
+    reports = tmp_path / "reports"
+    root = reports / "path_fleet"
+    root.mkdir(parents=True)
+    (root / "universe.json").write_text("{}")
+    con = sqlite3.connect(root / "queue.db")
+    con.executescript(
+        """
+        CREATE TABLE jobs (
+          id INTEGER PRIMARY KEY,path_id TEXT,status TEXT,heartbeat_at REAL
+        );
+        CREATE TABLE results (
+          id INTEGER PRIMARY KEY,job_id INTEGER,symbol TEXT,side TEXT,
+          stage TEXT,status TEXT,strategy_return_pct REAL,bh_return_pct REAL,
+          same_entry_control_return_pct REAL,alpha_vs_bh_pp REAL,
+          alpha_vs_control_pp REAL,tim_pct REAL,trades INTEGER,created_at REAL,
+          payload_json TEXT
+        );
+        INSERT INTO jobs VALUES(1,'ENTRY_DISASTER_GUARD_ENABLED','SCREENED',1);
+        """
+    )
+    payload = {
+        "metric_scope": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "fold": "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD",
+        "return_unit": "FIXED_2000_USD_CAPITAL_RETURN_PCT",
+        "return_aggregation": "NONE_SINGLE_FOLD",
+        "capital_base_usd": 2000,
+        "tim_unit": "PCT",
+        "tim_metric": "BINARY_AND_EXPOSURE_WEIGHTED_TIME_IN_MARKET",
+        "tim_aggregation": "NONE_SINGLE_FOLD",
+        "tim_binary_pct": 4.2142468733,
+        "tim_weighted_pct": 0.7631200384,
+    }
+    con.execute(
+        """INSERT INTO results VALUES
+           (1,1,'LRCX','SHORT','V8_EXACT_REPLAY','EXACT_PARITY_ONLY',
+            9.6534,-69.9969,9.6534,79.6503,0,4.2142,8,1,?)""",
+        (json.dumps(payload),),
+    )
+    con.commit()
+    con.close()
+    monkeypatch.setattr(digest, "REPORTS", reports)
+
+    row = digest.load_path_fleet_progress()["rows"][0]
+    rendered = digest.format_fleet_metric_scope(row)
+
+    assert row["metric_scope"] == "FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD"
+    assert row["return_unit"] == "FIXED_2000_USD_CAPITAL_RETURN_PCT"
+    assert row["tim_binary_pct"] == payload["tim_binary_pct"]
+    assert row["tim_weighted_pct"] == payload["tim_weighted_pct"]
+    assert "binary=4.214%" in rendered
+    assert "weighted=0.763%" in rendered

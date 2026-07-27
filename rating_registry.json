@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T03:18:29.064380+00:00",
+  "timestamp": "2026-07-27T03:33:33.790812+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,12 +35,6 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
-    },
-    {
-      "symbol": "1000XECUSDT",
-      "net_score": -10.6,
-      "long_score": 0,
-      "short_score": 10.6
     },
     {
       "symbol": "TIAUSDC",
@@ -182,12 +176,6 @@
     },
     {
       "symbol": "ARKMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -613,6 +601,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000XECUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -733,6 +727,12 @@
       "short_score": 0
     },
     {
+      "symbol": "APEUSDT",
+      "net_score": 14.3,
+      "long_score": 14.3,
+      "short_score": 0
+    },
+    {
       "symbol": "MRVLUSDT",
       "net_score": 16.4,
       "long_score": 16.4,
@@ -787,14 +787,14 @@
       "short_score": 0
     }
   ],
-  "top_longs": [],
-  "top_shorts": [
+  "top_longs": [
     [
-      "1000XECUSDT",
-      10.6,
-      0.006512
+      "APEUSDT",
+      14.3,
+      0.14669208
     ]
   ],
+  "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,

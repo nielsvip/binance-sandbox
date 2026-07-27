@@ -90,6 +90,7 @@ def _scan(
     slippage: float,
     side: str,
 ) -> dict[str, Any]:
+    compiled.require_resolved_availability_clock(data)
     n = len(data.ts)
     zero = np.zeros(n, dtype=np.uint8)
     zero_source = np.zeros(n, dtype=np.int64)
