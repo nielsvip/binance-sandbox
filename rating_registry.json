@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T03:03:08.562730+00:00",
+  "timestamp": "2026-07-27T03:18:29.064380+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -35,6 +35,12 @@
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
+    },
+    {
+      "symbol": "1000XECUSDT",
+      "net_score": -10.6,
+      "long_score": 0,
+      "short_score": 10.6
     },
     {
       "symbol": "TIAUSDC",
@@ -313,6 +319,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BEATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "LTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -368,12 +380,6 @@
     },
     {
       "symbol": "ARUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "VIRTUALUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -565,12 +571,6 @@
       "short_score": 0
     },
     {
-      "symbol": "ADAUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "STXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -613,7 +613,7 @@
       "short_score": 0
     },
     {
-      "symbol": "1000XECUSDT",
+      "symbol": "ATOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -697,25 +697,25 @@
       "short_score": 0
     },
     {
-      "symbol": "ATOMUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "1000FLOKIUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "OPUSDT",
+      "symbol": "ADAUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "BEATUSDT",
+      "symbol": "VIRTUALUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -788,7 +788,13 @@
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "1000XECUSDT",
+      10.6,
+      0.006512
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
