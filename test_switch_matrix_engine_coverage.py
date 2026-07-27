@@ -126,3 +126,15 @@ def test_current_engine_pack_rows_are_visible_but_vec_unknowns_are_not():
     assert ("KNOWN_SWITCH", "false") in engine_rows
     assert ("STOP_PACK", "bb_frozen_d") not in vec_rows
     assert ("KNOWN_SWITCH", "false") in vec_rows
+
+
+def test_historical_campaign_cannot_overwrite_canonical_matrix_filename():
+    assert export.output_suffix(
+        "ENGINE", export.CURRENT_ENGINE_CAMPAIGN
+    ) == ""
+    assert export.output_suffix(
+        "ENGINE", "stocks_baseline_v2_s4h"
+    ) == "_ENGINE_HIST_STOCKS_BASELINE_V2_S4H"
+    assert export.output_suffix(
+        "VEC", "stocks_baseline_v2_s4h"
+    ) == "_VEC_DIAGNOSTIC"

@@ -22,6 +22,7 @@ import csv
 import gzip
 import json
 import os
+import re
 import sqlite3
 import time
 import zipfile
@@ -65,6 +66,18 @@ def norm_val(v):
         return str(int(f)) if f == int(f) else str(f)
     except (TypeError, ValueError, OverflowError):
         return low
+
+
+def output_suffix(tier, campaign):
+    """Return a collision-safe report suffix for one evidence campaign."""
+    if tier == "VEC":
+        return "_VEC_DIAGNOSTIC"
+    if campaign == CURRENT_ENGINE_CAMPAIGN:
+        return ""
+    campaign_slug = re.sub(
+        r"[^A-Za-z0-9]+", "_", str(campaign or "ALL")
+    ).strip("_").upper()
+    return f"_ENGINE_HIST_{campaign_slug}"
 
 
 def manifest_rows(mode="tradier", actionable=True):
@@ -590,7 +603,10 @@ def main():
         # a repaired cell was still blank.  ENGINE now defaults to the exact repaired campaign;
         # historical campaigns remain queryable only by naming one explicitly.
         a.campaign = CURRENT_ENGINE_CAMPAIGN
-    suffix = "" if a.tier == "ENGINE" else "_VEC_DIAGNOSTIC"
+    # A long-lived report job used an explicit pre-repair campaign and
+    # repeatedly overwrote SWITCH_MATRIX_TRB.xlsx with a historical 10-sheet
+    # view. Historical campaigns now always receive their own filename.
+    suffix = output_suffix(a.tier, a.campaign)
     OUT_XLSX = BASE / "data" / "reports" / f"SWITCH_MATRIX_{a.account.upper()}{suffix}.xlsx"
     OUT_CSV = BASE / "data" / "reports" / f"SWITCH_MATRIX_{a.account.upper()}{suffix}.csv.gz"
     cols = key_columns(a.account)
