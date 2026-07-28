@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-28 01:30:45Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-28 02:30:41Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-28T01:30:25Z` (0m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-28T01:30:25Z` (0m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **1,069**; new current rows in 24h: **1,069**.
-- Raw repaired-campaign pilot rows since cutoff: **1,069**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,691**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-28T02:27:04Z` (3m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-28T02:27:04Z` (3m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **1,111**; new current rows in 24h: **1,111**.
+- Raw repaired-campaign pilot rows since cutoff: **1,111**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,733**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 01:30:45Z (0m old, 404,903 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 01:30:06Z (0m old, 38,226 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 02:30:40Z (0m old, 405,339 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 02:30:04Z (0m old, 38,246 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 265/3,522 | 7.5% | 2026-07-28T01:30:07Z | 0m | 127 |
-| VT_LONG | 722/3,522 | 20.5% | 2026-07-28T01:30:25Z | 0m | 461 |
+| MU_LONG | 278/3,522 | 7.9% | 2026-07-28T02:26:22Z | 4m | 127 |
+| VT_LONG | 751/3,522 | 21.3% | 2026-07-28T02:27:04Z | 3m | 461 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 1,069 | 2026-07-28T01:30:25Z | 0m |
+| ENGINE | stocks_repaired_20260725_c2 | 1,111 | 2026-07-28T02:27:04Z | 3m |
 
 ## Reading the matrix
 
