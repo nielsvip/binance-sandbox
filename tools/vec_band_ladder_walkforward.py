@@ -493,7 +493,26 @@ def _simulate(
         - 2.0 * commission_rate * BASE_UNIT
     )
     bars = right - left
+    # Capital actually committed, averaged over every bar in the window. This is
+    # the denominator the strategy leg earned its P&L on; B&H earned its on BASE_UNIT.
+    avg_deployed = (weighted_exposure / bars) * CAPACITY if bars > 0 else 0.0
     return {
+        # EQUAL-CAPITAL METRICS (2026-07-28). `capital_return_pct` divides by the
+        # $2,000 label while the position may hold up to CAPACITY, and the B&H leg
+        # is always 1.0x BASE_UNIT. Comparing them is a leverage comparison, not an
+        # alpha comparison (Bible §15.41). These report what each leg earned per
+        # dollar actually committed, so `honest_bh_multiple` > 1 means the
+        # entry/exit logic beat buy-and-hold on equal capital. Sizing is a separate,
+        # legitimate multiplier on top — it just has to be sizing live can execute.
+        "avg_deployed_usd": avg_deployed,
+        "return_on_deployed_pct": (100.0 * strategy_pnl / avg_deployed) if avg_deployed > 0 else 0.0,
+        "bh_return_on_deployed_pct": 100.0 * bh_pnl / BASE_UNIT,
+        "honest_bh_multiple": (
+            (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)
+            if avg_deployed > 0 and bh_pnl != 0
+            else 0.0
+        ),
+        "implied_leverage_x": (avg_deployed / BASE_UNIT) if BASE_UNIT > 0 else 0.0,
         "capital_return_pct": 100.0 * strategy_pnl / BASE_UNIT,
         "side": side,
         "account_return_pct": 100.0 * strategy_pnl / ACCOUNT_EQUITY,
@@ -839,6 +858,9 @@ def _self_test() -> None:
 
 
 def main() -> None:
+    # Sizing is read as module state by the pure simulation helpers, so it is
+    # rebound here once rather than threaded through every call.
+    global BASE_UNIT, CAPACITY, ACCOUNT_EQUITY, MAX_MULT
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="MU")
     ap.add_argument("--side", default="LONG", choices=("LONG", "SHORT"))
@@ -847,6 +869,11 @@ def main() -> None:
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end")
     ap.add_argument("--exit-n", type=int, default=30)
+    ap.add_argument("--base-unit", type=float, default=BASE_UNIT)
+    ap.add_argument("--capacity", type=float, default=CAPACITY,
+                    help="Max entry notional per key. Set equal to --base-unit for an "
+                         "unlevered, equal-capital comparison against buy-and-hold.")
+    ap.add_argument("--account-equity", type=float, default=ACCOUNT_EQUITY)
     ap.add_argument("--tim-lo", type=float, default=0.0)
     ap.add_argument("--tim-hi", type=float, default=100.0)
     ap.add_argument("--tim-weight", type=float, default=0.0)
@@ -867,6 +894,15 @@ def main() -> None:
     if args.self_test:
         _self_test()
         return
+    # Sizing is read as module state by the pure simulation helpers, so rebind it
+    # once here rather than threading four extra parameters through every call.
+    global BASE_UNIT, CAPACITY, ACCOUNT_EQUITY, MAX_MULT
+    BASE_UNIT = float(args.base_unit)
+    CAPACITY = float(args.capacity)
+    ACCOUNT_EQUITY = float(args.account_equity)
+    if CAPACITY < BASE_UNIT:
+        raise SystemExit("--capacity must be >= --base-unit")
+    MAX_MULT = CAPACITY / BASE_UNIT
     if args.symbol.upper() == "HAO":
         # HAO may only proceed after the same ladder data contract passes.
         # ``_load_execution`` enforces that contract and raises with the exact
