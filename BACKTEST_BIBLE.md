@@ -1,5 +1,12 @@
 # 📖 BACKTEST BIBLE — THE single source of truth for all backtesting
 
+> 🛑 **BEFORE ANY MATRIX WORK: `python3 tools/matrix_guard.py`.** The matrix is
+> `data/reports/SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz` and nothing
+> else. `data/matrix_npz/*` are NPZ inputs; `vec_research/band_ladder_walkforward_*` is a
+> discarded lane. Both have been mistaken for the matrix at a cost of days.
+> State 2026-07-28: 471,366 cells, **11.32% filled**. See `MATRIX_FILL_HANDOFF_20260728.md`.
+
+
 **EVERY agent MUST read this before running, reading, storing, or applying any backtest.**
 It supersedes scattered backtest rules in CLAUDE.md (which now points here). If this doc and
 older notes conflict, THIS wins. Last rewritten 2026-07-01.

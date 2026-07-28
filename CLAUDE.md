@@ -251,6 +251,30 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 
 ---
 
+## 🛑 STEP -1 — MATRIX WORK: RUN THE GUARD FIRST (2026-07-28, after a wasted session)
+
+```bash
+python3 tools/matrix_guard.py
+```
+
+**THE MATRIX IS `data/reports/SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz`.
+Nothing else.** If your work is not moving the numbers that script prints, you are
+working on the wrong thing — STOP.
+
+Three artifacts have each been mistaken for it, costing days each time:
+`data/matrix_npz/*` (pinned NPZ **inputs**, misread as "the matrix has 2 keys"),
+`data/reports/vec_research/band_ladder_walkforward_*` (the band-ladder lane —
+383 keys ranked for nothing, discarded by USER as "fake numbers"), and
+`SWITCH_MATRIX_TRB.csv.gz` without the `_ENGINE_HIST_` suffix.
+
+Current state: **471,366 cells, 11.32% filled, 418,022 empty.** 1,842 rows
+`NOT_ENGINE_TESTED`, 1,339 `DEGENERATE`. Procedure and the 13,964-cell pilot queue:
+[`MATRIX_FILL_HANDOFF_20260728.md`](MATRIX_FILL_HANDOFF_20260728.md).
+**Fill the 5 pilots (MU_LONG, NVDA_LONG, VT_LONG, TTD_SHORT, ACN_SHORT) — every
+path AND subpath — before any reduced 1/5 or 1/10 sampling is even discussed.**
+
+---
+
 ## STEP 0 — Every Conversation Start
 1. Read STATE OF AFFAIRS at bottom.
 2. Read `100.md` — master audit (Parts 1–15). Skim headers, read relevant.
