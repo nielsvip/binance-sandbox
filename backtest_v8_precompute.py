@@ -1655,7 +1655,17 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # linreg_features; vectorization identical to tools/bt_band_bounce.rolling_channel which
     # is parity-asserted per-symbol against the live scalar function. lr_pct_b_* above stay
     # legacy Bollinger aliases — lrL_* are the REAL channel (BAND_SLOPE_SIZING_V2 + band entry).
-    _lrL_lengths = {"1h": 200, "4h": 200, "D": 300} if mode == "crypto" else {"1h": 200, "4h": 400, "D": 200}
+    # 2026-07-28: 15m/5m added. Only 1h/4h/D existed, which is why the band ladder
+    # could never use a lower timeframe as principal (`vec_band_ladder_walkforward`
+    # dies on `KeyError: lrL_pct_b_15m`) and why short-history symbols such as HAO
+    # (~75 daily bars) can produce no 4h/D channel at all and fail the data
+    # contract outright. Lengths stay ~200 bars per timeframe so the window is a
+    # comparable amount of structure, not a comparable amount of wall-clock.
+    _lrL_lengths = (
+        {"1h": 200, "4h": 200, "D": 300, "15m": 200, "5m": 200}
+        if mode == "crypto"
+        else {"1h": 200, "4h": 400, "D": 200, "15m": 200, "5m": 200}
+    )
     def _lrL_channel(y: np.ndarray, L: int):
         n_ = len(y)
         out_pb = np.full(n_, 0.5, dtype=np.float32)
