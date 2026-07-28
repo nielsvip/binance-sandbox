@@ -1,30 +1,30 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-28 03:31:02Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-28 04:10:49Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-28T03:23:00Z` (8m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-28T03:23:00Z` (8m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **1,144**; new current rows in 24h: **1,129**.
-- Raw repaired-campaign pilot rows since cutoff: **1,144**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,766**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-28T04:09:12Z` (1m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-28T04:09:20Z` (1m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **1,155**; new current rows in 24h: **1,122**.
+- Raw repaired-campaign pilot rows since cutoff: **1,155**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,777**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 03:31:01Z (0m old, 405,710 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 03:30:10Z (0m old, 38,312 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 04:10:48Z (0m old, 405,797 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 04:10:06Z (0m old, 38,331 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
 
 Historical native 5m availability is provider-limited. Older rows use the disclosed containing-15m interpolation; native bars replace it permanently as they are collected.
-Retention report scope: **224 symbols**, **224 native archives**, **6,864,191 native rows**, **0 availability warnings**, **0 hard errors**.
+Retention report scope: **224 symbols**, **224 native archives**, **6,893,108 native rows**, **0 availability warnings**, **0 hard errors**.
 
 | key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |
 |---|---:|---:|---|---:|---:|---|
-| MU_LONG | 15526 | — | 2026-03-23 → 2026-07-24 | — | — | PASS |
-| VT_LONG | 41190 | — | 2024-07-11 → 2026-07-24 | — | — | PASS |
-| HAO_SHORT | 5977 | — | 2026-04-09 → 2026-07-24 | — | — | PASS |
+| MU_LONG | 15766 | — | 2026-03-23 → 2026-07-27 | — | — | PASS |
+| VT_LONG | 41310 | — | 2024-07-11 → 2026-07-27 | — | — | PASS |
+| HAO_SHORT | 6174 | — | 2026-04-09 → 2026-07-27 | — | — | PASS |
 
 The append/merge ledger blocks any refresh that shrinks native row count, advances the first timestamp, regresses the last timestamp, or introduces duplicate/out-of-order timestamps. `synthetic_5m_parent_close_ts` records the bounded 0/5/10-minute parent lag.
 
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 287/3,522 | 8.1% | 2026-07-28T03:02:51Z | 28m | 127 |
-| VT_LONG | 775/3,522 | 22.0% | 2026-07-28T03:23:00Z | 8m | 468 |
+| MU_LONG | 290/3,522 | 8.2% | 2026-07-28T03:52:19Z | 18m | 130 |
+| VT_LONG | 783/3,522 | 22.2% | 2026-07-28T04:09:12Z | 1m | 468 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -68,14 +68,14 @@ These historical rows are retained for diagnosis and excluded from the automatic
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-28T03:52:19Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=125` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T03:48:14Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=100` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T03:46:11Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=50` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-28T01:08:50Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=45` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-28T01:07:59Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=37.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-28T00:53:11Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=30` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-28T00:52:39Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=22.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-28T00:52:20Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:39:52Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=45` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:39:21Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=37.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:38:53Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=30` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -136,7 +136,7 @@ E12 reports net realized partial P&L separately. Positive partial clips do not c
 
 | key | frozen OOS strategy | B&H | multiple | weighted TIM | exact-engine parity | verdict |
 |---|---:|---:|---:|---:|---|---|
-| MU_LONG | 338.625% | 381.950% | 0.887× | 90.85% | PASS | REJECT / NO PROMOTION |
+| MU_LONG | 1093.418% | 381.950% | 2.863× | 84.49% | PASS | RESEARCH EDGE; PROMOTION BLOCKED |
 | VT_LONG | -32.869% | 13.786% | -2.384× | 49.63% | PENDING | REJECT / NO PROMOTION |
 | HAO_SHORT | — | — | — | — | — | QUARANTINED / INVALID DATA |
 
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 1,144 | 2026-07-28T03:23:00Z | 8m |
+| ENGINE | stocks_repaired_20260725_c2 | 1,155 | 2026-07-28T04:09:12Z | 1m |
 
 ## Reading the matrix
 
