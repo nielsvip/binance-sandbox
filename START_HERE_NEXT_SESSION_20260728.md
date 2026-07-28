@@ -69,6 +69,82 @@ you have 6x b&h."** Codex's fixes reached **2–20× b&h**. Anything below 1× i
 
 ---
 
+## 1b. DEFECTS FOUND **IN THE CODEX SYSTEM** — fix these to get back to 2–20× b&h
+
+The Codex work is the right foundation and is intact (immutable archives in
+`data/npz_recovery/`; pinned `matrix_npz/.../MU.npz` 2026-07-25, `VT.npz`
+2026-07-26 — both original and read-only). But it has defects that explain why the
+2–20× results never generalised. **Verify each independently before acting — the
+previous session's own metrics were wrong three times, so treat this list as
+leads with evidence, not settled fact.**
+
+**A. THE BASELINE IS NOT B&H — this is the big one.** `stocks_repaired_20260725_c2`'s
+`key_baseline` is the *live config trading*, not stage 0: VT_LONG **497 trades,
+capture −1.028**; NVDA_LONG 215 trades, capture −0.082. A stage-0 floor is 1 trade,
+~100% TIM, return == B&H. Every cell in that campaign is measured against a losing
+baseline. **Re-baseline to the true B&H floor before filling another cell.**
+Confidence: high — the trade counts prove it directly.
+
+**B. The campaign could only ever cover 2 keys.**
+`data/matrix_npz/stocks_repaired_20260725_c2/` contained exactly `MU.npz` and
+`VT.npz`. The daemon reads NPZs only from there, so every other key fails with
+`indicator NPZ does not exist`. That is why the repaired campaign shows 4 keys
+against the older campaign's 199. Pin an NPZ per key (copy from
+`backtest_v8/indicators/`, `chmod 444`). Confidence: high — verified by listing.
+
+**C. 91.9% of repaired-campaign cells are inert** (vs 20.3% in the older one).
+Baseline was fixed; switch discrimination was not. Ties directly to the 1,339
+`DEGENERATE` rows. Confidence: high — from `param_cells`.
+
+**D. Short-side stage-0 seeding fails systematically.** Every SHORT pilot dies with
+`no intended-side trade/MTM record` (TTD_SHORT, ACN_SHORT — different symbols, same
+failure). The seed must bypass entry gates, fill, and be verified by
+`entry_reason=V8_LADDER_INITIAL_BH_SEED` (§15.1). Until fixed, **no short can be
+baselined at all**, which alone would cap the system well below its potential.
+Confidence: high — reproduced on two symbols.
+
+**E. The "exact replay" never calls the real engine.**
+`tools/v8_research_ladder_adapter.py` docstring says it replays "through
+`backtest_v8_engine`". It contains no import of and no subprocess call to it, and
+neither do `vec_band_ladder_walkforward.py`, `run_mu_ladder_*.py` or
+`v8_research_short_guard_adapter.py`. So a passing "exact replay" proves Tier-1
+self-consistency, **not** live-path parity. Confidence: high — verified by grep.
+(That file is now in `old/discarded_band_ladder_lane_20260728/`.)
+
+**F. `strategy_bh_multiple` compares a levered leg to an unlevered benchmark.**
+The ladder divides strategy P&L by a $2,000 unit while holding up to $16,000 (the
+cap clips entry fills only, never appreciation — peak mark-to-market measured
+$57,425 on a $10,000 ledger), and the B&H leg is always 1.0× $2,000. Normalising
+both to capital actually deployed gave MU_LONG **1.19×**, not 6.55×.
+**This means some of the headline 2–20× figures may be leverage, not alpha — check
+this before trusting any of them.** Confidence: medium-high on the arithmetic;
+**verify independently**, because the previous session drew two wrong conclusions
+from this same metric before landing here.
+
+**G. Four different B&H bases are in circulation.** `bh_pct` in
+`stocks_repaired_*` is account-based (instrument ÷ 5, because $2,000 is deployed
+on a $10,000 ledger) — MU 133.06 vs a true 665.35. `stocks_baseline_v2_s4h`,
+stage-0 Tier-2, and the ladder folds each use a different base. Ratios *within* a
+campaign are valid; comparing `bh_pct` *across* campaigns is meaningless. Add an
+explicit `bh_base` column; never silently rescale stored rows. Confidence: high —
+the 5× ratio reproduces exactly on two keys.
+
+**H. HAO was kept as a pilot though it is structurally unusable** — 3.5 months of
+history, ~75 daily bars, an unadjusted 137.2% reverse split (2026-06-08), and
+`lrL_pct_b_4h`/`_D` that cannot be computed (4h needs 400 bars, D needs 200). It
+can never satisfy a D/4h contract. Half the original pilot set was therefore dead.
+
+**I. `lrL_pct_b` is computed only for 1h/4h/D** (`backtest_v8_precompute.py:1658`),
+which is why no lower timeframe could ever be principal — a data limitation, not a
+design choice. 15m/5m were added 2026-07-28; `--tfs` accepts any three slots.
+`bb_pct_b` exists on all 7 TFs but is **not** a substitute (corr 0.45–0.60).
+
+**J. Artifact directories collide.** Two runs of the same symbol/side in the same
+second shared a directory; the second died on `FileExistsError` and would have
+overwritten the first's `result.json`. Fixed 2026-07-28.
+
+---
+
 ## 2. WHICH MATRIX — this cost two days, get it right
 
 | campaign | exports to | baseline | keys | inert |
