@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-28 00:30:44Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-28 01:30:45Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-28T00:29:13Z` (1m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-28T00:29:13Z` (1m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **1,036**; new current rows in 24h: **1,036**.
-- Raw repaired-campaign pilot rows since cutoff: **1,036**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,658**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-28T01:30:25Z` (0m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-28T01:30:25Z` (0m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **1,069**; new current rows in 24h: **1,069**.
+- Raw repaired-campaign pilot rows since cutoff: **1,069**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,691**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 00:30:44Z (0m old, 404,556 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 00:30:05Z (0m old, 38,224 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 01:30:45Z (0m old, 404,903 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 01:30:06Z (0m old, 38,226 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 254/3,522 | 7.2% | 2026-07-28T00:19:22Z | 11m | 122 |
-| VT_LONG | 700/3,522 | 19.9% | 2026-07-28T00:29:13Z | 1m | 461 |
+| MU_LONG | 265/3,522 | 7.5% | 2026-07-28T01:30:07Z | 0m | 127 |
+| VT_LONG | 722/3,522 | 20.5% | 2026-07-28T01:30:25Z | 0m | 461 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -68,14 +68,14 @@ These historical rows are retained for diagnosis and excluded from the automatic
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-28T01:08:50Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=45` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T01:07:59Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=37.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T00:53:11Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=30` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T00:52:39Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=22.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
+| 2026-07-28T00:52:20Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-27T23:39:52Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=45` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-27T23:39:21Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=37.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 | 2026-07-27T23:38:53Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=30` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:26:54Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=22.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:26:31Z | stocks_repaired_20260725_c2 | `TRADIER_STOCH_ENTRY_LONG_TRADIER=15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:26:06Z | stocks_repaired_20260725_c2 | `TRADIER_RSI_ENTRY_LONG_TRADIER=-0.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:14:46Z | stocks_repaired_20260725_c2 | `TRADIER_RSI_ENTRY_LONG_TRADIER=-0.75` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-27T23:13:56Z | stocks_repaired_20260725_c2 | `TRADIER_RSI_ENTRY_LONG_TRADIER=-1` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 1,036 | 2026-07-28T00:29:13Z | 1m |
+| ENGINE | stocks_repaired_20260725_c2 | 1,069 | 2026-07-28T01:30:25Z | 0m |
 
 ## Reading the matrix
 
