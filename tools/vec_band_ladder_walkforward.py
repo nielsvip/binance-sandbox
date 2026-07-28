@@ -554,13 +554,43 @@ def _inner_slices(left: int, right: int) -> list[tuple[int, int]]:
     return [(int(edges[i]), int(edges[i + 1])) for i in range(3)]
 
 
-def _score(rows: list[dict[str, Any]]) -> float:
+def _tim_penalty(rows: list[dict[str, Any]], lo: float, hi: float, weight: float) -> float:
+    """Distance of median inner-fold weighted exposure outside the target band.
+
+    USER 2026-07-27 set exposure targets (50-70% for the top ten keys per side,
+    20-50% for the rest). Exposure was previously not part of selection at all,
+    so a curve that made alpha at 90% time-in-market outranked a banded one and
+    the band could only ever be applied as a post-hoc rejection. Making it a
+    selection term is what lets the search find a banded curve instead of
+    discovering afterwards that it did not.
+    """
+    if weight <= 0.0:
+        return 0.0
+    tim = float(np.median([r["exposure_weighted_tim_pct"] for r in rows]))
+    if tim < lo:
+        return weight * (lo - tim)
+    if tim > hi:
+        return weight * (tim - hi)
+    return 0.0
+
+
+def _score(
+    rows: list[dict[str, Any]],
+    tim_lo: float = 0.0,
+    tim_hi: float = 100.0,
+    tim_weight: float = 0.0,
+) -> float:
     alpha = float(np.median([r["alpha_vs_bh_pp"] for r in rows]))
     dd = float(np.max([r["max_drawdown_account_pct"] for r in rows]))
     fill = float(np.min([r["fill_ratio"] for r in rows]))
     # Robust alpha is primary. Drawdown and systematic clipping are explicit
     # tie-break penalties, not hidden post-selection filters.
-    return alpha - 0.20 * dd - 5.0 * max(0.0, 0.75 - fill)
+    return (
+        alpha
+        - 0.20 * dd
+        - 5.0 * max(0.0, 0.75 - fill)
+        - _tim_penalty(rows, tim_lo, tim_hi, tim_weight)
+    )
 
 
 def run(args: argparse.Namespace) -> Path:
@@ -603,7 +633,13 @@ def run(args: argparse.Namespace) -> Path:
                 )
                 for l, r in _inner_slices(tl, tr)
             ]
-            ranked.append((_score(inner), curve, inner))
+            ranked.append(
+                (
+                    _score(inner, args.tim_lo, args.tim_hi, args.tim_weight),
+                    curve,
+                    inner,
+                ),
+            )
         ranked.sort(key=lambda x: (-x[0], x[1].label))
         score, winner, inner = ranked[0]
         validation = _simulate(
@@ -811,6 +847,9 @@ def main() -> None:
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end")
     ap.add_argument("--exit-n", type=int, default=30)
+    ap.add_argument("--tim-lo", type=float, default=0.0)
+    ap.add_argument("--tim-hi", type=float, default=100.0)
+    ap.add_argument("--tim-weight", type=float, default=0.0)
     ap.add_argument("--random-curves", type=int, default=160)
     ap.add_argument("--seed", type=int, default=20260725)
     ap.add_argument("--commission-bps", type=float, default=5.0)

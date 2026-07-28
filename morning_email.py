@@ -581,9 +581,26 @@ def build_account_section(data):
     return html
 
 
+def _market_is_open(now_utc):
+    """RTH is 13:30-20:00 UTC Mon-Fri. Marks are expected to be stale outside it."""
+    if now_utc.weekday() >= 5:
+        return False
+    minutes = now_utc.hour * 60 + now_utc.minute
+    return 810 <= minutes <= 1200
+
+
 def build_sync_health(tra_data, trb_data):
-    """Position file health check — mark price freshness and position counts. No API calls."""
+    """Position file health check — mark price freshness and position counts. No API calls.
+
+    2026-07-28: this function has NEVER compared files to the Tradier API. It measures
+    mark-price staleness only. The old return flag was named `is_synced` and drove a banner
+    claiming "position files do NOT match Tradier API" — a claim this code cannot make, and
+    which fired unconditionally every night and weekend because marks are hours old whenever
+    the market is closed. The flag now means what it measures (marks fresh) and staleness is
+    only a fault during RTH.
+    """
     now_utc = datetime.now(timezone.utc)
+    market_open = _market_is_open(now_utc)
     all_stale = []
     rows = []
     for data in [tra_data, trb_data]:
@@ -597,15 +614,16 @@ def build_sync_health(tra_data, trb_data):
                     age_min = int((now_utc - dt).total_seconds() // 60)
                 except Exception:
                     pass
-            stale = age_min is not None and age_min > 60
+            stale = market_open and age_min is not None and age_min > 60
             if stale:
                 all_stale.append(f"{acct}:{p['symbol']} mark {age_min}m old")
             rows.append({"acct": acct, "sym": p["symbol"], "side": p["side"], "qty": p["qty"], "entry": p["avg_cost"], "mark": p["last"], "gain_pct": p["gain_pct"], "pnl": p["pnl"], "age_min": age_min, "stale": stale})
-    is_synced = len(all_stale) == 0
+    marks_fresh = len(all_stale) == 0
     total = len(rows)
     stale_count = len(all_stale)
-    if is_synced:
-        html = f'<div class="box" style="border-left:4px solid #2e7d32"><span class="pill pg">FILES OK</span> {total} positions loaded from local files. Mark prices current. <span class="gr" style="font-size:11px">(API sync disabled — avoids ban risk; wrong data visible here = tradier_manage.py is wrong too)</span></div>'
+    if marks_fresh:
+        note = "Mark prices current." if market_open else "Market closed — mark age not evaluated."
+        html = f'<div class="box" style="border-left:4px solid #2e7d32"><span class="pill pg">FILES OK</span> {total} positions loaded from local files. {note} <span class="gr" style="font-size:11px">(API sync disabled — avoids ban risk; wrong data visible here = tradier_manage.py is wrong too)</span></div>'
     else:
         html = f'<div class="box" style="border-left:4px solid #ef6c00;background:#fff8e1"><span class="pill po">STALE MARKS — {stale_count} positions</span> Mark prices &gt;60min old — tradier_manage.py may be trading on stale prices.<br>'
         for s in all_stale[:5]:
@@ -619,7 +637,7 @@ def build_sync_health(tra_data, trb_data):
         age_cls = "r" if r.get("stale") else "gr"
         html += f'<tr><td>{r["acct"]}</td><td><b>{r["sym"]}</b></td><td><span class="pill {sp}">{r["side"]}</span></td><td style="text-align:right">{r["qty"]:.0f}</td><td style="text-align:right">${r["entry"]:.2f}</td><td style="text-align:right">${r["mark"]:.2f}</td><td style="text-align:right" class="{gc} b">{r["gain_pct"]:+.2f}%</td><td style="text-align:right" class="{gc}">${r["pnl"]:+,.0f}</td><td style="text-align:right" class="{age_cls}">{age_str}</td></tr>'
     html += "</table>"
-    return html, is_synced
+    return html, marks_fresh
 
 
 def build_tv_bias_section():
@@ -1700,10 +1718,10 @@ def build_persym_campaign_section():
 def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_closed=None):
     now_utc = datetime.now(timezone.utc)
     now_et = now_utc - timedelta(hours=4)
-    sync_html, is_synced = build_sync_health(tra_data, trb_data)
+    sync_html, marks_fresh = build_sync_health(tra_data, trb_data)
     banner = ""
-    if not is_synced:
-        banner = '<div style="background:#c62828;color:#fff;padding:12px 18px;border-radius:6px;margin-bottom:15px;font-size:14px"><b>&#9888; POSITION SYNC BROKEN</b> — Position files do NOT match Tradier API. Numbers below are from the API (correct), but tradier_manage.py may be trading on stale/wrong data. See Sync Health section below.</div>'
+    if not marks_fresh:
+        banner = '<div style="background:#ef6c00;color:#fff;padding:12px 18px;border-radius:6px;margin-bottom:15px;font-size:14px"><b>&#9888; STALE MARK PRICES</b> — one or more positions have a mark price over 60 minutes old <i>during regular trading hours</i>, so tradier_manage.py may be acting on stale prices. This is a price-feed check only; position files are NOT compared to the Tradier API here. See Sync Health section below.</div>'
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 <h1>Morning Briefing &mdash; {now_et.strftime('%A, %B %d %Y')} &middot; {now_et.strftime('%I:%M %p')} ET</h1>
 {banner}
