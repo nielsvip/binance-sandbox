@@ -1123,7 +1123,7 @@ class TradierConfig:
     # === AUGMENT GUARD (parity with crypto) ===
     MIN_GAIN: float = 3.0  # NEVER augment below 3% gain — same rule as crypto
     # === L/S RATIO ENFORCEMENT (backtest) ===
-    LS_RATIO_ENFORCE_TRADIER: bool = False  # 2026-07-11 MU forensics: DEFECT-2 interaction — stocks shorts structurally never enter, so ratio enforcement permanently starves LONG entries (MU pilot: single best trade-restoring knob, 0->26 trades sharpe 0.61). RE-ENABLE after defect-2 (short entry) is fixed. Was True (BACKTEST_CHANGE_T36).
+    LS_RATIO_ENFORCE_TRADIER: bool = True  # 2026-07-28 RE-ENABLED (USER unlocked config_tradier to stop HAO_SHORT stacking). The 2026-07-11 note said to disable only until defect-2 (shorts never enter) was fixed, then RE-ENABLE. Shorts demonstrably enter now — HAO_SHORT stacked 8 OPENs / ~$20k with ZERO closes because with the L/S band off (tradier_manage.py:4423) RATIO_BOOST_S could spam shorts at 25:1. The precondition for re-enabling is met; leaving it False is what let a single collapsing penny stock absorb $20k of short exposure unchecked.
     LS_RATIO_MIN_TRADIER: float = 0.50  # BACKTEST_CHANGE_T36 min L/S ratio
     LS_RATIO_MAX_TRADIER: float = 2.00  # BACKTEST_CHANGE_T36 max L/S ratio
     # === DAILY LOSS LIMIT (backtest) ===
