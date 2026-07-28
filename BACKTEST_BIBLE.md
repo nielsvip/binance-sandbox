@@ -2537,3 +2537,54 @@ Swapping that for a config that fails its own control gate would be a regression
 The equal-capital hunt continues over exit horizons (Donchian N = 10/20/45/60) at
 1x. A candidate is only worth live consideration when `strategy_bh_multiple > 1.0`
 with `--capacity == --base-unit`.
+
+### §15.43 — dynamic sizing DOES produce alpha; the 1x test was wrong (2026-07-28)
+
+**This corrects §15.42's conclusion.** USER 2026-07-28: *"quantity needs to be
+dynamic according to the ladder and all other conditions that define the size of
+a trade, not just higher than the $2k from b&h that is plain cheating and
+useless."* That is the decisive insight and §15.42's experiment failed it.
+
+Setting `--capacity == --base-unit` forces `MAX_MULT = 1.0`, which does not
+"remove leverage" — it **flattens the ladder to a 0-1x on/off switch and deletes
+the dynamic allocation entirely.** The 0.973x measured there is the score of a
+crippled strategy, not an honest score of this one. Equally, a static
+`WT_3M_FORCE_OPEN_SIZE_USD = 2950` is not dynamic sizing either; it is a constant
+larger than the benchmark's unit, which is exactly the "cheating and useless"
+case.
+
+The correct normalisation keeps the full ladder range and divides each leg by the
+capital it actually committed. `return_on_deployed_pct` uses
+`avg_deployed = (weighted_exposure / bars) * CAPACITY`; the B&H leg always
+commits `BASE_UNIT`. `honest_bh_multiple > 1.0` therefore means the strategy
+earned more per dollar-day than buy-and-hold — real allocation alpha, with
+leverage divided out but the dynamics intact.
+
+MU_LONG, 2024-01-01, 240 curves, `--base-unit 2000 --capacity 16000`
+(`band_ladder_walkforward_20260728T034957Z_MU_LONG`):
+
+| fold | ret/deployed | B&H/deployed | honest xB&H | implied leverage | avg deployed |
+|---|---:|---:|---:|---:|---:|
+| 1 | 82.4519% | 44.0878% | **1.870** | 2.75x | $5,498 |
+| 2 | 129.1671% | 132.9570% | 0.972 | 7.27x | $14,533 |
+| 3 | 242.2085% | 204.8990% | **1.182** | 5.52x | $11,046 |
+| **aggregate** | **453.8275%** | **381.9498%** | **1.1882** | — | — |
+
+Three readings of the same MU_LONG ladder, all correct arithmetic, only one
+meaningful:
+
+- **6.5534x** — levered leg vs unlevered benchmark. Meaningless (§15.41).
+- **0.9731x** — ladder crippled to 1x. Measures a different strategy (§15.42).
+- **1.1882x** — dynamic sizing kept, deployment normalised. **This is the number.**
+
+**The alpha is inversely related to leverage.** The best fold (1.870x) ran the
+LOWEST average leverage (2.75x); the only losing fold (0.972x) ran the highest
+(7.27x). Sizing up hard is chasing; moderate sizing allocates well. A cap sweep
+(`--capacity` 4000/6000/8000 = 2x/3x/4x) is therefore the first real tuning lever,
+not the six-number curve.
+
+**Reporting rule going forward:** every ladder result MUST publish
+`honest_bh_multiple`, `implied_leverage_x` and `avg_deployed_usd` alongside any
+`strategy_bh_multiple`. A `strategy_bh_multiple` quoted alone is a leverage
+statistic and is banned in user-facing text, exactly as an unqualified "Sharpe"
+is banned (§2, rule 8).
