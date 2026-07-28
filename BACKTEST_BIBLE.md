@@ -2322,3 +2322,91 @@ change and immediately tests whether MU is an artifact; (3) reconnect-verify
 `GOLDEN_RULE_REQUIRE_ACTIVATION`; (4) run NVDA_LONG stage-0 + band-ladder as the
 transferability test; (5) Tier A in full, then B, then C, re-tiering every 24 keys;
 (6) only then extend to the remaining `symbols_tradier.json` keys.
+
+### §15.40 — exposure bands, the 24/7 ladder grind, and stock perps (2026-07-28)
+
+**USER set new exposure targets**, replacing the 70–80% band: **50–70% weighted
+time-in-market for the top ten keys per side, 20–50% for the rest**, with a
+**2–10× B&H** target for every symbol. Both flagship results that the old band
+rejected pass the new one: MU_LONG's 5.704× at 68.6153% TIM and HAO_SHORT's
+17.5× at 36.0456% TIM (the latter still exceeds the 10× cap).
+
+**Exposure is now a selection term.** `tools/vec_band_ladder_walkforward.py`
+`_score()` was `alpha − 0.20·dd − 5·max(0, 0.75−fill)` with no exposure term at
+all, so the band could only ever be a post-hoc rejection and every key landed
+wherever it landed. Added `--tim-lo/--tim-hi/--tim-weight` and a `_tim_penalty()`
+on the median inner-fold weighted exposure; default off, so prior results are
+unchanged. Self-test passes (96 coherent curves).
+
+**It works, and it costs gain.** Band-targeting moved every key toward its band
+(MU 68.0→46.8, MRVL 91.3→55.0, SNDK 97.1→87.9, INTC 81.8→64.0, ADBE 84.2→46.6,
+WDAY 60.8→40.6) but the multiple fell roughly in proportion (MU 6.42→3.40×,
+MRVL 14.20→6.78×, ADBE 5.29→1.98×, WDAY 3.21→0.30×). **Unbanded, 13 of 17 keys
+clear 2–10× B&H; band-targeted, only 1 of 14 clears both gates.** The mechanism
+is structural: this ladder controls exposure only through position *size* against
+one fixed completed-4h Donchian exit, so cutting exposure cuts return roughly
+linearly. Meeting both targets requires exposure shaped by *timing*, which is the
+entry/exit search — and §15.30's contingency already returned zero survivors on
+MU. Do not present the joint target as reachable by tuning the current knobs.
+
+**NVDA_LONG ran for the first time.** It previously had zero ladder/stage-0 rows.
+Unbanded +158.0% vs +43.7% B&H (3.612×) at 74.49% TIM; band-targeted +209.5%
+(4.790×) at 72.55% TIM. Inside the 2–10× target on both.
+
+**NPZ health across the traded universe**: of the 70 symbols trb/trc traded in 60
+days, 52 valid, 18 quarantined — 8 alias/pre-closed-bar-fix (**regenerated
+2026-07-28, all 8 now valid**: CLX CRWV FIVN GLD NUE USAR USO XLE), 9 thin-HTF
+(`stoch_k_4h/1h` unusable: A BNO BOTZ CIBR EXEL HAO LSCC NUKZ ROBO), 2
+split/corrupt with 137–303% one-bar jumps (CRWD, HAO). **HAO fails on both
+remaining counts** and its 15m history is 3.5 months of an instrument that went
+136.96 → 0.16; every HAO number comes from a still-quarantined recovery NPZ.
+
+**Tier D wiring audit** (`data/handle_priority/TIER_D_WIRING_AUDIT_20260728.json`)
+classified 232 never-binding params: **85 LIVE_ONLY** — `tradier_manage.py` reads
+them but no backtest engine does, so the backtest cannot test them at all — 146
+WIRED_INERT, 1 ORPHAN (`TF_EXCLUDE`, read nowhere). The LIVE_ONLY set is most of
+the exit inventory (`EXIT_*`, `MI_*`, `DELTA_EXIT_*`, `REENTRY_TIER2_*`,
+`HTF_W_REVERSAL_EXIT_*`). This is a parity hole, not a set of dead knobs, and
+wiring plus validating it is a multi-day project.
+
+**24/7 grind is live.** `tools/ladder_grind_daemon.py` runs the band-targeted
+ladder over 461 keys in priority order — four pilots, then everything trb/trc
+traded in 7 days, then IBIT (kept early so the BTC cross-venue comparison has a
+stock-side counterpart), then the 60-day set, then trb long/short, then the full
+`symbols_tradier` universe — re-running a key when its newest banded artifact
+exceeds `--max-age-h` (default 168h). Watchdog `watchdog_ladder_grind.sh`, cron
+`*/6`. State in `data/handle_priority/grind_state.json`. Measured throughput ~133
+keys/hour at 3 workers. It is research-only: no live writes, no matrix writes, no
+promotion.
+
+**Monitoring defect fixed.** `morning_email.build_sync_health()` never compared
+position files to the Tradier API — its own docstring says "No API calls" — yet
+its flag drove a banner reading *"Position files do NOT match Tradier API.
+Numbers below are from the API (correct)"*. Both halves were false, and because
+marks are hours old whenever the market is closed it fired every night and
+weekend. A read-only API check on 2026-07-28 00:05 UTC showed trb and trc
+**exactly in sync** (2/2 each: ALB_SHORT 4.0, SNDK_SHORT 1.0; CIBR_LONG 3.0,
+LEXX_LONG 471.0). Flag renamed `marks_fresh`, staleness only counts during RTH
+(13:30–20:00 UTC Mon–Fri), banner rewritten to describe what is measured.
+
+**Heartbeat files.** `symbols_tradier.json` was deleted again between 22:05 and
+00:05 UTC (autosave commit `d843da03` recorded 232 deleted lines); restored from
+git `951e39ab` (230 symbols, byte-identical to `last_known_good`).
+`autosave_15min.py::ensure_master_symbols()` self-heals it every 15 min, but the
+deleter is still unidentified after two occurrences (2026-07-04, 2026-07-27).
+Separately, `flz` holds a live `flz:BTCUSDT_LONG` (0.001, entry 65538.8, opened
+2026-07-20) while `symbols.json` correctly carries `BTCUSDC` — a USDC-over-USDT
+policy violation that also breaks the count invariant (flz 205 vs 204). Not
+touched; positions may never be popped, deleted or zeroed.
+
+**32 stock tickers now trade as Binance futures**, contract type
+**`TRADIFI_PERPETUAL`** — a filter on `contractType == "PERPETUAL"` misses every
+one of them, which is why they were invisible. All USDT-quoted; onboard dates
+2026-01-28 (TSLAUSDT) through 2026-07-02 (CATUSDT, TXNUSDT). 31 of 32 overlap
+`symbols_tradier.json` (all but COIN); 7 are already in crypto `symbols.json`
+(GOOGL, MRVL, MSFT, MU, NVDA, PLTR, TSLA); 25 are missing. ⚠️ `ROBOUSDT` is plain
+`PERPETUAL` and is almost certainly a crypto token, **not** the ROBO ETF trb
+trades — do not pair them. Only TSLA/INTC/HOOD/MSTR/AMZN/COIN/PLTR have ≥5 months
+of history; everything onboarded after ~2026-05 is below every sample floor and
+is `[DIAGNOSTIC ONLY]`. The cross-venue port plan is
+`EZ_PORT_AND_STOCK_PERP_BRIEF_20260728.md`.

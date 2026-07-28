@@ -30,6 +30,8 @@ from xml.etree import ElementTree
 
 BASE = Path("/Users/niels/Documents/binance") if platform.system() == "Darwin" else Path("/home/niels/binance")
 sys.path.insert(0, str(BASE))
+import digest_freshness as fresh  # noqa: E402  (measures the age of every file this digest reads)
+
 DATA_DIR = BASE / "data"
 TRADIER_DIR = DATA_DIR / "tradier"
 TO_EMAIL = "nielsvip@gmail.com"
@@ -412,8 +414,13 @@ def build_news_scanner_section():
     paper = ns.get("paper_trades", {})
     paper_sum = ns.get("paper_summary", {})
     open_trades = paper.get("open", [])
-    if open_trades or paper_sum:
-        html += "<h3>Paper Trading Performance</h3>"
+    paper_chk = fresh.check(DATA_DIR / "news_paper_trades.json", "ez_news_scanner paper-trade ledger", fresh_h=24, stale_h=72, note="written by ez_news_scanner.py; a dead file means the scanner stopped, not that trading stopped")
+    if (open_trades or paper_sum) and not fresh.is_usable(paper_chk):
+        html += "<h3>Paper Trading Performance" + fresh.stale_suffix(paper_chk) + "</h3>"
+        html += fresh.banner_html([paper_chk, fresh.check(DATA_DIR / "news_paper_summary.json", "ez_news_scanner paper-trade summary", fresh_h=24, stale_h=72)], "Paper Trading")
+        html += '<p class="gr">Win-rate and P/L numbers withheld: they would be a frozen snapshot from a producer that is no longer running, not a current result.</p>'
+    elif open_trades or paper_sum:
+        html += "<h3>Paper Trading Performance" + fresh.stale_suffix(paper_chk) + "</h3>"
         if paper_sum:
             wins = paper_sum.get("wins", 0)
             losses = paper_sum.get("losses", 0)
@@ -761,7 +768,12 @@ def build_premarket_section():
     """Pre-market scanner candidates (runs 8:00 AM ET) + yesterday's daily performance report."""
     html = ""
     scan_path = TRADIER_DIR / "premarket_scan_latest.json"
-    if scan_path.exists():
+    scan_chk = fresh.check(scan_path, "pre-market scanner output", fresh_h=24, stale_h=72, note="written by tradier_premarket_scanner.py at 12:00 UTC on S1; not rsynced to the Mac, so the Mac copy freezes silently")
+    if scan_path.exists() and not fresh.is_usable(scan_chk):
+        html += "<h3>Pre-Market Scanner" + fresh.stale_suffix(scan_chk) + "</h3>"
+        html += fresh.banner_html([scan_chk], "Pre-Market Scanner")
+        html += '<p class="gr">Candidate tables withheld: these scores were computed against prices from ' + scan_chk["age"].replace(" old", " ago") + ', so they describe a market that no longer exists.</p>'
+    elif scan_path.exists():
         try:
             scan = json.loads(scan_path.read_text())
             ts = scan.get("timestamp", "")[:16]
@@ -769,7 +781,7 @@ def build_premarket_section():
             tradier_syms = get_relevant_symbols()
             longs = [c for c in scan.get("long_candidates", []) if c["symbol"] in tradier_syms] if tradier_syms else scan.get("long_candidates", [])
             shorts = [c for c in scan.get("short_candidates", []) if c["symbol"] in tradier_syms] if tradier_syms else scan.get("short_candidates", [])
-            html += f'<h3>Pre-Market Scanner ({ts} UTC, {universe} symbols scanned)</h3>'
+            html += f'<h3>Pre-Market Scanner ({ts} UTC, {universe} symbols scanned)' + fresh.stale_suffix(scan_chk) + '</h3>'
             if longs:
                 html += '<p class="b">Top Long Candidates (oversold + mean-reversion setup):</p><table>'
                 html += '<tr><th>Symbol</th><th>Score</th><th>MFI 15m</th><th>Stoch K</th><th>BB %B</th><th>HA</th><th>RVOL</th><th>10d Ret</th></tr>'
@@ -1744,7 +1756,7 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 <h2>trb — Live ({len(trb_data.get('positions',[]))} positions, open P/L ${trb_data['balance'].get('open_pl',0):+,.0f})</h2>
 {build_account_section(trb_data)}
 
-<h2>Position Sync Health — API vs Files</h2>
+<h2>Position File Health — mark-price age only (no Tradier API comparison is made)</h2>
 {sync_html}
 
 <h2>Pre-Market Analysis</h2>
