@@ -1,18 +1,18 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-28 02:30:41Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-28 03:31:02Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-28T02:27:04Z` (3m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-28T02:27:04Z` (3m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **1,111**; new current rows in 24h: **1,111**.
-- Raw repaired-campaign pilot rows since cutoff: **1,111**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,733**. They remain preserved as evidence.
+- Current repaired matrix latest row: `2026-07-28T03:23:00Z` (8m old).
+- Generic DB activity (includes historical/stage tables): `2026-07-28T03:23:00Z` (8m old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **1,144**; new current rows in 24h: **1,129**.
+- Raw repaired-campaign pilot rows since cutoff: **1,144**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,766**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
 - VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 02:30:40Z (0m old, 405,339 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 02:30:04Z (0m old, 38,246 bytes)
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 03:31:01Z (0m old, 405,710 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 03:30:10Z (0m old, 38,312 bytes)
 - Description coverage in current CSV: **3,570/3,570** rows.
 
 ## Stocks 5m execution provenance
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 278/3,522 | 7.9% | 2026-07-28T02:26:22Z | 4m | 127 |
-| VT_LONG | 751/3,522 | 21.3% | 2026-07-28T02:27:04Z | 3m | 461 |
+| MU_LONG | 287/3,522 | 8.1% | 2026-07-28T03:02:51Z | 28m | 127 |
+| VT_LONG | 775/3,522 | 22.0% | 2026-07-28T03:23:00Z | 8m | 468 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -83,14 +83,14 @@ Best trading candidate: **none with at least two trades and complete return metr
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 2026-07-28T03:13:40Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.375` | -0.0692 | 0.2744 | -0.3436 | -0.252× | 1.00% | 181 | REJECT |
+| 2026-07-28T02:58:54Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.3125` | -0.0568 | 0.2744 | -0.3312 | -0.207× | 0.58% | 146 | REJECT |
+| 2026-07-28T02:57:16Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.25` | -0.0589 | 0.2744 | -0.3333 | -0.215× | 0.32% | 108 | REJECT |
+| 2026-07-28T02:56:58Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.1875` | -0.0477 | 0.2744 | -0.3221 | -0.174× | 0.31% | 82 | REJECT |
+| 2026-07-28T02:53:48Z | stocks_repaired_20260725_c2 | `DC_ENTRY_VETO_ENABLED_TRADIER=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
+| 2026-07-28T02:53:24Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.125` | -0.0315 | 0.2743 | -0.3058 | -0.115× | 0.03% | 40 | REJECT |
+| 2026-07-28T02:53:05Z | stocks_repaired_20260725_c2 | `DC_ENTRY_VETO_ENABLED_TRADIER=True` | -0.0589 | 0.2744 | -0.3333 | -0.215× | 0.32% | 108 | REJECT |
 | 2026-07-27T23:45:25Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=1` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:45:25Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=1.2` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:40:25Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=0.8` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:39:40Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=0.4` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:39:38Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=0.6` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:35:15Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_PRICE_PCT_TRADIER=0.0045` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:34:52Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_PRICE_PCT_TRADIER=0.00375` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-27T23:34:22Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_PRICE_PCT_TRADIER=0.003` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
 
 Best trading candidate: **none with at least two trades and complete return metrics**.
 
@@ -136,7 +136,7 @@ E12 reports net realized partial P&L separately. Positive partial clips do not c
 
 | key | frozen OOS strategy | B&H | multiple | weighted TIM | exact-engine parity | verdict |
 |---|---:|---:|---:|---:|---|---|
-| MU_LONG | 1298.922% | 381.950% | 3.401× | 46.76% | PASS | RESEARCH EDGE; PROMOTION BLOCKED |
+| MU_LONG | 338.625% | 381.950% | 0.887× | 90.85% | PASS | REJECT / NO PROMOTION |
 | VT_LONG | -32.869% | 13.786% | -2.384× | 49.63% | PENDING | REJECT / NO PROMOTION |
 | HAO_SHORT | — | — | — | — | — | QUARANTINED / INVALID DATA |
 
@@ -249,7 +249,7 @@ SHORT vector controls are present but remain research-only until exact replay an
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 1,111 | 2026-07-28T02:27:04Z | 3m |
+| ENGINE | stocks_repaired_20260725_c2 | 1,144 | 2026-07-28T03:23:00Z | 8m |
 
 ## Reading the matrix
 

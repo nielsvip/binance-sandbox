@@ -115,20 +115,45 @@ def build_html(session):
     for p in proposals[:60]:
         rows += (f"<tr><td>{p['variant']}</td><td>{p['symbol']}</td><td>{p['type']}</td>"
                  f"<td>{p['strike']}</td><td>{p['expiry']}</td><td>{p['premium']}</td><td>{p['delta']}</td></tr>")
+    # 2026-07-28: distinguish "producer is dead" from "gates filtered everything".
+    # LOOKBACK_DAYS excluded every file on disk (newest 52 days old), so the empty
+    # result was being explained as a benign market condition. Measure the real
+    # newest decision file, unfiltered, and say which case this is.
+    _all_decisions = glob.glob(os.path.join(SHADOW_DIR, "*", "decisions_*.jsonl"))
+    _newest_mtime = max((os.path.getmtime(p) for p in _all_decisions), default=None)
+    _stale_days = ((_utc_now().timestamp() - _newest_mtime) / 86400.0) if _newest_mtime else None
+    _producer_dead = _stale_days is not None and _stale_days > 1.5
     if not rows:
-        rows = ("<tr><td colspan='7'>No hypothetical trades proposed in the most recent "
-                "market cycle (market may be closed, or gates filtered everything).</td></tr>")
-    # HONEST P&L window note — the system was offline 2026-04-26 → 2026-06-04.
+        if _producer_dead:
+            rows = ("<tr><td colspan='7'><b>PRODUCER DEAD</b> &mdash; no shadow decision file has been "
+                    f"written for {_stale_days:.1f} days (newest: "
+                    f"{datetime.fromtimestamp(_newest_mtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC). "
+                    "This is not a market condition: tradier_options_shadow_runner is not running.</td></tr>")
+        elif _newest_mtime is None:
+            rows = ("<tr><td colspan='7'><b>NO SHADOW DATA AT ALL</b> &mdash; "
+                    f"{SHADOW_DIR} contains no decisions files.</td></tr>")
+        else:
+            rows = ("<tr><td colspan='7'>No hypothetical trades proposed in the most recent "
+                    "market cycle (market may be closed, or gates filtered everything).</td></tr>")
     data_window = "no shadow data found"
     if newest_ts:
         data_window = f"latest cycle {newest_ts}"
-    pnl_note = (
-        "<b>Hypothetical 30-day P&amp;L:</b> the paper system was OFFLINE 2026-04-26 → 2026-06-04 "
-        "(reactivated today), and it records proposals but has no realized-P&amp;L tracker yet, so a "
-        "truthful trailing-30-day realized figure does not exist. Collection has restarted; realized "
-        "hypothetical P&amp;L will accumulate forward from today. This report shows the trades the paper "
-        "system WOULD place right now and the premium it WOULD deploy — real, not invented."
-    )
+    if _producer_dead:
+        pnl_note = (
+            "<b style='color:#c62828'>&#9888; STALE REPORT &mdash; the paper-options producer is not "
+            f"running.</b> The newest shadow decision on disk is <b>{_stale_days:.1f} days old</b>. "
+            "Every number below is historical or zero; nothing here describes what the paper system "
+            "would do today. There is no realized-P&amp;L tracker, so no trailing-30-day figure exists "
+            "either. To revive it, start <code>tradier_options_shadow_runner.py</code> "
+            "(its launchd plist is currently .disabled)."
+        )
+    else:
+        pnl_note = (
+            "<b>Hypothetical 30-day P&amp;L:</b> the paper system records proposals but has no "
+            "realized-P&amp;L tracker, so a truthful trailing-30-day realized figure does not exist. "
+            "This report shows the trades the paper system WOULD place right now and the premium it "
+            "WOULD deploy &mdash; real, not invented."
+        )
     if earliest:
         pnl_note += f"<br><small>Oldest shadow data on disk: {earliest.strftime('%Y-%m-%d')}. {data_window}.</small>"
     html = f"""<html><body style="font-family:Arial,sans-serif">

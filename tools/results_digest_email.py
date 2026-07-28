@@ -656,8 +656,14 @@ def _qualifying_rows():
                     gvbh_f = float(gvbh)
                 except (TypeError, ValueError):
                     continue
+                # 2026-07-28: `real_gain_vs_bh` in gating_corrections.jsonl is a
+                # DIFFERENCE in percentage points, not a ratio — provable from the
+                # rows themselves (real_gain_pct 0.03 - bh 0.028 = real_gain_vs_bh
+                # 0.002). It was rendered "%.2fx", so +9.01pp was published as
+                # "9.01x b&h". The same value is printed as "9.01%" ten lines away
+                # by _fmt_pct, so the email contradicted itself. Render as points.
                 if gvbh_f >= 2.0:
-                    rows.append("<tr><td>%s</td><td>%s</td><td class='g'><b>%s</b></td><td class='g'><b>%.2fx</b></td><td>%s</td><td>%s</td></tr>" % (
+                    rows.append("<tr><td>%s</td><td>%s</td><td class='g'><b>%s</b></td><td class='g'><b>%+.2f pp</b></td><td>%s</td><td>%s</td></tr>" % (
                         mode.upper(), w.get("key"), _fmt_sharpe(w.get("real_sharpe")), gvbh_f, w.get("trades", "&mdash;"), (w.get("date") or "")[:10]))
     except Exception as e:
         rows.append("<tr><td colspan=6>qualifier scan failed: %s</td></tr>" % e)
@@ -732,9 +738,13 @@ def _persym_latest_sections():
             rows_imp.append("<tr><td>%s</td><td>%s</td><td class='%s'><b>%.3f &rarr; %.3f</b></td><td>%+.2f%%</td><td>%s</td><td>%s</td><td>%.2f%%</td></tr>" % (
                 k, d.get("tier", "?"), "g" if delta > 0 else "r", old, cur, float(d.get("total_gain_pct") or 0), d.get("trades", "?"), "%s" % d.get("pool_sharpe", "?"), float(d.get("coverage_pct") or 0)))
         top = sorted(latest.values(), key=lambda d: float(d.get("gain_vs_bh") or 0.0), reverse=True)[:20]
+        # 2026-07-28: this column is a RATIO (capture vs b&h), so <1.0 means the
+        # key LOST to buy-and-hold. The class was hardcoded 'g', painting 17 of 20
+        # losing rows green. Colour by the same >=1.0 rule the capture section uses.
         for d in top:
-            rows_all.append("<tr><td>%s</td><td>%s</td><td class='g'><b>%.3f</b></td><td>%+.2f%%</td><td>%+.2f%%</td><td>%s</td><td>%s</td><td>%.2f%%</td></tr>" % (
-                d.get("key"), d.get("tier", "?"), float(d.get("gain_vs_bh") or 0), float(d.get("total_gain_pct") or 0), float(d.get("bh_key") or 0), d.get("trades", "?"), d.get("pool_sharpe", "?"), float(d.get("coverage_pct") or 0)))
+            _gv = float(d.get("gain_vs_bh") or 0)
+            rows_all.append("<tr><td>%s</td><td>%s</td><td class='%s'><b>%.3f</b></td><td>%+.2f%%</td><td>%+.2f%%</td><td>%s</td><td>%s</td><td>%.2f%%</td></tr>" % (
+                d.get("key"), d.get("tier", "?"), "g" if _gv >= 1.0 else "r", _gv, float(d.get("total_gain_pct") or 0), float(d.get("bh_key") or 0), d.get("trades", "?"), d.get("pool_sharpe", "?"), float(d.get("coverage_pct") or 0)))
         out.append("<h2>PER-SYMBOL IMPROVEMENTS since last digest [DIAGNOSTIC n_syms=1 each]</h2>" + _table(
             ["key", "tier", "gain_vs_bh old&rarr;new", "gain", "trades", "pool_sharpe(1sym)", "ceiling coverage"], rows_imp,
             "no per-key verdict changed this window (%d keys tracked)" % len(latest)))
@@ -820,10 +830,29 @@ def _parity_sections():
     par_tail = ""
     try:
         pf = Path("/Users/niels/logs/parity_diff_nightly.log")
+        # 2026-07-28: mtime alone was the only check, so a 36-byte log containing
+        # "/bin/sh: timeout: command not found" was rendered under the parity
+        # heading as if the diff had run and found nothing. Validate the content.
         if pf.exists() and (time.time() - pf.stat().st_mtime) < 2 * 86400:
-            par_tail = "<pre style='font-size:11px'>%s</pre>" % ("\n".join(pf.read_text().splitlines()[-12:])).replace("<", "&lt;")
+            _body = pf.read_text()
+            _lines = [ln for ln in _body.splitlines() if ln.strip()]
+            _broken = (
+                not _lines
+                or len(_body) < 200
+                or any(tok in _body for tok in (
+                    "command not found", "No such file or directory",
+                    "Traceback (most recent call last)", "Permission denied"))
+            )
+            if _broken:
+                par_tail = ("<p class='r'><b>&#9888; PARITY DIFF DID NOT RUN.</b> "
+                            "The nightly log contains a launch failure, not parity output "
+                            "&mdash; live-vs-backtest drift is currently UNCHECKED.</p>"
+                            "<pre style='font-size:11px'>%s</pre>"
+                            % ("\n".join(_lines[-6:]) or "(empty log)").replace("<", "&lt;"))
+            else:
+                par_tail = "<pre style='font-size:11px'>%s</pre>" % ("\n".join(_lines[-12:])).replace("<", "&lt;")
         else:
-            par_tail = "<p>no recent parity_diff run (nightly cron)</p>"
+            par_tail = "<p class='r'>no recent parity_diff run (nightly cron) &mdash; drift UNCHECKED</p>"
     except Exception:
         pass
     return ("<h2>LIVE vs SANDBOX SYNC (post-update drift guard)</h2>%s"
