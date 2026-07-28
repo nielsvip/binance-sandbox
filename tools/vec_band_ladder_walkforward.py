@@ -894,9 +894,6 @@ def main() -> None:
     if args.self_test:
         _self_test()
         return
-    # Sizing is read as module state by the pure simulation helpers, so rebind it
-    # once here rather than threading four extra parameters through every call.
-    global BASE_UNIT, CAPACITY, ACCOUNT_EQUITY, MAX_MULT
     BASE_UNIT = float(args.base_unit)
     CAPACITY = float(args.capacity)
     ACCOUNT_EQUITY = float(args.account_equity)

@@ -2481,3 +2481,59 @@ actually deployed (exposure-weighted), not on the $2,000 label; state the
 leverage explicitly next to every multiple; and add the `bh_base`/`return_base`
 column from §15.39. A multiple that compares a levered leg to an unlevered leg
 is not a b&h comparison.
+
+### §15.42 — MU_LONG at equal capital: the ladder has NO alpha (2026-07-28)
+
+§15.41 inferred the leverage artifact from the sizing arithmetic. This measures it
+directly. `tools/vec_band_ladder_walkforward.py` gained `--base-unit`,
+`--capacity`, `--account-equity` and four equal-capital metrics
+(`avg_deployed_usd`, `return_on_deployed_pct`, `bh_return_on_deployed_pct`,
+`honest_bh_multiple`, `implied_leverage_x`). Setting `--capacity == --base-unit`
+makes the strategy and the B&H leg deploy identical capital, so any multiple above
+1.0 is real timing alpha rather than borrowed money.
+
+MU_LONG, 2024-01-01 onward, 240 curves, `--base-unit 2000 --capacity 2000`:
+
+| metric | value |
+|---|---:|
+| strategy capital return (3-fold sum) | **+371.6708%** |
+| side-aware B&H | **+381.9498%** |
+| `strategy_bh_multiple` | **0.9731** |
+| `alpha_vs_bh_pp_sum` | **−10.2789 pp** |
+| exposure-weighted TIM | 92.9882% |
+| fill ratio / clamps | 1.0000 / 0 |
+| max account drawdown | 12.1371% |
+| minimum equity | $9,656.29 |
+
+The runner's own control gate fired: `control_failure: true`,
+`control_failure_reasons: ["did_not_beat_side_aware_bh"]`. This is not an
+interpretation — the tool rejected its own best curve.
+
+**Conclusion: the band-ladder entry/exit family has no measurable alpha on
+MU_LONG.** Unlevered it trails buy-and-hold by 10.3 points over 2.3 years while
+holding 93% of the time. Every headline multiple in §15.27/§15.30/§15.34/§15.40
+(5.14×, 6.84×, 6.41×, 5.704×, 4.79×) was produced by deploying up to 8× the
+capital the B&H leg deployed. Note the honest figure is 0.973×, not the 0.59×
+estimated in §15.41 from average-deployed capital, because at 1x the search
+selects different (better) curves — the ladder adapts, and still loses.
+
+**Sizing is not the villain and must not be removed.** USER 2026-07-28:
+"The quantity variations do need to be working in live trading even though b&h
+does not use that tool." Correct — position sizing is a legitimate live tool and
+it already works: MU_LONG carries `WT_3M_FORCE_OPEN_SIZE_USD = 2950.0` in
+`per_sym_active_config.json`, above the generic `MAX_POSITION_SIZE = 2250`. The
+error was never "the strategy used leverage"; it was **reporting a levered leg
+against an unlevered benchmark and calling the ratio alpha.** The correct order is:
+find params that beat B&H at 1x, *then* apply sizing — because scaling a 0.97x
+strategy only multiplies exposure to something that trails buy-and-hold.
+
+**MU_LONG live status is unchanged and was not switched to the ladder.** Its live
+config remains the working one: `trb/active_config.json` → `LONG_ENABLED`,
+`WT_DC_LONG_ENABLED`, `NOLOSS_BYPASS_WT_5OF5_ENABLED` (tag `NOLOSS_WT5of5_LONG`,
+27 trades, +13.7723%, wsharpe 0.2995), plus `per_sym_active_config.json` →
+`WT_3M_FORCE_OPEN_ENABLED` at $2,950 with `PARTIAL_PROFIT_LOCK_ENABLED=False`.
+Swapping that for a config that fails its own control gate would be a regression.
+
+The equal-capital hunt continues over exit horizons (Donchian N = 10/20/45/60) at
+1x. A candidate is only worth live consideration when `strategy_bh_multiple > 1.0`
+with `--capacity == --base-unit`.
