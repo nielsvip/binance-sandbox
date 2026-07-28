@@ -588,6 +588,16 @@ def build_account_section(data):
     return html
 
 
+def build_new_live_key_section():
+    """USER 2026-07-28: any symbol/side that just went live gets its full entry and
+    exit settings printed, with the overlay layer each value came from."""
+    try:
+        from tools.new_live_key_rundown import build_html
+        return build_html()
+    except Exception as exc:
+        return f'<p class="r">new-live-key rundown unavailable: {exc}</p>'
+
+
 def _market_is_open(now_utc):
     """RTH is 13:30-20:00 UTC Mon-Fri. Marks are expected to be stale outside it."""
     if now_utc.weekday() >= 5:
@@ -1755,6 +1765,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 
 <h2>trb — Live ({len(trb_data.get('positions',[]))} positions, open P/L ${trb_data['balance'].get('open_pl',0):+,.0f})</h2>
 {build_account_section(trb_data)}
+
+<h2>Newly Live Symbol/Sides — full entry &amp; exit settings</h2>
+{build_new_live_key_section()}
 
 <h2>Position File Health — mark-price age only (no Tradier API comparison is made)</h2>
 {sync_html}

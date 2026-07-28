@@ -2410,3 +2410,74 @@ trades — do not pair them. Only TSLA/INTC/HOOD/MSTR/AMZN/COIN/PLTR have ≥5 m
 of history; everything onboarded after ~2026-05 is below every sample floor and
 is `[DIAGNOSTIC ONLY]`. The cross-venue port plan is
 `EZ_PORT_AND_STOCK_PERP_BRIEF_20260728.md`.
+
+### §15.41 — the ladder b&h multiple is a LEVERAGE ARTIFACT (2026-07-28)
+
+**This supersedes every "×B&H" figure quoted for the band ladder, including
+§15.27, §15.30, §15.34, §15.39 and §15.40.**
+
+`tools/vec_band_ladder_walkforward.py` divides strategy P&L by `BASE_UNIT`
+($2,000, `:497`) while allowing the position to hold up to `CAPACITY` ($16,000,
+`:57`) — and the capacity cap clips **entry fills only** (`:376-377`), never a
+position that has appreciated. B&H is computed at **1.0× $2,000, unlevered**
+(`:491-494`). The two legs are therefore divided by the same $2,000 label while
+deploying wildly different capital.
+
+Measured on the MU_LONG artifact
+(`band_ladder_walkforward_20260725T203411Z_MU_LONG/result.json`):
+
+- `peak_mark_to_market_notional_usd` = **$57,424.70** — 3.59× the $16,000 cap and
+  5.74× the $10,000 ledger;
+- exposure-weighted deployment ≈ **$14,944** average;
+- strategy P&L = 2955.15% × $2,000 = **$59,102.93** on ~$14,944 ⇒ **395.5%**
+  return on capital actually committed;
+- B&H P&L = 666.39% × $2,000 = **$13,327.79** on $2,000 ⇒ **666.4%**.
+
+**On equal capital the MU ladder returns 0.59× buy-and-hold.** The published
+"4.43×" / "6.41×" / "5.704×" multiples are ~7.5× leverage dressed as edge. Under
+the b&h-floor mandate (§12, `feedback_bh_floor_capture_mandate_20260710`) this
+ladder **fails the floor; it does not clear it.**
+
+**Nothing was reaching live in any case.** `LR_BAND_LADDER_ENABLED`
+(`config_tradier.py:691`), `LR_BAND_ENTRY_ENABLED` (`:705`),
+`LR_BAND_ENTRY_PRIORITY` (`:719`) and `BAND_ARROW_ENABLED` (`:685`) are all
+`False`, set `True` only inside `_apply_sweep_entry_unblock()` under
+`V8_SWEEP_MODE=1` (`:2874-2898`), and **zero** keys in `trb/active_config.json`,
+`trc/active_config.json` or `per_sym_active_config.json` carry them.
+
+**Live cannot reproduce the sizing even if switched on.** trb's per-symbol
+cost-basis ceiling is `MAX_POSITION_SIZE = $2,250` ($9,000 for the 12
+`EXCEPTIONS` symbols) against the ladder's $16,000 — **0.141×**. Worked example,
+MU at ~$120: the ladder requests $16,000; live computes
+`int(max(1, 500/120 × 10)) = 41` shares = $4,920, then `place_order`
+(`tradier_manage.py:10852`) clamps to `int(min(2500, 2250)/120) = 18` shares =
+**$2,160**. A 7.41× shortfall on one key. Live also uses **whole shares,
+truncated, floored at 1**; the ladder uses fractional shares (`:383`).
+
+**Restating a ladder number onto trb**: capital ratio $2,250/$14,944 = 0.1506,
+denominator swap $2,000/$70,000 = 0.02857 ⇒ **divide `capital_return_pct` by
+≈ 230**. MU's +2955.15% becomes **≈ 12.7% over 2.31 years (≈5.2%/yr)**. The
+independent route via `account_return_pct` (÷$10,000) gives ÷46.5 and agrees.
+
+**Portfolio contention is unmodelled and fatal at fleet scale.** 59 keys × $16,000
+= $944,000 of demand against trb's binding
+`MAX_LONG_VALUE + MAX_SHORT_VALUE = $25,000` — **37.8× oversubscribed**;
+`MAX_CONCURRENT_POSITIONS = 16` refuses 43 of 59 keys, and the 16 that fire are
+chosen by arrival order, not ladder depth. MU alone requested $5,203,113 and
+filled $534,403 (`fill_ratio = 0.1027`) against its own $16k cap. The backtest
+models each key as an isolated $10,000 account with no shared capital and no
+queue, which is why independently-profitable per-key runs do not sum to a
+profitable account.
+
+**Also unmodelled**: margin and buying power (cash reaches −$6,000 with no
+check), short borrow/locate/Reg-T (short proceeds are simply credited to cash),
+and PDT. The one live balance gate, `BALANCE_FLOOR_HALT`
+(`tradier_manage.py:4235-4250`), has been unable to read a balance since
+**2026-06-04** (`data/balance_floor_status.json` shows `balance: null`, "no
+TRADIER_API_KEY_TRB in env") and is therefore dead.
+
+**Required before any ladder number is quoted again**: report return on capital
+actually deployed (exposure-weighted), not on the $2,000 label; state the
+leverage explicitly next to every multiple; and add the `bh_base`/`return_base`
+column from §15.39. A multiple that compares a levered leg to an unlevered leg
+is not a b&h comparison.
