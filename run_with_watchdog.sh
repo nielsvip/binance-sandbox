@@ -5,6 +5,14 @@
 WORKDIR="/Users/niels/Documents/binance"
 PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
 
+# 2026-07-28: raise the file-descriptor ceiling. launchd hands children a soft
+# RLIMIT_NOFILE of 256, which tradier_manage (117 positions + Tradier HTTP +
+# yfinance cache handles) exhausts after ~4 days uptime, producing
+# "[Errno 24] Too many open files" in market_data_sync_loop / symbol sync /
+# heartbeat. Mitigation only — the underlying leak is the un-blacklisted
+# yfinance retry path for delisted tickers (BK, CTRA).
+ulimit -n 8192 2>/dev/null || ulimit -n 4096 2>/dev/null || true
+
 # Use local logs if /Users/niels/logs is not writable
 LOGDIR="/Users/niels/logs"
 if [ ! -w "$LOGDIR" ]; then
