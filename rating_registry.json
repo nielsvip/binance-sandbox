@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-28T04:08:56.009894+00:00",
+  "timestamp": "2026-07-28T04:23:56.919364+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -31,22 +31,16 @@
       "short_score": 13.6
     },
     {
-      "symbol": "SANDUSDT",
-      "net_score": -12.8,
-      "long_score": 0,
-      "short_score": 12.8
-    },
-    {
       "symbol": "SKYAIUSDT",
       "net_score": -12.8,
       "long_score": 0,
       "short_score": 12.8
     },
     {
-      "symbol": "GMTUSDT",
-      "net_score": -11.0,
+      "symbol": "BIGTIMEUSDT",
+      "net_score": -12.7,
       "long_score": 0,
-      "short_score": 11.0
+      "short_score": 12.7
     },
     {
       "symbol": "BLURUSDT",
@@ -223,12 +217,6 @@
       "short_score": 0
     },
     {
-      "symbol": "XRPUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "LPTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -344,6 +332,12 @@
     },
     {
       "symbol": "BEATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "SANDUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -697,6 +691,12 @@
       "short_score": 0
     },
     {
+      "symbol": "GMTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "APEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -704,12 +704,6 @@
     },
     {
       "symbol": "ZECUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BIGTIMEUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -785,19 +779,20 @@
       "net_score": 30.0,
       "long_score": 30.0,
       "short_score": 0
+    },
+    {
+      "symbol": "XRPUSDC",
+      "net_score": 58.0,
+      "long_score": 58.0,
+      "short_score": 0
     }
   ],
   "top_longs": [],
   "top_shorts": [
     [
-      "SANDUSDT",
-      12.8,
-      0.04246914
-    ],
-    [
-      "GMTUSDT",
-      11.0,
-      0.006607
+      "BIGTIMEUSDT",
+      12.7,
+      0.00601322
     ]
   ],
   "hedge_usage": {

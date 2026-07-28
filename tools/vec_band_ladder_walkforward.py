@@ -810,9 +810,23 @@ def run(args: argparse.Namespace) -> Path:
         "frozen_oos_aggregate": aggregate,
         "causality_audit": causality,
     }
+    # 2026-07-28: the stamp has second resolution, so two runs of the same
+    # symbol/side started in the same second resolved to one directory — the
+    # second run died on `snap.mkdir()` and, worse, would have overwritten the
+    # first run's result.json. Claim a unique directory instead of sharing one.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out = Path(args.out_dir) / f"band_ladder_walkforward_{stamp}_{symbol}_{side}"
-    out.mkdir(parents=True, exist_ok=True)
+    base = Path(args.out_dir) / f"band_ladder_walkforward_{stamp}_{symbol}_{side}"
+    out = base
+    suffix = 0
+    while True:
+        try:
+            out.mkdir(parents=True, exist_ok=False)
+            break
+        except FileExistsError:
+            suffix += 1
+            out = base.with_name(f"{base.name}__r{suffix}")
+            if suffix > 50:
+                raise
     (out / "result.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
     )
@@ -820,7 +834,7 @@ def run(args: argparse.Namespace) -> Path:
         for row in folds:
             fh.write(json.dumps(row, sort_keys=True, allow_nan=False) + "\n")
     snap = out / "source_snapshot"
-    snap.mkdir()
+    snap.mkdir(exist_ok=True)
     snap.joinpath(Path(__file__).name).write_bytes(Path(__file__).read_bytes())
     data.z.close()
     replay_receipt = None
