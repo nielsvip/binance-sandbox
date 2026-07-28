@@ -51,6 +51,10 @@ import vec_top_exit_campaign as top  # noqa: E402
 from research_availability_clock import next_strictly_later_index  # noqa: E402
 
 
+# Principal decision timeframes. USER 2026-07-28 asked whether every timeframe had
+# been tried as principal: it had not. Only D/4h/1h were ever used, hardcoded here,
+# while the NPZ also carries 15m, 5m, W and M with wt_cross_bull/dc_high/stoch_k
+# present. Overridable via --tfs so the untried five can be searched.
 TF_ORDER = ("D", "4h", "1h")
 BASE_UNIT = 2_000.0
 ACCOUNT_EQUITY = 10_000.0
@@ -76,9 +80,20 @@ class Curve:
     h1_top: float
 
     def pair(self, tf: str) -> tuple[float, float]:
-        if tf == "D":
+        """Map a timeframe to its ladder slot by POSITION, not by name.
+
+        The three slots are slowest-to-fastest; the field names (d_/h4_/h1_) are
+        historical. Matching on the literal strings "D"/"4h" silently collapsed
+        every non-D/4h timeframe into the h1 slot, so any --tfs set other than
+        D/4h/1h would have been sized wrongly.
+        """
+        try:
+            slot = TF_ORDER.index(tf)
+        except ValueError:
+            slot = 2
+        if slot == 0:
             return self.d_bottom, self.d_top
-        if tf == "4h":
+        if slot == 1:
             return self.h4_bottom, self.h4_top
         return self.h1_bottom, self.h1_top
 
@@ -618,7 +633,7 @@ def run(args: argparse.Namespace) -> Path:
     data = top._load_execution(symbol, Path(args.npz_dir), args.start, "ladder", args.end)
     if not data.contract["valid"]:
         raise RuntimeError(f"{symbol} NPZ quarantined: {data.contract['errors']}")
-    htfs = {tf: top._compress_htf(data, tf) for tf in ("1h", "4h", "D")}
+    htfs = {tf: top._compress_htf(data, tf) for tf in TF_ORDER}
     curves = _curves(args.seed, args.random_curves)
     cache: dict[tuple[Curve, int], SignalData] = {}
 
@@ -874,7 +889,7 @@ def _self_test() -> None:
 def main() -> None:
     # Sizing is read as module state by the pure simulation helpers, so it is
     # rebound here once rather than threaded through every call.
-    global BASE_UNIT, CAPACITY, ACCOUNT_EQUITY, MAX_MULT
+    global BASE_UNIT, CAPACITY, ACCOUNT_EQUITY, MAX_MULT, TF_ORDER
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", default="MU")
     ap.add_argument("--side", default="LONG", choices=("LONG", "SHORT"))
@@ -883,6 +898,9 @@ def main() -> None:
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end")
     ap.add_argument("--exit-n", type=int, default=30)
+    ap.add_argument("--tfs", default=",".join(TF_ORDER),
+                    help="Principal decision timeframes, high-to-low (e.g. '4h,1h,15m'). "
+                         "Only D/4h/1h were ever tested before 2026-07-28.")
     ap.add_argument("--base-unit", type=float, default=BASE_UNIT)
     ap.add_argument("--capacity", type=float, default=CAPACITY,
                     help="Max entry notional per key. Set equal to --base-unit for an "
@@ -908,6 +926,10 @@ def main() -> None:
     if args.self_test:
         _self_test()
         return
+    tfs = tuple(t.strip() for t in str(args.tfs).split(",") if t.strip())
+    if len(tfs) != 3:
+        raise SystemExit("--tfs requires exactly three timeframes (the ladder has three slots)")
+    TF_ORDER = tfs
     BASE_UNIT = float(args.base_unit)
     CAPACITY = float(args.capacity)
     ACCOUNT_EQUITY = float(args.account_equity)
