@@ -2588,3 +2588,53 @@ not the six-number curve.
 `strategy_bh_multiple`. A `strategy_bh_multiple` quoted alone is a leverage
 statistic and is banned in user-facing text, exactly as an unqualified "Sharpe"
 is banned (§2, rule 8).
+
+### §15.44 — the honest ratio has a divide-by-zero singularity (2026-07-28)
+
+Building the per-key settings+results export (`data/handle_priority/
+LADDER_SETTINGS_AND_RESULTS_20260728.csv`, 383 keys) immediately exposed a defect
+in §15.43's own metric. `honest_bh_multiple` is a RATIO, and when the benchmark
+return approaches zero the ratio explodes and ranks noise at the top:
+
+```
+TSLA_SHORT  honest=55.4387   SHY_LONG  honest=23.4508   OKE_LONG  honest=20.1522
+```
+
+`SHY` is a short-duration treasury ETF — its buy-and-hold return is ~0, so any
+strategy return divides into a huge multiple. **113 of 383 keys (30%) have
+|b&h| < 20pp summed over folds and cannot support a ratio at all.**
+
+This contaminated the promotable list published earlier. Audited against a 20pp
+benchmark floor, **3 of the 10 were artifacts**:
+
+| key | ratio | b&h (pp) | alpha (pp) | verdict |
+|---|---:|---:|---:|---|
+| NFLX_LONG | 3.087 | **−6.39** | **−13.34** | ratio flipped sign on a small negative denominator — actually LOSES |
+| NFLX_SHORT | 2.551 | 5.55 | +8.61 | below floor |
+| HON_LONG | 1.146 | 15.00 | +2.20 | below floor |
+
+NFLX_LONG is the dangerous one: it ranked #2 on ratio while having negative
+alpha. Promoting it would have deployed a money-loser.
+
+**Rule: rank on alpha in percentage points per dollar deployed
+(`return_on_deployed_pct − bh_return_on_deployed_pct`), never on the ratio.**
+Publish the ratio only alongside the benchmark magnitude, and only when
+|b&h| >= 20pp. A ratio whose denominator can approach zero is not a ranking
+statistic — the same failure class as an unqualified Sharpe (§2 rule 8) and the
+levered-vs-unlevered multiple (§15.41).
+
+Corrected survivors (b&h moved, positive alpha, >=2/3 folds, control passed) —
+**14 keys**, ranked by alpha: INOD_LONG +57.10, SBIT_LONG +54.64, CHRD_SHORT
++36.87, SNOW_LONG +35.78, OXY_LONG +25.69, STZ_SHORT +25.53, BITO_SHORT +24.43,
+FCX_LONG +19.35, IBIT_SHORT +17.92, OLED_LONG +10.19, CRM_SHORT +7.56, BK_LONG
++5.09, GE_LONG +4.57, BLOK_LONG +3.10.
+
+Note CHRD_SHORT: ratio −0.345 is meaningless (negative denominator: b&h −27.41%,
+i.e. shorting was correct) while alpha +36.87pp is real. Another reason the ratio
+cannot be the ranking key.
+
+NOTE ON SCOPE: these are BAND-LADDER campaign settings — curve shape, trigger
+family, accumulation semantics, exit horizon. They are NOT `SWITCH_MATRIX_TRB`
+`param_cells` results. No key in this campaign has been through the 3,485-cell
+switch grid; the two stores answer different questions and must never be
+presented as one.
