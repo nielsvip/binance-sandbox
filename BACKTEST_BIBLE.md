@@ -2771,3 +2771,21 @@ replay is not ordinary
 matrix-green or live eligible. Full evidence and the next TTD regime-split test
 are in `OTHER_PILOT_SURVIVOR_AUDIT_20260729.md`; compact receipt:
 `data/reports/vec_research/OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json`.
+
+### §15.49 — TTD_SHORT regime-conditioned structural covers (2026-07-29)
+
+The frozen TTD $8k/N30 control reproduced exactly: fold 1 was +15.246pp
+deployed alpha at 70.225% exposure, while fold 2 was −25.852pp at 77.615%.
+Thirteen coherent correction, confirmed-bear, adverse-recovery and combined
+cover books used completed parent bars and the corrected compiled
+committed-fill-notional SHORT ledger. The honest training selector retained
+N30 in both folds, so discovery failed and fold 3 stayed sealed.
+
+A strict completed-4h lower-low arm followed by a WT-cross higher-bottom is a
+useful **gray diagnostic**, not a survivor: it made +17.054pp at 71.816% in
+fold 2 but lost 23.241pp at 50.268% in fold 1. Fold 1 contained a 79.61%
+rebound from its running low versus 25.11% in fold 2. The remaining problem is
+causal whole-book regime selection; unioning the books over-fires and drops
+exposure below 65%. No live config or canonical ENGINE cell changed. Full
+evidence: `TTD_SHORT_REGIME_EXIT_FOLLOWUP_20260729.md`; receipt:
+`data/reports/vec_research/TTD_SHORT_REGIME_EXIT_RECEIPT_20260729.json`.
