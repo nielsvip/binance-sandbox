@@ -2681,3 +2681,28 @@ WT/DC configuration remains in place. The contract SHA is
 The full gate table, safe next proof, and rollback state are in
 `MU_C151_LIVE_PROMOTION_AUDIT_20260729.md`; machine evidence is
 `data/reports/vec_research/MU_C151_LIVE_PROMOTION_AUDIT_20260729.json`.
+
+### §15.46 — fresh MU matrix does not mean wired MU matrix (2026-07-29)
+
+A read-only, hash-bound audit of the current `SWITCH_MATRIX_TRB.csv.gz` found
+406 populated MU_LONG rows. Statuses were 346 `RECONNECT`, 51 `OK`, and 9
+`INERT_AT_VALUE`; 355 rows (87.44%) shared the same `-3.3471` gain/month delta
+versus B&H. All tested values had identical output for 77/88 multi-value knobs.
+There were zero positive deltas; the best visible cells were three `STOP_PACK`
+values at `-0.5217`.
+
+The exporter is fresh and correctly marks these rows red/reconnect, so this is
+not a stale-report or false-green problem. It is primarily a test-arm problem:
+`V8_OVERRIDE_FILE` changes global config, while `tradier_manage._cfg` resolves
+TRB/global per-symbol overlays first. An explicit cell can therefore be hidden
+by MU's accepted overlay. `V8_DISABLE_PER_SYM=1` is not the answer because it
+also removes the baseline the experiment is supposed to hold constant.
+
+The matrix also contains 37 populated `TRA_`/`TRC_` account-private rows in a
+TRB experiment and 12 out-of-domain oscillator values. Future exact cells must
+use account-aware semantic ranges and a backtest-only explicit-cell layer above
+the overlays, preserving all other per-symbol baseline fields. A cell counts
+only after both resolved-value and decision/trade-fingerprint movement are
+proven. Machine evidence:
+`data/reports/MU_MATRIX_FILL_AUDIT_20260729.json`; reproducer:
+`tools/audit_mu_matrix_fill_snapshot.py`.

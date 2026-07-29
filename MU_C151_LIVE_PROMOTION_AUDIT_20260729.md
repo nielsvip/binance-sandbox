@@ -82,3 +82,29 @@ Machine-readable evidence:
 - `data/reports/vec_research/MU_C151_LIVE_PROMOTION_AUDIT_20260729.json`
 - `tools/audit_mu_c151_live_promotion.py`
 
+## Current MU matrix-fill audit
+
+The contemporaneous matrix export is fresh and its red/reconnect labels are
+truthful, but it is not evidence for promoting MU. The hash-bound snapshot at
+2026-07-29 15:35 UTC contains 406 populated MU_LONG rows: 346 `RECONNECT`, 51
+`OK`, and 9 `INERT_AT_VALUE`. A single below-B&H delta (`-3.3471` gain/month)
+appears in 355/406 rows (87.44%), while 77/88 multi-value knobs produce exactly
+the same visible output at every tested value. No populated row beats B&H; the
+best visible result is `STOP_PACK` at `-0.5217` gain/month versus B&H.
+
+Two manifest defects also waste engine time: 37 populated TRB rows test
+account-private `TRA_`/`TRC_` knobs, and 12 rows use values outside a natural
+0–100 oscillator domain. The deeper wiring fault is precedence:
+`V8_OVERRIDE_FILE` patches global Tradier config, but `tradier_manage._cfg`
+returns the TRB/global per-symbol overlay first. A cell targeting a field already
+present in MU's baseline overlay can therefore be silently shadowed. Disabling
+all per-symbol settings is not a valid fix because it deletes the accepted
+baseline being varied.
+
+The required implementation is a backtest-only **explicit-cell override layer**
+above both per-account and global per-symbol overlays, retaining every
+untargeted baseline field. Each regenerated cell must prove that the resolved
+value changed and that its decision/trade fingerprint changed. Account-aware
+semantic ranges must replace generic scaling. The read-only audit is reproducible
+with `tools/audit_mu_matrix_fill_snapshot.py`; its machine record is
+`data/reports/MU_MATRIX_FILL_AUDIT_20260729.json`.

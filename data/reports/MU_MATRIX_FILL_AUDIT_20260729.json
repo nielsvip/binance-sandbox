@@ -1,0 +1,177 @@
+{
+  "as_of_utc": "2026-07-29T15:35:00Z",
+  "audit": "MU_SWITCH_MATRIX_FILL_SNAPSHOT_V1",
+  "best_visible_rows": [
+    {
+      "delta_gain_per_month_vs_bh": -0.5217,
+      "key": "STOP_PACK",
+      "status": "OK",
+      "value": "lean_baseline"
+    },
+    {
+      "delta_gain_per_month_vs_bh": -0.5217,
+      "key": "STOP_PACK",
+      "status": "OK",
+      "value": "lean_plus_cap8"
+    },
+    {
+      "delta_gain_per_month_vs_bh": -0.5217,
+      "key": "STOP_PACK",
+      "status": "OK",
+      "value": "lean_plus_hold30"
+    },
+    {
+      "delta_gain_per_month_vs_bh": -0.7181,
+      "key": "STOP_PACK",
+      "status": "OK",
+      "value": "lean_plus_align2"
+    },
+    {
+      "delta_gain_per_month_vs_bh": -0.9142,
+      "key": "STOP_PACK",
+      "status": "OK",
+      "value": "ride_dc_d"
+    }
+  ],
+  "counts": {
+    "distinct_effective_keys": 88,
+    "identical_output_multi_value_keys": 77,
+    "manifest_rows": 3574,
+    "mu_filled_rows": 406,
+    "multi_value_keys": 88,
+    "out_of_domain_rows": 12,
+    "positive_delta_rows": 0,
+    "status": {
+      "INERT_AT_VALUE": 9,
+      "OK": 51,
+      "RECONNECT": 346
+    },
+    "wrong_account_rows": 37
+  },
+  "fingerprint_concentration": {
+    "dominant_delta_gain_per_month_vs_bh": -3.3471,
+    "rows": 355,
+    "share_pct": 87.4384236453202
+  },
+  "interpretation": {
+    "beats_bh_anywhere": false,
+    "blockers": [
+      "ordinary live decision-path parity is not established",
+      "per-symbol/account overlays have higher _cfg precedence than V8_OVERRIDE_FILE globals, so tested cells can be shadowed",
+      "TRB matrix contains TRA_/TRC_ account-private rows",
+      "generic scaled ranges emitted values outside natural oscillator domains",
+      "no current MU_LONG cell beats the same-key B&H floor"
+    ],
+    "fresh_monitoring_export": true,
+    "suitable_as_live_promotion_evidence": false,
+    "truthful_status_labels": true
+  },
+  "out_of_domain_examples": [
+    {
+      "key": "CONNORS_RSI_EXIT_THRESHOLD",
+      "value": "105"
+    },
+    {
+      "key": "DC_DAYTRADE_K_EXHAUSTED_LONG",
+      "value": "106.25"
+    },
+    {
+      "key": "DC_DAYTRADE_K_EXHAUSTED_LONG",
+      "value": "127.5"
+    },
+    {
+      "key": "REENTRY_STOCH_K_MAX_LONG",
+      "value": "120"
+    },
+    {
+      "key": "RSI2_EXIT_THRESHOLD_LONG",
+      "value": "105"
+    },
+    {
+      "key": "RSI_EXIT_LONG_TRADIER",
+      "value": "106.25"
+    },
+    {
+      "key": "RSI_EXIT_LONG_TRADIER",
+      "value": "127.5"
+    },
+    {
+      "key": "SATOSHIT_LONG_MFI_MAX_TRADIER",
+      "value": "120"
+    },
+    {
+      "key": "SATOSHIT_LONG_MFI_MAX_TRADIER",
+      "value": "150"
+    },
+    {
+      "key": "SATOSHIT_LONG_MFI_MAX_TRADIER",
+      "value": "180"
+    },
+    {
+      "key": "TRADIER_RSI2_EXIT_THRESHOLD_LONG",
+      "value": "112.5"
+    },
+    {
+      "key": "TRADIER_RSI2_EXIT_THRESHOLD_LONG",
+      "value": "135"
+    }
+  ],
+  "required_fix": {
+    "override_precedence": "add a backtest-only explicit-cell layer above per-account and global per-symbol overlays while retaining every untargeted baseline field",
+    "promotion_rule": "require changed decision/trade fingerprints and ordinary-live parity",
+    "range_generation": "use account-aware semantic domains, then regenerate affected cells"
+  },
+  "scope": {
+    "account": "trb",
+    "symbol_side": "MU_LONG"
+  },
+  "sources": {
+    "digest": "data/reports/SWITCH_MATRIX_TRB_DIGEST.md",
+    "digest_sha256": "b7da2919cf260d62825588d234c6161aff2ac360460f505019af56dd66b504de",
+    "matrix": "data/reports/SWITCH_MATRIX_TRB.csv.gz",
+    "matrix_age_hours": 0.0225,
+    "matrix_sha256": "848cb491392326d54fdccb67c9441489fdd2143a7aa44e3daef50550d59a7b8b"
+  },
+  "wrong_account_examples": [
+    {
+      "key": "TRA_LONG_ONLY",
+      "value": "true"
+    },
+    {
+      "key": "TRA_LONG_ONLY",
+      "value": "false"
+    },
+    {
+      "key": "TRC_DC_DAYTRADE_LONG_BUDGET",
+      "value": "4950"
+    },
+    {
+      "key": "TRC_DC_DAYTRADE_LONG_BUDGET",
+      "value": "7425"
+    },
+    {
+      "key": "TRC_DC_DAYTRADE_LONG_BUDGET",
+      "value": "9900"
+    },
+    {
+      "key": "TRC_DC_DAYTRADE_LONG_BUDGET",
+      "value": "12375"
+    },
+    {
+      "key": "TRC_DC_DAYTRADE_LONG_BUDGET",
+      "value": "14850"
+    },
+    {
+      "key": "TRC_ENTRY_ZONE_LONG",
+      "value": "15"
+    },
+    {
+      "key": "TRC_ENTRY_ZONE_LONG",
+      "value": "22.5"
+    },
+    {
+      "key": "TRC_ENTRY_ZONE_LONG",
+      "value": "30"
+    }
+  ]
+}
