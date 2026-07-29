@@ -57,3 +57,16 @@ def test_bool_cells_keep_canonical_json_type_across_two_passes(monkeypatch, tmp_
     )
     assert verdict["verdict"] == "WIRED_DIFFERENT"
     assert not verdict["skip_remaining_exact"]
+
+    rows[0]["fingerprint"] = "fp-baseline"
+    reconnect = exact_wiring_gate.classify_param(
+        name,
+        rows,
+        "fp-baseline",
+        tmp_path / "missing.npz",
+        symbol="MU",
+        side="LONG",
+    )
+    assert reconnect["verdict"] == "RED_RECONNECT"
+    assert reconnect["range_binding"]["status"] == "BINDING_BY_TYPE"
+    assert reconnect["skip_remaining_exact"]

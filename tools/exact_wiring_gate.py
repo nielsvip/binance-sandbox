@@ -323,10 +323,16 @@ def classify_param(
     }
     source = read_site_class(param)
     master = master_state(param, symbol, side)
-    binding = range_binding(param, values, npz_path) if values else {
+    default = getattr(TradierConfig, param, object())
+    binding_values = list(values)
+    if isinstance(default, bool) and default not in binding_values:
+        # The accepted baseline is the exact default-value pass for a boolean.
+        # Include that semantic value in range/type validation without
+        # fabricating a second param_cells row.
+        binding_values.append(default)
+    binding = range_binding(param, binding_values, npz_path) if values else {
         "status": "NO_VALUES"
     }
-    default = getattr(TradierConfig, param, object())
     nondefault = [value for value in values if value != default]
     required = 1 if isinstance(default, bool) else 2
 
