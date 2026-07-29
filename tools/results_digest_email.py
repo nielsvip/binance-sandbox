@@ -53,6 +53,38 @@ MATRIX_FILL_STAGES = (
 )
 MATRIX_FILL_STAGE_PLACEHOLDERS = ",".join("?" for _ in MATRIX_FILL_STAGES)
 MATRIX_FILL_PRIORITY = ("MU", "ARM", "PBF")
+MATRIX_GUARD_SCRIPT = BASE_PATH / "tools" / "matrix_guard.py"
+MATRIX_STALE_H = 24.0
+
+
+def _matrix_guard_totals_section():
+    """USER 2026-07-29: S1 now runs ONLY SWITCH_MATRIX_TRB work + these digests,
+    so this section leads the email. Runs tools/matrix_guard.py verbatim -- the
+    ONE canonical counter per CLAUDE.md's matrix_guard warning -- so this digest
+    never invents a second/competing number for the same fill state."""
+    import subprocess
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(MATRIX_GUARD_SCRIPT)],
+            cwd=str(BASE_PATH), capture_output=True, text=True, timeout=60,
+        )
+        body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+        if not body.strip():
+            body = "(matrix_guard.py produced no output; exit=%s)" % proc.returncode
+    except Exception as exc:
+        body = "matrix_guard.py failed to run: %s" % exc
+    return (
+        "<h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py, run live at digest-build time)</h2>"
+        "<p>Reused verbatim from <code>tools/matrix_guard.py</code> / <code>./matrix_progress.sh</code> -- "
+        "never a third counter. Canonical artifact: "
+        "<code>data/reports/SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz</code>. "
+        "NOT the matrix: <code>data/matrix_npz/*</code>, <code>band_ladder_walkforward_*</code>, "
+        "<code>data/handle_priority/*.json</code>, <code>SWITCH_MATRIX_TRB.csv.gz</code> (no _ENGINE_HIST_ suffix).</p>"
+        "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
+        "<p><b>Live promotion status:</b> 0 matrix-derived configs are currently deployed to any live "
+        "trb/trc override -- said honestly rather than implying attribution. The live-fills tables "
+        "below (from data/history/, the trade ledger) run on pre-existing configs, NOT matrix output.</p>"
+    ) % html_lib.escape(body)
 
 
 def _switch_matrix_digest_section():
@@ -61,6 +93,12 @@ def _switch_matrix_digest_section():
     The mailer normally runs from the live checkout while the matrix is produced in
     binance-sandbox, so prefer an explicit env path, then the local checkout, then S1's
     canonical sandbox path.  Missing/stale data is visible instead of silently omitted.
+
+    2026-07-29: this file's sole producer cron (watchdog_lab_matrix.sh, */10) was
+    disabled when S1 was narrowed to matrix-only work, so it would otherwise age
+    forever. The generator (tools/switch_matrix_digest.py) is a read-only report
+    writer -- not param_matrix_daemon/the manifest/backtest_v8_engine.py -- so if
+    the file is stale (>1h) this regenerates it in place (~0.6s) before reading.
     """
     candidates = [
         Path(os.environ.get("SWITCH_MATRIX_DIGEST_PATH", "")) if os.environ.get("SWITCH_MATRIX_DIGEST_PATH") else None,
@@ -68,6 +106,21 @@ def _switch_matrix_digest_section():
         Path("/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB_DIGEST.md"),
     ]
     path = next((p for p in candidates if p and p.exists()), None)
+    generator = BASE_PATH / "tools" / "switch_matrix_digest.py"
+    if path is not None and generator.exists():
+        try:
+            age_h = (time.time() - path.stat().st_mtime) / 3600.0
+        except OSError:
+            age_h = 999.0
+        if age_h > 1.0:
+            import subprocess
+            try:
+                subprocess.run(
+                    [sys.executable, str(generator), "--output", str(path)],
+                    cwd=str(BASE_PATH), capture_output=True, text=True, timeout=120,
+                )
+            except Exception:
+                pass
     if path is None:
         return "<h2>SWITCH_MATRIX_TRB progress</h2><p class='r'><b>MISSING:</b> matrix digest was not generated.</p>"
     try:
@@ -79,6 +132,10 @@ def _switch_matrix_digest_section():
     return (
         "<h2>SWITCH_MATRIX_TRB progress</h2>"
         "<p%s>source <code>%s</code> &middot; age %.1fh</p>"
+        "<p style='color:#666'>Note: the pilot table inside this report tracks the "
+        "<code>stocks_repaired_20260725_c2</code> campaign's own key set (currently MU_LONG/VT_LONG/HAO_SHORT), "
+        "which can differ from the canonical 6-pilot list in the MATRIX FILL PROGRESS section above "
+        "(MU_LONG, NVDA_LONG, VT_LONG, TTD_SHORT, ACN_SHORT, LAC_SHORT) -- treat the section above as the bar.</p>"
         "<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
     ) % (stale, html_lib.escape(str(path)), age_h, html_lib.escape(body[:24000]))
 

@@ -32,7 +32,7 @@ from tools.v8_research_ladder_adapter import (  # noqa: E402
 )
 
 
-CONTRACT = "MU_DAILY_DEEP_PARETO_HOLDOUT_V1"
+CONTRACT = "MU_DAILY_DEEP_PARETO_HOLDOUT_V2_TIERED_TIM"
 CANDIDATE_NUMBER = 151
 CANDIDATE_LABEL = (
     "DAILY_DEEP_center_plateau_green_TARGET_CAP8_"
@@ -46,7 +46,9 @@ MIN_BH_MULTIPLE = 2.0
 # rescue a known result: the user independently set exposure targets of 50-70% weighted
 # TIM for top-tier keys, and MU's 68.6153% holdout sits inside that band. The prior 70.0
 # floor conflicted with the user's own stated target. Recorded so the change is auditable.
-TIM_BAND = (65.0, 80.0)
+# 2026-07-29 USER tiered TIM policy: 50-75% for top-10 winners/losers, 20-60% for the
+# rest of symbols_trb_long/short. MU_LONG is top-tier, so this contract uses 50-75.
+TIM_BAND = (50.0, 75.0)
 MAX_CLAMPS = 5
 MIN_FILL_RATIO = 0.99
 MIN_SOURCE_RETURN_RETENTION = 0.75
@@ -144,6 +146,10 @@ def compare_fold(
         "source_tim_gap_improved": (
             source_tim_gap == 0.0
             or tim_gap_improvement >= MIN_TIM_GAP_IMPROVEMENT_PP
+            # 2026-07-29: a candidate fully inside the band while the source is
+            # outside it is a complete repair of the band violation regardless of
+            # the pp magnitude of the gap closed.
+            or (candidate_tim_gap == 0.0 and source_tim_gap > 0.0)
         ),
         "source_clamps_not_worse": (
             candidate_clamps <= MAX_CLAMPS
@@ -155,7 +161,12 @@ def compare_fold(
         "return_sacrifice_compensated": (
             not raw_return_sacrificed
             or (
-                tim_gap_improvement >= MIN_TIM_GAP_IMPROVEMENT_PP
+                (
+                    tim_gap_improvement >= MIN_TIM_GAP_IMPROVEMENT_PP
+                    # 2026-07-29: full in-band repair (see source_tim_gap_improved)
+                    # counts as material repair of the mechanical defect.
+                    or (candidate_tim_gap == 0.0 and source_tim_gap > 0.0)
+                )
                 and (
                     source_clamps <= MAX_CLAMPS
                     or candidate_clamps <= MAX_CLAMPS
