@@ -849,6 +849,12 @@ def main() -> None:
         f"- VEC diagnostic rows: **{vec_total:,}** (never matrix proof).",
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.xlsx", now),
         f"- " + artifact_line(REPORTS / "SWITCH_MATRIX_TRB.csv.gz", now),
+        f"- " + artifact_line(
+            REPORTS / "SWITCH_MATRIX_INTERDEPENDENCY_20260729.json", now
+        ),
+        f"- " + artifact_line(
+            REPORTS / "SWITCH_MATRIX_INTERDEPENDENCY_20260729.csv", now
+        ),
         f"- Description coverage in current CSV: **{desc_filled:,}/{desc_total:,}** rows.",
         "",
         "## Stocks 5m execution provenance",
