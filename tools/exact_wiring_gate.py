@@ -346,6 +346,17 @@ def classify_param(
         else:
             verdict = "RED_BAD_RANGE"
             reason = "identical exact fingerprints but range does not prove a binding perturbation"
+    elif (
+        isinstance(default, bool)
+        and baseline_fingerprint
+        and len(fingerprints) == 1
+    ):
+        # A boolean has only one non-default exact value.  Its second pass is
+        # the accepted baseline, deliberately not re-executed as a duplicate
+        # cell.  A fingerprint different from that baseline proves wiring; it
+        # is not a one-value numeric degeneracy.
+        verdict = "WIRED_DIFFERENT"
+        reason = "non-default boolean produced a fingerprint different from baseline"
     elif len(fingerprints) == 1:
         if binding["status"] in {"BINDING_BY_TYPE", "BINDING_OBSERVED_DOMAIN"}:
             verdict = "RED_DEGENERATE"

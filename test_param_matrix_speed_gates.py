@@ -35,15 +35,17 @@ def test_bool_cells_keep_canonical_json_type_across_two_passes(monkeypatch, tmp_
     assert [json.loads(value_json) for _, value_json, _ in cells] == [True, False]
     assert [next(iter(override.values())) for _, _, override in cells] == [True, False]
 
+    # The default false pass is represented by the accepted baseline and is
+    # intentionally not rerun as a duplicate exact cell.  The one non-default
+    # boolean exact pass must compare directly with that baseline.
     rows = [
         {
-            "value": json.loads(value_json),
-            "value_json": value_json,
-            "fingerprint": fingerprint,
+            "value": True,
+            "value_json": "true",
+            "fingerprint": "fp-true",
             "inert": False,
             "validation_status": "PASS",
         }
-        for (_, value_json, _), fingerprint in zip(cells, ("fp-true", "fp-false"))
     ]
     verdict = exact_wiring_gate.classify_param(
         name,
