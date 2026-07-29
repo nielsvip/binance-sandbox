@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-07-29T14:56:07.351453+00:00",
+  "timestamp": "2026-07-29T15:11:53.034310+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 82
+    "total_ranked": 84
   },
   "unified_ranking": [
     {
@@ -26,6 +26,12 @@
     },
     {
       "symbol": "USUALUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "WIFUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -314,6 +320,12 @@
     },
     {
       "symbol": "BEATUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "PENGUUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
