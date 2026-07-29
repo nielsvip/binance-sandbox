@@ -28,6 +28,47 @@ working tools into `old/`. All restored. **Its conclusions are void; Codex's are
 
 ---
 
+## 0b. HOW TO EXECUTE — DELEGATE EVERYTHING, BY DIFFICULTY
+
+**You are the orchestrator. Do not do the volume work yourself — you will hit the
+token limit and the run dies mid-task.** That is not hypothetical: the previous
+session lost **six agents plus its own main loop** to session limits, mid-diagnosis,
+and left the matrix ~11% full.
+
+### Model per task
+
+| model | give it | examples from this work |
+|---|---|---|
+| **Haiku** — cheap, mechanical, high volume | anything with a deterministic answer and no judgement | launch/monitor daemon batches; tail logs and tally fill counts; run the NPZ contract audit and list pass/fail; pin NPZs (`cp` + `chmod 444`); collect `result.json` files into a table; check process liveness; count `NOT_ENGINE_TESTED`/`DEGENERATE` rows per key |
+| **Sonnet** — reasoning, diagnosis, code fixes | anything requiring "why", or an edit to engine/tooling code | diagnose why a knob is degenerate (unwired vs gated vs range-too-narrow) and **fix the wiring**; fix the short-side stage-0 seed (defect D); decide the optimal numeric value AND timeframe per path; verify live↔backtest parity; repair red cells |
+| **you (orchestrator)** — keep, never delegate | sequencing and irreversible judgement | the PRIORITY 1→2→3 order; deciding when MU_LONG is actually done; anything touching a **LOCKED** file (stop and ask the user); any promotion to live |
+
+### Rules that make delegation work here
+
+1. **Every agent prompt must carry the canonical-artifact warning.** Tell it to run
+   `python3 tools/matrix_guard.py` first and that the matrix is
+   `SWITCH_MATRIX_TRB_ENGINE_HIST_STOCKS_BASELINE_V2_S4H.csv.gz` — nothing else.
+   Three different artifacts have each been mistaken for it at a cost of days.
+   Without this line an agent *will* drift to the wrong lane.
+2. **Agents are invisible to the user while running.** Require every agent to write
+   status to a file the user can open (append a line every few minutes), e.g.
+   `data/reports/agent_status/<tag>.md`. "It's running" is not a progress report.
+3. **Stagger launches; keep prompts tight.** Do not fan out six agents at once —
+   that is what exhausted the limit last time. Two or three concurrent, short
+   focused prompts, and let them finish.
+4. **One scope per agent.** A knob-wiring agent does not also rank paths. Overlap
+   causes duplicated work and contradictory edits.
+5. **Never delegate a LOCKED-file edit.** `tradier_manage.py` and `config_tradier.py`
+   are locked. An agent must stop and report; only the user can say "unlock X".
+6. **Demand honest failure.** Every agent reports what it could NOT finish. A
+   zero-trade or zero-cell result is a bug report, never a result.
+7. **Verify from outside.** Do not trust an agent's summary — check
+   `./matrix_progress.sh` (reads the live `param_cells` store; the CSV export lags)
+   and the daemon logs yourself. Last session an agent reported progress while one
+   pilot had been retrying a failed baseline for hours.
+
+---
+
 ## 1. DONE THIS SESSION — MU is now promotion-eligible
 
 **TIM floor lowered 70.0 → 65.0** (`tools/run_mu_ladder_pareto_holdout.py:49`,
@@ -55,50 +96,106 @@ now on S1 at `data/reports/vec_research/`.
 
 ---
 
-## 2. DO THIS NEXT — the user's standing instruction
+## 2. PRIORITY ORDER — do these strictly in sequence, do not jump ahead
 
-> *"lower time in market from 70 to 65 so we can make MU live and hopefully have the
-> other 3 live as well by market open at 13:30 UTC. Continue with all the tickers we
-> have been actively trading in the last month, taking less time per symbol as the
-> faults have hopefully been ironed out, and we can start skipping (or only retry in
-> 1 out of 10) the handles that so far have not produced positive results. Also keep
-> spawning agents to iron out the cracks so we can start backtesting way faster."*
+### PRIORITY 1 — MU_LONG: every path tested, every path at its optimal value
 
-1. **Floor lowered — done.** Re-run the other three pilots against the 65 band and
-   see which now qualify.
-2. **Fleet the actively-traded tickers.** Already extracted:
-   `data/handle_priority/traded_universe_20260727.json` — **83 keys traded in 60d,
-   17 in 7d** (from `data/history/{trb,trc}/*.jsonl`).
-3. **Skip / 1-in-10 the unproductive handles.** A frozen stratified sample frame
-   exists: `data/handle_priority/sample_frame_20260727.json` — 129 keys, 16 strata
-   (side × trend sign × volatility quartile), proportional allocation, pilots
-   force-included. **Do not re-draw it** — that turns sampling into cherry-picking.
-4. **Keep spawning agents.** Caveat learned the hard way: **agents are invisible to
-   the user while running.** Have every agent write status to a file the user can
-   open, or do the work in the main session.
+**Target: >10× B&H on MU_LONG**, with variable quantities **normalised so the
+result is comparable to a $2,000 baseline trade**. A multiple earned by deploying
+more capital than the benchmark is not 10× — publish `avg_deployed_usd` and
+`implied_leverage_x` beside it, and state the deployed-capital-normalised figure.
+That is the number that decides whether MU goes live. (Current: 5.704× headline,
+1.19× deployment-normalised — see defect F. The gap between those two is exactly
+what this priority must close honestly.)
 
-### Test order (USER) — subtractive, never additive
+**Two hard requirements, both must be true before MU is called done:**
+
+**(a) EVERY path and subpath tested.** Not a sample. Not the ones that look
+promising. All of them, at ENGINE tier. `sub_setting` is currently populated on
+only 637 of 3,654 rows — enumerate the full space from `param_registry`
+(1,799 entries), never from the CSV, which only shows what has already been emitted.
+
+**(b) ZERO dead knobs. NONE.** A knob that does not change the trade fingerprint
+is not a result — it is unfinished work. For every one:
+- not read by the engine → **wire it**;
+- read but gated off by a master `_ENABLED=False` → **not dead, gated** — test with
+  the master on;
+- read and wired but values too close to move the fingerprint → **widen the range**.
+Never prune a sub-knob whose master is off (§13.5). A knob that still cannot be made
+to discriminate after all three checks is a **red cell to repair**, never to delete
+or hide. 1,842 rows are `NOT_ENGINE_TESTED` and 1,339 are `DEGENERATE` — both
+categories are work, not findings.
+
+**When a path underperforms, the usual cause is timeframe emphasis, not the path.**
+USER: *"If a path is not producing desired results you are probably putting too much
+emphasis on the wrong timeframe — switch timeframe focus and numeric values until
+you get great results on every path."* So for each path, sweep **both**:
+1. the **numeric values** (find the optimum, do not settle for a tested value), and
+2. the **timeframe the path keys off** — the same logic on D vs 4h vs 1h is three
+   different strategies. Do not conclude a path is worthless until it has been tried
+   on the timeframes that suit it.
+
+Available: `lrL_pct_b` exists for 1h/4h/D, and 15m/5m were added 2026-07-28
+(`backtest_v8_precompute.py:1658`); `vec_band_ladder_walkforward.py --tfs` accepts
+any three slots. W/M carry `wt_cross_bull`/`dc_high`/`stoch_k` but no `lrL_pct_b`.
+Per USER, integrate 1h-and-above **first**; 15m/5m are available but not the priority.
+
+### PRIORITY 2 — the other four pilots, same standard
+
+Only after MU_LONG is complete — every path tested, every path optimised, zero dead
+knobs — repeat for, in order:
+**`NVDA_LONG` → `VT_LONG` → `TTD_SHORT` → `ACN_SHORT`.**
+
+Blocker to clear first for the two shorts: **no short can currently be baselined at
+all** (defect D — `no intended-side trade/MTM record` on both TTD and ACN). Fix the
+short-side stage-0 seed before starting them, or they will burn slots retrying.
+
+### PRIORITY 3 — rank the paths, THEN reduce sampling
+
+Only once all five pilots are complete and every path is correctly connected can you
+know which paths matter. Then:
+1. **Rank every path by importance** using the five filled pilots.
+2. Keep testing the important ones on every key.
+3. Drop the unimportant paths and their subpaths/settings to **1-in-5 or 1-in-10 keys**
+   to speed the fleet up.
+
+Sampling before the ranking is guesswork, and sampling before the knobs are wired
+measures nothing. The frozen stratified frame already exists —
+`data/handle_priority/sample_frame_20260727.json`, 129 keys, 16 strata
+(side × trend sign × volatility quartile), pilots force-included. **Do not re-draw
+it after seeing results.**
+
+Promotion/demotion rule: a reduced-sample path that comes back positive on ≥2 sampled
+keys returns to full per-key testing. "Unproductive on the pilots" is never permanent.
+
+### Test order within every stage — subtractive, never additive
 
 | stage | config | gate |
 |---|---|---|
 | **0** | dynamic-quantity ladder ON, **every exit OFF** | ~100% TIM, return **is** B&H. **Hard gate.** |
-| **1** | exits back on **one at a time** | must **raise gain** vs stage 0 |
+| **1** | exits back on **one at a time**, sweeping values AND timeframes | must **raise gain** vs stage 0 |
 | **2** | entry paths, one at a time | same |
 | **3** | filters/gates, one at a time | same |
 
 **Green = higher gain than the stage it was added to.**
 
-**USER's physics, treat as a diagnostic:** *"It is impossible to do worse than B&H
-because just entering and doing nothing is B&H."* Correct. Any baseline below B&H
-is a **broken floor**, not a bad strategy. Fix the floor before measuring anything.
+**USER's physics — a diagnostic, not an opinion:** *"It is impossible to do worse
+than B&H because just entering and doing nothing is B&H."* Any baseline below B&H is
+a **broken floor**. Fix the floor before measuring anything against it.
 
 If stage 0 does not reach B&H, an exit is not behind a switch. Three shapes, none
 inferable from the name: plain `X_ENABLED`; boolean **without** `_ENABLED`
-(`STRUCTURAL_RANGE_SHIFT_EXIT` alone produced 100% of 1,310 closes); string TF
-knobs disabled with `"None"` (`LONG_STRUCT_EXIT_TF='D'` → 69 of 149 closes). Read
+(`STRUCTURAL_RANGE_SHIFT_EXIT` alone produced 100% of 1,310 closes); string TF knobs
+disabled with `"None"` (`LONG_STRUCT_EXIT_TF='D'` → 69 of 149 closes). Read
 `_cfg_bools()` / `_cfg_strs()`. Bible §13.7, §13.8.
 
----
+### Supporting context
+
+- Actively-traded universe already extracted:
+  `data/handle_priority/traded_universe_20260727.json` — 83 keys traded in 60d,
+  17 in 7d, from `data/history/{trb,trc}/*.jsonl`.
+- **Agents are invisible to the user while running.** Have every agent write status
+  to a file the user can open, or do the work in the main session.
 
 ## 3. DEFECTS IN THE CODEX SYSTEM — verify each, they cap the results
 
