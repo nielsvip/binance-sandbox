@@ -1837,7 +1837,14 @@ def _reconstruct_chart_trades(executed_trades):
         elif is_close:
             if rd is None or rd["qty"] <= 0:
                 continue
-            close_qty = min(qty, rd["qty"])
+            # Tradier (stocks) fills round to whole shares, so a full-close event's
+            # "quantity" is routinely a hair below the fractional-share round's open
+            # qty (e.g. seed opens 22.492128 shares, real close fills 22.0). Using
+            # min(qty, rd["qty"]) left a residual > 1e-9 forever, so accumulate_partial_
+            # close() never returned a summary and the round was silently dropped from
+            # the reconstructed JSONL — the actual cause of every SHORT matrix baseline
+            # showing "no intended-side trade/MTM record" despite a real close.
+            close_qty = rd["qty"] if bool(ev.get("is_full_close")) else min(qty, rd["qty"])
             _rt_cost = _round_trip_cost_for_sym(sym)
             _partial_summary = accumulate_partial_close(
                 rd, close_qty, px, _rt_cost, side == "LONG"
