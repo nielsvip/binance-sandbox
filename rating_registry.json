@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-07-29T13:38:00.563259+00:00",
+  "timestamp": "2026-07-29T13:52:28.346164+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 77
+    "total_ranked": 80
   },
   "unified_ranking": [
     {
@@ -25,6 +25,12 @@
       "short_score": 0
     },
     {
+      "symbol": "LPTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000FLOKIUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -32,6 +38,12 @@
     },
     {
       "symbol": "ACTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "OPUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -464,6 +476,12 @@
     },
     {
       "symbol": "FILUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "RENDERUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
