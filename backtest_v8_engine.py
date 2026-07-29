@@ -1816,7 +1816,13 @@ def _reconstruct_chart_trades(executed_trades):
         if qty <= 0 or px <= 0:
             continue
         is_open = action in ("OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REENTRY", "HEDGE_OPEN")
-        is_close = action in ("CLOSE", "REDUCE", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE") or "CLOSE" in reason.upper() or "REDUCE" in reason.upper()
+        # MTM_FINAL_BAR_NOLIES_RULE2 (NO-LIES rule #2, ~line 5559) is the only close a
+        # position ever gets when it survives to the end of the run with no real exit —
+        # a SHORT seed held through a trending-up window is the common case. Excluding it
+        # here silently dropped that position from every matrix contract's trades/MTM
+        # check ("no intended-side trade/MTM record"), even though it was correctly
+        # opened, side-tagged and marked-to-market.
+        is_close = action in ("CLOSE", "REDUCE", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE", "MTM_FINAL_BAR_NOLIES_RULE2") or "CLOSE" in reason.upper() or "REDUCE" in reason.upper()
         rd = open_rounds.get(pk)
         if is_open:
             if rd is None or rd["qty"] <= 0:
@@ -5558,6 +5564,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _mtm_losses += 1
         executed_trades.append({
             "timestamp": _mtm_final_ts,
+            "type": "eta",  # required so _reconstruct_chart_trades (chart/matrix JSONL) sees this event
             "symbol": _sym_for_mtm,
             "position_key": _pk,
             "side": "SELL" if _is_long else "BUY",

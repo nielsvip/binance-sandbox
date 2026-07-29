@@ -40,6 +40,32 @@ from backtest_data_contract import audit_npz  # noqa: E402
 CLAIM_DB = SBX / "data" / "param_matrix_claims.db"
 PRIORITY_SYMS = ["MU", "HAO", "NVDA", "VT"]  # USER 2026-07-21 evening: the first four keys are
 # MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG — worked ONE ticker at a time (see tools/matrix_focus.py)
+BASELINE_FAIL_LIMIT = 5  # consecutive safe-baseline failures before this worker gives up
+BASELINE_BACKOFF_CAP_S = 900  # 15min cap (2026-07-29: was a flat 60s spin for HOURS on TTD_SHORT)
+
+
+def reexec_self(reason, worker):
+    """psc.run_symbol raises SystemExit when the matrix contract (source files or NPZ) changed
+    mid-run or since worker start. persym_baseline_campaign.py has ALREADY quarantined the
+    in-flight result (renamed the stale jsonl/audit/stamp files) before raising — that part is
+    correct and must be preserved. What must NOT happen is this worker exiting and staying dead
+    (2026-07-28 23:06: 8 workers died this way on a config_tradier.py sync and nothing relaunched
+    them). _MATRIX_PROCESS_SOURCE_SIGNATURE and matrix_contract_fingerprint() are computed once
+    at module import, so the only correct reload is a fresh interpreter — os.execv keeps the same
+    PID (claims in CLAIM_DB stay valid) and re-imports every contract file from disk, so the next
+    pass is fingerprinted against the NEW contract, never the stale one."""
+    print(
+        f"[{worker}] {reason} — in-flight result already quarantined by "
+        "persym_baseline_campaign.py; re-exec'ing a fresh interpreter to reload the contract "
+        "(never continuing under a stale fingerprint)",
+        flush=True,
+    )
+    sys.stdout.flush()
+    try:
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    except OSError as exc:
+        print(f"[{worker}] re-exec FAILED ({exc!r}) — exiting for the watchdog to relaunch", flush=True)
+        sys.exit(1)
 
 
 def claims():
@@ -466,6 +492,7 @@ def main():
             raise SystemExit(f"{only[0]}_{a.side} quarantined: {contract.errors}")
     worker = f"pmx:{a.tag}:{os.getpid()}"
     manifest = str(SBX / f"data/param_sweep_manifest_{psc.MODE}.json")
+    baseline_fail_count = 0
     while True:
         # NEVER die on a lock (2026-07-21: hourly param_matrix rebuild holds a minutes-long
         # write txn; workers must outwait it, not crash-loop through the watchdog)
@@ -545,15 +572,43 @@ def main():
         ctx = {"con": con, "ccon": ccon, "base": base, "base_fp": base_fp, "keys": keys,
                "intervals": intervals, "censor": censor, "years": years, "st": st,
                "worker": worker, "tested_local_for": tested_local_for, "args": a}
-        if a.safe_contract and not ensure_safe_baseline(ctx, only[0], a.side):
-            print(
-                f"[{worker}] safe baseline unavailable for {only[0]}_{a.side}; retry in 60s",
-                flush=True,
-            )
-            con.close()
-            ccon.close()
-            time.sleep(60)
-            continue
+        if a.safe_contract:
+            try:
+                baseline_ok = ensure_safe_baseline(ctx, only[0], a.side)
+            except SystemExit as exc:
+                con.close()
+                ccon.close()
+                reexec_self(str(exc), worker)
+            if baseline_ok:
+                baseline_fail_count = 0
+            else:
+                baseline_fail_count += 1
+                con.close()
+                ccon.close()
+                if baseline_fail_count >= BASELINE_FAIL_LIMIT:
+                    # --safe-contract enforces exactly one --only symbol + --side (argparse
+                    # check above), so a broken baseline for that key IS this worker's entire
+                    # job — there is no "other queued work for this tag" to fall back to.
+                    # 2026-07-28: matrix_rt1 (TTD_SHORT) spun "retry in 60s" on a permanently
+                    # broken baseline ("no intended-side trade/MTM record") for HOURS, burning
+                    # a slot on known-broken work instead of surfacing the failure. Exit with a
+                    # distinct message so the watchdog log makes the root cause (baseline data,
+                    # not transient contention) visible instead of relaunching blindly forever.
+                    raise SystemExit(
+                        f"BASELINE_PERSISTENTLY_UNAVAILABLE: {only[0]}_{a.side} failed "
+                        f"{baseline_fail_count} consecutive passes — this worker's only job is "
+                        "this key; investigate the baseline (not a transient retry), do not "
+                        "just relaunch"
+                    )
+                backoff = min(60 * (2 ** (baseline_fail_count - 1)), BASELINE_BACKOFF_CAP_S)
+                print(
+                    f"[{worker}] safe baseline unavailable for {only[0]}_{a.side} "
+                    f"(consecutive fail {baseline_fail_count}/{BASELINE_FAIL_LIMIT}); "
+                    f"backoff {backoff}s",
+                    flush=True,
+                )
+                time.sleep(backoff)
+                continue
         for sym in (only or ordered_syms(first)):
             def tested_local(s, pname, vlabel, _sym=sym):
                 return tested_local_for(_sym, s, pname, vlabel)
@@ -561,6 +616,11 @@ def main():
             for pname, vlabel, ovr in cells:
                 try:
                     did_any |= run_unit(ctx, sym, pname, vlabel, ovr)
+                except SystemExit as exc:
+                    # psc.run_symbol's contract-changed exit propagates here uncaught (SystemExit
+                    # is not an Exception subclass) — 2026-07-28: this killed 8 workers permanently
+                    # on one config sync. Quarantine already happened inside run_symbol; reload.
+                    reexec_self(str(exc), worker)
                 except Exception as exc:
                     # NEVER die on one bad unit — a single uncaught OperationalError out of
                     # insert_cell took down all 10 workers for hours (2026-07-21, 0 engine cells).
