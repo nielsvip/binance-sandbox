@@ -42,22 +42,43 @@ PRIORITY_SYMS = ["MU", "HAO", "NVDA", "VT"]  # USER 2026-07-21 evening: the firs
 # MU_LONG, HAO_SHORT, NVDA_LONG, VT_LONG — worked ONE ticker at a time (see tools/matrix_focus.py)
 BASELINE_FAIL_LIMIT = 5  # consecutive safe-baseline failures before this worker gives up
 BASELINE_BACKOFF_CAP_S = 900  # 15min cap (2026-07-29: was a flat 60s spin for HOURS on TTD_SHORT)
+# psc.run_symbol (persym_baseline_campaign.py) raises SystemExit from TWO distinct checks, both
+# reachable from this daemon's only two run_symbol call sites (ensure_safe_baseline, run_unit):
+#   STARTUP_GAP        — source/NPZ changed BEFORE this call even started (checked at the top of
+#                         run_symbol, no subprocess spawned yet, nothing to quarantine).
+#   MID_RUN_QUARANTINE — source/NPZ changed WHILE the engine subprocess was running (checked
+#                         after it exits; the stale jsonl/audit/stamp files are renamed with a
+#                         .contract_changed_during_run. suffix BEFORE this raises).
+# 2026-07-29: confirmed via /home/niels/logs/param_matrix_rm1.log that a worker started BEFORE
+# this fix was deployed (pid 2688641, running the pre-reexec code in memory) hit STARTUP_GAP and
+# died with the bare uncaught message (no re-exec) — expected for a process that predates the
+# fix, not a gap in the fix itself. Both reasons are named here explicitly so a future reader
+# never has to guess which one fired from a bare exception string.
+CONTRACT_EXIT_STARTUP_GAP = "matrix contract source changed after worker start"
+CONTRACT_EXIT_MID_RUN = "matrix contract changed during engine run"
 
 
 def reexec_self(reason, worker):
-    """psc.run_symbol raises SystemExit when the matrix contract (source files or NPZ) changed
-    mid-run or since worker start. persym_baseline_campaign.py has ALREADY quarantined the
-    in-flight result (renamed the stale jsonl/audit/stamp files) before raising — that part is
-    correct and must be preserved. What must NOT happen is this worker exiting and staying dead
-    (2026-07-28 23:06: 8 workers died this way on a config_tradier.py sync and nothing relaunched
-    them). _MATRIX_PROCESS_SOURCE_SIGNATURE and matrix_contract_fingerprint() are computed once
-    at module import, so the only correct reload is a fresh interpreter — os.execv keeps the same
-    PID (claims in CLAIM_DB stay valid) and re-imports every contract file from disk, so the next
-    pass is fingerprinted against the NEW contract, never the stale one."""
+    """Catch-and-reload for BOTH psc.run_symbol contract-exit reasons (STARTUP_GAP and
+    MID_RUN_QUARANTINE above). Whichever fired, persym_baseline_campaign.py has already done
+    the correct thing on its side (MID_RUN_QUARANTINE: renamed the stale in-flight result before
+    raising; STARTUP_GAP: nothing ran yet, nothing to quarantine) — this function's only job is
+    making sure the WORKER does not exit and stay dead (2026-07-28 23:06: 8 workers died this way
+    on a config_tradier.py sync and nothing relaunched them). _MATRIX_PROCESS_SOURCE_SIGNATURE
+    and matrix_contract_fingerprint() are computed once at module import, so the only correct
+    reload is a fresh interpreter — os.execv keeps the same PID (claims in CLAIM_DB stay valid)
+    and re-imports every contract file from disk, so the next pass is fingerprinted against the
+    NEW contract, never the stale one."""
+    if CONTRACT_EXIT_STARTUP_GAP in reason:
+        kind = "STARTUP_GAP"
+    elif CONTRACT_EXIT_MID_RUN in reason:
+        kind = "MID_RUN_QUARANTINE"
+    else:
+        kind = "UNKNOWN_SYSTEMEXIT"
     print(
-        f"[{worker}] {reason} — in-flight result already quarantined by "
-        "persym_baseline_campaign.py; re-exec'ing a fresh interpreter to reload the contract "
-        "(never continuing under a stale fingerprint)",
+        f"[{worker}] contract-reload trigger={kind}: {reason} — any in-flight result was already "
+        "quarantined by persym_baseline_campaign.py before this raised; re-exec'ing a fresh "
+        "interpreter to reload the contract (never continuing under a stale fingerprint)",
         flush=True,
     )
     sys.stdout.flush()
@@ -576,6 +597,10 @@ def main():
             try:
                 baseline_ok = ensure_safe_baseline(ctx, only[0], a.side)
             except SystemExit as exc:
+                # ensure_safe_baseline's psc.run_symbol call is the earliest per-pass chance to
+                # hit CONTRACT_EXIT_STARTUP_GAP (contract changed while this worker was idle
+                # between passes, before any subprocess even started this pass) as well as
+                # CONTRACT_EXIT_MID_RUN (changed while the baseline engine run was in flight).
                 con.close()
                 ccon.close()
                 reexec_self(str(exc), worker)
@@ -617,9 +642,13 @@ def main():
                 try:
                     did_any |= run_unit(ctx, sym, pname, vlabel, ovr)
                 except SystemExit as exc:
-                    # psc.run_symbol's contract-changed exit propagates here uncaught (SystemExit
-                    # is not an Exception subclass) — 2026-07-28: this killed 8 workers permanently
-                    # on one config sync. Quarantine already happened inside run_symbol; reload.
+                    # run_unit's psc.run_symbol call can hit either CONTRACT_EXIT_STARTUP_GAP
+                    # (contract already stale by the time this cell's call started) or
+                    # CONTRACT_EXIT_MID_RUN (changed while this cell's engine subprocess ran) —
+                    # both propagate here uncaught (SystemExit is not an Exception subclass) —
+                    # 2026-07-28: this killed 8 workers permanently on one config sync.
+                    # Quarantine (MID_RUN_QUARANTINE case) already happened inside run_symbol;
+                    # this only reloads the worker so it doesn't stay dead.
                     reexec_self(str(exc), worker)
                 except Exception as exc:
                     # NEVER die on one bad unit — a single uncaught OperationalError out of

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-29T00:40:29.440001+00:00",
+  "timestamp": "2026-07-29T00:55:28.953825+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
@@ -79,19 +79,13 @@
       "short_score": 0
     },
     {
-      "symbol": "FILUSDC",
+      "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "1000PEPEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -175,6 +169,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000FLOKIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "HYPEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -199,12 +199,6 @@
       "short_score": 0
     },
     {
-      "symbol": "INJUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "BIGTIMEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -224,6 +218,12 @@
     },
     {
       "symbol": "ETCUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -295,12 +295,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BRETTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "1000XECUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -325,6 +319,12 @@
       "short_score": 0
     },
     {
+      "symbol": "FILUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CHILLGUYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,12 +332,6 @@
     },
     {
       "symbol": "GALAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -355,13 +349,25 @@
       "short_score": 0
     },
     {
-      "symbol": "1000FLOKIUSDT",
+      "symbol": "BRETTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "INJUSDT",
+      "net_score": 10.8,
+      "long_score": 10.8,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "INJUSDT",
+      10.8,
+      4.635
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
