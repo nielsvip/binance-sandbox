@@ -64,3 +64,32 @@ def test_missing_manifest_worker_still_fails():
         {}, {"rm1": ("MU", "LONG")}
     )
     assert failures == ["rm1: expected one worker, observed 0"]
+
+
+def test_user_systemd_supervised_safe_worker_is_independently_owned():
+    processes = {
+        1410: _proc(1410, 1, 1410, ["/usr/lib/systemd/systemd", "--user"]),
+        30: _proc(
+            30,
+            1410,
+            30,
+            [
+                "python",
+                "tools/param_matrix_daemon.py",
+                "--tag",
+                "smoke",
+                "--only",
+                "MU",
+                "--side",
+                "LONG",
+                "--safe-contract",
+                "--once",
+            ],
+        ),
+    }
+    _, owners, extras, failures = fleet.classify_workers(
+        processes, {"rm1": ("MU", "LONG")}
+    )
+    assert owners == {30}
+    assert extras[0]["tag"] == "smoke"
+    assert failures == ["rm1: expected one worker, observed 0"]

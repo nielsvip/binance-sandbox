@@ -110,8 +110,12 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
     with open(override, "w") as f:
         json.dump(cfg, f)
     env = os.environ.copy()
-    env["V8_OVERRIDE_FILE"] = str(override)
-    env["V8_SWEEP_MODE"] = "1"
+    if mode == "tradier":
+        from stock_v8_override_contract import establish_stock_v8_override
+        establish_stock_v8_override(env, override)
+    else:
+        env["V8_OVERRIDE_FILE"] = str(override)
+        env["V8_SWEEP_MODE"] = "1"
     cmd = [py_bin, str(engine_path), "--mode", mode, "--symbols", symbols, "--start", start]
     t0 = time.time()
     try:

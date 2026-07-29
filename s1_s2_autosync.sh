@@ -36,6 +36,7 @@ LOG=/tmp/s1_s2_autosync.log
 SSH_OPTS="-o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none"
 DEST_PATH=/home/niels/binance-sandbox/
 SLEEP_SEC=2  # user directive 2026-04-18: "rsync should probably take place at least every second"
+PAUSE_FILE="$BASE/.s1_s2_autosync.pause"
 
 cd "$BASE" || { echo "$(date -u +%FT%TZ) CANNOT_CD $BASE" >>"$LOG"; exit 1; }
 shopt -s nullglob
@@ -119,7 +120,15 @@ echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritati
 _pull_tick=0
 _chart_tick=0
 while true; do
-    push_to s1-int S1
+    if [[ -f "$PAUSE_FILE" ]]; then
+        if [[ "${_push_pause_logged:-0}" -eq 0 ]]; then
+            echo "$(date -u +%FT%TZ) CODE_PUSH_PAUSED flag=$PAUSE_FILE" >>"$LOG"
+            _push_pause_logged=1
+        fi
+    else
+        _push_pause_logged=0
+        push_to s1-int S1
+    fi
     # 2026-05-28 S2 DEAD permanently — push_to s2-int removed
     # Sync per_sym_active_config.json from S1 every ~60 s (S2 DEAD permanently 2026-05-28)
     _pull_tick=$(( (_pull_tick + 1) % 30 ))

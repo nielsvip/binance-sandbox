@@ -301,7 +301,8 @@ def run_tier2(reg: dict, state: dict) -> dict:
         override_path = tf.name
 
     env = os.environ.copy()
-    env["V8_OVERRIDE_FILE"] = override_path
+    from stock_v8_override_contract import establish_stock_v8_override
+    establish_stock_v8_override(env, override_path)
     python = PYTHON_LOCAL
 
     cmd = [python, "-u", str(ENGINE),

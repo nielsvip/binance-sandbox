@@ -65,6 +65,7 @@ MATRIX_NPZ_DIR = Path(
 )
 MATRIX_END_DATE = os.environ.get("PSC_MATRIX_END_DATE", "2026-07-25")
 MATRIX_CONTRACT_FILES = STAMP_FILES + [
+    "stock_v8_override_contract.py",
     "backtest_v8_harness.py",
     "mtf_exit_timing.py",
     "reentry_contract.py",

@@ -188,7 +188,8 @@ def run_one_config(args_tuple) -> Dict:
     with open(override_path, "w") as f:
         json.dump(cfg, f)
     env = os.environ.copy()
-    env["V8_OVERRIDE_FILE"] = str(override_path)
+    from stock_v8_override_contract import establish_stock_v8_override
+    establish_stock_v8_override(env, override_path)
     cmd = [PYTHON, str(ENGINE), "--mode", mode, "--account", account,
            "--start", start_date, "--symbols", symbol, "--capital", str(capital)]
     if npz_dir:

@@ -5780,6 +5780,21 @@ def main():
                 args.research_struct_wt_params
             )
 
+    if args.mode == "tradier":
+        # Central belt: every stock V8 launcher reaches this point before
+        # tradier_manage is imported.  Explicit overrides therefore cannot be
+        # half-wired merely because one launcher forgot either guard.
+        from stock_v8_override_contract import establish_stock_v8_override
+
+        _stock_override_contract = establish_stock_v8_override(
+            os.environ, os.environ.get("V8_OVERRIDE_FILE")
+        )
+        print(
+            "V8_OVERRIDE_CONTRACT: "
+            + json.dumps(_stock_override_contract, sort_keys=True),
+            flush=True,
+        )
+
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
     if _SWEEP_MODE:
         print(f"V8_INIT_HEARTBEAT: loading n_symbols={len(symbols) if symbols else 'all'}", flush=True)

@@ -188,7 +188,8 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
     ovr_path.write_text(json.dumps(override, indent=2))
     run_id = f'real_{sym}_{tag}'
     env = os.environ.copy()
-    env['V8_OVERRIDE_FILE'] = str(ovr_path)
+    from stock_v8_override_contract import establish_stock_v8_override
+    establish_stock_v8_override(env, ovr_path)
     env['V8_TRADES_OUT_DIR'] = str(run_dir)
     env['V8_TRADES_RUN_ID'] = run_id
     env['V8_SWEEP_MODE'] = '1'

@@ -114,7 +114,15 @@ def classify_workers(processes: dict[int, dict], expected: dict):
                 f"{tag}: expected {expected[tag][0]}_{expected[tag][1]}, "
                 f"observed {observed}"
             )
-        if proc["ppid"] != 1 or proc["sid"] != proc["pid"]:
+        parent = processes.get(proc["ppid"], {})
+        parent_argv = parent.get("argv", [])
+        supervised_by_user_systemd = any(
+            Path(arg).name == "systemd" for arg in parent_argv
+        ) and "--user" in parent_argv
+        independently_owned = (
+            proc["ppid"] == 1 or supervised_by_user_systemd
+        ) and proc["sid"] == proc["pid"]
+        if not independently_owned:
             failures.append(
                 f"{tag}: not independently detached "
                 f"(pid={proc['pid']} ppid={proc['ppid']} sid={proc['sid']})"

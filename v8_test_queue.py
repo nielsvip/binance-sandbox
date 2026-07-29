@@ -132,7 +132,8 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
     # bypassing 200K+ lines of trade/PnL noise in stdout/stderr.
     result_file = tempfile.mktemp(suffix=".v8result")
     env = os.environ.copy()
-    env["V8_OVERRIDE_FILE"] = override_path
+    from stock_v8_override_contract import establish_stock_v8_override
+    establish_stock_v8_override(env, override_path)
     env["V8_RESULT_FILE"] = result_file
     env["TEST_RATE_GUARD_MIN_PER_DAY"] = "0"
     env["V8_BACKTEST_TIMEOUT"] = str(int(os.environ.get("V8_BACKTEST_TIMEOUT", "3600")))

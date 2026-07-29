@@ -227,7 +227,8 @@ def run_stage3(mode, winners, symbols, start_date, out_dir):
                "--mode", mode, "--account", account, "--start", start_date,
                "--symbols", sym_str, "--capital", "10000"]
         env = os.environ.copy()
-        env["V8_OVERRIDE_FILE"] = str(ovr_file)
+        from stock_v8_override_contract import establish_stock_v8_override
+        establish_stock_v8_override(env, ovr_file)
         env["V8_SKIP_PROCESS_POSITION"] = "1"
         env["V8_SWEEP_MODE"] = "1"
         t0 = time.time()

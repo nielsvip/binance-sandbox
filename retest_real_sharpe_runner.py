@@ -17,7 +17,8 @@ BASE = Path(__file__).parent
 def run_backtest(mode, account, start, symbols_arg, override_file, label, python_bin="python3"):
     env = os.environ.copy()
     if override_file:
-        env["V8_OVERRIDE_FILE"] = str(override_file)
+        from stock_v8_override_contract import establish_stock_v8_override
+        establish_stock_v8_override(env, override_file)
     cmd = [python_bin, str(BASE / "backtest_v8_engine.py"),
            "--mode", mode,
            "--account", account,

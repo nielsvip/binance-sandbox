@@ -45,7 +45,8 @@ def run_one(symbol: str, mode: str, account: str, start: str, capital: float,
     if mode == "crypto":
         env["V8_SKIP_PROCESS_POSITION"] = "1"
     if override_file:
-        env["V8_OVERRIDE_FILE"] = override_file
+        from stock_v8_override_contract import establish_stock_v8_override
+        establish_stock_v8_override(env, override_file)
     cmd = [
         py_exe, "-u", str(ENGINE),
         "--mode", mode, "--account", account,
