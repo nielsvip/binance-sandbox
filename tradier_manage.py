@@ -753,6 +753,22 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
     return _tradier_per_sym_cfgs
 
 
+class _PerKeyCfgView:
+    """Attribute view for pure sizing helpers (band_ladder_mult): resolves each
+    attribute through the per-key _cfg chain first, then global config. Raises
+    AttributeError when neither has the name so getattr(..., default) still works."""
+    def __init__(self, account_key, symbol, side):
+        self._key = (account_key, symbol, side)
+    def __getattr__(self, name):
+        account_key, symbol, side = self._key
+        value = _cfg(name, None, account_key, symbol, side)
+        if value is not None:
+            return value
+        if hasattr(config, name):
+            return getattr(config, name)
+        raise AttributeError(name)
+
+
 def _load_global_per_sym_cfgs() -> dict:
     """Load per-symbol custom overrides from data/hourly_reconfig/per_sym_active_config.json.
     Same file that ez_positions_quick._get_per_sym_overrides reads — single source of truth
@@ -3431,7 +3447,9 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 # Runs FIRST and unconditionally for LONGs: HTF band-depth + slope score gates the
                 # entry and sets the size. This is the system proven at 5.81x b&h (ARM) in
                 # tools/mtf_arrow_lab; everything below stays as fallback when it does not fire.
-                if (bool(getattr(config, 'MTF_ARROW_ENTRY_ENABLED', False))
+                # 2026-07-29 USER promotion: gate resolves per-key (trb/active_config.json
+                # overrides) so single keys can run the arrow+ladder without the global on.
+                if (bool(_cfg('MTF_ARROW_ENTRY_ENABLED', getattr(config, 'MTF_ARROW_ENTRY_ENABLED', False), account_key, symbol, position_side))
                         and action_type != "OPEN" and is_long):
                     _ma_ind = indicators_raw if indicators_raw else i
                     _ma_score, _ma_detail = mtf_arrow_score(_ma_ind, True, config)
@@ -3467,7 +3485,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _ld_tf = str(_cfg('LR_BAND_ENTRY_TF', 'D', account_key, symbol, position_side))
                             _ld_src = indicators_raw if indicators_raw else i
                             _ld_pb = _ld_src.get(f"lrL_pct_b_{_ld_tf}")
-                            _ma_mult = band_ladder_mult(_ld_pb, config, _ld_tf) if _ld_pb is not None else 0.0
+                            # 2026-07-29 USER promotion: curve values resolve per-key so each
+                            # promoted key carries its own sealed-artifact ladder (MU c151 etc.).
+                            _ld_view = _PerKeyCfgView(account_key, symbol, position_side)
+                            _ma_mult = band_ladder_mult(_ld_pb, _ld_view, _ld_tf) if _ld_pb is not None else 0.0
+                            _ld_cap_x = float(_cfg('LR_BAND_LADDER_CAP_X', 0.0, account_key, symbol, position_side) or 0.0)
+                            if _ld_cap_x > 0.0 and _ma_mult > _ld_cap_x:
+                                _ma_mult = _ld_cap_x
                             if _ma_mult <= 0.0:
                                 logger.debug(f"[LR_BAND_LADDER_SKIP] {symbol}: pb={_ld_pb} below lower band or unusable — arrow ignored")
                             else:
@@ -3491,6 +3515,49 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _ma_st['opened'] = True
                         logger.info(f"[MTF_ARROW_ENTRY] {account_key}:{symbol}: score={_ma_score:.3f}>=θ{_ma_theta} mult={_ma_mult:.2f} {_ma_detail}")
                         _arrow_dbg(f"CLAIM {account_key}:{symbol} score={_ma_score:.3f} mult={_ma_mult:.2f} qty={qty} lo={_ma_st['lo']:.2f} px={current_price:.2f}")
+                # 2026-07-29 USER promotion (shorts): mirrored arrow+ladder for per-key promoted
+                # SHORT keys (TTD, ACN). Red arrow = price reversing >= CONFIRM_PCT off the running
+                # HIGH since flat; ladder depth inverts (deep short = price at the TOP of the
+                # channel) so the ladder is fed 1-pct_b. Per-key gate only — no global switch.
+                if (bool(_cfg('MTF_ARROW_SHORT_ENTRY_ENABLED', False, account_key, symbol, position_side))
+                        and action_type != "OPEN" and not is_long
+                        and bool(_cfg('LR_BAND_LADDER_ENABLED', False, account_key, symbol, position_side))):
+                    _ms_ind = indicators_raw if indicators_raw else i
+                    _ms_score, _ms_detail = mtf_arrow_score(_ms_ind, False, config)
+                    _ms_theta = float(_cfg('MTF_ARROW_THETA', getattr(config, 'MTF_ARROW_THETA', 0.3), account_key, symbol, position_side))
+                    _ms_conf = float(getattr(config, 'MTF_ARROW_CONFIRM_PCT', 2.0))
+                    if not hasattr(trade_manager, '_arrow_swing_short'):
+                        trade_manager._arrow_swing_short = {}
+                    _ms_st = trade_manager._arrow_swing_short.get(symbol)
+                    if _ms_st is None or _ms_st.get('opened'):
+                        _ms_st = {'hi': current_price, 'opened': False}
+                        trade_manager._arrow_swing_short[symbol] = _ms_st
+                    if current_price > _ms_st['hi']:
+                        _ms_st['hi'] = current_price
+                    _ms_confirmed = current_price <= _ms_st['hi'] * (1.0 - _ms_conf / 100.0)
+                    if _ms_confirmed and _ms_score >= _ms_theta:
+                        _ld_tf_s = str(_cfg('LR_BAND_ENTRY_TF', 'D', account_key, symbol, position_side))
+                        _ld_pb_s = _ms_ind.get(f"lrL_pct_b_{_ld_tf_s}")
+                        _ms_mult = 0.0
+                        if _ld_pb_s is not None:
+                            try:
+                                _ms_mult = band_ladder_mult(1.0 - float(_ld_pb_s), _PerKeyCfgView(account_key, symbol, position_side), _ld_tf_s)
+                            except (TypeError, ValueError):
+                                _ms_mult = 0.0
+                        _ld_cap_s = float(_cfg('LR_BAND_LADDER_CAP_X', 0.0, account_key, symbol, position_side) or 0.0)
+                        if _ld_cap_s > 0.0 and _ms_mult > _ld_cap_s:
+                            _ms_mult = _ld_cap_s
+                        if _ms_mult <= 0.0:
+                            logger.debug(f"[LR_BAND_LADDER_SKIP_S] {symbol}: pb={_ld_pb_s} outside short ladder — red arrow ignored")
+                        else:
+                            _ms_base = float(_cfg('START_POSITION_SIZE', getattr(config, 'START_POSITION_SIZE', 600), account_key, symbol, position_side)) / current_price if current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = int(max(1, _ms_base * _ms_mult))
+                            conf = 90.0
+                            reason = f"LR_BAND_LADDER_ARROW_S_pb={float(_ld_pb_s):.3f}_x{_ms_mult:.2f}_{_ld_tf_s}_s{_ms_score:.2f}"[:110]
+                            _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            _ms_st['opened'] = True
+                            logger.info(f"[MTF_ARROW_ENTRY_S] {account_key}:{symbol}: score={_ms_score:.3f}>=θ{_ms_theta} mult={_ms_mult:.2f} {_ms_detail}")
                 # 2026-07-20 USER band mandate — PRIORITY band entry. The band block used to sit
                 # LAST in the cascade, so it was almost never consulted (an earlier path had already
                 # set OPEN, or the key was no longer flat): 3189 regime-eligible ARM bars → 0 fires.
