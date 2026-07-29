@@ -34,8 +34,11 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
 fi
 echo "$$" > "$LOCKDIR/pid"
 # Self-timeout below the 300s cron period so an instance can never outlive its own interval.
+# Children are killed first: bash defers a TERM trap while a foreground child is hung, so
+# killing the hung rsync/ssh is what actually unblocks the parent and lets the trap fire.
+# The kill -9 backstop skips the EXIT trap, which is why the stale-lock reclaim above exists.
 MAX_RUNTIME=240
-( sleep "$MAX_RUNTIME"; kill -TERM "$$" 2>/dev/null ) &
+( sleep "$MAX_RUNTIME"; pkill -TERM -P "$$" 2>/dev/null; sleep 10; pkill -KILL -P "$$" 2>/dev/null; sleep 2; kill -9 "$$" 2>/dev/null ) &
 WATCHDOG_PID=$!
 trap 'kill "$WATCHDOG_PID" 2>/dev/null; rm -rf "$LOCKDIR" 2>/dev/null' EXIT INT TERM
 # Bounded ssh: without these a dead/slow s1-int blocks each transfer forever.
