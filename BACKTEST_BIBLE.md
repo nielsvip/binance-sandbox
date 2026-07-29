@@ -2717,3 +2717,26 @@ only after both resolved-value and decision/trade-fingerprint movement are
 proven. Machine evidence:
 `data/reports/MU_MATRIX_FILL_AUDIT_20260729.json`; reproducer:
 `tools/audit_mu_matrix_fill_snapshot.py`.
+
+### §15.47 — throughput and exact-cell wiring repair (2026-07-29)
+
+The repaired matrix must reject dead work before running the exact engine.
+Current-contract, same-symbol, same-side evidence now gets a two-value wiring
+smoke before the remaining grid. Wrong-account fields, semantically invalid
+ranges, disabled subsettings, reconnects, and degenerate values are RED
+preflight outcomes, not reasons to spend another eight minutes per cell.
+Booleans are persisted as typed JSON, and explicit exact-cell overrides use a
+two-part backtest-only precedence guard above the accepted per-symbol overlay.
+An empty override still preserves that overlay. Live config is unaffected.
+
+Coherent ladder screening now uses a compiled causal accounting loop while
+retaining the Python loop as a parity oracle and rollback. Real MU, VT,
+HAO_SHORT, and TTD arrays passed result parity; the stateful scanner measured
+197.85×–291.87× faster (242.62× aggregate), while an end-to-end TTD ladder
+command improved 10.04×. Exact engine validation remains mandatory only for
+strict survivors.
+
+The full evidence, pre-repair hashes/counts, deployment sequence, rollback, and
+crypto replication boundary are in
+`BACKTEST_THROUGHPUT_REPAIR_20260729.md`; benchmark receipt:
+`data/reports/BACKTEST_SCANNER_BENCHMARK_20260729.json`.

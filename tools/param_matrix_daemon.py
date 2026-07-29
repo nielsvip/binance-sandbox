@@ -22,6 +22,7 @@ import argparse
 import fcntl
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -96,6 +97,11 @@ def claims():
     con = sqlite3.connect(str(CLAIM_DB), timeout=120)
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("CREATE TABLE IF NOT EXISTS claims (unit TEXT PRIMARY KEY, worker TEXT, ts REAL)")
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS wiring_gate_receipts "
+        "(receipt TEXT PRIMARY KEY, ts REAL)"
+    )
+    con.commit()
     return con
 
 
@@ -251,7 +257,16 @@ def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=Fal
         if default in executable:
             ordered_values.append(default)
         for v in ordered_values:
-            cells.append((pname, str(v), {pname: v}))
+            # value_json is a DB contract, not merely a display label.  Preserve
+            # JSON type information so booleans round-trip as true/false instead
+            # of the invalid Python strings "True"/"False".
+            cells.append(
+                (
+                    pname,
+                    json.dumps(v, sort_keys=True, separators=(",", ":")),
+                    {pname: v},
+                )
+            )
     return cells
 
 
@@ -372,7 +387,12 @@ def run_unit(ctx, sym, pname, vlabel, ovr):
                 ctx, sym, ctx["args"].side, pname, vlabel, alias
             )
             return False
-    tag = f"{pname}__{vlabel}".replace("/", "_")[:120]
+    display_value = json.dumps(
+        next(iter(ovr.values()), vlabel),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    tag = re.sub(r"[^A-Za-z0-9_.=-]+", "_", f"{pname}__{display_value}")[:120]
     smoke_unit = None
     if (
         ctx["args"].safe_contract
@@ -444,9 +464,40 @@ def exact_gate_verdict(ctx, sym, side, pname):
 
 
 def record_gate_event(ctx, sym, side, pname, vlabel, verdict):
-    """Append an auditable RED/skip receipt under an inter-process lock."""
+    """Append one auditable receipt per current contract/verdict.
+
+    Workers revisit the finite queue forever.  Persisting a unique receipt in
+    the claims DB prevents that loop from turning a cheap preflight rejection
+    into an unbounded JSONL writer.
+    """
     path = SBX / "data/reports/EXACT_WIRING_GATE_EVENTS.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
+    contract_fingerprint = psc.matrix_contract_fingerprint(sym, side)
+    receipt = "|".join(
+        (
+            psc.CAMPAIGN,
+            contract_fingerprint,
+            sym,
+            side,
+            pname,
+            str(verdict.get("verdict")),
+        )
+    )
+    try:
+        ctx["ccon"].execute(
+            "INSERT OR IGNORE INTO wiring_gate_receipts(receipt,ts) VALUES (?,?)",
+            (receipt, time.time()),
+        )
+        inserted = ctx["ccon"].execute("SELECT changes()").fetchone()[0]
+        ctx["ccon"].commit()
+    except sqlite3.OperationalError:
+        try:
+            ctx["ccon"].rollback()
+        except sqlite3.OperationalError:
+            pass
+        return
+    if not inserted:
+        return
     row = {
         "ts": psc.now_iso(),
         "worker": ctx["worker"],
@@ -455,7 +506,7 @@ def record_gate_event(ctx, sym, side, pname, vlabel, verdict):
         "side": side,
         "param": pname,
         "value": vlabel,
-        "contract_fingerprint": psc.matrix_contract_fingerprint(sym, side),
+        "contract_fingerprint": contract_fingerprint,
         **verdict,
     }
     with path.open("a") as fh:
@@ -486,7 +537,10 @@ def claim(ctx, unit):
         # worker's unit.
         ccon.execute("BEGIN IMMEDIATE")
         row = ccon.execute("SELECT worker, ts FROM claims WHERE unit=?", (unit,)).fetchone()
-        if row and row[0] != worker and time.time() - row[1] < 1800:
+        # Do not steal an exact unit merely because it has legitimately run
+        # longer than the old fixed 30-minute lease.
+        lease_seconds = max(1800, int(ctx["args"].timeout) * 2)
+        if row and row[0] != worker and time.time() - row[1] < lease_seconds:
             ccon.rollback()
             return False
         if row:

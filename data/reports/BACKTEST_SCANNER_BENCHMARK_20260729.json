@@ -1,0 +1,70 @@
+{
+  "aggregate_wall_speedup_x": 242.61950436684364,
+  "contract": "CAUSAL_BAND_LADDER_SCANNER_BENCHMARK_V1",
+  "rows": [
+    {
+      "compiled_cpu_seconds": 0.0016761599999999266,
+      "compiled_python_parity": "PASS",
+      "compiled_wall_seconds": 0.002190303001043503,
+      "cpu_speedup_x": 258.5363449790109,
+      "npz": "/home/niels/binance-sandbox/data/npz_recovery/mu_parent_clock_20260727/MU.npz",
+      "python_cpu_seconds": 0.4333482799999999,
+      "python_wall_seconds": 0.4333520910004154,
+      "repeats": 3,
+      "rows": 45917,
+      "side": "LONG",
+      "simulations": 9,
+      "symbol": "MU",
+      "wall_speedup_x": 197.85029322151226,
+      "windows": 3
+    },
+    {
+      "compiled_cpu_seconds": 0.001276760000000099,
+      "compiled_python_parity": "PASS",
+      "compiled_wall_seconds": 0.0012738530003844062,
+      "cpu_speedup_x": 267.34412105640325,
+      "npz": "/home/niels/binance-sandbox/data/npz_recovery/vt_parent_clock_20260727/VT.npz",
+      "python_cpu_seconds": 0.3413342799999999,
+      "python_wall_seconds": 0.3413778660014941,
+      "repeats": 3,
+      "rows": 35632,
+      "side": "LONG",
+      "simulations": 9,
+      "symbol": "VT",
+      "wall_speedup_x": 267.98843029649237,
+      "windows": 3
+    },
+    {
+      "compiled_cpu_seconds": 0.0011096399999996898,
+      "compiled_python_parity": "PASS",
+      "compiled_wall_seconds": 0.0011074909998569638,
+      "cpu_speedup_x": 234.58483832600928,
+      "npz": "/home/niels/binance-sandbox/data/npz_recovery/hao_recovery_20260727T0010Z/backtest_v8/indicators/HAO.npz",
+      "python_cpu_seconds": 0.26030472000000016,
+      "python_wall_seconds": 0.2603063540009316,
+      "repeats": 3,
+      "rows": 27092,
+      "side": "SHORT",
+      "simulations": 9,
+      "symbol": "HAO",
+      "wall_speedup_x": 235.04150736624592,
+      "windows": 3
+    },
+    {
+      "compiled_cpu_seconds": 0.0015081600000002027,
+      "compiled_python_parity": "PASS",
+      "compiled_wall_seconds": 0.0015051749996928265,
+      "cpu_speedup_x": 291.29182580093675,
+      "npz": "/home/niels/binance-sandbox/data/matrix_npz/stocks_repaired_20260725_c2/TTD.npz",
+      "python_cpu_seconds": 0.43931467999999985,
+      "python_wall_seconds": 0.43931923099989945,
+      "repeats": 3,
+      "rows": 45904,
+      "side": "LONG",
+      "simulations": 9,
+      "symbol": "TTD",
+      "wall_speedup_x": 291.8725271742853,
+      "windows": 3
+    }
+  ]
+}

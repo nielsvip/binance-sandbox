@@ -1173,6 +1173,42 @@ def status_payload(con: sqlite3.Connection) -> dict[str, Any]:
         for lane, states in attempt_counts.items()
     }
     total_claims = int(meta_get(con, "claim_sequence", "0"))
+    latest_receipts = []
+    for row in con.execute(
+        """SELECT a.*,h.symbol,h.side,h.bundle_id
+           FROM attempts a JOIN handles h ON h.id=a.handle_id
+           WHERE h.campaign_id=? AND a.status!='RUNNING'
+             AND a.receipt_path IS NOT NULL
+           ORDER BY a.id DESC LIMIT 30""",
+        (campaign,),
+    ):
+        try:
+            receipt = json.loads(Path(row["receipt_path"]).read_text())
+        except (OSError, json.JSONDecodeError):
+            receipt = {}
+        final_fold = (receipt.get("folds") or [{}])[-1]
+        metrics = final_fold.get("metrics") or {}
+        latest_receipts.append(
+            {
+                "position_key": f"{row['symbol']}_{row['side']}",
+                "bundle_id": row["bundle_id"],
+                "lane": row["lane"],
+                "status": row["status"],
+                "elapsed_s": row["elapsed_s"],
+                "final_fold": (final_fold.get("fold") or {}).get("name"),
+                "strategy_return_pct": metrics.get("strategy_return_pct"),
+                "side_benchmark_pct": metrics.get("side_benchmark_pct"),
+                "alpha_vs_benchmark_pp": (
+                    metrics.get("strategy_return_pct", 0)
+                    - metrics.get("side_benchmark_pct", 0)
+                    if metrics
+                    else None
+                ),
+                "tim_pct": metrics.get("tim_pct"),
+                "trades": metrics.get("trades"),
+                "receipt_path": row["receipt_path"],
+            }
+        )
     return {
         "schema_version": 1,
         "campaign_id": campaign,
@@ -1196,6 +1232,7 @@ def status_payload(con: sqlite3.Connection) -> dict[str, Any]:
             for row in handles
             if row["status"] == "EXACT_PENDING"
         ],
+        "latest_receipts": latest_receipts,
         "contract": {
             "allocation": "9 PRIORITY : 1 EXPLORE per complete block",
             "demotion": "3 consecutive non-positive/inert attempts",
@@ -1236,6 +1273,28 @@ def write_progress(root: Path, payload: dict[str, Any]) -> None:
     )
     if not payload["exact_pending"]:
         lines.append("- Empty.")
+    lines += [
+        "",
+        "## Latest per-key receipts",
+        "",
+        "| key | bundle | lane | state | fold | return | benchmark | alpha | TIM | trades |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for row in payload.get("latest_receipts") or []:
+        def value(name: str, suffix: str = "") -> str:
+            raw = row.get(name)
+            return "—" if raw is None else f"{float(raw):.3f}{suffix}"
+
+        lines.append(
+            f"| {row['position_key']} | `{row['bundle_id']}` | "
+            f"{row['lane']} | {row['status']} | {row.get('final_fold') or '—'} | "
+            f"{value('strategy_return_pct', '%')} | "
+            f"{value('side_benchmark_pct', '%')} | "
+            f"{value('alpha_vs_benchmark_pp', 'pp')} | "
+            f"{value('tim_pct', '%')} | {row.get('trades') if row.get('trades') is not None else '—'} |"
+        )
+    if not payload.get("latest_receipts"):
+        lines.append("| — | — | — | — | — | — | — | — | — | — |")
     (root / "PROGRESS.md").write_text("\n".join(lines) + "\n")
 
 

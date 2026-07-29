@@ -446,6 +446,26 @@ def load_hao_short_exposure_phase4() -> dict | None:
     return payload
 
 
+def load_other_pilot_survivor_audit() -> dict | None:
+    """Load the leak-safe deployed-alpha pilot receipt.
+
+    This is fleet research, never a source of matrix-green or live promotion.
+    The receipt itself requires ordinary-engine/live parity after any vector
+    survivor, so the digest must preserve its gray verdict verbatim.
+    """
+    path = (
+        REPORTS
+        / "vec_research"
+        / "OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json"
+    )
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    payload["_artifact"] = str(path.relative_to(BASE))
+    return payload
+
+
 def load_latest_ladder_retunes() -> list[dict]:
     """Latest frozen exposure-retune artifact for every discovered symbol/side.
 
@@ -789,6 +809,7 @@ def main() -> None:
     mu_pareto_holdout = load_mu_daily_deep_pareto_holdout()
     hao_short_phase3 = load_hao_short_native_phase3()
     hao_short_phase4 = load_hao_short_exposure_phase4()
+    other_pilot_audit = load_other_pilot_survivor_audit()
     ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
@@ -1317,6 +1338,66 @@ def main() -> None:
         "Its untouched final return remained strong but weighted TIM fell to 36.05%; "
         "the row is gray, exact did not run, and no matrix/live state changed.",
         "",
+        "## Non-MU pilot deployed-alpha rescreen",
+        "",
+        "> Selection uses return per pre-cost committed dollar-time against the "
+        "better of side-aware B&H and cash. Ratios require positive B&H >=20pp. "
+        "Fold 3 stays sealed unless both discovery folds pass; private schedule "
+        "replay is not ordinary-engine/live parity.",
+        "",
+        "| key | source | profile | fold 1 deployed alpha / TIM | "
+        "fold 2 deployed alpha / TIM | fills / clamps | final | verdict |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    if not other_pilot_audit:
+        lines.append("| — | — | — | — | — | — | — | NO RECEIPT |")
+    else:
+        for row in other_pilot_audit.get("rows") or []:
+            nearest = row.get("nearest_discovery_profile") or {}
+            gates = nearest.get("discovery_gates") or []
+
+            def pilot_fold(index: int) -> str:
+                if index >= len(gates):
+                    return "—"
+                gate = gates[index]
+                return (
+                    f"{fmt(gate.get('deployed_alpha_vs_bh_or_cash_pp'), 3, 'pp')} / "
+                    f"{fmt(gate.get('tim_pct'), 2, '%')}"
+                )
+
+            fills = sum(int(gate.get("fills") or 0) for gate in gates)
+            clamps = sum(int(gate.get("clamps") or 0) for gate in gates)
+            profile = (
+                f"${nearest.get('capacity_usd')}/N{nearest.get('exit_n')}"
+                if nearest
+                else "—"
+            )
+            source_text = (
+                "PASS"
+                if row.get("source_valid")
+                else "BLOCKED: "
+                + ",".join(row.get("source_errors") or ["unknown"])
+            )
+            final_text = (
+                "SEALED"
+                if row.get("vector_holdout") is None
+                else str(
+                    (row.get("vector_holdout") or {})
+                    .get("gate", {})
+                    .get("pass", "ERROR")
+                )
+            )
+            lines.append(
+                f"| {row.get('key', '—')} | {source_text} | `{profile}` | "
+                f"{pilot_fold(0)} | {pilot_fold(1)} | {fills}/{clamps} | "
+                f"{final_text} | {row.get('verdict', '—')} |"
+            )
+    lines += [
+        "",
+        "No key may advance from this section without stable discovery, a real "
+        "ordinary `backtest_v8_engine` decision-path run, and live state-machine "
+        "parity. A vector/private-schedule pass remains gray.",
+        "",
         "## Top-10 ladder exposure retune",
         "",
         "> Frozen nested-OOS research. Aggregate exposure can hide unstable folds; a row "
@@ -1479,7 +1560,24 @@ def main() -> None:
             f"- Exact-pending vector survivors: "
             f"`{recent_bundles.get('exact_pending') or []}`.",
             "",
+            "| key | bundle | lane | state | fold | return | benchmark | alpha | TIM | trades |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|",
         ]
+        recent_rows = recent_bundles.get("latest_receipts") or []
+        if not recent_rows:
+            lines.append("| — | — | — | — | — | — | — | — | — | — |")
+        for row in recent_rows[:20]:
+            lines.append(
+                f"| {row.get('position_key') or '—'} | "
+                f"`{row.get('bundle_id') or '—'}` | {row.get('lane') or '—'} | "
+                f"{row.get('status') or '—'} | {row.get('final_fold') or '—'} | "
+                f"{fmt(row.get('strategy_return_pct'), 3, '%')} | "
+                f"{fmt(row.get('side_benchmark_pct'), 3, '%')} | "
+                f"{fmt(row.get('alpha_vs_benchmark_pp'), 3, 'pp')} | "
+                f"{fmt(row.get('tim_pct'), 2, '%')} | "
+                f"{row.get('trades') if row.get('trades') is not None else '—'} |"
+            )
+        lines.append("")
 
     lines += [
         "## Top/bottom-10 entry/exit path fleet",

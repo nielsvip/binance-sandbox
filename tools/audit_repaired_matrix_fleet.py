@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed health audit for the six repaired exact-matrix workers on S1."""
+"""Manifest-driven health audit for repaired exact-matrix workers on S1."""
 
 from __future__ import annotations
 
@@ -11,14 +11,6 @@ import sqlite3
 import sys
 
 
-EXPECTED = {
-    "rm1": ("MU", "LONG"),
-    "rm2": ("MU", "LONG"),
-    "rm3": ("MU", "LONG"),
-    "rv1": ("VT", "LONG"),
-    "rv2": ("VT", "LONG"),
-    "rv3": ("VT", "LONG"),
-}
 CAMPAIGN = "stocks_repaired_20260725_c2"
 EXPECTED_SHEETS = [
     "Engine Coverage",
@@ -73,11 +65,29 @@ def _arg(argv: list[str], name: str) -> str | None:
         return None
 
 
-def audit(sbx: Path) -> dict:
-    processes = _processes()
-    failures = []
+def _manifest(sbx: Path) -> tuple[dict[str, tuple[str, str]], dict]:
+    path = sbx / "data/matrix_worker_manifest.json"
+    if not path.exists():
+        raise FileNotFoundError(path)
+    payload = json.loads(path.read_text())
+    expected = {
+        str(row["tag"]): (
+            str(row["symbol"]).upper(),
+            str(row["side"]).upper(),
+        )
+        for row in payload.get("workers", [])
+    }
+    if not expected:
+        raise ValueError("matrix worker manifest has no workers")
+    return expected, payload
+
+
+def classify_workers(processes: dict[int, dict], expected: dict):
+    """Discover every safe worker; extras remain owners but are flagged."""
     workers = {}
     worker_pids = set()
+    extras = []
+    failures = []
     for proc in processes.values():
         index = _script_index(proc["argv"], "param_matrix_daemon.py")
         if index is None:
@@ -86,37 +96,64 @@ def audit(sbx: Path) -> dict:
         if "--safe-contract" not in argv:
             continue
         tag = _arg(argv, "--tag")
-        if tag not in EXPECTED:
-            continue
-        symbol, side = EXPECTED[tag]
         observed = (_arg(argv, "--only"), _arg(argv, "--side"))
-        workers.setdefault(tag, []).append(
-            {
-                "pid": proc["pid"],
-                "ppid": proc["ppid"],
-                "sid": proc["sid"],
-                "symbol": observed[0],
-                "side": observed[1],
-            }
-        )
+        row = {
+            "pid": proc["pid"],
+            "ppid": proc["ppid"],
+            "sid": proc["sid"],
+            "symbol": observed[0],
+            "side": observed[1],
+            "manifested": tag in expected,
+        }
+        workers.setdefault(tag or "<missing-tag>", []).append(row)
         worker_pids.add(proc["pid"])
-        if observed != (symbol, side):
-            failures.append(f"{tag}: expected {symbol}_{side}, observed {observed}")
+        if tag not in expected:
+            extras.append({"tag": tag, **row})
+        elif observed != expected[tag]:
+            failures.append(
+                f"{tag}: expected {expected[tag][0]}_{expected[tag][1]}, "
+                f"observed {observed}"
+            )
         if proc["ppid"] != 1 or proc["sid"] != proc["pid"]:
             failures.append(
                 f"{tag}: not independently detached "
                 f"(pid={proc['pid']} ppid={proc['ppid']} sid={proc['sid']})"
             )
-    for tag in EXPECTED:
+    for tag in expected:
         count = len(workers.get(tag, []))
         if count != 1:
             failures.append(f"{tag}: expected one worker, observed {count}")
+    return workers, worker_pids, extras, failures
+
+
+def audit(sbx: Path) -> dict:
+    processes = _processes()
+    failures = []
+    warnings = []
+    try:
+        expected, manifest = _manifest(sbx)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        expected, manifest = {}, {}
+        failures.append(f"invalid worker manifest: {exc}")
+    workers, worker_pids, extras, worker_failures = classify_workers(
+        processes, expected
+    )
+    failures.extend(worker_failures)
+    if extras:
+        warnings.append(
+            f"{len(extras)} detached safe-contract worker(s) are not in the "
+            "current manifest; they still own their engine descendants"
+        )
+    campaign = str(manifest.get("campaign") or CAMPAIGN)
+    npz_fragment = str(
+        manifest.get("npz_dir") or f"data/matrix_npz/{campaign}"
+    ).rstrip("/")
 
     repaired_engines = []
     for proc in processes.values():
         index = _script_index(proc["argv"], "backtest_v8_engine.py")
         if index is None or not any(
-            f"matrix_npz/{CAMPAIGN}" in arg for arg in proc["argv"]
+            npz_fragment in arg for arg in proc["argv"]
         ):
             continue
         ancestor = proc["ppid"]
@@ -175,9 +212,18 @@ def audit(sbx: Path) -> dict:
             )
 
     return {
-        "status": "PASS" if not failures else "FAIL",
-        "campaign": CAMPAIGN,
+        "status": (
+            "FAIL"
+            if failures
+            else ("PASS_WITH_UNMANIFESTED_WORKERS" if extras else "PASS")
+        ),
+        "campaign": campaign,
+        "manifest_expected": {
+            tag: {"symbol": value[0], "side": value[1]}
+            for tag, value in expected.items()
+        },
         "workers": workers,
+        "unmanifested_workers": extras,
         "repaired_engines": repaired_engines,
         "claims_total": len(claims),
         "dead_claims": dead_claims,
@@ -188,6 +234,7 @@ def audit(sbx: Path) -> dict:
             "sheet_count": len(sheets),
             "sheets": sheets,
         },
+        "warnings": warnings,
         "failures": failures,
     }
 
@@ -207,7 +254,7 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(payload, encoding="utf-8")
     sys.stdout.write(payload)
-    return 0 if result["status"] == "PASS" else 1
+    return 0 if not result["failures"] else 1
 
 
 if __name__ == "__main__":
