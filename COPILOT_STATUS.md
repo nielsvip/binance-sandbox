@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-29 14:37:06 UTC
+# Copilot Status — 2026-07-29 14:52:23 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-07-29T14:34:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:34:12
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:34:12
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:34:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:35:13
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:35:13
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:35:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:36:14
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:36:14
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:36:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:49:39
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:49:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:49:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:50:30
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:50:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:50:51
+- **STALE_INDICATORS** [tradier]  — 2026-07-29T14:51:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T14:51:31
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T14:51:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T14:51:52
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **SNDK** SHORT (tradier) peak +17.6%, now +9.6%
-- HELD: **MU** SHORT (tradier) peak +15.7%, now +4.5%
-- HELD: **CIBR** LONG (tradier) peak +7.6%, now +-0.2%
-- HELD: **USAR** SHORT (tradier) peak +3.6%, now +0.9%
-- HELD: **CLX** SHORT (tradier) peak +3.0%, now +-1.7%
+- HELD: **SNDK** SHORT (tradier) peak +17.6%, now +8.7%
+- HELD: **MU** SHORT (tradier) peak +15.7%, now +5.3%
+- HELD: **CIBR** LONG (tradier) peak +7.6%, now +-0.5%
+- HELD: **USAR** SHORT (tradier) peak +3.6%, now +0.8%
+- HELD: **CLX** SHORT (tradier) peak +3.0%, now +-2.0%
 
 ## Supervisor
 

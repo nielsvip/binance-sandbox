@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-07-29T14:39:58.046508+00:00",
+  "timestamp": "2026-07-29T14:56:07.351453+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
-    "total_ranked": 80
+    "total_ranked": 82
   },
   "unified_ranking": [
     {
@@ -97,6 +97,12 @@
       "short_score": 0
     },
     {
+      "symbol": "ICPUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "ZRXUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -146,6 +152,12 @@
     },
     {
       "symbol": "MASKUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "ZROUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
