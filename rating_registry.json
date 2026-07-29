@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-07-29T08:25:54.713335+00:00",
+  "timestamp": "2026-07-29T08:40:54.446433+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 59
   },
   "unified_ranking": [
+    {
+      "symbol": "API3USDT",
+      "net_score": -12.1,
+      "long_score": 0,
+      "short_score": 12.1
+    },
     {
       "symbol": "RUNEUSDT",
       "net_score": 0,
@@ -79,19 +85,13 @@
       "short_score": 0
     },
     {
-      "symbol": "FILUSDC",
+      "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
       "symbol": "1000PEPEUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -175,6 +175,12 @@
       "short_score": 0
     },
     {
+      "symbol": "1000FLOKIUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "HYPEUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -217,13 +223,13 @@
       "short_score": 0
     },
     {
-      "symbol": "API3USDT",
+      "symbol": "ETCUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     },
     {
-      "symbol": "ETCUSDT",
+      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -295,12 +301,6 @@
       "short_score": 0
     },
     {
-      "symbol": "BRETTUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "1000XECUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -325,6 +325,12 @@
       "short_score": 0
     },
     {
+      "symbol": "FILUSDC",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "CHILLGUYUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -332,12 +338,6 @@
     },
     {
       "symbol": "GALAUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "AIAUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -355,14 +355,20 @@
       "short_score": 0
     },
     {
-      "symbol": "1000FLOKIUSDT",
+      "symbol": "BRETTUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "API3USDT",
+      12.1,
+      0.1866
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
