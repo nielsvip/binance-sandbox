@@ -16,6 +16,18 @@ def test_trc_does_not_exact_test_trb_namespace():
     assert not daemon.wrong_account_namespace("TRC_CONNORS_RSI_ENABLED", "trc")
 
 
+def test_only_params_keeps_requested_canonical_daemon_cells():
+    cells = [
+        ("STOP_PACK", "x", {}),
+        ("WT_DC_ENTRY_THRESHOLD", "35", {"WT_DC_ENTRY_THRESHOLD": 35}),
+        ("WT_3M_FORCE_OPEN_ENABLED", "true", {"WT_3M_FORCE_OPEN_ENABLED": True}),
+    ]
+    assert daemon.only_params(
+        cells, " wt_dc_entry_threshold,WT_3M_FORCE_OPEN_ENABLED "
+    ) == cells[1:]
+    assert daemon.only_params(cells, "") == cells
+
+
 def test_bool_cells_keep_canonical_json_type_across_two_passes(monkeypatch, tmp_path):
     name = "WT_3M_FORCE_OPEN_ENABLED"
     monkeypatch.setattr(

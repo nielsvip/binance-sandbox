@@ -270,6 +270,18 @@ def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=Fal
     return cells
 
 
+def only_params(cells, requested):
+    """Restrict a one-shot worker to explicit canonical parameter names."""
+    names = {
+        value.strip().upper()
+        for value in str(requested or "").split(",")
+        if value.strip()
+    }
+    if not names:
+        return cells
+    return [cell for cell in cells if str(cell[0]).upper() in names]
+
+
 def _audit_db_fields(audit):
     result = (audit or {}).get("result", {})
     return {
@@ -647,6 +659,14 @@ def main():
     ap.add_argument("--timeout", type=int, default=3600)
     ap.add_argument("--min-avail", type=int, default=8000)
     ap.add_argument("--once", action="store_true")
+    ap.add_argument(
+        "--only-param",
+        default="",
+        help=(
+            "comma-separated exact parameters for a focused current-contract "
+            "worker; keeps the canonical daemon argv/ownership contract"
+        ),
+    )
     ap.add_argument("--all-tiers", action="store_true",
                     help="also measure VEC_SCREEN-tier params with the real engine (a key that "
                          "must be COMPLETE cannot rely on a screen that silently no-ops knobs)")
@@ -743,6 +763,7 @@ def main():
         years = psc.years_since(psc.START)
         st = psc.stamp()
         cells = all_cells(manifest, a.all_tiers, a.side, a.include_diagnostics)
+        cells = only_params(cells, a.only_param)
         dropped = drop_verdicts()
         cells.sort(key=lambda c: c[0] in dropped)  # DROP_* params -> background of the queue
         did_any = False

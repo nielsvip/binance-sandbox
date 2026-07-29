@@ -1,0 +1,7 @@
+{
+  "campaign": "stocks_repaired_20260725_c2",
+  "contract": "CURRENT_CONTRACT_EXACT_GATE_ONLY",
+  "degenerate": [],
+  "reason": "Historical mixed-contract pruning is invalid for the repaired campaign; tools/exact_wiring_gate.py owns current-contract RED decisions.",
+  "reconnect": []
+}
