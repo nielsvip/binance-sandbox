@@ -11,6 +11,25 @@ BASE = Path(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = BASE / "data" / "decisions"
 REPORT_DIR = BASE / "data" / "daily_reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
+# USER 2026-07-29: S1 now runs ONLY SWITCH_MATRIX_TRB work + these email digests.
+# This script's own tree (/home/niels/binance, this cron's cwd) has no matrix data of
+# its own -- the matrix lives in the separate binance-sandbox tree on the same host, so
+# the canonical counter is run there in place (no ssh needed, same box) rather than
+# re-implemented here as a second/competing count.
+SANDBOX_MATRIX_GUARD = Path(os.environ.get("MATRIX_GUARD_PATH", "/home/niels/binance-sandbox/tools/matrix_guard.py"))
+SANDBOX_ROOT = SANDBOX_MATRIX_GUARD.parent.parent if SANDBOX_MATRIX_GUARD.exists() else Path("/home/niels/binance-sandbox")
+
+def matrix_fill_progress_text():
+    import subprocess
+    if not SANDBOX_MATRIX_GUARD.exists():
+        return "MATRIX FILL PROGRESS: unavailable -- %s not found on this host." % SANDBOX_MATRIX_GUARD
+    try:
+        proc = subprocess.run([sys.executable, str(SANDBOX_MATRIX_GUARD)], cwd=str(SANDBOX_ROOT),
+                               capture_output=True, text=True, timeout=60)
+        body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+        return body.strip() or "MATRIX FILL PROGRESS: matrix_guard.py produced no output (exit=%s)" % proc.returncode
+    except Exception as e:
+        return "MATRIX FILL PROGRESS: matrix_guard.py failed to run: %s" % e
 
 def parse_date(s):
     if not s: return None
@@ -83,6 +102,12 @@ def generate_report(date_str):
     r(f"DAILY PERFORMANCE REPORT — {date_str}")
     r(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC")
     r(f"{'='*100}")
+    r(f"\n{'─'*50}")
+    r(f"MATRIX FILL PROGRESS (canonical -- tools/matrix_guard.py, run live from binance-sandbox)")
+    r(f"USER 2026-07-29: S1 runs ONLY SWITCH_MATRIX_TRB work + email digests. Live promotion")
+    r(f"status: 0 matrix-derived configs are currently deployed to any live trb/trc override.")
+    r(f"{'─'*50}")
+    r(matrix_fill_progress_text())
     # CRYPTO
     crypto_accounts = ['ang', 'inf', 'flz', 'men', 'fin']
     r(f"\n{'─'*50}")

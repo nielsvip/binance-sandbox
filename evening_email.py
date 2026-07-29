@@ -34,6 +34,11 @@ sys.path.insert(0, str(BASE))
 DATA_DIR = BASE / "data"
 DECISIONS_DIR = DATA_DIR / "decisions"
 TRADIER_DIR = DATA_DIR / "tradier"
+# USER 2026-07-29: S1 now runs ONLY SWITCH_MATRIX_TRB work + email digests. This script's
+# own tree (/home/niels/binance) has no matrix data of its own -- the matrix lives in the
+# separate binance-sandbox tree on the same host, so the canonical counter is run there in
+# place (no ssh needed, same box) rather than re-implemented here as a second/competing count.
+SANDBOX_MATRIX_GUARD = Path(os.environ.get("MATRIX_GUARD_PATH", "/home/niels/binance-sandbox/tools/matrix_guard.py"))
 TO_EMAIL = "nielsvip@gmail.com"
 FROM_EMAIL = "nielsvip@gmail.com"
 PUBLIC_RECIPIENTS = [
@@ -518,6 +523,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed, trb_closed):
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 <h1>Evening Recap &mdash; {now_et.strftime('%A, %B %d %Y')} &middot; Market Close</h1>
 
+<h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py)</h2>
+{build_matrix_progress_section()}
+
 <h2>Market Close</h2>
 {build_market_close(market_quotes)}
 
@@ -570,6 +578,26 @@ def send_email(html_body, to=None, subject=None):
     except Exception as e:
         logger.error(f"Send failed: {e}")
         return False
+
+
+def build_matrix_progress_section():
+    """Canonical SWITCH_MATRIX_TRB fill progress, reused verbatim from
+    tools/matrix_guard.py (binance-sandbox) -- never a second/competing counter."""
+    if not SANDBOX_MATRIX_GUARD.exists():
+        return "<p class='r'>matrix_guard.py not found at %s (not on this host).</p>" % SANDBOX_MATRIX_GUARD
+    try:
+        proc = subprocess.run([sys.executable, str(SANDBOX_MATRIX_GUARD)],
+                               cwd=str(SANDBOX_MATRIX_GUARD.parent.parent),
+                               capture_output=True, text=True, timeout=60)
+        body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+        body = body.strip() or "matrix_guard.py produced no output (exit=%s)" % proc.returncode
+    except Exception as e:
+        body = "matrix_guard.py failed to run: %s" % e
+    import html as _html_lib
+    return ("<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
+            "<p><b>Live promotion status:</b> 0 matrix-derived configs are currently deployed to any "
+            "live trb/trc override -- the EOD positions above run on pre-existing configs, NOT matrix output.</p>"
+            ) % _html_lib.escape(body)
 
 
 def build_public_evening_html(market_quotes, tra_data, trb_data):
@@ -625,6 +653,10 @@ async def gather_data():
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Write HTML to disk but do not send email")
+    args = parser.parse_args()
     logger.info("=== Evening Recap Email ===")
     loop = asyncio.new_event_loop()
     tra_data, trb_data, market_quotes, tra_closed, trb_closed = loop.run_until_complete(gather_data())
@@ -632,6 +664,9 @@ def main():
     now_et = datetime.now(timezone.utc) - timedelta(hours=4)
     html = build_email_html(tra_data, trb_data, market_quotes, tra_closed, trb_closed)
     (DATA_DIR / "evening_email_latest.html").write_text(html)
+    if args.dry_run:
+        logger.info("--dry-run: not sending")
+        return
     if send_email(html):
         logger.info("Private version sent")
     if PUBLIC_RECIPIENTS:

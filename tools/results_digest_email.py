@@ -400,6 +400,17 @@ def _latest_matrix_filling_campaigns_section():
         ][1]
     ]
 
+    newest_created_at = max((item["row"].get("created_at") or 0 for item in parsed), default=0)
+    fleet_age_h = (time.time() - newest_created_at) / 3600.0 if newest_created_at else None
+    fleet_stale_banner = ""
+    if fleet_age_h is not None and fleet_age_h > MATRIX_STALE_H:
+        fleet_stale_banner = (
+            "<p class='r'><b>&#9888; STALE (%.0fh since newest row).</b> "
+            "No active path-fleet producer was found running on S1 at digest-build time. "
+            "This lane is NOT the same artifact as MATRIX FILL PROGRESS above -- do not "
+            "read it as current pilot progress.</p>" % fleet_age_h
+        )
+
     research_root = _vec_research_root()
     campaign_ids = sorted({item["campaign_id"] for item in parsed})
     manifests = {}
@@ -569,6 +580,7 @@ def _latest_matrix_filling_campaigns_section():
     return (
         "<h2>Latest matrix-filling campaigns "
         "<span style='color:#666'>[RESEARCH ONLY &mdash; NOT ACCEPTED/LIVE]</span></h2>"
+        + fleet_stale_banner +
         "<p><b>Scope/units:</b> returns are capital-return percent on one final "
         "chronological outer-validation fold (no fold summing); TIM is percent. "
         "Strategy capacity and B&amp;H capital are shown from each campaign contract. "
@@ -1000,6 +1012,30 @@ def _gainmo_sections():
             "Target: account PnL &gt;= 2x benchmark.</p>") % (qual, q[0], m8, bh_html)
 
 
+def _legacy_reopt_staleness_note():
+    """USER 2026-07-29: reopt_loop.sh (the producer behind this whole legacy
+    section) was disabled when S1 was narrowed to matrix-only work. Age is
+    computed live from the actual files, never hardcoded, so this stays honest
+    if the loop is ever re-enabled."""
+    ages_h = []
+    for p in (lib.GATING_CORRECTIONS, lib.RESCUES):
+        try:
+            ages_h.append((time.time() - p.stat().st_mtime) / 3600.0)
+        except OSError:
+            continue
+    newest_h = min(ages_h) if ages_h else None
+    if newest_h is None:
+        return "<p class='r'>reopt_loop store missing entirely.</p>"
+    if newest_h > MATRIX_STALE_H:
+        return (
+            "<p class='r'><b>&#9888; STALE (%.0fh since last write).</b> "
+            "reopt_loop.sh is disabled under the 2026-07-29 S1-matrix-only directive, "
+            "so this section is a frozen snapshot, not live progress. "
+            "See MATRIX FILL PROGRESS above for the current active work.</p>" % newest_h
+        )
+    return "<p style='color:#666'>freshest reopt_loop write %.1fh ago.</p>" % newest_h
+
+
 def build_digest(prev_state, now):
     win_start = _window_start(prev_state, now)
     reports = {"crypto": lib.build_report("crypto"), "stock": lib.build_report("stock")}
@@ -1065,10 +1101,13 @@ def build_digest(prev_state, now):
     Live dashboard: <a href="%s">%s</a></p>
 
     %s
+
+    %s
     %s
     %s
 
     <h2>What changed (LEGACY reopt store — capture-era sections above are the live view)</h2>
+    %s
     <h3>Newly gated off (real-engine confirmed negative &mdash; NOT trading live)</h3>
     %s
     <h3>Re-enabled (vec false-negative corrected by real engine)</h3>
@@ -1103,9 +1142,11 @@ def build_digest(prev_state, now):
     </div>
     </body></html>""" % (
         me.CSS, win_start_iso, win_end_iso, (now - win_start) / 3600.0, DASHBOARD_URL, DASHBOARD_URL,
+        _matrix_guard_totals_section(),
         _gainmo_sections(), stale_banner,
         _latest_matrix_filling_campaigns_section()
         + _switch_matrix_digest_section(),
+        _legacy_reopt_staleness_note(),
         _table(["mode", "key", "real_sharpe_1sym", "gated"], gated_rows, "none this window"),
         _table(["mode", "key", "real_sharpe_1sym", "when"], reenabled_rows, "none this window"),
         _table(["mode", "key", "before &rarr; after", "when"], rescued_rows, "none this window"),

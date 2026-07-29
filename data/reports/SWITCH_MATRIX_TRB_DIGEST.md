@@ -1,30 +1,30 @@
-# SWITCH_MATRIX_TRB progress digest — 2026-07-28 04:10:49Z
+# SWITCH_MATRIX_TRB progress digest — 2026-07-29 01:12:22Z
 
 > Monitoring only. A green-looking screen is not promotable until a fresh Tier-2 replay has real closes, complete metrics, a changed trade fingerprint, and beats B&H.
 
 ## Freshness
 
-- Current repaired matrix latest row: `2026-07-28T04:09:12Z` (1m old).
-- Generic DB activity (includes historical/stage tables): `2026-07-28T04:09:20Z` (1m old); it is not matrix freshness.
-- Current repaired-contract ENGINE rows: **1,155**; new current rows in 24h: **1,122**.
-- Raw repaired-campaign pilot rows since cutoff: **1,155**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
-- Historical/pre-fix ENGINE rows quarantined from current rankings: **6,622/7,777**. They remain preserved as evidence.
+- Current repaired matrix latest row: `none` (unknown old).
+- Generic DB activity (includes historical/stage tables): `none` (unknown old); it is not matrix freshness.
+- Current repaired-contract ENGINE rows: **0**; new current rows in 24h: **0**.
+- Raw repaired-campaign pilot rows since cutoff: **0**; **0** are preserved but invalidated by the newer code+NPZ+side fingerprint, and **0** fail validation status. Blank current cells must be regenerated; they are not silently backfilled from old code.
+- Historical/pre-fix ENGINE rows quarantined from current rankings: **0/0**. They remain preserved as evidence.
 - Current contract: campaign `stocks_repaired_20260725_c2`, cutoff `2026-07-26T04:15:00Z`, exact code+NPZ+side fingerprint required.
-- VEC diagnostic rows: **83,604** (never matrix proof).
-- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-28 04:10:48Z (0m old, 405,797 bytes)
-- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-28 04:10:06Z (0m old, 38,331 bytes)
-- Description coverage in current CSV: **3,570/3,570** rows.
+- VEC diagnostic rows: **0** (never matrix proof).
+- `SWITCH_MATRIX_TRB.xlsx`: 2026-07-29 01:04:48Z (7m old, 390,380 bytes)
+- `SWITCH_MATRIX_TRB.csv.gz`: 2026-07-29 01:04:14Z (8m old, 35,655 bytes)
+- Description coverage in current CSV: **3,522/3,522** rows.
 
 ## Stocks 5m execution provenance
 
 Historical native 5m availability is provider-limited. Older rows use the disclosed containing-15m interpolation; native bars replace it permanently as they are collected.
-Retention report scope: **224 symbols**, **224 native archives**, **6,893,108 native rows**, **0 availability warnings**, **0 hard errors**.
+Retention report scope: **3 symbols**, **3 native archives**, **62,693 native rows**, **0 availability warnings**, **0 hard errors**.
 
 | key | native rows | native coverage | native range | interpolated rows | interpolated coverage | retention |
 |---|---:|---:|---|---:|---:|---|
-| MU_LONG | 15766 | — | 2026-03-23 → 2026-07-27 | — | — | PASS |
-| VT_LONG | 41310 | — | 2024-07-11 → 2026-07-27 | — | — | PASS |
-| HAO_SHORT | 6174 | — | 2026-04-09 → 2026-07-27 | — | — | PASS |
+| MU_LONG | 15526 | 13.54% | 2026-03-23 → 2026-07-24 | 99115 | 86.46% | PASS |
+| VT_LONG | 41190 | 98.19% | 2024-07-11 → 2026-07-24 | 761 | 1.81% | PASS |
+| HAO_SHORT | 5977 | 55.14% | 2026-04-09 → 2026-07-24 | 4862 | 44.86% | PASS |
 
 The append/merge ledger blocks any refresh that shrinks native row count, advances the first timestamp, regresses the last timestamp, or introduces duplicate/out-of-order timestamps. `synthetic_5m_parent_close_ts` records the bounded 0/5/10-minute parent lag.
 
@@ -32,8 +32,8 @@ The append/merge ledger blocks any refresh that shrinks native row count, advanc
 
 | key | actionable cells filled | coverage | latest Tier-2 row | age | strategy tests |
 |---|---:|---:|---|---:|---:|
-| MU_LONG | 290/3,522 | 8.2% | 2026-07-28T03:52:19Z | 18m | 130 |
-| VT_LONG | 783/3,522 | 22.2% | 2026-07-28T04:09:12Z | 1m | 468 |
+| MU_LONG | 0/3,522 | 0.0% | — | unknown | 0 |
+| VT_LONG | 0/3,522 | 0.0% | — | unknown | 0 |
 | HAO_SHORT | 0/3,522 | 0.0% | — | unknown | 0 |
 
 Coverage counts exact `(switch,value)` cells in the current actionable manifest. VEC rows do not fill Tier-2 cells, and duplicate campaigns do not inflate coverage.
@@ -68,31 +68,13 @@ These historical rows are retained for diagnosis and excluded from the automatic
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
-| 2026-07-28T03:52:19Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=125` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T03:48:14Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=100` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T03:46:11Z | stocks_repaired_20260725_c2 | `WT_DC_ENTRY_K5M_MAX_LONG=50` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T01:08:50Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=45` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T01:07:59Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=37.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T00:53:11Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=30` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T00:52:39Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=22.5` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-| 2026-07-28T00:52:20Z | stocks_repaired_20260725_c2 | `TRC_ENTRY_ZONE_LONG=15` | 1.4135 | 4.7610 | -3.3475 | 0.297× | 22.39% | 3180 | RED: CAPACITY CLAMPS |
-
-Best trading candidate: **none with at least two trades and complete return metrics**.
+| — | — | — | — | — | — | — | — | — | NO STRATEGY RESULTS |
 
 ### VT_LONG
 
 | time | campaign | path/value | gain/mo | B&H/mo | vs B&H/mo | capture | TIM | trades | verdict |
 |---|---|---|---:|---:|---:|---:|---:|---:|---|
-| 2026-07-28T03:13:40Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.375` | -0.0692 | 0.2744 | -0.3436 | -0.252× | 1.00% | 181 | REJECT |
-| 2026-07-28T02:58:54Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.3125` | -0.0568 | 0.2744 | -0.3312 | -0.207× | 0.58% | 146 | REJECT |
-| 2026-07-28T02:57:16Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.25` | -0.0589 | 0.2744 | -0.3333 | -0.215× | 0.32% | 108 | REJECT |
-| 2026-07-28T02:56:58Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.1875` | -0.0477 | 0.2744 | -0.3221 | -0.174× | 0.31% | 82 | REJECT |
-| 2026-07-28T02:53:48Z | stocks_repaired_20260725_c2 | `DC_ENTRY_VETO_ENABLED_TRADIER=False` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-| 2026-07-28T02:53:24Z | stocks_repaired_20260725_c2 | `DC_POSITION_ENTRY_THRESHOLD=0.125` | -0.0315 | 0.2743 | -0.3058 | -0.115× | 0.03% | 40 | REJECT |
-| 2026-07-28T02:53:05Z | stocks_repaired_20260725_c2 | `DC_ENTRY_VETO_ENABLED_TRADIER=True` | -0.0589 | 0.2744 | -0.3333 | -0.215× | 0.32% | 108 | REJECT |
-| 2026-07-27T23:45:25Z | stocks_repaired_20260725_c2 | `REENTRY_TIER2_SIZE_MULT_TRADIER=1` | -0.2820 | 0.2743 | -0.5563 | -1.028× | 2.97% | 497 | INERT / RECONNECT |
-
-Best trading candidate: **none with at least two trades and complete return metrics**.
+| — | — | — | — | — | — | — | — | — | NO STRATEGY RESULTS |
 
 ### HAO_SHORT
 
@@ -104,7 +86,7 @@ Best trading candidate: **none with at least two trades and complete return metr
 
 | key | policy | discovery | frozen validation | validation TIM | verdict |
 |---|---|---:|---:|---:|---|
-| MU_LONG | `E02_4h_N20 + E11_G2+E10_RB0` | 32.169× B&H | 0.373× B&H | 67.75% | FAIL / NO PROMOTION |
+| MU_LONG | — | — | — | — | PENDING |
 | VT_LONG | — | — | — | — | PENDING |
 | HAO_SHORT | — | — | — | — | PENDING |
 
@@ -136,8 +118,8 @@ E12 reports net realized partial P&L separately. Positive partial clips do not c
 
 | key | frozen OOS strategy | B&H | multiple | weighted TIM | exact-engine parity | verdict |
 |---|---:|---:|---:|---:|---|---|
-| MU_LONG | 1093.418% | 381.950% | 2.863× | 84.49% | PASS | RESEARCH EDGE; PROMOTION BLOCKED |
-| VT_LONG | -32.869% | 13.786% | -2.384× | 49.63% | PENDING | REJECT / NO PROMOTION |
+| MU_LONG | 2451.841% | 382.297% | 6.413× | 68.00% | PASS | RESEARCH EDGE; PROMOTION BLOCKED |
+| VT_LONG | -15.364% | 13.786% | -1.114× | 80.32% | PENDING | REJECT / NO PROMOTION |
 | HAO_SHORT | — | — | — | — | — | QUARANTINED / INVALID DATA |
 
 The MU exact replay covers the latest frozen fold: 34/34 actions, +1,316.021% return, 77.09% weighted TIM, zero future HTF sources, zero clamps, and exact signal/fill/accounting parity. It remains research-only because the campaign explicitly sets `promotion_allowed=false`. VT fails frozen OOS; HAO remains data-quarantined.
@@ -191,11 +173,9 @@ The retune keeps exits fixed at completed-4h E02 N=30. It changes only the bound
 
 | key | window | best visible candidate | gain | B&H | multiple | TIM | data/policy status |
 |---|---|---|---:|---:|---:|---:|---|
-| MU_LONG | 2024-01-01 → 2025-07-01 | `E02_4h_N20 + E11_G2+E10_RB0` | 70.164% | 2.181% | 32.169× | 76.01% | EXPOSURE/RECLAIM PASS; FAITHFUL REPLAY PENDING |
-| MU_LONG | 2024-01-01 → present | `E02_4h_N30 + E11_G2+E10_RB0` | 1377.872% | 666.389% | 2.068× | 75.05% | EXACT EXECUTION REPLAY PASS; ROBUSTNESS/PROMOTION BLOCKED |
-| MU_LONG | 2025-07-01 → present | `E02_4h_N20 + E11_G0.5+E10_RB0` | 458.076% | 651.969% | 0.703× | 76.28% | BELOW B&H; REJECT |
-| VT_LONG | 2024-01-01 → present | `E04_4h_EMA20_B0_R0.25_W12 + E11_G1+E10_RB0` | 30.364% | 32.656% | 0.930× | 78.99% | BELOW B&H; REJECT |
-| HAO_SHORT | unknown → present | — | — | — | — | — | QUARANTINED / INVALID DATA |
+| MU_LONG | — | — | — | — | — | — | NO VEC_RESEARCH ARTIFACT |
+| VT_LONG | — | — | — | — | — | — | NO VEC_RESEARCH ARTIFACT |
+| HAO_SHORT | — | — | — | — | — | — | NO VEC_RESEARCH ARTIFACT |
 
 The full-period MU multiple is an optimization-screen headline, not a robust claim. Read the holdout row beside it: exposure drift or sub-B&H holdout performance blocks promotion even when the full-period row is above B&H.
 
@@ -203,53 +183,12 @@ The full-period MU multiple is an optimization-screen headline, not a robust cla
 
 > Claimable vector-first research queue. Control rows establish the frozen benchmark that later paths must beat; they are not exact-engine promotion evidence.
 
-- Jobs: **80**; states: ADAPTER_REQUIRED=40, OBSERVABILITY_ONLY=2, QUARANTINED=8, SCREENED=30.
-- Frozen tradeable hashes: LONG `e0acfe4c1139dd01f6138445c53071eb307fa4ad0600fcd8dddcd7e794a78955`; SHORT `00c085e4069a105826f040cf9ff95373afaa4684f9ebc02f1a72edff4a0aa361`.
-- Top LONG cohort: SNDK, MRVL, ARM, MU, AMD, INTC, PBF, MPC, DINO, VLO.
-- Bottom SHORT cohort: LAC, UUUU, UEC, ASTS, ACN, HL, TTD, EGO, CDE, ALB.
-
-| path | key | stage | metric scope / units | state | strategy | B&H | multiple | alpha B&H | same-entry alpha | TIM | trades |
-|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| `ENTRY_WT_DC` | IBIT_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -1.697% | 8.890% | -0.191× | -10.587pp | 0.000pp | 2.62% | 12 |
-| `ENTRY_DELTA_MTF` | ARM_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | 14.638% | 15.974% | 0.916× | -1.335pp | 0.000pp | 2.78% | 13 |
-| `ENTRY_DELTA_MTF` | MRVL_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_FINAL_REJECTED | 8.452% | 0.000% | —× | 8.452pp | 0.000pp | 1.30% | 5 |
-| `ENTRY_DELTA_MTF` | SNDK_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -3.460% | 5.765% | -0.600× | -9.225pp | 0.000pp | 0.97% | 6 |
-| `ENTRY_DELTA_MTF` | MU_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | 10.510% | 0.000% | —× | 10.510pp | 0.000pp | 1.12% | 14 |
-| `ENTRY_DELTA_MTF` | NVDA_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V2 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -0.772% | 0.000% | —× | -0.772pp | 0.000pp | 0.30% | 1 |
-| `ENTRY_WT_DC` | IBIT_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -1.697% | 8.890% | -0.191× | -10.587pp | 0.000pp | 2.62% | 12 |
-| `ENTRY_DELTA_MTF` | ARM_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | 14.638% | 15.974% | 0.916× | -1.335pp | 0.000pp | 2.78% | 13 |
-| `ENTRY_DELTA_MTF` | MRVL_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_FINAL_REJECTED | 8.452% | 0.000% | —× | 8.452pp | 0.000pp | 1.30% | 5 |
-| `ENTRY_DELTA_MTF` | SNDK_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -3.460% | 5.765% | -0.600× | -9.225pp | 0.000pp | 0.97% | 6 |
-| `ENTRY_DELTA_MTF` | MU_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | 10.510% | 0.000% | —× | 10.510pp | 0.000pp | 1.12% | 14 |
-| `ENTRY_DELTA_MTF` | NVDA_SHORT | SHORT_METRIC_POLARITY_AUDIT_DISCOVERY_V1 | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_DISCOVERY_REJECTED | -0.772% | 0.000% | —× | -0.772pp | 0.000pp | 0.30% | 1 |
-| `ENTRY_STOCH_HHHL` | DINO_LONG | VEC_DINO_PHASE3_JOINT_STABILITY_DISCOVERY_ONLY | SUM_OF_TWO_DISCOVERY_VALIDATION_FOLDS; return=CAPITAL_RETURN_PCT_ON_FIXED_2000_UNIT (LEGACY_UNSCOPED); TIM=UNWEIGHTED_MEAN_OF_DISCOVERY_FOLD_WEIGHTED_CAPACITY_PCT (LEGACY_UNSCOPED) | GRAY_REJECTED | 249.630% | 27.520% | 9.071× | 222.110pp | -10.611pp | 76.14% | 7 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 846.161% | 177.045% | 4.779× | 669.116pp | -306.970pp | 71.52% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 846.071% | 177.045% | 4.779× | 669.026pp | -307.061pp | 71.47% | 2 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 1072.092% | 177.045% | 6.055× | 895.047pp | -81.039pp | 77.62% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 642.377% | 177.045% | 3.628× | 465.332pp | -510.755pp | 62.70% | 3 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 723.534% | 177.045% | 4.087× | 546.489pp | -429.598pp | 58.14% | 4 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 723.534% | 177.045% | 4.087× | 546.489pp | -429.598pp | 58.14% | 4 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 861.399% | 177.045% | 4.865× | 684.354pp | -295.238pp | 73.65% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 861.426% | 177.045% | 4.866× | 684.381pp | -295.211pp | 73.57% | 2 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 1098.579% | 177.045% | 6.205× | 921.534pp | -58.058pp | 80.52% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 692.519% | 177.045% | 3.912× | 515.474pp | -464.118pp | 66.86% | 3 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 762.524% | 177.045% | 4.307× | 585.479pp | -394.113pp | 63.75% | 4 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 762.524% | 177.045% | 4.307× | 585.479pp | -394.113pp | 63.75% | 4 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 858.519% | 177.045% | 4.849× | 681.474pp | -320.420pp | 72.04% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 858.307% | 177.045% | 4.848× | 681.263pp | -320.632pp | 71.99% | 2 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 1146.008% | 177.045% | 6.473× | 968.964pp | -32.931pp | 81.22% | 1 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 695.993% | 177.045% | 3.931× | 518.948pp | -482.946pp | 65.20% | 3 |
-| `EXIT_E06_REGRESSION_RETEST` | MU_LONG | VEC_MU_LADDER_TOP_EXIT_DISCOVERY | LEGACY_UNSCOPED; return=LEGACY_UNSCOPED (LEGACY_UNSCOPED); TIM=LEGACY_UNSCOPED (LEGACY_UNSCOPED) | GRAY_RESEARCH_REJECTED | 772.444% | 177.045% | 4.363× | 595.399pp | -406.495pp | 62.54% | 4 |
-
-Metric guardrail: `VEC_NESTED_FOLD_AGGREGATE` returns are sums of outer-validation-fold capital-return percentages and are not a single holdout return. Only `FINAL_CHRONOLOGICAL_OUTER_VALIDATION_FOLD` rows use single-fold capital-return percentages; `LEGACY_UNSCOPED` rows are historical evidence and must not drive promotion.
-
-SHORT vector controls are present but remain research-only until exact replay and the same completed-HTF, fill, capacity, solvency, exposure, and mandatory-reclaim gates pass. No LONG result is inverted or pooled.
+Path fleet ledger is missing.
 
 ## Campaign activity
 
 | tier | campaign | rows | latest | age |
 |---|---|---:|---|---:|
-| ENGINE | stocks_repaired_20260725_c2 | 1,155 | 2026-07-28T04:09:12Z | 1m |
 
 ## Reading the matrix
 

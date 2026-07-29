@@ -1717,6 +1717,32 @@ def build_hedge_proposals_section():
     return "\n".join(out)
 
 
+SANDBOX_MATRIX_GUARD = Path(os.environ.get("MATRIX_GUARD_PATH", "/home/niels/binance-sandbox/tools/matrix_guard.py"))
+
+
+def build_matrix_progress_section():
+    """USER 2026-07-29: S1 now runs ONLY SWITCH_MATRIX_TRB work + email digests. This
+    script's own tree (/home/niels/binance) has no matrix data of its own -- the matrix
+    lives in the separate binance-sandbox tree on the same host, so the canonical counter
+    (tools/matrix_guard.py) is run there in place (no ssh needed, same box) rather than
+    re-implemented here as a second/competing count."""
+    if not SANDBOX_MATRIX_GUARD.exists():
+        return "<p class='r'>matrix_guard.py not found at %s (not on this host).</p>" % SANDBOX_MATRIX_GUARD
+    try:
+        proc = subprocess.run([sys.executable, str(SANDBOX_MATRIX_GUARD)],
+                               cwd=str(SANDBOX_MATRIX_GUARD.parent.parent),
+                               capture_output=True, text=True, timeout=60)
+        body = (proc.stdout or "") + (("\n" + proc.stderr) if proc.stderr else "")
+        body = body.strip() or "matrix_guard.py produced no output (exit=%s)" % proc.returncode
+    except Exception as e:
+        body = "matrix_guard.py failed to run: %s" % e
+    import html as _html_lib
+    return ("<pre style='font-size:11px;white-space:pre-wrap'>%s</pre>"
+            "<p><b>Live promotion status:</b> 0 matrix-derived configs are currently deployed to any "
+            "live trb/trc override -- said honestly rather than implying attribution.</p>"
+            ) % _html_lib.escape(body)
+
+
 def build_persym_campaign_section():
     digest = DATA_DIR / "reports" / "persym_campaign_digest.md"
     uni = DATA_DIR / "reports" / "universe_vs_random_baseline.json"
@@ -1747,6 +1773,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
 <h1>Morning Briefing &mdash; {now_et.strftime('%A, %B %d %Y')} &middot; {now_et.strftime('%I:%M %p')} ET</h1>
 {banner}
+
+<h2>MATRIX FILL PROGRESS (canonical &mdash; tools/matrix_guard.py)</h2>
+{build_matrix_progress_section()}
 
 <h2>Week P/L (closed positions)</h2>
 {build_weekly_pnl_summary(tra_closed or [], trb_closed or [])}

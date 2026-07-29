@@ -32,7 +32,7 @@ from tools.v8_research_ladder_adapter import (  # noqa: E402
 )
 
 
-CONTRACT = "MU_DAILY_DEEP_PARETO_HOLDOUT_V2_TIERED_TIM"
+CONTRACT = "MU_DAILY_DEEP_PARETO_HOLDOUT_V3_SEALED_FOLD_TIM"
 CANDIDATE_NUMBER = 151
 CANDIDATE_LABEL = (
     "DAILY_DEEP_center_plateau_green_TARGET_CAP8_"
@@ -48,7 +48,13 @@ MIN_BH_MULTIPLE = 2.0
 # floor conflicted with the user's own stated target. Recorded so the change is auditable.
 # 2026-07-29 USER tiered TIM policy: 50-75% for top-10 winners/losers, 20-60% for the
 # rest of symbols_trb_long/short. MU_LONG is top-tier, so this contract uses 50-75.
+# 2026-07-29 USER "option 3": the tiered band binds the SEALED/LIVE fold (and is
+# additionally enforced as a live exposure cap in the promotion wiring); the
+# discovery folds keep the prior 65-80 sanity band — they are selection history,
+# not live behavior. Strict every-fold binding rejected MU at discovery
+# (folds 1-2 TIM 77.39/77.42) and was overruled by the user.
 TIM_BAND = (50.0, 75.0)
+DISCOVERY_TIM_BAND = (65.0, 80.0)
 MAX_CLAMPS = 5
 MIN_FILL_RATIO = 0.99
 MIN_SOURCE_RETURN_RETENTION = 0.75
@@ -73,9 +79,9 @@ def _canonical_hash(value: Any) -> str:
     ).hexdigest()
 
 
-def tim_gap(tim_pct: float) -> float:
+def tim_gap(tim_pct: float, band: tuple[float, float] = TIM_BAND) -> float:
     """Distance in percentage points from the accepted exposure band."""
-    low, high = TIM_BAND
+    low, high = band
     if tim_pct < low:
         return low - tim_pct
     if tim_pct > high:
@@ -86,6 +92,7 @@ def tim_gap(tim_pct: float) -> float:
 def compare_fold(
     candidate: dict[str, Any],
     source: dict[str, Any],
+    band: tuple[float, float] = TIM_BAND,
 ) -> dict[str, Any]:
     """Apply the fixed fold gate and expose every Pareto dimension."""
     candidate_return = float(candidate["capital_return_pct"])
@@ -108,8 +115,8 @@ def compare_fold(
         if source_return > 0.0
         else 0.0
     )
-    source_tim_gap = tim_gap(source_tim)
-    candidate_tim_gap = tim_gap(candidate_tim)
+    source_tim_gap = tim_gap(source_tim, band)
+    candidate_tim_gap = tim_gap(candidate_tim, band)
     tim_gap_improvement = source_tim_gap - candidate_tim_gap
     raw_return_sacrificed = candidate_return < source_return
 
@@ -119,7 +126,7 @@ def compare_fold(
             bh_return > 0.0
             and candidate_return >= MIN_BH_MULTIPLE * bh_return
         ),
-        "weighted_tim_in_band": TIM_BAND[0] <= candidate_tim <= TIM_BAND[1],
+        "weighted_tim_in_band": band[0] <= candidate_tim <= band[1],
         "solvent": not bool(candidate["insolvent"]),
         "minimum_equity_floor": candidate_min_equity >= MIN_EQUITY_USD,
         "no_capacity_breach": not bool(candidate["entry_capacity_breach"]),
@@ -228,6 +235,7 @@ def contract_payload(args: argparse.Namespace) -> dict[str, Any]:
         "gates_each_fold": {
             "minimum_multiple_of_positive_bh": MIN_BH_MULTIPLE,
             "weighted_tim_pct": list(TIM_BAND),
+            "weighted_tim_pct_discovery_folds": list(DISCOVERY_TIM_BAND),
             "maximum_clamps": MAX_CLAMPS,
             "minimum_fill_ratio": MIN_FILL_RATIO,
             "minimum_source_return_retention": (
@@ -309,7 +317,7 @@ def run(args: argparse.Namespace) -> Path:
         fold = int(row["fold"])
         if fold not in DISCOVERY_FOLDS:
             raise RuntimeError(f"unexpected discovery fold: {fold}")
-        comparison = compare_fold(row["metrics"], source_folds[fold])
+        comparison = compare_fold(row["metrics"], source_folds[fold], DISCOVERY_TIM_BAND)
         comparisons.append({"fold": fold, **comparison})
 
     future_htf = int(frozen["future_htf_count"])
