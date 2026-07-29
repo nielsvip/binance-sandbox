@@ -204,6 +204,47 @@ def test_load_hao_short_exposure_phase4_is_gray_receipt(tmp_path, monkeypatch):
     )
 
 
+def test_load_other_pilot_survivor_audit_stays_gray(tmp_path, monkeypatch):
+    reports = tmp_path / "data" / "reports"
+    receipt = (
+        reports
+        / "vec_research"
+        / "OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json"
+    )
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text(
+        json.dumps(
+            {
+                "contract": "OTHER_PILOT_DEPLOYED_ALPHA_V1",
+                "summary": {
+                    "discovery_survivors": 0,
+                    "nearest_key": "TTD_SHORT",
+                    "promotions": 0,
+                },
+                "rows": [
+                    {
+                        "key": "TTD_SHORT",
+                        "verdict": "NO_DISCOVERY_SURVIVOR_GRAY",
+                        "promotion_eligible": False,
+                    }
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(digest, "REPORTS", reports)
+    monkeypatch.setattr(digest, "BASE", tmp_path)
+
+    row = digest.load_other_pilot_survivor_audit()
+
+    assert row is not None
+    assert row["summary"]["nearest_key"] == "TTD_SHORT"
+    assert row["summary"]["promotions"] == 0
+    assert row["rows"][0]["promotion_eligible"] is False
+    assert row["_artifact"].endswith(
+        "OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json"
+    )
+
+
 def test_ladder_retune_exact_must_reference_same_source_artifact(
     tmp_path, monkeypatch
 ):

@@ -21,8 +21,11 @@ def _metrics(alpha=2.0, tim=70.0, bh=25.0):
         "bh_return_on_deployed_pct": bh,
         "deployed_alpha_vs_bh_or_cash_pp": alpha,
         "benchmark_floor_return_pct": max(0.0, bh),
-        "honest_bh_multiple": (bh + alpha) / bh if abs(bh) >= 20 else None,
-        "bh_ratio_eligible": abs(bh) >= 20,
+        "honest_bh_multiple": (
+            (bh + alpha) / bh if bh >= 20 else None
+        ),
+        "bh_magnitude_eligible": abs(bh) >= 20,
+        "bh_ratio_eligible": bh >= 20,
         "exposure_weighted_tim_pct": tim,
         "fill_ratio": 1.0,
         "clamp_count": 0,

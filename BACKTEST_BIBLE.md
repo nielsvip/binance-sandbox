@@ -2740,3 +2740,34 @@ The full evidence, pre-repair hashes/counts, deployment sequence, rollback, and
 crypto replication boundary are in
 `BACKTEST_THROUGHPUT_REPAIR_20260729.md`; benchmark receipt:
 `data/reports/BACKTEST_SCANNER_BENCHMARK_20260729.json`.
+
+### §15.48 — non-MU pilots under deployed-alpha and 65–80% exposure (2026-07-29)
+
+The corrected bounded rescreen covered `TTD_SHORT`, `ACN_SHORT`,
+`NVDA_LONG`, `VT_LONG`, and `LAC_SHORT`. It ranked on return per pre-cost
+committed dollar-time against the better of side-aware B&H and 0% cash, not on
+the levered $2,000-label P&L. A ratio is publishable only when side-aware B&H
+is at least +20pp; negative/negative ratios are invalid.
+
+Four frozen S1 sources passed hash, row-count, freshness, completed-parent, and
+causality checks. `VT_LONG` failed closed because its frozen NPZ still lacks
+`synthetic_5m_parent_close_ts`. Six coherent capacity/exit profiles were tested
+per valid key using discovery folds 1–2 only. **There were zero stable discovery
+survivors, so fold 3 remained sealed and no ordinary-engine/live parity ran.**
+
+`TTD_SHORT` was nearest: $8k capacity with completed-4h E02 N30 made
++15.246pp deployed alpha at 70.22% TIM in fold 1, then **−25.852pp** at 77.61%
+TIM in fold 2. ACN was negative in both folds; NVDA's +4.087pp first-fold edge
+used 82.50% TIM and became −1.441pp in fold 2; LAC became −84.328pp versus the
+cash floor in fold 2. All four valid-key nearest rows had fill ratio 1.0, zero
+clamps, zero future HTF, and no entry-capacity breach, so the binding failure is
+regime/strategy stability rather than sizing mechanics.
+
+Old TTD/ACN/NVDA headline multiples are superseded: they used a levered
+denominator and a private schedule hook. A private `--research-ladder-spec`
+replay is not ordinary
+`check_entry_candidates_for_account()` /
+`check_exit_candidates_for_account()` or live-state parity. No row became
+matrix-green or live eligible. Full evidence and the next TTD regime-split test
+are in `OTHER_PILOT_SURVIVOR_AUDIT_20260729.md`; compact receipt:
+`data/reports/vec_research/OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json`.

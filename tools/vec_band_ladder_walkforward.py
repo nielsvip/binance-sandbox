@@ -535,7 +535,15 @@ def _simulate_python(
     # ratio is meaningful; it must never turn a near-zero denominator into a
     # ranking signal.
     benchmark_floor_return = max(0.0, bh_return_on_deployed)
-    bh_ratio_eligible = abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
+    bh_magnitude_eligible = (
+        abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
+    )
+    # Magnitude alone is not enough: negative/negative produces a seductive
+    # positive ratio while both legs lose money.  A ratio is publishable only
+    # when the side-aware benchmark is itself a positive opportunity floor.
+    bh_ratio_eligible = (
+        bh_return_on_deployed >= BH_RATIO_ABS_FLOOR_PP
+    )
     return {
         # EQUAL-CAPITAL METRICS (2026-07-28). `capital_return_pct` divides by the
         # $2,000 label while the position may hold up to CAPACITY, and the B&H leg
@@ -558,6 +566,7 @@ def _simulate_python(
             "SIDE_AWARE_BH" if bh_return_on_deployed > 0.0 else "CASH_0PCT"
         ),
         "bh_ratio_abs_floor_pp": BH_RATIO_ABS_FLOOR_PP,
+        "bh_magnitude_eligible": bh_magnitude_eligible,
         "bh_ratio_eligible": bh_ratio_eligible,
         "honest_bh_multiple": (
             (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)
@@ -733,7 +742,12 @@ def _simulate_compiled(
     )
     bh_return_on_deployed = 100.0 * bh_pnl / BASE_UNIT
     benchmark_floor_return = max(0.0, bh_return_on_deployed)
-    bh_ratio_eligible = abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
+    bh_magnitude_eligible = (
+        abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
+    )
+    bh_ratio_eligible = (
+        bh_return_on_deployed >= BH_RATIO_ABS_FLOOR_PP
+    )
     is_long = side == "LONG"
     return {
         "avg_deployed_usd": avg_deployed,
@@ -750,6 +764,7 @@ def _simulate_compiled(
             "SIDE_AWARE_BH" if bh_return_on_deployed > 0.0 else "CASH_0PCT"
         ),
         "bh_ratio_abs_floor_pp": BH_RATIO_ABS_FLOOR_PP,
+        "bh_magnitude_eligible": bh_magnitude_eligible,
         "bh_ratio_eligible": bh_ratio_eligible,
         "honest_bh_multiple": (
             (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)

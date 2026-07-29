@@ -10,8 +10,9 @@ independent parity receipt; the private research schedule is not accepted as
 "exact".
 
 Selection is based on return per pre-cost dollar committed, relative to the
-better of side-aware B&H and cash.  Ratios with |B&H| below 20 percentage
-points are telemetry only and cannot rank a candidate.
+better of side-aware B&H and cash.  Ratios require a *positive* side-aware B&H
+of at least 20 percentage points; negative B&H is compared with cash and can
+never be rescued by a negative/negative ratio.
 """
 from __future__ import annotations
 
@@ -265,6 +266,7 @@ def fold_gate(
             "deployed_alpha_vs_bh_or_cash_pp"
         ],
         "ratio": metrics["honest_bh_multiple"],
+        "bh_magnitude_eligible": metrics["bh_magnitude_eligible"],
         "ratio_eligible": metrics["bh_ratio_eligible"],
         "tim_pct": tim,
         "tim_distance_pp": _tim_distance(tim, tim_lo, tim_hi),
@@ -517,7 +519,10 @@ def run(args: argparse.Namespace) -> Path:
                 "pre-cost committed/requested dollar-time averaged over every "
                 "window bar; TIM is reported separately"
             ),
-            "bh_ratio_abs_floor_pp": 20.0,
+            "bh_ratio_rule": (
+                "publish only when side-aware B&H >= +20pp; |B&H| magnitude "
+                "is telemetry, negative B&H uses cash and has no ratio"
+            ),
             "private_schedule_exact_is_live_parity": False,
             "ordinary_engine_required_for_promotion": True,
         },

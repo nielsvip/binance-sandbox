@@ -139,6 +139,44 @@ def test_negative_side_bh_uses_cash_floor_and_small_bh_disables_ratio():
     assert result["honest_bh_multiple"] is None
 
 
+def test_large_negative_bh_has_magnitude_but_never_a_ratio():
+    n = 100
+    data = SimpleNamespace(
+        ts=np.arange(n, dtype=np.int64),
+        open=np.full(n, 100.0),
+        high=np.full(n, 141.0),
+        low=np.full(n, 99.0),
+        close=np.linspace(100.0, 140.0, n),
+    )
+    signals = ladder.SignalData(
+        entry_mult=np.zeros(n),
+        event_tf=np.zeros((3, n), dtype=np.uint8),
+        exit_event=np.zeros(n, dtype=np.uint8),
+        exit_ref=np.full(n, np.nan),
+        causality={},
+    )
+    curve = ladder.Curve(
+        "NEGATIVE_DENOMINATOR",
+        "linear",
+        "green",
+        "target",
+        30.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    )
+    result = ladder._simulate(
+        data, signals, curve, 0, n, 0.0, 0.0, "SHORT"
+    )
+    assert result["bh_return_on_deployed_pct"] == -40.0
+    assert result["bh_magnitude_eligible"] is True
+    assert result["bh_ratio_eligible"] is False
+    assert result["honest_bh_multiple"] is None
+
+
 def test_selection_score_uses_deployed_alpha_not_levered_label_alpha():
     common = {
         "max_drawdown_account_pct": 0.0,
