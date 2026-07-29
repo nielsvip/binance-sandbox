@@ -90,7 +90,11 @@ def test_short_cash_ledger_and_benchmark_are_side_aware():
     assert result["peak_post_fill_notional_usd"] == 2_000.0
     assert result["entry_capacity_breach"] is False
     assert result["benchmark_floor_kind"] == "SIDE_AWARE_BH"
-    assert result["deployed_alpha_vs_bh_or_cash_pp"] == 0.0
+    # The strategy earns the same move with 99/100 of B&H dollar-time because
+    # the skipped signal bar is flat.
+    assert result["deployed_alpha_vs_bh_or_cash_pp"] == pytest.approx(
+        0.10101010101010033
+    )
     assert result["bh_ratio_eligible"] is False
     assert result["honest_bh_multiple"] is None
 

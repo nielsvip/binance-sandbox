@@ -341,6 +341,9 @@ def _simulate_python(
         raise ValueError("simulation window too short")
     cash = ACCOUNT_EQUITY
     qty = 0.0
+    # Capital committed at fills.  Do not revalue this with every mark: doing
+    # so mechanically shrinks the denominator of a winning SHORT and inflates
+    # the denominator of a winning LONG, manufacturing side-dependent "alpha".
     entry_notional = 0.0
     last_exit_fill = math.nan
     reclaim_level = math.nan
@@ -402,8 +405,10 @@ def _simulate_python(
                 if actual > 0:
                     cash -= side_sign * actual + commission_rate * actual
                     qty += side_sign * actual / px
-                    entry_notional = abs(qty) * px
-                    peak_post_fill_notional = max(peak_post_fill_notional, entry_notional)
+                    entry_notional = min(CAPACITY, entry_notional + actual)
+                    peak_post_fill_notional = max(
+                        peak_post_fill_notional, abs(qty) * px
+                    )
                     fill_count += 1
                     reclaim_count += int(pending.get("reason") == "reclaim")
                     lower_count += int(
@@ -419,7 +424,7 @@ def _simulate_python(
         notional = abs(qty) * close
         peak_mark_notional = max(peak_mark_notional, notional)
         held_bars += int(has_position())
-        weighted_exposure += min(CAPACITY, notional) / CAPACITY
+        weighted_exposure += entry_notional / CAPACITY
 
         # All rows released by one 15m parent close form one observation
         # batch. A signal in that batch cannot fill against another already
@@ -514,9 +519,12 @@ def _simulate_python(
         - 2.0 * commission_rate * BASE_UNIT
     )
     bars = right - left
-    # Capital actually committed, averaged over every bar in the window. This is
-    # the denominator the strategy leg earned its P&L on; B&H earned its on BASE_UNIT.
-    avg_deployed = (weighted_exposure / bars) * CAPACITY if bars > 0 else 0.0
+    # Pre-cost committed dollar-time over the complete comparison window.
+    # Skipping a flat bar genuinely reduces capital-time without losing P&L;
+    # TIM remains separately visible.
+    avg_deployed = (
+        weighted_exposure / bars * CAPACITY if bars > 0 else 0.0
+    )
     return_on_deployed = (
         100.0 * strategy_pnl / avg_deployed if avg_deployed > 0 else 0.0
     )
