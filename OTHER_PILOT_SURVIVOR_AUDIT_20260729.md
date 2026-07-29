@@ -125,7 +125,7 @@ per-symbol setting is eligible for a canary.
 - Compact fleet receipt:
   `data/reports/vec_research/OTHER_PILOT_SURVIVOR_RECEIPT_20260729.json`
 - Full S1 artifact:
-  `data/reports/vec_research/other_pilot_survivor_20260729T160327Z/result.json`
+  `data/reports/vec_research/other_pilot_survivor_20260729T160821Z/result.json`
 - Tests:
   `test_run_other_pilot_survivor_audit.py`,
   `test_vec_band_ladder_walkforward.py`
