@@ -29,11 +29,14 @@ selection.  Results are VEC_RESEARCH evidence only.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import dataclasses
 import gzip
 import hashlib
 import json
 import math
+import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,6 +66,8 @@ MAX_MULT = CAPACITY / BASE_UNIT
 KNOWN_GAPS = {
     "VT": (("2026-03-30", "2026-06-08"),),
 }
+COMPILED_SCAN_SOURCE = ROOT / "tools" / "vec_band_ladder_scan.c"
+_COMPILED_SCAN_LIBRARY: ctypes.CDLL | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -315,7 +320,7 @@ def _build_signals(
     )
 
 
-def _simulate(
+def _simulate_python(
     data: top.ExecutionData,
     signals: SignalData,
     curve: Curve,
@@ -560,6 +565,224 @@ def _simulate(
         "end_ts": int(data.ts[right - 1]),
         "rows": bars,
     }
+
+
+class _CompiledMetrics(ctypes.Structure):
+    _fields_ = [
+        ("strategy_pnl", ctypes.c_double),
+        ("bh_pnl", ctypes.c_double),
+        ("max_drawdown_account_pct", ctypes.c_double),
+        ("minimum_account_equity_usd", ctypes.c_double),
+        ("weighted_exposure", ctypes.c_double),
+        ("peak_mark_notional", ctypes.c_double),
+        ("peak_post_fill_notional", ctypes.c_double),
+        ("requested_notional", ctypes.c_double),
+        ("filled_notional", ctypes.c_double),
+        ("clamp_count", ctypes.c_int),
+        ("fill_count", ctypes.c_int),
+        ("exit_count", ctypes.c_int),
+        ("reclaim_count", ctypes.c_int),
+        ("ladder_reentry_count", ctypes.c_int),
+        ("held_bars", ctypes.c_int),
+        ("bars_flat_beyond_reclaim", ctypes.c_int),
+        ("rows", ctypes.c_int),
+    ]
+
+
+def _compiled_scan_library() -> ctypes.CDLL:
+    """Build/load the exact-contract scanner, keyed by its source digest."""
+    global _COMPILED_SCAN_LIBRARY
+    if _COMPILED_SCAN_LIBRARY is not None:
+        return _COMPILED_SCAN_LIBRARY
+    digest = hashlib.sha256(COMPILED_SCAN_SOURCE.read_bytes()).hexdigest()[:16]
+    target = Path("/tmp") / f"vec_band_ladder_{digest}.so"
+    if not target.exists():
+        temporary = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+        subprocess.run(
+            [
+                os.environ.get("CC", "cc"),
+                "-O3",
+                "-std=c11",
+                "-fPIC",
+                "-shared",
+                str(COMPILED_SCAN_SOURCE),
+                "-o",
+                str(temporary),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        os.replace(temporary, target)
+    library = ctypes.CDLL(str(target))
+    i64 = np.ctypeslib.ndpointer(
+        dtype=np.int64, ndim=1, flags="C_CONTIGUOUS"
+    )
+    f64 = np.ctypeslib.ndpointer(
+        dtype=np.float64, ndim=1, flags="C_CONTIGUOUS"
+    )
+    u8 = np.ctypeslib.ndpointer(
+        dtype=np.uint8, ndim=1, flags="C_CONTIGUOUS"
+    )
+    library.vec_band_ladder_scan.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        i64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        u8,
+        f64,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(_CompiledMetrics),
+    ]
+    library.vec_band_ladder_scan.restype = ctypes.c_int
+    _COMPILED_SCAN_LIBRARY = library
+    return library
+
+
+def _simulate_compiled(
+    data: top.ExecutionData,
+    signals: SignalData,
+    curve: Curve,
+    left: int,
+    right: int,
+    commission_rate: float,
+    slippage_rate: float,
+    side: str = "LONG",
+) -> dict[str, Any]:
+    """Compiled accounting over the same causal arrays as the Python oracle."""
+    side = side.upper()
+    if side not in {"LONG", "SHORT"}:
+        raise ValueError(f"unsupported side: {side}")
+    out = _CompiledMetrics()
+    rc = _compiled_scan_library().vec_band_ladder_scan(
+        len(data.ts),
+        left,
+        right,
+        1 if side == "LONG" else -1,
+        int(curve.semantics == "target"),
+        np.ascontiguousarray(data.ts, dtype=np.int64),
+        np.ascontiguousarray(data.open, dtype=np.float64),
+        np.ascontiguousarray(data.high, dtype=np.float64),
+        np.ascontiguousarray(data.low, dtype=np.float64),
+        np.ascontiguousarray(data.close, dtype=np.float64),
+        np.ascontiguousarray(signals.entry_mult, dtype=np.float64),
+        np.ascontiguousarray(signals.exit_event, dtype=np.uint8),
+        np.ascontiguousarray(signals.exit_ref, dtype=np.float64),
+        ACCOUNT_EQUITY,
+        BASE_UNIT,
+        CAPACITY,
+        commission_rate,
+        slippage_rate,
+        ctypes.byref(out),
+    )
+    if rc:
+        raise RuntimeError(f"compiled band-ladder scan failed with code {rc}")
+    bars = int(out.rows)
+    strategy_pnl = float(out.strategy_pnl)
+    bh_pnl = float(out.bh_pnl)
+    avg_deployed = (
+        float(out.weighted_exposure) / bars * CAPACITY if bars else 0.0
+    )
+    is_long = side == "LONG"
+    return {
+        "avg_deployed_usd": avg_deployed,
+        "return_on_deployed_pct": (
+            100.0 * strategy_pnl / avg_deployed
+            if avg_deployed > 0.0
+            else 0.0
+        ),
+        "bh_return_on_deployed_pct": 100.0 * bh_pnl / BASE_UNIT,
+        "honest_bh_multiple": (
+            (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)
+            if avg_deployed > 0.0 and bh_pnl != 0.0
+            else 0.0
+        ),
+        "implied_leverage_x": avg_deployed / BASE_UNIT,
+        "capital_return_pct": 100.0 * strategy_pnl / BASE_UNIT,
+        "side": side,
+        "account_return_pct": 100.0 * strategy_pnl / ACCOUNT_EQUITY,
+        "bh_capital_return_pct": 100.0 * bh_pnl / BASE_UNIT,
+        "alpha_vs_bh_pp": 100.0 * (strategy_pnl - bh_pnl) / BASE_UNIT,
+        "strategy_bh_multiple": (
+            strategy_pnl / bh_pnl if bh_pnl > 1e-12 else None
+        ),
+        "max_drawdown_account_pct": float(
+            out.max_drawdown_account_pct
+        ),
+        "minimum_account_equity_usd": float(
+            out.minimum_account_equity_usd
+        ),
+        "insolvent": bool(out.minimum_account_equity_usd <= 0.0),
+        "binary_tim_pct": 100.0 * int(out.held_bars) / bars,
+        "exposure_weighted_tim_pct": (
+            100.0 * float(out.weighted_exposure) / bars
+        ),
+        "peak_mark_to_market_notional_usd": float(
+            out.peak_mark_notional
+        ),
+        "peak_mark_to_market_capacity_pct": (
+            100.0 * float(out.peak_mark_notional) / CAPACITY
+        ),
+        "peak_post_fill_notional_usd": float(
+            out.peak_post_fill_notional
+        ),
+        "entry_capacity_breach": bool(
+            out.peak_post_fill_notional > CAPACITY + 1e-6
+        ),
+        "requested_notional_usd": float(out.requested_notional),
+        "filled_notional_usd": float(out.filled_notional),
+        "fill_ratio": (
+            float(out.filled_notional) / float(out.requested_notional)
+            if out.requested_notional
+            else 1.0
+        ),
+        "clamp_count": int(out.clamp_count),
+        "fill_count": int(out.fill_count),
+        "exit_count": int(out.exit_count),
+        "reclaim_reentries": int(out.reclaim_count),
+        "lower_reentries": int(out.ladder_reentry_count) if is_long else 0,
+        "higher_reentries": int(out.ladder_reentry_count) if not is_long else 0,
+        "bars_flat_beyond_reclaim": int(
+            out.bars_flat_beyond_reclaim
+        ),
+        "start_ts": int(data.ts[left]),
+        "end_ts": int(data.ts[right - 1]),
+        "rows": bars,
+    }
+
+
+def _simulate(
+    data: top.ExecutionData,
+    signals: SignalData,
+    curve: Curve,
+    left: int,
+    right: int,
+    commission_rate: float,
+    slippage_rate: float,
+    side: str = "LONG",
+) -> dict[str, Any]:
+    """Fast default; ``_simulate_python`` remains the independent parity oracle."""
+    return _simulate_compiled(
+        data,
+        signals,
+        curve,
+        left,
+        right,
+        commission_rate,
+        slippage_rate,
+        side,
+    )
 
 
 def _date_index(data: top.ExecutionData, value: str) -> int:

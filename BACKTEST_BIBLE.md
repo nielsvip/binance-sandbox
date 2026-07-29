@@ -2645,3 +2645,39 @@ family, accumulation semantics, exit horizon. They are NOT `SWITCH_MATRIX_TRB`
 `param_cells` results. No key in this campaign has been through the 3,485-cell
 switch grid; the two stores answer different questions and must never be
 presented as one.
+
+### §15.45 — MU C151 prospective 65–80 live-promotion gate (2026-07-29)
+
+The user lowered MU's time-in-market floor from 70% to 65%. This was encoded as
+a **new prospective deployment contract**,
+`MU_C151_LIVE_PROMOTION_V1_TIM65_80`, rather than changing the historical
+70–80 receipt. The old receipt remains byte-identical at SHA-256
+`1e92251380b5ceb04a96243ba8a02cb514689ab43319eccf6a632b4181ab4c15`.
+
+C151 now passes the exposure gate in all folds: 77.3903%, 77.4247%, and
+68.6153%. It also passes the frozen-evidence gates for isolated MU LONG
+accounting, positive side-aware $2,000 B&H, at least 2× B&H per fold, $16,000
+hard capacity, solvency, fill ratio, completed-parent causality, mandatory
+reclaim, and exact-v3 schedule/accounting/TIM parity (33/33 actions, zero
+refusals/future HTF, zero TIM delta).
+
+It was **not activated** because three deployment gates independently fail:
+
+1. C151's research state machine uses newly completed D/4h/1h bullish WT-cross
+   events, strongest absolute target rung, completed-4h Donchian N=30 exit,
+   next-strictly-later fill, and a stored top/exit reclaim. Ordinary
+   `tradier_manage.py` uses a 5m rebound plus `mtf_arrow_score`, one configured
+   ladder timeframe, and unrelated live exit/reentry cascades. Enabling the
+   available knobs would therefore run a different strategy.
+2. Exact-v3 is engine-schedule parity through the private
+   `--research-ladder-spec` route. Its engine hash is `00ea247b…`, while the
+   current engine is `f2933ba5…`; it is not current ordinary-live-path parity.
+3. The sealed dataset ends before 2026-07-25 and was 111.58 hours old at the
+   2026-07-29 15:35 UTC audit, beyond the prospective 36-hour deployment gate.
+
+No live overlay, process, matrix, or canary changed; the incumbent MU_LONG
+WT/DC configuration remains in place. The contract SHA is
+`eae5304dad6bfdf927de651befcafbc650c0c686176e7a2a0fedf59156ee6757`.
+The full gate table, safe next proof, and rollback state are in
+`MU_C151_LIVE_PROMOTION_AUDIT_20260729.md`; machine evidence is
+`data/reports/vec_research/MU_C151_LIVE_PROMOTION_AUDIT_20260729.json`.

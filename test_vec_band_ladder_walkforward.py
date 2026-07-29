@@ -4,6 +4,7 @@ import sys
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 import vec_band_ladder_walkforward as ladder
@@ -139,6 +140,71 @@ def test_short_reclaim_and_favorable_gap_are_exact_mirrors():
     assert result["exit_count"] == 1
     assert result["reclaim_reentries"] == 1
     assert result["bars_flat_beyond_reclaim"] == 0
+
+
+@pytest.mark.parametrize("side", ["LONG", "SHORT"])
+@pytest.mark.parametrize("semantics", ["target", "add"])
+def test_compiled_scanner_matches_python_oracle_with_parent_batches(
+    side, semantics
+):
+    rng = np.random.default_rng(20260729)
+    n = 900
+    # Three synthetic child rows are released at each completed parent close.
+    ts = (np.arange(n, dtype=np.int64) // 3) * 900
+    close = 100.0 + np.cumsum(rng.normal(0.0, 0.45, n))
+    open_ = close + rng.normal(0.0, 0.12, n)
+    high = np.maximum(open_, close) + rng.uniform(0.05, 0.7, n)
+    low = np.minimum(open_, close) - rng.uniform(0.05, 0.7, n)
+    data = SimpleNamespace(
+        ts=ts,
+        open=open_,
+        high=high,
+        low=low,
+        close=close,
+    )
+    entry = np.zeros(n)
+    entry[::17] = rng.choice([1.0, 2.0, 4.0, 8.0], len(entry[::17]))
+    exits = np.zeros(n, dtype=np.uint8)
+    exits[23::61] = 1
+    refs = np.full(n, np.nan)
+    refs[23::61] = (
+        high[23::61] + 0.5 if side == "LONG" else low[23::61] - 0.5
+    )
+    signals = ladder.SignalData(
+        entry_mult=entry,
+        event_tf=np.zeros((3, n), dtype=np.uint8),
+        exit_event=exits,
+        exit_ref=refs,
+        causality={},
+    )
+    curve = ladder.Curve(
+        "PARITY",
+        "linear",
+        "green",
+        semantics,
+        30.0,
+        8.0,
+        4.0,
+        6.0,
+        3.0,
+        4.0,
+        1.0,
+    )
+    expected = ladder._simulate_python(
+        data, signals, curve, 0, n, 0.0005, 0.0002, side
+    )
+    actual = ladder._simulate_compiled(
+        data, signals, curve, 0, n, 0.0005, 0.0002, side
+    )
+    assert actual.keys() == expected.keys()
+    for key, expected_value in expected.items():
+        actual_value = actual[key]
+        if isinstance(expected_value, float):
+            assert actual_value == pytest.approx(
+                expected_value, rel=1e-11, abs=1e-9
+            ), key
+        else:
+            assert actual_value == expected_value, key
 
 
 def test_completed_htf_wt_state_trigger_is_persistent_and_causal():

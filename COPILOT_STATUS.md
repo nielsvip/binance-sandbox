@@ -1,4 +1,4 @@
-# Copilot Status — 2026-07-29 15:22:26 UTC
+# Copilot Status — 2026-07-29 15:36:06 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T15:19:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:20:11
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:20:11
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T15:20:31
-- **STALE_INDICATORS** [tradier]  — 2026-07-29T15:21:14
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:21:14
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:21:14
-- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T15:21:35
-- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:22:16
-- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:22:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:34:13
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:34:13
+- **RATIO_IMBALANCE** [crypto] flz — 2026-07-29T15:34:14
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:34:45
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:34:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:35:15
+- **BIG_LOSER** [tradier] trc:LEXX_LONG — 2026-07-29T15:35:15
+- **RATIO_IMBALANCE** [crypto] fin — 2026-07-29T15:35:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-07-29T15:35:46
+- **RATIO_IMBALANCE** [tradier] trc — 2026-07-29T15:35:46
 
 ## Missed Trades (trader comparison)
 
@@ -29,19 +29,19 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **SNDK** SHORT (tradier) peak +17.6%, now +9.0%
-- HELD: **MU** SHORT (tradier) peak +15.7%, now +5.8%
-- HELD: **CIBR** LONG (tradier) peak +7.6%, now +-0.5%
-- HELD: **USAR** SHORT (tradier) peak +3.6%, now +3.3%
+- HELD: **SNDK** SHORT (tradier) peak +17.6%, now +8.8%
+- HELD: **MU** SHORT (tradier) peak +15.7%, now +5.6%
+- HELD: **CIBR** LONG (tradier) peak +7.6%, now +-0.6%
+- HELD: **USAR** SHORT (tradier) peak +3.6%, now +2.8%
 - HELD: **CLX** SHORT (tradier) peak +3.0%, now +-2.2%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
+**Issues (last 1h):** 23
+- [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for fin is NOT running
 - [HIGH] ez_manage.py for flz is NOT running
 - [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
