@@ -590,6 +590,16 @@ def load_path_fleet_progress() -> dict:
     }
 
 
+def load_recent_bundle_progress() -> dict:
+    """Finite recent-trade bundle screen; separate from exact matrix cells."""
+    path = REPORTS / "recent_tradier_90_10" / "status.json"
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def format_fleet_metric_scope(row: dict) -> str:
     """Human-readable scope without hiding binary/weighted exact TIM."""
     scope = row.get("metric_scope") or "LEGACY_UNSCOPED"
@@ -782,6 +792,7 @@ def main() -> None:
     ladder_retunes = load_latest_ladder_retunes()
     coverage_5m = load_tradier_5m_coverage()
     path_fleet = load_path_fleet_progress()
+    recent_bundles = load_recent_bundle_progress()
     coverage_symbols = coverage_5m.get("symbols", {})
     covered_native_symbols = sum(
         int(row.get("native_source", {}).get("rows", 0) or 0) > 0
@@ -1438,6 +1449,37 @@ def main() -> None:
         "promotion even when the full-period row is above B&H.",
         "",
     ]
+
+    lines += [
+        "## Recent-trade coherent-bundle screen",
+        "",
+        "> Finite vector research companion, not another daemon. It cannot write live "
+        "configuration or canonical ENGINE cells; only strict frozen-fold survivors "
+        "can become exact-replay candidates.",
+        "",
+    ]
+    if not recent_bundles:
+        lines += ["No recent-trade bundle campaign receipt yet.", ""]
+    else:
+        attempts = recent_bundles.get("attempts") or {}
+        priority_n = sum((attempts.get("PRIORITY") or {}).values())
+        explore_n = sum((attempts.get("EXPLORE") or {}).values())
+        lines += [
+            f"- Campaign: `{recent_bundles.get('campaign_id') or '—'}`; "
+            f"freshness {iso_age(recent_bundles.get('generated_at'), now)}.",
+            f"- Cohort: **{recent_bundles.get('distinct_keys', 0):,} symbol-side keys**; "
+            f"buckets: `{recent_bundles.get('cohort_buckets') or {}}`.",
+            f"- Handles: **{recent_bundles.get('handles', 0):,}**; "
+            f"states: `{recent_bundles.get('states') or {}}`.",
+            f"- Claims: **{recent_bundles.get('claim_sequence', 0):,}** "
+            f"(priority {priority_n:,}, exploration {explore_n:,}; "
+            f"realized exploration {float(recent_bundles.get('realized_explore_share') or 0):.1%}).",
+            "- Contract: deterministic 9:1 allocation, coherent multi-knob bundles, "
+            "35/35/30 frozen chronological folds, 65–80% TIM, strict-only exact handoff.",
+            f"- Exact-pending vector survivors: "
+            f"`{recent_bundles.get('exact_pending') or []}`.",
+            "",
+        ]
 
     lines += [
         "## Top/bottom-10 entry/exit path fleet",

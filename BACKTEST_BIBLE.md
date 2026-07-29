@@ -2376,7 +2376,18 @@ the exit inventory (`EXIT_*`, `MI_*`, `DELTA_EXIT_*`, `REENTRY_TIER2_*`,
 `HTF_W_REVERSAL_EXIT_*`). This is a parity hole, not a set of dead knobs, and
 wiring plus validating it is a multi-day project.
 
-**24/7 grind is live.** `tools/ladder_grind_daemon.py` runs the band-targeted
+**Historical statement — superseded and verified stopped.** The following
+paragraph described the state on 2026-07-28 before the user issued
+`MATRIX_ONLY_MANDATE_20260728.md`. It is not current operating guidance:
+`tools/ladder_grind_daemon.py` and its watchdog/cron must not be restarted.
+The last state receipt at `2026-07-28T20:19:56Z` was
+`total=461,due=78,ok=0,failed=56,skipped_no_npz=22,status=pass_complete`.
+The 2026-07-29 process/cron audit found no grind worker. The failed work was
+dominated by missing NPZ, missing required D/4h LR fields, thin HTF coverage,
+and split/corrupt data (including HAO); historical standalone artifacts remain
+research evidence only.
+
+**Original 2026-07-28 description.** `tools/ladder_grind_daemon.py` ran the band-targeted
 ladder over 461 keys in priority order — four pilots, then everything trb/trc
 traded in 7 days, then IBIT (kept early so the BTC cross-venue comparison has a
 stock-side counterpart), then the 60-day set, then trb long/short, then the full
