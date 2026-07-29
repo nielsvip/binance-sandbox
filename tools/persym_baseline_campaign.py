@@ -621,6 +621,7 @@ def run_symbol(
         env = dict(os.environ)
         env.update({"V8_OVERRIDE_FILE": str(ovr), "V8_TRADES_OUT_DIR": str(cell_dir),
                     "V8_TRADES_RUN_ID": "cell", "V8_SWEEP_MODE": "1",
+                    "V8_BACKTEST_OVERRIDE_PRECEDENCE": "1",
                     "V8_RATE_GUARD_DISABLED": "1", "V8_BACKTEST_DISK_CACHE": "1",
                     "V8_RESULT_FILE": str(result_file)})
         if require_matrix_contract:

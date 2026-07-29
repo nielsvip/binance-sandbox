@@ -63,6 +63,7 @@ BASE_UNIT = 2_000.0
 ACCOUNT_EQUITY = 10_000.0
 CAPACITY = 16_000.0
 MAX_MULT = CAPACITY / BASE_UNIT
+BH_RATIO_ABS_FLOOR_PP = 20.0
 KNOWN_GAPS = {
     "VT": (("2026-03-30", "2026-06-08"),),
 }
@@ -516,6 +517,17 @@ def _simulate_python(
     # Capital actually committed, averaged over every bar in the window. This is
     # the denominator the strategy leg earned its P&L on; B&H earned its on BASE_UNIT.
     avg_deployed = (weighted_exposure / bars) * CAPACITY if bars > 0 else 0.0
+    return_on_deployed = (
+        100.0 * strategy_pnl / avg_deployed if avg_deployed > 0 else 0.0
+    )
+    bh_return_on_deployed = 100.0 * bh_pnl / BASE_UNIT
+    # A side-aware B&H leg is an opportunity floor only when it made money.
+    # When it lost (common for SHORT over a bull interval), cash at 0% is the
+    # correct fixed comparator.  The 20pp magnitude floor controls whether a
+    # ratio is meaningful; it must never turn a near-zero denominator into a
+    # ranking signal.
+    benchmark_floor_return = max(0.0, bh_return_on_deployed)
+    bh_ratio_eligible = abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
     return {
         # EQUAL-CAPITAL METRICS (2026-07-28). `capital_return_pct` divides by the
         # $2,000 label while the position may hold up to CAPACITY, and the B&H leg
@@ -525,12 +537,24 @@ def _simulate_python(
         # entry/exit logic beat buy-and-hold on equal capital. Sizing is a separate,
         # legitimate multiplier on top — it just has to be sizing live can execute.
         "avg_deployed_usd": avg_deployed,
-        "return_on_deployed_pct": (100.0 * strategy_pnl / avg_deployed) if avg_deployed > 0 else 0.0,
-        "bh_return_on_deployed_pct": 100.0 * bh_pnl / BASE_UNIT,
+        "return_on_deployed_pct": return_on_deployed,
+        "bh_return_on_deployed_pct": bh_return_on_deployed,
+        "deployed_alpha_vs_bh_pp": (
+            return_on_deployed - bh_return_on_deployed
+        ),
+        "deployed_alpha_vs_bh_or_cash_pp": (
+            return_on_deployed - benchmark_floor_return
+        ),
+        "benchmark_floor_return_pct": benchmark_floor_return,
+        "benchmark_floor_kind": (
+            "SIDE_AWARE_BH" if bh_return_on_deployed > 0.0 else "CASH_0PCT"
+        ),
+        "bh_ratio_abs_floor_pp": BH_RATIO_ABS_FLOOR_PP,
+        "bh_ratio_eligible": bh_ratio_eligible,
         "honest_bh_multiple": (
             (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)
-            if avg_deployed > 0 and bh_pnl != 0
-            else 0.0
+            if avg_deployed > 0 and bh_pnl != 0 and bh_ratio_eligible
+            else None
         ),
         "implied_leverage_x": (avg_deployed / BASE_UNIT) if BASE_UNIT > 0 else 0.0,
         "capital_return_pct": 100.0 * strategy_pnl / BASE_UNIT,
@@ -694,19 +718,35 @@ def _simulate_compiled(
     avg_deployed = (
         float(out.weighted_exposure) / bars * CAPACITY if bars else 0.0
     )
+    return_on_deployed = (
+        100.0 * strategy_pnl / avg_deployed
+        if avg_deployed > 0.0
+        else 0.0
+    )
+    bh_return_on_deployed = 100.0 * bh_pnl / BASE_UNIT
+    benchmark_floor_return = max(0.0, bh_return_on_deployed)
+    bh_ratio_eligible = abs(bh_return_on_deployed) >= BH_RATIO_ABS_FLOOR_PP
     is_long = side == "LONG"
     return {
         "avg_deployed_usd": avg_deployed,
-        "return_on_deployed_pct": (
-            100.0 * strategy_pnl / avg_deployed
-            if avg_deployed > 0.0
-            else 0.0
+        "return_on_deployed_pct": return_on_deployed,
+        "bh_return_on_deployed_pct": bh_return_on_deployed,
+        "deployed_alpha_vs_bh_pp": (
+            return_on_deployed - bh_return_on_deployed
         ),
-        "bh_return_on_deployed_pct": 100.0 * bh_pnl / BASE_UNIT,
+        "deployed_alpha_vs_bh_or_cash_pp": (
+            return_on_deployed - benchmark_floor_return
+        ),
+        "benchmark_floor_return_pct": benchmark_floor_return,
+        "benchmark_floor_kind": (
+            "SIDE_AWARE_BH" if bh_return_on_deployed > 0.0 else "CASH_0PCT"
+        ),
+        "bh_ratio_abs_floor_pp": BH_RATIO_ABS_FLOOR_PP,
+        "bh_ratio_eligible": bh_ratio_eligible,
         "honest_bh_multiple": (
             (strategy_pnl / avg_deployed) / (bh_pnl / BASE_UNIT)
-            if avg_deployed > 0.0 and bh_pnl != 0.0
-            else 0.0
+            if avg_deployed > 0.0 and bh_pnl != 0.0 and bh_ratio_eligible
+            else None
         ),
         "implied_leverage_x": avg_deployed / BASE_UNIT,
         "capital_return_pct": 100.0 * strategy_pnl / BASE_UNIT,
@@ -837,7 +877,15 @@ def _score(
     tim_hi: float = 100.0,
     tim_weight: float = 0.0,
 ) -> float:
-    alpha = float(np.median([r["alpha_vs_bh_pp"] for r in rows]))
+    # Rank the dynamic ladder on what it earned per dollar actually deployed,
+    # against the better of side-aware B&H and cash.  `alpha_vs_bh_pp` uses the
+    # fixed $2k label while the strategy may request up to CAPACITY; using it
+    # here selected leverage, not timing/allocation alpha (Bible §15.41–15.44).
+    alpha = float(
+        np.median(
+            [r["deployed_alpha_vs_bh_or_cash_pp"] for r in rows]
+        )
+    )
     dd = float(np.max([r["max_drawdown_account_pct"] for r in rows]))
     fill = float(np.min([r["fill_ratio"] for r in rows]))
     # Robust alpha is primary. Drawdown and systematic clipping are explicit
@@ -966,6 +1014,25 @@ def run(args: argparse.Namespace) -> Path:
             (r["minimum_account_equity_usd"] for r in validations),
             default=ACCOUNT_EQUITY,
         ),
+        "return_on_deployed_pct_sum": sum(
+            r["return_on_deployed_pct"] for r in validations
+        ),
+        "bh_return_on_deployed_pct_sum": sum(
+            r["bh_return_on_deployed_pct"] for r in validations
+        ),
+        "deployed_alpha_vs_bh_pp_sum": sum(
+            r["deployed_alpha_vs_bh_pp"] for r in validations
+        ),
+        "deployed_alpha_vs_bh_or_cash_pp_sum": sum(
+            r["deployed_alpha_vs_bh_or_cash_pp"] for r in validations
+        ),
+        "benchmark_floor_return_pct_sum": sum(
+            r["benchmark_floor_return_pct"] for r in validations
+        ),
+        "bh_ratio_abs_floor_pp": BH_RATIO_ABS_FLOOR_PP,
+        "bh_ratio_eligible_all_folds": all(
+            r["bh_ratio_eligible"] for r in validations
+        ),
     }
     aggregate["strategy_bh_multiple"] = (
         aggregate["capital_return_pct_sum"] / aggregate["bh_capital_return_pct_sum"]
@@ -974,7 +1041,7 @@ def run(args: argparse.Namespace) -> Path:
     )
     aggregate["control_failure"] = bool(
         aggregate["capital_return_pct_sum"] <= 0.0
-        or aggregate["alpha_vs_bh_pp_sum"] <= 0.0
+        or aggregate["deployed_alpha_vs_bh_or_cash_pp_sum"] <= 0.0
         or aggregate["insolvent_folds"] > 0
         or aggregate["max_drawdown_account_pct_max"] >= 100.0
     )
@@ -986,8 +1053,8 @@ def run(args: argparse.Namespace) -> Path:
                 "non_positive_strategy_return",
             ),
             (
-                aggregate["alpha_vs_bh_pp_sum"] <= 0.0,
-                "did_not_beat_side_aware_bh",
+                aggregate["deployed_alpha_vs_bh_or_cash_pp_sum"] <= 0.0,
+                "did_not_beat_side_aware_bh_or_cash_on_deployed_capital",
             ),
             (aggregate["insolvent_folds"] > 0, "account_insolvency"),
             (

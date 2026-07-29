@@ -89,6 +89,69 @@ def test_short_cash_ledger_and_benchmark_are_side_aware():
     assert result["bh_capital_return_pct"] == 10.0
     assert result["peak_post_fill_notional_usd"] == 2_000.0
     assert result["entry_capacity_breach"] is False
+    assert result["benchmark_floor_kind"] == "SIDE_AWARE_BH"
+    assert result["deployed_alpha_vs_bh_or_cash_pp"] == 0.0
+    assert result["bh_ratio_eligible"] is False
+    assert result["honest_bh_multiple"] is None
+
+
+def test_negative_side_bh_uses_cash_floor_and_small_bh_disables_ratio():
+    n = 100
+    data = SimpleNamespace(
+        ts=np.arange(n, dtype=np.int64),
+        open=np.full(n, 100.0),
+        high=np.full(n, 111.0),
+        low=np.full(n, 99.0),
+        close=np.linspace(100.0, 110.0, n),
+    )
+    signals = ladder.SignalData(
+        entry_mult=np.zeros(n),
+        event_tf=np.zeros((3, n), dtype=np.uint8),
+        exit_event=np.zeros(n, dtype=np.uint8),
+        exit_ref=np.full(n, np.nan),
+        causality={},
+    )
+    curve = ladder.Curve(
+        "CASH",
+        "linear",
+        "green",
+        "target",
+        30.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    )
+    result = ladder._simulate(
+        data, signals, curve, 0, n, 0.0, 0.0, "SHORT"
+    )
+    assert result["bh_return_on_deployed_pct"] == -10.0
+    assert result["benchmark_floor_kind"] == "CASH_0PCT"
+    assert result["benchmark_floor_return_pct"] == 0.0
+    assert result["deployed_alpha_vs_bh_or_cash_pp"] == 0.0
+    assert result["bh_ratio_eligible"] is False
+    assert result["honest_bh_multiple"] is None
+
+
+def test_selection_score_uses_deployed_alpha_not_levered_label_alpha():
+    common = {
+        "max_drawdown_account_pct": 0.0,
+        "fill_ratio": 1.0,
+        "exposure_weighted_tim_pct": 70.0,
+    }
+    levered_illusion = {
+        **common,
+        "alpha_vs_bh_pp": 900.0,
+        "deployed_alpha_vs_bh_or_cash_pp": -2.0,
+    }
+    real_alpha = {
+        **common,
+        "alpha_vs_bh_pp": 10.0,
+        "deployed_alpha_vs_bh_or_cash_pp": 3.0,
+    }
+    assert ladder._score([real_alpha]) > ladder._score([levered_illusion])
 
 
 def test_short_reclaim_and_favorable_gap_are_exact_mirrors():

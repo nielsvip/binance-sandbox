@@ -27,6 +27,8 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sweep_value_semantics import executable_values, validate_test_values
+
 BASE = Path(__file__).resolve().parent
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -149,12 +151,15 @@ def main():
             rng, method = pr["test_values"], pr["method"]
         else:
             rng, method = _derive_range(name, default)
+        range_validation = validate_test_values(name, default, rng)
+        rng = executable_values(range_validation)
         sweepable = tier in ("VEC_SCREEN", "ENGINE_SCREEN") and rng is not None
         manifest[name] = {
             "default": _jsonable(default), "type": fields[name]["type"],
             "consumed_by": {"vec": in_vec, "tier2": in_t2, "live": in_live},
             "sweep_tier": tier, "sweepable": sweepable,
             "test_values": [_jsonable(x) for x in rng] if rng else None, "range_method": method,
+            "range_validation": range_validation,
             "swept_in_history": swept, "best_value_seen": _jsonable(best_val) if best_val is not None else None,
             "best_mean_pool_sharpe": best_sh, "support_obs": obs,
         }

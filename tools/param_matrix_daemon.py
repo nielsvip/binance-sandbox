@@ -19,6 +19,7 @@ Same store, same campaign name, same already_tested dedupe, same honest fail sem
 Usage (S1): PSC_CAMPAIGN=stocks_baseline_v2_s4h python tools/param_matrix_daemon.py --tag w1
 """
 import argparse
+import fcntl
 import json
 import os
 import sqlite3
@@ -36,6 +37,8 @@ import persym_baseline_campaign as psc  # noqa: E402  (the faithful runner + met
 import param_results_store as prs  # noqa: E402
 import universe_registry as ur  # noqa: E402
 from backtest_data_contract import audit_npz  # noqa: E402
+from sweep_value_semantics import executable_values, validate_test_values  # noqa: E402
+import exact_wiring_gate as wiring_gate  # noqa: E402
 
 CLAIM_DB = SBX / "data" / "param_matrix_claims.db"
 PRIORITY_SYMS = ["MU", "HAO", "NVDA", "VT"]  # USER 2026-07-21 evening: the first four keys are
@@ -179,6 +182,23 @@ DIAGNOSTIC_ONLY_PARAMS = {
 }
 
 
+def wrong_account_namespace(param, account=None):
+    """Return True for a knob owned by another Tradier account.
+
+    Historical ``TRA_*`` and control-account ``TRC_*`` settings were being
+    exact-tested inside the TRB matrix.  They cannot affect a TRB run and
+    accounted for 37 already-proven MU reconnect cells.
+    """
+    account = str(account or psc.ACCOUNT).upper()
+    if account == "TRB":
+        return param.startswith(("TRA_", "TRC_"))
+    if account == "TRC":
+        return param.startswith(("TRA_", "TRB_"))
+    if account == "TRA":
+        return param.startswith(("TRB_", "TRC_"))
+    return False
+
+
 def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=False):
     cells = [("STOP_PACK", name, cfg) for name, cfg in psc.STOP_PACKS.items()]
     cells += [("TF_EXCLUDE", name.replace("TF_EXCLUDE_", ""), cfg) for name, cfg in psc.TF_EXCLUDE_PACKS.items()]
@@ -198,6 +218,8 @@ def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=Fal
         pass
     dead = useless_knobs()
     for pname, values in psc.load_params(manifest_path, 0):
+        if wrong_account_namespace(pname):
+            continue
         if pname in DIAGNOSTIC_ONLY_PARAMS and not include_diagnostics:
             continue  # preserved in reports; explicit opt-in only, never blind matrix fill
         if not all_tiers and tiers.get(pname) == "VEC_SCREEN":
@@ -210,7 +232,25 @@ def all_cells(manifest_path, all_tiers=False, side=None, include_diagnostics=Fal
         # engine run costs the same 12 minutes and informs the other side only.
         if side and f"_{'SHORT' if side == 'LONG' else 'LONG'}" in pname.upper():
             continue
-        for v in values:
+        default = getattr(wiring_gate.TradierConfig, pname, None)
+        validation = validate_test_values(pname, default, values)
+        executable = executable_values(validation)
+        if executable is None:
+            continue
+        # Two maximally separated non-default values are the wiring smoke.
+        # Middle values wait until those prove the knob changes a schedule.
+        nondefault = [value for value in executable if value != default]
+        smoke_order = []
+        if nondefault:
+            smoke_order.append(nondefault[0])
+        if len(nondefault) > 1 and nondefault[-1] != nondefault[0]:
+            smoke_order.append(nondefault[-1])
+        ordered_values = smoke_order + [
+            value for value in nondefault if value not in smoke_order
+        ]
+        if default in executable:
+            ordered_values.append(default)
+        for v in ordered_values:
             cells.append((pname, str(v), {pname: v}))
     return cells
 
@@ -315,22 +355,125 @@ def run_unit(ctx, sym, pname, vlabel, ovr):
     need = [s for s in sides if not ctx["tested_local"](s, pname, vlabel)]
     if not need:
         return False
+    if ctx["args"].safe_contract:
+        gate = exact_gate_verdict(ctx, sym, ctx["args"].side, pname)
+        if gate["skip_remaining_exact"]:
+            record_gate_event(ctx, sym, ctx["args"].side, pname, vlabel, gate)
+            return False
+        default = getattr(wiring_gate.TradierConfig, pname, object())
+        proposed = next(iter(ovr.values()), object())
+        if proposed == default:
+            alias = {
+                "verdict": "BASELINE_ALIAS_NOT_EXECUTED",
+                "skip_remaining_exact": True,
+                "reason": "override equals accepted baseline default",
+            }
+            record_gate_event(
+                ctx, sym, ctx["args"].side, pname, vlabel, alias
+            )
+            return False
     tag = f"{pname}__{vlabel}".replace("/", "_")[:120]
+    smoke_unit = None
+    if (
+        ctx["args"].safe_contract
+        and gate["verdict"] == "NEEDS_TWO_VALUE_SMOKE"
+    ):
+        smoke_unit = f"SMOKE|{sym}|{ctx['args'].side}|{pname}"
+        if not claim(ctx, smoke_unit):
+            return False
     if not claim(ctx, f"{sym}|{tag}"):
+        if smoke_unit:
+            release_claim(ctx, smoke_unit)
         return False
-    by_side = psc.run_symbol(
-        sym,
-        ovr,
-        tag,
-        timeout=a.timeout,
-        min_avail=a.min_avail,
-        side=(a.side if a.safe_contract else None),
-        require_matrix_contract=a.safe_contract,
+    try:
+        by_side = psc.run_symbol(
+            sym,
+            ovr,
+            tag,
+            timeout=a.timeout,
+            min_avail=a.min_avail,
+            side=(a.side if a.safe_contract else None),
+            require_matrix_contract=a.safe_contract,
+        )
+        if by_side is None:
+            return False
+        wrote = ingest(ctx, sym, by_side, need, pname, vlabel, ovr, tag)
+        return commit_unit(ctx, sym, tag, wrote)
+    finally:
+        if smoke_unit:
+            release_claim(ctx, smoke_unit)
+
+
+def exact_gate_verdict(ctx, sym, side, pname):
+    """Classify one current-contract parameter without historical leakage."""
+    fp = psc.matrix_contract_fingerprint(sym, side)
+    base = ctx["base_fp"].get(f"{sym}_{side}")
+    rows = []
+    for value_json, value_num, trade_fp, inert, status in ctx["con"].execute(
+        "SELECT value_json,value_num,trades_fingerprint,inert,validation_status "
+        "FROM param_cells WHERE mode=? AND campaign=? AND symbol=? AND side=? "
+        "AND param=? AND tier='ENGINE' AND contract_fingerprint=? "
+        "AND validation_status IN (?,?,?)",
+        (
+            psc.MODE,
+            psc.CAMPAIGN,
+            sym,
+            side,
+            pname,
+            fp,
+            *wiring_gate.VALID_STATUSES,
+        ),
+    ):
+        rows.append(
+            {
+                "value": wiring_gate._parse_value(value_json, value_num),
+                "value_json": value_json,
+                "fingerprint": trade_fp,
+                "inert": bool(inert),
+                "validation_status": status,
+            }
+        )
+    return wiring_gate.classify_param(
+        pname,
+        rows,
+        base,
+        psc.MATRIX_NPZ_DIR / f"{sym}.npz",
+        symbol=sym,
+        side=side,
     )
-    if by_side is None:
-        return False
-    wrote = ingest(ctx, sym, by_side, need, pname, vlabel, ovr, tag)
-    return commit_unit(ctx, sym, tag, wrote)
+
+
+def record_gate_event(ctx, sym, side, pname, vlabel, verdict):
+    """Append an auditable RED/skip receipt under an inter-process lock."""
+    path = SBX / "data/reports/EXACT_WIRING_GATE_EVENTS.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "ts": psc.now_iso(),
+        "worker": ctx["worker"],
+        "campaign": psc.CAMPAIGN,
+        "symbol": sym,
+        "side": side,
+        "param": pname,
+        "value": vlabel,
+        "contract_fingerprint": psc.matrix_contract_fingerprint(sym, side),
+        **verdict,
+    }
+    with path.open("a") as fh:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        fh.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+        fh.flush()
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
+def release_claim(ctx, unit):
+    try:
+        ctx["ccon"].execute("DELETE FROM claims WHERE unit=?", (unit,))
+        ctx["ccon"].commit()
+    except sqlite3.OperationalError:
+        try:
+            ctx["ccon"].rollback()
+        except sqlite3.OperationalError:
+            pass
 
 
 def claim(ctx, unit):

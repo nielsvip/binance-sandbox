@@ -639,6 +639,44 @@ _global_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" 
 _tradier_final_book: dict = {}
 _tradier_final_book_mtime: float = 0.0
 _tradier_final_book_path = Path(config.BASE_PATH) / "data" / "persym_final_book.json"
+_v8_sweep_override_cache: dict = {}
+_v8_sweep_override_cache_path: str = ""
+
+
+def _v8_sweep_override(param):
+    """Highest-precedence test-cell override; impossible to activate live.
+
+    The exact engine used to patch only global ``TradierConfig`` attributes.
+    ``_cfg`` then returned the accepted per-symbol/hourly value first, silently
+    shadowing the test value.  Hundreds of expensive MU cells consequently
+    reproduced the baseline fingerprint.  A test override wins only when both
+    backtest guards are present; the baseline override file is empty, so its
+    accepted per-symbol recipe remains untouched.
+    """
+    if (
+        os.environ.get("V8_SWEEP_MODE") != "1"
+        or os.environ.get("V8_BACKTEST_OVERRIDE_PRECEDENCE") != "1"
+    ):
+        return False, None
+    path = os.environ.get("V8_OVERRIDE_FILE", "")
+    if not path:
+        return False, None
+    global _v8_sweep_override_cache, _v8_sweep_override_cache_path
+    if path != _v8_sweep_override_cache_path:
+        try:
+            raw = json.loads(Path(path).read_text())
+        except Exception:
+            raw = {}
+        resolved = {}
+        for key, value in raw.items():
+            resolved[str(key)] = value
+            if str(key).startswith("TRADIER_"):
+                resolved[str(key)[8:]] = value
+        _v8_sweep_override_cache = resolved
+        _v8_sweep_override_cache_path = path
+    if param in _v8_sweep_override_cache:
+        return True, _v8_sweep_override_cache[param]
+    return False, None
 
 
 def _tradier_final_book_get(sym_key: str, param):
@@ -805,6 +843,9 @@ def _cfg(param, default=None, account_key=None, symbol=None, side=None):
 
     2026-05-31 FINAL per_sym BOOK is AUTHORITATIVE for LONG_ENABLED/SHORT_ENABLED/
     BREAKOUT_SIZE_MAX_MULT/MOMENTUM_SMA_WATCHDOG_PCT — checked FIRST when enabled."""
+    _test_found, _test_value = _v8_sweep_override(param)
+    if _test_found:
+        return _test_value
     # PARTIAL_PROFIT_LOCK_ENABLED is a global emergency/master switch.  Hourly,
     # per-symbol, and Redis overlays may narrow it to False, but they must never
     # resurrect PPL after the operator has switched the global setting off.

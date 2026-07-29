@@ -26,6 +26,8 @@ import re
 import sys
 from pathlib import Path
 
+from sweep_value_semantics import executable_values, validate_test_values
+
 BASE = Path(__file__).resolve().parent
 LIVE = {
     "crypto": ["ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py",
@@ -76,8 +78,13 @@ def main(mode):
             continue
         if INFRA.search(name) and not re.search(r"LONG|SHORT|HEDGE|ENTRY|EXIT|GATE|STOP|REENTRY|AUGMENT", name, re.I):
             continue
-        grid = v.get("test_values") or derive(name, v.get("default"))
+        proposed = v.get("test_values") or derive(name, v.get("default"))
+        validation = validate_test_values(name, v.get("default"), proposed)
+        grid = executable_values(validation)
+        v["range_validation"] = validation
         if not grid:
+            v["sweepable"] = False
+            v["sweep_quarantine"] = validation["status"]
             continue
         v["test_values"] = grid
         v["sweepable"] = True
