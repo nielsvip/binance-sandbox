@@ -111,6 +111,30 @@ def test_stale_lease_is_resumable_but_data_quarantine_is_terminal(tmp_path):
     assert lane == "PRIORITY"
 
 
+def test_claim_never_leaks_a_handle_from_an_old_campaign(tmp_path):
+    con = scheduler.connect(tmp_path)
+    scheduler.meta_set(con, "campaign_id", "test")
+    scheduler.meta_set(con, "claim_sequence", 0)
+    _insert_handle(
+        con,
+        symbol="CURRENT",
+        bundle_id="CURRENT",
+        promising=True,
+    )
+    _insert_handle(
+        con,
+        symbol="OLD",
+        bundle_id="OLD",
+        promising=True,
+    )
+    con.execute(
+        "UPDATE handles SET campaign_id='old-campaign' WHERE symbol='OLD'"
+    )
+    con.commit()
+    row, _lane = scheduler.claim(con, "worker")
+    assert row["symbol"] == "CURRENT"
+
+
 def test_init_labels_pilots_and_never_invents_ach_or_hao(tmp_path, monkeypatch):
     cohort = tmp_path / "cohort.json"
     cohort.write_text(

@@ -370,11 +370,16 @@ def init_campaign(
     validate_catalog()
     cohort = json.loads(cohort_path.read_text())
     campaign_seed = {
+        "scheduler_sha256": sha256(Path(__file__).resolve()),
         "cohort_sha256": sha256(cohort_path),
         "window_start": cohort["window_start"],
         "window_end_exclusive": cohort["window_end_exclusive"],
         "bundles": [dataclasses.asdict(row) for row in BUNDLES],
         "pilot_exceptions": sorted(pilot_exceptions),
+        "metric_contract": (
+            "single-fold net PnL / pre-cost committed fill-notional "
+            "integrated over all fold bars; never marked notional"
+        ),
     }
     campaign_id = "recent30_bundle_" + hashlib.sha256(
         json.dumps(campaign_seed, sort_keys=True).encode()
@@ -467,11 +472,14 @@ def claim(
            WHERE status='RUNNING' AND lease_at<?""",
         (now - lease_s,),
     )
+    campaign = meta_get(con, "campaign_id")
     rows = con.execute(
         """SELECT * FROM handles
-           WHERE status='PENDING' OR
-                 (status IN ('VECTOR_REJECTED','BUDGET_EXHAUSTED')
-                  AND attempts<3)"""
+           WHERE campaign_id=? AND
+                 (status='PENDING' OR
+                  (status IN ('VECTOR_REJECTED','BUDGET_EXHAUSTED')
+                   AND attempts<3))""",
+        (campaign,),
     ).fetchall()
     if only_keys:
         rows = [
@@ -494,7 +502,6 @@ def claim(
     if not pools[lane]:
         con.commit()
         return None
-    campaign = meta_get(con, "campaign_id")
     row = min(pools[lane], key=lambda item: deterministic_rank(campaign, item))
     con.execute(
         """UPDATE handles SET status='RUNNING',lease_owner=?,lease_at=?,
@@ -1152,8 +1159,11 @@ def status_payload(con: sqlite3.Connection) -> dict[str, Any]:
             buckets.get(row["cohort_bucket"], 0) + 1
         )
     attempts = con.execute(
-        """SELECT lane,status,COUNT(*) FROM attempts
-           GROUP BY lane,status"""
+        """SELECT a.lane,a.status,COUNT(*)
+           FROM attempts a JOIN handles h ON h.id=a.handle_id
+           WHERE h.campaign_id=?
+           GROUP BY a.lane,a.status""",
+        (campaign,),
     ).fetchall()
     attempt_counts: dict[str, dict[str, int]] = {}
     for lane, status, count in attempts:
@@ -1271,8 +1281,10 @@ def ingest_fleet(root: Path, fleet_db: Path) -> dict[str, int]:
     attempts = queue.execute(
         """SELECT a.*,h.symbol,h.side,h.bundle_id
            FROM attempts a JOIN handles h ON h.id=a.handle_id
-           WHERE a.status!='RUNNING' AND a.fleet_ingested=0
-           ORDER BY a.id"""
+           WHERE h.campaign_id=? AND a.status!='RUNNING'
+             AND a.fleet_ingested=0
+           ORDER BY a.id""",
+        (campaign,),
     ).fetchall()
     for row in attempts:
         receipt = json.loads(Path(row["receipt_path"]).read_text())
