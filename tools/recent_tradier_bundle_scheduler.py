@@ -35,6 +35,8 @@ import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEFAULT_ROOT = ROOT / "data/reports/recent_tradier_90_10"
 DEFAULT_NPZ = ROOT / "backtest_v8/indicators"
 DEFAULT_FLEET = ROOT / "data/reports/path_fleet/queue.db"
