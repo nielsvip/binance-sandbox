@@ -1,11 +1,17 @@
 {
-  "timestamp": "2026-07-29T06:40:42.734063+00:00",
+  "timestamp": "2026-07-29T06:55:39.686636+00:00",
   "market_state": {
     "panic": false,
     "euphoria": false,
     "total_ranked": 59
   },
   "unified_ranking": [
+    {
+      "symbol": "ASTERUSDT",
+      "net_score": -12.5,
+      "long_score": 0,
+      "short_score": 12.5
+    },
     {
       "symbol": "BLURUSDT",
       "net_score": 0,
@@ -80,6 +86,12 @@
     },
     {
       "symbol": "DOTUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
+      "symbol": "BEATUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -223,12 +235,6 @@
       "short_score": 0
     },
     {
-      "symbol": "CRVUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
       "symbol": "API3USDT",
       "net_score": 0,
       "long_score": 0,
@@ -337,7 +343,7 @@
       "short_score": 0
     },
     {
-      "symbol": "BEATUSDT",
+      "symbol": "CRVUSDC",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -353,16 +359,16 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
-    },
-    {
-      "symbol": "ASTERUSDT",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
     }
   ],
   "top_longs": [],
-  "top_shorts": [],
+  "top_shorts": [
+    [
+      "ASTERUSDT",
+      12.5,
+      0.60147931
+    ]
+  ],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
     "inf:PIXELUSDT": 0,
