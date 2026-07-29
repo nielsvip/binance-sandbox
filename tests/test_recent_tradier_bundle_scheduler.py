@@ -173,3 +173,52 @@ def test_strict_fold_requires_alpha_control_trades_and_65_to_80_tim():
     assert not strict
     assert "did_not_beat_side_bh_or_cash" in failures
     assert "tim_not_65_80" in failures
+
+
+def test_committed_fill_ledger_never_revalues_short_denominator():
+    timestamps = scheduler.np.asarray([1, 2, 3, 4], dtype=scheduler.np.int64)
+    closes = scheduler.np.asarray([100.0, 100.0, 90.0, 80.0])
+    events = [
+        {
+            "ts": "1970-01-01T00:00:01+00:00",
+            "type": "OPEN",
+            "qty": 1.0,
+            "price": 100.0,
+        },
+        {
+            "ts": "1970-01-01T00:00:04+00:00",
+            "type": "CLOSE",
+            "qty": 1.0,
+            "price": 80.0,
+        },
+    ]
+    row = scheduler._committed_fill_ledger(
+        events,
+        timestamps,
+        closes,
+        side="SHORT",
+        round_trip_cost_pct=0.0,
+    )
+    assert row["realized_net_pnl_usd"] == 20.0
+    assert row["average_committed_fill_notional_usd"] == 75.0
+    assert row["strategy_return_pct"] == pytest.approx(26.6666666667)
+    assert row["ledger_errors"] == []
+
+
+def test_strict_fold_rejects_hedges_and_invalid_fill_ledger():
+    control = {"strategy_return_pct": 1.0}
+    metrics = {
+        "strategy_return_pct": 12.0,
+        "side_benchmark_pct": 10.0,
+        "trades": 4,
+        "tim_pct": 70.0,
+        "max_dd_pct": 20.0,
+        "hedge_event_count": 1,
+        "ledger_errors": ["close_while_flat"],
+    }
+    strict, failures = scheduler.fold_strict(
+        metrics, control, tim_min=65.0, tim_max=80.0
+    )
+    assert not strict
+    assert "hedge_events_out_of_scope" in failures
+    assert "committed_fill_ledger_invalid" in failures

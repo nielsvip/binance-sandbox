@@ -601,6 +601,115 @@ def _binary_tim(events: list[dict[str, Any]], timestamps: np.ndarray) -> float:
     return 100.0 * active_rows / max(1, len(timestamps))
 
 
+def _committed_fill_ledger(
+    events: list[dict[str, Any]],
+    timestamps: np.ndarray,
+    closes: np.ndarray,
+    *,
+    side: str,
+    round_trip_cost_pct: float,
+) -> dict[str, Any]:
+    """Return an honest fold ledger on pre-cost committed fill dollar-time.
+
+    The denominator is requested/filled entry notional carried while the
+    position is open. It is never revalued with the mark, which would
+    mechanically favor winning SHORTs and penalize winning LONGs.
+    """
+    by_ts: dict[int, list[dict[str, Any]]] = {}
+    for row in events:
+        try:
+            event_ts = int(datetime.fromisoformat(str(row["ts"])).timestamp())
+        except (KeyError, TypeError, ValueError):
+            continue
+        by_ts.setdefault(event_ts, []).append(row)
+    side_sign = 1.0 if side == "LONG" else -1.0
+    qty = entry_cost = realized = 0.0
+    committed_sum = 0.0
+    peak_committed = 0.0
+    close_count = hedge_events = 0
+    errors: list[str] = []
+    pnl_curve: list[float] = []
+    for ts_value, mark_value in zip(timestamps, closes):
+        mark = float(mark_value)
+        for row in by_ts.get(int(ts_value), []):
+            event_type = str(row.get("type") or "").upper()
+            try:
+                event_qty = abs(float(row.get("qty") or 0.0))
+                event_price = float(row.get("price") or mark)
+            except (TypeError, ValueError):
+                errors.append(f"bad_event_numeric:{event_type}")
+                continue
+            if event_type.startswith("HEDGE"):
+                hedge_events += 1
+                continue
+            if event_type in {"OPEN", "AUGMENT", "REENTRY"}:
+                if event_qty <= 0 or event_price <= 0:
+                    errors.append(f"bad_entry:{event_type}")
+                    continue
+                if event_type in {"OPEN", "REENTRY"} and qty > 1e-9:
+                    errors.append("open_while_position_active")
+                qty += event_qty
+                entry_cost += event_qty * event_price
+            elif event_type in {"REDUCE", "CLOSE", "MTM_FINAL"}:
+                if qty <= 1e-9:
+                    errors.append(f"{event_type.lower()}_while_flat")
+                    continue
+                close_qty = min(event_qty, qty)
+                if close_qty <= 0:
+                    errors.append(f"bad_close:{event_type}")
+                    continue
+                average_entry = entry_cost / qty
+                gross = side_sign * (event_price - average_entry) * close_qty
+                cost = (
+                    round_trip_cost_pct / 100.0 * average_entry * close_qty
+                )
+                realized += gross - cost
+                qty -= close_qty
+                entry_cost -= average_entry * close_qty
+                close_count += 1
+                if qty <= 1e-9:
+                    qty = entry_cost = 0.0
+        committed = entry_cost
+        committed_sum += committed
+        peak_committed = max(peak_committed, committed)
+        unrealized = (
+            side_sign * (mark - entry_cost / qty) * qty if qty > 1e-9 else 0.0
+        )
+        pnl_curve.append(realized + unrealized)
+    if qty > 1e-8:
+        errors.append("position_open_after_final_mtm")
+    average_committed = committed_sum / max(1, len(timestamps))
+    return_on_deployed = (
+        100.0 * realized / average_committed
+        if average_committed > 0
+        else 0.0
+    )
+    peak_pnl = 0.0
+    max_drawdown_usd = 0.0
+    for pnl in pnl_curve:
+        peak_pnl = max(peak_pnl, pnl)
+        max_drawdown_usd = max(max_drawdown_usd, peak_pnl - pnl)
+    return {
+        "strategy_return_pct": return_on_deployed,
+        "realized_net_pnl_usd": realized,
+        "average_committed_fill_notional_usd": average_committed,
+        "peak_committed_fill_notional_usd": peak_committed,
+        "max_dd_pct": (
+            100.0 * max_drawdown_usd / average_committed
+            if average_committed > 0
+            else 0.0
+        ),
+        "trades": close_count,
+        "hedge_event_count": hedge_events,
+        "ledger_errors": errors,
+        "metric_scope": "FROZEN_FOLD_RETURN_ON_AVG_COMMITTED_FILL_NOTIONAL",
+        "return_unit": "PCT_OF_PRE_COST_COMMITTED_FILL_DOLLAR_TIME",
+        "return_aggregation": "SINGLE_CHRONOLOGICAL_FOLD",
+        "tim_unit": "BINARY_POSITION_BAR_PCT",
+        "tim_aggregation": "SINGLE_CHRONOLOGICAL_FOLD",
+    }
+
+
 def run_vec_fold(
     *,
     symbol: str,
@@ -681,19 +790,34 @@ def run_vec_fold(
     ]
     with np.load(npz_path, allow_pickle=True) as z:
         all_ts = np.asarray(z["timestamps"], dtype=np.int64)
+        all_close = np.asarray(z["close"], dtype=np.float64)
     begin = int(np.searchsorted(all_ts, int(fold["start_ts"]), side="left"))
     fold_ts = all_ts[begin : begin + int(fold["bars"])]
+    fold_close = all_close[begin : begin + int(fold["bars"])]
+    try:
+        from v8_vec_sweep import _vec_round_trip_cost_for_sym
+
+        round_trip_cost_pct = float(_vec_round_trip_cost_for_sym(symbol))
+    except (ImportError, TypeError, ValueError):
+        round_trip_cost_pct = 0.05
+    ledger = _committed_fill_ledger(
+        events,
+        fold_ts,
+        fold_close,
+        side=side,
+        round_trip_cost_pct=round_trip_cost_pct,
+    )
     bh_long = (
         (float(fold["end_close"]) / float(fold["start_close"])) - 1.0
     ) * 100.0
-    bh = bh_long if side == "LONG" else -bh_long
+    bh = (bh_long if side == "LONG" else -bh_long) - round_trip_cost_pct
     metrics = {
-        "strategy_return_pct": float(summary["acc_gain_pct"]),
+        **ledger,
         "bh_return_pct": bh,
         "side_benchmark_pct": max(0.0, bh),
-        "trades": int(summary["n_trades"]),
         "pool_sharpe": float(summary["pool_sharpe"]),
-        "max_dd_pct": float(summary["max_dd_pct"]),
+        "vec_acc_gain_pct_diagnostic_only": float(summary["acc_gain_pct"]),
+        "vec_max_dd_pct_diagnostic_only": float(summary["max_dd_pct"]),
         "tim_pct": _binary_tim(events, fold_ts),
         "bars": int(summary["n_bars"]),
         "elapsed_s": time.time() - started,
@@ -701,6 +825,7 @@ def run_vec_fold(
         "trades_sha256": sha256(trades_path),
         "engine": "v8_vec_sweep",
         "tier": "VEC_DIAGNOSTIC",
+        "round_trip_cost_pct": round_trip_cost_pct,
     }
     try:
         summary_path.unlink()
@@ -732,6 +857,10 @@ def fold_strict(
         failures.append(f"tim_not_{tim_min:g}_{tim_max:g}")
     if float(metrics["max_dd_pct"]) > 40.0:
         failures.append("drawdown>40")
+    if int(metrics.get("hedge_event_count", 0)) > 0:
+        failures.append("hedge_events_out_of_scope")
+    if metrics.get("ledger_errors"):
+        failures.append("committed_fill_ledger_invalid")
     return not failures, failures
 
 
@@ -1167,6 +1296,17 @@ def ingest_fleet(root: Path, fleet_db: Path) -> dict[str, int]:
             "coherent_bundle": True,
             "matrix_cell_written": False,
             "live_config_written": False,
+            "metric_scope": metrics.get("metric_scope"),
+            "return_unit": metrics.get("return_unit"),
+            "return_aggregation": metrics.get("return_aggregation"),
+            "tim_unit": metrics.get("tim_unit"),
+            "tim_aggregation": metrics.get("tim_aggregation"),
+            "tim_metric": "binary_position_bar_pct",
+            "tim_binary_pct": metrics.get("tim_pct"),
+            "tim_weighted_pct": None,
+            "capital_base_usd": metrics.get(
+                "average_committed_fill_notional_usd"
+            ),
         }
         duplicate = fleet.execute(
             "SELECT 1 FROM results WHERE payload_json LIKE ? LIMIT 1",

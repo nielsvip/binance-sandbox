@@ -38,6 +38,10 @@ dependent result:
    least three trades, beat side-aware B&H-or-cash, beat that control, keep
    binary TIM in the user-updated **65–80%** band, and keep drawdown at or below
    40% on every fold.
+   Return is reconstructed from the fill events on pre-cost committed
+   fill-notional integrated over the complete fold. The denominator is never
+   marked notional. `v8_vec_sweep.acc_gain_pct` is retained only as a diagnostic
+   because it is a sum of per-trade percentages and is not comparable to B&H.
 5. Per-handle wall-clock budgets prevent one symbol consuming the campaign.
    Data quarantines are terminal until their input changes; vector rejects may
    retry at most three times and then consume only exploration capacity.
