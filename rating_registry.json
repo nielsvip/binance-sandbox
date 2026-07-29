@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-07-29T13:52:28.346164+00:00",
+  "timestamp": "2026-07-29T14:07:14.346600+00:00",
   "market_state": {
     "panic": false,
-    "euphoria": false,
-    "total_ranked": 80
+    "euphoria": true,
+    "total_ranked": 83
   },
   "unified_ranking": [
     {
@@ -79,6 +79,12 @@
       "short_score": 0
     },
     {
+      "symbol": "MAGICUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "GMTUSDT",
       "net_score": 0,
       "long_score": 0,
@@ -140,12 +146,6 @@
     },
     {
       "symbol": "LINKUSDC",
-      "net_score": 0,
-      "long_score": 0,
-      "short_score": 0
-    },
-    {
-      "symbol": "BTCDOMUSDT",
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
@@ -319,6 +319,12 @@
       "short_score": 0
     },
     {
+      "symbol": "SKYUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "1000PEPEUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -415,6 +421,12 @@
       "short_score": 0
     },
     {
+      "symbol": "BSVUSDT",
+      "net_score": 0,
+      "long_score": 0,
+      "short_score": 0
+    },
+    {
       "symbol": "BTCUSDC",
       "net_score": 0,
       "long_score": 0,
@@ -485,9 +497,21 @@
       "net_score": 0,
       "long_score": 0,
       "short_score": 0
+    },
+    {
+      "symbol": "BTCDOMUSDT",
+      "net_score": 60,
+      "long_score": 60,
+      "short_score": 0
     }
   ],
-  "top_longs": [],
+  "top_longs": [
+    [
+      "BTCDOMUSDT",
+      60,
+      5552.75300185
+    ]
+  ],
   "top_shorts": [],
   "hedge_usage": {
     "fin:ETHWUSDT": 0,
